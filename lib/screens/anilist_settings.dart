@@ -1,0 +1,228 @@
+import 'package:fluent_ui/fluent_ui.dart';
+import 'package:provider/provider.dart';
+import '../../services/anilist/provider.dart';
+
+class AnilistSettingsScreen extends StatelessWidget {
+  const AnilistSettingsScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final anilistProvider = context.watch<AnilistProvider>();
+
+    return ScaffoldPage(
+      header: const PageHeader(
+        title: Text('Anilist Integration'),
+      ),
+      content: SingleChildScrollView(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Account',
+                      style: FluentTheme.of(context).typography.subtitle,
+                    ),
+                    const SizedBox(height: 16),
+                    if (anilistProvider.isLoading) const Center(child: ProgressRing()) else if (anilistProvider.isLoggedIn && anilistProvider.currentUser != null) _buildUserInfo(context, anilistProvider) else _buildLoginPrompt(context, anilistProvider),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 24),
+            if (anilistProvider.isLoggedIn) ...[
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Sync Settings',
+                        style: FluentTheme.of(context).typography.subtitle,
+                      ),
+                      const SizedBox(height: 16),
+                      ToggleSwitch(
+                        checked: true,
+                        content: const Text('Automatically link local series to Anilist'),
+                        onChanged: (value) {
+                          // TODO: Implement setting
+                        },
+                      ),
+                      const SizedBox(height: 8),
+                      ToggleSwitch(
+                        checked: true,
+                        content: const Text('Update watch progress on Anilist'),
+                        onChanged: (value) {
+                          // TODO: Implement setting
+                        },
+                      ),
+                      const SizedBox(height: 8),
+                      ToggleSwitch(
+                        checked: true,
+                        content: const Text('Download metadata (posters, descriptions)'),
+                        onChanged: (value) {
+                          // TODO: Implement setting
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                      Button(
+                        child: const Text('Refresh All Metadata'),
+                        onPressed: () {
+                          // TODO: Implement refresh
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Your Anilist',
+                        style: FluentTheme.of(context).typography.subtitle,
+                      ),
+                      const SizedBox(height: 16),
+                      Wrap(
+                        spacing: 8.0,
+                        runSpacing: 8.0,
+                        children: [
+                          for (final list in anilistProvider.userLists.entries) _buildListChip(context, list.value),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      Button(
+                        child: const Text('Refresh Lists'),
+                        onPressed: () {
+                          anilistProvider.refreshUserLists();
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildUserInfo(BuildContext context, AnilistProvider provider) {
+    final user = provider.currentUser!;
+
+    return Column(
+      children: [
+        Row(
+          children: [
+            if (user.avatar != null)
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  image: DecorationImage(
+                    image: NetworkImage(user.avatar!),
+                    fit: BoxFit.cover,
+                  ),
+                ),
+              )
+            else
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.blue,
+                ),
+                child: const Center(
+                  child: Icon(FluentIcons.contact, color: Colors.white),
+                ),
+              ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    user.name,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                    ),
+                  ),
+                  Text('Anilist ID: ${user.id}'),
+                ],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        Button(
+          child: const Text('Logout'),
+          onPressed: () {
+            provider.logout();
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildLoginPrompt(BuildContext context, AnilistProvider provider) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Connect your Anilist account to access your anime lists, sync watch progress, and download metadata.',
+        ),
+        const SizedBox(height: 16),
+        Button(
+          child: const Text('Log in with Anilist'),
+          onPressed: () {
+            provider.login();
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildListChip(BuildContext context, dynamic list) {
+    return Chip(
+      text: Text(list.name),
+      trailing: Text(list.entries.length.toString()),
+    );
+  }
+}
+
+Widget Chip({
+  required Widget text,
+  Widget? trailing,
+}) {
+  return Container(
+    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+    decoration: BoxDecoration(
+      color: Colors.blue,
+      borderRadius: BorderRadius.circular(16),
+    ),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        text,
+        if (trailing != null) ...[
+          const SizedBox(width: 8),
+          trailing,
+        ],
+      ],
+    ),
+  );
+}

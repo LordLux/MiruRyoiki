@@ -1,0 +1,116 @@
+import 'package:flutter/material.dart';
+import 'service.dart';
+import '../../../models/anilist/anime.dart';
+import '../../../models/anilist/user_list.dart';
+
+class AnilistProvider extends ChangeNotifier {
+  final AnilistService _anilistService;
+  
+  AnilistUser? _currentUser;
+  Map<String, AnilistUserList> _userLists = {};
+  Map<int, AnilistAnime> _animeCache = {};
+  bool _isInitialized = false;
+  bool _isLoading = false;
+
+  AnilistProvider({AnilistService? anilistService})
+      : _anilistService = anilistService ?? AnilistService();
+
+  bool get isInitialized => _isInitialized;
+  bool get isLoading => _isLoading;
+  bool get isLoggedIn => _anilistService.isLoggedIn;
+  AnilistUser? get currentUser => _currentUser;
+  Map<String, AnilistUserList> get userLists => _userLists;
+
+  /// Initialize the provider
+  Future<void> initialize() async {
+    _isLoading = true;
+    notifyListeners();
+    
+    _isInitialized = await _anilistService.initialize();
+    
+    if (_isInitialized && isLoggedIn) {
+      await _loadUserData();
+    }
+    
+    _isLoading = false;
+    notifyListeners();
+  }
+  
+  /// Initiate the login flow
+  Future<void> login() async {
+    await _anilistService.login();
+  }
+  
+  /// Handle auth callback
+  Future<bool> handleAuthCallback(Uri callbackUri) async {
+    _isLoading = true;
+    notifyListeners();
+    
+    final success = await _anilistService.handleAuthCallback(callbackUri);
+    
+    if (success) {
+      await _loadUserData();
+    }
+    
+    _isLoading = false;
+    notifyListeners();
+    
+    return success;
+  }
+  
+  /// Load user data and lists
+  Future<void> _loadUserData() async {
+    _currentUser = await _anilistService.getCurrentUser();
+    _userLists = await _anilistService.getUserAnimeLists();
+  }
+  
+  /// Logout from Anilist
+  Future<void> logout() async {
+    await _anilistService.logout();
+    _currentUser = null;
+    _userLists = {};
+    _animeCache = {};
+    notifyListeners();
+  }
+  
+  /// Get anime details, using cache if available
+  Future<AnilistAnime?> getAnimeDetails(int id) async {
+    // Check cache first
+    if (_animeCache.containsKey(id)) {
+      return _animeCache[id];
+    }
+    
+    final anime = await _anilistService.getAnimeDetails(id);
+    
+    if (anime != null) {
+      _animeCache[id] = anime;
+    }
+    
+    return anime;
+  }
+  
+  /// Search for anime by title
+  Future<List<AnilistAnime>> searchAnime(String query) async {
+    final results = await _anilistService.searchAnime(query);
+    
+    // Cache results
+    for (final anime in results) {
+      _animeCache[anime.id] = anime;
+    }
+    
+    return results;
+  }
+  
+  /// Refresh user lists
+  Future<void> refreshUserLists() async {
+    if (!isLoggedIn) return;
+    
+    _isLoading = true;
+    notifyListeners();
+    
+    _userLists = await _anilistService.getUserAnimeLists();
+    
+    _isLoading = false;
+    notifyListeners();
+  }
+}

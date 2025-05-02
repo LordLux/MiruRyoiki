@@ -1,4 +1,5 @@
 import 'episode.dart';
+import 'anilist/anime.dart';
 
 class Season {
   final String name;
@@ -40,6 +41,9 @@ class Series {
   final String? posterPath;
   final List<Season> seasons;
   final List<Episode> relatedMedia;
+  // Anilist Data
+  int? anilistId;
+  AnilistAnime? anilistData;
 
   Series({
     required this.name,
@@ -47,6 +51,8 @@ class Series {
     this.posterPath,
     required this.seasons,
     this.relatedMedia = const [],
+    this.anilistId,
+    this.anilistData,
   });
 
   int get totalEpisodes => seasons.fold(0, (sum, season) => sum + season.episodes.length) + relatedMedia.length;
@@ -63,6 +69,7 @@ class Series {
       'posterPath': posterPath,
       'seasons': seasons.map((s) => s.toJson()).toList(),
       'relatedMedia': relatedMedia.map((e) => e.toJson()).toList(),
+      'anilistId': anilistId,
     };
   }
 
@@ -74,6 +81,7 @@ class Series {
       posterPath: json['posterPath'],
       seasons: (json['seasons'] as List).map((s) => Season.fromJson(s)).toList(),
       relatedMedia: (json['relatedMedia'] as List?)?.map((e) => Episode.fromJson(e)).toList() ?? [],
+      anilistId: json['anilistId'],
     );
   }
 
@@ -90,4 +98,30 @@ class Series {
     final categorizedEpisodes = seasons.expand((s) => s.episodes).toSet();
     return relatedMedia.where((e) => !categorizedEpisodes.contains(e)).toList();
   }
+
+  // Anilist Getters
+
+  // Getter for banner image from Anilist
+  String? get bannerImage => anilistData?.bannerImage;
+
+  // Getter for proper title
+  String get displayTitle =>
+      anilistData?.title.english ?? //
+      anilistData?.title.romaji ??
+      name;
+
+  // Getter for description
+  String? get description => anilistData?.description;
+
+  // Getter for rating score
+  int? get rating => anilistData?.averageScore;
+
+  // Getter for popularity
+  int? get popularity => anilistData?.popularity;
+
+  // Getter for format (TV, Movie, etc)
+  String? get format => anilistData?.format;
+
+  // Getter for genres
+  List<String> get genres => anilistData?.genres ?? [];
 }
