@@ -31,12 +31,15 @@ class SeriesCard extends StatelessWidget {
                   width: double.infinity,
                   color: Colors.grey,
                   child: series.posterPath != null
-                      ? Image.file(
-                          File(series.posterPath!),
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) => 
-                              const Center(child: Icon(FluentIcons.file_image, size: 40)),
-                        )
+                      ? Padding(
+                        padding: const EdgeInsets.all(8.0),
+                        child: Image.file(
+                            File(series.posterPath!),
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) => 
+                                const Center(child: Icon(FluentIcons.file_image, size: 40)),
+                          ),
+                      )
                       : const Center(child: Icon(FluentIcons.file_image, size: 40)),
                 ),
               ),
@@ -70,6 +73,7 @@ class SeriesCard extends StatelessWidget {
                     const SizedBox(height: 4),
                     ProgressBar(
                       value: series.watchedPercentage * 100,
+                      activeColor: Colors.purple, //TODO get color from theme
                       backgroundColor: Colors.grey.withOpacity(0.3),
                     ),
                   ],

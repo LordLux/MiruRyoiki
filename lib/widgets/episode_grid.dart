@@ -26,34 +26,38 @@ class EpisodeGrid extends StatelessWidget {
       );
     }
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        if (title != null) ...[
-          Padding(
-            padding: const EdgeInsets.fromLTRB(0, 16, 0, 8),
-            child: Text(
-              title!,
-              style: FluentTheme.of(context).typography.subtitle,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (title != null) ...[
+              Padding(
+                padding: const EdgeInsets.fromLTRB(0, 16, 0, 8),
+                child: Text(
+                  title!,
+                  style: FluentTheme.of(context).typography.subtitle,
+                ),
+              ),
+            ],
+            GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: (constraints.maxWidth ~/ 200).clamp(1, 10),
+                childAspectRatio: 16 / 12,
+                crossAxisSpacing: 8,
+                mainAxisSpacing: 8,
+              ),
+              itemCount: episodes.length,
+              itemBuilder: (context, index) {
+                final episode = episodes[index];
+                return _buildEpisodeTile(context, episode);
+              },
             ),
-          ),
-        ],
-        GridView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 8,
-            childAspectRatio: 16 / 12,
-            crossAxisSpacing: 12,
-            mainAxisSpacing: 12,
-          ),
-          itemCount: episodes.length,
-          itemBuilder: (context, index) {
-            final episode = episodes[index];
-            return _buildEpisodeTile(context, episode);
-          },
-        ),
-      ],
+          ],
+        );
+      }
     );
   }
 
@@ -121,15 +125,18 @@ class EpisodeGrid extends StatelessWidget {
               ),
 
             // Progress indicator if partially watched
-            if (episode.watchedPercentage > 0 && episode.watchedPercentage < 0.85)
+            if (episode.watchedPercentage > 0 && episode.watchedPercentage < 0.8)
               Positioned(
                 left: 0,
                 right: 0,
                 bottom: 0,
-                child: ProgressBar(
-                  value: (episode.watchedPercentage > 0.9 ? 1 : episode.watchedPercentage) * 100,
-                  backgroundColor: Colors.grey.withOpacity(0.3),
-                  activeColor: Colors.blue,
+                child: Container(
+                  color: Colors.red.withOpacity(0.7),
+                  child: ProgressBar(
+                    value: (episode.watchedPercentage > 0.8 ? 1 : episode.watchedPercentage) * 100,
+                    backgroundColor: Colors.grey.withOpacity(0.3),
+                    activeColor: Colors.blue,
+                  ),
                 ),
               ),
           ],

@@ -108,9 +108,12 @@ class SettingsScreen extends StatelessWidget {
                   const SizedBox(height: 24),
                   const InfoBar(
                     title: Text('MPC-HC Integration'),
-                    content: Text(
-                      'This app reads data from the Windows Registry to detect videos played in MPC-HC. '
-                      'Please ensure MPC-HC is installed and configured properly.',
+                    content: Padding(
+                      padding: EdgeInsets.only(right: 8.0),
+                      child: Text(
+                        'This app reads data from the Windows Registry to detect videos played in MPC-HC. '
+                        'Please ensure MPC-HC is installed and configured properly.',
+                      ),
                     ),
                     severity: InfoBarSeverity.info,
                   ),

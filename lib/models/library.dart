@@ -4,8 +4,10 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 
+import '../services/anilist/linking.dart';
 import '../services/file_scanner.dart';
 import '../services/player_trackers/mpchc.dart';
+import 'anilist/anime.dart';
 import 'series.dart';
 import 'episode.dart';
 
@@ -224,5 +226,38 @@ class Library with ChangeNotifier {
         return series;
     }
     return null;
+  }
+
+  /// Link a series with Anilist
+  Future<bool> linkSeriesWithAnilist(Series series, int anilistId) async {
+    final seriesLinkService = SeriesLinkService();
+    final success = await seriesLinkService.linkSeries(series, anilistId);
+
+    if (success) {
+      await _saveLibrary();
+      notifyListeners();
+    }
+
+    return success;
+  }
+
+  /// Refresh metadata for all series
+  Future<void> refreshAllMetadata() async {
+    final seriesLinkService = SeriesLinkService();
+
+    for (final series in _series) {
+      if (series.anilistId != null) {
+        await seriesLinkService.refreshMetadata(series);
+      }
+    }
+
+    await _saveLibrary();
+    notifyListeners();
+  }
+
+  /// Get Anilist series suggestion
+  Future<List<AnilistAnime>> getSeriesSuggestions(Series series) async {
+    final seriesLinkService = SeriesLinkService();
+    return seriesLinkService.findMatchesByName(series);
   }
 }

@@ -4,11 +4,17 @@ import 'package:file_picker/file_picker.dart';
 
 import '../models/library.dart';
 import '../models/series.dart';
+import '../utils/screen_utils.dart';
 import '../widgets/series_card.dart';
 import 'series.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  final Function(String) onSeriesSelected;
+
+  const HomeScreen({
+    super.key,
+    required this.onSeriesSelected,
+  });
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -76,50 +82,52 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildLibraryView(Library library) {
     return Padding(
       padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Your Media Library',
-                style: FluentTheme.of(context).typography.title,
-              ),
-              Button(
-                child: const Text('Refresh'),
-                onPressed: () {
-                  library.scanLibrary();
+      child: LayoutBuilder(builder: (context, constraints) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Your Media Library',
+                  style: FluentTheme.of(context).typography.title,
+                ),
+                Button(
+                  child: const Text('Refresh'),
+                  onPressed: () {
+                    library.scanLibrary();
+                  },
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Path: ${library.libraryPath}',
+              style: FluentTheme.of(context).typography.caption,
+            ),
+            const SizedBox(height: 24),
+            Expanded(
+              child: GridView.builder(
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: (constraints.maxWidth ~/ 200).clamp(1, 10),
+                  childAspectRatio: 0.8,
+                  crossAxisSpacing: 16,
+                  mainAxisSpacing: 16,
+                ),
+                itemCount: library.series.length,
+                itemBuilder: (context, index) {
+                  final series = library.series[index];
+                  return SeriesCard(
+                    series: series,
+                    onTap: () => _navigateToSeries(series),
+                  );
                 },
               ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Path: ${library.libraryPath}',
-            style: FluentTheme.of(context).typography.caption,
-          ),
-          const SizedBox(height: 24),
-          Expanded(
-            child: GridView.builder(
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 5,
-                childAspectRatio: 0.7,
-                crossAxisSpacing: 16,
-                mainAxisSpacing: 16,
-              ),
-              itemCount: library.series.length,
-              itemBuilder: (context, index) {
-                final series = library.series[index];
-                return SeriesCard(
-                  series: series,
-                  onTap: () => _navigateToSeries(series),
-                );
-              },
             ),
-          ),
-        ],
-      ),
+          ],
+        );
+      }),
     );
   }
 
@@ -134,10 +142,5 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  void _navigateToSeries(Series series) {
-    Navigator.push(
-      context,
-      FluentPageRoute(builder: (context) => SeriesScreen(seriesPath: series.path)),
-    );
-  }
+  void _navigateToSeries(Series series) => widget.onSeriesSelected(series.path);
 }
