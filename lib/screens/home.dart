@@ -1,0 +1,143 @@
+import 'package:fluent_ui/fluent_ui.dart';
+import 'package:provider/provider.dart';
+import 'package:file_picker/file_picker.dart';
+
+import '../models/library.dart';
+import '../models/series.dart';
+import '../widgets/series_card.dart';
+import 'series.dart';
+
+class HomeScreen extends StatefulWidget {
+  const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  @override
+  Widget build(BuildContext context) {
+    final library = context.watch<Library>();
+
+    if (library.isLoading) return const Center(child: ProgressRing());
+
+    if (library.libraryPath == null) return _buildLibrarySelector();
+
+    if (library.series.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(
+              FluentIcons.folder_open,
+              size: 48,
+              color: Colors.grey,
+            ),
+            const SizedBox(height: 16),
+            const Text('No series found in your library'),
+            const SizedBox(height: 16),
+            Button(
+              onPressed: _selectLibraryFolder,
+              child: const Text('Change Library Folder'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return _buildLibraryView(library);
+  }
+
+  Widget _buildLibrarySelector() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(
+            FluentIcons.folder_open,
+            size: 48,
+            color: Colors.grey,
+          ),
+          const SizedBox(height: 16),
+          const Text(
+            'Select your media library folder to get started',
+            style: TextStyle(fontSize: 16),
+          ),
+          const SizedBox(height: 24),
+          Button(
+            child: const Text('Select Library Folder'),
+            onPressed: _selectLibraryFolder,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLibraryView(Library library) {
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Your Media Library',
+                style: FluentTheme.of(context).typography.title,
+              ),
+              Button(
+                child: const Text('Refresh'),
+                onPressed: () {
+                  library.scanLibrary();
+                },
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Path: ${library.libraryPath}',
+            style: FluentTheme.of(context).typography.caption,
+          ),
+          const SizedBox(height: 24),
+          Expanded(
+            child: GridView.builder(
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 5,
+                childAspectRatio: 0.7,
+                crossAxisSpacing: 16,
+                mainAxisSpacing: 16,
+              ),
+              itemCount: library.series.length,
+              itemBuilder: (context, index) {
+                final series = library.series[index];
+                return SeriesCard(
+                  series: series,
+                  onTap: () => _navigateToSeries(series),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _selectLibraryFolder() async {
+    final String? selectedDirectory = await FilePicker.platform.getDirectoryPath(
+      dialogTitle: 'Select Media Library Folder',
+    );
+
+    if (selectedDirectory != null) {
+      final library = context.read<Library>();
+      await library.setLibraryPath(selectedDirectory);
+    }
+  }
+
+  void _navigateToSeries(Series series) {
+    Navigator.push(
+      context,
+      FluentPageRoute(builder: (context) => SeriesScreen(seriesPath: series.path)),
+    );
+  }
+}
