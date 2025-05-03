@@ -86,9 +86,9 @@ class _MyAppState extends State<MyApp> {
 
       // Listen for deep links while app is running
       // TODO _handleIncomingLinks();
-      
+
       await Future.delayed(const Duration(milliseconds: 100));
-      
+
       await libraryProvider.scanLibrary();
       await anilistProvider.initialize();
     });
@@ -146,7 +146,7 @@ class _MyAppState extends State<MyApp> {
             brightness: Brightness.dark,
             acrylicBackgroundColor: Colors.transparent,
             micaBackgroundColor: Colors.transparent,
-            scaffoldBackgroundColor: Colors.white.withOpacity(0.025), // default background
+            scaffoldBackgroundColor: Colors.white.withOpacity(0.03), // default background
             navigationPaneTheme: NavigationPaneThemeData(backgroundColor: Colors.transparent),
           ),
           color: Colors.transparent,
@@ -220,9 +220,15 @@ class _AppRootState extends State<AppRoot> {
           child: Padding(
             padding: EdgeInsets.only(top: Manager.titleBarHeight), // Adjust for title bar height
             child: NavigationView(
-              appBar: _isLibraryView ? NavigationAppBar(automaticallyImplyLeading: false, title: _logoTitle()) : null,
+              // appBar: _isLibraryView ? NavigationAppBar(automaticallyImplyLeading: false, title: _logoTitle()) : null,
               key: _paneKey,
               pane: NavigationPane(
+                menuButton: _isLibraryView
+                    ? Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 11.0),
+                        child: _logoTitle(),
+                      )
+                    : null,
                 selected: _selectedIndex,
                 onChanged: (index) => setState(() {
                   _selectedIndex = index;
@@ -365,13 +371,16 @@ class _AppRootState extends State<AppRoot> {
   }
 
   Widget _logoTitle() {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        const Icon(FluentIcons.video, size: 24),
-        const SizedBox(width: 8),
-        const Text('MiruRyoiki'),
-      ],
+    return SizedBox(
+      width: 180, // Adjust this value as needed
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(FluentIcons.video, size: 24),
+          const SizedBox(width: 8),
+          const Text('MiruRyoiki', overflow: TextOverflow.clip, maxLines: 1),
+        ],
+      ),
     );
   }
 

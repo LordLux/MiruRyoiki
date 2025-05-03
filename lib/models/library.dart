@@ -78,10 +78,23 @@ class Library with ChangeNotifier {
     await scanLibrary();
   }
 
+  void reloadLibrary() {
+    if (_libraryPath == null || _isLoading) return;
+
+    snackBar('Reloading library...', severity: InfoBarSeverity.info);
+    
+    scanLibrary()
+        .then(
+          (_) => snackBar('Library reloaded', severity: InfoBarSeverity.success),
+        )
+        .catchError(
+          (error) => snackBar('Error reloading library: $error', severity: InfoBarSeverity.error, hasError: true),
+        );
+  }
+
   Future<void> scanLibrary() async {
     if (_libraryPath == null || _isLoading) return;
     print('Scanning library at $_libraryPath');
-    snackBar('Reloading library...', severity: InfoBarSeverity.info);
 
     _isLoading = true;
     notifyListeners();
@@ -99,7 +112,6 @@ class Library with ChangeNotifier {
     } finally {
       _isLoading = false;
       notifyListeners();
-      snackBar('Library reloaded', severity: InfoBarSeverity.success);
     }
   }
 

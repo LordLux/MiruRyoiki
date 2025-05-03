@@ -35,7 +35,7 @@ class _CustomKeyboardListenerState extends State<CustomKeyboardListener> {
   }
 
   void _handleKeyPress(RawKeyEvent event) {
-    setState(() async {
+    setState(() {
       if (event is RawKeyDownEvent) {
         if (isSuperPressed(event)) {
           isCtrlPressed = true;
@@ -63,7 +63,7 @@ class _CustomKeyboardListenerState extends State<CustomKeyboardListener> {
         if (isCtrlPressed && event.logicalKey == LogicalKeyboardKey.keyR) {
           print('Ctrl + r pressed: Reload');
           final library = Provider.of<Library>(context, listen: false);
-          await library.scanLibrary();
+          library.reloadLibrary();
         } else
         //
         // Esc
