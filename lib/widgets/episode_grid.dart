@@ -1,18 +1,26 @@
 import 'package:fluent_ui/fluent_ui.dart';
-import 'dart:io';
 import '../models/episode.dart';
-import 'watched_badge.dart';
+import '../models/series.dart';
+import 'episode_card.dart';
 
 class EpisodeGrid extends StatelessWidget {
   final List<Episode> episodes;
+  final Series series;
   final String? title;
   final Function(Episode) onTap;
+  final bool collapsable;
+  final bool initiallyExpanded;
+  final GlobalKey<ExpanderState>? expanderKey;
 
   const EpisodeGrid({
     super.key,
     required this.episodes,
+    required this.series,
     this.title,
+    this.collapsable = true,
+    this.initiallyExpanded = true,
     required this.onTap,
+    this.expanderKey,
   });
 
   @override
@@ -26,21 +34,36 @@ class EpisodeGrid extends StatelessWidget {
       );
     }
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (title != null) ...[
-              Padding(
-                padding: const EdgeInsets.fromLTRB(0, 16, 0, 8),
-                child: Text(
-                  title!,
-                  style: FluentTheme.of(context).typography.subtitle,
-                ),
-              ),
-            ],
-            GridView.builder(
+    return Expander(
+      key: expanderKey,
+      enabled: collapsable,
+      initiallyExpanded: initiallyExpanded,
+      header: Builder(builder: (context) {
+        if (title != null)
+          return Padding(
+            padding: const EdgeInsets.fromLTRB(0, 0, 0, 0),
+            child: Text(
+              title!,
+              style: FluentTheme.of(context).typography.subtitle,
+            ),
+          );
+        return const SizedBox.shrink();
+      }),
+      headerBackgroundColor: WidgetStatePropertyAll<Color>(Colors.black.withOpacity(0.1)),
+      contentPadding: EdgeInsets.zero,
+      contentBackgroundColor: Colors.transparent,
+      content: Container(
+        decoration: BoxDecoration(
+          color: Colors.black.withOpacity(0.1),
+          borderRadius: BorderRadius.only(
+            bottomLeft: const Radius.circular(8.0),
+            bottomRight: const Radius.circular(8.0),
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.only(left: 16.0, right: 16.0, bottom: 16.0),
+          child: LayoutBuilder(builder: (context, constraints) {
+            return GridView.builder(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
@@ -52,96 +75,20 @@ class EpisodeGrid extends StatelessWidget {
               itemCount: episodes.length,
               itemBuilder: (context, index) {
                 final episode = episodes[index];
-                return _buildEpisodeTile(context, episode);
+                return _buildEpisodeTile(context, episode, series);
               },
-            ),
-          ],
-        );
-      }
+            );
+          }),
+        ),
+      ),
     );
   }
 
-  Widget _buildEpisodeTile(BuildContext context, Episode episode) {
-    return GestureDetector(
+  Widget _buildEpisodeTile(BuildContext context, Episode episode, Series series) {
+    return HoverableEpisodeTile(
+      episode: episode,
       onTap: () => onTap(episode),
-      child: Card(
-        padding: EdgeInsets.zero,
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            // Episode preview or placeholder
-            ClipRRect(
-              borderRadius: BorderRadius.circular(4.0),
-              child: episode.thumbnailPath != null
-                  ? Image.file(
-                      File(episode.thumbnailPath!),
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) => Container(
-                        color: Colors.grey.withOpacity(0.3),
-                        child: const Center(child: Icon(FluentIcons.video, size: 40)),
-                      ),
-                    )
-                  : Container(
-                      color: Colors.grey.withOpacity(0.3),
-                      child: const Center(child: Icon(FluentIcons.video, size: 40)),
-                    ),
-            ),
-
-            // Episode name at the bottom
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: Container(
-                padding: const EdgeInsets.all(8.0),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      Colors.transparent,
-                      Colors.black.withOpacity(0.7),
-                    ],
-                  ),
-                ),
-                child: Text(
-                  episode.name,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w600,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ),
-
-            // Watched badge in the top-right corner
-            if (episode.watched)
-              const Positioned(
-                top: 8,
-                right: 8,
-                child: WatchedBadge(isWatched: true),
-              ),
-
-            // Progress indicator if partially watched
-            if (episode.watchedPercentage > 0 && episode.watchedPercentage < 0.8)
-              Positioned(
-                left: 0,
-                right: 0,
-                bottom: 0,
-                child: Container(
-                  color: Colors.red.withOpacity(0.7),
-                  child: ProgressBar(
-                    value: (episode.watchedPercentage > 0.8 ? 1 : episode.watchedPercentage) * 100,
-                    backgroundColor: Colors.grey.withOpacity(0.3),
-                    activeColor: Colors.blue,
-                  ),
-                ),
-              ),
-          ],
-        ),
-      ),
+      series: series,
     );
   }
 }

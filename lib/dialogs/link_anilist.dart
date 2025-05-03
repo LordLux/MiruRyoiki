@@ -121,23 +121,23 @@ class _AnilistLinkDialogState extends State<AnilistLinkDialog> {
                 child: ListView.builder(
                   itemCount: _searchResults.length,
                   itemBuilder: (context, index) {
-                    final anime = _searchResults[index];
+                    final series = _searchResults[index];
                     return ListTile(
-                      leading: anime.bannerImage != null
+                      leading: series.bannerImage != null
                           ? Image.network(
-                              anime.bannerImage!,
+                              series.bannerImage!,
                               width: 60,
                               height: 40,
                               fit: BoxFit.cover,
                               errorBuilder: (context, error, stack) => const Icon(FluentIcons.video),
                             )
                           : const Icon(FluentIcons.video),
-                      title: Text(anime.title.english ?? anime.title.romaji ?? 'Unknown'),
+                      title: Text(series.title.english ?? series.title.romaji ?? 'Unknown'),
                       subtitle: Text(
-                        '${anime.format ?? ''} ${anime.seasonYear ?? ''} | ${anime.episodes ?? '?'} eps',
+                        '${series.format ?? ''} ${series.seasonYear ?? ''} | ${series.episodes ?? '?'} eps',
                       ),
                       onPressed: () {
-                        widget.onLink(anime.id);
+                        widget.onLink(series.id);
                         Navigator.pop(context);
                       },
                     );

@@ -1,9 +1,11 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 
+import '../functions.dart';
 import '../services/anilist/linking.dart';
 import '../services/file_scanner.dart';
 import '../services/player_trackers/mpchc.dart';
@@ -77,7 +79,9 @@ class Library with ChangeNotifier {
   }
 
   Future<void> scanLibrary() async {
-    if (_libraryPath == null) return;
+    if (_libraryPath == null || _isLoading) return;
+    print('Scanning library at $_libraryPath');
+    snackBar('Reloading library...', severity: InfoBarSeverity.info);
 
     _isLoading = true;
     notifyListeners();
@@ -88,12 +92,14 @@ class Library with ChangeNotifier {
       // Update watched status from tracker
       _updateWatchedStatus();
 
+      await calculateDominantColors();
       await _saveLibrary();
     } catch (e) {
       debugPrint('Error scanning library: $e');
     } finally {
       _isLoading = false;
       notifyListeners();
+      snackBar('Library reloaded', severity: InfoBarSeverity.success);
     }
   }
 
@@ -259,5 +265,16 @@ class Library with ChangeNotifier {
   Future<List<AnilistAnime>> getSeriesSuggestions(Series series) async {
     final seriesLinkService = SeriesLinkService();
     return seriesLinkService.findMatchesByName(series);
+  }
+
+  /// Calculate dominant colors for all series
+  Future<void> calculateDominantColors() async {
+    print('Calculating dominant color');
+    for (final series in _series) {
+      if (series.dominantColor == null && series.posterPath != null) //
+        await series.calculateDominantColor();
+    }
+    // Save library after calculating all colors
+    await _saveLibrary();
   }
 }

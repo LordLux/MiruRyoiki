@@ -11,6 +11,15 @@ dependencies:
   flutter:
     sdk: flutter
   fluent_ui: ^4.0.0
+  fluent_ui2:
+    # path: M:/Projects/FluentUI/fluent_ui/
+    git:
+      url: https://github.com/LordLux/fluent_ui.git
+  fluent_ui3:
+    # path: M:/Projects/FluentUI/menu_fluent/
+    git:
+      url: https://github.com/LordLux/fluent_ui.git
+      ref: refs/heads/menuflyout
   provider: ^6.0.3
   win32: ^5.12.0
   path: ^1.8.2
@@ -26,6 +35,13 @@ dependencies:
   url_launcher: ^6.3.1
   smooth_scroll_multiplatform: ^1.0.8
   uni_links: ^0.5.1
+  flutter_acrylic: ^1.1.4
+  system_theme: ^3.1.2
+  window_manager: ^0.4.3
+  open_file: ^3.5.10
+  shared_preferences: ^2.5.3
+  recase: ^4.1.0
+  palette_generator: ^0.3.3+3
 
 dev_dependencies:
   flutter_test:

@@ -1,5 +1,13 @@
-import 'episode.dart';
+import 'dart:io';
+import 'dart:ui';
+
+import 'package:flutter/material.dart' show ColorScheme, Colors;
+import 'package:flutter/widgets.dart';
+import 'package:palette_generator/palette_generator.dart';
+
 import 'anilist/anime.dart';
+import 'episode.dart';
+import '../enums.dart';
 
 class Season {
   final String name;
@@ -36,14 +44,29 @@ class Season {
 }
 
 class Series {
+  /// Name of the series from the File System
   final String name;
+
+  /// Path for the series from the File System
   final String path;
+
+  /// Poster path for the series from the File System
   final String? posterPath;
+
+  /// List of seasons for the series from the File System
   final List<Season> seasons;
+
+  /// List of related media (ONA/OVA) for the series from the File System
   final List<Episode> relatedMedia;
-  // Anilist Data
+
+  /// Anilist ID for the series
   int? anilistId;
+
+  /// Anilist data for the series
   AnilistAnime? anilistData;
+
+  /// Cached dominant color from poster image
+  Color? _dominantColor;
 
   Series({
     required this.name,
@@ -53,13 +76,43 @@ class Series {
     this.relatedMedia = const [],
     this.anilistId,
     this.anilistData,
-  });
+    Color? dominantColor,
+  }) : _dominantColor = dominantColor;
 
+  /// Total number of episodes across all seasons and related media
   int get totalEpisodes => seasons.fold(0, (sum, season) => sum + season.episodes.length) + relatedMedia.length;
 
+  /// Total watched episodes across all seasons and related media
   int get watchedEpisodes => seasons.fold(0, (sum, season) => sum + season.watchedCount) + relatedMedia.where((e) => e.watched).length;
 
+  /// Percentage of watched episodes
   double get watchedPercentage => totalEpisodes > 0 ? watchedEpisodes / totalEpisodes : 0.0;
+
+  /// Primary color from the series poster image
+  Color? get dominantColor => _dominantColor;
+
+  /// Calculate and cache the dominant color from the poster image
+  Future<Color?> calculateDominantColor() async {
+    if (posterPath == null) return null;
+
+    try {
+      final File imageFile = File(posterPath!);
+      if (!imageFile.existsSync()) return null;
+      
+      final PaletteGenerator paletteGenerator = await PaletteGenerator.fromImageProvider(
+        FileImage(imageFile),
+        maximumColorCount: 10,
+      );
+
+      // Try to get a vibrant color first for better UI aesthetics
+      _dominantColor = paletteGenerator.vibrantColor?.color ?? paletteGenerator.dominantColor?.color ?? Colors.blue; // Fallback color
+
+      return _dominantColor;
+    } catch (e) {
+      debugPrint('Error extracting dominant color: $e');
+      return null;
+    }
+  }
 
   // For JSON serialization
   Map<String, dynamic> toJson() {
@@ -70,11 +123,16 @@ class Series {
       'seasons': seasons.map((s) => s.toJson()).toList(),
       'relatedMedia': relatedMedia.map((e) => e.toJson()).toList(),
       'anilistId': anilistId,
+      'dominantColor': _dominantColor?.value,
     };
   }
 
   // For JSON deserialization
   factory Series.fromJson(Map<String, dynamic> json) {
+    Color? dominantColor;
+    if (json['dominantColor'] != null) //
+      dominantColor = Color(json['dominantColor'] as int);
+
     return Series(
       name: json['name'],
       path: json['path'],
@@ -82,6 +140,7 @@ class Series {
       seasons: (json['seasons'] as List).map((s) => Season.fromJson(s)).toList(),
       relatedMedia: (json['relatedMedia'] as List?)?.map((e) => Episode.fromJson(e)).toList() ?? [],
       anilistId: json['anilistId'],
+      dominantColor: dominantColor,
     );
   }
 
@@ -100,28 +159,30 @@ class Series {
   }
 
   // Anilist Getters
-
-  // Getter for banner image from Anilist
+  /// Banner image from Anilist
   String? get bannerImage => anilistData?.bannerImage;
 
-  // Getter for proper title
+  /// Poster image from Anilist
+  String? get posterImage => anilistData?.posterImage;
+
+  /// Official title from Anilist
   String get displayTitle =>
       anilistData?.title.english ?? //
       anilistData?.title.romaji ??
       name;
 
-  // Getter for description
+  /// Description from Anilist
   String? get description => anilistData?.description;
 
-  // Getter for rating score
+  /// Rating from Anilist
   int? get rating => anilistData?.averageScore;
 
-  // Getter for popularity
+  /// Popularity from Anilist
   int? get popularity => anilistData?.popularity;
 
-  // Getter for format (TV, Movie, etc)
+  /// Format from Anilist (TV, Movie, etc)
   String? get format => anilistData?.format;
 
-  // Getter for genres
+  /// Genres from Anilist
   List<String> get genres => anilistData?.genres ?? [];
 }
