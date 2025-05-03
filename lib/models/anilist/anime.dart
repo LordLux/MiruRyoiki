@@ -1,6 +1,7 @@
 class AnilistAnime {
   final int id;
   final String? bannerImage;
+  final String? posterImage;
   final AnilistTitle title;
   final String? description;
   final int? meanScore;
@@ -19,6 +20,7 @@ class AnilistAnime {
   AnilistAnime({
     required this.id,
     this.bannerImage,
+    this.posterImage,
     required this.title,
     this.description,
     this.meanScore,
@@ -39,6 +41,7 @@ class AnilistAnime {
     return AnilistAnime(
       id: json['id'] as int,
       bannerImage: json['bannerImage'] as String?,
+      posterImage: json['posterImage'] as String?,
       title: AnilistTitle.fromJson(json['title']),
       description: json['description'] as String?,
       meanScore: json['meanScore'] as int?,

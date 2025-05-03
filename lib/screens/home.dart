@@ -111,7 +111,7 @@ class _HomeScreenState extends State<HomeScreen> {
               child: GridView.builder(
                 gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: (constraints.maxWidth ~/ 200).clamp(1, 10),
-                  childAspectRatio: 0.8,
+                  childAspectRatio: 0.71,
                   crossAxisSpacing: 16,
                   mainAxisSpacing: 16,
                 ),

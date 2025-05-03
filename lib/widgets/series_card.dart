@@ -1,10 +1,10 @@
-// import 'package:flutter/material.dart';
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:flutter/material.dart' show InkWell, Material;
 import 'dart:io';
 
 import '../models/series.dart';
 
-class SeriesCard extends StatelessWidget {
+class SeriesCard extends StatefulWidget {
   final Series series;
   final VoidCallback onTap;
   
@@ -15,72 +15,121 @@ class SeriesCard extends StatelessWidget {
   });
 
   @override
+  State<SeriesCard> createState() => _SeriesCardState();
+}
+
+class _SeriesCardState extends State<SeriesCard> {
+  bool _isHovering = false;
+
+  @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Card(
-        padding: EdgeInsets.zero,
-        child: ClipRRect(
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isHovering = true),
+      onExit: (_) => setState(() => _isHovering = false),
+      cursor: SystemMouseCursors.click,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(8.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Poster image
-              Expanded(
-                child: Container(
-                  width: double.infinity,
-                  color: Colors.grey,
-                  child: series.posterPath != null
-                      ? Padding(
-                        padding: const EdgeInsets.all(8.0),
-                        child: Image.file(
-                            File(series.posterPath!),
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) => 
-                                const Center(child: Icon(FluentIcons.file_image, size: 40)),
-                          ),
-                      )
-                      : const Center(child: Icon(FluentIcons.file_image, size: 40)),
-                ),
-              ),
-              
-              // Series info
-              Padding(
-                padding: const EdgeInsets.all(12.0),
+          color: Colors.transparent,
+          boxShadow: _isHovering 
+              ? [BoxShadow(
+                  color: (widget.series.dominantColor ?? Colors.blue).withOpacity(0.05),
+                  blurRadius: 8,
+                  spreadRadius: 1,
+                )] 
+              : null,
+        ),
+        child: Stack(
+          children: [
+            Card(
+              padding: EdgeInsets.zero,
+              borderRadius: BorderRadius.circular(8.0),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(8.0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      series.name,
-                      style: FluentTheme.of(context).typography.bodyStrong,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                    // Poster image
+                    Expanded(
+                      child: Container(
+                        width: double.infinity,
+                        color: Colors.white.withOpacity(.03),
+                        child: widget.series.posterPath != null
+                            ? Image.file(
+                                File(widget.series.posterPath!),
+                                fit: BoxFit.contain,
+                                errorBuilder: (context, error, stackTrace) => 
+                                    const Center(child: Icon(FluentIcons.file_image, size: 40)),
+                              )
+                            : const Center(child: Icon(FluentIcons.file_image, size: 40)),
+                      ),
                     ),
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        Text(
-                          '${series.totalEpisodes} episodes',
-                          style: FluentTheme.of(context).typography.caption,
-                        ),
-                        const Spacer(),
-                        Text(
-                          '${(series.watchedPercentage * 100).round()}%',
-                          style: FluentTheme.of(context).typography.caption,
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    ProgressBar(
-                      value: series.watchedPercentage * 100,
-                      activeColor: Colors.purple, //TODO get color from theme
-                      backgroundColor: Colors.grey.withOpacity(0.3),
+                    
+                    // Series info
+                    Padding(
+                      padding: const EdgeInsets.all(12.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            widget.series.name,
+                            style: FluentTheme.of(context).typography.bodyStrong,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 4),
+                          Row(
+                            children: [
+                              Text(
+                                '${widget.series.totalEpisodes} episodes',
+                                style: FluentTheme.of(context).typography.caption,
+                              ),
+                              const Spacer(),
+                              Text(
+                                '${(widget.series.watchedPercentage * 100).round()}%',
+                                style: FluentTheme.of(context).typography.caption,
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          SizedBox(
+                            width: 200,
+                            child: ProgressBar(
+                              value: widget.series.watchedPercentage * 100,
+                              activeColor: widget.series.dominantColor,
+                              backgroundColor: Color.lerp(Colors.grey.withOpacity(0.5), widget.series.dominantColor, 0.1),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),
               ),
-            ],
-          ),
+            ),
+            // Hover overlay
+            Positioned.fill(
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: widget.onTap,
+                  splashColor: (widget.series.dominantColor ?? Colors.blue).withOpacity(0.1),
+                  highlightColor: Colors.white.withOpacity(0.05),
+                  borderRadius: BorderRadius.circular(8.0),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 150),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(8.0),
+                      color: _isHovering 
+                          ? Colors.white.withOpacity(0.03) 
+                          : Colors.transparent,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );

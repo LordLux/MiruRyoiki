@@ -3,8 +3,12 @@
 #
 
 list(APPEND FLUTTER_PLUGIN_LIST
+  flutter_acrylic
   flutter_secure_storage_windows
+  screen_retriever_windows
+  system_theme
   url_launcher_windows
+  window_manager
   window_size
 )
 

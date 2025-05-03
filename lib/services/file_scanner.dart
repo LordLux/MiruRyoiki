@@ -191,7 +191,7 @@ class FileScanner {
       .replaceAll(RegExp(r'\[[^\]]+\]'), '') // Remove [Group]
       .replaceAll(RegExp(r'\([^)]+\)'), '') // Remove (info)
       .replaceAll(RegExp(r'\.\w{3,4}$'), '') // Remove extension if still present
-      .replaceAll(RegExp(r'[-_.]+'), ' ') // Replace separators with space
+      // .replaceAll(RegExp(r'[-_.]+'), ' ') // Replace separators with space
       .trim();
   }
 }
