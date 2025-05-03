@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:open_app_file/open_app_file.dart';
 import 'package:provider/provider.dart';
+import 'package:smooth_scroll_multiplatform/smooth_scroll_multiplatform.dart';
 
 import '../dialogs/confirm_watch_all.dart';
 import '../dialogs/link_anilist.dart';
@@ -30,7 +31,7 @@ class SeriesScreen extends StatefulWidget {
 }
 
 class SeriesScreenState extends State<SeriesScreen> {
-  final ScrollController _scrollController = ScrollController();
+  // final ScrollController _scrollController = ScrollController();
   late double _headerHeight;
   static const double _maxHeaderHeight = 290.0;
   static const double _minHeaderHeight = 150.0;
@@ -53,21 +54,21 @@ class SeriesScreenState extends State<SeriesScreen> {
     super.initState();
     _headerHeight = _maxHeaderHeight;
     // Listen to scroll events
-    _scrollController.addListener(() {
-      final offset = _scrollController.offset;
-      // If scrolled any amount, shrink; if scrolled back to top, expand
-      final newHeight = offset > 0 ? _minHeaderHeight : _maxHeaderHeight;
-      if (newHeight != _headerHeight) {
-        setState(() => _headerHeight = newHeight);
-      }
-    });
+    // _scrollController.addListener(() {
+    //   final offset = _scrollController.offset;
+    //   // If scrolled any amount, shrink; if scrolled back to top, expand
+    //   final newHeight = offset > 0 ? _minHeaderHeight : _maxHeaderHeight;
+    //   if (newHeight != _headerHeight) {
+    //     setState(() => _headerHeight = newHeight);
+    //   }
+    // });
   }
 
-  @override
-  void dispose() {
-    _scrollController.dispose();
-    super.dispose();
-  }
+  // @override
+  // void dispose() {
+  //   _scrollController.dispose();
+  //   super.dispose();
+  // }
 
   void toggleSeasonExpander(int seasonNumber) {
     final expanderKey = _seasonExpanderKeys[seasonNumber];
@@ -111,18 +112,18 @@ class SeriesScreenState extends State<SeriesScreen> {
     }
 
     return Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              series!.dominantColor?.withOpacity(0.15) ?? Colors.transparent,
-              Colors.transparent,
-            ],
-          ),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            series!.dominantColor?.withOpacity(0.15) ?? Colors.transparent,
+            Colors.transparent,
+          ],
         ),
-        child: _buildSeriesContent(context, series!),
-      );;
+      ),
+      child: _buildSeriesContent(context, series!),
+    );
   }
 
   Widget _buildSeriesHeader(BuildContext context, Series series) {
@@ -389,13 +390,32 @@ class SeriesScreenState extends State<SeriesScreen> {
                   Expanded(
                     child: Align(
                       alignment: Alignment.topCenter,
-                      child: SingleChildScrollView(
-                        controller: _scrollController,
-                        physics: const BouncingScrollPhysics(),
-                        child: Padding(
-                          padding: const EdgeInsets.only(top: 16.0),
-                          child: _buildEpisodesList(context, series),
-                        ),
+                      child: DynMouseScroll(
+                        scrollSpeed: 3.0,
+                        durationMS: 550,
+                        animationCurve: Curves.easeOutQuart,
+                        // This builder gives us access to the controller that handles smooth scrolling
+                        builder: (context, controller, physics) {
+                          // Add the header height adjustment logic here
+                          controller.addListener(() {
+                            final offset = controller.offset;
+                            final newHeight = offset > 0 ? _minHeaderHeight : _maxHeaderHeight;
+                            if (newHeight != _headerHeight) {
+                              if (mounted) setState(() => _headerHeight = newHeight);
+                            }
+                          });
+
+                          // Then use the controller for your scrollable content
+                          return CustomScrollView(
+                            controller: controller,
+                            physics: physics,
+                            slivers: [
+                              SliverToBoxAdapter(
+                                child: _buildEpisodesList(context, series),
+                              ),
+                            ],
+                          );
+                        },
                       ),
                     ),
                   ),

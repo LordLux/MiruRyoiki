@@ -3,7 +3,7 @@ import '../models/episode.dart';
 import '../models/series.dart';
 import 'episode_card.dart';
 
-class EpisodeGrid extends StatelessWidget {
+class EpisodeGrid extends StatefulWidget {
   final List<Episode> episodes;
   final Series series;
   final String? title;
@@ -22,10 +22,16 @@ class EpisodeGrid extends StatelessWidget {
     required this.onTap,
     this.expanderKey,
   });
+  
+  @override
+  State<EpisodeGrid> createState() => _EpisodeGridState();
+}
+
+class _EpisodeGridState extends State<EpisodeGrid> {
 
   @override
   Widget build(BuildContext context) {
-    if (episodes.isEmpty) {
+    if (widget.episodes.isEmpty) {
       return Center(
         child: Text(
           'No episodes found',
@@ -35,18 +41,25 @@ class EpisodeGrid extends StatelessWidget {
     }
 
     return Expander(
-      key: expanderKey,
-      enabled: collapsable,
-      initiallyExpanded: initiallyExpanded,
+      key: widget.expanderKey,
+      enabled: widget.collapsable,
+      initiallyExpanded: widget.initiallyExpanded,
       header: Builder(builder: (context) {
-        if (title != null)
-          return Padding(
-            padding: const EdgeInsets.fromLTRB(0, 0, 0, 0),
-            child: Text(
-              title!,
-              style: FluentTheme.of(context).typography.subtitle,
+        if (widget.title != null) {
+          return MouseRegion(
+            onEnter: (_) {
+              // link specific season to the correct anilist page (anilist keeps each season as a separate page)
+              print('Linking to Anilist page for ${widget.title}');
+            },
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(0, 0, 0, 0),
+              child: Text(
+                widget.title!,
+                style: FluentTheme.of(context).typography.subtitle,
+              ),
             ),
           );
+        }
         return const SizedBox.shrink();
       }),
       headerBackgroundColor: WidgetStatePropertyAll<Color>(Colors.black.withOpacity(0.1)),
@@ -72,10 +85,10 @@ class EpisodeGrid extends StatelessWidget {
                 crossAxisSpacing: 8,
                 mainAxisSpacing: 8,
               ),
-              itemCount: episodes.length,
+              itemCount: widget.episodes.length,
               itemBuilder: (context, index) {
-                final episode = episodes[index];
-                return _buildEpisodeTile(context, episode, series);
+                final episode = widget.episodes[index];
+                return _buildEpisodeTile(context, episode, widget.series);
               },
             );
           }),
@@ -87,7 +100,7 @@ class EpisodeGrid extends StatelessWidget {
   Widget _buildEpisodeTile(BuildContext context, Episode episode, Series series) {
     return HoverableEpisodeTile(
       episode: episode,
-      onTap: () => onTap(episode),
+      onTap: () => widget.onTap(episode),
       series: series,
     );
   }

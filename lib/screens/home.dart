@@ -1,6 +1,7 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:provider/provider.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:smooth_scroll_multiplatform/smooth_scroll_multiplatform.dart';
 
 import '../models/library.dart';
 import '../models/series.dart';
@@ -108,21 +109,29 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             const SizedBox(height: 24),
             Expanded(
-              child: GridView.builder(
-                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: (constraints.maxWidth ~/ 200).clamp(1, 10),
-                  childAspectRatio: 0.71,
-                  crossAxisSpacing: 16,
-                  mainAxisSpacing: 16,
+              child: DynMouseScroll(
+                // Tune these parameters to your liking
+                scrollSpeed: 3.3,
+                durationMS: 200,
+                animationCurve: Curves.easeOutCubic,
+                builder: (context, controller, physics) => GridView.builder(
+                  controller: controller,
+                  physics: physics,
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: (constraints.maxWidth ~/ 200).clamp(1, 10),
+                    childAspectRatio: 0.71,
+                    crossAxisSpacing: 16,
+                    mainAxisSpacing: 16,
+                  ),
+                  itemCount: library.series.length,
+                  itemBuilder: (context, index) {
+                    final series = library.series[index];
+                    return SeriesCard(
+                      series: series,
+                      onTap: () => _navigateToSeries(series),
+                    );
+                  },
                 ),
-                itemCount: library.series.length,
-                itemBuilder: (context, index) {
-                  final series = library.series[index];
-                  return SeriesCard(
-                    series: series,
-                    onTap: () => _navigateToSeries(series),
-                  );
-                },
               ),
             ),
           ],
