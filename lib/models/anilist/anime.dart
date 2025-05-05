@@ -2,6 +2,7 @@ class AnilistAnime {
   final int id;
   final String? bannerImage;
   final String? posterImage;
+  final String? dominantColor;
   final AnilistTitle title;
   final String? description;
   final int? meanScore;
@@ -21,6 +22,7 @@ class AnilistAnime {
     required this.id,
     this.bannerImage,
     this.posterImage,
+    this.dominantColor,
     required this.title,
     this.description,
     this.meanScore,
@@ -41,7 +43,8 @@ class AnilistAnime {
     return AnilistAnime(
       id: json['id'] as int,
       bannerImage: json['bannerImage'] as String?,
-      posterImage: json['posterImage'] as String?,
+      posterImage: json['coverImage'] != null ? json['coverImage']['extraLarge'] as String? : null,
+      dominantColor: json['coverImage'] != null ? json['coverImage']['color'] as String? : null,
       title: AnilistTitle.fromJson(json['title']),
       description: json['description'] as String?,
       meanScore: json['meanScore'] as int?,
@@ -55,9 +58,7 @@ class AnilistAnime {
       genres: (json['genres'] as List<dynamic>?)?.map((e) => e as String).toList() ?? [],
       averageScore: json['averageScore'] as int?,
       trending: json['trending'] as int?,
-      rankings: json['rankings'] != null && (json['rankings'] as List).isNotEmpty 
-          ? (json['rankings'] as List).first['rank'] 
-          : null,
+      rankings: json['rankings'] != null && (json['rankings'] as List).isNotEmpty ? (json['rankings'] as List).first['rank'] : null,
     );
   }
 }
@@ -66,11 +67,13 @@ class AnilistTitle {
   final String? romaji;
   final String? english;
   final String? native;
+  final String? userPreferred;
 
   AnilistTitle({
     this.romaji,
     this.english,
     this.native,
+    this.userPreferred,
   });
 
   factory AnilistTitle.fromJson(Map<String, dynamic> json) {
@@ -78,6 +81,7 @@ class AnilistTitle {
       romaji: json['romaji'] as String?,
       english: json['english'] as String?,
       native: json['native'] as String?,
+      userPreferred: json['userPreferred'] as String?,
     );
   }
 }

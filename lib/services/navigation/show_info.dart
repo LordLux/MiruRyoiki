@@ -8,7 +8,7 @@ import 'package:flutter/material.dart' as mat;
 import 'package:flutter/services.dart';
 import 'package:open_file/open_file.dart';
 
-import '../main.dart';
+import '../../main.dart';
 
 void snackBar(String message, {fluent.Color color = const mat.Color(0xFF333333), fluent.InfoBarSeverity severity = fluent.InfoBarSeverity.info, bool hasError = false}) {
   if (severity == fluent.InfoBarSeverity.error && kDebugMode) print("Error: $message");

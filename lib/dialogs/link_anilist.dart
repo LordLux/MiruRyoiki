@@ -1,18 +1,23 @@
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:provider/provider.dart';
 import '../models/series.dart';
 import '../models/anilist/anime.dart';
 import '../services/anilist/linking.dart';
+import '../services/anilist/provider.dart';
+import '../services/navigation/dialogs.dart';
 
-class AnilistLinkDialog extends StatefulWidget {
+class AnilistLinkDialog extends ManagedDialog {
   final Series series;
   final SeriesLinkService linkService;
   final Function(int) onLink;
-  
+
   const AnilistLinkDialog({
     super.key,
     required this.series,
     required this.linkService,
     required this.onLink,
+    super.title = const Text('Link to Anilist'),
+    super.content,
   });
 
   @override
@@ -24,20 +29,20 @@ class _AnilistLinkDialogState extends State<AnilistLinkDialog> {
   String? _error;
   List<AnilistAnime> _searchResults = [];
   final TextEditingController _searchController = TextEditingController();
-  
+
   @override
   void initState() {
     super.initState();
     _searchController.text = widget.series.name;
     _searchSeries();
   }
-  
+
   Future<void> _searchSeries() async {
     setState(() {
       _isLoading = true;
       _error = null;
     });
-    
+
     try {
       final results = await widget.linkService.findMatchesByName(widget.series);
       setState(() {
@@ -51,28 +56,33 @@ class _AnilistLinkDialogState extends State<AnilistLinkDialog> {
       });
     }
   }
-  
+
   Future<void> _search() async {
     if (_searchController.text.isEmpty) return;
-    
+
     setState(() {
       _isLoading = true;
       _error = null;
     });
-    
+
     try {
-      final results = await widget.linkService.findMatchesByName(
-        Series(
-          name: _searchController.text,
-          path: widget.series.path,
-          seasons: widget.series.seasons,
-        ),
-      );
-      
-      setState(() {
-        _searchResults = results;
-        _isLoading = false;
-      });
+      final anilistProvider = context.read<AnilistProvider>();
+
+      if (await anilistProvider.ensureInitialized()) {
+        final results = await widget.linkService.findMatchesByName(
+          Series(
+            name: _searchController.text,
+            path: widget.series.path,
+            seasons: widget.series.seasons,
+          ),
+        );
+
+        setState(() {
+          _searchResults = results;
+          _isLoading = false;
+        });
+      } else
+        throw Exception('Anilist user not initialized');
     } catch (e) {
       setState(() {
         _error = 'Error searching Anilist: $e';
@@ -80,20 +90,19 @@ class _AnilistLinkDialogState extends State<AnilistLinkDialog> {
       });
     }
   }
-  
+
   @override
   Widget build(BuildContext context) {
     return ContentDialog(
-      title: const Text('Link to Anilist'),
+      title: widget.title,
       content: SizedBox(
-        width: 600,
-        height: 400,
+        width: widget.constraints.maxWidth,
+        height: widget.constraints.maxHeight,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text('Find the correct anime entry for "${widget.series.name}"'),
             const SizedBox(height: 8),
-            
             TextBox(
               controller: _searchController,
               placeholder: 'Search anime title',
@@ -103,9 +112,7 @@ class _AnilistLinkDialogState extends State<AnilistLinkDialog> {
               ),
               onSubmitted: (_) => _search(),
             ),
-            
             const SizedBox(height: 16),
-            
             if (_isLoading)
               const Center(child: ProgressRing())
             else if (_error != null)
@@ -136,9 +143,9 @@ class _AnilistLinkDialogState extends State<AnilistLinkDialog> {
                       subtitle: Text(
                         '${series.format ?? ''} ${series.seasonYear ?? ''} | ${series.episodes ?? '?'} eps',
                       ),
-                      onPressed: () {
-                        widget.onLink(series.id);
-                        Navigator.pop(context);
+                      onPressed: () async {
+                        await widget.onLink(series.id);
+                        closeDialog(context);
                       },
                     );
                   },
@@ -148,12 +155,7 @@ class _AnilistLinkDialogState extends State<AnilistLinkDialog> {
         ),
       ),
       actions: [
-        Button(
-          child: const Text('Cancel'),
-          onPressed: () {
-            Navigator.pop(context);
-          },
-        ),
+        ManagedDialogButton(), // Cancel button
       ],
     );
   }

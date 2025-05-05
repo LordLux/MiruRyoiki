@@ -115,27 +115,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           const SizedBox(height: 24),
           // Appearance section
-          SettingsCard(
-            children: [
-              Text(
-                'Appearance',
-                style: FluentTheme.of(context).typography.subtitle,
-              ),
-              const SizedBox(height: 12),
-              // Theme and font effect settings
-              ...[
-                Text('Choose your preferred theme and effect.', style: FluentTheme.of(context).typography.body),
-                const SizedBox(height: 24),
-                Row(
-                  children: [
-                    // Theme
-                    const Text('Theme:'),
-                    const SizedBox(width: 12),
-                    Builder(builder: (context) {
-                      AppTheme appTheme = context.watch<AppTheme>();
-                      final mode = appTheme.mode;
-                      return ComboBox<ThemeMode>(
-                        value: mode,
+          Builder(builder: (context) {
+            final appTheme = context.watch<AppTheme>();
+
+            return SettingsCard(
+              children: [
+                Text(
+                  'Appearance',
+                  style: FluentTheme.of(context).typography.subtitle,
+                ),
+                const SizedBox(height: 12),
+                // Theme and font effect settings
+                ...[
+                  Text('Choose your preferred theme and effect.', style: FluentTheme.of(context).typography.body),
+                  const SizedBox(height: 24),
+                  Row(
+                    children: [
+                      // Theme
+                      const Text('Theme:'),
+                      const SizedBox(width: 12),
+                      ComboBox<ThemeMode>(
+                        value: appTheme.mode,
                         items: <ThemeMode>[ThemeMode.system, ThemeMode.light, ThemeMode.dark].map((ThemeMode value) {
                           return ComboBoxItem<ThemeMode>(
                             value: value,
@@ -150,15 +150,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           await Future.delayed(const Duration(milliseconds: 300));
                           appTheme.setEffect(appTheme.windowEffect, context);
                         },
-                      );
-                    }),
-                    // Effect
-                    const Text('Effect:'),
-                    const SizedBox(width: 12),
-                    Builder(builder: (context) {
-                      final appTheme = context.watch<AppTheme>();
-
-                      return ComboBox<WindowEffect>(
+                      ),
+                      // Effect
+                      const Text('Effect:'),
+                      const SizedBox(width: 12),
+                      ComboBox<WindowEffect>(
                         value: appTheme.windowEffect,
                         items: _PlatformWindowEffects.map((WindowEffect value) {
                           return ComboBoxItem<WindowEffect>(
@@ -171,23 +167,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           appTheme.setEffect(newValue, context);
                           SettingsManager.saveSettings({'windowEffect': newValue.name});
                         },
-                      );
-                    }),
-                  ],
-                ),
-              ],
-              // Font Size
-              ...[
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    const Text('Font Size:'),
-                    const SizedBox(width: 12),
-                    Builder(builder: (context) {
-                      final appTheme = context.watch<AppTheme>();
-                      final fontSize = appTheme.fontSize;
-                      return ComboBox<double>(
-                        value: fontSize,
+                      ),
+                    ],
+                  ),
+                ],
+                // Font Size
+                ...[
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      const Text('Font Size:'),
+                      const SizedBox(width: 12),
+                      ComboBox<double>(
+                        value: appTheme.fontSize,
                         items: <double>[10, 12, 14, 16, 18, 20].map((double value) {
                           return ComboBoxItem<double>(
                             value: value,
@@ -198,51 +190,51 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           appTheme.fontSize = newValue!;
                           SettingsManager.saveSettings({'fontSize': newValue});
                         },
-                      );
-                    }),
-                  ],
-                ),
+                      ),
+                    ],
+                  ),
+                ],
+                // Extra dim for acrylic and mica
+                if (appTheme.windowEffect == WindowEffect.aero || appTheme.windowEffect == WindowEffect.acrylic || appTheme.windowEffect == WindowEffect.mica) //
+                  ...[
+                  const SizedBox(height: 12),
+                  Text(
+                    context.watch<AppTheme>().windowEffect.toString(),
+                    style: FluentTheme.of(context).typography.body,
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      const Text('Dim'),
+                      const SizedBox(width: 12),
+                      toggle.ToggleSwitch(
+                        animate: true,
+                        animationDuration: dimDuration.inMilliseconds,
+                        initialLabelIndex: context.watch<AppTheme>().dim.index,
+                        totalSwitches: Dim.values.length,
+                        activeFgColor: Colors.white,
+                        activeBgColors: [
+                          [FluentTheme.of(context).accentColor.dark],
+                          [FluentTheme.of(context).accentColor.normal],
+                          [FluentTheme.of(context).accentColor.light],
+                        ],
+                        minWidth: 130.0,
+                        labels: [
+                          'Dimmed',
+                          'Normal',
+                          'Brightened',
+                        ],
+                        onToggle: (int? value) {
+                          final appTheme = context.read<AppTheme>();
+                          appTheme.dim = Dim.values[value!];
+                        },
+                      ),
+                    ],
+                  ),
+                ]
               ],
-              // Extra dim for acrylic and mica
-              if (context.watch<AppTheme>().windowEffect == WindowEffect.acrylic || context.watch<AppTheme>().windowEffect == WindowEffect.mica) //
-              ...[
-                const SizedBox(height: 12),
-                Text(
-                  context.watch<AppTheme>().windowEffect.toString(),
-                  style: FluentTheme.of(context).typography.body,
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    const Text('Dim'),
-                    const SizedBox(width: 12),
-                    toggle.ToggleSwitch(
-                      animate: true,
-                      animationDuration: dimDuration.inMilliseconds,
-                      initialLabelIndex: context.watch<AppTheme>().dim.index,
-                      totalSwitches: Dim.values.length,
-                      activeFgColor: Colors.white,
-                      activeBgColors: [
-                        [FluentTheme.of(context).accentColor.dark],
-                        [FluentTheme.of(context).accentColor.normal],
-                        [FluentTheme.of(context).accentColor.light],
-                      ],
-                      minWidth: 130.0,
-                      labels: [
-                        'Dimmed',
-                        'Normal',
-                        'Brightened',
-                      ],
-                      onToggle: (int? value) {
-                        final appTheme = context.read<AppTheme>();
-                        appTheme.dim = Dim.values[value!];
-                      },
-                    ),
-                  ],
-                ),
-              ]
-            ],
-          ),
+            );
+          }),
           const SizedBox(height: 24),
           // About section
           SettingsCard(

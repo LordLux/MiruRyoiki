@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:math';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/material.dart' as mat;
+import 'package:miruryoiki/services/navigation/show_info.dart';
 import 'package:open_app_file/open_app_file.dart';
 import 'package:provider/provider.dart';
 import 'package:smooth_scroll_multiplatform/smooth_scroll_multiplatform.dart';
@@ -13,6 +14,8 @@ import '../models/series.dart';
 import '../models/episode.dart';
 import '../services/anilist/linking.dart';
 import '../services/anilist/provider.dart';
+import '../services/navigation/dialogs.dart';
+import '../services/navigation/navigation.dart';
 import '../theme.dart';
 import '../widgets/episode_grid.dart';
 import 'anilist_settings.dart';
@@ -42,7 +45,7 @@ class SeriesScreenState extends State<SeriesScreen> {
   final Map<int, GlobalKey<ExpanderState>> _seasonExpanderKeys = {};
 
   Series? get series {
-    final library = context.watch<Library>();
+    final library = Provider.of<Library>(context, listen: false);
     return library.getSeriesByPath(widget.seriesPath);
   }
 
@@ -556,16 +559,24 @@ class SeriesScreenState extends State<SeriesScreen> {
     await OpenAppFile.open(episode.path);
   }
 
-  void _linkWithAnilist(BuildContext context ) async {
-    final library = Provider.of<Library>(context, listen: false);
-    final linkService = SeriesLinkService();
+  void _linkWithAnilist(BuildContext context) async {
+    if (series == null) {
+      snackBar('Series not found', severity: InfoBarSeverity.error);
+      return;
+    }
 
-    showDialog(
+    // Show the dialog
+    final result = await showManagedDialog<bool>(
       context: context,
+      id: 'linkAnilist:${series!.path}',
+      title: 'Link to Anilist',
+      data: series!.path,
       builder: (context) => AnilistLinkDialog(
+        content: null,
         series: series!,
-        linkService: linkService,
+        linkService: SeriesLinkService(),
         onLink: (anilistId) async {
+          final library = Provider.of<Library>(context, listen: false);
           await library.linkSeriesWithAnilist(series!, anilistId);
         },
       ),

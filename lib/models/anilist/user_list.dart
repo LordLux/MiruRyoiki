@@ -78,11 +78,13 @@ class AnilistUser {
   final int id;
   final String name;
   final String? avatar;
+  final String? bannerImage;
   
   AnilistUser({
     required this.id,
     required this.name,
     this.avatar,
+    this.bannerImage,
   });
   
   factory AnilistUser.fromJson(Map<String, dynamic> json) {
@@ -90,6 +92,7 @@ class AnilistUser {
       id: json['id'],
       name: json['name'],
       avatar: json['avatar']?['large'],
+      bannerImage: json['bannerImage'],
     );
   }
 }

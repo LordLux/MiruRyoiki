@@ -7,10 +7,20 @@ import 'package:oauth2/oauth2.dart' as oauth2;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+const String mRyoikiAnilistScheme = 'mryoiki';
+const String redirectUrl = '$mRyoikiAnilistScheme://auth-callback';
+
 class AnilistAuthService {
+  // Singleton
+  static final AnilistAuthService _instance = AnilistAuthService._internal();
+  factory AnilistAuthService() => _instance;
+  AnilistAuthService._internal()
+      : _clientId = dotenv.env['ANILIST_CLIENT_ID']!,
+        _clientSecret = dotenv.env['ANILIST_CLIENT_SECRET']!,
+        _secureStorage = const FlutterSecureStorage();
+
   static const String _authEndpoint = 'https://anilist.co/api/v2/oauth/authorize';
   static const String _tokenEndpoint = 'https://anilist.co/api/v2/oauth/token';
-  static const String _redirectUrl = 'mryoiki://auth-callback';
 
   final String _clientId;
   final String _clientSecret;
@@ -18,11 +28,6 @@ class AnilistAuthService {
 
   oauth2.Client? _client;
   bool get isAuthenticated => _client != null;
-
-  AnilistAuthService({FlutterSecureStorage? secureStorage})
-      : _clientId = dotenv.env['ANILIST_CLIENT_ID']!,
-        _clientSecret = dotenv.env['ANILIST_CLIENT_SECRET']!,
-        _secureStorage = secureStorage ?? const FlutterSecureStorage();
 
   /// Initialize auth state from stored credentials
   Future<bool> init() async {
@@ -54,7 +59,7 @@ class AnilistAuthService {
   Future<void> login() async {
     final authUrl = Uri.parse('$_authEndpoint'
         '?client_id=$_clientId'
-        '&redirect_uri=$_redirectUrl'
+        '&redirect_uri=$redirectUrl'
         '&response_type=code');
 
     if (await canLaunchUrl(authUrl)) {
@@ -76,7 +81,7 @@ class AnilistAuthService {
           'grant_type': 'authorization_code',
           'client_id': _clientId,
           'client_secret': _clientSecret,
-          'redirect_uri': _redirectUrl,
+          'redirect_uri': redirectUrl,
           'code': code,
         },
       );

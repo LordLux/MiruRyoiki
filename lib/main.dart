@@ -3,11 +3,14 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart' show Icons, MaterialPageRoute, ScaffoldMessenger;
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:fluent_ui3/fluent_ui.dart' as fluent_ui3;
 import 'package:flutter_acrylic/flutter_acrylic.dart';
 import 'package:flutter_acrylic/window.dart' as flutter_acrylic;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:miruryoiki/dialogs/link_anilist.dart';
+import 'package:miruryoiki/services/navigation/dialogs.dart';
 import 'package:provider/provider.dart';
-import 'package:uni_links/uni_links.dart';
+import 'package:app_links/app_links.dart';
 import 'package:system_theme/system_theme.dart';
 import 'dart:io';
 import 'package:google_fonts/google_fonts.dart';
@@ -20,20 +23,30 @@ import 'screens/accounts.dart';
 import 'screens/home.dart';
 import 'screens/series.dart';
 import 'screens/settings.dart';
+import 'services/anilist/auth.dart';
 import 'services/anilist/provider.dart';
 import 'services/file_writer.dart';
+import 'services/navigation/debug.dart';
+import 'services/navigation/navigation.dart';
+import 'services/registry.dart' as registry;
 import 'services/shortcuts.dart';
-import 'services/show_info.dart';
+import 'services/navigation/show_info.dart';
 import 'theme.dart';
 import 'utils/color_utils.dart';
+import 'widgets/reverse_animation_flyout.dart' show ToggleableFlyoutContent, ToggleableFlyoutContentState;
+import 'widgets/simple_flyout.dart' hide ToggleableFlyoutContent;
 import 'widgets/window_buttons.dart';
 
-bool _initialUriHandled = false;
 final _appTheme = AppTheme();
+final _navigationManager = NavigationManager();
 
 // ignore: library_private_types_in_public_api
-GlobalKey<_AppRootState> homeKey = GlobalKey<_AppRootState>();
+final GlobalKey<_AppRootState> homeKey = GlobalKey<_AppRootState>();
 final GlobalKey<SeriesScreenState> seriesScreenKey = GlobalKey<SeriesScreenState>();
+final GlobalKey<AccountsScreenState> accountsKey = GlobalKey<AccountsScreenState>();
+
+final GlobalKey<State<StatefulWidget>> paletteOverlayKey = GlobalKey<State<StatefulWidget>>();
+final GlobalKey<ToggleableFlyoutContentState> reverseAnimationPaletteKey = GlobalKey<ToggleableFlyoutContentState>();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -42,6 +55,8 @@ void main() async {
 
   // Load .env file
   await dotenv.load(fileName: '.env');
+
+  await registry.register(mRyoikiAnilistScheme);
 
   if (!kIsWeb && defaultTargetPlatform == TargetPlatform.windows) SystemTheme.accentColor.load();
 
@@ -57,6 +72,7 @@ void main() async {
         ChangeNotifierProvider(create: (context) => Library()),
         ChangeNotifierProvider(create: (context) => AnilistProvider()),
         ChangeNotifierProvider.value(value: _appTheme),
+        ChangeNotifierProvider.value(value: _navigationManager),
       ],
       child: const MyApp(),
     ),
@@ -73,28 +89,35 @@ class MyApp extends StatefulWidget {
 final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
 
 class _MyAppState extends State<MyApp> {
+  // Create an instance of AppLinks
+  late final AppLinks _appLinks;
+  bool _initialUriHandled = false;
+
   @override
   void initState() {
     super.initState();
     // Initialize providers
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      SettingsManager.assignSettings(context);
-
-      final libraryProvider = Provider.of<Library>(context, listen: false);
-      final anilistProvider = Provider.of<AnilistProvider>(context, listen: false);
+      // Initialize AppLinks
+      _appLinks = AppLinks();
 
       // Handle initial deep link (if app was started from a link)
-      // TODO _handleInitialUri();
+      _handleInitialUri();
 
       // Listen for deep links while app is running
-      // TODO _handleIncomingLinks();
+      _handleIncomingLinks();
 
-      await Future.delayed(const Duration(milliseconds: 100));
+      // Assign settings loaded from cache
+      SettingsManager.assignSettings(context);
+
+      // Providers initialization
+      final libraryProvider = Provider.of<Library>(context, listen: false);
+      final anilistProvider = Provider.of<AnilistProvider>(context, listen: false);
 
       await libraryProvider.scanLibrary();
       await anilistProvider.initialize();
 
-      await Future.delayed(const Duration(milliseconds: 2));
+      await Future.delayed(const Duration(milliseconds: 52));
       final appTheme = Provider.of<AppTheme>(context, listen: false);
       appTheme.setEffect(appTheme.windowEffect, rootNavigatorKey.currentContext!);
     });
@@ -104,7 +127,8 @@ class _MyAppState extends State<MyApp> {
     if (!_initialUriHandled) {
       _initialUriHandled = true;
       try {
-        final initialUri = await getInitialUri();
+        // Get the initial uri that opened the app
+        final initialUri = await _appLinks.getInitialLink();
         if (initialUri != null) {
           _handleDeepLink(initialUri);
         }
@@ -115,7 +139,7 @@ class _MyAppState extends State<MyApp> {
   }
 
   void _handleIncomingLinks() {
-    uriLinkStream.listen((Uri? uri) {
+    _appLinks.uriLinkStream.listen((Uri? uri) {
       if (uri != null) {
         _handleDeepLink(uri);
       }
@@ -126,7 +150,7 @@ class _MyAppState extends State<MyApp> {
 
   void _handleDeepLink(Uri uri) async {
     // Handle Anilist auth callback
-    if (uri.toString().startsWith('miruryoiki://auth-callback')) {
+    if (uri.toString().startsWith(redirectUrl)) {
       final anilistProvider = Provider.of<AnilistProvider>(context, listen: false);
       await anilistProvider.handleAuthCallback(uri);
     }
@@ -231,6 +255,57 @@ class _AppRootState extends State<AppRoot> {
 
   final GlobalKey<NavigationViewState> _paneKey = GlobalKey<NavigationViewState>();
 
+  final SimpleFlyoutController flyoutController = SimpleFlyoutController();
+
+  void showDialog() {
+    Manager.flyout?.showFlyout(
+      barrierColor: Colors.black.withOpacity(0.125),
+      barrierDismissible: true,
+      dismissWithEsc: true,
+      barrierBlocking: false,
+      barrierMargin: EdgeInsets.only(top: Manager.titleBarHeight),
+      dismissOnPointerMoveAway: false,
+      closingDuration: Duration(milliseconds: 150),
+      transitionDuration: Duration(milliseconds: 100),
+      onBarrierDismiss: () => Manager.closeFlyout(true),
+      margin: 0,
+      // position: Offset(MediaQuery.of(context).size.width / 2 - flyoutWidth / 2 + 3.5, 4),
+      builder: (context) {
+        return SizedBox.expand(
+          child: StatefulBuilder(
+              key: paletteOverlayKey,
+              builder: (context, setState) {
+                return ToggleableFlyoutContent(
+                  key: reverseAnimationPaletteKey,
+                  duration: const Duration(milliseconds: 100),
+                  child: Stack(
+                    alignment: Alignment.topCenter,
+                    children: [],
+                  ),
+                );
+              }),
+        );
+      },
+    );
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final navManager = Provider.of<NavigationManager>(context, listen: false);
+      navManager.pushPane('library', 'Library');
+    });
+  }
+
+  @override
+  void dispose() {
+    flyoutController.dispose();
+    final navManager = Provider.of<NavigationManager>(context, listen: false);
+    navManager.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     return AnimatedContainer(
@@ -244,81 +319,126 @@ class _AppRootState extends State<AppRoot> {
               child: AnimatedContainer(
                 duration: dimDuration,
                 color: getDimmableBlack(context),
-                child: NavigationView(
-                  key: _paneKey,
-                  pane: NavigationPane(
-                    menuButton: _isLibraryView
-                        ? Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 11.0),
-                            child: _appTitle(),
-                          )
-                        : null,
-                    selected: _selectedIndex,
-                    onChanged: (index) => setState(() {
-                      _selectedIndex = index;
-                      lastSelectedSeriesPath = _selectedSeriesPath;
-                      _selectedSeriesPath = null;
-                      _isSeriesView = false;
-                    }),
-                    displayMode: _isSeriesView ? PaneDisplayMode.compact : PaneDisplayMode.auto,
-                    items: [
-                      PaneItem(
-                        icon: Stack(
-                          clipBehavior: Clip.none,
-                          children: [
-                            AnimatedContainer(
-                              duration: const Duration(milliseconds: 100),
-                              child: const Icon(Icons.ondemand_video_outlined, size: 18),
-                            ),
-                            // divider, discarted
-                            // Positioned(
-                            //   left: -9,
-                            //   bottom: 34,
-                            //   child: Container(
-                            //     width: 307,
-                            //     height: 1,
-                            //     decoration: BoxDecoration(
-                            //       color: FluentTheme.of(context).resources.dividerStrokeColorDefault,
-                            //       shape: BoxShape.rectangle,
-                            //     ),
-                            //   ),
-                            // ),
-                          ],
+                child: SimpleFlyoutTarget(
+                  controller: flyoutController,
+                  child: NavigationView(
+                    key: _paneKey,
+                    pane: NavigationPane(
+                      menuButton: _isLibraryView
+                          ? Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 11.0),
+                              child: _appTitle(),
+                            )
+                          : null,
+                      selected: _selectedIndex,
+                      onChanged: (index) => setState(() {
+                        _selectedIndex = index;
+                        lastSelectedSeriesPath = _selectedSeriesPath;
+                        _selectedSeriesPath = null;
+                        _isSeriesView = false;
+
+                        // Register in navigation stack - add this code
+                        final navManager = Provider.of<NavigationManager>(context, listen: false);
+
+                        // Clear everything before adding a new pane
+                        navManager.clearStack();
+
+                        // Register the selected pane
+                        switch (index) {
+                          case 0:
+                            navManager.pushPane('library', 'Library');
+                            break;
+                          case 1: // Assuming this is Account
+                            navManager.pushPane('accounts', 'Account');
+                            break;
+                          case 2: // Assuming this is Settings
+                            navManager.pushPane('settings', 'Settings');
+                            break;
+                          default:
+                            navManager.pushPane('unknown', 'Unknown Pane');
+                        }
+                      }),
+                      displayMode: _isSeriesView ? PaneDisplayMode.compact : PaneDisplayMode.auto,
+                      items: [
+                        PaneItem(
+                          icon: Stack(
+                            clipBehavior: Clip.none,
+                            children: [
+                              AnimatedContainer(
+                                duration: const Duration(milliseconds: 100),
+                                child: const Icon(Icons.ondemand_video_outlined, size: 18),
+                              ),
+                              // divider, discarted
+                              // Positioned(
+                              //   left: -9,
+                              //   bottom: 34,
+                              //   child: Container(
+                              //     width: 307,
+                              //     height: 1,
+                              //     decoration: BoxDecoration(
+                              //       color: FluentTheme.of(context).resources.dividerStrokeColorDefault,
+                              //       shape: BoxShape.rectangle,
+                              //     ),
+                              //   ),
+                              // ),
+                            ],
+                          ),
+                          title: const Text('Library'),
+                          body: AnimatedSwitcher(
+                            duration: const Duration(milliseconds: 300),
+                            child: _isSeriesView && _selectedSeriesPath != null
+                                ? SeriesScreen(
+                                    key: seriesScreenKey,
+                                    seriesPath: _selectedSeriesPath!,
+                                    onBack: exitSeriesView,
+                                  )
+                                : HomeScreen(
+                                    onSeriesSelected: navigateToSeries,
+                                  ),
+                          ),
                         ),
-                        title: const Text('Library'),
-                        body: AnimatedSwitcher(
-                          duration: const Duration(milliseconds: 300),
-                          child: _isSeriesView && _selectedSeriesPath != null
-                              ? SeriesScreen(
-                                  key: seriesScreenKey,
-                                  seriesPath: _selectedSeriesPath!,
-                                  onBack: exitSeriesView,
-                                )
-                              : HomeScreen(
-                                  onSeriesSelected: navigateToSeries,
-                                ),
+                      ],
+                      footerItems: [
+                        PaneItemSeparator(),
+                        // if (Manager.accounts.length <= 1)
+                        PaneItem(
+                          icon: SizedBox(
+                              height: 25,
+                              width: 18,
+                              child: Transform.translate(
+                                offset: const Offset(1.5, 0),
+                                child: Transform.scale(scale: 1.45, child: AnilistLogo()),
+                              )),
+                          title: const Text('Account'),
+                          body: AccountsScreen(key: accountsKey),
                         ),
-                      ),
-                    ],
-                    footerItems: [
-                      PaneItemSeparator(),
-                      PaneItem(
-                        icon: Padding(
-                          padding: const EdgeInsets.only(left: 2.5),
-                          child: Icon(FluentIcons.people),
+                        // if (Manager.accounts.length >= 2)
+                        //   PaneItemExpander(
+                        //     icon: Padding(
+                        //       padding: const EdgeInsets.only(left: 2.5),
+                        //       child: Icon(FluentIcons.people),
+                        //     ),
+                        //     title: const Text('Account'),
+                        //     body: const AccountsScreen(),
+                        //     items: [
+                        //       if (Manager.accounts.contains('Anilist'))
+                        //         PaneItem(
+                        //           icon: Padding(padding: const EdgeInsets.only(left: 2.5), child: AnilistLogo()),
+                        //           title: Text('Anilist'),
+                        //           body: const Anilist(),
+                        //         ),
+                        //     ],
+                        //   ),
+                        PaneItem(
+                          icon: Padding(
+                            padding: const EdgeInsets.only(left: 2.5),
+                            child: const Icon(FluentIcons.settings),
+                          ),
+                          title: const Text('Settings'),
+                          body: const SettingsScreen(),
                         ),
-                        title: const Text('Account'),
-                        body: const AccountsScreen(),
-                      ),
-                      PaneItem(
-                        icon: Padding(
-                          padding: const EdgeInsets.only(left: 2.5),
-                          child: const Icon(FluentIcons.settings),
-                        ),
-                        title: const Text('Settings'),
-                        body: const SettingsScreen(),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -409,8 +529,18 @@ class _AppRootState extends State<AppRoot> {
                       ]),
                       MenuBarItem(title: 'Help', items: [
                         MenuFlyoutItem(
-                          text: const Text('Plain Text Documents'),
-                          onPressed: () {},
+                          text: const Text('Debug History'),
+                          onPressed: () {
+                            showManagedDialog(
+                              context: context,
+                              id: 'history:debug',
+                              title: 'Debug History',
+                              builder: (context) => ManagedDialog(
+                                content: const NavigationHistoryDebug(),
+                                title: Text('Debug History'),
+                              ),
+                            );
+                          },
                         ),
                       ]),
                     ]),
@@ -451,19 +581,90 @@ class _AppRootState extends State<AppRoot> {
     );
   }
 
+  // Update navigateToSeries method:
   void navigateToSeries(String seriesPath) {
+    final series = Provider.of<Library>(context, listen: false).getSeriesByPath(seriesPath);
+    final seriesName = series?.name ?? 'Series';
+
+    // Update navigation stack
+    Provider.of<NavigationManager>(context, listen: false).pushPage('series:$seriesPath', seriesName, data: seriesPath);
+
     setState(() {
       _selectedSeriesPath = seriesPath;
       _isSeriesView = true;
     });
   }
 
+  // Update exitSeriesView method:
   void exitSeriesView() {
+    final navManager = Provider.of<NavigationManager>(context, listen: false);
+
+    if (navManager.currentView?.level == NavigationLevel.page) {
+      navManager.goBack();
+    }
+
     setState(() {
       lastSelectedSeriesPath = _selectedSeriesPath ?? lastSelectedSeriesPath;
       _selectedSeriesPath = null;
       _isSeriesView = false;
     });
+  }
+
+  // Add this helper method
+  bool handleBackNavigation() {
+    final navManager = Provider.of<NavigationManager>(context, listen: false);
+
+    if (navManager.hasDialog) {
+      // Find active dialogs and close them
+      // This assumes dialogs are managed through Flutter's dialog system
+      // and will be removed from stack using the showManagedDialog helper
+      closeDialog(context);
+      return true;
+    } else if (_isSeriesView) {
+      exitSeriesView();
+      return true;
+    } else if (navManager.canGoBack) {
+      final previousItem = navManager.goBack();
+
+      // Navigate based on the new current item
+      final currentItem = navManager.currentView;
+      if (currentItem != null) {
+        if (currentItem.level == NavigationLevel.pane) {
+          // Switch to appropriate pane
+          final index = _getPaneIndexFromId(currentItem.id);
+          if (index != null && index != _selectedIndex) {
+            setState(() {
+              _selectedIndex = index;
+            });
+          }
+        } else if (currentItem.level == NavigationLevel.page) {
+          // Check if it's a series page
+          if (currentItem.id.startsWith('series:') && currentItem.data is String) {
+            setState(() {
+              _selectedSeriesPath = currentItem.data as String;
+              _isSeriesView = true;
+            });
+          }
+        }
+      }
+      return true;
+    }
+
+    return false;
+  }
+
+// Helper method to determine pane index from ID
+  int? _getPaneIndexFromId(String id) {
+    switch (id) {
+      case 'library':
+        return 0;
+      case 'accounts':
+        return 1;
+      case 'settings':
+        return 2;
+      default:
+        return null;
+    }
   }
 }
 

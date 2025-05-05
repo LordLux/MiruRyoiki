@@ -9,7 +9,7 @@ import '../functions.dart';
 import '../services/anilist/linking.dart';
 import '../services/file_scanner.dart';
 import '../services/player_trackers/mpchc.dart';
-import '../services/show_info.dart';
+import '../services/navigation/show_info.dart';
 import 'anilist/anime.dart';
 import 'series.dart';
 import 'episode.dart';
@@ -292,7 +292,6 @@ class Library with ChangeNotifier {
 
   /// Calculate dominant colors for all series
   Future<void> calculateDominantColors() async {
-    print('Calculating dominant color');
     for (final series in _series) {
       if (series.dominantColor == null && series.folderImagePath != null) //
         await series.calculateDominantColor();
