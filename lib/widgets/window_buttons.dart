@@ -1,5 +1,7 @@
-
+import 'package:bitsdojo_window/bitsdojo_window.dart';
 import 'package:fluent_ui3/fluent_ui.dart';
+import 'package:miruryoiki/theme.dart';
+import 'package:provider/provider.dart';
 import 'package:window_manager/window_manager.dart';
 
 class WindowButtons extends StatelessWidget {
@@ -7,13 +9,15 @@ class WindowButtons extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final brightness = FluentTheme.maybeOf(context)?.brightness ?? Brightness.dark;
+    final appTheme = Provider.of<AppTheme>(context, listen: false);
 
     return SizedBox(
       width: 138,
       height: 40,
       child: WindowCaption(
-        brightness: brightness,
+        brightness: appTheme.mode == ThemeMode.dark
+            ? Brightness.dark
+            : Brightness.light,
         backgroundColor: Colors.transparent,
       ),
     );

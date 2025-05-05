@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:math';
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:flutter/material.dart' as mat;
 import 'package:open_app_file/open_app_file.dart';
 import 'package:provider/provider.dart';
 import 'package:smooth_scroll_multiplatform/smooth_scroll_multiplatform.dart';
@@ -70,6 +71,14 @@ class SeriesScreenState extends State<SeriesScreen> {
   //   super.dispose();
   // }
 
+  ColorFilter get colorFilter => ColorFilter.matrix([
+        // Scale down RGB channels (darken)
+        0.7, 0, 0, 0, 0,
+        0, 0.7, 0, 0, 0,
+        0, 0, 0.7, 0, 0,
+        0, 0, 0, 1, 0,
+      ]);
+
   void toggleSeasonExpander(int seasonNumber) {
     final expanderKey = _seasonExpanderKeys[seasonNumber];
     if (expanderKey?.currentState != null) {
@@ -138,41 +147,21 @@ class SeriesScreenState extends State<SeriesScreen> {
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
               colors: [
-                dominantColor.withOpacity(0.7),
+                dominantColor.withOpacity(0.27),
                 Colors.transparent,
               ],
             ),
-            image: (series.bannerImage != null)
-                ? DecorationImage(
-                    alignment: Alignment.topCenter,
-                    image: NetworkImage(series.bannerImage!),
-                    fit: BoxFit.cover,
-                    isAntiAlias: true,
-                    colorFilter: ColorFilter.mode(
-                      Colors.black.withOpacity(0.6),
-                      BlendMode.darken,
-                    ),
-                  )
-                : (series.posterPath != null)
-                    ? DecorationImage(
-                        image: FileImage(File(series.posterPath!)),
-                        fit: BoxFit.cover,
-                        isAntiAlias: true,
-                        colorFilter: ColorFilter.mode(
-                          Colors.black.withOpacity(0.6),
-                          BlendMode.darken,
-                        ),
-                      )
-                    : null,
+            image: _getBannerImage(series),
           ),
           padding: const EdgeInsets.only(bottom: 16.0),
           alignment: Alignment.bottomLeft,
           child: LayoutBuilder(builder: (context, constraints) {
             return Stack(
               children: [
+                // Title and watched percentage
                 Positioned(
                   bottom: 0,
-                  left: max(constraints.maxWidth / 2 - 380, _infoBarWidth - (6 * 2)),
+                  left: max(constraints.maxWidth / 2 - 380 + 10, _infoBarWidth - (6 * 2) + 42),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -206,6 +195,7 @@ class SeriesScreenState extends State<SeriesScreen> {
             );
           }),
         ),
+        // temp buttons
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
@@ -225,7 +215,7 @@ class SeriesScreenState extends State<SeriesScreen> {
               series.watchedPercentage == 1 ? 'You have already watched all episodes' : 'Mark All as Watched',
             ),
             _buildButton(
-              context.watch<AnilistProvider>().isLoggedIn ? () => _linkWithAnilist(context, series) : null,
+              context.watch<AnilistProvider>().isLoggedIn ? () => _linkWithAnilist(context) : null,
               Icon(
                 series.anilistId != null ? FluentIcons.link : FluentIcons.add_link,
                 color: Colors.white,
@@ -238,81 +228,124 @@ class SeriesScreenState extends State<SeriesScreen> {
     );
   }
 
+  DecorationImage? _getBannerImage(Series series) {
+    // Priority: Anilist banner -> local poster
+    if (series.bannerImage != null) // Prefer Anilist banner if available
+      return DecorationImage(
+        alignment: Alignment.topCenter,
+        image: NetworkImage(series.bannerImage!),
+        fit: BoxFit.cover,
+        isAntiAlias: true,
+        colorFilter: colorFilter,
+      );
+    if (series.folderImagePath != null) // Use local image as fallback if available
+      return DecorationImage(
+        image: FileImage(File(series.folderImagePath!)),
+        fit: BoxFit.cover,
+        isAntiAlias: true,
+        colorFilter: colorFilter,
+      );
+    return null;
+  }
+
+  DecorationImage? _getPosterImage(Series series) {
+    // Priority: Anilist poster -> local poster
+    if (series.posterImage != null) // Prefer Anilist poster if available
+      return DecorationImage(
+        alignment: Alignment.topCenter,
+        image: NetworkImage(series.posterImage!),
+        fit: BoxFit.contain,
+        colorFilter: ColorFilter.mode(
+          Colors.black.withOpacity(0.3),
+          BlendMode.darken,
+        ),
+      );
+    if (series.folderImagePath != null) // Use local image as fallback if available
+      return DecorationImage(
+        image: FileImage(File(series.folderImagePath!)),
+        fit: BoxFit.contain,
+      );
+    return null;
+  }
+
   Widget _infoBar(Series series) {
     final appTheme = context.watch<AppTheme>();
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Info',
-          style: FluentTheme.of(context).typography.subtitle,
-        ),
-        const SizedBox(height: 8),
-
-        // Add description if available
-        if (series.description != null) ...[
+    return Padding(
+      padding: const EdgeInsets.all(24.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
           Text(
-            series.description!,
-            maxLines: 4,
-            overflow: TextOverflow.ellipsis,
+            'Info',
+            style: FluentTheme.of(context).typography.subtitle,
           ),
-          const SizedBox(height: 16),
-        ],
+          const SizedBox(height: 8),
 
-        // Series metadata
-        Wrap(
-          spacing: 24,
-          runSpacing: 12,
-          children: [
-            InfoLabel(
-              label: 'Seasons',
-              child: Text('${series.seasons.isNotEmpty ? series.seasons.length : 1}'),
+          // Add description if available
+          if (series.description != null) ...[
+            Text(
+              series.description!,
+              maxLines: 4,
+              overflow: TextOverflow.ellipsis,
             ),
-            InfoLabel(
-              label: 'Episodes',
-              child: Text('${series.totalEpisodes}'),
-            ),
-            if (series.format != null)
-              InfoLabel(
-                label: 'Format',
-                child: Text(series.format!),
-              ),
-            if (series.rating != null)
-              InfoLabel(
-                label: 'Rating',
-                child: Text('${series.rating! / 10}/10'),
-              ),
-            if (series.popularity != null)
-              InfoLabel(
-                label: 'Popularity',
-                child: Text('#${series.popularity}'),
-              ),
-            if (series.relatedMedia.isNotEmpty)
-              InfoLabel(
-                label: 'Related Media',
-                child: Text('${series.relatedMedia.length}'),
-              ),
+            const SizedBox(height: 16),
           ],
-        ),
 
-        // Genre tags
-        if (series.genres.isNotEmpty) ...[
-          const SizedBox(height: 16),
+          // Series metadata
           Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: series.genres.map((genre) => Chip(text: Text(genre))).toList(),
+            spacing: 24,
+            runSpacing: 12,
+            children: [
+              InfoLabel(
+                label: 'Seasons',
+                child: Text('${series.seasons.isNotEmpty ? series.seasons.length : 1}'),
+              ),
+              InfoLabel(
+                label: 'Episodes',
+                child: Text('${series.totalEpisodes}'),
+              ),
+              if (series.format != null)
+                InfoLabel(
+                  label: 'Format',
+                  child: Text(series.format!),
+                ),
+              if (series.rating != null)
+                InfoLabel(
+                  label: 'Rating',
+                  child: Text('${series.rating! / 10}/10'),
+                ),
+              if (series.popularity != null)
+                InfoLabel(
+                  label: 'Popularity',
+                  child: Text('#${series.popularity}'),
+                ),
+              if (series.relatedMedia.isNotEmpty)
+                InfoLabel(
+                  label: 'Related Media',
+                  child: Text('${series.relatedMedia.length}'),
+                ),
+            ],
+          ),
+
+          // Genre tags
+          if (series.genres.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: series.genres.map((genre) => Chip(text: Text(genre))).toList(),
+            ),
+          ],
+
+          // Progress bar
+          const SizedBox(height: 16),
+          ProgressBar(
+            value: series.watchedPercentage * 100,
+            activeColor: series.dominantColor,
+            backgroundColor: Colors.white.withOpacity(.3),
           ),
         ],
-
-        // Progress bar
-        const SizedBox(height: 16),
-        ProgressBar(
-          value: series.watchedPercentage * 100,
-          activeColor: series.dominantColor,
-          backgroundColor: Colors.white.withOpacity(.3),
-        ),
-      ],
+      ),
     );
   }
 
@@ -325,9 +358,8 @@ class SeriesScreenState extends State<SeriesScreen> {
           AnimatedContainer(
             height: _headerHeight,
             width: double.infinity,
-            duration: const Duration(milliseconds: 100),
-            curve: Curves.easeOut,
-            color: Colors.blue,
+            duration: const Duration(milliseconds: 430),
+            curve: Curves.ease,
             alignment: Alignment.center,
             child: // Header with poster as background
                 _buildSeriesHeader(context, series),
@@ -337,8 +369,9 @@ class SeriesScreenState extends State<SeriesScreen> {
               width: _maxContentWidth,
               child: Row(
                 children: [
+                  // Info bar on the left
                   Padding(
-                    padding: const EdgeInsets.only(top: 16.0),
+                    padding: const EdgeInsets.only(top: 16.0, left: 14.0),
                     child: Container(
                       decoration: BoxDecoration(
                         color: Colors.white.withOpacity(0.05),
@@ -351,35 +384,21 @@ class SeriesScreenState extends State<SeriesScreen> {
                         children: [
                           Positioned.fill(
                             child: Padding(
-                              padding: const EdgeInsets.only(top: 90.0),
+                              padding: const EdgeInsets.only(top: 0.0), //TODO based on poster height
                               child: SingleChildScrollView(
                                 child: _infoBar(series),
                               ),
                             ),
                           ),
+                          // Poster image
                           Positioned(
-                            top: -290,
+                            top: -290, //TODO based on poster height and width
                             left: 20,
                             child: Container(
                               width: 230,
                               height: 326,
                               decoration: BoxDecoration(
-                                image: (series.posterImage != null)
-                                    ? DecorationImage(
-                                        alignment: Alignment.topCenter,
-                                        image: NetworkImage(series.bannerImage!),
-                                        fit: BoxFit.contain,
-                                        colorFilter: ColorFilter.mode(
-                                          Colors.black.withOpacity(0.6),
-                                          BlendMode.darken,
-                                        ),
-                                      )
-                                    : (series.posterPath != null)
-                                        ? DecorationImage(
-                                            image: FileImage(File(series.posterPath!)),
-                                            fit: BoxFit.contain,
-                                          )
-                                        : null,
+                                image: _getPosterImage(series),
                               ),
                             ),
                           ),
@@ -387,35 +406,37 @@ class SeriesScreenState extends State<SeriesScreen> {
                       ),
                     ),
                   ),
+                  // Content area on the right
                   Expanded(
                     child: Align(
                       alignment: Alignment.topCenter,
-                      child: DynMouseScroll(
-                        scrollSpeed: 3.0,
-                        durationMS: 550,
-                        animationCurve: Curves.easeOutQuart,
-                        // This builder gives us access to the controller that handles smooth scrolling
-                        builder: (context, controller, physics) {
-                          // Add the header height adjustment logic here
-                          controller.addListener(() {
-                            final offset = controller.offset;
-                            final newHeight = offset > 0 ? _minHeaderHeight : _maxHeaderHeight;
-                            if (newHeight != _headerHeight) {
-                              if (mounted) setState(() => _headerHeight = newHeight);
-                            }
-                          });
+                      child: ScrollConfiguration(
+                        behavior: ScrollConfiguration.of(context).copyWith(overscroll: true, platform: TargetPlatform.windows, scrollbars: false),
+                        child: DynMouseScroll(
+                          scrollSpeed: 2.0,
+                          durationMS: 350,
+                          animationCurve: Curves.easeInOutQuint,
+                          builder: (context, controller, physics) {
+                            controller.addListener(() {
+                              final offset = controller.offset;
+                              final double newHeight = offset > 0 ? _minHeaderHeight : _maxHeaderHeight;
 
-                          // Then use the controller for your scrollable content
-                          return CustomScrollView(
-                            controller: controller,
-                            physics: physics,
-                            slivers: [
-                              SliverToBoxAdapter(
-                                child: _buildEpisodesList(context, series),
-                              ),
-                            ],
-                          );
-                        },
+                              if (newHeight != _headerHeight && mounted) //
+                                setState(() => _headerHeight = newHeight);
+                            });
+
+                            // Then use the controller for your scrollable content
+                            return CustomScrollView(
+                              controller: controller,
+                              physics: physics,
+                              slivers: [
+                                SliverToBoxAdapter(
+                                  child: _buildEpisodesList(context),
+                                ),
+                              ],
+                            );
+                          },
+                        ),
                       ),
                     ),
                   ),
@@ -429,8 +450,19 @@ class SeriesScreenState extends State<SeriesScreen> {
   }
 
   Widget _buildButton(void Function()? onTap, Widget child, String label) {
-    return Tooltip(
-      message: label,
+    return mat.Tooltip(
+      richMessage: WidgetSpan(
+        child: Text(
+          label,
+          style: TextStyle(color: Colors.white),
+        ),
+      ),
+      decoration: BoxDecoration(
+        color: Color.lerp(Color.lerp(Colors.black, Colors.white, 0.2)!, series!.dominantColor, 0.4)!.withOpacity(0.8),
+        borderRadius: BorderRadius.circular(5.0),
+      ),
+      preferBelow: true,
+      padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 5.0),
       child: Padding(
         padding: const EdgeInsets.all(2.0),
         child: IconButton(
@@ -451,17 +483,17 @@ class SeriesScreenState extends State<SeriesScreen> {
     );
   }
 
-  Widget _buildEpisodesList(BuildContext context, Series series) {
+  Widget _buildEpisodesList(BuildContext context) {
     // Make sure we have the season keys initialized
-    _ensureSeasonKeys(series);
+    _ensureSeasonKeys(series!);
 
-    if (series.seasons.isNotEmpty) {
+    if (series!.seasons.isNotEmpty) {
       // Multiple seasons - display by season
       final List<Widget> seasonWidgets = [];
 
       // Add a section for each season
-      for (int i = 1; i <= series.seasons.length; i++) {
-        final seasonEpisodes = series.getEpisodesForSeason(i);
+      for (int i = 1; i <= series!.seasons.length; i++) {
+        final seasonEpisodes = series!.getEpisodesForSeason(i);
         if (seasonEpisodes.isNotEmpty) {
           seasonWidgets.add(
             EpisodeGrid(
@@ -470,14 +502,14 @@ class SeriesScreenState extends State<SeriesScreen> {
               initiallyExpanded: true,
               expanderKey: _seasonExpanderKeys[i],
               onTap: (episode) => _playEpisode(episode),
-              series: series,
+              series: series!,
             ),
           );
         }
       }
 
       // Add uncategorized episodes if any
-      final uncategorizedEpisodes = series.getUncategorizedEpisodes();
+      final uncategorizedEpisodes = series!.getUncategorizedEpisodes();
       if (uncategorizedEpisodes.isNotEmpty) {
         seasonWidgets.add(
           EpisodeGrid(
@@ -486,7 +518,7 @@ class SeriesScreenState extends State<SeriesScreen> {
             initiallyExpanded: true,
             expanderKey: _seasonExpanderKeys[0],
             onTap: (episode) => _playEpisode(episode),
-            series: series,
+            series: series!,
           ),
         );
       }
@@ -495,10 +527,13 @@ class SeriesScreenState extends State<SeriesScreen> {
         alignment: Alignment.topCenter,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.start,
-            spacing: 12.0,
-            children: seasonWidgets,
+          child: Padding(
+            padding: const EdgeInsets.only(top: 16.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.start,
+              spacing: 12.0,
+              children: seasonWidgets,
+            ),
           ),
         ),
       );
@@ -508,9 +543,9 @@ class SeriesScreenState extends State<SeriesScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 16.0),
         child: EpisodeGrid(
           collapsable: false,
-          episodes: series.getEpisodesForSeason(1),
+          episodes: series!.getEpisodesForSeason(1),
           onTap: (episode) => _playEpisode(episode),
-          series: series,
+          series: series!,
         ),
       );
     }
@@ -521,17 +556,17 @@ class SeriesScreenState extends State<SeriesScreen> {
     await OpenAppFile.open(episode.path);
   }
 
-  void _linkWithAnilist(BuildContext context, Series series) async {
+  void _linkWithAnilist(BuildContext context ) async {
     final library = Provider.of<Library>(context, listen: false);
     final linkService = SeriesLinkService();
 
     showDialog(
       context: context,
       builder: (context) => AnilistLinkDialog(
-        series: series,
+        series: series!,
         linkService: linkService,
         onLink: (anilistId) async {
-          await library.linkSeriesWithAnilist(series, anilistId);
+          await library.linkSeriesWithAnilist(series!, anilistId);
         },
       ),
     );

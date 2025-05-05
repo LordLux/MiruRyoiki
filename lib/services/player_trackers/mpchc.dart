@@ -22,6 +22,9 @@ class MPCHCTracker with ChangeNotifier {
   // Flag to indicate if tracker is initialized
   bool _isInitialized = false;
   bool get isInitialized => _isInitialized;
+  
+  // Threshold for watched status (85%)
+  static const double watchedThreshold = 0.85;
 
   // Constructor
   MPCHCTracker() {
@@ -141,8 +144,8 @@ class MPCHCTracker with ChangeNotifier {
                   
                   _keyToPositionMap[subKey] = percentage;
                   
-                  // If the file is watched more than 85%
-                  if (percentage >= 0.85) {
+                  // If the file is watched more than threshold
+                  if (percentage >= watchedThreshold) {
                     watchedFiles.add(filename);
                   }
                 }
@@ -168,8 +171,8 @@ class MPCHCTracker with ChangeNotifier {
                 // Update the stored percentage
                 _keyToPositionMap[subKey] = percentage;
                 
-                // If it crossed the 85% threshold
-                if (percentage >= 0.85 && previousPercentage < 0.85) {
+                // If it crossed the watched threshold
+                if (percentage >= watchedThreshold && previousPercentage < watchedThreshold) {
                   // Find the filename for this key
                   final filename = _fileToKeyMap.entries
                       .firstWhere((entry) => entry.value == subKey, 
@@ -200,7 +203,7 @@ class MPCHCTracker with ChangeNotifier {
     return watchedFiles;
   }
 
-  /// Check if a specific file has been watched (85% or more)
+  /// Check if a specific file has been watched
   bool isWatched(String filePath) {
     final normalizedPath = filePath.replaceAll('/', '\\');
     final key = _fileToKeyMap[normalizedPath];
@@ -208,7 +211,7 @@ class MPCHCTracker with ChangeNotifier {
     if (key == null) return false;
     
     final percentage = _keyToPositionMap[key] ?? 0.0;
-    return percentage >= 0.85;
+    return percentage >= watchedThreshold;
   }
 
   /// Get the watch percentage for a file

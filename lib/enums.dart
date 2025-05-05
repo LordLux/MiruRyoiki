@@ -1,8 +1,10 @@
 import 'package:fluent_ui/fluent_ui.dart';
-import 'package:flutter_acrylic/flutter_acrylic.dart';
+import 'package:flutter_acrylic/window_effect.dart';
+
+enum Dim { dimmed, normal, brightened }
 
 extension PaneDisplayModeX on PaneDisplayMode {
-  String get name {
+  String get name_ {
     switch (this) {
       case PaneDisplayMode.auto:
         return 'Automatico';
@@ -19,27 +21,34 @@ extension PaneDisplayModeX on PaneDisplayMode {
 }
 
 extension ThemeX on ThemeMode {
-  String get name {
+  String get name_ {
     switch (this) {
       case ThemeMode.system:
-        return 'Sistema';
+        return 'System';
       case ThemeMode.light:
-        return 'Chiaro';
+        return 'Light';
       case ThemeMode.dark:
-        return 'Scuro';
+        return 'Dark';
     }
+  }
+
+  static ThemeMode fromString(String value) {
+    return ThemeMode.values.firstWhere(
+      (e) => e.name_.toLowerCase() == value.toLowerCase(),
+      orElse: () => ThemeMode.system,
+    );
   }
 }
 
 extension WindowEffectX on WindowEffect {
-  String get name => toString().split('.').last;
-}
+  String get name_ => toString().split('.').last;
 
-WindowEffect windowEffectfromString(String value) {
-  return WindowEffect.values.firstWhere(
-    (e) => e.toString().split('.').last == value,
-    orElse: () => WindowEffect.disabled,
-  );
+  static WindowEffect fromString(String value) {
+    return WindowEffect.values.firstWhere(
+      (e) => e.name_ == value,
+      orElse: () => WindowEffect.disabled,
+    );
+  }
 }
 
 extension HexColor on Color {

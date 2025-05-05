@@ -51,7 +51,7 @@ class Series {
   final String path;
 
   /// Poster path for the series from the File System
-  final String? posterPath;
+  final String? folderImagePath;
 
   /// List of seasons for the series from the File System
   final List<Season> seasons;
@@ -71,7 +71,7 @@ class Series {
   Series({
     required this.name,
     required this.path,
-    this.posterPath,
+    this.folderImagePath,
     required this.seasons,
     this.relatedMedia = const [],
     this.anilistId,
@@ -93,10 +93,10 @@ class Series {
 
   /// Calculate and cache the dominant color from the poster image
   Future<Color?> calculateDominantColor() async {
-    if (posterPath == null) return null;
+    if (folderImagePath == null) return null;
 
     try {
-      final File imageFile = File(posterPath!);
+      final File imageFile = File(folderImagePath!);
       if (!imageFile.existsSync()) return null;
       
       final PaletteGenerator paletteGenerator = await PaletteGenerator.fromImageProvider(
@@ -119,7 +119,7 @@ class Series {
     return {
       'name': name,
       'path': path,
-      'posterPath': posterPath,
+      'posterPath': folderImagePath,
       'seasons': seasons.map((s) => s.toJson()).toList(),
       'relatedMedia': relatedMedia.map((e) => e.toJson()).toList(),
       'anilistId': anilistId,
@@ -136,7 +136,7 @@ class Series {
     return Series(
       name: json['name'],
       path: json['path'],
-      posterPath: json['posterPath'],
+      folderImagePath: json['posterPath'],
       seasons: (json['seasons'] as List).map((s) => Season.fromJson(s)).toList(),
       relatedMedia: (json['relatedMedia'] as List?)?.map((e) => Episode.fromJson(e)).toList() ?? [],
       anilistId: json['anilistId'],

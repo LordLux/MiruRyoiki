@@ -1,10 +1,12 @@
 #include <flutter/dart_project.h>
 #include <flutter/flutter_view_controller.h>
 #include <windows.h>
+#include <bitsdojo_window_windows/bitsdojo_window_plugin.h>
 
 #include "flutter_window.h"
 #include "utils.h"
 
+auto bdw = bitsdojo_window_configure(BDW_CUSTOM_FRAME); // add ' | BDW_HIDE_ON_STARTUP' to hide the window on startup
 int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
                       _In_ wchar_t *command_line, _In_ int show_command) {
   // Attach to console when present (e.g., 'flutter run') or create a
@@ -27,7 +29,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
   FlutterWindow window(project);
   Win32Window::Point origin(10, 10);
   Win32Window::Size size(1280, 720);
-  if (!window.Create(L"miruryoiki", origin, size)) {
+  if (!window.Create(L"MiruRyoiki", origin, size)) {
     return EXIT_FAILURE;
   }
   window.SetQuitOnClose(true);

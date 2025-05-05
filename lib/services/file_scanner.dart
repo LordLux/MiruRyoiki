@@ -119,7 +119,7 @@ class FileScanner {
     return Series(
       name: name,
       path: seriesDir.path,
-      posterPath: posterPath,
+      folderImagePath: posterPath,
       seasons: seasons,
       relatedMedia: relatedMedia,
     );

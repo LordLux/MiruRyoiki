@@ -60,10 +60,10 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(
+          Icon(
             FluentIcons.folder_open,
             size: 48,
-            color: Colors.grey,
+            color: Colors.purple,
           ),
           const SizedBox(height: 16),
           const Text(
@@ -72,8 +72,14 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           const SizedBox(height: 24),
           Button(
-            child: const Text('Select Library Folder'),
+            style: ButtonStyle(
+              padding: ButtonState.all(const EdgeInsets.symmetric(
+                horizontal: 20,
+                vertical: 8,
+              )),
+            ),
             onPressed: _selectLibraryFolder,
+            child: const Text('Select Library Folder'),
           ),
         ],
       ),
@@ -112,8 +118,8 @@ class _HomeScreenState extends State<HomeScreen> {
               child: DynMouseScroll(
                 // Tune these parameters to your liking
                 scrollSpeed: 3.3,
-                durationMS: 200,
-                animationCurve: Curves.easeOutCubic,
+                durationMS: 300,
+                animationCurve: Curves.ease,
                 builder: (context, controller, physics) => GridView.builder(
                   controller: controller,
                   physics: physics,
