@@ -10,6 +10,7 @@ import '../main.dart';
 import '../manager.dart';
 import '../models/library.dart';
 import '../screens/series.dart';
+import 'navigation/navigation.dart';
 
 class KeyboardState {
   static final ValueNotifier<bool> ctrlPressedNotifier = ValueNotifier<bool>(false);
@@ -40,50 +41,49 @@ class _CustomKeyboardListenerState extends State<CustomKeyboardListener> {
         if (isSuperPressed(event)) {
           isCtrlPressed = true;
           KeyboardState.ctrlPressedNotifier.value = true;
-          print('Ctrl pressed');
+          debugPrint('Ctrl pressed');
         }
         if (event.logicalKey == LogicalKeyboardKey.shiftLeft || event.logicalKey == LogicalKeyboardKey.shiftRight) {
           isShiftPressed = true;
-          print('Shift pressed');
+          debugPrint('Shift pressed');
           KeyboardState.shiftPressedNotifier.value = true;
         }
 
         /// Handle specific key combinations
         // Open settings
         if (isCtrlPressed && event.logicalKey == LogicalKeyboardKey.comma) {
-          print('Ctrl + , pressed: Open settings');
+          debugPrint('Ctrl + , pressed: Open settings');
         } else
         //
         // Open search Palette
         if (isCtrlPressed && event.logicalKey == LogicalKeyboardKey.keyF) {
-          print('Ctrl + f pressed: Search');
+          debugPrint('Ctrl + f pressed: Search');
         } else
         //
         // Reload
         if (isCtrlPressed && event.logicalKey == LogicalKeyboardKey.keyR) {
-          print('Ctrl + r pressed: Reload');
           final library = Provider.of<Library>(context, listen: false);
           library.reloadLibrary();
         } else
         //
         // Esc
         if (event.logicalKey == LogicalKeyboardKey.escape) {
-          _exitSeriesView();
+          _handleBackNavigation();
         } else
         //
         //
         if (event.logicalKey == LogicalKeyboardKey.enter) {
-          print('Enter pressed');
+          debugPrint('Enter pressed');
         } else
         //
         // Rename
         if (event.logicalKey == LogicalKeyboardKey.f2) {
-          print('F2 pressed: Rename');
+          debugPrint('F2 pressed: Rename');
         } else
         //
         // Modify path
         if (event.logicalKey == LogicalKeyboardKey.f4) {
-          print('F4 pressed: Modify path');
+          debugPrint('F4 pressed: Modify path');
         } else
         //
         // ctrl + N to expand/collapse Nth season
@@ -123,30 +123,33 @@ class _CustomKeyboardListenerState extends State<CustomKeyboardListener> {
   }
 
   void _handlePointerSignal(PointerDownEvent event) {
-    if (event.buttons == kBackMouseButton) {
-      _exitSeriesView();
-    } else if (event.buttons == kForwardMouseButton) {
-      final homeState = homeKey.currentState;
-      if (homeState != null && homeState.mounted && homeState.lastSelectedSeriesPath != null) {
-        print('Forward button pressed: Navigate to series view');
-        homeState.navigateToSeries(homeState.lastSelectedSeriesPath!);
+    if (event.buttons == kBackMouseButton)
+      _handleBackNavigation();
+    else if (event.buttons == kForwardMouseButton) //
+      _handleForwardNavigation();
+  }
+
+  void _handleBackNavigation() {
+    final homeState = homeKey.currentState;
+
+    if (homeState != null && homeState.mounted) {
+      if (homeState.handleBackNavigation()) {
+        // Handled by AppRoot
+        return;
       }
     }
   }
 
-  void _exitSeriesView() {
-    final homeState = homeKey.currentState;
-    if (homeState != null && homeState.mounted) {
-      print('Back button pressed: Exit series view');
-      homeState.exitSeriesView();
-    }
+  void _handleForwardNavigation() {
+    // Implementation for forward navigation would go here
+    // You'd need to track forward history separately
   }
 
   void _toggleSeason(int season) {
     final homeState = homeKey.currentState;
     if (homeState != null && homeState.mounted && homeState.isSeriesView) {
       final seriesScreenState = seriesScreenKey.currentState;
-      
+
       if (seriesScreenState != null) {
         print('Ctrl + $season pressed: Toggling season $season');
         seriesScreenState.toggleSeasonExpander(season);

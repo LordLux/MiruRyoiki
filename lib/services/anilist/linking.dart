@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../models/series.dart';
 import '../../models/anilist/anime.dart';
-import 'service.dart';
+import 'queries.dart';
 
 class SeriesLinkService {
   final AnilistService _anilistService;

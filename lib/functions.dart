@@ -6,7 +6,7 @@ import 'package:flutter/material.dart' as mat;
 import 'package:flutter/services.dart';
 import 'package:open_file/open_file.dart';
 
-import 'services/show_info.dart';
+import 'services/navigation/show_info.dart';
 import 'main.dart';
 
 void copyToClipboard(String text) {

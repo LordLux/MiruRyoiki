@@ -89,7 +89,19 @@ class Series {
   double get watchedPercentage => totalEpisodes > 0 ? watchedEpisodes / totalEpisodes : 0.0;
 
   /// Primary color from the series poster image
-  Color? get dominantColor => _dominantColor;
+  Color? get dominantColor {
+    // If Anilist provides a color, use that
+    if (anilistData?.dominantColor != null) {
+      try {
+        return Color(int.parse(anilistData!.dominantColor!.replaceAll('#', '0xff')));
+      } catch (e) {
+        // Fall back to locally calculated color
+        return _dominantColor;
+      }
+    }
+    // Otherwise use locally calculated color
+    return _dominantColor;
+  }
 
   /// Calculate and cache the dominant color from the poster image
   Future<Color?> calculateDominantColor() async {
@@ -98,7 +110,7 @@ class Series {
     try {
       final File imageFile = File(folderImagePath!);
       if (!imageFile.existsSync()) return null;
-      
+
       final PaletteGenerator paletteGenerator = await PaletteGenerator.fromImageProvider(
         FileImage(imageFile),
         maximumColorCount: 10,
@@ -167,7 +179,8 @@ class Series {
 
   /// Official title from Anilist
   String get displayTitle =>
-      anilistData?.title.english ?? //
+      anilistData?.title.userPreferred ?? //
+      anilistData?.title.english ??
       anilistData?.title.romaji ??
       name;
 

@@ -1,20 +1,24 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:provider/provider.dart';
 import '../../services/anilist/provider.dart';
+import 'accounts.dart';
 
 class AnilistSettingsScreen extends StatelessWidget {
-  const AnilistSettingsScreen({super.key});
+  final Future<void> Function() onLogout;
+
+  const AnilistSettingsScreen({super.key, required this.onLogout});
 
   @override
   Widget build(BuildContext context) {
     final anilistProvider = context.watch<AnilistProvider>();
 
     return ScaffoldPage(
+      padding: EdgeInsets.zero,
       header: const PageHeader(
-        title: Text('Anilist'),
+        title: AnilistCardTitle(),
       ),
       content: SingleChildScrollView(
-        padding: const EdgeInsets.all(24.0),
+        padding: const EdgeInsets.all(0.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -127,60 +131,72 @@ class AnilistSettingsScreen extends StatelessWidget {
   Widget _buildUserInfo(BuildContext context, AnilistProvider provider) {
     final user = provider.currentUser!;
 
-    return Column(
-      children: [
-        Row(
-          children: [
-            if (user.avatar != null)
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  image: DecorationImage(
-                    image: NetworkImage(user.avatar!),
-                    fit: BoxFit.cover,
-                  ),
-                ),
+    return Container(
+      decoration: BoxDecoration(
+        image: user.bannerImage != null
+            ? DecorationImage(
+                image: NetworkImage(user.bannerImage!),
+                fit: BoxFit.cover,
               )
-            else
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.blue,
-                ),
-                child: const Center(
-                  child: Icon(FluentIcons.contact, color: Colors.white),
-                ),
-              ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    user.name,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 18,
+            : null,
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              if (user.avatar != null)
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    image: DecorationImage(
+                      image: NetworkImage(user.avatar!),
+                      fit: BoxFit.cover,
                     ),
                   ),
-                  Text('Anilist ID: ${user.id}'),
-                ],
+                )
+              else
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.blue,
+                  ),
+                  child: const Center(
+                    child: Icon(FluentIcons.contact, color: Colors.white),
+                  ),
+                ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      user.name,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 18,
+                      ),
+                    ),
+                    Text('Anilist ID: ${user.id}'),
+                  ],
+                ),
               ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 16),
-        Button(
-          child: const Text('Logout'),
-          onPressed: () {
-            provider.logout();
-          },
-        ),
-      ],
+            ],
+          ),
+          const SizedBox(height: 16),
+          Button(
+            child: const Text('Logout'),
+            onPressed: () async {
+              await provider.logout();
+              onLogout.call();
+              print('Logged out of Anilist');
+            },
+          ),
+        ],
+      ),
     );
   }
 
