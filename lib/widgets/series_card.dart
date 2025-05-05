@@ -7,7 +7,7 @@ import '../models/series.dart';
 class SeriesCard extends StatefulWidget {
   final Series series;
   final VoidCallback onTap;
-  
+
   const SeriesCard({
     super.key,
     required this.series,
@@ -21,6 +21,22 @@ class SeriesCard extends StatefulWidget {
 class _SeriesCardState extends State<SeriesCard> {
   bool _isHovering = false;
 
+  Widget _getSeriesImage() {
+    if (widget.series.folderImagePath != null)
+      return Image.file(
+        File(widget.series.folderImagePath!),
+        fit: BoxFit.contain,
+        errorBuilder: (context, error, stackTrace) => const Center(child: Icon(FluentIcons.file_image, size: 40)),
+      );
+    if (widget.series.posterImage != null)
+      return Image.network(
+        widget.series.posterImage!,
+        fit: BoxFit.contain,
+        errorBuilder: (context, error, stackTrace) => const Center(child: Icon(FluentIcons.file_image, size: 40)),
+      );
+    return const Center(child: Icon(FluentIcons.file_image, size: 40));
+  }
+
   @override
   Widget build(BuildContext context) {
     return MouseRegion(
@@ -32,12 +48,14 @@ class _SeriesCardState extends State<SeriesCard> {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(8.0),
           color: Colors.transparent,
-          boxShadow: _isHovering 
-              ? [BoxShadow(
-                  color: (widget.series.dominantColor ?? Colors.blue).withOpacity(0.05),
-                  blurRadius: 8,
-                  spreadRadius: 1,
-                )] 
+          boxShadow: _isHovering
+              ? [
+                  BoxShadow(
+                    color: (widget.series.dominantColor ?? Colors.blue).withOpacity(0.05),
+                    blurRadius: 8,
+                    spreadRadius: 1,
+                  )
+                ]
               : null,
         ),
         child: Stack(
@@ -52,20 +70,9 @@ class _SeriesCardState extends State<SeriesCard> {
                   children: [
                     // Poster image
                     Expanded(
-                      child: Container(
-                        width: double.infinity,
-                        color: Colors.white.withOpacity(.03),
-                        child: widget.series.posterPath != null
-                            ? Image.file(
-                                File(widget.series.posterPath!),
-                                fit: BoxFit.contain,
-                                errorBuilder: (context, error, stackTrace) => 
-                                    const Center(child: Icon(FluentIcons.file_image, size: 40)),
-                              )
-                            : const Center(child: Icon(FluentIcons.file_image, size: 40)),
-                      ),
+                      child: Container(width: double.infinity, color: Colors.white.withOpacity(.03), child: _getSeriesImage()),
                     ),
-                    
+
                     // Series info
                     Padding(
                       padding: const EdgeInsets.all(12.0),
@@ -121,9 +128,7 @@ class _SeriesCardState extends State<SeriesCard> {
                     duration: const Duration(milliseconds: 150),
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(8.0),
-                      color: _isHovering 
-                          ? Colors.white.withOpacity(0.03) 
-                          : Colors.transparent,
+                      color: _isHovering ? Colors.white.withOpacity(0.03) : Colors.transparent,
                     ),
                   ),
                 ),

@@ -9,6 +9,7 @@ import '../functions.dart';
 import '../services/anilist/linking.dart';
 import '../services/file_scanner.dart';
 import '../services/player_trackers/mpchc.dart';
+import '../services/show_info.dart';
 import 'anilist/anime.dart';
 import 'series.dart';
 import 'episode.dart';
@@ -82,7 +83,7 @@ class Library with ChangeNotifier {
     if (_libraryPath == null || _isLoading) return;
 
     snackBar('Reloading library...', severity: InfoBarSeverity.info);
-    
+
     scanLibrary()
         .then(
           (_) => snackBar('Library reloaded', severity: InfoBarSeverity.success),
@@ -135,10 +136,20 @@ class Library with ChangeNotifier {
     }
   }
 
+  Future<Directory> get miruRyoiokiSaveDirectory async {
+    final dir = await getApplicationSupportDirectory();
+    final miruRyoiokiDir = Directory('${dir.path}/miruRyoioki');
+    if (!await miruRyoiokiDir.exists()) await miruRyoiokiDir.create(recursive: true);
+    return miruRyoiokiDir;
+  }
+  
+  static const String settingsFileName = 'settings';
+  static const String miruryoikiLibrary = 'library.json';
+
   Future<void> _loadSettings() async {
     try {
-      final dir = await getApplicationDocumentsDirectory();
-      final file = File('${dir.path}/miruryoiki_settings.json');
+      final dir = await miruRyoiokiSaveDirectory;
+      final file = File('${dir.path}/$settingsFileName.json');
 
       if (await file.exists()) {
         final content = await file.readAsString();
@@ -152,8 +163,8 @@ class Library with ChangeNotifier {
 
   Future<void> _saveSettings() async {
     try {
-      final dir = await getApplicationDocumentsDirectory();
-      final file = File('${dir.path}/miruryoiki_settings.json');
+      final dir = await miruRyoiokiSaveDirectory;
+      final file = File('${dir.path}/$settingsFileName.json');
 
       final data = {
         'libraryPath': _libraryPath,
@@ -169,8 +180,8 @@ class Library with ChangeNotifier {
     try {
       await _loadSettings();
 
-      final dir = await getApplicationDocumentsDirectory();
-      final file = File('${dir.path}/miruryoiki_library.json');
+      final dir = await miruRyoiokiSaveDirectory;
+      final file = File('${dir.path}/$miruryoikiLibrary.json');
 
       if (await file.exists()) {
         final content = await file.readAsString();
@@ -188,8 +199,8 @@ class Library with ChangeNotifier {
 
   Future<void> _saveLibrary() async {
     try {
-      final dir = await getApplicationDocumentsDirectory();
-      final file = File('${dir.path}/miruryoiki_library.json');
+      final dir = await miruRyoiokiSaveDirectory;
+      final file = File('${dir.path}/$miruryoikiLibrary.json');
 
       final data = _series.map((s) => s.toJson()).toList();
       await file.writeAsString(jsonEncode(data));
@@ -283,7 +294,7 @@ class Library with ChangeNotifier {
   Future<void> calculateDominantColors() async {
     print('Calculating dominant color');
     for (final series in _series) {
-      if (series.dominantColor == null && series.posterPath != null) //
+      if (series.dominantColor == null && series.folderImagePath != null) //
         await series.calculateDominantColor();
     }
     // Save library after calculating all colors

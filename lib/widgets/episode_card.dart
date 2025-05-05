@@ -41,7 +41,7 @@ class _HoverableEpisodeTileState extends State<HoverableEpisodeTile> {
           boxShadow: _isHovering
               ? [
                   BoxShadow(
-                    color: widget.series.dominantColor!.withOpacity(0.05),
+                    color: widget.series.dominantColor?.withOpacity(0.05) ?? Colors.black.withOpacity(0.1),
                     blurRadius: 8,
                     spreadRadius: 1,
                   )
@@ -135,7 +135,7 @@ class _HoverableEpisodeTileState extends State<HoverableEpisodeTile> {
                 color: Colors.transparent,
                 child: InkWell(
                   onTap: widget.onTap,
-                  splashColor: widget.series.dominantColor!.withOpacity(0.3),
+                  splashColor: widget.series.dominantColor?.withOpacity(0.3),
                   highlightColor: Colors.white.withOpacity(0.05),
                   borderRadius: BorderRadius.circular(4.0),
                   child: AnimatedContainer(

@@ -10,7 +10,7 @@ import 'package:url_launcher/url_launcher.dart';
 class AnilistAuthService {
   static const String _authEndpoint = 'https://anilist.co/api/v2/oauth/authorize';
   static const String _tokenEndpoint = 'https://anilist.co/api/v2/oauth/token';
-  static const String _redirectUrl = 'miruryoiki://auth-callback';
+  static const String _redirectUrl = 'mryoiki://auth-callback';
 
   final String _clientId;
   final String _clientSecret;

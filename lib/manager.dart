@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:ui';
 
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:miruryoiki/main.dart';
 import 'package:provider/provider.dart';
 import 'package:recase/recase.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -14,14 +15,13 @@ class Manager {
   static const double titleBarHeight = 40.0;
   static const int dynMouseScrollDuration = 150;
   static const double dynMouseScrollScrollSpeed = 1;
-  static const String appTitle = "File Explorer";
+  static const String appTitle = "MiruRyoiki";
 
   static bool get isMacOS => Platform.isMacOS;
-  
+
   static bool get isCtrlPressed => KeyboardState.ctrlPressedNotifier.value;
   static bool get isShiftPressed => KeyboardState.shiftPressedNotifier.value;
 }
-
 
 class SettingsManager {
   static Map<String, dynamic> settings = {};
@@ -75,7 +75,10 @@ class SettingsManager {
 
   static Future<void> assignSettings(BuildContext context) async {
     final AppTheme appTheme = Provider.of<AppTheme>(context, listen: false);
-    if (_settingCheck(settings["windowEffect"])) appTheme.windowEffect = windowEffectfromString(settings["windowEffect"]);
+    if (_settingCheck(settings["windowEffect"])) appTheme.windowEffect = WindowEffectX.fromString(settings["windowEffect"]);
+    if (_settingCheck(settings["themeMode"])) appTheme.mode = ThemeX.fromString(settings["themeMode"]);
+    if (_settingCheck(settings["accentColor"])) appTheme.color = settings["accentColor"].fromHex();
+    if (_settingCheck(settings["fontSize"])) appTheme.fontSize = double.parse(settings["fontSize"]);
   }
 
   static void clearSettings() async {

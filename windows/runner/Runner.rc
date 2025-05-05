@@ -89,13 +89,13 @@ BEGIN
     BEGIN
         BLOCK "040904e4"
         BEGIN
-            VALUE "CompanyName", "com.example" "\0"
-            VALUE "FileDescription", "miruryoiki" "\0"
+            VALUE "CompanyName", "com.lordlux" "\0"
+            VALUE "FileDescription", "MiruRyoiki" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "miruryoiki" "\0"
-            VALUE "LegalCopyright", "Copyright (C) 2025 com.example. All rights reserved." "\0"
+            VALUE "InternalName", "MiruRyoiki" "\0"
+            VALUE "LegalCopyright", "Copyright (C) 2025 com.lordlux. All rights reserved." "\0"
             VALUE "OriginalFilename", "miruryoiki.exe" "\0"
-            VALUE "ProductName", "miruryoiki" "\0"
+            VALUE "ProductName", "Miruryoiki" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END

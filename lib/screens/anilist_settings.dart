@@ -11,7 +11,7 @@ class AnilistSettingsScreen extends StatelessWidget {
 
     return ScaffoldPage(
       header: const PageHeader(
-        title: Text('Anilist Integration'),
+        title: Text('Anilist'),
       ),
       content: SingleChildScrollView(
         padding: const EdgeInsets.all(24.0),
@@ -29,7 +29,13 @@ class AnilistSettingsScreen extends StatelessWidget {
                       style: FluentTheme.of(context).typography.subtitle,
                     ),
                     const SizedBox(height: 16),
-                    if (anilistProvider.isLoading) const Center(child: ProgressRing()) else if (anilistProvider.isLoggedIn && anilistProvider.currentUser != null) _buildUserInfo(context, anilistProvider) else _buildLoginPrompt(context, anilistProvider),
+                    Builder(builder: (context) {
+                      if (anilistProvider.isLoading)
+                        return const Center(child: ProgressRing());
+                      else if (anilistProvider.isLoggedIn && anilistProvider.currentUser != null) //
+                        return _buildUserInfo(context, anilistProvider);
+                      return SizedBox.shrink();
+                    })
                   ],
                 ),
               ),
@@ -172,24 +178,6 @@ class AnilistSettingsScreen extends StatelessWidget {
           child: const Text('Logout'),
           onPressed: () {
             provider.logout();
-          },
-        ),
-      ],
-    );
-  }
-
-  Widget _buildLoginPrompt(BuildContext context, AnilistProvider provider) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Connect your Anilist account to access your anime lists, sync watch progress, and download metadata.',
-        ),
-        const SizedBox(height: 16),
-        Button(
-          child: const Text('Log in with Anilist'),
-          onPressed: () {
-            provider.login();
           },
         ),
       ],

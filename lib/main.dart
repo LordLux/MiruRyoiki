@@ -1,18 +1,19 @@
+// ignore_for_file: use_build_context_synchronously
+
 import 'package:flutter/foundation.dart';
-import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart' show Icons, MaterialPageRoute, ScaffoldMessenger;
 import 'package:fluent_ui/fluent_ui.dart';
-import 'package:fluent_ui3/fluent_ui.dart' as menu;
-import 'package:flutter/services.dart';
-import 'package:flutter_acrylic/flutter_acrylic.dart' as flutter_acrylic;
+import 'package:flutter_acrylic/flutter_acrylic.dart';
+import 'package:flutter_acrylic/window.dart' as flutter_acrylic;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:provider/provider.dart';
 import 'package:uni_links/uni_links.dart';
 import 'package:system_theme/system_theme.dart';
-import 'package:window_manager/window_manager.dart';
 import 'dart:io';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:bitsdojo_window/bitsdojo_window.dart';
+import 'package:window_manager/window_manager.dart';
 
-import 'functions.dart';
 import 'manager.dart';
 import 'models/library.dart';
 import 'screens/accounts.dart';
@@ -20,8 +21,11 @@ import 'screens/home.dart';
 import 'screens/series.dart';
 import 'screens/settings.dart';
 import 'services/anilist/provider.dart';
+import 'services/file_writer.dart';
 import 'services/shortcuts.dart';
+import 'services/show_info.dart';
 import 'theme.dart';
+import 'utils/color_utils.dart';
 import 'widgets/window_buttons.dart';
 
 bool _initialUriHandled = false;
@@ -34,7 +38,7 @@ final GlobalKey<SeriesScreenState> seriesScreenKey = GlobalKey<SeriesScreenState
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  if (!Platform.isWindows) throw UnimplementedError('This app is only supported on Windows.');
+  if (!Platform.isWindows) throw UnimplementedError('This app is only supported on Windows (for now).');
 
   // Load .env file
   await dotenv.load(fileName: '.env');
@@ -44,6 +48,8 @@ void main() async {
   _initializeWindowManager();
 
   SettingsManager.settings = await SettingsManager.loadSettings();
+
+  print(getRfeHash(r"M:\Videos\Series\Your Lie in April\21 - Snow.mkv"));
 
   runApp(
     MultiProvider(
@@ -72,11 +78,7 @@ class _MyAppState extends State<MyApp> {
     super.initState();
     // Initialize providers
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      flutter_acrylic.Window.setEffect(
-        effect: flutter_acrylic.WindowEffect.acrylic,
-        color: Colors.black.withValues(alpha: 0.05),
-      );
-      // FluentTheme.of(context).micaBackgroundColor.withValues(alpha: 0.05);
+      SettingsManager.assignSettings(context);
 
       final libraryProvider = Provider.of<Library>(context, listen: false);
       final anilistProvider = Provider.of<AnilistProvider>(context, listen: false);
@@ -91,6 +93,10 @@ class _MyAppState extends State<MyApp> {
 
       await libraryProvider.scanLibrary();
       await anilistProvider.initialize();
+
+      await Future.delayed(const Duration(milliseconds: 2));
+      final appTheme = Provider.of<AppTheme>(context, listen: false);
+      appTheme.setEffect(appTheme.windowEffect, rootNavigatorKey.currentContext!);
     });
   }
 
@@ -132,37 +138,46 @@ class _MyAppState extends State<MyApp> {
     return CustomKeyboardListener(
       child: ScaffoldMessenger(
         child: FluentApp(
-          title: 'MiruRyoiki',
+          title: Manager.appTitle,
           theme: FluentThemeData(
             accentColor: appTheme.color,
             brightness: Brightness.light,
-            acrylicBackgroundColor: Colors.transparent,
-            scaffoldBackgroundColor: Colors.transparent,
-            micaBackgroundColor: Colors.transparent,
-            navigationPaneTheme: NavigationPaneThemeData(backgroundColor: Colors.transparent),
+            cardColor: Colors.white.withOpacity(0.25),
+            scaffoldBackgroundColor: Colors.white.withOpacity(0.25), // default background
+            acrylicBackgroundColor: Colors.white,
           ),
           darkTheme: FluentThemeData(
             accentColor: appTheme.color,
             brightness: Brightness.dark,
             acrylicBackgroundColor: Colors.transparent,
             micaBackgroundColor: Colors.transparent,
-            scaffoldBackgroundColor: Colors.white.withOpacity(0.03), // default background
-            navigationPaneTheme: NavigationPaneThemeData(backgroundColor: Colors.transparent),
+            scaffoldBackgroundColor: getDimmableWhite(context), // default background
           ),
-          color: Colors.transparent,
+          color: appTheme.color,
           themeMode: appTheme.mode,
           home: AppRoot(key: homeKey),
           builder: (context, child) {
-            return Navigator(
-              onGenerateRoute: (_) => MaterialPageRoute(
-                builder: (context) => Overlay(
-                  initialEntries: [
-                    OverlayEntry(
-                      builder: (context) => ValueListenableBuilder(
+            return FluentTheme(
+              data: FluentTheme.of(context).copyWith(
+                buttonTheme: ButtonThemeData(
+                  defaultButtonStyle: ButtonStyle(
+                    padding: ButtonState.all(const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 8,
+                    )),
+                  ),
+                ),
+              ),
+              child: Navigator(
+                onGenerateRoute: (_) => MaterialPageRoute(
+                  builder: (context) => Overlay(
+                    initialEntries: [
+                      OverlayEntry(
+                        builder: (context) => ValueListenableBuilder(
                           valueListenable: overlayEntry,
                           builder: (context, overlay, _) {
                             return Container(
-                              color: Colors.black.withOpacity(.5),
+                              color: Colors.black.withOpacity(0.5),
                               child: GestureDetector(
                                 behavior: overlay != null ? HitTestBehavior.opaque : HitTestBehavior.translucent,
                                 onTap: () {
@@ -172,16 +187,18 @@ class _MyAppState extends State<MyApp> {
                                   textDirection: appTheme.textDirection,
                                   child: NavigationPaneTheme(
                                     data: NavigationPaneThemeData(
-                                      backgroundColor: appTheme.windowEffect != flutter_acrylic.WindowEffect.disabled ? Colors.transparent : null,
+                                      backgroundColor: appTheme.windowEffect != WindowEffect.disabled ? Colors.transparent : null,
                                     ),
                                     child: child ?? const SizedBox.shrink(),
                                   ),
                                 ),
                               ),
                             );
-                          }),
-                    ),
-                  ],
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             );
@@ -201,6 +218,8 @@ class AppRoot extends StatefulWidget {
   State<AppRoot> createState() => _AppRootState();
 }
 
+const Duration dimDuration = Duration(milliseconds: 200);
+
 class _AppRootState extends State<AppRoot> {
   int _selectedIndex = 0;
   String? _selectedSeriesPath;
@@ -214,172 +233,220 @@ class _AppRootState extends State<AppRoot> {
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      children: [
-        Positioned.fill(
-          child: Padding(
-            padding: EdgeInsets.only(top: Manager.titleBarHeight), // Adjust for title bar height
-            child: NavigationView(
-              // appBar: _isLibraryView ? NavigationAppBar(automaticallyImplyLeading: false, title: _logoTitle()) : null,
-              key: _paneKey,
-              pane: NavigationPane(
-                menuButton: _isLibraryView
-                    ? Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 11.0),
-                        child: _logoTitle(),
-                      )
-                    : null,
-                selected: _selectedIndex,
-                onChanged: (index) => setState(() {
-                  _selectedIndex = index;
-                  lastSelectedSeriesPath = _selectedSeriesPath;
-                  _selectedSeriesPath = null;
-                  _isSeriesView = false;
-                }),
-                displayMode: _isSeriesView ? PaneDisplayMode.compact : PaneDisplayMode.auto,
-                items: [
-                  PaneItem(
-                    icon: AnimatedContainer(
-                      duration: const Duration(milliseconds: 100),
-                      child: const Icon(Icons.ondemand_video_outlined, size: 18),
-                    ),
-                    title: const Text('Library'),
-                    body: AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 300),
-                      child: _isSeriesView && _selectedSeriesPath != null
-                          ? SeriesScreen(
-                              key: seriesScreenKey,
-                              seriesPath: _selectedSeriesPath!,
-                              onBack: exitSeriesView,
-                            )
-                          : HomeScreen(
-                              onSeriesSelected: navigateToSeries,
+    return AnimatedContainer(
+      duration: dimDuration,
+      color: getDimmableBlack(context),
+      child: Stack(
+        children: [
+          Positioned.fill(
+            child: Padding(
+              padding: EdgeInsets.only(top: Manager.titleBarHeight), // Adjust for title bar height
+              child: AnimatedContainer(
+                duration: dimDuration,
+                color: getDimmableBlack(context),
+                child: NavigationView(
+                  key: _paneKey,
+                  pane: NavigationPane(
+                    menuButton: _isLibraryView
+                        ? Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 11.0),
+                            child: _appTitle(),
+                          )
+                        : null,
+                    selected: _selectedIndex,
+                    onChanged: (index) => setState(() {
+                      _selectedIndex = index;
+                      lastSelectedSeriesPath = _selectedSeriesPath;
+                      _selectedSeriesPath = null;
+                      _isSeriesView = false;
+                    }),
+                    displayMode: _isSeriesView ? PaneDisplayMode.compact : PaneDisplayMode.auto,
+                    items: [
+                      PaneItem(
+                        icon: Stack(
+                          clipBehavior: Clip.none,
+                          children: [
+                            AnimatedContainer(
+                              duration: const Duration(milliseconds: 100),
+                              child: const Icon(Icons.ondemand_video_outlined, size: 18),
                             ),
-                    ),
+                            // divider, discarted
+                            // Positioned(
+                            //   left: -9,
+                            //   bottom: 34,
+                            //   child: Container(
+                            //     width: 307,
+                            //     height: 1,
+                            //     decoration: BoxDecoration(
+                            //       color: FluentTheme.of(context).resources.dividerStrokeColorDefault,
+                            //       shape: BoxShape.rectangle,
+                            //     ),
+                            //   ),
+                            // ),
+                          ],
+                        ),
+                        title: const Text('Library'),
+                        body: AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 300),
+                          child: _isSeriesView && _selectedSeriesPath != null
+                              ? SeriesScreen(
+                                  key: seriesScreenKey,
+                                  seriesPath: _selectedSeriesPath!,
+                                  onBack: exitSeriesView,
+                                )
+                              : HomeScreen(
+                                  onSeriesSelected: navigateToSeries,
+                                ),
+                        ),
+                      ),
+                    ],
+                    footerItems: [
+                      PaneItemSeparator(),
+                      PaneItem(
+                        icon: Padding(
+                          padding: const EdgeInsets.only(left: 2.5),
+                          child: Icon(FluentIcons.people),
+                        ),
+                        title: const Text('Account'),
+                        body: const AccountsScreen(),
+                      ),
+                      PaneItem(
+                        icon: Padding(
+                          padding: const EdgeInsets.only(left: 2.5),
+                          child: const Icon(FluentIcons.settings),
+                        ),
+                        title: const Text('Settings'),
+                        body: const SettingsScreen(),
+                      ),
+                    ],
                   ),
-                ],
-                footerItems: [
-                  PaneItemSeparator(),
-                  PaneItem(
-                    icon: Padding(
-                      padding: const EdgeInsets.only(left: 2.5),
-                      child: Icon(FluentIcons.people),
-                    ),
-                    title: const Text('Accounts'),
-                    body: const AccountsScreen(),
-                  ),
-                  PaneItem(
-                    icon: Padding(
-                      padding: const EdgeInsets.only(left: 2.5),
-                      child: const Icon(FluentIcons.settings),
-                    ),
-                    title: const Text('Settings'),
-                    body: const SettingsScreen(),
-                  ),
-                ],
+                ),
               ),
             ),
           ),
-        ),
-        Positioned(
-          top: 0,
-          left: 0,
-          right: 0,
-          height: Manager.titleBarHeight, // Adjust for title bar height
-          child: _buildTitleBar(),
-        ),
-      ],
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            height: Manager.titleBarHeight, // Adjust for title bar height
+            child: _buildTitleBar(),
+          ),
+        ],
+      ),
     );
   }
 
   /// Custom title bar with menu bar and window buttons
   Widget _buildTitleBar() {
     double winButtonsWidth = 128;
-    return DragToMoveArea(
-      child: SizedBox(
-        height: Manager.titleBarHeight,
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            // Menu bar
-            Expanded(
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.all(8.0),
-                    child: SizedBox(
-                      width: 20,
-                      child: Transform.translate(
-                        offset: const Offset(0, -1),
-                        child: Image.file(
-                          File(iconPath),
-                          width: 19,
-                          height: 19,
-                          errorBuilder: (_, __, ___) => const Icon(Icons.icecream_outlined, size: 19),
+    return AnimatedContainer(
+      duration: dimDuration,
+      color: getDimmableBlack(context),
+      height: Manager.titleBarHeight,
+      child: Stack(
+        children: [
+          Positioned.fill(
+            child: WindowTitleBarBox(
+              child: MoveWindow(
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.all(8.0),
+                      child: SizedBox(
+                        width: 30,
+                        child: Transform.translate(
+                          offset: const Offset(1, 2),
+                          child: Image.file(
+                            File(iconPath),
+                            width: 19,
+                            height: 19,
+                            errorBuilder: (_, __, ___) => const Icon(Icons.icecream_outlined, size: 19),
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                  SizedBox(
-                    width: winButtonsWidth + 37,
-                    child: Padding(
-                      padding: const EdgeInsets.only(left: 1),
-                      child: MenuBar(key: ValueKey('mainMenuBar'), items: [
-                        MenuBarItem(title: 'File', items: [
-                          MenuFlyoutItem(
-                            text: const Text('New Window'),
-                            onPressed: () {},
-                          ),
-                          MenuFlyoutItem(
-                            text: const Text('Exit'),
-                            leading: Icon(FluentIcons.calculator_multiply, color: Colors.red),
-                            onPressed: () => windowManager.close(),
-                          ),
-                        ]),
-                        MenuBarItem(title: 'View', items: [
-                          MenuFlyoutItem(
-                            text: const Text('New Window'),
-                            onPressed: () {},
-                          ),
-                          MenuFlyoutItem(
-                            text: const Text('Plain Text Documents'),
-                            onPressed: () {},
-                          ),
-                        ]),
-                        MenuBarItem(title: 'Help', items: [
-                          MenuFlyoutItem(
-                            text: const Text('Plain Text Documents'),
-                            onPressed: () {},
-                          ),
-                        ]),
-                      ]),
-                    ),
-                  ),
-                ],
+                    SizedBox.shrink(),
+                    // Windows Window Buttons
+                    SizedBox(width: winButtonsWidth),
+                  ],
+                ),
               ),
             ),
-            SizedBox(
-              height: Manager.titleBarHeight,
-              child: WindowButtons(),
+          ),
+          Positioned.fill(
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                // Menu bar
+                SizedBox(
+                  width: winButtonsWidth + 71 + 10,
+                  child: Padding(
+                    padding: const EdgeInsets.only(left: 35 + 10),
+                    child: MenuBar(key: ValueKey('mainMenuBar'), items: [
+                      MenuBarItem(title: 'File', items: [
+                        MenuFlyoutItem(
+                          text: const Text('New Window'),
+                          onPressed: () {},
+                        ),
+                        MenuFlyoutItem(
+                          text: const Text('Exit'),
+                          leading: Icon(FluentIcons.calculator_multiply, color: Colors.red),
+                          onPressed: null,
+                          // onPressed: () => windowManager.close(),
+                        ),
+                      ]),
+                      MenuBarItem(title: 'View', items: [
+                        MenuFlyoutItem(
+                          text: const Text('New Window'),
+                          onPressed: () {},
+                        ),
+                        MenuFlyoutItem(
+                          text: const Text('Plain Text Documents'),
+                          onPressed: () {},
+                        ),
+                      ]),
+                      MenuBarItem(title: 'Help', items: [
+                        MenuFlyoutItem(
+                          text: const Text('Plain Text Documents'),
+                          onPressed: () {},
+                        ),
+                      ]),
+                    ]),
+                  ),
+                ),
+                SizedBox(
+                  height: Manager.titleBarHeight,
+                  child: WindowButtons(),
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _logoTitle() {
+  Widget _appTitle() {
     return SizedBox(
-      width: 180, // Adjust this value as needed
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(FluentIcons.video, size: 24),
-          const SizedBox(width: 8),
-          const Text('MiruRyoiki', overflow: TextOverflow.clip, maxLines: 1),
-        ],
+      height: 24,
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: Transform.translate(
+          offset: const Offset(-5, 0),
+          child: Text(
+            Manager.appTitle,
+            overflow: TextOverflow.clip,
+            maxLines: 1,
+            textAlign: TextAlign.center,
+            style: GoogleFonts.sora(
+              fontSize: 15,
+              fontWeight: FontWeight.w300,
+              color: FluentTheme.of(context).typography.body!.color,
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -402,33 +469,53 @@ class _AppRootState extends State<AppRoot> {
 
 Future<void> _initializeWindowManager() async {
   await flutter_acrylic.Window.initialize();
+  await flutter_acrylic.Window.hideWindowControls();
   await WindowManager.instance.ensureInitialized();
-  if (Platform.isWindows) await flutter_acrylic.Window.hideWindowControls();
+
+  doWhenWindowReady(() {
+    final win = appWindow;
+    const initialSize = Size(1116.5, 700);
+    win.minSize = Size(700, 400);
+    win.size = initialSize;
+    win.alignment = Alignment.center;
+    win.title = Manager.appTitle;
+    win.show();
+  });
   WindowOptions windowOptions = WindowOptions(
     size: const Size(1116.5, 700),
     minimumSize: const Size(700, 400),
     center: true,
     skipTaskbar: false,
     titleBarStyle: TitleBarStyle.hidden,
-    title: 'MiruRyoiki',
+    title: Manager.appTitle,
   );
 
   windowManager.waitUntilReadyToShow(windowOptions, () async {
     await windowManager.show();
     await windowManager.focus();
-    await windowManager.setPreventClose(true);
+    await windowManager.setPreventClose(false);
     await windowManager.setSkipTaskbar(false);
     await windowManager.setTitleBarStyle(
       TitleBarStyle.hidden,
       windowButtonVisibility: false,
     );
 
-    if (await File(iconPath).exists())
-      await windowManager.setIcon(iconPath);
-    else
-      debugPrint('Icon file does not exist: $iconPath');
+    setIcon();
   });
 }
 
-String get iconPath => '${(Platform.resolvedExecutable.split(Platform.pathSeparator)..removeLast()).join(Platform.pathSeparator)}data${ps}flutter_assets${ps}assets${ps}system${ps}icon.ico';
+void setIcon() async {
+  if (await File(iconPath).exists()) {
+    // await windowManager.setIcon(iconPath);
+  } else {
+    debugPrint('Icon file does not exist: $iconPath');
+  }
+}
+
+// String get assets => "${(Platform.resolvedExecutable.split(ps)..removeLast()).join(ps)}$ps${kDebugMode ? 'assets' : 'data${ps}flutter_assets${ps}assets'}";
+String get assets => "${(Platform.resolvedExecutable.split(ps)..removeLast()).join(ps)}${ps}data${ps}flutter_assets${ps}assets";
+String get iconPath => '$assets${ps}system${ps}icon.ico';
+String get iconPng => '$assets${ps}system${ps}icon.png';
 String get ps => Platform.pathSeparator;
+
+// TODO check if sidebar is autoclosed -> set menu icon to null
