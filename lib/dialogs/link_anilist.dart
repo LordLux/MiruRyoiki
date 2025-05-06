@@ -1,4 +1,5 @@
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:miruryoiki/main.dart';
 import 'package:provider/provider.dart';
 import '../models/series.dart';
 import '../models/anilist/anime.dart';
@@ -110,6 +111,7 @@ class _AnilistLinkDialogState extends State<AnilistLinkDialog> {
                 icon: const Icon(FluentIcons.search),
                 onPressed: _search,
               ),
+              onChanged:  (_) => _search(),// TODO add race condition timer to avoid too many requests
               onSubmitted: (_) => _search(),
             ),
             const SizedBox(height: 16),
@@ -146,6 +148,8 @@ class _AnilistLinkDialogState extends State<AnilistLinkDialog> {
                       onPressed: () async {
                         await widget.onLink(series.id);
                         closeDialog(context);
+                        closeDialog(context);
+                        homeKey.currentState?.setState(() {});
                       },
                     );
                   },

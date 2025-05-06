@@ -117,7 +117,7 @@ class _MyAppState extends State<MyApp> {
       await libraryProvider.scanLibrary();
       await anilistProvider.initialize();
 
-      await Future.delayed(const Duration(milliseconds: 52));
+      await Future.delayed(const Duration(milliseconds: kDebugMode ? 52 : 252));
       final appTheme = Provider.of<AppTheme>(context, listen: false);
       appTheme.setEffect(appTheme.windowEffect, rootNavigatorKey.currentContext!);
     });
