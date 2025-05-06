@@ -251,28 +251,7 @@ class SeriesScreenState extends State<SeriesScreen> {
     return null;
   }
 
-  DecorationImage? _getPosterImage(Series series) {
-    // Priority: Anilist poster -> local poster
-    if (series.posterImage != null) // Prefer Anilist poster if available
-      return DecorationImage(
-        alignment: Alignment.topCenter,
-        image: NetworkImage(series.posterImage!),
-        fit: BoxFit.contain,
-        colorFilter: ColorFilter.mode(
-          Colors.black.withOpacity(0.3),
-          BlendMode.darken,
-        ),
-      );
-    if (series.folderImagePath != null) // Use local image as fallback if available
-      return DecorationImage(
-        image: FileImage(File(series.folderImagePath!)),
-        fit: BoxFit.contain,
-      );
-    return null;
-  }
-
   Widget _infoBar(Series series) {
-    final appTheme = context.watch<AppTheme>();
     return Padding(
       padding: const EdgeInsets.all(20.0),
       child: Column(
@@ -473,7 +452,7 @@ class SeriesScreenState extends State<SeriesScreen> {
                                       child: ScrollConfiguration(
                                         behavior: ScrollConfiguration.of(context).copyWith(overscroll: true, platform: TargetPlatform.windows, scrollbars: false),
                                         child: DynMouseScroll(
-                                          scrollSpeed: 0.02,
+                                          scrollSpeed: 1.0,
                                           durationMS: 350,
                                           animationCurve: Curves.easeOutQuint,
                                           builder: (context, controller, physics) {
