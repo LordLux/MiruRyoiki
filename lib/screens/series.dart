@@ -21,6 +21,7 @@ import '../services/navigation/dialogs.dart';
 import '../services/navigation/navigation.dart';
 import '../theme.dart';
 import '../widgets/episode_grid.dart';
+import '../widgets/transparency_shadow_image.dart';
 import 'anilist_settings.dart';
 
 class SeriesScreen extends StatefulWidget {
@@ -59,7 +60,7 @@ class SeriesScreenState extends State<SeriesScreen> {
   // TEMP
 
   // Debug state
-  bool showDebugControls = false;
+  bool showDebugControls = true;
   double testWidth = 230.0;
   double testHeight = 326.0;
   bool useTestMode = false;
@@ -350,6 +351,8 @@ class SeriesScreenState extends State<SeriesScreen> {
     );
   }
 
+  Duration get stickyHeaderDuration => const Duration(milliseconds: 430);
+
   Widget _buildSeriesContent(BuildContext context, Series series) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16.0),
@@ -359,7 +362,7 @@ class SeriesScreenState extends State<SeriesScreen> {
           AnimatedContainer(
             height: _headerHeight,
             width: double.infinity,
-            duration: const Duration(milliseconds: 430),
+            duration: stickyHeaderDuration,
             curve: Curves.ease,
             alignment: Alignment.center,
             child: // Header with poster as background
@@ -380,345 +383,105 @@ class SeriesScreenState extends State<SeriesScreen> {
                       ),
                       height: double.infinity,
                       width: _infoBarWidth,
-                      child: Stack(
-                        clipBehavior: Clip.none,
-                        children: [
-                          Positioned.fill(
-                            child: Padding(
-                              padding: const EdgeInsets.only(top: 0.0), //TODO move downwards the infobar based on poster height
-                              child: SingleChildScrollView(
-                                child: _infoBar(series),
-                              ),
-                            ),
-                          ),
-                          // Poster image
-                          Builder(builder: (context) {
-                            double aspectRatio = testHeight / testWidth;
-                            return Positioned(
-                              left: (_infoBarWidth - 230) / 2 - 12,
-                              child: Column(
+                      child: Builder(builder: (context) {
+                        double posterWidth = 230.0; // Default width
+                        double posterHeight = 326.0; // Default height
+
+                        // Get image provider based on available sources
+                        ImageProvider? imageProvider;
+                        if (series.posterImage != null)
+                          imageProvider = NetworkImage(series.posterImage!);
+                        else if (series.folderImagePath != null) //
+                          imageProvider = FileImage(File(series.folderImagePath!));
+
+                        // If no image is available, show a placeholder
+                        if (imageProvider == null) {
+                          return Container(
+                            width: posterWidth,
+                            height: posterHeight,
+                            decoration: BoxDecoration(color: dominantColor.withOpacity(0.5), borderRadius: BorderRadius.circular(4)),
+                            child: const Center(child: Icon(FluentIcons.picture, size: 48, color: Colors.white)),
+                          );
+                        }
+                        return FutureBuilder(
+                            future: _getImageDimensions(imageProvider),
+                            builder: (context, AsyncSnapshot<Size> snapshot) {
+                              double squareSize = 253.0;
+                              if (snapshot.hasData && snapshot.data != null) {
+                                final Size originalSize = snapshot.data!;
+                                final double aspectRatio = originalSize.height / originalSize.width;
+
+                                double maxWidth = 326.0;
+                                double maxHeight = 300.0;
+
+                                // Constrain aspect ratio between 0.71 and 1.41
+                                double effectiveAspectRatio = aspectRatio;
+                                if (aspectRatio < 0.71) effectiveAspectRatio = 0.71;
+                                if (aspectRatio > 1.41) effectiveAspectRatio = 1.41;
+
+                                // For square images (aspect ratio around 1), fit to the green box
+                                if (effectiveAspectRatio < 1) {
+                                  // Wider than tall: linearly interpolate width based on distance from square
+                                  // As AR approaches 0.71, width approaches maxWidth (326)
+                                  double ratioFactor = (1 - effectiveAspectRatio) / (1 - 0.71); // 0 when AR=1, 1 when AR=0.71
+                                  posterWidth = squareSize + (maxWidth - squareSize) * ratioFactor;
+                                  posterHeight = posterWidth * effectiveAspectRatio;
+
+                                  // Ensure we don't exceed height bound
+                                  if (posterHeight > maxHeight) {
+                                    posterHeight = maxHeight;
+                                    posterWidth = posterHeight / effectiveAspectRatio;
+                                  }
+                                } else {
+                                  double ratioFactor = (effectiveAspectRatio - 1) / (1.41 - 1); // 0 when AR=1, 1 when AR=1.41
+                                  posterHeight = squareSize + (maxHeight - squareSize) * ratioFactor;
+                                  posterWidth = posterHeight / effectiveAspectRatio;
+
+                                  // Ensure we don't exceed width bound
+                                  if (posterWidth > maxWidth) {
+                                    posterWidth = maxWidth;
+                                    posterHeight = posterWidth * effectiveAspectRatio;
+                                  }
+                                }
+                              }
+
+                              return Stack(
+                                clipBehavior: Clip.none,
                                 children: [
-                                  // Debug controls - can be toggled with the checkbox
-                                  Column(
-                                    children: [
-                                      // Debug toggle
-                                      if (kDebugMode) ...[
-                                        Row(
-                                          mainAxisAlignment: MainAxisAlignment.center,
-                                          children: [
-                                            Checkbox(
-                                              checked: showDebugControls,
-                                              onChanged: (value) => setState(() => showDebugControls = value ?? false),
-                                            ),
-                                            const Text("Debug", style: TextStyle(color: Colors.white)),
-                                          ],
-                                        ),
-
-                                        // Debug controls - only visible when toggled on
-                                        if (showDebugControls) ...[
-                                          Container(
-                                            padding: const EdgeInsets.all(10),
-                                            color: Colors.black.withOpacity(0.7),
-                                            child: Column(
-                                              crossAxisAlignment: CrossAxisAlignment.start,
-                                              children: [
-                                                // Toggle between test mode and real image
-                                                Row(
-                                                  children: [
-                                                    Checkbox(
-                                                      checked: useTestMode,
-                                                      onChanged: (value) => setState(() => useTestMode = value ?? false),
-                                                    ),
-                                                    const Text("Test Image", style: TextStyle(color: Colors.white)),
-                                                  ],
-                                                ),
-
-                                                // Width slider
-                                                Text("W: ${testWidth.toStringAsFixed(0)}", style: const TextStyle(color: Colors.white)),
-                                                SizedBox(
-                                                  width: 280,
-                                                  child: Slider(
-                                                    min: 100.0,
-                                                    max: 500.0,
-                                                    value: testWidth,
-                                                    onChanged: (value) {
-                                                      setState(() {
-                                                        testWidth = value;
-                                                        aspectRatio = testHeight / testWidth;
-                                                      });
-                                                    },
-                                                  ),
-                                                ),
-
-                                                // Height slider
-                                                Text("H: ${testHeight.toStringAsFixed(0)}", style: const TextStyle(color: Colors.white)),
-                                                SizedBox(
-                                                  width: 280,
-                                                  child: Slider(
-                                                    min: 100.0,
-                                                    max: 500.0,
-                                                    value: testHeight,
-                                                    onChanged: (value) {
-                                                      setState(() {
-                                                        testHeight = value;
-                                                        aspectRatio = testHeight / testWidth;
-                                                      });
-                                                    },
-                                                  ),
-                                                ),
-
-                                                // Aspect ratio display
-                                                Text("AR: ${aspectRatio.toStringAsFixed(2)}",
-                                                    style: TextStyle(
-                                                      color: (aspectRatio < 0.71 || aspectRatio > 1.41) ? Colors.red : Colors.green,
-                                                      fontWeight: FontWeight.bold,
-                                                    )),
-                                              ],
-                                            ),
-                                          ),
-                                        ],
-                                      ],
-
-                                      // Container for the image - either real or test
-                                      SizedBox(
-                                        height: 300,
-                                        width: 326,
-                                        child: Stack(
-                                          alignment: Alignment.center,
-                                          children: [
-                                            Builder(
-                                              builder: (context) {
-                                                // Use either test image or real image based on toggle
-                                                if (showDebugControls && useTestMode) {
-                                                  // Test image implementation
-                                                  double posterWidth = testWidth;
-                                                  double posterHeight = testHeight;
-                                                  double effectiveAspectRatio = aspectRatio;
-
-                                                  double squareSize = 253.0;
-                                                  double maxWidth = 326.0;
-                                                  double maxHeight = 300.0;
-
-                                                  // Apply the same constraints as the real implementation
-                                                  if (effectiveAspectRatio < 0.71) effectiveAspectRatio = 0.71;
-                                                  if (effectiveAspectRatio > 1.41) effectiveAspectRatio = 1.41;
-
-                                                  // For square images (aspect ratio around 1), fit to the green box
-                                                  if (effectiveAspectRatio < 1) {
-                                                    // Wider than tall: linearly interpolate width based on distance from square
-                                                    // As AR approaches 0.71, width approaches maxWidth (326)
-                                                    double ratioFactor = (1 - effectiveAspectRatio) / (1 - 0.71); // 0 when AR=1, 1 when AR=0.71
-                                                    posterWidth = squareSize + (maxWidth - squareSize) * ratioFactor;
-                                                    posterHeight = posterWidth * effectiveAspectRatio;
-
-                                                    // Ensure we don't exceed height bound
-                                                    if (posterHeight > maxHeight) {
-                                                      posterHeight = maxHeight;
-                                                      posterWidth = posterHeight / effectiveAspectRatio;
-                                                    }
-                                                  } else {
-                                                    double ratioFactor = (effectiveAspectRatio - 1) / (1.41 - 1); // 0 when AR=1, 1 when AR=1.41
-                                                    posterHeight = squareSize + (maxHeight - squareSize) * ratioFactor;
-                                                    posterWidth = posterHeight / effectiveAspectRatio;
-
-                                                    // Ensure we don't exceed width bound
-                                                    if (posterWidth > maxWidth) {
-                                                      posterWidth = maxWidth;
-                                                      posterHeight = posterWidth * effectiveAspectRatio;
-                                                    }
-                                                  }
-
-                                                  // Show the test box with calculated dimensions
-                                                  return Container(
-                                                    width: posterWidth,
-                                                    height: posterHeight,
-                                                    decoration: BoxDecoration(
-                                                      color: dominantColor.withOpacity(0.8),
-                                                      boxShadow: [
-                                                        BoxShadow(
-                                                          color: Colors.black.withOpacity(0.3),
-                                                          blurRadius: 10,
-                                                          spreadRadius: 2,
-                                                        ),
-                                                      ],
-                                                      border: Border.all(color: Colors.white, width: 2),
-                                                    ),
-                                                    child: Center(
-                                                      child: Column(
-                                                        mainAxisAlignment: MainAxisAlignment.center,
-                                                        children: [
-                                                          Text(
-                                                            "${posterWidth.toStringAsFixed(0)} x ${posterHeight.toStringAsFixed(0)}",
-                                                            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                                                          ),
-                                                          Text(
-                                                            "AR: ${effectiveAspectRatio.toStringAsFixed(2)}",
-                                                            style: TextStyle(color: Colors.white),
-                                                          ),
-                                                        ],
-                                                      ),
-                                                    ),
-                                                  );
-                                                }
-                                                // Original implementation for real images
-                                                else {
-                                                  double posterWidth = 230.0; // Default width
-                                                  double posterHeight = 326.0; // Default height
-
-                                                  // Get image provider based on available sources
-                                                  ImageProvider? imageProvider;
-                                                  if (series.posterImage != null)
-                                                    imageProvider = NetworkImage(series.posterImage!);
-                                                  else if (series.folderImagePath != null) //
-                                                    imageProvider = FileImage(File(series.folderImagePath!));
-
-                                                  if (imageProvider != null) {
-                                                    return FutureBuilder(
-                                                      future: _getImageDimensions(imageProvider),
-                                                      builder: (context, AsyncSnapshot<Size> snapshot) {
-                                                        if (snapshot.hasData && snapshot.data != null) {
-                                                          final Size originalSize = snapshot.data!;
-                                                          final double aspectRatio = originalSize.height / originalSize.width;
-
-                                                          double squareSize = 253.0;
-                                                          double maxWidth = 326.0;
-                                                          double maxHeight = 300.0;
-
-                                                          // Constrain aspect ratio between 0.71 and 1.41
-                                                          double effectiveAspectRatio = aspectRatio;
-                                                          if (aspectRatio < 0.71) effectiveAspectRatio = 0.71;
-                                                          if (aspectRatio > 1.41) effectiveAspectRatio = 1.41;
-
-                                                          // For square images (aspect ratio around 1), fit to the green box
-                                                          if (effectiveAspectRatio < 1) {
-                                                            // Wider than tall: linearly interpolate width based on distance from square
-                                                            // As AR approaches 0.71, width approaches maxWidth (326)
-                                                            double ratioFactor = (1 - effectiveAspectRatio) / (1 - 0.71); // 0 when AR=1, 1 when AR=0.71
-                                                            posterWidth = squareSize + (maxWidth - squareSize) * ratioFactor;
-                                                            posterHeight = posterWidth * effectiveAspectRatio;
-
-                                                            // Ensure we don't exceed height bound
-                                                            if (posterHeight > maxHeight) {
-                                                              posterHeight = maxHeight;
-                                                              posterWidth = posterHeight / effectiveAspectRatio;
-                                                            }
-                                                          } else {
-                                                            double ratioFactor = (effectiveAspectRatio - 1) / (1.41 - 1); // 0 when AR=1, 1 when AR=1.41
-                                                            posterHeight = squareSize + (maxHeight - squareSize) * ratioFactor;
-                                                            posterWidth = posterHeight / effectiveAspectRatio;
-
-                                                            // Ensure we don't exceed width bound
-                                                            if (posterWidth > maxWidth) {
-                                                              posterWidth = maxWidth;
-                                                              posterHeight = posterWidth * effectiveAspectRatio;
-                                                            }
-                                                          }
-
-                                                          if (imageProvider == null) return SizedBox.shrink();
-
-                                                          // Show debug info if controls are visible
-                                                          if (showDebugControls) {
-                                                            // Add a small overlay with dimension info
-                                                            return Stack(
-                                                              children: [
-                                                                Container(
-                                                                  width: posterWidth,
-                                                                  height: posterHeight,
-                                                                  decoration: BoxDecoration(
-                                                                    image: DecorationImage(
-                                                                      image: imageProvider,
-                                                                      fit: BoxFit.cover,
-                                                                      colorFilter: series.posterImage != null ? ColorFilter.mode(Colors.black.withOpacity(0.3), BlendMode.darken) : null,
-                                                                    ),
-                                                                    boxShadow: [
-                                                                      BoxShadow(
-                                                                        color: Colors.black.withOpacity(0.3),
-                                                                        blurRadius: 10,
-                                                                        spreadRadius: 2,
-                                                                      ),
-                                                                    ],
-                                                                  ),
-                                                                ),
-                                                                Container(
-                                                                  width: posterWidth,
-                                                                  height: posterHeight,
-                                                                  color: Colors.black.withOpacity(0.6),
-                                                                  child: Center(
-                                                                    child: Column(
-                                                                      mainAxisAlignment: MainAxisAlignment.center,
-                                                                      children: [
-                                                                        Text(
-                                                                          "Original: ${originalSize.width.toStringAsFixed(0)} x ${originalSize.height.toStringAsFixed(0)}",
-                                                                          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                                                                        ),
-                                                                        Text(
-                                                                          "Scaled: ${posterWidth.toStringAsFixed(0)} x ${posterHeight.toStringAsFixed(0)}",
-                                                                          style: TextStyle(color: Colors.white),
-                                                                        ),
-                                                                        Text(
-                                                                          "AR: ${aspectRatio.toStringAsFixed(2)} → ${effectiveAspectRatio.toStringAsFixed(2)}",
-                                                                          style: TextStyle(color: Colors.white),
-                                                                        ),
-                                                                      ],
-                                                                    ),
-                                                                  ),
-                                                                ),
-                                                              ],
-                                                            );
-                                                          }
-                                                        }
-
-                                                        if (imageProvider == null) return SizedBox.shrink();
-
-                                                        // Regular image display (no debug overlay)
-                                                        return Container(
-                                                          width: posterWidth,
-                                                          height: posterHeight,
-                                                          decoration: BoxDecoration(
-                                                            image: DecorationImage(
-                                                              image: imageProvider,
-                                                              fit: BoxFit.cover,
-                                                              colorFilter: series.posterImage != null ? ColorFilter.mode(Colors.black.withOpacity(0.3), BlendMode.darken) : null,
-                                                            ),
-                                                            boxShadow: [
-                                                              BoxShadow(
-                                                                color: Colors.black.withOpacity(0.3),
-                                                                blurRadius: 10,
-                                                                spreadRadius: 2,
-                                                              ),
-                                                            ],
-                                                          ),
-                                                        );
-                                                      },
-                                                    );
-                                                  } else {
-                                                    // Fallback for no image
-                                                    return Container(
-                                                      width: posterWidth,
-                                                      height: posterHeight,
-                                                      decoration: BoxDecoration(
-                                                        color: dominantColor.withOpacity(0.5),
-                                                        borderRadius: BorderRadius.circular(4),
-                                                      ),
-                                                      child: const Center(
-                                                        child: Icon(FluentIcons.picture, size: 48, color: Colors.white),
-                                                      ),
-                                                    );
-                                                  }
-                                                }
-                                              },
-                                            ),
-                                          ],
+                                  Positioned.fill(
+                                    child: Padding(
+                                      padding: EdgeInsets.only(top: max(posterHeight - squareSize - 16, 0)),
+                                      child: SingleChildScrollView(
+                                        child: _infoBar(series),
+                                      ),
+                                    ),
+                                  ),
+                                  // Poster image
+                                  AnimatedPositioned(
+                                    duration: stickyHeaderDuration,
+                                    left: (_infoBarWidth) / 2 - (posterWidth) / 2,
+                                    top: -(_maxHeaderHeight) + 32,
+                                    child: SizedBox(
+                                      width: posterWidth,
+                                      height: posterHeight,
+                                      child: SizedBox(
+                                        width: posterWidth,
+                                        height: posterHeight,
+                                        child: ShadowedImage(
+                                          imageProvider: imageProvider!,
+                                          fit: BoxFit.cover,
+                                          colorFilter: series.posterImage != null ? ColorFilter.mode(Colors.black.withOpacity(0), BlendMode.darken) : null,
+                                          blurSigma: 10,
+                                          shadowOffset: const Offset(0, 0),
+                                          shadowOpacity: 0.3,
                                         ),
                                       ),
-                                    ],
+                                    ),
                                   ),
                                 ],
-                              ),
-                            );
-                          }),
-                        ],
-                      ),
+                              );
+                            });
+                      }),
                     ),
                   ),
                   // Content area on the right
