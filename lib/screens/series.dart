@@ -463,8 +463,8 @@ class SeriesScreenState extends State<SeriesScreen> {
                                     child: FadingEdgeScrollView(
                                       gradientStops: [
                                         (squareness * 0.025),
-                                        (squareness * 0.06) + 0.06,
-                                        (squareness * 0.075) + 0.095,
+                                        (squareness * 0.04) + 0.025,
+                                        (squareness * 0.075) + 0.05,
                                         0.9,
                                         0.95,
                                         0.98,
