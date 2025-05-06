@@ -21,6 +21,7 @@ import '../services/navigation/dialogs.dart';
 import '../services/navigation/navigation.dart';
 import '../theme.dart';
 import '../widgets/episode_grid.dart';
+import '../widgets/gradient_mask.dart';
 import '../widgets/transparency_shadow_image.dart';
 import 'anilist_settings.dart';
 
@@ -273,7 +274,7 @@ class SeriesScreenState extends State<SeriesScreen> {
   Widget _infoBar(Series series) {
     final appTheme = context.watch<AppTheme>();
     return Padding(
-      padding: const EdgeInsets.all(24.0),
+      padding: const EdgeInsets.all(20.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -452,48 +453,43 @@ class SeriesScreenState extends State<SeriesScreen> {
                                 }
                               }
 
-                              double getInfoBarOffset() => max(posterHeight - squareSize - 16, 0);
-
+                              final double getInfoBarOffset = max(posterHeight - squareSize - 16, 0);
+                              final double squareness = (getInfoBarOffset / 31);
                               return Stack(
                                 clipBehavior: Clip.none,
                                 children: [
+                                  // Info bar
                                   Positioned.fill(
-                                    child: Padding(
-                                      padding: EdgeInsets.only(top: getInfoBarOffset()),
+                                    child: FadingEdgeScrollView(
+                                      gradientStops: [
+                                        (squareness * 0.025),
+                                        (squareness * 0.06) + 0.06,
+                                        (squareness * 0.075) + 0.095,
+                                        0.9,
+                                        0.95,
+                                        0.98,
+                                      ],
+                                      // debug: true,
                                       child: ScrollConfiguration(
                                         behavior: ScrollConfiguration.of(context).copyWith(overscroll: true, platform: TargetPlatform.windows, scrollbars: false),
                                         child: DynMouseScroll(
-                                          scrollSpeed: 2.0,
+                                          scrollSpeed: 0.02,
                                           durationMS: 350,
                                           animationCurve: Curves.easeOutQuint,
                                           builder: (context, controller, physics) {
                                             return SingleChildScrollView(
                                               controller: controller,
                                               physics: physics,
-                                              child: _infoBar(series),
+                                              child: Padding(
+                                                padding: EdgeInsets.only(top: getInfoBarOffset),
+                                                child: _infoBar(series),
+                                              ),
                                             );
                                           },
                                         ),
                                       ),
                                     ),
                                   ),
-                                  // Positioned(
-                                  //   top: getInfoBarOffset() + 10,
-                                  //   child: Container(
-                                  //     height: 50,
-                                  //     width: _infoBarWidth,
-                                  //     decoration: BoxDecoration(
-                                  //       gradient: LinearGradient(
-                                  //         begin: Alignment.topCenter,
-                                  //         end: Alignment.bottomCenter,
-                                  //         colors: [
-                                  //           Colors.transparent.withOpacity(0.27), // TODO hide text behind poster with same color as infobar background
-                                  //           Colors.transparent,
-                                  //         ],
-                                  //       ),
-                                  //     ),
-                                  //   ),
-                                  // ),
                                   // Poster image
                                   AnimatedPositioned(
                                     duration: stickyHeaderDuration,
@@ -510,8 +506,7 @@ class SeriesScreenState extends State<SeriesScreen> {
                                           fit: BoxFit.cover,
                                           colorFilter: series.posterImage != null ? ColorFilter.mode(Colors.black.withOpacity(0), BlendMode.darken) : null,
                                           blurSigma: 10,
-                                          shadowOffset: const Offset(0, 0),
-                                          shadowOpacity: 0.3,
+                                          shadowColorOpacity: .5,
                                         ),
                                       ),
                                     ),
@@ -526,32 +521,35 @@ class SeriesScreenState extends State<SeriesScreen> {
                   Expanded(
                     child: Align(
                       alignment: Alignment.topCenter,
-                      child: ScrollConfiguration(
-                        behavior: ScrollConfiguration.of(context).copyWith(overscroll: true, platform: TargetPlatform.windows, scrollbars: false),
-                        child: DynMouseScroll(
-                          scrollSpeed: 1.8,
-                          durationMS: 350,
-                          animationCurve: Curves.easeOut,
-                          builder: (context, controller, physics) {
-                            controller.addListener(() {
-                              final offset = controller.offset;
-                              final double newHeight = offset > 0 ? _minHeaderHeight : _maxHeaderHeight;
+                      child: FadingEdgeScrollView(
+                        fadeReach: 16,
+                        child: ScrollConfiguration(
+                          behavior: ScrollConfiguration.of(context).copyWith(overscroll: true, platform: TargetPlatform.windows, scrollbars: false),
+                          child: DynMouseScroll(
+                            scrollSpeed: 1.8,
+                            durationMS: 350,
+                            animationCurve: Curves.easeOut,
+                            builder: (context, controller, physics) {
+                              controller.addListener(() {
+                                final offset = controller.offset;
+                                final double newHeight = offset > 0 ? _minHeaderHeight : _maxHeaderHeight;
 
-                              if (newHeight != _headerHeight && mounted) //
-                                setState(() => _headerHeight = newHeight);
-                            });
+                                if (newHeight != _headerHeight && mounted) //
+                                  setState(() => _headerHeight = newHeight);
+                              });
 
-                            // Then use the controller for your scrollable content
-                            return CustomScrollView(
-                              controller: controller,
-                              physics: physics,
-                              slivers: [
-                                SliverToBoxAdapter(
-                                  child: _buildEpisodesList(context),
-                                ),
-                              ],
-                            );
-                          },
+                              // Then use the controller for your scrollable content
+                              return CustomScrollView(
+                                controller: controller,
+                                physics: physics,
+                                slivers: [
+                                  SliverToBoxAdapter(
+                                    child: _buildEpisodesList(context),
+                                  ),
+                                ],
+                              );
+                            },
+                          ),
                         ),
                       ),
                     ),
