@@ -346,6 +346,13 @@ class SeriesScreenState extends State<SeriesScreen> {
             activeColor: series.dominantColor,
             backgroundColor: Colors.white.withOpacity(.3),
           ),
+          ...[
+            for (int i = 0; i < 30; i++)
+              Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: Text('test $i', style: FluentTheme.of(context).typography.body),
+              ),
+          ],
         ],
       ),
     );
@@ -445,17 +452,48 @@ class SeriesScreenState extends State<SeriesScreen> {
                                 }
                               }
 
+                              double getInfoBarOffset() => max(posterHeight - squareSize - 16, 0);
+
                               return Stack(
                                 clipBehavior: Clip.none,
                                 children: [
                                   Positioned.fill(
                                     child: Padding(
-                                      padding: EdgeInsets.only(top: max(posterHeight - squareSize - 16, 0)),
-                                      child: SingleChildScrollView(
-                                        child: _infoBar(series),
+                                      padding: EdgeInsets.only(top: getInfoBarOffset()),
+                                      child: ScrollConfiguration(
+                                        behavior: ScrollConfiguration.of(context).copyWith(overscroll: true, platform: TargetPlatform.windows, scrollbars: false),
+                                        child: DynMouseScroll(
+                                          scrollSpeed: 2.0,
+                                          durationMS: 350,
+                                          animationCurve: Curves.easeOutQuint,
+                                          builder: (context, controller, physics) {
+                                            return SingleChildScrollView(
+                                              controller: controller,
+                                              physics: physics,
+                                              child: _infoBar(series),
+                                            );
+                                          },
+                                        ),
                                       ),
                                     ),
                                   ),
+                                  // Positioned(
+                                  //   top: getInfoBarOffset() + 10,
+                                  //   child: Container(
+                                  //     height: 50,
+                                  //     width: _infoBarWidth,
+                                  //     decoration: BoxDecoration(
+                                  //       gradient: LinearGradient(
+                                  //         begin: Alignment.topCenter,
+                                  //         end: Alignment.bottomCenter,
+                                  //         colors: [
+                                  //           Colors.transparent.withOpacity(0.27), // TODO hide text behind poster with same color as infobar background
+                                  //           Colors.transparent,
+                                  //         ],
+                                  //       ),
+                                  //     ),
+                                  //   ),
+                                  // ),
                                   // Poster image
                                   AnimatedPositioned(
                                     duration: stickyHeaderDuration,
@@ -491,9 +529,9 @@ class SeriesScreenState extends State<SeriesScreen> {
                       child: ScrollConfiguration(
                         behavior: ScrollConfiguration.of(context).copyWith(overscroll: true, platform: TargetPlatform.windows, scrollbars: false),
                         child: DynMouseScroll(
-                          scrollSpeed: 2.0,
+                          scrollSpeed: 1.8,
                           durationMS: 350,
-                          animationCurve: Curves.easeInOutQuint,
+                          animationCurve: Curves.easeOut,
                           builder: (context, controller, physics) {
                             controller.addListener(() {
                               final offset = controller.offset;
