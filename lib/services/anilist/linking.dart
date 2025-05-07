@@ -15,6 +15,10 @@ class SeriesLinkService {
     return await _anilistService.searchAnime(searchQuery);
   }
 
+  Future<AnilistAnime?> fetchAnimeDetails(int anilistId) async {
+    return await _anilistService.getAnimeDetails(anilistId);
+  }
+
   /// Link a series to a specific Anilist ID
   Future<bool> linkSeries(Series series, int anilistId) async {
     try {

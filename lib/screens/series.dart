@@ -59,8 +59,6 @@ class SeriesScreenState extends State<SeriesScreen> {
       series?.dominantColor ?? //
       FluentTheme.of(context).accentColor.defaultBrushFor(FluentTheme.of(context).brightness);
 
-  // TEMP
-
   // Debug state
   bool showDebugControls = true;
   double testWidth = 230.0;
@@ -73,6 +71,9 @@ class SeriesScreenState extends State<SeriesScreen> {
   void initState() {
     super.initState();
     _headerHeight = _maxHeaderHeight;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadAnilistDataForCurrentSeries();
+    });
   }
 
   ColorFilter get colorFilter => ColorFilter.matrix([
@@ -82,6 +83,54 @@ class SeriesScreenState extends State<SeriesScreen> {
         0, 0, 0.7, 0, 0,
         0, 0, 0, 1, 0,
       ]);
+
+  Future<void> _loadAnilistDataForCurrentSeries() async {
+    if (series == null) return;
+
+    if (series!.anilistMappings.isEmpty) {
+      setState(() {
+        // Clear any Anilist data references to ensure UI updates
+        series!.anilistData = null;
+      });
+      return;
+    }
+
+    // Load data for the primary mapping (or first mapping if no primary)
+    final anilistId = series!.primaryAnilistId ?? series!.anilistMappings.first.anilistId;
+    await _loadAnilistData(anilistId);
+  }
+
+  Future<void> _loadAnilistData(int anilistId) async {
+    if (series == null) return;
+
+    final linkService = SeriesLinkService();
+    final anime = await linkService.fetchAnimeDetails(anilistId);
+
+    if (anime != null) {
+      setState(() {
+        // Find the mapping with this ID
+        for (var i = 0; i < series!.anilistMappings.length; i++) {
+          if (series!.anilistMappings[i].anilistId == anilistId) {
+            series!.anilistMappings[i] = AnilistMapping(
+              localPath: series!.anilistMappings[i].localPath,
+              anilistId: anilistId,
+              title: series!.anilistMappings[i].title,
+              lastSynced: DateTime.now(),
+              anilistData: anime,
+            );
+          }
+
+          // Also update the series.anilistData if this is the primary
+          if (series!.primaryAnilistId == anilistId || series!.primaryAnilistId == null) {
+            series!.anilistData = anime;
+          }
+          break;
+        }
+      });
+    } else {
+      print('Failed to load Anilist data for ID: $anilistId'); // Debug log
+    }
+  }
 
   void toggleSeasonExpander(int seasonNumber) {
     final expanderKey = _seasonExpanderKeys[seasonNumber];
@@ -137,6 +186,14 @@ class SeriesScreenState extends State<SeriesScreen> {
       ),
       child: _buildSeriesContent(context, series!),
     );
+  }
+
+  String _getDisplayPath(String path, String seriesPath) {
+    if (path == seriesPath) return 'Main Series Folder';
+    if (path.startsWith(seriesPath)) {
+      return path.substring(seriesPath.length + 1);
+    }
+    return path;
   }
 
   Widget _buildSeriesHeader(BuildContext context, Series series) {
@@ -284,11 +341,37 @@ class SeriesScreenState extends State<SeriesScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Info',
-            style: FluentTheme.of(context).typography.subtitle,
-          ),
+          Text('Info', style: FluentTheme.of(context).typography.subtitle),
           const SizedBox(height: 8),
+
+          if (series.anilistMappings.length > 1) ...[
+            InfoLabel(
+              label: 'Anilist Source',
+              child: ComboBox<int>(
+                placeholder: const Text('Select Anilist source'),
+                isExpanded: true,
+                items: series.anilistMappings.map((mapping) {
+                  final title = mapping.title ?? 'Anilist ID: ${mapping.anilistId}';
+                  final path = _getDisplayPath(mapping.localPath, series.path);
+                  return ComboBoxItem<int>(
+                    value: mapping.anilistId,
+                    child: Text('$title ($path)'),
+                  );
+                }).toList(),
+                value: series.primaryAnilistId,
+                onChanged: (value) async {
+                  if (value != null) {
+                    setState(() {
+                      series.primaryAnilistId = value;
+                    });
+                    // Fetch and load Anilist data
+                    await _loadAnilistData(value);
+                  }
+                },
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
 
           // Add description if available
           if (series.description != null) ...[
@@ -738,7 +821,7 @@ class SeriesScreenState extends State<SeriesScreen> {
             return;
           }
 
-          if (mappings.isEmpty) return; // no mappings to update
+          // if (mappings.isEmpty) return; // no mappings to update
 
           // if dialog was closed with a result, and it was successful, update the series mappings
           final library = Provider.of<Library>(context, listen: false);
@@ -754,6 +837,12 @@ class SeriesScreenState extends State<SeriesScreen> {
             'Successfully linked ${mappings.length} ${mappings.length == 1 ? 'item' : 'items'} with Anilist',
             severity: InfoBarSeverity.success,
           );
+
+          // Load Anilist data for the primary mapping
+          if (mappings.isNotEmpty) {
+            final primaryId = series!.primaryAnilistId ?? mappings.first.anilistId;
+            await _loadAnilistData(primaryId);
+          }
 
           // Update the series with the new mappings
           setState(() {});

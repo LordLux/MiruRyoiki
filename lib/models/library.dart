@@ -291,10 +291,16 @@ class Library with ChangeNotifier {
     await _saveLibrary();
     notifyListeners();
   }
-  
+
   /// Update Anilist mappings for a series
   Future<void> updateSeriesMappings(Series series, List<AnilistMapping> mappings) async {
     series.anilistMappings = mappings;
+    
+    if (mappings.isEmpty) {
+      series.anilistData = null;
+      series.primaryAnilistId = null; // This will use the setter
+    }
+    
     await _saveLibrary();
     notifyListeners();
   }
