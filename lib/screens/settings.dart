@@ -43,6 +43,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     final library = Provider.of<Library>(context);
+    final settings = Provider.of<SettingsManager>(context);
 
     return ScaffoldPage(
       header: const PageHeader(
@@ -145,7 +146,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         onChanged: (ThemeMode? newValue) async {
                           appTheme.mode = newValue!;
                           appTheme.setEffect(appTheme.windowEffect, context);
-                          SettingsManager.saveSettings({'themeMode': newValue.name});
+                          settings.set('themeMode', newValue.name);
 
                           await Future.delayed(const Duration(milliseconds: 300));
                           appTheme.setEffect(appTheme.windowEffect, context);
@@ -165,7 +166,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         onChanged: (WindowEffect? newValue) {
                           appTheme.windowEffect = newValue!;
                           appTheme.setEffect(newValue, context);
-                          SettingsManager.saveSettings({'windowEffect': newValue.name});
+                          settings.set('windowEffect', newValue.name);
                         },
                       ),
                     ],
@@ -188,7 +189,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         }).toList(),
                         onChanged: (double? newValue) {
                           appTheme.fontSize = newValue!;
-                          SettingsManager.saveSettings({'fontSize': newValue});
+                          settings.set('fontSize', newValue);
                         },
                       ),
                     ],
@@ -197,11 +198,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 // Extra dim for acrylic and mica
                 if (appTheme.windowEffect == WindowEffect.aero || appTheme.windowEffect == WindowEffect.acrylic || appTheme.windowEffect == WindowEffect.mica) //
                   ...[
-                  const SizedBox(height: 12),
-                  Text(
-                    context.watch<AppTheme>().windowEffect.toString(),
-                    style: FluentTheme.of(context).typography.body,
-                  ),
                   const SizedBox(height: 12),
                   Row(
                     children: [
@@ -227,6 +223,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         onToggle: (int? value) {
                           final appTheme = context.read<AppTheme>();
                           appTheme.dim = Dim.values[value!];
+                          settings.set('dim', Dim.values[value].name_.toLowerCase());
                         },
                       ),
                     ],
@@ -235,6 +232,30 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ],
             );
           }),
+          const SizedBox(height: 24),
+          // Behavior section
+          SettingsCard(
+            children: [
+              Text(
+                'Behavior',
+                style: FluentTheme.of(context).typography.subtitle,
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'Automatically load Anilist posters for series without local posters.',
+                style: FluentTheme.of(context).typography.body,
+              ),
+              const SizedBox(height: 24),
+              ToggleSwitch(
+                checked: settings.autoLoadAnilistPosters,
+                content: const Text('Automatically load Anilist posters for series without images'),
+                onChanged: (value) {
+                  settings.autoLoadAnilistPosters = value;
+                  settings.set('autoLoadAnilistPosters', value);
+                },
+              ),
+            ],
+          ),
           const SizedBox(height: 24),
           // About section
           SettingsCard(

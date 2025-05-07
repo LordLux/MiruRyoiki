@@ -1,5 +1,7 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/material.dart' show InkWell, Material;
+import 'package:transparent_image/transparent_image.dart';
+import '../services/cache.dart';
 import 'dart:io';
 
 import '../models/series.dart';
@@ -20,20 +22,61 @@ class SeriesCard extends StatefulWidget {
 
 class _SeriesCardState extends State<SeriesCard> {
   bool _isHovering = false;
+  bool _loading = true;
+  ImageProvider? _posterImageProvider;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadImage();
+  }
+
+  @override
+  void didUpdateWidget(SeriesCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.series != widget.series) _loadImage();
+  }
+
+  Future<void> _loadImage() async {
+    if (!mounted) return;
+
+    setState(() => _loading = true);
+
+    // Check if local poster exists
+    if (widget.series.folderImagePath != null) {
+      _posterImageProvider = FileImage(File(widget.series.folderImagePath!));
+    } else
+    // Check if anilist poster exists (cache/network)
+    if (widget.series.posterImage != null) {
+      final imageCache = ImageCacheService();
+      final cachedFile = await imageCache.getCachedImageFile(widget.series.posterImage!);
+
+      if (cachedFile != null)
+        _posterImageProvider = FileImage(cachedFile);
+      else {
+        // If not in cache, use NetworkImage
+        _posterImageProvider = NetworkImage(widget.series.posterImage!);
+        // and start caching in background for future use
+        imageCache.cacheImage(widget.series.posterImage!);
+      }
+    }
+    if (mounted) setState(() => _loading = false);
+  }
 
   Widget _getSeriesImage() {
-    if (widget.series.folderImagePath != null)
-      return Image.file(
-        File(widget.series.folderImagePath!),
+    if (_loading) return const Center(child: ProgressRing(strokeWidth: 3));
+
+    if (_posterImageProvider != null) {
+      return FadeInImage(
+        placeholder: MemoryImage(kTransparentImage),
+        image: _posterImageProvider!,
         fit: BoxFit.contain,
-        errorBuilder: (context, error, stackTrace) => const Center(child: Icon(FluentIcons.file_image, size: 40)),
+        fadeInDuration: const Duration(milliseconds: 300),
+        fadeInCurve: Curves.easeIn,
+        imageErrorBuilder: (context, error, stackTrace) => const Center(child: Icon(FluentIcons.file_image, size: 40)),
       );
-    if (widget.series.posterImage != null)
-      return Image.network(
-        widget.series.posterImage!,
-        fit: BoxFit.contain,
-        errorBuilder: (context, error, stackTrace) => const Center(child: Icon(FluentIcons.file_image, size: 40)),
-      );
+    }
+
     return const Center(child: Icon(FluentIcons.file_image, size: 40));
   }
 

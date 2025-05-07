@@ -179,7 +179,7 @@ class SeriesScreenState extends State<SeriesScreen> {
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
           colors: [
-            series!.dominantColor?.withOpacity(0.15) ?? Colors.transparent,
+            dominantColor.withOpacity(series!.anilistMappings.isEmpty ? 0.15 : 0.5),
             Colors.transparent,
           ],
         ),
@@ -433,7 +433,7 @@ class SeriesScreenState extends State<SeriesScreen> {
           const SizedBox(height: 16),
           ProgressBar(
             value: series.watchedPercentage * 100,
-            activeColor: series.dominantColor,
+            activeColor: dominantColor,
             backgroundColor: Colors.white.withOpacity(.3),
           ),
           ...[
@@ -661,7 +661,7 @@ class SeriesScreenState extends State<SeriesScreen> {
         ),
       ),
       decoration: BoxDecoration(
-        color: Color.lerp(Color.lerp(Colors.black, Colors.white, 0.2)!, series!.dominantColor, 0.4)!.withOpacity(0.8),
+        color: Color.lerp(Color.lerp(Colors.black, Colors.white, 0.2)!, dominantColor, 0.4)!.withOpacity(0.8),
         borderRadius: BorderRadius.circular(5.0),
       ),
       preferBelow: true,

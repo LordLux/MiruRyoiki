@@ -7,6 +7,7 @@ import 'package:path_provider/path_provider.dart';
 
 import '../functions.dart';
 import '../services/anilist/linking.dart';
+import '../services/cache.dart';
 import '../services/file_scanner.dart';
 import '../services/player_trackers/mpchc.dart';
 import '../services/navigation/show_info.dart';
@@ -37,6 +38,171 @@ class Library with ChangeNotifier {
     _mpcTracker.removeListener(_onMpcTrackerUpdate);
     _mpcTracker.dispose();
     super.dispose();
+  }
+
+  /// Load Anilist posters for series that have links but no local images
+  Future<void> loadAnilistPostersForLibrary() async {
+    final linkService = SeriesLinkService();
+    final imageCache = ImageCacheService();
+    await imageCache.init(); // Ensure the cache is initialized
+
+    final needPosters = <Series>[];
+    final alreadyCached = <Series, String>{};
+
+    // Find series tjat need Anilist posters
+    for (final series in _series) {
+      if (series.folderImagePath == null && series.anilistMappings.isNotEmpty) {
+        // Check if we can find the poster URL without fetching
+        final mapping = series.anilistMappings.firstWhere((m) => m.anilistId == (series.primaryAnilistId ?? series.anilistMappings.first.anilistId), orElse: () => series.anilistMappings.first);
+
+        // If we have anilistData with a poster URL check if it's cached
+        if (mapping.anilistData?.posterImage != null) {
+          final cached = await imageCache.getCachedImagePath(mapping.anilistData!.posterImage!);
+          if (cached != null)
+            // Already cached -> save the path
+            alreadyCached[series] = cached;
+          else
+            // Not cached -> need to fetch
+            needPosters.add(series);
+        } else {
+          // No anilistData or no posterImage -> need to fetch
+          needPosters.add(series);
+        }
+      }
+    }
+
+    // Update series that already have cached images
+    for (final entry in alreadyCached.entries) {
+      final series = entry.key;
+      final anilistId = series.primaryAnilistId ?? series.anilistMappings.first.anilistId;
+
+      // Find the mapping with this ID
+      final mappingIndex = series.anilistMappings.indexWhere((m) => m.anilistId == anilistId);
+      if (mappingIndex >= 0) {
+        // We don't need to update the AnilistData, just make sure the image is available
+        if (series.anilistMappings[mappingIndex].anilistData?.posterImage != null) {
+          // Make sure series.anilistData is set if this is the primary
+          if (series.primaryAnilistId == anilistId || series.primaryAnilistId == null) {
+            series.anilistData = series.anilistMappings[mappingIndex].anilistData;
+          }
+        }
+      }
+    }
+
+    if (needPosters.isEmpty) {
+      // If we've updated any cached images, notify listeners
+      if (alreadyCached.isNotEmpty) {
+        notifyListeners();
+      }
+      return;
+    }
+
+    print('Loading Anilist posters for ${needPosters.length} series');
+
+    // Fetch posters in batches to avoid overwhelming the API
+    for (int i = 0; i < needPosters.length; i += 5) {
+      final batch = needPosters.sublist(i, i + 5 > needPosters.length ? needPosters.length : i + 5);
+
+      await Future.wait(batch.map((series) async {
+        final anilistId = series.primaryAnilistId ?? series.anilistMappings.first.anilistId;
+        final anime = await linkService.fetchAnimeDetails(anilistId);
+
+        if (anime != null) {
+          // Pre-cache the image if URL exists
+          if (anime.posterImage != null) {
+            // Poster
+            imageCache.cacheImage(anime.posterImage!);
+
+            // also Banner
+            if (anime.bannerImage != null) //
+              imageCache.cacheImage(anime.bannerImage!);
+          }
+
+          // Find the mapping with this ID
+          for (var j = 0; j < series.anilistMappings.length; j++) {
+            if (series.anilistMappings[j].anilistId == anilistId) {
+              series.anilistMappings[j] = AnilistMapping(
+                localPath: series.anilistMappings[j].localPath,
+                anilistId: anilistId,
+                title: series.anilistMappings[j].title,
+                lastSynced: DateTime.now(),
+                anilistData: anime,
+              );
+            }
+          }
+
+          // Update the series' Anilist data if this is the primary ID
+          if (series.primaryAnilistId == anilistId || series.primaryAnilistId == null) {
+            series.anilistData = anime;
+          }
+        }
+      }));
+
+      // Add a small delay between batches to be nice to the API
+      if (i + 5 < needPosters.length) {
+        await Future.delayed(const Duration(milliseconds: 500));
+      }
+    }
+
+    // Notify listeners after all fetches are complete
+    notifyListeners();
+  }
+
+  /// Reload all Anilist posters, optionally forcing even if they already have images
+  Future<void> refreshAnilistPosters({bool forceAll = false}) async {
+    final linkService = SeriesLinkService();
+    final refreshSeries = <Series>[];
+
+    // Identify series that need refreshing
+    for (final series in _series) {
+      if (forceAll) {
+        if (series.anilistMappings.isNotEmpty) {
+          refreshSeries.add(series);
+        }
+      } else if (series.folderImagePath == null && series.anilistMappings.isNotEmpty) {
+        refreshSeries.add(series);
+      }
+    }
+
+    if (refreshSeries.isEmpty) return;
+
+    print('Refreshing Anilist posters for ${refreshSeries.length} series');
+
+    for (int i = 0; i < refreshSeries.length; i += 5) {
+      final batch = refreshSeries.sublist(i, i + 5 > refreshSeries.length ? refreshSeries.length : i + 5);
+
+      await Future.wait(batch.map((series) async {
+        final anilistId = series.primaryAnilistId ?? series.anilistMappings.first.anilistId;
+        final anime = await linkService.fetchAnimeDetails(anilistId);
+
+        if (anime != null) {
+          // Find the mapping with this ID
+          for (var j = 0; j < series.anilistMappings.length; j++) {
+            if (series.anilistMappings[j].anilistId == anilistId) {
+              series.anilistMappings[j] = AnilistMapping(
+                localPath: series.anilistMappings[j].localPath,
+                anilistId: anilistId,
+                title: series.anilistMappings[j].title,
+                lastSynced: DateTime.now(),
+                anilistData: anime,
+              );
+            }
+          }
+
+          // Update the series' Anilist data if this is the primary ID
+          if (series.primaryAnilistId == anilistId || series.primaryAnilistId == null) {
+            series.anilistData = anime;
+          }
+        }
+      }));
+
+      // Add a small delay between batches to be nice to the API
+      if (i + 5 < refreshSeries.length) {
+        await Future.delayed(const Duration(milliseconds: 500));
+      }
+    }
+
+    notifyListeners();
   }
 
   void _onMpcTrackerUpdate() async {
@@ -295,12 +461,12 @@ class Library with ChangeNotifier {
   /// Update Anilist mappings for a series
   Future<void> updateSeriesMappings(Series series, List<AnilistMapping> mappings) async {
     series.anilistMappings = mappings;
-    
+
     if (mappings.isEmpty) {
       series.anilistData = null;
       series.primaryAnilistId = null; // This will use the setter
     }
-    
+
     await _saveLibrary();
     notifyListeners();
   }
