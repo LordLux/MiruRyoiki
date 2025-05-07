@@ -1,7 +1,9 @@
 import 'dart:io';
-
+import 'package:collection/collection.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/material.dart' as mat;
+
+import '../main.dart';
 import '../models/anilist/mapping.dart';
 import '../models/series.dart';
 import '../services/anilist/linking.dart';
@@ -33,19 +35,21 @@ class AnilistLinkMultiDialog extends ManagedDialog {
             onSave: (mappings) {
               // Call the callback if provided
               onDialogComplete?.call(true, mappings);
-              
+
               if (mappings.isEmpty) {
-                closeDialog(popContext, result: (null, <AnilistMapping>[]));
-                closeDialog(popContext, result: (null, <AnilistMapping>[]));
+                closeDialog(popContext, result: (true, <AnilistMapping>[]));
+                closeDialog(popContext, result: (true, <AnilistMapping>[]));
+                homeKey.currentState?.setState(() {});
                 return;
               }
               closeDialog(popContext, result: (true, mappings));
               closeDialog(popContext, result: (true, mappings));
+              homeKey.currentState?.setState(() {});
             },
             onCancel: () {
               // Call the callback if provided
               onDialogComplete?.call(null, <AnilistMapping>[]);
-              
+
               closeDialog(popContext, result: (null, <AnilistMapping>[]));
               closeDialog(popContext, result: (null, <AnilistMapping>[]));
             },
@@ -77,6 +81,7 @@ class _AnilistLinkMultiContent extends StatefulWidget {
 
 class _AnilistLinkMultiContentState extends State<_AnilistLinkMultiContent> {
   late List<AnilistMapping> mappings;
+  late List<AnilistMapping> oldMappings;
   String mode = 'view';
   String? selectedLocalPath;
   int? selectedAnilistId;
@@ -86,10 +91,24 @@ class _AnilistLinkMultiContentState extends State<_AnilistLinkMultiContent> {
   List<FileSystemEntity> folderContents = [];
   String? currentDirectory;
 
+  bool get _mappingsChanged {
+    if (oldMappings.length != mappings.length) return true;
+
+    // Compare each mapping by ID and path
+    for (int i = 0; i < mappings.length; i++) {
+      if (mappings[i].anilistId != oldMappings[i].anilistId || mappings[i].localPath != oldMappings[i].localPath || mappings[i].title != oldMappings[i].title) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
   @override
   void initState() {
     super.initState();
     mappings = List.from(widget.series.anilistMappings);
+    oldMappings = List.from(mappings);
     currentDirectory = widget.series.path;
     _loadFolderContents();
 
@@ -175,7 +194,24 @@ class _AnilistLinkMultiContentState extends State<_AnilistLinkMultiContent> {
         SizedBox(height: 10),
         Expanded(
           child: mappings.isEmpty
-              ? Center(child: Text('No links configured yet.'))
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(FluentIcons.remove_link, size: 48, color: Colors.grey),
+                      SizedBox(height: 12),
+                      Text(
+                        'No links configured.',
+                        style: FluentTheme.of(context).typography.bodyLarge,
+                      ),
+                      if (oldMappings.isNotEmpty)
+                        Text(
+                          'All links have been removed.',
+                          style: TextStyle(color: Colors.orange),
+                        ),
+                    ],
+                  ),
+                )
               : ListView.builder(
                   itemCount: mappings.length,
                   itemBuilder: (context, index) => _buildMappingItem(mappings[index]),
@@ -197,8 +233,13 @@ class _AnilistLinkMultiContentState extends State<_AnilistLinkMultiContent> {
                 ),
                 SizedBox(width: 8),
                 FilledButton(
-                  onPressed: mappings.isNotEmpty ? () => widget.onSave(mappings) : null,
-                  child: Text('Save Changes'),
+                  onPressed: _mappingsChanged ? () => widget.onSave(mappings) : null,
+                  child: Text(
+                    mappings.isEmpty && oldMappings.isNotEmpty
+                        ? //
+                        'Remove All Links'
+                        : 'Save Changes',
+                  ),
                 ),
               ],
             ),

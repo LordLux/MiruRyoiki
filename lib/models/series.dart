@@ -4,6 +4,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart' show ColorScheme, Colors;
 import 'package:flutter/widgets.dart';
 import 'package:palette_generator/palette_generator.dart';
+import 'package:collection/collection.dart';
 
 import 'anilist/anime.dart';
 import 'anilist/mapping.dart';
@@ -69,6 +70,9 @@ class Series {
   /// Cached dominant color from poster image
   Color? _dominantColor;
 
+  // The currently selected Anilist ID for display purposes
+  int? _primaryAnilistId;
+
   Series({
     required this.name,
     required this.path,
@@ -79,6 +83,15 @@ class Series {
     this.anilistData,
     Color? dominantColor,
   }) : _dominantColor = dominantColor;
+
+// Getter and setter for primaryAnilistId
+  int? get primaryAnilistId => _primaryAnilistId ?? anilistId; // Fall back to the first mapping
+
+  set primaryAnilistId(int? value) {
+    if (value != null && anilistMappings.any((m) => m.anilistId == value)) {
+      _primaryAnilistId = value;
+    }
+  }
 
   // Backwards compatibility for older versions
   int? get anilistId => anilistMappings.isNotEmpty ? anilistMappings.first.anilistId : null;
@@ -179,6 +192,7 @@ class Series {
       'relatedMedia': relatedMedia.map((e) => e.toJson()).toList(),
       'anilistMappings': anilistMappings.map((m) => m.toJson()).toList(),
       'dominantColor': _dominantColor?.value,
+      'primaryAnilistId': _primaryAnilistId,
     };
   }
 
@@ -205,7 +219,7 @@ class Series {
       ));
     }
 
-    return Series(
+    final series = Series(
       name: json['name'],
       path: json['path'],
       folderImagePath: json['posterPath'],
@@ -214,6 +228,10 @@ class Series {
       anilistMappings: mappings,
       dominantColor: dominantColor,
     );
+    if (json['primaryAnilistId'] != null) //
+      series._primaryAnilistId = json['primaryAnilistId'];
+
+    return series;
   }
 
   List<Episode> getEpisodesForSeason([int i = 1]) {
@@ -230,32 +248,47 @@ class Series {
     return relatedMedia.where((e) => !categorizedEpisodes.contains(e)).toList();
   }
 
+  AnilistAnime? get currentAnilistData {
+    if (_primaryAnilistId == null) return anilistData;
+
+    // Find mapping with the primary ID
+    final mapping = anilistMappings.firstWhereOrNull((m) => m.anilistId == _primaryAnilistId);
+
+    // If found and has data, return it
+    if (mapping != null && mapping.anilistData != null) {
+      return mapping.anilistData;
+    }
+
+    // Fall back to the first mapping's data
+    return anilistData;
+  }
+
   // Anilist Getters
   /// Banner image from Anilist
-  String? get bannerImage => anilistData?.bannerImage;
+  String? get bannerImage => currentAnilistData?.bannerImage;
 
   /// Poster image from Anilist
-  String? get posterImage => anilistData?.posterImage;
+  String? get posterImage => currentAnilistData?.posterImage;
 
   /// Official title from Anilist
   String get displayTitle =>
-      anilistData?.title.userPreferred ?? //
-      anilistData?.title.english ??
-      anilistData?.title.romaji ??
+      currentAnilistData?.title.userPreferred ?? //
+      currentAnilistData?.title.english ??
+      currentAnilistData?.title.romaji ??
       name;
 
   /// Description from Anilist
-  String? get description => anilistData?.description;
+  String? get description => currentAnilistData?.description;
 
   /// Rating from Anilist
-  int? get rating => anilistData?.averageScore;
+  int? get rating => currentAnilistData?.averageScore;
 
   /// Popularity from Anilist
-  int? get popularity => anilistData?.popularity;
+  int? get popularity => currentAnilistData?.popularity;
 
   /// Format from Anilist (TV, Movie, etc)
-  String? get format => anilistData?.format;
+  String? get format => currentAnilistData?.format;
 
   /// Genres from Anilist
-  List<String> get genres => anilistData?.genres ?? [];
+  List<String> get genres => currentAnilistData?.genres ?? [];
 }
