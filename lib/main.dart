@@ -25,6 +25,7 @@ import 'screens/series.dart';
 import 'screens/settings.dart';
 import 'services/anilist/auth.dart';
 import 'services/anilist/provider.dart';
+import 'services/cache.dart';
 import 'services/file_writer.dart';
 import 'services/navigation/debug.dart';
 import 'services/navigation/navigation.dart';
@@ -39,6 +40,7 @@ import 'widgets/window_buttons.dart';
 
 final _appTheme = AppTheme();
 final _navigationManager = NavigationManager();
+final _settings = SettingsManager();
 
 // ignore: library_private_types_in_public_api
 final GlobalKey<_AppRootState> homeKey = GlobalKey<_AppRootState>();
@@ -51,27 +53,36 @@ final GlobalKey<ToggleableFlyoutContentState> reverseAnimationPaletteKey = Globa
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // Only run on Windows
   if (!Platform.isWindows) throw UnimplementedError('This app is only supported on Windows (for now).');
 
-  // Load .env file
+  // Load environment variables
   await dotenv.load(fileName: '.env');
 
+  // Register custom URL scheme for deep linking
   await registry.register(mRyoikiAnilistScheme);
 
+  // Load system theme color
   if (!kIsWeb && defaultTargetPlatform == TargetPlatform.windows) SystemTheme.accentColor.load();
 
+  // Initialize Window Manager
   _initializeWindowManager();
+  
+  // Initialize image cache
+  final imageCache = ImageCacheService();
+  await imageCache.init();
 
-  SettingsManager.settings = await SettingsManager.loadSettings();
+  // Initialize settings
+  await _settings.init();
 
-  print(getRfeHash(r"M:\Videos\Series\Your Lie in April\21 - Snow.mkv"));
-
+  // Run the app
   runApp(
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (context) => Library()),
         ChangeNotifierProvider(create: (context) => AnilistProvider()),
         ChangeNotifierProvider.value(value: _appTheme),
+        ChangeNotifierProvider.value(value: _settings),
         ChangeNotifierProvider.value(value: _navigationManager),
       ],
       child: const MyApp(),
@@ -107,17 +118,21 @@ class _MyAppState extends State<MyApp> {
       // Listen for deep links while app is running
       _handleIncomingLinks();
 
-      // Assign settings loaded from cache
-      SettingsManager.assignSettings(context);
-
       // Providers initialization
       final libraryProvider = Provider.of<Library>(context, listen: false);
       final anilistProvider = Provider.of<AnilistProvider>(context, listen: false);
+      final settings = Provider.of<SettingsManager>(context, listen: false);
+
+      // Apply settings to app components
+      settings.applySettings(context);
 
       await libraryProvider.scanLibrary();
       await anilistProvider.initialize();
 
-      await Future.delayed(const Duration(milliseconds: kDebugMode ? 52 : 252));
+      await Future.delayed(const Duration(milliseconds: kDebugMode ? 52 : 10));
+      print('Loading Anilist posters...');
+      await libraryProvider.loadAnilistPostersForLibrary();
+      await Future.delayed(const Duration(milliseconds: kDebugMode ? 52 : 250));
       final appTheme = Provider.of<AppTheme>(context, listen: false);
       appTheme.setEffect(appTheme.windowEffect, rootNavigatorKey.currentContext!);
     });
