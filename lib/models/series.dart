@@ -6,6 +6,7 @@ import 'package:flutter/widgets.dart';
 import 'package:palette_generator/palette_generator.dart';
 
 import 'anilist/anime.dart';
+import 'anilist/mapping.dart';
 import 'episode.dart';
 import '../enums.dart';
 
@@ -59,8 +60,8 @@ class Series {
   /// List of related media (ONA/OVA) for the series from the File System
   final List<Episode> relatedMedia;
 
-  /// Anilist ID for the series
-  int? anilistId;
+  /// Anilist IDs for the series
+  List<AnilistMapping> anilistMappings;
 
   /// Anilist data for the series
   AnilistAnime? anilistData;
@@ -74,10 +75,52 @@ class Series {
     this.folderImagePath,
     required this.seasons,
     this.relatedMedia = const [],
-    this.anilistId,
+    this.anilistMappings = const [],
     this.anilistData,
     Color? dominantColor,
   }) : _dominantColor = dominantColor;
+
+  // Backwards compatibility for older versions
+  int? get anilistId => anilistMappings.isNotEmpty ? anilistMappings.first.anilistId : null;
+  set anilistId(int? value) {
+    if (value == null) {
+      anilistMappings.clear();
+    } else if (anilistMappings.isEmpty) {
+      anilistMappings.add(AnilistMapping(
+        localPath: path,
+        anilistId: value,
+      ));
+    } else {
+      anilistMappings[0] = AnilistMapping(
+        localPath: path,
+        anilistId: value,
+        title: anilistMappings[0].title,
+        lastSynced: anilistMappings[0].lastSynced,
+      );
+    }
+  }
+
+  // Helper to find mapping for a path
+  AnilistMapping? getMappingForPath(String path) {
+    // Exact match
+    for (var mapping in anilistMappings) {
+      if (mapping.localPath == path) {
+        return mapping;
+      }
+    }
+
+    // Parent folder match (for nested files)
+    for (var mapping in anilistMappings) {
+      if (path.startsWith(mapping.localPath)) {
+        return mapping;
+      }
+    }
+
+    return null;
+  }
+
+  // Get Anilist ID for an episode
+  int? getAnilistIdForEpisode(Episode episode) => getMappingForPath(episode.path)?.anilistId;
 
   /// Total number of episodes across all seasons and related media
   int get totalEpisodes => seasons.fold(0, (sum, season) => sum + season.episodes.length) + relatedMedia.length;
@@ -134,24 +177,41 @@ class Series {
       'posterPath': folderImagePath,
       'seasons': seasons.map((s) => s.toJson()).toList(),
       'relatedMedia': relatedMedia.map((e) => e.toJson()).toList(),
-      'anilistId': anilistId,
+      'anilistMappings': anilistMappings.map((m) => m.toJson()).toList(),
       'dominantColor': _dominantColor?.value,
     };
   }
 
   // For JSON deserialization
   factory Series.fromJson(Map<String, dynamic> json) {
+    // Process dominant color
     Color? dominantColor;
-    if (json['dominantColor'] != null) //
+    if (json['dominantColor'] != null) {
       dominantColor = Color(json['dominantColor'] as int);
+    }
+
+    // Process anilist mappings
+    List<AnilistMapping> mappings = [];
+
+    // Handle newer format with anilistMappings array
+    if (json.containsKey('anilistMappings')) {
+      mappings = (json['anilistMappings'] as List).map((m) => AnilistMapping.fromJson(m as Map<String, dynamic>)).toList();
+    }
+    // Support legacy format with single anilistId
+    else if (json.containsKey('anilistId') && json['anilistId'] != null) {
+      mappings.add(AnilistMapping(
+        localPath: json['path'],
+        anilistId: json['anilistId'] as int,
+      ));
+    }
 
     return Series(
       name: json['name'],
       path: json['path'],
       folderImagePath: json['posterPath'],
-      seasons: (json['seasons'] as List).map((s) => Season.fromJson(s)).toList(),
-      relatedMedia: (json['relatedMedia'] as List?)?.map((e) => Episode.fromJson(e)).toList() ?? [],
-      anilistId: json['anilistId'],
+      seasons: (json['seasons'] as List).map((s) => Season.fromJson(s as Map<String, dynamic>)).toList(),
+      relatedMedia: (json['relatedMedia'] as List?)?.map((e) => Episode.fromJson(e as Map<String, dynamic>)).toList() ?? [],
+      anilistMappings: mappings,
       dominantColor: dominantColor,
     );
   }

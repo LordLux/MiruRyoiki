@@ -11,6 +11,7 @@ import '../services/file_scanner.dart';
 import '../services/player_trackers/mpchc.dart';
 import '../services/navigation/show_info.dart';
 import 'anilist/anime.dart';
+import 'anilist/mapping.dart';
 import 'series.dart';
 import 'episode.dart';
 
@@ -142,7 +143,7 @@ class Library with ChangeNotifier {
     if (!await miruRyoiokiDir.exists()) await miruRyoiokiDir.create(recursive: true);
     return miruRyoiokiDir;
   }
-  
+
   static const String settingsFileName = 'settings';
   static const String miruryoikiLibrary = 'library.json';
 
@@ -258,16 +259,44 @@ class Library with ChangeNotifier {
   }
 
   /// Link a series with Anilist
-  Future<bool> linkSeriesWithAnilist(Series series, int anilistId) async {
-    final seriesLinkService = SeriesLinkService();
-    final success = await seriesLinkService.linkSeries(series, anilistId);
+  Future<void> linkSeriesWithAnilist(Series series, int anilistId, {String? localPath, String? title}) async {
+    final path = localPath ?? series.path;
 
-    if (success) {
-      await _saveLibrary();
-      notifyListeners();
+    // Check if this path already has a mapping
+    bool updated = false;
+    for (int i = 0; i < series.anilistMappings.length; i++) {
+      if (series.anilistMappings[i].localPath == path) {
+        // Update existing mapping
+        series.anilistMappings[i] = AnilistMapping(
+          localPath: path,
+          anilistId: anilistId,
+          title: title ?? series.anilistMappings[i].title,
+          lastSynced: DateTime.now(),
+        );
+        updated = true;
+        break;
+      }
     }
 
-    return success;
+    // Add new mapping if not updated
+    if (!updated) {
+      series.anilistMappings.add(AnilistMapping(
+        localPath: path,
+        anilistId: anilistId,
+        title: title,
+        lastSynced: DateTime.now(),
+      ));
+    }
+
+    await _saveLibrary();
+    notifyListeners();
+  }
+  
+  /// Update Anilist mappings for a series
+  Future<void> updateSeriesMappings(Series series, List<AnilistMapping> mappings) async {
+    series.anilistMappings = mappings;
+    await _saveLibrary();
+    notifyListeners();
   }
 
   /// Refresh metadata for all series

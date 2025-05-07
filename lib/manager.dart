@@ -8,7 +8,7 @@ import 'package:recase/recase.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'enums.dart';
-import 'services/shortcuts.dart';
+import 'services/navigation/shortcuts.dart';
 import 'theme.dart';
 import 'widgets/simple_flyout.dart';
 

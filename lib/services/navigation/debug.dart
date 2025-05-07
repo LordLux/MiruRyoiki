@@ -18,7 +18,7 @@ class NavigationHistoryDebug extends StatelessWidget {
             children: [
               const Text('Navigation Stack:', style: TextStyle(color: Colors.white)),
               const SizedBox(height: 8),
-              ...navManager.stack.map((item) {
+              ...navManager.stack.reversed.map((item) {
                 return Padding(
                   padding: const EdgeInsets.symmetric(vertical: 2),
                   child: Row(

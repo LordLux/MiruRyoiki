@@ -1,0 +1,482 @@
+import 'dart:io';
+
+import 'package:fluent_ui/fluent_ui.dart';
+import 'package:flutter/material.dart' as mat;
+import '../models/anilist/mapping.dart';
+import '../models/series.dart';
+import '../services/anilist/linking.dart';
+import '../services/navigation/dialogs.dart';
+import '../services/navigation/show_info.dart';
+import 'link_anilist.dart';
+
+class AnilistLinkMultiDialog extends ManagedDialog {
+  final Series series;
+  final SeriesLinkService linkService;
+  final Function(int, String)? onLink;
+  final Function(bool? success, List<AnilistMapping> mappings)? onDialogComplete;
+
+  AnilistLinkMultiDialog({
+    super.key,
+    required this.series,
+    required this.linkService,
+    this.onLink,
+    required super.popContext,
+    this.onDialogComplete,
+    super.title = const Text('Link Local entry to Anilist entry'),
+    super.constraints = const BoxConstraints(maxWidth: 1000, maxHeight: 600),
+  }) : super(
+          contentBuilder: (context, constraints) => _AnilistLinkMultiContent(
+            series: series,
+            linkService: linkService,
+            onLink: onLink,
+            constraints: constraints,
+            onSave: (mappings) {
+              // Call the callback if provided
+              onDialogComplete?.call(true, mappings);
+              
+              if (mappings.isEmpty) {
+                closeDialog(popContext, result: (null, <AnilistMapping>[]));
+                closeDialog(popContext, result: (null, <AnilistMapping>[]));
+                return;
+              }
+              closeDialog(popContext, result: (true, mappings));
+              closeDialog(popContext, result: (true, mappings));
+            },
+            onCancel: () {
+              // Call the callback if provided
+              onDialogComplete?.call(null, <AnilistMapping>[]);
+              
+              closeDialog(popContext, result: (null, <AnilistMapping>[]));
+              closeDialog(popContext, result: (null, <AnilistMapping>[]));
+            },
+          ),
+          actions: (_) => [],
+        );
+}
+
+class _AnilistLinkMultiContent extends StatefulWidget {
+  final Series series;
+  final SeriesLinkService linkService;
+  final Function(int, String)? onLink;
+  final BoxConstraints constraints;
+  final Function(List<AnilistMapping> mappings) onSave;
+  final VoidCallback onCancel;
+
+  const _AnilistLinkMultiContent({
+    required this.series,
+    required this.linkService,
+    this.onLink,
+    required this.constraints,
+    required this.onSave,
+    required this.onCancel,
+  });
+
+  @override
+  _AnilistLinkMultiContentState createState() => _AnilistLinkMultiContentState();
+}
+
+class _AnilistLinkMultiContentState extends State<_AnilistLinkMultiContent> {
+  late List<AnilistMapping> mappings;
+  String mode = 'view';
+  String? selectedLocalPath;
+  int? selectedAnilistId;
+  String? selectedTitle;
+
+  // For folder/file browser
+  List<FileSystemEntity> folderContents = [];
+  String? currentDirectory;
+
+  @override
+  void initState() {
+    super.initState();
+    mappings = List.from(widget.series.anilistMappings);
+    currentDirectory = widget.series.path;
+    _loadFolderContents();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mode == 'view') _switchToViewMode();
+    });
+  }
+
+  void _loadFolderContents() {
+    if (currentDirectory == null) return;
+
+    try {
+      final dir = Directory(currentDirectory!);
+      folderContents = dir.listSync()
+        ..sort((a, b) {
+          // Folders first, then files
+          bool aIsDir = a is Directory;
+          bool bIsDir = b is Directory;
+          if (aIsDir && !bIsDir) return -1;
+          if (!aIsDir && bIsDir) return 1;
+          return a.path.compareTo(b.path);
+        });
+      setState(() {});
+    } catch (e) {
+      snackBar('Error loading folder contents: $e', severity: InfoBarSeverity.error);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return _buildContent();
+  }
+
+  void _switchToViewMode() {
+    context.resizeManagedDialog(
+      constraints: BoxConstraints(
+        maxWidth: 700, // Smaller width for view mode
+        maxHeight: 500,
+      ),
+    );
+
+    setState(() {
+      mode = 'view';
+      selectedLocalPath = null;
+      selectedAnilistId = null;
+      selectedTitle = null;
+    });
+  }
+
+  // Switch to add mode with appropriate sizing
+  void _switchToAddMode() {
+    context.resizeManagedDialog(
+      constraints: BoxConstraints(
+        maxWidth: 1000, // Full width for add mode
+        maxHeight: 600,
+      ),
+    );
+
+    setState(() {
+      mode = 'add';
+      selectedLocalPath = null;
+      selectedAnilistId = null;
+      selectedTitle = null;
+    });
+  }
+
+  Widget _buildContent() {
+    switch (mode) {
+      case 'add':
+        return _buildAddForm();
+      case 'view':
+      default:
+        return _buildMappingsList();
+    }
+  }
+
+  Widget _buildMappingsList() {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text('Current Anilist Links:'),
+        SizedBox(height: 10),
+        Expanded(
+          child: mappings.isEmpty
+              ? Center(child: Text('No links configured yet.'))
+              : ListView.builder(
+                  itemCount: mappings.length,
+                  itemBuilder: (context, index) => _buildMappingItem(mappings[index]),
+                ),
+        ),
+        SizedBox(height: 10),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Button(
+              onPressed: widget.onCancel,
+              child: Text('Cancel'),
+            ),
+            Row(
+              children: [
+                Button(
+                  onPressed: _switchToAddMode,
+                  child: Text('Add New Link'),
+                ),
+                SizedBox(width: 8),
+                FilledButton(
+                  onPressed: mappings.isNotEmpty ? () => widget.onSave(mappings) : null,
+                  child: Text('Save Changes'),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMappingItem(AnilistMapping mapping) {
+    final isRootMapping = mapping.localPath == widget.series.path;
+    return Card(
+      padding: EdgeInsets.zero,
+      borderRadius: BorderRadius.circular(4),
+      child: ListTile(
+        leading: Icon(
+          isRootMapping ? FluentIcons.archive : FluentIcons.link,
+          color: FluentTheme.of(context).accentColor,
+        ),
+        title: Text(mapping.title ?? 'Anilist ID: ${mapping.anilistId}'),
+        subtitle: Text('Linked to: ${_getDisplayPath(mapping.localPath)}'),
+        trailing: IconButton(
+          icon: Icon(FluentIcons.delete),
+          onPressed: () {
+            setState(() {
+              mappings.remove(mapping);
+            });
+          },
+        ),
+      ),
+    );
+  }
+
+  String _getDisplayPath(String path) {
+    final seriesPath = widget.series.path;
+    if (path == seriesPath) return '(Main Series Folder)';
+    if (path.startsWith(seriesPath)) {
+      return path.substring(seriesPath.length + 1);
+    }
+    return path;
+  }
+
+  Widget _buildAddForm() {
+    return Column(
+      children: [
+        Expanded(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Left panel: file/folder browser
+              Expanded(
+                flex: 1,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Select the local Folder or File:'),
+                    SizedBox(height: 8),
+                    Expanded(child: _buildPathSelector()),
+                    if (selectedLocalPath != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8.0),
+                        child: Text(
+                          'Selected: ${_getDisplayPath(selectedLocalPath!)}',
+                          style: FluentTheme.of(context).typography.bodyStrong,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              SizedBox(width: 16),
+              // Right panel: Anilist search
+              Expanded(
+                flex: 1,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Search for the Anilist entry:'),
+                    SizedBox(height: 8),
+                    Expanded(
+                      child: _buildAnilistSearch(),
+                    ),
+                    if (selectedAnilistId != null && selectedTitle != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8.0),
+                        child: Text(
+                          'Selected: $selectedTitle',
+                          style: FluentTheme.of(context).typography.bodyStrong,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        SizedBox(height: 16),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            // Status indicators
+            Expanded(
+              child: Row(
+                children: [
+                  Icon(
+                    selectedLocalPath != null ? FluentIcons.check_mark : FluentIcons.circle_ring,
+                    size: 16,
+                    color: selectedLocalPath != null ? Colors.green : Colors.grey,
+                  ),
+                  SizedBox(width: 4),
+                  Text('Local path'),
+                  SizedBox(width: 12),
+                  Icon(
+                    selectedAnilistId != null ? FluentIcons.check_mark : FluentIcons.circle_ring,
+                    size: 16,
+                    color: selectedAnilistId != null ? Colors.green : Colors.grey,
+                  ),
+                  SizedBox(width: 4),
+                  Text('Anilist entry'),
+                ],
+              ),
+            ),
+
+            // Buttons
+            Button(
+              onPressed: _switchToViewMode,
+              child: Text('Back'),
+            ),
+            SizedBox(width: 8),
+            FilledButton(
+              onPressed: selectedLocalPath != null && selectedAnilistId != null
+                  ? () {
+                      setState(() {
+                        mappings.add(AnilistMapping(
+                          localPath: selectedLocalPath!,
+                          anilistId: selectedAnilistId!,
+                          title: selectedTitle,
+                        ));
+                        _switchToViewMode();
+                      });
+                    }
+                  : null,
+              child: Text('Add Link'),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPathSelector() {
+    return Container(
+      decoration: BoxDecoration(
+        border: Border.all(color: FluentTheme.of(context).accentColor),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Column(
+        children: [
+          // Path navigation bar
+          Row(
+            children: [
+              Button(
+                onPressed: currentDirectory == widget.series.path
+                    ? null
+                    : () {
+                        setState(() {
+                          currentDirectory = Directory(currentDirectory!).parent.path;
+                          _loadFolderContents();
+                        });
+                      },
+                child: Icon(FluentIcons.back),
+              ),
+              SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  _getDisplayPath(currentDirectory ?? ''),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+          Divider(),
+          // File/folder list
+          Expanded(
+            child: ListView.builder(
+              itemCount: folderContents.length + 1, // +1 for current folder option
+              itemBuilder: (context, index) {
+                if (index == 0) {
+                  // Option to select the current directory itself
+                  final isSelected = selectedLocalPath == currentDirectory;
+                  // Option to select the current directory itself
+                  return Card(
+                    padding: EdgeInsets.zero,
+                    borderRadius: BorderRadius.circular(4),
+                    backgroundColor: isSelected ? FluentTheme.of(context).accentColor.withOpacity(0.1) : Colors.transparent,
+                    child: ListTile(
+                      leading: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(FluentIcons.folder, color: isSelected ? FluentTheme.of(context).accentColor : null),
+                          if (isSelected)
+                            Padding(
+                              padding: const EdgeInsets.only(left: 4),
+                              child: Icon(FluentIcons.check_mark, size: 12, color: FluentTheme.of(context).accentColor),
+                            ),
+                        ],
+                      ),
+                      title: Text('(This Folder)', style: isSelected ? TextStyle(fontWeight: FontWeight.bold) : null),
+                      onPressed: () {
+                        setState(() {
+                          selectedLocalPath = currentDirectory;
+                        });
+                      },
+                    ),
+                  );
+                }
+
+                final entity = folderContents[index - 1];
+                final isDir = entity is Directory;
+                final fileName = entity.path.split(Platform.pathSeparator).last;
+                final isSelected = selectedLocalPath == entity.path;
+
+                return Card(
+                  padding: EdgeInsets.zero,
+                  borderRadius: BorderRadius.circular(4),
+                  backgroundColor: isSelected ? FluentTheme.of(context).accentColor.withOpacity(0.1) : Colors.transparent,
+                  child: ListTile(
+                    leading: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          isDir ? FluentIcons.folder : FluentIcons.document,
+                          color: isSelected ? FluentTheme.of(context).accentColor : null,
+                        ),
+                        if (isSelected)
+                          Padding(
+                            padding: const EdgeInsets.only(left: 4),
+                            child: Icon(FluentIcons.check_mark, size: 12, color: FluentTheme.of(context).accentColor),
+                          ),
+                      ],
+                    ),
+                    title: Text(fileName, style: isSelected ? TextStyle(fontWeight: FontWeight.bold) : null),
+                    onPressed: () {
+                      if (isDir) {
+                        setState(() {
+                          // Both select and navigate to the folder
+                          selectedLocalPath = entity.path;
+                          currentDirectory = entity.path;
+                          _loadFolderContents();
+                        });
+                      } else {
+                        setState(() {
+                          selectedLocalPath = entity.path;
+                        });
+                      }
+                    },
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAnilistSearch() {
+    return AnilistSearchPanel(
+      initialSearch: widget.series.name,
+      linkService: widget.linkService,
+      series: widget.series,
+      constraints: widget.constraints,
+      skipAutoClose: true,
+      onLink: (id, name) async {
+        setState(() {
+          selectedAnilistId = id;
+          selectedTitle = name;
+        });
+      },
+    );
+  }
+}
