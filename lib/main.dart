@@ -1,7 +1,7 @@
 // ignore_for_file: use_build_context_synchronously
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart' show Icons, MaterialPageRoute, ScaffoldMessenger;
+import 'package:flutter/material.dart' show Icons, Material, MaterialPageRoute, ScaffoldMessenger;
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:fluent_ui3/fluent_ui.dart' as fluent_ui3;
 import 'package:flutter_acrylic/flutter_acrylic.dart';
@@ -29,7 +29,7 @@ import 'services/file_writer.dart';
 import 'services/navigation/debug.dart';
 import 'services/navigation/navigation.dart';
 import 'services/registry.dart' as registry;
-import 'services/shortcuts.dart';
+import 'services/navigation/shortcuts.dart';
 import 'services/navigation/show_info.dart';
 import 'theme.dart';
 import 'utils/color_utils.dart';
@@ -185,10 +185,10 @@ class _MyAppState extends State<MyApp> {
               data: FluentTheme.of(context).copyWith(
                 buttonTheme: ButtonThemeData(
                   defaultButtonStyle: ButtonStyle(
-                    padding: ButtonState.all(const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 8,
-                    )),
+                    padding: ButtonState.all(const EdgeInsets.symmetric(horizontal: 20, vertical: 8)),
+                  ),
+                  filledButtonStyle: ButtonStyle(
+                    padding: ButtonState.all(const EdgeInsets.symmetric(horizontal: 20, vertical: 8)),
                   ),
                 ),
               ),
@@ -501,7 +501,7 @@ class _AppRootState extends State<AppRoot> {
               children: [
                 // Menu bar
                 SizedBox(
-                  width: winButtonsWidth + 71 + 10,
+                  width: winButtonsWidth + 71 + 13,
                   child: Padding(
                     padding: const EdgeInsets.only(left: 35 + 10),
                     child: MenuBar(key: ValueKey('mainMenuBar'), items: [
@@ -531,15 +531,7 @@ class _AppRootState extends State<AppRoot> {
                         MenuFlyoutItem(
                           text: const Text('Debug History'),
                           onPressed: () {
-                            showManagedDialog(
-                              context: context,
-                              id: 'history:debug',
-                              title: 'Debug History',
-                              builder: (context) => ManagedDialog(
-                                content: const NavigationHistoryDebug(),
-                                title: Text('Debug History'),
-                              ),
-                            );
+                            showDebugDialog(context);
                           },
                         ),
                       ]),
@@ -618,7 +610,7 @@ class _AppRootState extends State<AppRoot> {
       // Find active dialogs and close them
       // This assumes dialogs are managed through Flutter's dialog system
       // and will be removed from stack using the showManagedDialog helper
-      closeDialog(context);
+      // closeDialog(context);
       return true;
     } else if (_isSeriesView) {
       exitSeriesView();

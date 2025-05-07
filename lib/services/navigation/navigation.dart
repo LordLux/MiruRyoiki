@@ -1,5 +1,5 @@
+import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/foundation.dart';
-import '../../main.dart';
 
 enum NavigationLevel {
   pane, // Top-level navigation items (Library, Settings)
@@ -25,12 +25,14 @@ class NavigationItem {
   final String title;
   final NavigationLevel level;
   final Object? data;
+  final GlobalKey<NavigatorState>? navigatorKey;
 
   NavigationItem({
     required this.id,
     required this.title,
     required this.level,
     this.data,
+    this.navigatorKey,
   });
 
   @override
@@ -49,7 +51,7 @@ class NavigationManager extends ChangeNotifier {
   bool get canGoBack => _stack.length > 1;
 
   // Navigation methods
-  void pushPane(String id, String title, {Object? data}) {
+  void pushPane(String id, String title, {Object? data, GlobalKey<NavigatorState>? navigatorKey}) {
     // When pushing a pane, remove all other items if coming from another pane
     if (_stack.isNotEmpty && _stack.last.level == NavigationLevel.pane) {
       _stack.clear();
@@ -60,24 +62,27 @@ class NavigationManager extends ChangeNotifier {
       title: title,
       level: NavigationLevel.pane,
       data: data,
+      navigatorKey: navigatorKey,
     ));
   }
 
-  void pushPage(String id, String title, {Object? data}) {
+  void pushPage(String id, String title, {Object? data, GlobalKey<NavigatorState>? navigatorKey}) {
     _push(NavigationItem(
       id: id,
       title: title,
       level: NavigationLevel.page,
       data: data,
+      navigatorKey: navigatorKey,
     ));
   }
 
-  void pushDialog(String id, String title, {Object? data}) {
+  void pushDialog(String id, String title, {Object? data, GlobalKey<NavigatorState>? navigatorKey}) {
     _push(NavigationItem(
       id: id,
       title: title,
       level: NavigationLevel.dialog,
       data: data,
+      navigatorKey: navigatorKey,
     ));
   }
 
@@ -125,7 +130,7 @@ class NavigationManager extends ChangeNotifier {
   }
 
   void _logCurrentStack() {
-    if (kDebugMode) {
+    if (false && kDebugMode) {
       print('----------------------------------------------');
       print('Navigation Stack:');
       for (int i = 0; i < _stack.length; i++) {
@@ -136,10 +141,10 @@ class NavigationManager extends ChangeNotifier {
     }
   }
 
+  /// Pops the current dialog from the stack and returns true if successful.
   bool popDialog() {
     if (!hasDialog) return false;
     
-    goBack();
-    return true;
+    return goBack();
   }
 }

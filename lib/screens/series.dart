@@ -10,8 +10,9 @@ import 'package:open_app_file/open_app_file.dart';
 import 'package:provider/provider.dart';
 import 'package:smooth_scroll_multiplatform/smooth_scroll_multiplatform.dart';
 
-import '../dialogs/confirm_watch_all.dart';
 import '../dialogs/link_anilist.dart';
+import '../dialogs/link_anilist_multi.dart';
+import '../models/anilist/mapping.dart';
 import '../models/library.dart';
 import '../models/series.dart';
 import '../models/episode.dart';
@@ -210,15 +211,41 @@ class SeriesScreenState extends State<SeriesScreen> {
             _buildButton(
               series.watchedPercentage == 1
                   ? null
-                  : () => showDialog(
+                  : () => showManagedDialog(
                         context: context,
-                        builder: (context) => ConfirmWatchAllDialog(series: series),
+                        id: 'confirmWatchAll',
+                        title: 'Confirm Watch All',
+                        enableBarrierDismiss: true,
+                        builder: (popContext) => ManagedDialog(
+                          constraints: const BoxConstraints(
+                            maxWidth: 500,
+                            maxHeight: 200,
+                          ),
+                          title: Text('Mark All Watched'),
+                          popContext: popContext,
+                          contentBuilder: (popContext, constraints) => //
+                              Text('Are you sure you want to mark all episodes of "${series.displayTitle}" as watched?'),
+                          actions: (_) => [
+                            ManagedDialogButton(
+                              popContext: popContext,
+                              text: 'Cancel',
+                            ),
+                            ManagedDialogButton(
+                              text: 'Confirm',
+                              popContext: popContext,
+                              onPressed: () {
+                                final library = popContext.read<Library>();
+                                library.markSeriesWatched(series);
+                              },
+                            ),
+                          ],
+                        ),
                       ),
               const Icon(FluentIcons.check_mark),
               series.watchedPercentage == 1 ? 'You have already watched all episodes' : 'Mark All as Watched',
             ),
             _buildButton(
-              context.watch<AnilistProvider>().isLoggedIn ? () => _linkWithAnilist(context) : null,
+              context.watch<AnilistProvider>().isLoggedIn && series.seasons.isNotEmpty ? () => _linkWithAnilist(context) : null,
               Icon(
                 series.anilistId != null ? FluentIcons.link : FluentIcons.add_link,
                 color: Colors.white,
@@ -682,18 +709,54 @@ class SeriesScreenState extends State<SeriesScreen> {
     }
 
     // Show the dialog
-    final result = await showManagedDialog<bool>(
+    await showManagedDialog<(bool?, List<AnilistMapping>)?>(
       context: context,
       id: 'linkAnilist:${series!.path}',
       title: 'Link to Anilist',
       data: series!.path,
-      builder: (context) => AnilistLinkDialog(
-        content: null,
+      enableBarrierDismiss: true,
+      builder: (context) => AnilistLinkMultiDialog(
+        constraints: const BoxConstraints(
+          maxWidth: 1300,
+          maxHeight: 600,
+        ),
         series: series!,
+        popContext: context,
         linkService: SeriesLinkService(),
-        onLink: (anilistId) async {
+        onLink: (_, __) {},
+        onDialogComplete: (success, mappings) async {
+          // if the dialog was closed without a result, do nothing
+          if (success == null) {
+            print('Dialog closed without result');
+            return;
+          }
+
+          // if the dialog was closed with a result, check if it was successful
+          if (!success) {
+            print('Linking failed');
+            snackBar('Failed to link with Anilist', severity: InfoBarSeverity.error);
+            return;
+          }
+
+          if (mappings.isEmpty) return; // no mappings to update
+
+          // if dialog was closed with a result, and it was successful, update the series mappings
           final library = Provider.of<Library>(context, listen: false);
-          await library.linkSeriesWithAnilist(series!, anilistId);
+
+          // Important: Update the series mappings
+          series!.anilistMappings = mappings;
+
+          // Ensure the library gets saved
+          await library.updateSeriesMappings(series!, mappings);
+
+          // Add feedback
+          snackBar(
+            'Successfully linked ${mappings.length} ${mappings.length == 1 ? 'item' : 'items'} with Anilist',
+            severity: InfoBarSeverity.success,
+          );
+
+          // Update the series with the new mappings
+          setState(() {});
         },
       ),
     );

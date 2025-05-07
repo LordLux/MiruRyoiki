@@ -2,15 +2,16 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:miruryoiki/services/navigation/dialogs.dart';
 import 'package:provider/provider.dart';
 
-import '../enums.dart';
-import '../functions.dart';
-import '../main.dart';
-import '../manager.dart';
-import '../models/library.dart';
-import '../screens/series.dart';
-import 'navigation/navigation.dart';
+import '../../enums.dart';
+import '../../functions.dart';
+import '../../main.dart';
+import '../../manager.dart';
+import '../../models/library.dart';
+import '../../screens/series.dart';
+import 'navigation.dart';
 
 class KeyboardState {
   static final ValueNotifier<bool> ctrlPressedNotifier = ValueNotifier<bool>(false);
@@ -34,6 +35,8 @@ class _CustomKeyboardListenerState extends State<CustomKeyboardListener> {
     if (Manager.isMacOS) return event.logicalKey == LogicalKeyboardKey.metaLeft || event.logicalKey == LogicalKeyboardKey.metaRight;
     return event.logicalKey == LogicalKeyboardKey.controlLeft || event.logicalKey == LogicalKeyboardKey.controlRight;
   }
+  
+  BuildContext get ctx => homeKey.currentContext ?? rootNavigatorKey.currentContext ?? context;
 
   void _handleKeyPress(RawKeyEvent event) {
     setState(() {
@@ -74,6 +77,12 @@ class _CustomKeyboardListenerState extends State<CustomKeyboardListener> {
         //
         if (event.logicalKey == LogicalKeyboardKey.enter) {
           debugPrint('Enter pressed');
+        } else
+        //
+        // Debug
+        if (event.logicalKey == LogicalKeyboardKey.f1) {
+          debugPrint('F1 pressed: Debug');
+          showDebugDialog(ctx);
         } else
         //
         // Rename
