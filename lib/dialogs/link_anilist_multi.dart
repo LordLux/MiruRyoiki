@@ -4,6 +4,7 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/material.dart' as mat;
 
 import '../main.dart';
+import '../manager.dart';
 import '../models/anilist/mapping.dart';
 import '../models/series.dart';
 import '../services/anilist/linking.dart';
@@ -155,6 +156,9 @@ class _AnilistLinkMultiContentState extends State<_AnilistLinkMultiContent> {
       selectedLocalPath = null;
       selectedAnilistId = null;
       selectedTitle = null;
+
+      currentDirectory = widget.series.path;
+      _loadFolderContents();
     });
   }
 
@@ -172,6 +176,9 @@ class _AnilistLinkMultiContentState extends State<_AnilistLinkMultiContent> {
       selectedLocalPath = null;
       selectedAnilistId = null;
       selectedTitle = null;
+
+      currentDirectory = widget.series.path;
+      _loadFolderContents(); // Reload folder contents for the reset path
     });
   }
 
@@ -313,23 +320,31 @@ class _AnilistLinkMultiContentState extends State<_AnilistLinkMultiContent> {
               // Right panel: Anilist search
               Expanded(
                 flex: 1,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Search for the Anilist entry:'),
-                    SizedBox(height: 8),
-                    Expanded(
-                      child: _buildAnilistSearch(),
-                    ),
-                    if (selectedAnilistId != null && selectedTitle != null)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 8.0),
-                        child: Text(
-                          'Selected: $selectedTitle',
-                          style: FluentTheme.of(context).typography.bodyStrong,
+                child: MouseRegion(
+                  cursor: selectedLocalPath == null ? SystemMouseCursors.forbidden : MouseCursor.defer,
+                  opaque: selectedLocalPath == null,
+                  hitTestBehavior: selectedLocalPath != null ? HitTestBehavior.opaque : HitTestBehavior.translucent,
+                  child: AbsorbPointer(
+                    absorbing: selectedLocalPath == null,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Search for the Anilist entry:'),
+                        SizedBox(height: 8),
+                        Expanded(
+                          child: _buildAnilistSearch(),
                         ),
-                      ),
-                  ],
+                        if (selectedAnilistId != null && selectedTitle != null)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 8.0),
+                            child: Text(
+                              'Selected: $selectedTitle',
+                              style: FluentTheme.of(context).typography.bodyStrong,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
                 ),
               ),
             ],
@@ -343,19 +358,11 @@ class _AnilistLinkMultiContentState extends State<_AnilistLinkMultiContent> {
             Expanded(
               child: Row(
                 children: [
-                  Icon(
-                    selectedLocalPath != null ? FluentIcons.check_mark : FluentIcons.circle_ring,
-                    size: 16,
-                    color: selectedLocalPath != null ? Colors.green : Colors.grey,
-                  ),
+                  Circle(selectedLocalPath),
                   SizedBox(width: 4),
                   Text('Local path'),
                   SizedBox(width: 12),
-                  Icon(
-                    selectedAnilistId != null ? FluentIcons.check_mark : FluentIcons.circle_ring,
-                    size: 16,
-                    color: selectedAnilistId != null ? Colors.green : Colors.grey,
-                  ),
+                  Circle(selectedAnilistId),
                   SizedBox(width: 4),
                   Text('Anilist entry'),
                 ],
@@ -392,8 +399,8 @@ class _AnilistLinkMultiContentState extends State<_AnilistLinkMultiContent> {
   Widget _buildPathSelector() {
     return Container(
       decoration: BoxDecoration(
-        border: Border.all(color: FluentTheme.of(context).accentColor),
-        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: selectedLocalPath == null ? accent(.5) : Colors.transparent),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
         children: [
@@ -432,7 +439,7 @@ class _AnilistLinkMultiContentState extends State<_AnilistLinkMultiContent> {
                   // Option to select the current directory itself
                   return Card(
                     padding: EdgeInsets.zero,
-                    borderRadius: BorderRadius.circular(4),
+                    borderRadius: BorderRadius.circular(8),
                     backgroundColor: isSelected ? FluentTheme.of(context).accentColor.withOpacity(0.1) : Colors.transparent,
                     child: ListTile(
                       leading: Row(
@@ -463,7 +470,7 @@ class _AnilistLinkMultiContentState extends State<_AnilistLinkMultiContent> {
 
                 return Card(
                   padding: EdgeInsets.zero,
-                  borderRadius: BorderRadius.circular(4),
+                  borderRadius: BorderRadius.circular(8),
                   backgroundColor: isSelected ? FluentTheme.of(context).accentColor.withOpacity(0.1) : Colors.transparent,
                   child: ListTile(
                     leading: Row(
@@ -506,18 +513,49 @@ class _AnilistLinkMultiContentState extends State<_AnilistLinkMultiContent> {
   }
 
   Widget _buildAnilistSearch() {
-    return AnilistSearchPanel(
-      initialSearch: widget.series.name,
-      linkService: widget.linkService,
-      series: widget.series,
-      constraints: widget.constraints,
-      skipAutoClose: true,
-      onLink: (id, name) async {
-        setState(() {
-          selectedAnilistId = id;
-          selectedTitle = name;
-        });
-      },
+    return Opacity(
+      opacity: selectedLocalPath != null ? 1 : 0.5,
+      child: Container(
+        decoration: BoxDecoration(
+          border: Border.all(color: selectedLocalPath != null ? accent(.5) : Colors.transparent),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: AnilistSearchPanel(
+          initialSearch: widget.series.name,
+          linkService: widget.linkService,
+          series: widget.series,
+          constraints: widget.constraints,
+          skipAutoClose: true,
+          enabled: selectedLocalPath != null,
+          onLink: (id, name) async {
+            setState(() {
+              selectedAnilistId = id;
+              selectedTitle = name;
+            });
+          },
+        ),
+      ),
+    );
+  }
+
+  Color accent(double value) {
+    return Colors.grey.lerpWith(Manager.accentColor, value);
+  }
+
+  Widget Circle(dynamic value) {
+    return Container(
+      decoration: BoxDecoration(
+        color: accent(.05),
+        borderRadius: BorderRadius.circular(5),
+        border: Border.all(
+          color: accent(.25),
+        ),
+      ),
+      child: Icon(
+        value != null ? FluentIcons.check_mark : FluentIcons.circle_ring,
+        size: 20,
+        color: value != null ? Colors.green : Colors.transparent,
+      ),
     );
   }
 }

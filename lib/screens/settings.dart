@@ -40,6 +40,18 @@ List<WindowEffect> get _PlatformWindowEffects => switch (defaultTargetPlatform) 
     };
 
 class _SettingsScreenState extends State<SettingsScreen> {
+  FlyoutController controller = FlyoutController();
+  Color tempColor = Colors.transparent;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final settings = Provider.of<SettingsManager>(context, listen: false);
+      tempColor = settings.accentColor;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final library = Provider.of<Library>(context);
@@ -130,29 +142,34 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ...[
                   Text('Choose your preferred theme and effect.', style: FluentTheme.of(context).typography.body),
                   const SizedBox(height: 24),
+                  Row(children: [
+                    // Theme
+                    const Text('Theme:'),
+                    const SizedBox(width: 12),
+                    ComboBox<ThemeMode>(
+                      value: appTheme.mode,
+                      items: <ThemeMode>[ThemeMode.system, ThemeMode.light, ThemeMode.dark].map((ThemeMode value) {
+                        return ComboBoxItem<ThemeMode>(
+                          value: value,
+                          child: Text(value.name.titleCase),
+                        );
+                      }).toList(),
+                      onChanged: (ThemeMode? newValue) async {
+                        appTheme.mode = newValue!;
+                        appTheme.setEffect(appTheme.windowEffect, context);
+                        settings.set('themeMode', newValue.name_);
+
+                        await Future.delayed(const Duration(milliseconds: 300));
+                        appTheme.setEffect(appTheme.windowEffect, context);
+                      },
+                    ),
+                  ]),
+                ],
+                const SizedBox(height: 12),
+                // Effect
+                ...[
                   Row(
                     children: [
-                      // Theme
-                      const Text('Theme:'),
-                      const SizedBox(width: 12),
-                      ComboBox<ThemeMode>(
-                        value: appTheme.mode,
-                        items: <ThemeMode>[ThemeMode.system, ThemeMode.light, ThemeMode.dark].map((ThemeMode value) {
-                          return ComboBoxItem<ThemeMode>(
-                            value: value,
-                            child: Text(value.name.titleCase),
-                          );
-                        }).toList(),
-                        onChanged: (ThemeMode? newValue) async {
-                          appTheme.mode = newValue!;
-                          appTheme.setEffect(appTheme.windowEffect, context);
-                          settings.set('themeMode', newValue.name);
-
-                          await Future.delayed(const Duration(milliseconds: 300));
-                          appTheme.setEffect(appTheme.windowEffect, context);
-                        },
-                      ),
-                      // Effect
                       const Text('Effect:'),
                       const SizedBox(width: 12),
                       ComboBox<WindowEffect>(
@@ -160,7 +177,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         items: _PlatformWindowEffects.map((WindowEffect value) {
                           return ComboBoxItem<WindowEffect>(
                             value: value,
-                            child: Text(value.name.titleCase),
+                            child: Text(value.name_),
                           );
                         }).toList(),
                         onChanged: (WindowEffect? newValue) {
@@ -172,9 +189,105 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ],
                   ),
                 ],
+                const SizedBox(height: 12),
+                // Accent Color
+                ...[
+                  Row(
+                    children: [
+                      const Text('Accent Color:'),
+                      const SizedBox(width: 12),
+                      FlyoutTarget(
+                        controller: controller,
+                        child: GestureDetector(
+                          child: Container(
+                            width: 34,
+                            height: 34,
+                            decoration: BoxDecoration(
+                              color: settings.accentColor,
+                              border: Border.all(
+                                color: settings.accentColor.lerpWith(Colors.black, .25),
+                                width: 1.25,
+                              ),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                          ),
+                          onTapDown: (_) {
+                            // ignore: avoid_single_cascade_in_expression_statements
+                            controller.showFlyout(
+                              autoModeConfiguration: FlyoutAutoConfiguration(
+                                preferredMode: FlyoutPlacementMode.right,
+                                horizontal: true,
+                              ),
+                              barrierDismissible: true,
+                              dismissOnPointerMoveAway: true,
+                              dismissWithEsc: true,
+                              navigatorKey: rootNavigatorKey.currentState,
+                              builder: (context) {
+                                return FlyoutContent(
+                                  child: ColorPicker(
+                                    color: settings.accentColor,
+                                    onChanged: (color) {
+                                      tempColor = color;
+                                    },
+                                    minValue: 100,
+                                    isAlphaSliderVisible: true,
+                                    colorSpectrumShape: ColorSpectrumShape.box,
+                                    isMoreButtonVisible: false,
+                                    isColorSliderVisible: false,
+                                    isColorChannelTextInputVisible: false,
+                                    isHexInputVisible: false,
+                                    isAlphaEnabled: false,
+                                  ),
+                                );
+                              },
+                            )..then((_) {
+                                settings.accentColor = tempColor;
+                                appTheme.color = settings.accentColor.toAccentColor();
+                                settings.set('accentColor', settings.accentColor.toHex(leadingHashSign: true));
+                              });
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+                // Extra dim for acrylic and mica
+                if (appTheme.windowEffect == WindowEffect.aero || appTheme.windowEffect == WindowEffect.acrylic || appTheme.windowEffect == WindowEffect.mica) //
+                  ...[
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      const Text('Dim'),
+                      const SizedBox(width: 12),
+                      toggle.ToggleSwitch(
+                        animate: true,
+                        animationDuration: dimDuration.inMilliseconds,
+                        initialLabelIndex: context.watch<AppTheme>().dim.index,
+                        totalSwitches: Dim.values.length,
+                        activeFgColor: Colors.white,
+                        activeBgColors: [
+                          [FluentTheme.of(context).accentColor.light],
+                          [FluentTheme.of(context).accentColor.lighter],
+                          [FluentTheme.of(context).accentColor.lightest],
+                        ],
+                        minWidth: 130.0,
+                        labels: [
+                          Dim.values[0].name_,
+                          Dim.values[1].name_,
+                          Dim.values[2].name_,
+                        ],
+                        onToggle: (int? value) {
+                          final appTheme = context.read<AppTheme>();
+                          appTheme.dim = Dim.values[value!];
+                          settings.set('dim', Dim.values[value].name_.toLowerCase());
+                        },
+                      ),
+                    ],
+                  ),
+                ],
+                const SizedBox(height: 12),
                 // Font Size
                 ...[
-                  const SizedBox(height: 12),
                   Row(
                     children: [
                       const Text('Font Size:'),
@@ -195,40 +308,35 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ],
                   ),
                 ],
-                // Extra dim for acrylic and mica
-                if (appTheme.windowEffect == WindowEffect.aero || appTheme.windowEffect == WindowEffect.acrylic || appTheme.windowEffect == WindowEffect.mica) //
-                  ...[
-                  const SizedBox(height: 12),
+                const SizedBox(height: 12),
+                // Library colors
+                ...[
                   Row(
                     children: [
-                      const Text('Dim'),
+                      const Text('Library Dominant Colors:'),
                       const SizedBox(width: 12),
-                      toggle.ToggleSwitch(
-                        animate: true,
-                        animationDuration: dimDuration.inMilliseconds,
-                        initialLabelIndex: context.watch<AppTheme>().dim.index,
-                        totalSwitches: Dim.values.length,
-                        activeFgColor: Colors.white,
-                        activeBgColors: [
-                          [FluentTheme.of(context).accentColor.dark],
-                          [FluentTheme.of(context).accentColor.normal],
-                          [FluentTheme.of(context).accentColor.light],
-                        ],
-                        minWidth: 130.0,
-                        labels: [
-                          'Dimmed',
-                          'Normal',
-                          'Brightened',
-                        ],
-                        onToggle: (int? value) {
-                          final appTheme = context.read<AppTheme>();
-                          appTheme.dim = Dim.values[value!];
-                          settings.set('dim', Dim.values[value].name_.toLowerCase());
+                      ComboBox<LibraryColorView>(
+                        value: settings.libColView,
+                        items: <LibraryColorView>[
+                          LibraryColorView.all,
+                          LibraryColorView.onlyHover,
+                          LibraryColorView.onlyBackground,
+                          LibraryColorView.none,
+                        ].map((LibraryColorView value) {
+                          return ComboBoxItem<LibraryColorView>(
+                            value: value,
+                            child: Text(value.name_),
+                          );
+                        }).toList(),
+                        onChanged: (LibraryColorView? newValue) {
+                          settings.libColView = newValue!;
+                          settings.set('libColView', newValue.name_);
+                          print('Library color view: ${newValue.name_}');
                         },
                       ),
                     ],
                   ),
-                ]
+                ],
               ],
             );
           }),

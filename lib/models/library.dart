@@ -41,7 +41,7 @@ class Library with ChangeNotifier {
   }
 
   /// Load Anilist posters for series that have links but no local images
-  Future<void> loadAnilistPostersForLibrary() async {
+  Future<void> loadAnilistPostersForLibrary({Function(int loaded, int total)? onProgress}) async {
     final linkService = SeriesLinkService();
     final imageCache = ImageCacheService();
     await imageCache.init(); // Ensure the cache is initialized
@@ -49,21 +49,29 @@ class Library with ChangeNotifier {
     final needPosters = <Series>[];
     final alreadyCached = <Series, String>{};
 
-    // Find series tjat need Anilist posters
+    // Find series that need Anilist posters
     for (final series in _series) {
       if (series.folderImagePath == null && series.anilistMappings.isNotEmpty) {
         // Check if we can find the poster URL without fetching
-        final mapping = series.anilistMappings.firstWhere((m) => m.anilistId == (series.primaryAnilistId ?? series.anilistMappings.first.anilistId), orElse: () => series.anilistMappings.first);
+        final mapping = series.anilistMappings.firstWhere(
+          (m) => m.anilistId == (series.primaryAnilistId ?? series.anilistMappings.first.anilistId),
+          orElse: () => series.anilistMappings.first,
+        );
 
         // If we have anilistData with a poster URL check if it's cached
         if (mapping.anilistData?.posterImage != null) {
           final cached = await imageCache.getCachedImagePath(mapping.anilistData!.posterImage!);
-          if (cached != null)
+          if (cached != null) {
             // Already cached -> save the path
             alreadyCached[series] = cached;
-          else
+
+            // Make sure series.anilistData is set correctly
+            if (series.primaryAnilistId == mapping.anilistId || series.primaryAnilistId == null) //
+              series.anilistData = mapping.anilistData;
+          } else {
             // Not cached -> need to fetch
             needPosters.add(series);
+          }
         } else {
           // No anilistData or no posterImage -> need to fetch
           needPosters.add(series);
@@ -71,33 +79,18 @@ class Library with ChangeNotifier {
       }
     }
 
-    // Update series that already have cached images
-    for (final entry in alreadyCached.entries) {
-      final series = entry.key;
-      final anilistId = series.primaryAnilistId ?? series.anilistMappings.first.anilistId;
-
-      // Find the mapping with this ID
-      final mappingIndex = series.anilistMappings.indexWhere((m) => m.anilistId == anilistId);
-      if (mappingIndex >= 0) {
-        // We don't need to update the AnilistData, just make sure the image is available
-        if (series.anilistMappings[mappingIndex].anilistData?.posterImage != null) {
-          // Make sure series.anilistData is set if this is the primary
-          if (series.primaryAnilistId == anilistId || series.primaryAnilistId == null) {
-            series.anilistData = series.anilistMappings[mappingIndex].anilistData;
-          }
-        }
-      }
+    if (alreadyCached.isNotEmpty) {
+      notifyListeners();
+      onProgress?.call(alreadyCached.length, alreadyCached.length + needPosters.length);
     }
 
-    if (needPosters.isEmpty) {
-      // If we've updated any cached images, notify listeners
-      if (alreadyCached.isNotEmpty) {
-        notifyListeners();
-      }
-      return;
-    }
+    if (needPosters.isEmpty) return;
 
     print('Loading Anilist posters for ${needPosters.length} series');
+
+    // Fetch posters in batches
+    int loaded = alreadyCached.length;
+    final total = alreadyCached.length + needPosters.length;
 
     // Fetch posters in batches to avoid overwhelming the API
     for (int i = 0; i < needPosters.length; i += 5) {
@@ -136,7 +129,12 @@ class Library with ChangeNotifier {
             series.anilistData = anime;
           }
         }
+        loaded++;
       }));
+
+      // Notify after each batch so UI updates incrementally
+      notifyListeners();
+      onProgress?.call(loaded, total);
 
       // Add a small delay between batches to be nice to the API
       if (i + 5 < needPosters.length) {
@@ -166,7 +164,7 @@ class Library with ChangeNotifier {
 
     if (refreshSeries.isEmpty) return;
 
-    print('Refreshing Anilist posters for ${refreshSeries.length} series');
+    // print('Refreshing Anilist posters for ${refreshSeries.length} series');
 
     for (int i = 0; i < refreshSeries.length; i += 5) {
       final batch = refreshSeries.sublist(i, i + 5 > refreshSeries.length ? refreshSeries.length : i + 5);
@@ -203,6 +201,16 @@ class Library with ChangeNotifier {
     }
 
     notifyListeners();
+  }
+
+  /// Save a single series with updated properties
+  Future<void> saveSeries(Series series) async {
+    final index = _series.indexWhere((s) => s.path == series.path);
+    if (index >= 0) {
+      _series[index] = series;
+      await _saveLibrary();
+      notifyListeners();
+    }
   }
 
   void _onMpcTrackerUpdate() async {

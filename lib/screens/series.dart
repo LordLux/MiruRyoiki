@@ -12,6 +12,8 @@ import 'package:smooth_scroll_multiplatform/smooth_scroll_multiplatform.dart';
 
 import '../dialogs/link_anilist.dart';
 import '../dialogs/link_anilist_multi.dart';
+import '../dialogs/poster_select.dart';
+import '../enums.dart';
 import '../models/anilist/mapping.dart';
 import '../models/library.dart';
 import '../models/series.dart';
@@ -83,6 +85,24 @@ class SeriesScreenState extends State<SeriesScreen> {
         0, 0, 0.7, 0, 0,
         0, 0, 0, 1, 0,
       ]);
+
+  void _selectPoster(BuildContext context) {
+    showManagedDialog<PosterSource?>(
+      context: context,
+      id: 'posterSelection:${series!.path}',
+      title: 'Select Poster',
+      enableBarrierDismiss: true,
+      builder: (context) => PosterSelectionDialog(
+        series: series!,
+        popContext: context,
+      ),
+    ).then((source) {
+      if (source != null) {
+        // Force UI update after selection
+        setState(() {});
+      }
+    });
+  }
 
   Future<void> _loadAnilistDataForCurrentSeries() async {
     if (series == null) return;

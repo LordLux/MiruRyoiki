@@ -6,6 +6,7 @@ import 'package:system_theme/system_theme.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 
 import 'enums.dart';
+import 'manager.dart';
 
 class AppTheme extends ChangeNotifier {
   AccentColor? _color;
@@ -91,5 +92,5 @@ AccentColor get systemAccentColor {
       'lightest': SystemTheme.accentColor.lightest,
     });
   }
-  return Colors.blue;
+  return Manager.accentColor.toAccentColor();
 }
