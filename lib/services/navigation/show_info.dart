@@ -39,6 +39,18 @@ void snackBar(String message, {fluent.Color color = const mat.Color(0xFF333333),
                 return mat.Icons.check_circle;
             }
           },
+          iconColor: (severity) {
+            switch (severity) {
+              case fluent.InfoBarSeverity.info:
+                return fluent.Colors.blue;
+              case fluent.InfoBarSeverity.warning:
+                return fluent.Colors.yellow;
+              case fluent.InfoBarSeverity.error:
+                return fluent.Colors.red;
+              case fluent.InfoBarSeverity.success:
+                return fluent.Colors.green;
+            }
+          },
         ),
       ),
     ),

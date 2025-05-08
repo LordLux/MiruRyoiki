@@ -6,6 +6,7 @@ import 'package:flutter/widgets.dart';
 import 'package:palette_generator/palette_generator.dart';
 import 'package:collection/collection.dart';
 
+import '../manager.dart';
 import 'anilist/anime.dart';
 import 'anilist/mapping.dart';
 import 'episode.dart';
@@ -65,13 +66,15 @@ class Series {
   List<AnilistMapping> anilistMappings;
 
   /// Anilist data for the series
-  AnilistAnime? anilistData;
+  AnilistAnime? _anilistData;
 
   /// Cached dominant color from poster image
   Color? _dominantColor;
 
   // The currently selected Anilist ID for display purposes
   int? _primaryAnilistId;
+
+  PosterSource preferredPosterSource = PosterSource.unspecified;
 
   Series({
     required this.name,
@@ -80,9 +83,10 @@ class Series {
     required this.seasons,
     this.relatedMedia = const [],
     this.anilistMappings = const [],
-    this.anilistData,
+    AnilistAnime? anilistData,
     Color? dominantColor,
-  }) : _dominantColor = dominantColor;
+  })  : _anilistData = anilistData,
+        _dominantColor = dominantColor;
 
 // Getter and setter for primaryAnilistId
   int? get primaryAnilistId => _primaryAnilistId ?? anilistId; // Fall back to the first mapping
@@ -93,8 +97,16 @@ class Series {
     }
   }
 
+  AnilistAnime? get anilistData => _anilistData;
+
+  set anilistData(AnilistAnime? value) {
+    _anilistData = value;
+    _dataVersion++;
+  }
+
   // Backwards compatibility for older versions
   int? get anilistId => anilistMappings.isNotEmpty ? anilistMappings.first.anilistId : null;
+
   set anilistId(int? value) {
     if (value == null) {
       anilistMappings.clear();
@@ -132,6 +144,11 @@ class Series {
     return null;
   }
 
+  int _dataVersion = 0;
+
+// Include in the key for SeriesCard
+  int get dataVersion => _dataVersion;
+
   // Get Anilist ID for an episode
   int? getAnilistIdForEpisode(Episode episode) => getMappingForPath(episode.path)?.anilistId;
 
@@ -147,9 +164,9 @@ class Series {
   /// Primary color from the series poster image
   Color? get dominantColor {
     // If Anilist provides a color, use that
-    if (anilistData?.dominantColor != null) {
+    if (_anilistData?.dominantColor != null) {
       try {
-        return Color(int.parse(anilistData!.dominantColor!.replaceAll('#', '0xff')));
+        return Color(int.parse(_anilistData!.dominantColor!.replaceAll('#', '0xff')));
       } catch (e) {
         // Fall back to locally calculated color
         return _dominantColor;
@@ -173,7 +190,7 @@ class Series {
       );
 
       // Try to get a vibrant color first for better UI aesthetics
-      _dominantColor = paletteGenerator.vibrantColor?.color ?? paletteGenerator.dominantColor?.color ?? Colors.blue; // Fallback color
+      _dominantColor = paletteGenerator.vibrantColor?.color ?? paletteGenerator.dominantColor?.color ?? Manager.accentColor; // Fallback color
 
       return _dominantColor;
     } catch (e) {
@@ -193,6 +210,7 @@ class Series {
       'anilistMappings': anilistMappings.map((m) => m.toJson()).toList(),
       'dominantColor': _dominantColor?.value,
       'primaryAnilistId': _primaryAnilistId,
+      'preferredPosterSource': preferredPosterSource.toString().split('.').last,
     };
   }
 
@@ -231,6 +249,15 @@ class Series {
     if (json['primaryAnilistId'] != null) //
       series._primaryAnilistId = json['primaryAnilistId'];
 
+    // Set preferred poster source if available
+    if (json['preferredPosterSource'] != null) {
+      final sourceStr = json['preferredPosterSource'];
+      if (sourceStr == 'local')
+        series.preferredPosterSource = PosterSource.local;
+      else if (sourceStr == 'anilist') //
+        series.preferredPosterSource = PosterSource.anilist;
+    }
+
     return series;
   }
 
@@ -249,7 +276,7 @@ class Series {
   }
 
   AnilistAnime? get currentAnilistData {
-    if (_primaryAnilistId == null) return anilistData;
+    if (_primaryAnilistId == null) return _anilistData;
 
     // Find mapping with the primary ID
     final mapping = anilistMappings.firstWhereOrNull((m) => m.anilistId == _primaryAnilistId);
@@ -260,7 +287,7 @@ class Series {
     }
 
     // Fall back to the first mapping's data
-    return anilistData;
+    return _anilistData;
   }
 
   // Anilist Getters
@@ -291,4 +318,23 @@ class Series {
 
   /// Genres from Anilist
   List<String> get genres => currentAnilistData?.genres ?? [];
+
+  /// Getter to check if the poster is from Anilist
+  bool get isAnilistPoster =>
+      preferredPosterSource == PosterSource.anilist ||
+      (preferredPosterSource == PosterSource.unspecified && //
+          folderImagePath == null &&
+          _anilistData?.posterImage != null);
+
+  /// Getter to check if the poster is from a local file
+  bool get isLocalPoster =>
+      preferredPosterSource == PosterSource.local ||
+      (preferredPosterSource == PosterSource.unspecified && //
+          folderImagePath != null);
+
+  String? get effectivePosterPath {
+    if (isLocalPoster) return folderImagePath;
+    if (isAnilistPoster) return _anilistData?.posterImage;
+    return null;
+  }
 }

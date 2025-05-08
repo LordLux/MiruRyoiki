@@ -28,12 +28,7 @@ class AnilistLinkDialog extends ManagedDialog {
             constraints: constraints,
             skipAutoClose: true,
           ),
-          actions: (_) => [
-            ManagedDialogButton(
-              popContext: popContext,
-              text: 'anilist link'
-            )
-          ],
+          actions: (_) => [ManagedDialogButton(popContext: popContext, text: 'anilist link')],
         );
 
   @override
@@ -64,6 +59,9 @@ class _AnilistLinkDialogState extends State<AnilistLinkDialog> {
 class AnilistSearchPanel extends StatefulWidget {
   /// The series to link to Anilist.
   final Series series;
+  
+  /// If true, the textbox is enabled, otherwise it is disabled.
+  final bool enabled;
 
   /// The service to use for linking series to Anilist.
   final SeriesLinkService linkService;
@@ -88,6 +86,7 @@ class AnilistSearchPanel extends StatefulWidget {
     required this.constraints,
     this.initialSearch,
     this.skipAutoClose = false,
+    this.enabled = true,
   });
 
   @override
@@ -179,6 +178,13 @@ class _AnilistSearchPanelState extends State<AnilistSearchPanel> {
             icon: const Icon(FluentIcons.search),
             onPressed: search,
           ),
+          decoration: WidgetStatePropertyAll(
+            BoxDecoration(
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.transparent),
+            ),
+          ),
+          enabled: widget.enabled,
           onChanged: (_) {
             // TODO add race condition timer to avoid too many requests
             search();

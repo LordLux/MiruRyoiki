@@ -30,6 +30,11 @@ class Manager {
       Manager.flyout?.close();
     });
   }
+  
+  static Color get accentColor {
+    final settings = Provider.of<SettingsManager>(homeKey.currentContext!, listen: false);
+    return settings.accentColor;
+  }
 
   static bool get isMacOS => Platform.isMacOS;
 
@@ -53,17 +58,20 @@ class SettingsManager extends ChangeNotifier {
   double get fontSize => _getDouble('fontSize', defaultValue: 14.0);
   set fontSize(double value) => _setDouble('fontSize', value);
 
-  String get windowEffect => _getString('windowEffect', defaultValue: 'mica');
-  set windowEffect(String value) => _setString('windowEffect', value);
+  WindowEffect get windowEffect => WindowEffectX.fromString(_getString('windowEffect', defaultValue: WindowEffect.acrylic.name_));
+  set windowEffect(WindowEffect value) => _setString('windowEffect', value.name_);
   
-  String get dim => _getString('dim', defaultValue: 'dimmed');
-  set dim(String value) => _setString('dim', value);
+  Dim get dim => DimX.fromString(_getString('dim', defaultValue: Dim.normal.name_));
+  set dim(Dim value) => _setString('dim', value.name_);
 
-  String get themeMode => _getString('themeMode', defaultValue: 'system');
-  set themeMode(String value) => _setString('themeMode', value);
+  ThemeMode get themeMode => ThemeX.fromString(_getString('themeMode', defaultValue: ThemeMode.system.name_));
+  set themeMode(ThemeMode value) => _setString('themeMode', value.name_);
 
-  Color get accentColor => _getString('accentColor', defaultValue: '#0078d4').fromHex();
+  Color get accentColor => _getString('accentColor', defaultValue: Color(0xFF0078d4).toHex()).fromHex();
   set accentColor(Color value) => _setString('accentColor', value.toHex());
+  
+  LibraryColorView get libColView => LibraryColorViewX.fromString(_getString('libColView', defaultValue: LibraryColorView.all.name_));
+  set libColView(LibraryColorView value) => _setString('libColView', value.name_);
 
   // Generic getters with type safety
   bool _getBool(String key, {required bool defaultValue}) {
@@ -194,9 +202,9 @@ class SettingsManager extends ChangeNotifier {
   // Apply settings to app components
   void applySettings(BuildContext context) {
     final AppTheme appTheme = Provider.of<AppTheme>(context, listen: false);
-    appTheme.windowEffect = WindowEffectX.fromString(windowEffect);
-    appTheme.mode = ThemeX.fromString(themeMode);
-    appTheme.dim = DimX.fromString(dim);
+    appTheme.windowEffect = windowEffect;
+    appTheme.mode = themeMode;
+    appTheme.dim = dim;
     appTheme.color = accentColor.toAccentColor();
     appTheme.fontSize = fontSize;
   }

@@ -1,19 +1,17 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter_acrylic/window_effect.dart';
+import 'package:recase/recase.dart';
 
+// ENUMS
 enum Dim { dimmed, normal, brightened }
 
-extension ThemeX on ThemeMode {
-  String get name_ {
-    switch (this) {
-      case ThemeMode.system:
-        return 'System';
-      case ThemeMode.light:
-        return 'Light';
-      case ThemeMode.dark:
-        return 'Dark';
-    }
-  }
+enum PosterSource { local, anilist, unspecified }
+
+enum LibraryColorView { all, onlyHover, onlyBackground, none }
+
+// EXTENSIONS
+extension ThemeX on ThemeMode{
+  String get name_ => enumToString(this);
 
   static ThemeMode fromString(String value) => fromStringX<ThemeMode>(
         value,
@@ -23,7 +21,7 @@ extension ThemeX on ThemeMode {
 }
 
 extension WindowEffectX on WindowEffect {
-  String get name_ => toString().split('.').last;
+  String get name_ => enumToString(this);
 
   static WindowEffect fromString(String value) => fromStringX<WindowEffect>(
         value,
@@ -33,16 +31,7 @@ extension WindowEffectX on WindowEffect {
 }
 
 extension DimX on Dim {
-  String get name_ {
-    switch (this) {
-      case Dim.dimmed:
-        return 'Dimmed';
-      case Dim.normal:
-        return 'Normal';
-      case Dim.brightened:
-        return 'Brightened';
-    }
-  }
+  String get name_ => enumToString(this);
 
   static Dim fromString(String value, {Dim? defaultValue}) => fromStringX<Dim>(
         value,
@@ -51,9 +40,30 @@ extension DimX on Dim {
       );
 }
 
+extension LibraryColorViewX on LibraryColorView {
+  String get name_ => enumToString(this);
+
+  static LibraryColorView fromString(String value, {LibraryColorView? defaultValue}) => fromStringX<LibraryColorView>(
+        value,
+        LibraryColorView.values,
+        defaultValue,
+      );
+}
+
+String enumToString<T>(T enumValue) {
+  final str = enumValue.toString().split('.').last; // Get the enum name
+  final String finale = RegExp('[A-Z][a-z]*') // Titlecase every word, separated by spaces
+      .allMatches(str)
+      .map((m) => m.group(0)?.titleCase ?? '')
+      .join(' ');
+  if (finale.isEmpty) return str.titleCase;
+  return finale.titleCase;
+}
+
+/// Extension to convert a string to an enum value, with a default value fallback
 T fromStringX<T>(String value, List<T> values, [T? defaultValue]) {
   return values.firstWhere(
-    (e) => e.toString().split('.').last.toLowerCase() == value.toLowerCase(),
+    (e) => enumToString<T>(e).toLowerCase() == value.toLowerCase(),
     orElse: () {
       if (defaultValue == null) print('Invalid value: $value, returning first value: ${values.first}');
       return defaultValue ?? values.first;
@@ -61,6 +71,7 @@ T fromStringX<T>(String value, List<T> values, [T? defaultValue]) {
   );
 }
 
+// EXTRA EXTENSIONS
 extension HexColor on Color {
   /// Prefixes a hash sign if [leadingHashSign] is set to `true` (default is `true`).
   String toHex({bool leadingHashSign = true}) => '${leadingHashSign ? '#' : ''}'

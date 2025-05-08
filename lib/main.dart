@@ -35,6 +35,7 @@ import 'services/navigation/show_info.dart';
 import 'theme.dart';
 import 'utils/color_utils.dart';
 import 'widgets/reverse_animation_flyout.dart' show ToggleableFlyoutContent, ToggleableFlyoutContentState;
+import 'widgets/series_card.dart';
 import 'widgets/simple_flyout.dart' hide ToggleableFlyoutContent;
 import 'widgets/window_buttons.dart';
 
@@ -67,7 +68,7 @@ void main() async {
 
   // Initialize Window Manager
   _initializeWindowManager();
-  
+
   // Initialize image cache
   final imageCache = ImageCacheService();
   await imageCache.init();
@@ -129,10 +130,15 @@ class _MyAppState extends State<MyApp> {
       await libraryProvider.scanLibrary();
       await anilistProvider.initialize();
 
-      await Future.delayed(const Duration(milliseconds: kDebugMode ? 52 : 10));
-      print('Loading Anilist posters...');
-      await libraryProvider.loadAnilistPostersForLibrary();
-      await Future.delayed(const Duration(milliseconds: kDebugMode ? 52 : 250));
+      await Future.delayed(const Duration(milliseconds: kDebugMode ? 200 : 50));
+      await libraryProvider.loadAnilistPostersForLibrary(onProgress: (loaded, total) {
+        if (loaded % 5 == 0 || loaded == total) {
+          // Force UI refresh every 5 items or on completion
+          setState(() {});
+        }
+      });
+
+      await Future.delayed(const Duration(milliseconds: kDebugMode ? 250 : 50));
       final appTheme = Provider.of<AppTheme>(context, listen: false);
       appTheme.setEffect(appTheme.windowEffect, rootNavigatorKey.currentContext!);
     });
@@ -726,4 +732,7 @@ String get iconPath => '$assets${ps}system${ps}icon.ico';
 String get iconPng => '$assets${ps}system${ps}icon.png';
 String get ps => Platform.pathSeparator;
 
+// TODO dialog esc doesn't pop from custom stack
+// TODO series not being linked after restart sometimes
+// TODO library view series libviewcol
 // TODO check if sidebar is autoclosed -> set menu icon to null

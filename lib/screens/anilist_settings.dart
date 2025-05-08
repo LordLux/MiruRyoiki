@@ -1,6 +1,7 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:provider/provider.dart';
 import '../../services/anilist/provider.dart';
+import '../manager.dart';
 import 'accounts.dart';
 
 class AnilistSettingsScreen extends StatelessWidget {
@@ -162,7 +163,7 @@ class AnilistSettingsScreen extends StatelessWidget {
                   height: 48,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: Colors.blue,
+                    color: Manager.accentColor,
                   ),
                   child: const Center(
                     child: Icon(FluentIcons.contact, color: Colors.white),
@@ -215,7 +216,7 @@ Widget Chip({
   return Container(
     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
     decoration: BoxDecoration(
-      color: Colors.blue,
+      color: Manager.accentColor,
       borderRadius: BorderRadius.circular(16),
     ),
     child: Row(

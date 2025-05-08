@@ -5,6 +5,7 @@ import 'package:smooth_scroll_multiplatform/smooth_scroll_multiplatform.dart';
 
 import '../models/library.dart';
 import '../models/series.dart';
+import '../services/navigation/show_info.dart';
 import '../utils/screen_utils.dart';
 import '../widgets/series_card.dart';
 import 'series.dart';
@@ -100,11 +101,24 @@ class _HomeScreenState extends State<HomeScreen> {
                   'Your Media Library',
                   style: FluentTheme.of(context).typography.title,
                 ),
-                Button(
-                  child: const Text('Refresh'),
-                  onPressed: () {
-                    library.scanLibrary();
-                  },
+                Row(
+                  children: [
+                    Button(
+                      child: const Text('Refresh'),
+                      onPressed: () {
+                        library.scanLibrary();
+                      },
+                    ),
+                    const SizedBox(width: 8),
+                    Button(
+                      child: Text('Refresh Anilist Posters'),
+                      onPressed: () {
+                        final library = Provider.of<Library>(context, listen: false);
+                        library.loadAnilistPostersForLibrary();
+                        snackBar('Refreshing Anilist posters...', severity: InfoBarSeverity.info);
+                      },
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -133,6 +147,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   itemBuilder: (context, index) {
                     final series = library.series[index];
                     return SeriesCard(
+                      key: ValueKey('${series.path}:${series.effectivePosterPath ?? 'none'}'),
                       series: series,
                       onTap: () => _navigateToSeries(series),
                     );
