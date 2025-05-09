@@ -7,7 +7,6 @@ import 'package:fluent_ui3/fluent_ui.dart' as fluent_ui3;
 import 'package:flutter_acrylic/flutter_acrylic.dart';
 import 'package:flutter_acrylic/window.dart' as flutter_acrylic;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:miruryoiki/dialogs/link_anilist.dart';
 import 'package:miruryoiki/services/navigation/dialogs.dart';
 import 'package:provider/provider.dart';
 import 'package:app_links/app_links.dart';
@@ -32,6 +31,7 @@ import 'services/navigation/navigation.dart';
 import 'services/registry.dart' as registry;
 import 'services/navigation/shortcuts.dart';
 import 'services/navigation/show_info.dart';
+import 'services/window.dart';
 import 'theme.dart';
 import 'utils/color_utils.dart';
 import 'widgets/reverse_animation_flyout.dart' show ToggleableFlyoutContent, ToggleableFlyoutContentState;
@@ -108,6 +108,7 @@ class _MyAppState extends State<MyApp> {
   @override
   void initState() {
     super.initState();
+
     // Initialize providers
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       // Initialize AppLinks
@@ -234,7 +235,10 @@ class _MyAppState extends State<MyApp> {
                                     data: NavigationPaneThemeData(
                                       backgroundColor: appTheme.windowEffect != WindowEffect.disabled ? Colors.transparent : null,
                                     ),
-                                    child: child ?? const SizedBox.shrink(),
+                                    child: Material(
+                                      color: Colors.transparent,
+                                      child: child ?? const SizedBox.shrink(),
+                                    ),
                                   ),
                                 ),
                               ),
@@ -685,7 +689,6 @@ Future<void> _initializeWindowManager() async {
   await flutter_acrylic.Window.initialize();
   await flutter_acrylic.Window.hideWindowControls();
   await WindowManager.instance.ensureInitialized();
-
   doWhenWindowReady(() {
     final win = appWindow;
     const initialSize = Size(1116.5, 700);
@@ -707,7 +710,8 @@ Future<void> _initializeWindowManager() async {
   windowManager.waitUntilReadyToShow(windowOptions, () async {
     await windowManager.show();
     await windowManager.focus();
-    await windowManager.setPreventClose(false);
+    await windowManager.setPreventClose(true);
+    windowManager.addListener(MyWindowListener());
     await windowManager.setSkipTaskbar(false);
     await windowManager.setTitleBarStyle(
       TitleBarStyle.hidden,
@@ -732,7 +736,6 @@ String get iconPath => '$assets${ps}system${ps}icon.ico';
 String get iconPng => '$assets${ps}system${ps}icon.png';
 String get ps => Platform.pathSeparator;
 
-// TODO dialog esc doesn't pop from custom stack
 // TODO series not being linked after restart sometimes
 // TODO library view series libviewcol
 // TODO check if sidebar is autoclosed -> set menu icon to null

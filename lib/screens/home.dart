@@ -7,6 +7,7 @@ import '../models/library.dart';
 import '../models/series.dart';
 import '../services/navigation/show_info.dart';
 import '../utils/screen_utils.dart';
+import '../widgets/gradient_mask.dart';
 import '../widgets/series_card.dart';
 import 'series.dart';
 
@@ -86,6 +87,14 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
+  // double singleChildHeight(int count) =>
+
+  static const double maxCardWidth = 200;
+  static const double cardPadding = 16;
+
+  int crossAxisCount(BoxConstraints constraints) => (constraints.maxWidth ~/ maxCardWidth).clamp(1, 10);
+
+  double cardWidth(BoxConstraints constraints) => (constraints.maxWidth / (crossAxisCount(constraints) + cardPadding * (crossAxisCount(constraints) - 1))).clamp(0, maxCardWidth);
 
   Widget _buildLibraryView(Library library) {
     return Padding(
@@ -127,31 +136,42 @@ class _HomeScreenState extends State<HomeScreen> {
               'Path: ${library.libraryPath}',
               style: FluentTheme.of(context).typography.caption,
             ),
-            const SizedBox(height: 24),
             Expanded(
-              child: DynMouseScroll(
-                // Tune these parameters to your liking
-                scrollSpeed: 3.3,
-                durationMS: 300,
-                animationCurve: Curves.ease,
-                builder: (context, controller, physics) => GridView.builder(
-                  controller: controller,
-                  physics: physics,
-                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: (constraints.maxWidth ~/ 200).clamp(1, 10),
-                    childAspectRatio: 0.71,
-                    crossAxisSpacing: 16,
-                    mainAxisSpacing: 16,
+              child: FadingEdgeScrollView(
+                child: DynMouseScroll(
+                  // Tune these parameters to your liking
+                  scrollSpeed: () {
+                    // Calculate actual card height based on width and aspect ratio
+                    double cardHeight = cardWidth(constraints) / 0.71; // using the childAspectRatio
+                    // Calculate total distance to scroll (card + padding)
+                    double scrollDistance = cardHeight + cardPadding;
+                    // Convert to appropriate scroll speed value
+                    // The multiplier 0.015 is a scaling factor that you can fine-tune
+                    return scrollDistance * 0.09415;
+                  }(),
+                  durationMS: 300,
+                  animationCurve: Curves.ease,
+                  builder: (context, controller, physics) => GridView.builder(
+                    controller: controller,
+                    physics: physics,
+                    padding: const EdgeInsets.only(top: 16, bottom: 24),
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: crossAxisCount(constraints),
+                      childAspectRatio: 0.71,
+                      crossAxisSpacing: cardPadding,
+                      mainAxisSpacing: cardPadding,
+                    ),
+                    itemCount: library.series.length * 4,
+                    itemBuilder: (context, index) {
+                      final series = library.series[index % library.series.length];
+
+                      return SeriesCard(
+                        key: ValueKey('${series.path}:${series.effectivePosterPath ?? 'none'}'),
+                        series: series,
+                        onTap: () => _navigateToSeries(series),
+                      );
+                    },
                   ),
-                  itemCount: library.series.length,
-                  itemBuilder: (context, index) {
-                    final series = library.series[index];
-                    return SeriesCard(
-                      key: ValueKey('${series.path}:${series.effectivePosterPath ?? 'none'}'),
-                      series: series,
-                      onTap: () => _navigateToSeries(series),
-                    );
-                  },
                 ),
               ),
             ),

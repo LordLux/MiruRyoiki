@@ -30,7 +30,7 @@ Future<T?> showManagedDialog<T>({
         return _DismissibleWrapper(
           onBarrierTap: () {
             // Update our custom stack but don't pop - Flutter will do that
-            print('custom navigation stack pop');
+            print('Custom navigation stack pop');
             navManager.popDialog();
           },
           barrierDismissCheck: barrierDismissCheck,
@@ -173,7 +173,6 @@ class ManagedDialogState extends State<ManagedDialog> {
 
   @override
   Widget build(BuildContext context) {
-    print('${widget.actions?.call(widget.popContext)}');
     return ContentDialog(
       style: widget.theme,
       title: widget.title,

@@ -216,49 +216,147 @@ class Series {
 
   // For JSON deserialization
   factory Series.fromJson(Map<String, dynamic> json) {
-    // Process dominant color
-    Color? dominantColor;
-    if (json['dominantColor'] != null) {
-      dominantColor = Color(json['dominantColor'] as int);
+    try {
+      // Validate required fields
+      final name = json['name'] as String? ?? '';
+      final path = json['path'] as String? ?? '';
+
+      if (name.isEmpty || path.isEmpty) {
+        debugPrint('Warning: Series JSON missing required name or path: $json');
+      }
+
+      // Process dominant color with safe parsing
+      Color? dominantColor;
+      if (json['dominantColor'] != null) {
+        try {
+          dominantColor = Color(json['dominantColor'] as int);
+        } catch (e) {
+          debugPrint('Error parsing dominant color: $e');
+        }
+      }
+
+      // Process anilist mappings with validation
+      List<AnilistMapping> mappings = [];
+
+      try {
+        // Handle newer format with anilistMappings array
+        if (json.containsKey('anilistMappings') && json['anilistMappings'] != null) {
+          final mappingsJson = json['anilistMappings'] as List?;
+          if (mappingsJson != null) {
+            for (final mapping in mappingsJson) {
+              if (mapping is Map<String, dynamic>) {
+                try {
+                  mappings.add(AnilistMapping.fromJson(mapping));
+                } catch (e) {
+                  debugPrint('Error parsing individual Anilist mapping: $e');
+                }
+              }
+            }
+          }
+        }
+        // Support legacy format with single anilistId
+        else if (json.containsKey('anilistId') && json['anilistId'] != null) {
+          mappings.add(AnilistMapping(
+            localPath: path,
+            anilistId: json['anilistId'] as int,
+          ));
+        }
+      } catch (e) {
+        debugPrint('Error processing Anilist mappings: $e');
+      }
+
+      // Process seasons with validation
+      List<Season> seasons = [];
+      try {
+        if (json.containsKey('seasons') && json['seasons'] != null) {
+          final seasonsJson = json['seasons'] as List?;
+          if (seasonsJson != null) {
+            for (final season in seasonsJson) {
+              if (season is Map<String, dynamic>) {
+                try {
+                  seasons.add(Season.fromJson(season));
+                } catch (e) {
+                  debugPrint('Error parsing season: $e');
+                }
+              }
+            }
+          }
+        }
+      } catch (e) {
+        debugPrint('Error processing seasons: $e');
+        // Create empty season if none parsed successfully (required field)
+        if (seasons.isEmpty) //
+          seasons = [Season(name: 'Season 1', path: path, episodes: [])];
+      }
+
+      // Process related media with validation
+      List<Episode> relatedMedia = [];
+      try {
+        if (json.containsKey('relatedMedia') && json['relatedMedia'] != null) {
+          final mediaJson = json['relatedMedia'] as List?;
+          if (mediaJson != null) {
+            for (final episode in mediaJson) {
+              if (episode is Map<String, dynamic>) {
+                try {
+                  relatedMedia.add(Episode.fromJson(episode));
+                } catch (e) {
+                  debugPrint('Error parsing related media episode: $e');
+                }
+              }
+            }
+          }
+        }
+      } catch (e) {
+        debugPrint('Error processing related media: $e');
+      }
+
+      // Create the Series instance
+      final series = Series(
+        name: name,
+        path: path,
+        folderImagePath: json['posterPath'] as String?,
+        seasons: seasons,
+        relatedMedia: relatedMedia,
+        anilistMappings: mappings,
+        dominantColor: dominantColor,
+      );
+
+      // Set primary Anilist ID if available
+      try {
+        if (json['primaryAnilistId'] != null) {
+          series._primaryAnilistId = json['primaryAnilistId'] as int?;
+          // Validate that the primary ID exists in mappings
+          if (series._primaryAnilistId != null && !mappings.any((m) => m.anilistId == series._primaryAnilistId)) {
+            debugPrint('Warning: primaryAnilistId ${series._primaryAnilistId} not found in mappings');
+          }
+        }
+      } catch (e) {
+        debugPrint('Error setting primaryAnilistId: $e');
+      }
+
+      // Set preferred poster source if available
+      try {
+        if (json['preferredPosterSource'] != null) {
+          final sourceStr = json['preferredPosterSource'] as String?;
+          if (sourceStr == 'local')
+            series.preferredPosterSource = PosterSource.local;
+          else if (sourceStr == 'anilist') //
+            series.preferredPosterSource = PosterSource.anilist;
+        }
+      } catch (e) {
+        debugPrint('Error setting preferredPosterSource: $e');
+      }
+
+      return series;
+    } catch (e) {
+      // If anything fails critically, create a minimal valid series
+      debugPrint('Critical error parsing Series.fromJson: $e');
+      return Series(
+        name: json['name'] as String? ?? 'Unknown Series',
+        path: json['path'] as String? ?? '',
+        seasons: [],
+      );
     }
-
-    // Process anilist mappings
-    List<AnilistMapping> mappings = [];
-
-    // Handle newer format with anilistMappings array
-    if (json.containsKey('anilistMappings')) {
-      mappings = (json['anilistMappings'] as List).map((m) => AnilistMapping.fromJson(m as Map<String, dynamic>)).toList();
-    }
-    // Support legacy format with single anilistId
-    else if (json.containsKey('anilistId') && json['anilistId'] != null) {
-      mappings.add(AnilistMapping(
-        localPath: json['path'],
-        anilistId: json['anilistId'] as int,
-      ));
-    }
-
-    final series = Series(
-      name: json['name'],
-      path: json['path'],
-      folderImagePath: json['posterPath'],
-      seasons: (json['seasons'] as List).map((s) => Season.fromJson(s as Map<String, dynamic>)).toList(),
-      relatedMedia: (json['relatedMedia'] as List?)?.map((e) => Episode.fromJson(e as Map<String, dynamic>)).toList() ?? [],
-      anilistMappings: mappings,
-      dominantColor: dominantColor,
-    );
-    if (json['primaryAnilistId'] != null) //
-      series._primaryAnilistId = json['primaryAnilistId'];
-
-    // Set preferred poster source if available
-    if (json['preferredPosterSource'] != null) {
-      final sourceStr = json['preferredPosterSource'];
-      if (sourceStr == 'local')
-        series.preferredPosterSource = PosterSource.local;
-      else if (sourceStr == 'anilist') //
-        series.preferredPosterSource = PosterSource.anilist;
-    }
-
-    return series;
   }
 
   List<Episode> getEpisodesForSeason([int i = 1]) {
