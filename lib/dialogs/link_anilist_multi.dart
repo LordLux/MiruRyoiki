@@ -10,7 +10,7 @@ import '../models/series.dart';
 import '../services/anilist/linking.dart';
 import '../services/navigation/dialogs.dart';
 import '../services/navigation/show_info.dart';
-import 'link_anilist.dart';
+import 'search_panel.dart';
 
 class AnilistLinkMultiDialog extends ManagedDialog {
   final Series series;

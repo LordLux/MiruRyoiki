@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -20,8 +21,12 @@ class Library with ChangeNotifier {
   List<Series> _series = [];
   String? _libraryPath;
   bool _isLoading = false;
+  bool _isDirty = false;
   late FileScanner _fileScanner;
   late MPCHCTracker _mpcTracker;
+
+  Timer? _autoSaveTimer;
+  Timer? _saveDebouncer;
 
   List<Series> get series => List.unmodifiable(_series);
   String? get libraryPath => _libraryPath;
@@ -31,12 +36,26 @@ class Library with ChangeNotifier {
     _fileScanner = FileScanner();
     _mpcTracker = MPCHCTracker()..addListener(_onMpcTrackerUpdate);
     _loadLibrary();
+    _initAutoSave();
+  }
+
+  void _initAutoSave() {
+    _autoSaveTimer?.cancel();
+    // Auto-save every 2 minutes
+    _autoSaveTimer = Timer.periodic(const Duration(minutes: 2), (timer) {
+      if (_isDirty) {
+        debugPrint('Auto-saving library...');
+        _saveLibrary();
+      }
+    });
   }
 
   @override
   void dispose() {
     _mpcTracker.removeListener(_onMpcTrackerUpdate);
     _mpcTracker.dispose();
+    _autoSaveTimer?.cancel();
+    _saveDebouncer?.cancel();
     super.dispose();
   }
 
@@ -208,14 +227,34 @@ class Library with ChangeNotifier {
     final index = _series.indexWhere((s) => s.path == series.path);
     if (index >= 0) {
       _series[index] = series;
+      _isDirty = true;
       await _saveLibrary();
       notifyListeners();
     }
   }
 
+  // Add this method if it doesn't exist, or replace it if it does
+  Future<void> forceImmediateSave() async {
+    debugPrint('Force immediate save requested');
+    try {
+      // Cancel any pending save operations
+      _saveDebouncer?.cancel();
+      _saveDebouncer = null;
+
+      // Perform save directly and wait for it to complete
+      await _saveLibrary();
+      debugPrint('Force immediate save completed');
+    } catch (e) {
+      debugPrint('Error during force save: $e');
+      // Try one more time after a short delay
+      await Future.delayed(const Duration(milliseconds: 100));
+      await _saveLibrary();
+    }
+  }
+
   void _onMpcTrackerUpdate() async {
     final watchedFiles = await _mpcTracker.checkForUpdates();
-    var updated = false;
+    bool updated = false;
 
     // Update watched status for any files that were detected as watched
     for (final filePath in watchedFiles) {
@@ -243,6 +282,7 @@ class Library with ChangeNotifier {
     }
 
     if (updated) {
+      _isDirty = true;
       _saveLibrary();
       notifyListeners();
     }
@@ -282,6 +322,7 @@ class Library with ChangeNotifier {
       _updateWatchedStatus();
 
       await calculateDominantColors();
+      _isDirty = true;
       await _saveLibrary();
     } catch (e) {
       debugPrint('Error scanning library: $e');
@@ -319,8 +360,9 @@ class Library with ChangeNotifier {
   }
 
   static const String settingsFileName = 'settings';
-  static const String miruryoikiLibrary = 'library.json';
+  static const String miruryoikiLibrary = 'library';
 
+  // SETTINGS
   Future<void> _loadSettings() async {
     try {
       final dir = await miruRyoiokiSaveDirectory;
@@ -351,17 +393,45 @@ class Library with ChangeNotifier {
     }
   }
 
+  // LIBRARY
   Future<void> _loadLibrary() async {
     try {
       await _loadSettings();
 
       final dir = await miruRyoiokiSaveDirectory;
       final file = File('${dir.path}/$miruryoikiLibrary.json');
+      final backupFile = File('${dir.path}/$miruryoikiLibrary.backup.json');
 
       if (await file.exists()) {
-        final content = await file.readAsString();
-        final data = jsonDecode(content) as List;
-        _series = data.map((s) => Series.fromJson(s)).toList();
+        try {
+          final content = await file.readAsString();
+          final data = jsonDecode(content) as List;
+          _series = data.map((s) => Series.fromJson(s)).toList();
+
+          // Validate that we loaded series properly
+          if (_series.isNotEmpty) {
+            // Success - create a backup
+            await file.copy(backupFile.path);
+            debugPrint('Library loaded successfully (${_series.length} series)');
+          } else {
+            throw Exception('Loaded library contains no series');
+          }
+        } catch (e) {
+          debugPrint('Error loading library file, trying backup: $e');
+          // If main file load fails, try the backup
+          if (await backupFile.exists()) {
+            final backupContent = await backupFile.readAsString();
+            final backupData = jsonDecode(backupContent) as List;
+            _series = backupData.map((s) => Series.fromJson(s)).toList();
+            debugPrint('Loaded library from backup (${_series.length} series)');
+
+            // Restore from backup
+            await backupFile.copy(file.path);
+          } else {
+            debugPrint('No backup file found, starting with an empty library');
+            _series = [];
+          }
+        }
       }
 
       // Update watched status
@@ -376,14 +446,40 @@ class Library with ChangeNotifier {
     try {
       final dir = await miruRyoiokiSaveDirectory;
       final file = File('${dir.path}/$miruryoikiLibrary.json');
+      final tempFile = File('${dir.path}/$miruryoikiLibrary.temp.json');
 
+      // Write to temporary file first
       final data = _series.map((s) => s.toJson()).toList();
-      await file.writeAsString(jsonEncode(data));
+      await tempFile.writeAsString(jsonEncode(data));
+
+      // If successful, rename temp file to replace the actual file (atomic operation)
+      if (await tempFile.exists()) {
+        // Create backup of existing file if it exists
+        if (await file.exists()) {
+          final backupFile = File('${dir.path}/$miruryoikiLibrary.backup.json');
+          await file.copy(backupFile.path);
+        }
+
+        // Replace original with new file
+        await tempFile.rename(file.path);
+        debugPrint('Library saved successfully');
+        _isDirty = false;
+        return;
+      }
     } catch (e) {
       debugPrint('Error saving library: $e');
     }
   }
 
+  void _saveWithDebounce() {
+    _isDirty = true;
+    _saveDebouncer?.cancel();
+    _saveDebouncer = Timer(const Duration(milliseconds: 500), () {
+      _saveLibrary();
+    });
+  }
+
+  // EPISODES
   Future<void> refreshEpisode(Episode episode) async {
     episode.watchedPercentage = _mpcTracker.getWatchPercentage(episode.path);
     episode.watched = _mpcTracker.isWatched(episode.path);
@@ -391,36 +487,38 @@ class Library with ChangeNotifier {
     notifyListeners();
   }
 
-  void markEpisodeWatched(Episode episode, {bool watched = true}) {
+  void markEpisodeWatched(Episode episode, {bool watched = true, bool save = true}) {
     episode.watched = watched;
     episode.watchedPercentage = watched ? 1.0 : 0.0;
-    _saveLibrary();
-    notifyListeners();
+
+    if (save) {
+      _isDirty = true;
+      _saveWithDebounce();
+      notifyListeners();
+    }
   }
 
-  void markSeasonWatched(Season season, {bool watched = true}) {
-    for (final episode in season.episodes) {
-      episode.watched = watched;
-      episode.watchedPercentage = watched ? 1.0 : 0.0;
+  void markSeasonWatched(Season season, {bool watched = true, bool save = true}) {
+    for (final episode in season.episodes) //
+      markEpisodeWatched(episode, watched: watched, save: false);
+
+    if (save) {
+      _isDirty = true;
+      _saveWithDebounce();
+      notifyListeners();
     }
-    _saveLibrary();
-    notifyListeners();
   }
 
   void markSeriesWatched(Series series, {bool watched = true}) {
-    for (final season in series.seasons) {
-      for (final episode in season.episodes) {
-        episode.watched = watched;
-        episode.watchedPercentage = watched ? 1.0 : 0.0;
-      }
-    }
+    for (final season in series.seasons) //
+      markSeasonWatched(season, watched: watched, save: false);
 
     for (final episode in series.relatedMedia) {
-      episode.watched = watched;
-      episode.watchedPercentage = watched ? 1.0 : 0.0;
+      markEpisodeWatched(episode, watched: watched, save: false);
     }
 
-    _saveLibrary();
+    _isDirty = true;
+    _saveWithDebounce();
     notifyListeners();
   }
 
@@ -462,21 +560,40 @@ class Library with ChangeNotifier {
       ));
     }
 
+    _isDirty = true;
     await _saveLibrary();
     notifyListeners();
   }
 
   /// Update Anilist mappings for a series
-  Future<void> updateSeriesMappings(Series series, List<AnilistMapping> mappings) async {
+  Future<bool> updateSeriesMappings(Series series, List<AnilistMapping> mappings) async {
     series.anilistMappings = mappings;
+    _isDirty = true;
 
     if (mappings.isEmpty) {
       series.anilistData = null;
       series.primaryAnilistId = null; // This will use the setter
     }
 
+    if (series.primaryAnilistId == null && mappings.isNotEmpty) {
+      series.primaryAnilistId = mappings.first.anilistId;
+    }
+
     await _saveLibrary();
     notifyListeners();
+
+    try {
+      final dir = await miruRyoiokiSaveDirectory;
+      final file = File('${dir.path}/$miruryoikiLibrary.json');
+      final backupFile = File('${dir.path}/$miruryoikiLibrary.mappings.json');
+      if (await file.exists()) {
+        await file.copy(backupFile.path);
+        debugPrint('Created backup after updating mappings');
+      }
+    } catch (e) {
+      debugPrint('Error creating mapping backup: $e');
+    }
+    return true;
   }
 
   /// Refresh metadata for all series

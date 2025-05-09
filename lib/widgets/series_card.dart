@@ -74,6 +74,19 @@ class _SeriesCardState extends State<SeriesCard> {
 
   Widget _getSeriesImage() {
     if (_loading) return const Center(child: ProgressRing(strokeWidth: 3));
+    
+    Widget noImg = LayoutBuilder(
+          builder: (context, constraints) {
+            return Align(
+              alignment: Alignment.topCenter,
+              child: SizedBox(
+                width: constraints.maxWidth,
+                height: constraints.maxWidth * 1.05,
+                child: Icon(FluentIcons.file_image, size: constraints.maxWidth * 0.25),
+              ),
+            );
+          }
+        );
 
     if (_posterImageProvider != null) {
       return FadeInImage(
@@ -81,13 +94,13 @@ class _SeriesCardState extends State<SeriesCard> {
         image: _posterImageProvider!,
         fit: BoxFit.fitWidth,
         alignment: Alignment.topCenter,
-        fadeInDuration: const Duration(milliseconds: 300),
+        fadeInDuration: const Duration(milliseconds: 250),
         fadeInCurve: Curves.easeIn,
-        imageErrorBuilder: (context, error, stackTrace) => const Center(child: Icon(FluentIcons.file_image, size: 40)),
+        imageErrorBuilder: (context, error, stackTrace) => noImg,
       );
     }
 
-    return const Center(child: Icon(FluentIcons.file_image, size: 40));
+    return noImg;
   }
 
   @override

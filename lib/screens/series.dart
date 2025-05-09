@@ -9,11 +9,12 @@ import 'package:miruryoiki/services/navigation/show_info.dart';
 import 'package:open_app_file/open_app_file.dart';
 import 'package:provider/provider.dart';
 import 'package:smooth_scroll_multiplatform/smooth_scroll_multiplatform.dart';
+import 'package:defer_pointer/defer_pointer.dart';
 
-import '../dialogs/link_anilist.dart';
 import '../dialogs/link_anilist_multi.dart';
 import '../dialogs/poster_select.dart';
 import '../enums.dart';
+import '../manager.dart';
 import '../models/anilist/mapping.dart';
 import '../models/library.dart';
 import '../models/series.dart';
@@ -52,6 +53,9 @@ class SeriesScreenState extends State<SeriesScreen> {
 
   final Map<int, GlobalKey<ExpanderState>> _seasonExpanderKeys = {};
 
+  bool _isPosterHovering = false;
+  DeferredPointerHandlerLink deferredPointerLink = DeferredPointerHandlerLink();
+
   Series? get series {
     final library = Provider.of<Library>(context, listen: false);
     return library.getSeriesByPath(widget.seriesPath);
@@ -60,12 +64,6 @@ class SeriesScreenState extends State<SeriesScreen> {
   Color get dominantColor =>
       series?.dominantColor ?? //
       FluentTheme.of(context).accentColor.defaultBrushFor(FluentTheme.of(context).brightness);
-
-  // Debug state
-  bool showDebugControls = true;
-  double testWidth = 230.0;
-  double testHeight = 326.0;
-  bool useTestMode = false;
 
   //
 
@@ -92,15 +90,13 @@ class SeriesScreenState extends State<SeriesScreen> {
       id: 'posterSelection:${series!.path}',
       title: 'Select Poster',
       enableBarrierDismiss: true,
+      barrierDismissCheck: () => true,
       builder: (context) => PosterSelectionDialog(
         series: series!,
         popContext: context,
       ),
     ).then((source) {
-      if (source != null) {
-        // Force UI update after selection
-        setState(() {});
-      }
+      if (source != null && mounted) setState(() {});
     });
   }
 
@@ -193,18 +189,22 @@ class SeriesScreenState extends State<SeriesScreen> {
       );
     }
 
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            dominantColor.withOpacity(series!.anilistMappings.isEmpty ? 0.15 : 0.5),
-            Colors.transparent,
-          ],
+    return DeferredPointerHandler(
+      key: ValueKey(series!.path),
+      link: deferredPointerLink,
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              dominantColor.withOpacity(series!.anilistMappings.isEmpty ? 0.15 : 0.5),
+              Colors.transparent,
+            ],
+          ),
         ),
+        child: _buildSeriesContent(context, series!),
       ),
-      child: _buildSeriesContent(context, series!),
     );
   }
 
@@ -470,6 +470,8 @@ class SeriesScreenState extends State<SeriesScreen> {
 
   Duration get stickyHeaderDuration => const Duration(milliseconds: 430);
 
+  Duration get shortStickyHeaderDuration => Duration(milliseconds: stickyHeaderDuration.inMilliseconds ~/ 2);
+
   Widget _buildSeriesContent(BuildContext context, Series series) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16.0),
@@ -488,183 +490,221 @@ class SeriesScreenState extends State<SeriesScreen> {
           Expanded(
             child: SizedBox(
               width: _maxContentWidth,
-              child: Row(
-                children: [
-                  // Info bar on the left
-                  Padding(
-                    padding: const EdgeInsets.only(top: 16.0, left: 14.0),
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.05),
-                        borderRadius: BorderRadius.circular(8.0),
-                      ),
-                      height: double.infinity,
-                      width: _infoBarWidth,
-                      child: Builder(builder: (context) {
-                        double posterWidth = 230.0; // Default width
-                        double posterHeight = 326.0; // Default height
+              child: Builder(builder: (context) {
+                double posterWidth = 230.0; // Default width
+                double posterHeight = 230.0; // Default height 326.0
+                // Get image provider based on available sources
+                ImageProvider? imageProvider;
+                if (series.posterImage != null)
+                  imageProvider = NetworkImage(series.posterImage!);
+                else if (series.folderImagePath != null) //
+                  imageProvider = FileImage(File(series.folderImagePath!));
 
-                        // Get image provider based on available sources
-                        ImageProvider? imageProvider;
-                        if (series.posterImage != null)
-                          imageProvider = NetworkImage(series.posterImage!);
-                        else if (series.folderImagePath != null) //
-                          imageProvider = FileImage(File(series.folderImagePath!));
+                return Row(
+                  children: [
+                    // Info bar on the left
+                    Padding(
+                      padding: const EdgeInsets.only(top: 16.0, left: 14.0),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.05),
+                          borderRadius: BorderRadius.circular(8.0),
+                        ),
+                        height: double.infinity,
+                        width: _infoBarWidth,
+                        child: Builder(
+                          builder: (context) {
+                            return FutureBuilder(
+                              future: _getImageDimensions(imageProvider),
+                              builder: (context, AsyncSnapshot<Size> snapshot) {
+                                final double squareSize = 253.0;
+                                double getInfoBarOffset = 0;
 
-                        // If no image is available, show a placeholder
-                        if (imageProvider == null) {
-                          return Container(
-                            width: posterWidth,
-                            height: posterHeight,
-                            decoration: BoxDecoration(color: dominantColor.withOpacity(0.5), borderRadius: BorderRadius.circular(4)),
-                            child: const Center(child: Icon(FluentIcons.picture, size: 48, color: Colors.white)),
-                          );
-                        }
-                        return FutureBuilder(
-                            future: _getImageDimensions(imageProvider),
-                            builder: (context, AsyncSnapshot<Size> snapshot) {
-                              double squareSize = 253.0;
-                              if (snapshot.hasData && snapshot.data != null) {
-                                final Size originalSize = snapshot.data!;
-                                final double aspectRatio = originalSize.height / originalSize.width;
+                                if (snapshot.hasData && snapshot.data != null) {
+                                  final Size originalSize = snapshot.data!;
 
-                                double maxWidth = 326.0;
-                                double maxHeight = 300.0;
+                                  // Avoid division by zero when image is empty
+                                  if (originalSize.width > 0 && originalSize.height > 0) {
+                                    final double aspectRatio = originalSize.height / originalSize.width;
 
-                                // Constrain aspect ratio between 0.71 and 1.41
-                                double effectiveAspectRatio = aspectRatio;
-                                if (aspectRatio < 0.71) effectiveAspectRatio = 0.71;
-                                if (aspectRatio > 1.41) effectiveAspectRatio = 1.41;
+                                    double maxWidth = 326.0;
+                                    double maxHeight = 300.0;
 
-                                // For square images (aspect ratio around 1), fit to the green box
-                                if (effectiveAspectRatio < 1) {
-                                  // Wider than tall: linearly interpolate width based on distance from square
-                                  // As AR approaches 0.71, width approaches maxWidth (326)
-                                  double ratioFactor = (1 - effectiveAspectRatio) / (1 - 0.71); // 0 when AR=1, 1 when AR=0.71
-                                  posterWidth = squareSize + (maxWidth - squareSize) * ratioFactor;
-                                  posterHeight = posterWidth * effectiveAspectRatio;
+                                    // Constrain aspect ratio between 0.71 and 1.41
+                                    double effectiveAspectRatio = aspectRatio;
+                                    if (aspectRatio < 0.71) effectiveAspectRatio = 0.71;
+                                    if (aspectRatio > 1.41) effectiveAspectRatio = 1.41;
 
-                                  // Ensure we don't exceed height bound
-                                  if (posterHeight > maxHeight) {
-                                    posterHeight = maxHeight;
-                                    posterWidth = posterHeight / effectiveAspectRatio;
-                                  }
-                                } else {
-                                  double ratioFactor = (effectiveAspectRatio - 1) / (1.41 - 1); // 0 when AR=1, 1 when AR=1.41
-                                  posterHeight = squareSize + (maxHeight - squareSize) * ratioFactor;
-                                  posterWidth = posterHeight / effectiveAspectRatio;
+                                    // For square images (aspect ratio around 1), fit to the green box
+                                    if (effectiveAspectRatio < 1) {
+                                      // Wider than tall: linearly interpolate width based on distance from square
+                                      // As AR approaches 0.71, width approaches maxWidth (326)
+                                      double ratioFactor = (1 - effectiveAspectRatio) / (1 - 0.71); // 0 when AR=1, 1 when AR=0.71
+                                      posterWidth = squareSize + (maxWidth - squareSize) * ratioFactor;
+                                      posterHeight = posterWidth * effectiveAspectRatio;
 
-                                  // Ensure we don't exceed width bound
-                                  if (posterWidth > maxWidth) {
-                                    posterWidth = maxWidth;
-                                    posterHeight = posterWidth * effectiveAspectRatio;
+                                      // Ensure we don't exceed height bound
+                                      if (posterHeight > maxHeight) {
+                                        posterHeight = maxHeight;
+                                        posterWidth = posterHeight / effectiveAspectRatio;
+                                      }
+                                    } else {
+                                      double ratioFactor = (effectiveAspectRatio - 1) / (1.41 - 1); // 0 when AR=1, 1 when AR=1.41
+                                      posterHeight = squareSize + (maxHeight - squareSize) * ratioFactor;
+                                      posterWidth = posterHeight / effectiveAspectRatio;
+
+                                      // Ensure we don't exceed width bound
+                                      if (posterWidth > maxWidth) {
+                                        posterWidth = maxWidth;
+                                        posterHeight = posterWidth * effectiveAspectRatio;
+                                      }
+                                    }
+                                    getInfoBarOffset = max(posterHeight - squareSize - 16, 0);
                                   }
                                 }
-                              }
 
-                              final double getInfoBarOffset = max(posterHeight - squareSize - 16, 0);
-                              final double squareness = (getInfoBarOffset / 31);
-                              return Stack(
-                                clipBehavior: Clip.none,
-                                children: [
-                                  // Info bar
-                                  Positioned.fill(
-                                    child: FadingEdgeScrollView(
-                                      gradientStops: [
-                                        (squareness * 0.025),
-                                        (squareness * 0.04) + 0.025,
-                                        (squareness * 0.075) + 0.05,
-                                        0.9,
-                                        0.95,
-                                        0.98,
-                                      ],
-                                      // debug: true,
-                                      child: ScrollConfiguration(
-                                        behavior: ScrollConfiguration.of(context).copyWith(overscroll: true, platform: TargetPlatform.windows, scrollbars: false),
-                                        child: DynMouseScroll(
-                                          scrollSpeed: 1.0,
-                                          durationMS: 350,
-                                          animationCurve: Curves.easeOutQuint,
-                                          builder: (context, controller, physics) {
-                                            return SingleChildScrollView(
-                                              controller: controller,
-                                              physics: physics,
-                                              child: Padding(
-                                                padding: EdgeInsets.only(top: getInfoBarOffset),
-                                                child: _infoBar(series),
-                                              ),
-                                            );
-                                          },
+                                final double squareness = (getInfoBarOffset / 31);
+                                return Stack(
+                                  clipBehavior: Clip.none,
+                                  children: [
+                                    // Info bar
+                                    Positioned.fill(
+                                      child: FadingEdgeScrollView(
+                                        gradientStops: [
+                                          (squareness * 0.025),
+                                          (squareness * 0.04) + 0.025,
+                                          (squareness * 0.075) + 0.05,
+                                          0.9,
+                                          0.95,
+                                          0.98,
+                                        ],
+                                        // debug: true,
+                                        child: ScrollConfiguration(
+                                          behavior: ScrollConfiguration.of(context).copyWith(overscroll: true, platform: TargetPlatform.windows, scrollbars: false),
+                                          child: DynMouseScroll(
+                                            scrollSpeed: 1.0,
+                                            durationMS: 350,
+                                            animationCurve: Curves.easeOutQuint,
+                                            builder: (context, controller, physics) {
+                                              return SingleChildScrollView(
+                                                controller: controller,
+                                                physics: physics,
+                                                child: Padding(
+                                                  padding: EdgeInsets.only(top: max(0, getInfoBarOffset)),
+                                                  child: _infoBar(series),
+                                                ),
+                                              );
+                                            },
+                                          ),
                                         ),
                                       ),
                                     ),
-                                  ),
-                                  // Poster image
-                                  AnimatedPositioned(
-                                    duration: stickyHeaderDuration,
-                                    left: (_infoBarWidth) / 2 - (posterWidth) / 2,
-                                    top: -(_maxHeaderHeight) + 32,
-                                    child: SizedBox(
-                                      width: posterWidth,
-                                      height: posterHeight,
-                                      child: SizedBox(
-                                        width: posterWidth,
-                                        height: posterHeight,
-                                        child: ShadowedImage(
-                                          imageProvider: imageProvider!,
-                                          fit: BoxFit.cover,
-                                          colorFilter: series.posterImage != null ? ColorFilter.mode(Colors.black.withOpacity(0), BlendMode.darken) : null,
-                                          blurSigma: 10,
-                                          shadowColorOpacity: .5,
+
+                                    // Poster image that overflows the info bar from above to appear 'in' the header
+                                    AnimatedPositioned(
+                                      duration: stickyHeaderDuration,
+                                      left: (_infoBarWidth) / 2 - (posterWidth) / 2,
+                                      top: -(_maxHeaderHeight) + 32,
+                                      child: DeferPointer(
+                                        link: deferredPointerLink,
+                                        paintOnTop: true,
+                                        child: MouseRegion(
+                                          cursor: SystemMouseCursors.click,
+                                          onEnter: (_) => setState(() => _isPosterHovering = true),
+                                          onExit: (_) => setState(() => _isPosterHovering = false),
+                                          hitTestBehavior: HitTestBehavior.translucent,
+                                          child: mat.InkWell(
+                                            onTap: () => _selectPoster(context),
+                                            splashColor: (series.dominantColor ?? Manager.accentColor).withOpacity(0.1),
+                                            highlightColor: Colors.white.withOpacity(0.05),
+                                            borderRadius: BorderRadius.circular(8.0),
+                                            child: AnimatedContainer(
+                                              width: posterWidth,
+                                              height: posterHeight,
+                                              duration: shortStickyHeaderDuration,
+                                              color: _isPosterHovering ? (series.dominantColor ?? Manager.accentColor).withOpacity(0.75) : Colors.transparent,
+                                              child: Builder(builder: (context) {
+                                                if (imageProvider != null)
+                                                  return ShadowedImage(
+                                                    imageProvider: imageProvider,
+                                                    fit: BoxFit.cover,
+                                                    colorFilter: series.posterImage != null ? ColorFilter.mode(Colors.black.withOpacity(0), BlendMode.darken) : null,
+                                                    blurSigma: 10,
+                                                    shadowColorOpacity: .5,
+                                                  );
+                                                return Container(
+                                                  decoration: BoxDecoration(color: dominantColor.withOpacity(0.5), borderRadius: BorderRadius.circular(4)),
+                                                  child: Center(
+                                                    child: Stack(
+                                                      children: [
+                                                        AnimatedOpacity(
+                                                          duration: shortStickyHeaderDuration,
+                                                          opacity: _isPosterHovering ? 0 : 1,
+                                                          child: Icon(FluentIcons.picture, size: 48, color: Colors.white),
+                                                        ),
+                                                        AnimatedOpacity(
+                                                          duration: shortStickyHeaderDuration,
+                                                          opacity: _isPosterHovering ? 1 : 0,
+                                                          child: Icon(FluentIcons.add, size: 48, color: Colors.white),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ),
+                                                );
+                                              }),
+                                            ),
+                                          ),
                                         ),
                                       ),
                                     ),
-                                  ),
-                                ],
-                              );
-                            });
-                      }),
+                                  ],
+                                );
+                              },
+                            );
+                          },
+                        ),
+                      ),
                     ),
-                  ),
-                  // Content area on the right
-                  Expanded(
-                    child: Align(
-                      alignment: Alignment.topCenter,
-                      child: FadingEdgeScrollView(
-                        fadeReach: 16,
-                        child: ScrollConfiguration(
-                          behavior: ScrollConfiguration.of(context).copyWith(overscroll: true, platform: TargetPlatform.windows, scrollbars: false),
-                          child: DynMouseScroll(
-                            scrollSpeed: 1.8,
-                            durationMS: 350,
-                            animationCurve: Curves.easeOut,
-                            builder: (context, controller, physics) {
-                              controller.addListener(() {
-                                final offset = controller.offset;
-                                final double newHeight = offset > 0 ? _minHeaderHeight : _maxHeaderHeight;
+                    // Content area on the right
+                    Expanded(
+                      child: Align(
+                        alignment: Alignment.topCenter,
+                        child: FadingEdgeScrollView(
+                          fadeReach: 16,
+                          child: ScrollConfiguration(
+                            behavior: ScrollConfiguration.of(context).copyWith(overscroll: true, platform: TargetPlatform.windows, scrollbars: false),
+                            child: DynMouseScroll(
+                              scrollSpeed: 1.8,
+                              durationMS: 350,
+                              animationCurve: Curves.easeOut,
+                              builder: (context, controller, physics) {
+                                controller.addListener(() {
+                                  final offset = controller.offset;
+                                  final double newHeight = offset > 0 ? _minHeaderHeight : _maxHeaderHeight;
 
-                                if (newHeight != _headerHeight && mounted) //
-                                  setState(() => _headerHeight = newHeight);
-                              });
+                                  if (newHeight != _headerHeight && mounted) //
+                                    setState(() => _headerHeight = newHeight);
+                                });
 
-                              // Then use the controller for your scrollable content
-                              return CustomScrollView(
-                                controller: controller,
-                                physics: physics,
-                                slivers: [
-                                  SliverToBoxAdapter(
-                                    child: _buildEpisodesList(context),
-                                  ),
-                                ],
-                              );
-                            },
+                                // Then use the controller for your scrollable content
+                                return CustomScrollView(
+                                  controller: controller,
+                                  physics: physics,
+                                  slivers: [
+                                    SliverToBoxAdapter(
+                                      child: _buildEpisodesList(context),
+                                    ),
+                                  ],
+                                );
+                              },
+                            ),
                           ),
                         ),
                       ),
                     ),
-                  ),
-                ],
-              ),
+                  ],
+                );
+              }),
             ),
           ),
         ],
@@ -775,7 +815,9 @@ class SeriesScreenState extends State<SeriesScreen> {
   }
 
 // Add this method to the SeriesScreenState class
-  Future<Size> _getImageDimensions(ImageProvider imageProvider) async {
+  Future<Size> _getImageDimensions(ImageProvider? imageProvider) async {
+    if (imageProvider == null) return const Size(0, 0); // Default size if no image provider
+
     final Completer<Size> completer = Completer<Size>();
 
     final ImageStream stream = imageProvider.resolve(const ImageConfiguration());
@@ -818,6 +860,7 @@ class SeriesScreenState extends State<SeriesScreen> {
       title: 'Link to Anilist',
       data: series!.path,
       enableBarrierDismiss: true,
+      barrierDismissCheck: () => true,
       builder: (context) => AnilistLinkMultiDialog(
         constraints: const BoxConstraints(
           maxWidth: 1300,

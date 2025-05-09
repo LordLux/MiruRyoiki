@@ -7,55 +7,6 @@ import '../services/anilist/linking.dart';
 import '../services/anilist/provider.dart';
 import '../services/navigation/dialogs.dart';
 
-class AnilistLinkDialog extends ManagedDialog {
-  final Series series;
-  final SeriesLinkService linkService;
-  final Function(int, String) onLink;
-
-  AnilistLinkDialog({
-    super.key,
-    required this.series,
-    required this.linkService,
-    required this.onLink,
-    super.title = const Text('Link Local entry to Anilist entry'),
-    super.constraints,
-    required super.popContext,
-  }) : super(
-          contentBuilder: (context, constraints) => AnilistSearchPanel(
-            series: series,
-            linkService: linkService,
-            onLink: onLink,
-            constraints: constraints,
-            skipAutoClose: true,
-          ),
-          actions: (_) => [ManagedDialogButton(popContext: popContext, text: 'anilist link')],
-        );
-
-  @override
-  State<AnilistLinkDialog> createState() => _AnilistLinkDialogState();
-}
-
-class _AnilistLinkDialogState extends State<AnilistLinkDialog> {
-  @override
-  Widget build(BuildContext context) {
-    return ContentDialog(
-      title: widget.title,
-      content: AnimatedContainer(
-        duration: const Duration(milliseconds: 300),
-        width: widget.constraints.maxWidth,
-        height: widget.constraints.maxHeight,
-        child: AnilistSearchPanel(
-          series: widget.series,
-          linkService: widget.linkService,
-          onLink: widget.onLink,
-          constraints: widget.constraints,
-        ),
-      ),
-      actions: widget.actions!(widget.popContext), // this context does not matter
-    );
-  }
-}
-
 class AnilistSearchPanel extends StatefulWidget {
   /// The series to link to Anilist.
   final Series series;
