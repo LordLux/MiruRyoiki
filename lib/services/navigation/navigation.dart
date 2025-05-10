@@ -1,3 +1,5 @@
+// ignore_for_file: dead_code
+
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/foundation.dart';
 
@@ -131,13 +133,13 @@ class NavigationManager extends ChangeNotifier {
 
   void _logCurrentStack() {
     if (false && kDebugMode) {
-      print('----------------------------------------------');
-      print('Navigation Stack:');
+      debugPrint('----------------------------------------------');
+      debugPrint('Navigation Stack:');
       for (int i = 0; i < _stack.length; i++) {
         final item = _stack.reversed.toList()[i];
-        print('  ${i == 0 ? '→' : ' '} ${item.level.name}: ${item.title}');
+        debugPrint('  ${i == 0 ? '→' : ' '} ${item.level.name}: ${item.title}');
       }
-      print('----------------------------------------------');
+      debugPrint('----------------------------------------------');
     }
   }
 

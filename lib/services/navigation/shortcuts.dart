@@ -5,13 +5,9 @@ import 'package:flutter/services.dart';
 import 'package:miruryoiki/services/navigation/dialogs.dart';
 import 'package:provider/provider.dart';
 
-import '../../enums.dart';
-import '../../functions.dart';
 import '../../main.dart';
 import '../../manager.dart';
 import '../../models/library.dart';
-import '../../screens/series.dart';
-import 'navigation.dart';
 
 class KeyboardState {
   static final ValueNotifier<bool> ctrlPressedNotifier = ValueNotifier<bool>(false);
@@ -160,10 +156,10 @@ class _CustomKeyboardListenerState extends State<CustomKeyboardListener> {
       final seriesScreenState = seriesScreenKey.currentState;
 
       if (seriesScreenState != null) {
-        print('Ctrl + $season pressed: Toggling season $season');
+        debugPrint('Ctrl + $season pressed: Toggling season $season');
         seriesScreenState.toggleSeasonExpander(season);
       } else {
-        print('SeriesScreenState not found');
+        debugPrint('SeriesScreenState not found');
       }
     }
   }

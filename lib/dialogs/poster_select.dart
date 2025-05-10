@@ -1,15 +1,21 @@
 import 'dart:io';
+import 'dart:math';
 import 'package:fluent_ui/fluent_ui.dart';
-import 'package:flutter/material.dart' as mat;
 import 'package:transparent_image/transparent_image.dart';
 import 'package:provider/provider.dart';
 
 import '../enums.dart';
+import '../main.dart';
+import '../manager.dart';
 import '../models/series.dart';
 import '../models/library.dart';
+import '../screens/series.dart';
 import '../services/navigation/dialogs.dart';
 import '../services/navigation/show_info.dart';
 import '../services/cache.dart';
+import '../utils/image_utils.dart';
+import '../utils/screen_utils.dart';
+import '../widgets/transparency_shadow_image.dart';
 
 class PosterSelectionDialog extends ManagedDialog {
   final Series series;
@@ -19,7 +25,7 @@ class PosterSelectionDialog extends ManagedDialog {
     required this.series,
     required super.popContext,
     super.title = const Text('Select Poster Image'),
-    super.constraints = const BoxConstraints(maxWidth: 600, maxHeight: 500),
+    super.constraints = const BoxConstraints(maxWidth: 1000, maxHeight: 700),
   }) : super(
           contentBuilder: (context, constraints) => _PosterSelectionContent(
             series: series,
@@ -38,12 +44,12 @@ class PosterSelectionDialog extends ManagedDialog {
                 'Poster preference saved',
                 severity: InfoBarSeverity.success,
               );
+              // TODO fix this not actually saving
             },
             onCancel: () {
               closeDialog(popContext);
             },
           ),
-          actions: (_) => [],
         );
 }
 
@@ -68,29 +74,50 @@ class _PosterSelectionContentState extends State<_PosterSelectionContent> {
   late PosterSource _selectedSource;
   bool _localImageLoading = false;
   bool _anilistImageLoading = false;
+  // ignore: unused_field
   ImageProvider? _localPosterProvider;
   ImageProvider? _anilistPosterProvider;
+
+  List<File> _localImageFiles = [];
+  int _selectedLocalImageIndex = 0;
 
   @override
   void initState() {
     super.initState();
-    _selectedSource = widget.series.preferredPosterSource;
+    _selectedSource = widget.series.preferredPosterSource ?? Manager.defaultPosterSource;
     _loadImages();
+  }
+
+  Future<void> _findLocalImages() async {
+    final directory = Directory(widget.series.path);
+
+    final List<FileSystemEntity> entities = await directory.list().toList();
+
+    // Filter for image files
+    _localImageFiles = entities.whereType<File>().where((file) {
+      final extension = file.path.toLowerCase().split('.').last;
+      return ['jpg', 'jpeg', 'png', 'ico', 'webp'].contains(extension);
+    }).toList();
+
+    // Set selected index to current poster if it exists
+    if (widget.series.folderImagePath != null) {
+      final index = _localImageFiles.indexWhere((f) => f.path == widget.series.folderImagePath);
+      if (index >= 0) _selectedLocalImageIndex = index;
+    }
+
+    if (_localImageFiles.isNotEmpty) {
+      _loadSelectedLocalImage();
+    }
   }
 
   Future<void> _loadImages() async {
     setState(() {
-      _localImageLoading = widget.series.folderImagePath != null;
+      _localImageLoading = true;
       _anilistImageLoading = widget.series.anilistData?.posterImage != null;
     });
 
-    // Load local image
-    if (widget.series.folderImagePath != null) {
-      _localPosterProvider = FileImage(File(widget.series.folderImagePath!));
-      if (mounted) setState(() => _localImageLoading = false);
-    }
+    await _findLocalImages();
 
-    // Load Anilist image
     if (widget.series.anilistData?.posterImage != null) {
       final imageCache = ImageCacheService();
       final cachedFile = await imageCache.getCachedImageFile(widget.series.anilistData!.posterImage!);
@@ -104,6 +131,16 @@ class _PosterSelectionContentState extends State<_PosterSelectionContent> {
       }
 
       if (mounted) setState(() => _anilistImageLoading = false);
+    }
+  }
+
+  void _loadSelectedLocalImage() {
+    if (_localImageFiles.isNotEmpty && _selectedLocalImageIndex < _localImageFiles.length) {
+      _localPosterProvider = FileImage(_localImageFiles[_selectedLocalImageIndex]);
+      if (mounted) setState(() => _localImageLoading = false);
+    } else {
+      _localPosterProvider = null;
+      if (mounted) setState(() => _localImageLoading = false);
     }
   }
 
@@ -124,14 +161,16 @@ class _PosterSelectionContentState extends State<_PosterSelectionContent> {
             children: [
               // Local poster option
               Expanded(
-                child: _buildPosterOption(
-                  title: 'Local Folder Image',
-                  isAvailable: widget.series.folderImagePath != null,
-                  isLoading: _localImageLoading,
-                  posterProvider: _localPosterProvider,
-                  source: PosterSource.local,
-                  unavailableMessage: 'No local image available',
-                ),
+                child: _localImageFiles.isEmpty
+                    ? _buildPosterOption(
+                        title: 'Local Folder Images',
+                        isAvailable: false,
+                        isLoading: _localImageLoading,
+                        posterProvider: null,
+                        source: PosterSource.local,
+                        unavailableMessage: 'No local images available,\nPlease add images to the folder',
+                      )
+                    : _buildLocalImagesOption(),
               ),
               SizedBox(width: 16),
               // Anilist poster option
@@ -143,6 +182,14 @@ class _PosterSelectionContentState extends State<_PosterSelectionContent> {
                   posterProvider: _anilistPosterProvider,
                   source: PosterSource.anilist,
                   unavailableMessage: 'No Anilist image available',
+                  linkToAnilistAction: () {
+                    linkWithAnilist(
+                      context,
+                      widget.series,
+                      (id) => seriesScreenKey.currentState!.loadAnilistData(id),
+                      (_) => seriesScreenKey.currentState?.setState(() {}),
+                    );
+                  },
                 ),
               ),
             ],
@@ -152,7 +199,7 @@ class _PosterSelectionContentState extends State<_PosterSelectionContent> {
         SizedBox(height: 20),
         // Status message
         Text(
-          'Current preference: ${_getSourceDisplayName(widget.series.preferredPosterSource)}',
+          'Current preference: ${_getSourceDisplayName(widget.series.preferredPosterSource ?? Manager.defaultPosterSource)}',
           style: FluentTheme.of(context).typography.bodyStrong,
         ),
         SizedBox(height: 20),
@@ -183,8 +230,10 @@ class _PosterSelectionContentState extends State<_PosterSelectionContent> {
         return 'Local Image';
       case PosterSource.anilist:
         return 'Anilist Image';
-      case PosterSource.unspecified:
+      case PosterSource.autoLocal:
         return 'Automatic (Local if available, otherwise Anilist)';
+      case PosterSource.autoAnilist:
+        return 'Automatic (Anilist if available, otherwise Local)';
     }
   }
 
@@ -195,8 +244,10 @@ class _PosterSelectionContentState extends State<_PosterSelectionContent> {
     required ImageProvider? posterProvider,
     required PosterSource source,
     required String unavailableMessage,
+    VoidCallback? linkToAnilistAction,
   }) {
     final isSelected = _selectedSource == source;
+    final needsAnilistLink = source == PosterSource.anilist && widget.series.primaryAnilistId == null;
 
     return GestureDetector(
       onTap: isAvailable
@@ -209,8 +260,8 @@ class _PosterSelectionContentState extends State<_PosterSelectionContent> {
       child: Card(
         padding: EdgeInsets.all(12),
         borderRadius: BorderRadius.circular(8),
-        backgroundColor: isSelected ? FluentTheme.of(context).accentColor.withOpacity(0.1) : Colors.transparent,
-        borderColor: isSelected ? FluentTheme.of(context).accentColor : FluentTheme.of(context).resources.controlStrokeColorDefault,
+        backgroundColor: isSelected ? Manager.accentColor.lighter.withOpacity(0.1) : Colors.transparent,
+        borderColor: isSelected ? Manager.accentColor.lighter : FluentTheme.of(context).resources.controlStrokeColorDefault,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -239,9 +290,17 @@ class _PosterSelectionContentState extends State<_PosterSelectionContent> {
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(FluentIcons.error, size: 32, color: Colors.grey),
+                          Icon(FluentIcons.error, size: 32, color: Manager.accentColor.lightest),
                           SizedBox(height: 8),
-                          Text(unavailableMessage),
+                          Text(unavailableMessage, textAlign: TextAlign.center),
+                          if (needsAnilistLink && linkToAnilistAction != null)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 16.0),
+                              child: FilledButton(
+                                onPressed: linkToAnilistAction,
+                                child: Text('Link to Anilist'),
+                              ),
+                            ),
                         ],
                       ),
                     ),
@@ -271,5 +330,238 @@ class _PosterSelectionContentState extends State<_PosterSelectionContent> {
         ),
       ),
     );
+  }
+
+  Widget _buildLocalImagesOption() {
+    final isSelected = _selectedSource == PosterSource.local;
+    // Track hovered image for filename display
+    String? hoveredImageName;
+
+    return StatefulBuilder(builder: (context, setStateLocal) {
+      return GestureDetector(
+        onTap: () {
+          setState(() {
+            _selectedSource = PosterSource.local;
+          });
+        },
+        child: Card(
+          padding: EdgeInsets.all(12),
+          borderRadius: BorderRadius.circular(8),
+          backgroundColor: isSelected ? Manager.accentColor.lighter.withOpacity(0.1) : Colors.transparent,
+          borderColor: isSelected ? Manager.accentColor.lighter : FluentTheme.of(context).resources.controlStrokeColorDefault,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Local Folder Images (${_localImageFiles.length})',
+                style: FluentTheme.of(context).typography.bodyStrong,
+              ),
+              SizedBox(height: 12),
+              Expanded(
+                child: _localImageLoading
+                    ? Center(child: ProgressRing())
+                    : Column(
+                        children: [
+                          Expanded(
+                            child: GridView.builder(
+                              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: 4,
+                                childAspectRatio: 1,
+                                crossAxisSpacing: 8,
+                                mainAxisSpacing: 8,
+                              ),
+                              itemCount: _localImageFiles.length,
+                              itemBuilder: (context, index) {
+                                final file = _localImageFiles[index];
+                                final fileName = file.path.split(Platform.pathSeparator).last;
+
+                                return TooltipTheme(
+                                  data: TooltipThemeData(
+                                    decoration: BoxDecoration(color: Colors.transparent),
+                                    waitDuration: const Duration(milliseconds: 500),
+                                  ),
+                                  child: Tooltip(
+                                    enableFeedback: true,
+                                    richMessage: WidgetSpan(
+                                      child: LayoutBuilder(builder: (context, c) {
+                                        print(ScreenUtils.width);
+                                        final maxWidth = ScreenUtils.width * 0.5;
+                                        final maxHeight = ScreenUtils.height * 0.7;
+                                        return FutureBuilder(
+                                            future: getImageDimensions(FileImage(file)),
+                                            builder: (context, data) {
+                                              if (!data.hasData) return SizedBox.shrink();
+
+                                              final imageAspectRatio = data.data!.aspectRatio;
+                                              double width, height;
+
+                                              if (imageAspectRatio > 1) {
+                                                // Wider than tall
+                                                width = min(min(maxWidth, imageAspectRatio * maxHeight), data.data!.width);
+                                                height = width / imageAspectRatio;
+                                              } else {
+                                                // Taller than wide or square
+                                                height = min(min(maxHeight, maxWidth / imageAspectRatio), data.data!.height);
+                                                width = height * imageAspectRatio;
+                                              }
+
+                                              final String dimensions = "${width.toInt()}x${height.toInt()}";
+                                              final int dimensionsLength = dimensions.length;
+
+                                              return SizedBox(
+                                                width: width,
+                                                height: height,
+                                                child: Stack(
+                                                  clipBehavior: Clip.none,
+                                                  children: [
+                                                    Positioned.fill(
+                                                      child: Transform.scale(
+                                                        scale: 18,
+                                                        child: Container(
+                                                          color: Colors.black.withOpacity(.5),
+                                                        ),
+                                                      ),
+                                                    ),
+                                                    Acrylic(
+                                                      blurAmount: 5,
+                                                      elevation: 0.5,
+                                                      tintAlpha: 0.5,
+                                                      luminosityAlpha: 0.4,
+                                                      child: ShadowedImage(imageProvider: FileImage(file)),
+                                                    ),
+                                                    Positioned(
+                                                      bottom: 0,
+                                                      child: Container(
+                                                        height: 24,
+                                                        width: width,
+                                                        decoration: BoxDecoration(
+                                                          gradient: LinearGradient(
+                                                            colors: [
+                                                              Colors.black.withOpacity(0.5),
+                                                              Colors.transparent,
+                                                            ],
+                                                            begin: Alignment.bottomCenter,
+                                                            end: Alignment.topCenter,
+                                                          ),
+                                                        ),
+                                                        child: Padding(
+                                                          padding: const EdgeInsets.only(left: 6.0),
+                                                          child: Text(
+                                                            fileName,
+                                                            style: FluentTheme.of(context).typography.body,
+                                                            maxLines: 1,
+                                                            overflow: TextOverflow.ellipsis,
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ),
+                                                    Positioned(
+                                                      top: 0,
+                                                      right: 0,
+                                                      child: Container(
+                                                        height: 40,
+                                                        width: width,
+                                                        decoration: BoxDecoration(
+                                                          gradient: LinearGradient(
+                                                            colors: [
+                                                              Colors.transparent,
+                                                              Colors.black.withOpacity(0.5),
+                                                            ],
+                                                            begin: Alignment.bottomCenter,
+                                                            end: Alignment.topCenter,
+                                                          ),
+                                                        ),
+                                                        child: Padding(
+                                                          padding: const EdgeInsets.only(right: 6.0),
+                                                          child: Text(
+                                                            dimensions,
+                                                            style: FluentTheme.of(context).typography.body,
+                                                            maxLines: 1,
+                                                            textAlign: TextAlign.end,
+                                                            overflow: TextOverflow.ellipsis,
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              );
+                                            });
+                                      }),
+                                    ),
+                                    child: SizedBox(
+                                      height: 100,
+                                      width: 100,
+                                      child: MouseRegion(
+                                        onEnter: (_) => setStateLocal(() => hoveredImageName = fileName),
+                                        onExit: (_) => setStateLocal(() => hoveredImageName = null),
+                                        child: GestureDetector(
+                                          onTap: () {
+                                            setState(() {
+                                              _selectedLocalImageIndex = index;
+                                              _loadSelectedLocalImage();
+                                              _selectedSource = PosterSource.local;
+                                            });
+                                          },
+                                          child: Container(
+                                            decoration: BoxDecoration(
+                                              border: index == _selectedLocalImageIndex ? Border.all(color: Manager.accentColor.light, width: 3) : null,
+                                              borderRadius: BorderRadius.circular(4),
+                                            ),
+                                            child: ClipRRect(
+                                              borderRadius: BorderRadius.circular(4),
+                                              child: FadeInImage(
+                                                placeholder: MemoryImage(kTransparentImage),
+                                                image: FileImage(file),
+                                                fit: BoxFit.contain,
+                                                fadeInDuration: const Duration(milliseconds: 300),
+                                                fadeInCurve: Curves.easeIn,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+
+                          // Show filename of hovered image
+                          Container(
+                            height: 24,
+                            alignment: Alignment.center,
+                            padding: EdgeInsets.symmetric(vertical: 4),
+                            child: Text(
+                              hoveredImageName ?? '',
+                              style: FluentTheme.of(context).typography.caption,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+              ),
+              SizedBox(height: 12),
+              Row(
+                children: [
+                  RadioButton(
+                    checked: _selectedSource == PosterSource.local,
+                    onChanged: (_) {
+                      setState(() {
+                        _selectedSource = PosterSource.local;
+                      });
+                    },
+                  ),
+                  SizedBox(width: 8),
+                  Text('Use ${_localImageFiles.isEmpty ? "selected local image" : _localImageFiles[_selectedLocalImageIndex].path.split(Platform.pathSeparator).last}'),
+                ],
+              ),
+            ],
+          ),
+        ),
+      );
+    });
   }
 }

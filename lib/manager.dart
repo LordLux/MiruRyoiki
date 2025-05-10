@@ -1,11 +1,10 @@
 import 'dart:io';
-import 'dart:ui';
 
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter_acrylic/window_effect.dart';
 import 'package:miruryoiki/main.dart';
+import 'package:miruryoiki/utils/logging.dart';
 import 'package:provider/provider.dart';
-import 'package:recase/recase.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'enums.dart';
@@ -30,13 +29,22 @@ class Manager {
       Manager.flyout?.close();
     });
   }
-  
-  static Color get accentColor {
+
+  static AccentColor get accentColor {
     final settings = Provider.of<SettingsManager>(homeKey.currentContext!, listen: false);
-    return settings.accentColor;
+    return settings.accentColor.toAccentColor();
   }
 
+  static PosterSource get defaultPosterSource {
+    final settings = Provider.of<SettingsManager>(homeKey.currentContext!, listen: false);
+    return settings.defaultPosterSource;
+  }
+
+  /// Checks if the current platform is MacOS
   static bool get isMacOS => Platform.isMacOS;
+
+  /// Checks if the current platform is Windows 11
+  static bool get isWin11 => Platform.operatingSystemVersion.startsWith('11');
 
   static bool get isCtrlPressed => KeyboardState.ctrlPressedNotifier.value;
   static bool get isShiftPressed => KeyboardState.shiftPressedNotifier.value;
@@ -48,19 +56,19 @@ class SettingsManager extends ChangeNotifier {
   SettingsManager._internal();
 
   // Underlying storage
+  // ignore: prefer_final_fields
   Map<String, dynamic> _settings = {};
   SharedPreferences? _prefs;
   bool _initialized = false;
-// Typed getters/setters for common settings
-  bool get autoLoadAnilistPosters => _getBool('autoLoadAnilistPosters', defaultValue: true);
-  set autoLoadAnilistPosters(bool value) => _setBool('autoLoadAnilistPosters', value);
 
+  // // Typed getters/setters for settings
+  // Appearance
   double get fontSize => _getDouble('fontSize', defaultValue: 14.0);
   set fontSize(double value) => _setDouble('fontSize', value);
 
   WindowEffect get windowEffect => WindowEffectX.fromString(_getString('windowEffect', defaultValue: WindowEffect.acrylic.name_));
   set windowEffect(WindowEffect value) => _setString('windowEffect', value.name_);
-  
+
   Dim get dim => DimX.fromString(_getString('dim', defaultValue: Dim.normal.name_));
   set dim(Dim value) => _setString('dim', value.name_);
 
@@ -69,13 +77,23 @@ class SettingsManager extends ChangeNotifier {
 
   Color get accentColor => _getString('accentColor', defaultValue: Color(0xFF0078d4).toHex()).fromHex();
   set accentColor(Color value) => _setString('accentColor', value.toHex());
-  
+
+  // Behavior
+  bool get autoLoadAnilistPosters => _getBool('autoLoadAnilistPosters', defaultValue: true);
+  set autoLoadAnilistPosters(bool value) => _setBool('autoLoadAnilistPosters', value);
+
   LibraryColorView get libColView => LibraryColorViewX.fromString(_getString('libColView', defaultValue: LibraryColorView.all.name_));
   set libColView(LibraryColorView value) => _setString('libColView', value.name_);
 
-  // Generic getters with type safety
+  PosterSource get defaultPosterSource => PosterSourceX.fromString(_getString('defaultPosterSource', defaultValue: PosterSource.autoAnilist.name_));
+  set defaultPosterSource(PosterSource value) => _setString('defaultPosterSource', value.name_);
+
+  // // Generic getters with type safety
   bool _getBool(String key, {required bool defaultValue}) {
-    if (!_settings.containsKey(key)) return defaultValue;
+    if (!_settings.containsKey(key)) {
+      logTrace('Key $key not found in settings, returning default value: $defaultValue');
+      return defaultValue;
+    }
     final value = _settings[key];
     if (value is bool) return value;
     if (value is String) return value.toLowerCase() == 'true';
@@ -83,7 +101,10 @@ class SettingsManager extends ChangeNotifier {
   }
 
   double _getDouble(String key, {required double defaultValue}) {
-    if (!_settings.containsKey(key)) return defaultValue;
+    if (!_settings.containsKey(key)) {
+      logTrace('Key $key not found in settings, returning default value: $defaultValue');
+      return defaultValue;
+    }
     final value = _settings[key];
     if (value is double) return value;
     if (value is int) return value.toDouble();
@@ -92,7 +113,10 @@ class SettingsManager extends ChangeNotifier {
   }
 
   String _getString(String key, {required String defaultValue}) {
-    if (!_settings.containsKey(key)) return defaultValue;
+    if (!_settings.containsKey(key)) {
+      logTrace('Key $key not found in settings, returning default value: $defaultValue');
+      return defaultValue;
+    }
     final value = _settings[key];
     return value?.toString() ?? defaultValue;
   }

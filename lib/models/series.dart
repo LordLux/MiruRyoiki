@@ -1,7 +1,5 @@
 import 'dart:io';
-import 'dart:ui';
 
-import 'package:flutter/material.dart' show ColorScheme, Colors;
 import 'package:flutter/widgets.dart';
 import 'package:palette_generator/palette_generator.dart';
 import 'package:collection/collection.dart';
@@ -74,7 +72,7 @@ class Series {
   // The currently selected Anilist ID for display purposes
   int? _primaryAnilistId;
 
-  PosterSource preferredPosterSource = PosterSource.unspecified;
+  PosterSource? preferredPosterSource;
 
   Series({
     required this.name,
@@ -210,7 +208,7 @@ class Series {
       'anilistMappings': anilistMappings.map((m) => m.toJson()).toList(),
       'dominantColor': _dominantColor?.value,
       'primaryAnilistId': _primaryAnilistId,
-      'preferredPosterSource': preferredPosterSource.toString().split('.').last,
+      if (preferredPosterSource != null) 'preferredPosterSource': preferredPosterSource!.name_,
     };
   }
 
@@ -342,6 +340,7 @@ class Series {
             series.preferredPosterSource = PosterSource.local;
           else if (sourceStr == 'anilist') //
             series.preferredPosterSource = PosterSource.anilist;
+          // if the preferred source is not set, it will be decided by the setting
         }
       } catch (e) {
         debugPrint('Error setting preferredPosterSource: $e');
@@ -418,17 +417,18 @@ class Series {
   List<String> get genres => currentAnilistData?.genres ?? [];
 
   /// Getter to check if the poster is from Anilist
-  bool get isAnilistPoster =>
-      preferredPosterSource == PosterSource.anilist ||
-      (preferredPosterSource == PosterSource.unspecified && //
-          folderImagePath == null &&
-          _anilistData?.posterImage != null);
+  bool get isAnilistPoster {
+    final effectiveSource = preferredPosterSource ?? Manager.defaultPosterSource;
+    return effectiveSource == PosterSource.anilist || //
+        (effectiveSource == PosterSource.autoAnilist && _anilistData?.posterImage != null);
+  }
 
   /// Getter to check if the poster is from a local file
-  bool get isLocalPoster =>
-      preferredPosterSource == PosterSource.local ||
-      (preferredPosterSource == PosterSource.unspecified && //
-          folderImagePath != null);
+  bool get isLocalPoster {
+    final effectiveSource = preferredPosterSource ?? Manager.defaultPosterSource;
+    return effectiveSource == PosterSource.local || //
+        (effectiveSource == PosterSource.autoLocal && folderImagePath != null);
+  }
 
   String? get effectivePosterPath {
     if (isLocalPoster) return folderImagePath;

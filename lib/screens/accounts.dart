@@ -70,7 +70,7 @@ class AccountsScreenState extends State<AccountsScreen> {
                           isLocalLoading = true;
 
                           await anilistProvider.login();
-                          print('Logging in to Anilist...');
+                          debugPrint('Logging in to Anilist...');
                         },
                   child: Row(
                     mainAxisSize: MainAxisSize.min,

@@ -1,17 +1,14 @@
-import 'dart:io';
 import 'dart:math';
 
 import 'package:fluent_ui/fluent_ui.dart' as fluent;
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart' as mat;
-import 'package:flutter/services.dart';
-import 'package:open_file/open_file.dart';
 
 import '../../main.dart';
 
 void snackBar(String message, {fluent.Color color = const mat.Color(0xFF333333), fluent.InfoBarSeverity severity = fluent.InfoBarSeverity.info, bool hasError = false}) {
-  if (severity == fluent.InfoBarSeverity.error && kDebugMode) print("Error: $message");
+  if (severity == fluent.InfoBarSeverity.error && kDebugMode) debugPrint("Error: $message");
 
   fluent.displayInfoBar(
     duration: severity == fluent.InfoBarSeverity.error ? const Duration(seconds: 10) : const Duration(seconds: 3),
@@ -108,7 +105,7 @@ void showNonModalDialog(BuildContext context, Widget dialogContent, BoxConstrain
               double maxHeight = min(mat.MediaQuery.of(context).size.height - 180, 800.0);
               return ConstrainedBox(
                 constraints: BoxConstraints(maxWidth: maxWidth, maxHeight: maxHeight),
-                child: mat.Container(
+                child: SizedBox(
                   //color: mat.Colors.amber,
                   width: maxWidth,
                   height: maxHeight,

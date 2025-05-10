@@ -2,9 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:math';
 import 'package:fluent_ui/fluent_ui.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart' as mat;
-import 'package:flutter/services.dart';
 import 'package:miruryoiki/services/navigation/show_info.dart';
 import 'package:open_app_file/open_app_file.dart';
 import 'package:provider/provider.dart';
@@ -22,8 +20,7 @@ import '../models/episode.dart';
 import '../services/anilist/linking.dart';
 import '../services/anilist/provider.dart';
 import '../services/navigation/dialogs.dart';
-import '../services/navigation/navigation.dart';
-import '../theme.dart';
+import '../utils/image_utils.dart';
 import '../widgets/episode_grid.dart';
 import '../widgets/gradient_mask.dart';
 import '../widgets/transparency_shadow_image.dart';
@@ -116,6 +113,8 @@ class SeriesScreenState extends State<SeriesScreen> {
     await _loadAnilistData(anilistId);
   }
 
+  Future<void> loadAnilistData(int id) async => await _loadAnilistData(id);
+
   Future<void> _loadAnilistData(int anilistId) async {
     if (series == null) return;
 
@@ -134,17 +133,18 @@ class SeriesScreenState extends State<SeriesScreen> {
               lastSynced: DateTime.now(),
               anilistData: anime,
             );
-          }
 
-          // Also update the series.anilistData if this is the primary
-          if (series!.primaryAnilistId == anilistId || series!.primaryAnilistId == null) {
-            series!.anilistData = anime;
+            // Also update the series.anilistData if this is the primary
+            if (series!.primaryAnilistId == anilistId || series!.primaryAnilistId == null) {
+              series!.anilistData = anime;
+            }
+
+            break; // Break after updating the mapping
           }
-          break;
         }
       });
     } else {
-      print('Failed to load Anilist data for ID: $anilistId'); // Debug log
+      debugPrint('Failed to load Anilist data for ID: $anilistId'); // Use debugPrint instead of print
     }
   }
 
@@ -322,7 +322,14 @@ class SeriesScreenState extends State<SeriesScreen> {
               series.watchedPercentage == 1 ? 'You have already watched all episodes' : 'Mark All as Watched',
             ),
             _buildButton(
-              context.watch<AnilistProvider>().isLoggedIn && series.seasons.isNotEmpty ? () => _linkWithAnilist(context) : null,
+              context.watch<AnilistProvider>().isLoggedIn && series.seasons.isNotEmpty
+                  ? () => linkWithAnilist(
+                        context,
+                        series,
+                        _loadAnilistData,
+                        setState,
+                      )
+                  : null,
               Icon(
                 series.anilistId != null ? FluentIcons.link : FluentIcons.add_link,
                 color: Colors.white,
@@ -495,10 +502,12 @@ class SeriesScreenState extends State<SeriesScreen> {
                 double posterHeight = 230.0; // Default height 326.0
                 // Get image provider based on available sources
                 ImageProvider? imageProvider;
-                if (series.posterImage != null)
-                  imageProvider = NetworkImage(series.posterImage!);
-                else if (series.folderImagePath != null) //
-                  imageProvider = FileImage(File(series.folderImagePath!));
+                if (series.effectivePosterPath != null) {
+                  if (series.isAnilistPoster)
+                    imageProvider = NetworkImage(series.effectivePosterPath!);
+                  else
+                    imageProvider = FileImage(File(series.effectivePosterPath!));
+                }
 
                 return Row(
                   children: [
@@ -515,7 +524,7 @@ class SeriesScreenState extends State<SeriesScreen> {
                         child: Builder(
                           builder: (context) {
                             return FutureBuilder(
-                              future: _getImageDimensions(imageProvider),
+                              future: getImageDimensions(imageProvider),
                               builder: (context, AsyncSnapshot<Size> snapshot) {
                                 final double squareSize = 253.0;
                                 double getInfoBarOffset = 0;
@@ -814,103 +823,75 @@ class SeriesScreenState extends State<SeriesScreen> {
     }
   }
 
-// Add this method to the SeriesScreenState class
-  Future<Size> _getImageDimensions(ImageProvider? imageProvider) async {
-    if (imageProvider == null) return const Size(0, 0); // Default size if no image provider
-
-    final Completer<Size> completer = Completer<Size>();
-
-    final ImageStream stream = imageProvider.resolve(const ImageConfiguration());
-    final ImageStreamListener listener = ImageStreamListener(
-      (ImageInfo info, bool _) {
-        completer.complete(Size(
-          info.image.width.toDouble(),
-          info.image.height.toDouble(),
-        ));
-      },
-      onError: (exception, stackTrace) {
-        completer.complete(const Size(230, 326)); // Default size on error
-      },
-    );
-
-    stream.addListener(listener);
-
-    // Make sure to remove the listener when done
-    return completer.future.then((size) {
-      stream.removeListener(listener);
-      return size;
-    });
-  }
-
   void _playEpisode(Episode episode) async {
     // Launch MPC-HC with the episode file
     await OpenAppFile.open(episode.path);
   }
+}
 
-  void _linkWithAnilist(BuildContext context) async {
-    if (series == null) {
-      snackBar('Series not found', severity: InfoBarSeverity.error);
-      return;
-    }
-
-    // Show the dialog
-    await showManagedDialog<(bool?, List<AnilistMapping>)?>(
-      context: context,
-      id: 'linkAnilist:${series!.path}',
-      title: 'Link to Anilist',
-      data: series!.path,
-      enableBarrierDismiss: true,
-      barrierDismissCheck: () => true,
-      builder: (context) => AnilistLinkMultiDialog(
-        constraints: const BoxConstraints(
-          maxWidth: 1300,
-          maxHeight: 600,
-        ),
-        series: series!,
-        popContext: context,
-        linkService: SeriesLinkService(),
-        onLink: (_, __) {},
-        onDialogComplete: (success, mappings) async {
-          // if the dialog was closed without a result, do nothing
-          if (success == null) {
-            print('Dialog closed without result');
-            return;
-          }
-
-          // if the dialog was closed with a result, check if it was successful
-          if (!success) {
-            print('Linking failed');
-            snackBar('Failed to link with Anilist', severity: InfoBarSeverity.error);
-            return;
-          }
-
-          // if (mappings.isEmpty) return; // no mappings to update
-
-          // if dialog was closed with a result, and it was successful, update the series mappings
-          final library = Provider.of<Library>(context, listen: false);
-
-          // Important: Update the series mappings
-          series!.anilistMappings = mappings;
-
-          // Ensure the library gets saved
-          await library.updateSeriesMappings(series!, mappings);
-
-          // Add feedback
-          snackBar(
-            'Successfully linked ${mappings.length} ${mappings.length == 1 ? 'item' : 'items'} with Anilist',
-            severity: InfoBarSeverity.success,
-          );
-
-          // Load Anilist data for the primary mapping
-          if (mappings.isNotEmpty) {
-            final primaryId = series!.primaryAnilistId ?? mappings.first.anilistId;
-            await _loadAnilistData(primaryId);
-          }
-
-          // Update the series with the new mappings
-          setState(() {});
-        },
-      ),
-    );
+void linkWithAnilist(BuildContext context, Series? series, Future<void> Function(int) loadData, void Function(VoidCallback) setState) async {
+  if (series == null) {
+    snackBar('Series not found', severity: InfoBarSeverity.error);
+    return;
   }
+
+  // Show the dialog
+  await showManagedDialog<(bool?, List<AnilistMapping>)?>(
+    context: context,
+    id: 'linkAnilist:${series.path}',
+    title: 'Link to Anilist',
+    data: series.path,
+    enableBarrierDismiss: true,
+    barrierDismissCheck: () => true,
+    builder: (context) => AnilistLinkMultiDialog(
+      constraints: const BoxConstraints(
+        maxWidth: 1300,
+        maxHeight: 600,
+      ),
+      series: series,
+      popContext: context,
+      linkService: SeriesLinkService(),
+      onLink: (_, __) {},
+      onDialogComplete: (success, mappings) async {
+        // if the dialog was closed without a result, do nothing
+        if (success == null) {
+          debugPrint('Dialog closed without result');
+          return;
+        }
+
+        // if the dialog was closed with a result, check if it was successful
+        if (!success) {
+          debugPrint('Linking failed');
+          snackBar('Failed to link with Anilist', severity: InfoBarSeverity.error);
+          return;
+        }
+
+        // if (mappings.isEmpty) return; // no mappings to update
+
+        // if dialog was closed with a result, and it was successful, update the series mappings
+        final library = Provider.of<Library>(context, listen: false);
+
+        // Important: Update the series mappings
+        series.anilistMappings = mappings;
+
+        // Ensure the library gets saved
+        await library.updateSeriesMappings(series, mappings);
+
+        // Add feedback
+        snackBar(
+          'Successfully linked ${mappings.length} ${mappings.length == 1 ? 'item' : 'items'} with Anilist',
+          severity: InfoBarSeverity.success,
+        );
+
+        // Load Anilist data for the primary mapping
+        if (mappings.isNotEmpty) {
+          final primaryId = series.primaryAnilistId ?? mappings.first.anilistId;
+          await loadData(primaryId);
+        }
+
+        // Update the series with the new mappings
+        setState(() {});
+      },
+    ),
+  );
 }

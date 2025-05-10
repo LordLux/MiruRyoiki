@@ -49,7 +49,7 @@ class _EpisodeGridState extends State<EpisodeGrid> {
           return MouseRegion(
             onEnter: (_) {
               // link specific season to the correct anilist page (anilist keeps each season as a separate page)
-              print('Linking to Anilist page for ${widget.title}');
+              debugPrint('Linking to Anilist page for ${widget.title}');
             },
             child: Padding(
               padding: const EdgeInsets.fromLTRB(0, 0, 0, 0),

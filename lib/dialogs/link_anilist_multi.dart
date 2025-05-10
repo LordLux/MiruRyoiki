@@ -1,7 +1,7 @@
+// ignore_for_file: invalid_use_of_protected_member
+
 import 'dart:io';
-import 'package:collection/collection.dart';
 import 'package:fluent_ui/fluent_ui.dart';
-import 'package:flutter/material.dart' as mat;
 
 import '../main.dart';
 import '../manager.dart';

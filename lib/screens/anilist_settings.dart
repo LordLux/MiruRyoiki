@@ -163,7 +163,7 @@ class AnilistSettingsScreen extends StatelessWidget {
                   height: 48,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: Manager.accentColor,
+                    color: Manager.accentColor.lighter,
                   ),
                   child: const Center(
                     child: Icon(FluentIcons.contact, color: Colors.white),
@@ -193,7 +193,7 @@ class AnilistSettingsScreen extends StatelessWidget {
             onPressed: () async {
               await provider.logout();
               onLogout.call();
-              print('Logged out of Anilist');
+              debugPrint('Logged out of Anilist');
             },
           ),
         ],
@@ -216,7 +216,7 @@ Widget Chip({
   return Container(
     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
     decoration: BoxDecoration(
-      color: Manager.accentColor,
+      color: Manager.accentColor.light,
       borderRadius: BorderRadius.circular(16),
     ),
     child: Row(
