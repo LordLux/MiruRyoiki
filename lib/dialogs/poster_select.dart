@@ -44,7 +44,6 @@ class PosterSelectionDialog extends ManagedDialog {
                 'Poster preference saved',
                 severity: InfoBarSeverity.success,
               );
-              // TODO fix this not actually saving
             },
             onCancel: () {
               closeDialog(popContext);

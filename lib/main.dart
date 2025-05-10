@@ -685,18 +685,22 @@ Future<void> _initializeWindowManager() async {
   await flutter_acrylic.Window.initialize();
   await flutter_acrylic.Window.hideWindowControls();
   await WindowManager.instance.ensureInitialized();
+  
+  final Size initialSize = Size(1116.5, 700);
+  final Size minSize = Size(900, 400);
+  
   doWhenWindowReady(() {
     final win = appWindow;
-    const initialSize = Size(1116.5, 700);
-    win.minSize = Size(900, 400);
+    win.size = initialSize;
+    win.minSize = minSize;
     win.size = initialSize;
     win.alignment = Alignment.center;
     win.title = Manager.appTitle;
     win.show();
   });
   WindowOptions windowOptions = WindowOptions(
-    size: const Size(1116.5, 700),
-    minimumSize: const Size(900, 400),
+    size: initialSize,
+    minimumSize: minSize,
     center: true,
     skipTaskbar: false,
     titleBarStyle: TitleBarStyle.hidden,

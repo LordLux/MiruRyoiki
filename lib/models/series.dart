@@ -417,22 +417,38 @@ class Series {
   List<String> get genres => currentAnilistData?.genres ?? [];
 
   /// Getter to check if the poster is from Anilist
-  bool get isAnilistPoster {
-    final effectiveSource = preferredPosterSource ?? Manager.defaultPosterSource;
-    return effectiveSource == PosterSource.anilist || //
-        (effectiveSource == PosterSource.autoAnilist && _anilistData?.posterImage != null);
-  }
-
-  /// Getter to check if the poster is from a local file
-  bool get isLocalPoster {
-    final effectiveSource = preferredPosterSource ?? Manager.defaultPosterSource;
-    return effectiveSource == PosterSource.local || //
-        (effectiveSource == PosterSource.autoLocal && folderImagePath != null);
-  }
-
   String? get effectivePosterPath {
-    if (isLocalPoster) return folderImagePath;
-    if (isAnilistPoster) return _anilistData?.posterImage;
-    return null;
+    final PosterSource effectiveSource = preferredPosterSource ?? Manager.defaultPosterSource;
+
+    // Determine available options
+    final bool hasLocalPoster = folderImagePath != null;
+    final bool hasAnilistPoster = _anilistData?.posterImage != null;
+
+    // Apply fallback logic based on source preference
+    switch (effectiveSource) {
+      case PosterSource.local:
+        return hasLocalPoster ? folderImagePath : (hasAnilistPoster ? _anilistData?.posterImage : null);
+
+      case PosterSource.anilist:
+        return hasAnilistPoster ? _anilistData?.posterImage : (hasLocalPoster ? folderImagePath : null);
+
+      case PosterSource.autoLocal:
+        return hasLocalPoster ? folderImagePath : (hasAnilistPoster ? _anilistData?.posterImage : null);
+
+      case PosterSource.autoAnilist:
+        return hasAnilistPoster ? _anilistData?.posterImage : (hasLocalPoster ? folderImagePath : null);
+    }
+  }
+
+  /// Getter to check if the poster actually being used is from Anilist
+  bool get isAnilistPoster {
+    if (effectivePosterPath == null) return false;
+    return effectivePosterPath == _anilistData?.posterImage;
+  }
+
+  /// Getter to check if the poster actually being used is from a local file
+  bool get isLocalPoster {
+    if (effectivePosterPath == null) return false;
+    return effectivePosterPath == folderImagePath;
   }
 }
