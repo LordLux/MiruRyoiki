@@ -20,6 +20,7 @@ import '../models/episode.dart';
 import '../services/anilist/linking.dart';
 import '../services/anilist/provider.dart';
 import '../services/navigation/dialogs.dart';
+import '../services/navigation/shortcuts.dart';
 import '../utils/image_utils.dart';
 import '../widgets/episode_grid.dart';
 import '../widgets/gradient_mask.dart';
@@ -477,7 +478,7 @@ class SeriesScreenState extends State<SeriesScreen> {
 
   Duration get stickyHeaderDuration => const Duration(milliseconds: 430);
 
-  Duration get shortStickyHeaderDuration => Duration(milliseconds: stickyHeaderDuration.inMilliseconds ~/ 2);
+  Duration get shortStickyHeaderDuration => Duration(milliseconds: stickyHeaderDuration.inMilliseconds ~/ 3);
 
   Widget _buildSeriesContent(BuildContext context, Series series) {
     return Padding(
@@ -617,53 +618,76 @@ class SeriesScreenState extends State<SeriesScreen> {
                                       child: DeferPointer(
                                         link: deferredPointerLink,
                                         paintOnTop: true,
-                                        child: MouseRegion(
-                                          cursor: SystemMouseCursors.click,
-                                          onEnter: (_) => setState(() => _isPosterHovering = true),
-                                          onExit: (_) => setState(() => _isPosterHovering = false),
-                                          hitTestBehavior: HitTestBehavior.translucent,
-                                          child: mat.InkWell(
-                                            onTap: () => _selectPoster(context),
-                                            splashColor: (series.dominantColor ?? Manager.accentColor).withOpacity(0.1),
-                                            highlightColor: Colors.white.withOpacity(0.05),
-                                            borderRadius: BorderRadius.circular(8.0),
-                                            child: AnimatedContainer(
-                                              width: posterWidth,
-                                              height: posterHeight,
-                                              duration: shortStickyHeaderDuration,
-                                              color: _isPosterHovering ? (series.dominantColor ?? Manager.accentColor).withOpacity(0.75) : Colors.transparent,
-                                              child: Builder(builder: (context) {
-                                                if (imageProvider != null)
-                                                  return ShadowedImage(
-                                                    imageProvider: imageProvider,
-                                                    fit: BoxFit.cover,
-                                                    colorFilter: series.posterImage != null ? ColorFilter.mode(Colors.black.withOpacity(0), BlendMode.darken) : null,
-                                                    blurSigma: 10,
-                                                    shadowColorOpacity: .5,
-                                                  );
-                                                return Container(
-                                                  decoration: BoxDecoration(color: dominantColor.withOpacity(0.5), borderRadius: BorderRadius.circular(4)),
-                                                  child: Center(
+                                        child: ValueListenableBuilder(
+                                            valueListenable: KeyboardState.shiftPressedNotifier,
+                                            builder: (context, isShiftPressed, child) => MouseRegion(
+                                                  cursor: isShiftPressed && _isPosterHovering ? SystemMouseCursors.click : MouseCursor.defer,
+                                                  onEnter: (_) => setState(() => _isPosterHovering = true),
+                                                  onExit: (_) => setState(() => _isPosterHovering = false),
+                                                  hitTestBehavior: HitTestBehavior.translucent,
+                                                  child: mat.InkWell(
+                                                    onTap: isShiftPressed && _isPosterHovering ? () => _selectPoster(context) : null,
+                                                    splashColor: (series.dominantColor ?? Manager.accentColor).withOpacity(0.1),
+                                                    highlightColor: Colors.white.withOpacity(0.05),
+                                                    borderRadius: BorderRadius.circular(8.0),
                                                     child: Stack(
+                                                      alignment: Alignment.center,
                                                       children: [
-                                                        AnimatedOpacity(
+                                                        AnimatedContainer(
+                                                          width: posterWidth,
+                                                          height: posterHeight,
                                                           duration: shortStickyHeaderDuration,
-                                                          opacity: _isPosterHovering ? 0 : 1,
-                                                          child: Icon(FluentIcons.picture, size: 48, color: Colors.white),
+                                                          decoration: BoxDecoration(
+                                                            borderRadius: BorderRadius.circular(8.0),
+                                                            color: isShiftPressed && _isPosterHovering ? (series.dominantColor ?? Manager.accentColor).withOpacity(0.75) : Colors.transparent,
+                                                          ),
+                                                          child: AnimatedOpacity(
+                                                            duration: shortStickyHeaderDuration,
+                                                            opacity: isShiftPressed && _isPosterHovering ? 0.75 : 1,
+                                                            child: Builder(builder: (context) {
+                                                              if (imageProvider != null)
+                                                                return ShadowedImage(
+                                                                  imageProvider: imageProvider,
+                                                                  fit: BoxFit.cover,
+                                                                  colorFilter: series.posterImage != null ? ColorFilter.mode(Colors.black.withOpacity(0), BlendMode.darken) : null,
+                                                                  blurSigma: 10,
+                                                                  shadowColorOpacity: .5,
+                                                                );
+                                                              // No image -> image + plus to add first
+                                                              return Container(
+                                                                decoration: BoxDecoration(color: dominantColor.withOpacity(0.5), borderRadius: BorderRadius.circular(4)),
+                                                                child: Center(
+                                                                  child: Stack(
+                                                                    children: [
+                                                                      AnimatedOpacity(
+                                                                        duration: shortStickyHeaderDuration,
+                                                                        opacity: isShiftPressed && _isPosterHovering ? 0 : 1,
+                                                                        child: Icon(FluentIcons.picture, size: 48, color: Colors.white),
+                                                                      ),
+                                                                      AnimatedOpacity(
+                                                                        duration: shortStickyHeaderDuration,
+                                                                        opacity: isShiftPressed && _isPosterHovering ? 1 : 0,
+                                                                        child: Icon(FluentIcons.add, size: 48, color: Colors.white),
+                                                                      ),
+                                                                    ],
+                                                                  ),
+                                                                ),
+                                                              );
+                                                            }),
+                                                          ),
                                                         ),
+                                                        // Edit poster
                                                         AnimatedOpacity(
                                                           duration: shortStickyHeaderDuration,
-                                                          opacity: _isPosterHovering ? 1 : 0,
-                                                          child: Icon(FluentIcons.add, size: 48, color: Colors.white),
+                                                          opacity: isShiftPressed && _isPosterHovering ? 1 : 0,
+                                                          child: Center(
+                                                            child: Icon(FluentIcons.edit, size: 35, color: Colors.white),
+                                                          ),
                                                         ),
                                                       ],
                                                     ),
                                                   ),
-                                                );
-                                              }),
-                                            ),
-                                          ),
-                                        ),
+                                                )),
                                       ),
                                     ),
                                   ],
