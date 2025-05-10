@@ -1,13 +1,11 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:graphql/client.dart';
-import 'package:provider/provider.dart';
 import '../../../models/anilist/anime.dart';
 import '../../../models/anilist/user_list.dart';
 import '../../main.dart';
 import '../../manager.dart';
 import 'auth.dart';
-import 'provider.dart';
 
 class AnilistService {
   // Singleton
@@ -52,6 +50,7 @@ class AnilistService {
     final success = await _authService.handleAuthCallback(callbackUri);
     if (success) {
       Manager.accounts.add('Anilist');
+      // ignore: invalid_use_of_protected_member
       accountsKey.currentState?.setState(() {});
       _setupGraphQLClient();
     } else {
@@ -65,7 +64,7 @@ class AnilistService {
   Future<void> logout() async {
     await _authService.logout();
     Manager.accounts.remove('Anilist');
-    print('Anilist logged out');
+    debugPrint('Anilist logged out');
     _client = null;
   }
 
@@ -77,18 +76,18 @@ class AnilistService {
     if (_client == null) {
       // Try to initialize if not already initialized
       if (isLoggedIn && !await initialize()) {
-        print('Failed to initialize Anilist client');
+        debugPrint('Failed to initialize Anilist client');
         return [];
       }
 
       // Still null after attempted initialization
       if (_client == null) {
-        print('Anilist client is null, cannot search');
+        debugPrint('Anilist client is null, cannot search');
         return [];
       }
     }
 
-    print('Searching Anilist for "$query"...');
+    debugPrint('Searching Anilist for "$query"...');
     const searchQuery = r'''
       query SearchAnime($search: String, $limit: Int) {
         Page(perPage: $limit) {

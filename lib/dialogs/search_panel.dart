@@ -178,6 +178,7 @@ class _AnilistSearchPanelState extends State<AnilistSearchPanel> {
 
                     // if the dialog should not close automatically
                     if (!widget.skipAutoClose) {
+                      // ignore: use_build_context_synchronously
                       closeDialog(context);
                     }
 

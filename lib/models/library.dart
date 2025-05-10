@@ -3,10 +3,8 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:fluent_ui/fluent_ui.dart';
-import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 
-import '../functions.dart';
 import '../services/anilist/linking.dart';
 import '../services/cache.dart';
 import '../services/file_scanner.dart';
@@ -105,7 +103,7 @@ class Library with ChangeNotifier {
 
     if (needPosters.isEmpty) return;
 
-    print('Loading Anilist posters for ${needPosters.length} series');
+    debugPrint('Loading Anilist posters for ${needPosters.length} series');
 
     // Fetch posters in batches
     int loaded = alreadyCached.length;
@@ -310,7 +308,7 @@ class Library with ChangeNotifier {
 
   Future<void> scanLibrary() async {
     if (_libraryPath == null || _isLoading) return;
-    print('Scanning library at $_libraryPath');
+    debugPrint('Scanning library at $_libraryPath');
 
     _isLoading = true;
     notifyListeners();

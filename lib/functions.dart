@@ -1,13 +1,10 @@
 import 'dart:io';
-import 'dart:math';
 
 import 'package:fluent_ui/fluent_ui.dart';
-import 'package:flutter/material.dart' as mat;
 import 'package:flutter/services.dart';
 import 'package:open_file/open_file.dart';
 
 import 'services/navigation/show_info.dart';
-import 'main.dart';
 
 void copyToClipboard(String text) {
   Clipboard.setData(ClipboardData(text: text));

@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:typed_data';
 import 'package:crypto/crypto.dart';
 
 /// Generates a short hash based on the SHA-1 algorithm.

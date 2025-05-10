@@ -30,7 +30,7 @@ Future<T?> showManagedDialog<T>({
         return _DismissibleWrapper(
           onBarrierTap: () {
             // Update our custom stack but don't pop - Flutter will do that
-            print('Custom navigation stack pop');
+            debugPrint('Custom navigation stack pop');
             navManager.popDialog();
           },
           barrierDismissCheck: barrierDismissCheck,
@@ -64,7 +64,7 @@ class _DismissibleWrapper extends StatelessWidget {
       onWillPop: () async {
         // Check if we should allow the barrier to dismiss
         if (barrierDismissCheck != null) {
-          print('Barrier dismiss check: ${barrierDismissCheck!() ? "Popped!" : "Not popped"}');
+          debugPrint('Barrier dismiss check: ${barrierDismissCheck!() ? "Popped!" : "Not popped"}');
 
           if (barrierDismissCheck!()) {
             onBarrierTap();
@@ -72,7 +72,7 @@ class _DismissibleWrapper extends StatelessWidget {
           }
           return false; // Prevent the barrier from dismissing
         }
-        print('No barrier dismiss check provided, allowing pop');
+        debugPrint('No barrier dismiss check provided, allowing pop');
         // Default behavior: allow the barrier to dismiss
         return true;
       },
@@ -120,14 +120,14 @@ void closeDialog<T>(BuildContext popContext, {T? result}) {
     // Pop the actual dialog
     Navigator.of(popContext).pop(result);
   } else {
-    print('No dialog to pop in Flutter Navigator');
+    debugPrint('No dialog to pop in Flutter Navigator');
   }
 }
 
 class ManagedDialog extends StatefulWidget {
   final Widget title;
   final Widget Function(BuildContext, BoxConstraints)? contentBuilder;
-  final List<Widget> Function(BuildContext)? actions;
+  final List<Widget> Function(dynamic)? actions;
   final BoxConstraints constraints;
   final ContentDialogThemeData? theme;
   final BuildContext popContext;
@@ -184,7 +184,7 @@ class ManagedDialogState extends State<ManagedDialog> {
           child: widget.contentBuilder != null ? widget.contentBuilder!(context, _currentConstraints) : null,
         ),
       ),
-      actions: widget.actions != null ? widget.actions!.call(widget.popContext) : [ManagedDialogButton(popContext: widget.popContext, text: 'superclass default')],
+      actions: widget.actions?.call(widget.popContext),
       constraints: _currentConstraints,
     );
   }

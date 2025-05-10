@@ -1,7 +1,8 @@
 // import 'package:flutter/material.dart';
+// ignore_for_file: use_build_context_synchronously
+
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart' as mat;
 import 'package:flutter_acrylic/window_effect.dart';
 import 'package:provider/provider.dart';
 import 'package:file_picker/file_picker.dart';
@@ -12,6 +13,7 @@ import 'dart:io';
 import '../enums.dart';
 import '../main.dart';
 import '../manager.dart';
+import '../utils/registry_utils.dart';
 import '../models/library.dart';
 import '../theme.dart';
 
@@ -28,7 +30,7 @@ List<WindowEffect> _WindowsWindowEffects = [
   WindowEffect.transparent,
   WindowEffect.aero,
   WindowEffect.acrylic,
-  if (Platform.operatingSystemVersion.startsWith('11')) WindowEffect.mica,
+  if (Manager.isWin11) WindowEffect.mica,
 ];
 
 // ignore: non_constant_identifier_names
@@ -140,7 +142,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 const SizedBox(height: 12),
                 // Theme and font effect settings
                 ...[
-                  Text('Choose your preferred theme and effect.', style: FluentTheme.of(context).typography.body),
+                  Text('Edit how MiruRyoiki looks and feels.', style: FluentTheme.of(context).typography.body),
                   const SizedBox(height: 24),
                   Row(children: [
                     // Theme
@@ -170,22 +172,36 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ...[
                   Row(
                     children: [
-                      const Text('Effect:'),
-                      const SizedBox(width: 12),
-                      ComboBox<WindowEffect>(
-                        value: appTheme.windowEffect,
-                        items: _PlatformWindowEffects.map((WindowEffect value) {
-                          return ComboBoxItem<WindowEffect>(
-                            value: value,
-                            child: Text(value.name_),
-                          );
-                        }).toList(),
-                        onChanged: (WindowEffect? newValue) {
-                          appTheme.windowEffect = newValue!;
-                          appTheme.setEffect(newValue, context);
-                          settings.set('windowEffect', newValue.name);
-                        },
+                      Expanded(
+                        child: Row(
+                          children: [
+                            const Text('Effect:'),
+                            const SizedBox(width: 12),
+                            ComboBox<WindowEffect>(
+                              value: appTheme.windowEffect,
+                              items: _PlatformWindowEffects.map((WindowEffect value) {
+                                return ComboBoxItem<WindowEffect>(
+                                  value: value,
+                                  child: Text(value.name_),
+                                );
+                              }).toList(),
+                              onChanged: (WindowEffect? newValue) {
+                                appTheme.windowEffect = newValue!;
+                                appTheme.setEffect(newValue, context);
+                                settings.set('windowEffect', newValue.name);
+                              },
+                            ),
+                          ],
+                        ),
                       ),
+                      if (!Manager.isWin11)
+                        TooltipTheme(
+                          data: TooltipThemeData(waitDuration: const Duration(milliseconds: 100)),
+                          child: Tooltip(
+                            message: 'Mica Effect is unfortunately only available on Windows 11',
+                            child: Opacity(opacity: .5, child: Icon(FluentIcons.info)),
+                          ),
+                        ),
                     ],
                   ),
                 ],
@@ -313,27 +329,36 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ...[
                   Row(
                     children: [
-                      const Text('Library Dominant Colors:'),
-                      const SizedBox(width: 12),
-                      ComboBox<LibraryColorView>(
-                        value: settings.libColView,
-                        items: <LibraryColorView>[
-                          LibraryColorView.all,
-                          LibraryColorView.onlyHover,
-                          LibraryColorView.onlyBackground,
-                          LibraryColorView.none,
-                        ].map((LibraryColorView value) {
-                          return ComboBoxItem<LibraryColorView>(
-                            value: value,
-                            child: Text(value.name_),
-                          );
-                        }).toList(),
-                        onChanged: (LibraryColorView? newValue) {
-                          settings.libColView = newValue!;
-                          settings.set('libColView', newValue.name_);
-                          print('Library color view: ${newValue.name_}');
-                        },
+                      Text(
+                        'Library Hover',
+                        style: FluentTheme.of(context).typography.body,
                       ),
+                      const SizedBox(width: 12),
+                      Builder(builder: (context) {
+                        final List<double> customWidths = [80.0, 130, 150, 80.0];
+                        return Flexible(
+                          child: toggle.ToggleSwitch(
+                            animate: true,
+                            multiLineText: true,
+                            animationDuration: dimDuration.inMilliseconds,
+                            initialLabelIndex: settings.libColView.index,
+                            totalSwitches: LibraryColorView.values.length,
+                            activeFgColor: Colors.white,
+                            activeBgColor: [FluentTheme.of(context).accentColor.lighter],
+                            customWidths: customWidths,
+                            labels: [
+                              LibraryColorView.values[0].name_,
+                              LibraryColorView.values[1].name_,
+                              LibraryColorView.values[2].name_,
+                              LibraryColorView.values[3].name_,
+                            ],
+                            onToggle: (int? value) {
+                              settings.libColView = LibraryColorView.values[value!];
+                              settings.set('libColView', LibraryColorView.values[value].name_);
+                            },
+                          ),
+                        );
+                      }),
                     ],
                   ),
                 ],
@@ -349,19 +374,35 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 style: FluentTheme.of(context).typography.subtitle,
               ),
               const SizedBox(height: 12),
+              // Text(
+              //   'Automatically load Anilist posters for series without local posters.',
+              //   style: FluentTheme.of(context).typography.body,
+              // ),
+              // const SizedBox(height: 12),
+              // ToggleSwitch(
+              //   checked: settings.autoLoadAnilistPosters,
+              //   content: const Text('Anilist posters will be automatically loaded for series without local images'),
+              //   onChanged: (value) {
+              //     settings.autoLoadAnilistPosters = value;
+              //     settings.set('autoLoadAnilistPosters', value);
+              //   },
+              // ),
+              // //
+              // const SizedBox(height: 24),
               Text(
-                'Automatically load Anilist posters for series without local posters.',
+                'Default poster source for new series.',
                 style: FluentTheme.of(context).typography.body,
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 12),
               ToggleSwitch(
-                checked: settings.autoLoadAnilistPosters,
-                content: const Text('Automatically load Anilist posters for series without images'),
+                checked: Manager.defaultPosterSource == PosterSource.autoAnilist,
+                content: Manager.defaultPosterSource == PosterSource.autoAnilist ? Text('Prefer Anilist posters') : Text('Prefer local posters'),
                 onChanged: (value) {
-                  settings.autoLoadAnilistPosters = value;
-                  settings.set('autoLoadAnilistPosters', value);
+                  settings.defaultPosterSource = value ? PosterSource.autoAnilist : PosterSource.autoLocal;
+                  settings.set('defaultPosterSource', settings.defaultPosterSource.name_);
                 },
               ),
+              const SizedBox(height: 24),
             ],
           ),
           const SizedBox(height: 24),

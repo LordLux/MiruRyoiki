@@ -6,10 +6,8 @@ import 'package:smooth_scroll_multiplatform/smooth_scroll_multiplatform.dart';
 import '../models/library.dart';
 import '../models/series.dart';
 import '../services/navigation/show_info.dart';
-import '../utils/screen_utils.dart';
 import '../widgets/gradient_mask.dart';
 import '../widgets/series_card.dart';
-import 'series.dart';
 
 class HomeScreen extends StatefulWidget {
   final Function(String) onSeriesSelected;
@@ -161,7 +159,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       crossAxisSpacing: cardPadding,
                       mainAxisSpacing: cardPadding,
                     ),
-                    itemCount: library.series.length * 4,
+                    itemCount: library.series.length,
                     itemBuilder: (context, index) {
                       final series = library.series[index % library.series.length];
 
@@ -187,6 +185,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
 
     if (selectedDirectory != null) {
+      // ignore: use_build_context_synchronously
       final library = context.read<Library>();
       await library.setLibraryPath(selectedDirectory);
     }

@@ -1,11 +1,9 @@
 import 'dart:async';
-import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:win32/win32.dart';
 
 import '../../utils/registry_utils.dart';
-import '../../models/episode.dart';
 
 class MPCHCTracker with ChangeNotifier {
   static const String _mpcHcRegPath = r'SOFTWARE\MPC-HC\MPC-HC\MediaHistory';

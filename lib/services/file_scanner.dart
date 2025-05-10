@@ -5,7 +5,6 @@ import 'package:path/path.dart' as p;
 
 import '../models/series.dart';
 import '../models/episode.dart';
-import '../utils/path_utils.dart';
 
 class FileScanner {
   static const List<String> _videoExtensions = [

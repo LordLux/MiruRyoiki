@@ -15,7 +15,7 @@ class MyWindowListener extends WindowListener {
       if (context != null) {
         final library = Provider.of<Library>(context, listen: false);
         // Force immediate save with await to ensure it completes
-        await library.forceImmediateSave();
+        await library.forceImmediateSave(); // TODO fix causes crash
         debugPrint('Library data saved successfully');
       }
     } catch (e) {

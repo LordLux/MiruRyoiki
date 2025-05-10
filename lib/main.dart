@@ -3,7 +3,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart' show Icons, Material, MaterialPageRoute, ScaffoldMessenger;
 import 'package:fluent_ui/fluent_ui.dart';
-import 'package:fluent_ui3/fluent_ui.dart' as fluent_ui3;
 import 'package:flutter_acrylic/flutter_acrylic.dart';
 import 'package:flutter_acrylic/window.dart' as flutter_acrylic;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -25,8 +24,6 @@ import 'screens/settings.dart';
 import 'services/anilist/auth.dart';
 import 'services/anilist/provider.dart';
 import 'services/cache.dart';
-import 'services/file_writer.dart';
-import 'services/navigation/debug.dart';
 import 'services/navigation/navigation.dart';
 import 'services/registry.dart' as registry;
 import 'services/navigation/shortcuts.dart';
@@ -35,7 +32,6 @@ import 'services/window.dart';
 import 'theme.dart';
 import 'utils/color_utils.dart';
 import 'widgets/reverse_animation_flyout.dart' show ToggleableFlyoutContent, ToggleableFlyoutContentState;
-import 'widgets/series_card.dart';
 import 'widgets/simple_flyout.dart' hide ToggleableFlyoutContent;
 import 'widgets/window_buttons.dart';
 
@@ -139,7 +135,7 @@ class _MyAppState extends State<MyApp> {
         }
       });
 
-      await Future.delayed(const Duration(milliseconds: kDebugMode ? 250 : 50));
+      await Future.delayed(const Duration(milliseconds: kDebugMode ? 250 : 50)); // TODO fix delay for release
       final appTheme = Provider.of<AppTheme>(context, listen: false);
       appTheme.setEffect(appTheme.windowEffect, rootNavigatorKey.currentContext!);
     });
@@ -641,7 +637,7 @@ class _AppRootState extends State<AppRoot> {
       exitSeriesView();
       return true;
     } else if (navManager.canGoBack) {
-      final previousItem = navManager.goBack();
+      navManager.goBack();
 
       // Navigate based on the new current item
       final currentItem = navManager.currentView;
@@ -692,7 +688,7 @@ Future<void> _initializeWindowManager() async {
   doWhenWindowReady(() {
     final win = appWindow;
     const initialSize = Size(1116.5, 700);
-    win.minSize = Size(700, 400);
+    win.minSize = Size(900, 400);
     win.size = initialSize;
     win.alignment = Alignment.center;
     win.title = Manager.appTitle;
@@ -700,7 +696,7 @@ Future<void> _initializeWindowManager() async {
   });
   WindowOptions windowOptions = WindowOptions(
     size: const Size(1116.5, 700),
-    minimumSize: const Size(700, 400),
+    minimumSize: const Size(900, 400),
     center: true,
     skipTaskbar: false,
     titleBarStyle: TitleBarStyle.hidden,
