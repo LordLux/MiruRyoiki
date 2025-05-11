@@ -1,5 +1,7 @@
 import 'dart:io';
 
+import 'package:collection/collection.dart';
+import 'package:fluent_ui/fluent_ui.dart' show decodeImageFromList;
 import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
 
@@ -7,19 +9,15 @@ import '../models/series.dart';
 import '../models/episode.dart';
 
 class FileScanner {
-  static const List<String> _videoExtensions = [
-    '.mkv', '.mp4', '.avi', '.mov', '.wmv', '.m4v', '.flv'
-  ];
-  
-  static const List<String> _imageExtensions = [
-    '.ico', '.png', '.jpg', '.jpeg', '.webp'
-  ];
-  
+  static const List<String> _videoExtensions = ['.mkv', '.mp4', '.avi', '.mov', '.wmv', '.m4v', '.flv'];
+
+  static const List<String> _imageExtensions = ['.ico', '.png', '.jpg', '.jpeg', '.webp'];
+
   /// Scan the library directory and build the series list
   Future<List<Series>> scanLibrary(String libraryPath) async {
     final series = <Series>[];
     final dir = Directory(libraryPath);
-    
+
     if (!await dir.exists()) {
       return series;
     }
@@ -28,6 +26,7 @@ class FileScanner {
     await for (final entity in dir.list()) {
       if (entity is Directory) {
         try {
+          print('Processing series: ${entity.path}');
           final seriesItem = await _processSeries(entity);
           series.add(seriesItem);
         } catch (e) {
@@ -35,20 +34,21 @@ class FileScanner {
         }
       }
     }
-    
+
     return series;
   }
-  
+
   /// Process a series directory to extract seasons and episodes
   Future<Series> _processSeries(Directory seriesDir) async {
     final name = p.basename(seriesDir.path);
     final posterPath = await _findPosterImage(seriesDir);
-    
+    final bannerPath = await _findBannerImage(seriesDir);
+
     // Check for subdirectories that match the season pattern
     final seasonDirs = <Directory>[];
     final otherDirs = <Directory>[];
     final rootVideoFiles = <File>[];
-    
+
     await for (final entity in seriesDir.list()) {
       if (entity is Directory) {
         if (_isSeasonDirectory(p.basename(entity.path))) {
@@ -60,10 +60,10 @@ class FileScanner {
         rootVideoFiles.add(entity);
       }
     }
-    
+
     // Process seasons
     final seasons = <Season>[];
-    
+
     // If no season directories, create a single default season from root videos
     if (seasonDirs.isEmpty && rootVideoFiles.isNotEmpty) {
       final episodes = await _processEpisodeFiles(rootVideoFiles);
@@ -77,13 +77,13 @@ class FileScanner {
       for (final seasonDir in seasonDirs) {
         final seasonName = p.basename(seasonDir.path);
         final episodeFiles = <File>[];
-        
+
         await for (final entity in seasonDir.list(recursive: true)) {
           if (entity is File && _isVideoFile(entity.path)) {
             episodeFiles.add(entity);
           }
         }
-        
+
         final episodes = await _processEpisodeFiles(episodeFiles);
         seasons.add(Season(
           name: _formatSeasonName(seasonName),
@@ -92,42 +92,43 @@ class FileScanner {
         ));
       }
     }
-    
+
     // Process related media from other directories
     final relatedMedia = <Episode>[];
-    
+
     for (final otherDir in otherDirs) {
       final episodeFiles = <File>[];
-      
+
       await for (final entity in otherDir.list(recursive: true)) {
         if (entity is File && _isVideoFile(entity.path)) {
           episodeFiles.add(entity);
         }
       }
-      
+
       final episodes = await _processEpisodeFiles(episodeFiles);
       relatedMedia.addAll(episodes);
     }
-    
+
     // Add any videos from the root that weren't put into the default season
     if (seasonDirs.isNotEmpty && rootVideoFiles.isNotEmpty) {
       final episodes = await _processEpisodeFiles(rootVideoFiles);
       relatedMedia.addAll(episodes);
     }
-    
+
     return Series(
       name: name,
       path: seriesDir.path,
-      folderImagePath: posterPath,
+      folderPosterPath: posterPath,
+      folderBannerPath: bannerPath,
       seasons: seasons,
       relatedMedia: relatedMedia,
     );
   }
-  
+
   /// Process video files into Episode objects
   Future<List<Episode>> _processEpisodeFiles(List<File> files) async {
     final episodes = <Episode>[];
-    
+
     for (final file in files) {
       final name = _cleanEpisodeName(p.basenameWithoutExtension(file.path));
       episodes.add(Episode(
@@ -135,10 +136,10 @@ class FileScanner {
         name: name,
       ));
     }
-    
+
     return episodes;
   }
-  
+
   /// Find a poster image in the directory
   Future<String?> _findPosterImage(Directory dir) async {
     // First try to find an .ico file
@@ -147,30 +148,64 @@ class FileScanner {
         return entity.path;
       }
     }
-    
+
     // Then try other image formats
     await for (final entity in dir.list()) {
-      if (entity is File && 
-          _imageExtensions.contains(p.extension(entity.path).toLowerCase())) {
+      if (entity is File && _imageExtensions.contains(p.extension(entity.path).toLowerCase())) {
         return entity.path;
       }
     }
-    
+
     // No image found
     return null;
   }
-  
+
+  /// Find a banner image in the series directory
+  Future<String?> _findBannerImage(Directory seriesDir) async {
+    try {
+      final List<FileSystemEntity> files = await seriesDir.list().toList();
+
+      // Look for common banner image filenames
+      final bannerNames = ['banner', 'background', 'backdrop', 'fanart'];
+      for (final name in bannerNames) {
+        for (final extension in _imageExtensions) {
+          final bannerFile = files.whereType<File>().firstWhereOrNull((f) => p.basename(f.path).toLowerCase() == '$name$extension');
+          if (bannerFile != null) return bannerFile.path;
+        }
+      }
+
+      // If no specific banner found, look for any image with banner dimensions
+      for (final file in files.whereType<File>()) {
+        final extension = p.extension(file.path).toLowerCase();
+        if (_imageExtensions.contains(extension)) {
+          try {
+            // Check if the image has banner-like dimensions (wider than tall)
+            final imageBytes = await file.readAsBytes();
+            final decodedImage = await decodeImageFromList(imageBytes);
+            if (decodedImage.width > decodedImage.height * 1.7) {
+              return file.path;
+            }
+          } catch (e) {
+            // Ignore errors reading image files
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('Error finding banner image: $e');
+    }
+    return null;
+  }
+
   /// Check if a filename is a video file
   bool _isVideoFile(String path) {
     return _videoExtensions.contains(p.extension(path).toLowerCase());
   }
-  
+
   /// Check if a directory name matches the season pattern (S01, Season 01, etc.)
   bool _isSeasonDirectory(String name) {
-    return RegExp(r'S\d{2}', caseSensitive: false).hasMatch(name) || 
-           RegExp(r'Season\s+\d+', caseSensitive: false).hasMatch(name);
+    return RegExp(r'S\d{2}', caseSensitive: false).hasMatch(name) || RegExp(r'Season\s+\d+', caseSensitive: false).hasMatch(name);
   }
-  
+
   /// Format season name to be consistent
   String _formatSeasonName(String name) {
     // Extract the season number
@@ -181,16 +216,16 @@ class FileScanner {
     }
     return name;
   }
-  
+
   /// Clean up episode name from filename
   String _cleanEpisodeName(String name) {
     // Remove common patterns like S01E01, [Group], etc.
     return name
-      .replaceAll(RegExp(r'[sS]\d{1,2}[eE]\d{1,2}\s*'), '') // Remove S01E01
-      .replaceAll(RegExp(r'\[[^\]]+\]'), '') // Remove [Group]
-      .replaceAll(RegExp(r'\([^)]+\)'), '') // Remove (info)
-      .replaceAll(RegExp(r'\.\w{3,4}$'), '') // Remove extension if still present
-      // .replaceAll(RegExp(r'[-_.]+'), ' ') // Replace separators with space
-      .trim();
+        .replaceAll(RegExp(r'[sS]\d{1,2}[eE]\d{1,2}\s*'), '') // Remove S01E01
+        .replaceAll(RegExp(r'\[[^\]]+\]'), '') // Remove [Group]
+        .replaceAll(RegExp(r'\([^)]+\)'), '') // Remove (info)
+        .replaceAll(RegExp(r'\.\w{3,4}$'), '') // Remove extension if still present
+        // .replaceAll(RegExp(r'[-_.]+'), ' ') // Replace separators with space
+        .trim();
   }
 }

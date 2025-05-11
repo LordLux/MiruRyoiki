@@ -7,13 +7,13 @@ import 'package:flutter/material.dart' as mat;
 
 import '../../main.dart';
 
-void snackBar(String message, {fluent.Color color = const mat.Color(0xFF333333), fluent.InfoBarSeverity severity = fluent.InfoBarSeverity.info, bool hasError = false}) {
+void snackBar(String message, {fluent.Color color = const mat.Color(0xFF333333), fluent.InfoBarSeverity severity = fluent.InfoBarSeverity.info, bool hasError = false, BuildContext? context}) {
   if (severity == fluent.InfoBarSeverity.error && kDebugMode) debugPrint("Error: $message");
 
   fluent.displayInfoBar(
+    context ?? rootNavigatorKey.currentContext!,
     duration: severity == fluent.InfoBarSeverity.error ? const Duration(seconds: 10) : const Duration(seconds: 3),
     alignment: severity == fluent.InfoBarSeverity.error ? fluent.Alignment.bottomRight : fluent.Alignment.bottomCenter,
-    rootNavigatorKey.currentState!.context,
     builder: (context, close) => mat.Container(
       decoration: fluent.BoxDecoration(
         color: color,
