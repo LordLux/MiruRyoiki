@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:miruryoiki/utils/logging.dart';
 import 'package:path_provider/path_provider.dart';
 
 import '../services/anilist/linking.dart';
@@ -23,6 +24,9 @@ class Library with ChangeNotifier {
   late FileScanner _fileScanner;
   late MPCHCTracker _mpcTracker;
 
+  bool _initialized = false;
+  bool get initialized => _initialized;
+
   Timer? _autoSaveTimer;
   Timer? _saveDebouncer;
 
@@ -33,8 +37,14 @@ class Library with ChangeNotifier {
   Library() {
     _fileScanner = FileScanner();
     _mpcTracker = MPCHCTracker()..addListener(_onMpcTrackerUpdate);
-    _loadLibrary();
     _initAutoSave();
+  }
+  
+  Future<void> initialize() async {
+    if (!_initialized) {
+      await _loadLibrary();
+      _initialized = true;
+    }
   }
 
   void _initAutoSave() {
@@ -68,7 +78,7 @@ class Library with ChangeNotifier {
 
     // Find series that need Anilist posters
     for (final series in _series) {
-      if (series.folderImagePath == null && series.anilistMappings.isNotEmpty) {
+      if (series.folderPosterPath == null && series.anilistMappings.isNotEmpty) {
         // Check if we can find the poster URL without fetching
         final mapping = series.anilistMappings.firstWhere(
           (m) => m.anilistId == (series.primaryAnilistId ?? series.anilistMappings.first.anilistId),
@@ -174,7 +184,7 @@ class Library with ChangeNotifier {
         if (series.anilistMappings.isNotEmpty) {
           refreshSeries.add(series);
         }
-      } else if (series.folderImagePath == null && series.anilistMappings.isNotEmpty) {
+      } else if (series.folderPosterPath == null && series.anilistMappings.isNotEmpty) {
         refreshSeries.add(series);
       }
     }
@@ -225,6 +235,7 @@ class Library with ChangeNotifier {
     final index = _series.indexWhere((s) => s.path == series.path);
     if (index >= 0) {
       _series[index] = series;
+      log('Series updated: ${series.name}, ${series.effectivePosterPath}');
       _isDirty = true;
       await _saveLibrary();
       notifyListeners();
@@ -307,8 +318,12 @@ class Library with ChangeNotifier {
   }
 
   Future<void> scanLibrary() async {
-    if (_libraryPath == null || _isLoading) return;
-    debugPrint('Scanning library at $_libraryPath');
+    if (_libraryPath == null) {
+      log('Skipping scan, library path is null');
+      return;
+    }
+    if (_isLoading) return;
+    log('Scanning library at $_libraryPath');
 
     _isLoading = true;
     notifyListeners();
@@ -370,6 +385,7 @@ class Library with ChangeNotifier {
         final content = await file.readAsString();
         final data = jsonDecode(content);
         _libraryPath = data['libraryPath'];
+        logInfo('Loaded settings: $_libraryPath');
       }
     } catch (e) {
       debugPrint('Error loading settings: $e');
@@ -617,7 +633,7 @@ class Library with ChangeNotifier {
   /// Calculate dominant colors for all series
   Future<void> calculateDominantColors() async {
     for (final series in _series) {
-      if (series.dominantColor == null && series.folderImagePath != null) //
+      if (series.dominantColor == null && series.folderPosterPath != null) //
         await series.calculateDominantColor();
     }
     // Save library after calculating all colors

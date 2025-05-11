@@ -39,6 +39,11 @@ class Manager {
     final settings = Provider.of<SettingsManager>(homeKey.currentContext!, listen: false);
     return settings.defaultPosterSource;
   }
+  
+  static PosterSource get defaultBannerSource {
+    final settings = Provider.of<SettingsManager>(homeKey.currentContext!, listen: false);
+    return settings.defaultBannerSource;
+  }
 
   /// Checks if the current platform is MacOS
   static bool get isMacOS => Platform.isMacOS;
@@ -87,6 +92,9 @@ class SettingsManager extends ChangeNotifier {
 
   PosterSource get defaultPosterSource => PosterSourceX.fromString(_getString('defaultPosterSource', defaultValue: PosterSource.autoAnilist.name_));
   set defaultPosterSource(PosterSource value) => _setString('defaultPosterSource', value.name_);
+  
+  PosterSource get defaultBannerSource => PosterSourceX.fromString(_getString('defaultBannerSource', defaultValue: PosterSource.autoAnilist.name_));
+  set defaultBannerSource(PosterSource value) => _setString('defaultBannerSource', value.name_);
 
   // // Generic getters with type safety
   bool _getBool(String key, {required bool defaultValue}) {

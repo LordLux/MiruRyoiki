@@ -53,6 +53,7 @@ class SeriesScreenState extends State<SeriesScreen> {
 
   bool _isPosterHovering = false;
   DeferredPointerHandlerLink deferredPointerLink = DeferredPointerHandlerLink();
+  bool _isBannerHovering = false;
 
   Series? get series {
     final library = Provider.of<Library>(context, listen: false);
@@ -89,9 +90,27 @@ class SeriesScreenState extends State<SeriesScreen> {
       title: 'Select Poster',
       enableBarrierDismiss: true,
       barrierDismissCheck: () => true,
-      builder: (context) => PosterSelectionDialog(
+      builder: (context) => ImageSelectionDialog(
         series: series!,
         popContext: context,
+        isBanner: false,
+      ),
+    ).then((source) {
+      if (source != null && mounted) setState(() {});
+    });
+  }
+
+  void _selectBanner(BuildContext context) {
+    showManagedDialog<PosterSource?>(
+      context: context,
+      id: 'bannerSelection:${series!.path}',
+      title: 'Select Banner',
+      enableBarrierDismiss: true,
+      barrierDismissCheck: () => true,
+      builder: (context) => ImageSelectionDialog(
+        series: series!,
+        popContext: context,
+        isBanner: true,
       ),
     ).then((source) {
       if (source != null && mounted) setState(() {});
@@ -220,26 +239,60 @@ class SeriesScreenState extends State<SeriesScreen> {
   Widget _buildSeriesHeader(BuildContext context, Series series) {
     return Stack(
       children: [
-        Container(
-          height: _maxHeaderHeight,
-          width: double.infinity,
-          // Background image
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [
-                dominantColor.withOpacity(0.27),
-                Colors.transparent,
-              ],
-            ),
-            image: _getBannerImage(series),
-          ),
-          padding: const EdgeInsets.only(bottom: 16.0),
-          alignment: Alignment.bottomLeft,
-          child: LayoutBuilder(builder: (context, constraints) {
+        ShiftClickableHover(
+          series: series,
+          imageProvider: _getBannerImage(series),
+          enabled: _isBannerHovering,
+          onTap: (context) => _selectBanner(context),
+          onEnter: () => setState(() => _isBannerHovering = true),
+          onExit: () => setState(() => _isBannerHovering = false),
+          final_child: (BuildContext context, bool enabled) => LayoutBuilder(builder: (context, constraints) {
             return Stack(
               children: [
+                AnimatedOpacity(
+                  duration: shortStickyHeaderDuration,
+                  opacity: enabled ? 0.75 : 1,
+                  child: AnimatedContainer(
+                    duration: shortStickyHeaderDuration,
+                    height: _maxHeaderHeight,
+                    width: double.infinity,
+                    // Background image
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          dominantColor.withOpacity(0.27),
+                          Colors.transparent,
+                        ],
+                      ),
+                      color: enabled ? (series.dominantColor ?? Manager.accentColor).withOpacity(0.75) : Colors.transparent,
+                      image: _getBannerDecoration(series),
+                    ),
+                    padding: const EdgeInsets.only(bottom: 16.0),
+                    alignment: Alignment.bottomLeft,
+                    child: Builder(builder: (context) {
+                      if (_getBannerImage(series) != null) return SizedBox.shrink();
+
+                      return Center(
+                        child: Stack(
+                          children: [
+                            AnimatedOpacity(
+                              duration: shortStickyHeaderDuration,
+                              opacity: enabled ? 0 : 1,
+                              child: Icon(FluentIcons.picture, size: 48, color: Colors.white),
+                            ),
+                            AnimatedOpacity(
+                              duration: shortStickyHeaderDuration,
+                              opacity: enabled ? 1 : 0,
+                              child: Icon(FluentIcons.add, size: 48, color: Colors.white),
+                            ),
+                          ],
+                        ),
+                      );
+                    }),
+                  ),
+                ),
                 // Title and watched percentage
                 Positioned(
                   bottom: 0,
@@ -343,24 +396,28 @@ class SeriesScreenState extends State<SeriesScreen> {
     );
   }
 
-  DecorationImage? _getBannerImage(Series series) {
+  ImageProvider? _getBannerImage(Series series) {
+    final effectivePath = series.effectiveBannerPath;
+    if (effectivePath == null) return null;
+
     // Priority: Anilist banner -> local poster
-    if (series.bannerImage != null) // Prefer Anilist banner if available
-      return DecorationImage(
-        alignment: Alignment.topCenter,
-        image: NetworkImage(series.bannerImage!),
-        fit: BoxFit.cover,
-        isAntiAlias: true,
-        colorFilter: colorFilter,
-      );
-    if (series.folderImagePath != null) // Use local image as fallback if available
-      return DecorationImage(
-        image: FileImage(File(series.folderImagePath!)),
-        fit: BoxFit.cover,
-        isAntiAlias: true,
-        colorFilter: colorFilter,
-      );
-    return null;
+    if (series.isLocalBanner) // Prefer Anilist banner if available
+      return FileImage(File(effectivePath));
+    return NetworkImage(effectivePath);
+  }
+
+  // Get the decoration image based on the banner image
+  DecorationImage? _getBannerDecoration(Series series) {
+    final imageProvider = _getBannerImage(series);
+    if (imageProvider == null) return null;
+
+    return DecorationImage(
+      alignment: Alignment.topCenter,
+      image: imageProvider,
+      fit: BoxFit.cover,
+      isAntiAlias: true,
+      colorFilter: colorFilter,
+    );
   }
 
   Widget _infoBar(Series series) {
@@ -618,76 +675,71 @@ class SeriesScreenState extends State<SeriesScreen> {
                                       child: DeferPointer(
                                         link: deferredPointerLink,
                                         paintOnTop: true,
-                                        child: ValueListenableBuilder(
-                                            valueListenable: KeyboardState.shiftPressedNotifier,
-                                            builder: (context, isShiftPressed, child) => MouseRegion(
-                                                  cursor: isShiftPressed && _isPosterHovering ? SystemMouseCursors.click : MouseCursor.defer,
-                                                  onEnter: (_) => setState(() => _isPosterHovering = true),
-                                                  onExit: (_) => setState(() => _isPosterHovering = false),
-                                                  hitTestBehavior: HitTestBehavior.translucent,
-                                                  child: mat.InkWell(
-                                                    onTap: isShiftPressed && _isPosterHovering ? () => _selectPoster(context) : null,
-                                                    splashColor: (series.dominantColor ?? Manager.accentColor).withOpacity(0.1),
-                                                    highlightColor: Colors.white.withOpacity(0.05),
-                                                    borderRadius: BorderRadius.circular(8.0),
-                                                    child: Stack(
-                                                      alignment: Alignment.center,
-                                                      children: [
-                                                        AnimatedContainer(
-                                                          width: posterWidth,
-                                                          height: posterHeight,
-                                                          duration: shortStickyHeaderDuration,
-                                                          decoration: BoxDecoration(
-                                                            borderRadius: BorderRadius.circular(8.0),
-                                                            color: isShiftPressed && _isPosterHovering ? (series.dominantColor ?? Manager.accentColor).withOpacity(0.75) : Colors.transparent,
-                                                          ),
-                                                          child: AnimatedOpacity(
-                                                            duration: shortStickyHeaderDuration,
-                                                            opacity: isShiftPressed && _isPosterHovering ? 0.75 : 1,
-                                                            child: Builder(builder: (context) {
-                                                              if (imageProvider != null)
-                                                                return ShadowedImage(
-                                                                  imageProvider: imageProvider,
-                                                                  fit: BoxFit.cover,
-                                                                  colorFilter: series.posterImage != null ? ColorFilter.mode(Colors.black.withOpacity(0), BlendMode.darken) : null,
-                                                                  blurSigma: 10,
-                                                                  shadowColorOpacity: .5,
-                                                                );
-                                                              // No image -> image + plus to add first
-                                                              return Container(
-                                                                decoration: BoxDecoration(color: dominantColor.withOpacity(0.5), borderRadius: BorderRadius.circular(4)),
-                                                                child: Center(
-                                                                  child: Stack(
-                                                                    children: [
-                                                                      AnimatedOpacity(
-                                                                        duration: shortStickyHeaderDuration,
-                                                                        opacity: isShiftPressed && _isPosterHovering ? 0 : 1,
-                                                                        child: Icon(FluentIcons.picture, size: 48, color: Colors.white),
-                                                                      ),
-                                                                      AnimatedOpacity(
-                                                                        duration: shortStickyHeaderDuration,
-                                                                        opacity: isShiftPressed && _isPosterHovering ? 1 : 0,
-                                                                        child: Icon(FluentIcons.add, size: 48, color: Colors.white),
-                                                                      ),
-                                                                    ],
-                                                                  ),
-                                                                ),
-                                                              );
-                                                            }),
-                                                          ),
+                                        child: ShiftClickableHover(
+                                          series: series,
+                                          imageProvider: imageProvider,
+                                          enabled: _isPosterHovering,
+                                          onTap: (context) => _selectPoster(context),
+                                          onEnter: () => setState(() => _isPosterHovering = true),
+                                          onExit: () => setState(() => _isPosterHovering = false),
+                                          final_child: (BuildContext context, bool enabled) => Stack(
+                                            alignment: Alignment.center,
+                                            children: [
+                                              SizedBox(
+                                                width: posterWidth,
+                                                height: posterHeight,
+                                                child: AnimatedOpacity(
+                                                  duration: shortStickyHeaderDuration,
+                                                  opacity: enabled ? 0.75 : 1,
+                                                  child: Builder(builder: (context) {
+                                                    if (imageProvider != null)
+                                                      // Image available -> show it
+                                                      return ShadowedImage(
+                                                        imageProvider: imageProvider,
+                                                        fit: BoxFit.cover,
+                                                        colorFilter: series.posterImage != null ? ColorFilter.mode(Colors.black.withOpacity(0), BlendMode.darken) : null,
+                                                        blurSigma: 10,
+                                                        shadowColorOpacity: .5,
+                                                      );
+
+                                                    // No image -> image + plus to add first
+                                                    return AnimatedContainer(
+                                                      duration: shortStickyHeaderDuration,
+                                                      decoration: BoxDecoration(
+                                                        color: dominantColor.withOpacity(enabled ? 1 : 0),
+                                                        borderRadius: BorderRadius.circular(4),
+                                                      ),
+                                                      child: Center(
+                                                        child: Stack(
+                                                          children: [
+                                                            AnimatedOpacity(
+                                                              duration: shortStickyHeaderDuration,
+                                                              opacity: enabled ? 0 : 1,
+                                                              child: Icon(FluentIcons.picture, size: 48, color: Colors.white),
+                                                            ),
+                                                            AnimatedOpacity(
+                                                              duration: shortStickyHeaderDuration,
+                                                              opacity: enabled ? 1 : 0,
+                                                              child: Icon(FluentIcons.add, size: 48, color: Colors.white),
+                                                            ),
+                                                          ],
                                                         ),
-                                                        // Edit poster
-                                                        AnimatedOpacity(
-                                                          duration: shortStickyHeaderDuration,
-                                                          opacity: isShiftPressed && _isPosterHovering ? 1 : 0,
-                                                          child: Center(
-                                                            child: Icon(FluentIcons.edit, size: 35, color: Colors.white),
-                                                          ),
-                                                        ),
-                                                      ],
-                                                    ),
-                                                  ),
-                                                )),
+                                                      ),
+                                                    );
+                                                  }),
+                                                ),
+                                              ),
+                                              // Edit poster
+                                              AnimatedOpacity(
+                                                duration: shortStickyHeaderDuration,
+                                                opacity: enabled && imageProvider != null ? 1 : 0,
+                                                child: Center(
+                                                  child: Icon(FluentIcons.edit, size: 35, color: Colors.white),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
                                       ),
                                     ),
                                   ],
@@ -743,6 +795,32 @@ class SeriesScreenState extends State<SeriesScreen> {
         ],
       ),
     );
+  }
+
+  Widget ShiftClickableHover({
+    required Series series,
+    required ImageProvider<Object>? imageProvider,
+    required bool enabled,
+    required VoidCallback onEnter,
+    required VoidCallback onExit,
+    required void Function(BuildContext) onTap,
+    required Widget Function(BuildContext, bool) final_child,
+  }) {
+    return ValueListenableBuilder(
+        valueListenable: KeyboardState.shiftPressedNotifier,
+        builder: (context, isShiftPressed, child) => MouseRegion(
+              cursor: isShiftPressed && enabled ? SystemMouseCursors.click : MouseCursor.defer,
+              onEnter: (_) => onEnter.call(),
+              onExit: (_) => onExit.call(),
+              hitTestBehavior: HitTestBehavior.translucent,
+              child: mat.InkWell(
+                onTap: isShiftPressed && enabled ? () => onTap(context) : null,
+                splashColor: (series.dominantColor ?? Manager.accentColor).withOpacity(1),
+                hoverColor: Colors.green.withOpacity(.1),
+                borderRadius: BorderRadius.circular(8.0),
+                child: final_child(context, isShiftPressed && enabled),
+              ),
+            ));
   }
 
   Widget _buildButton(void Function()? onTap, Widget child, String label) {
@@ -860,7 +938,7 @@ void linkWithAnilist(BuildContext context, Series? series, Future<void> Function
   }
 
   // Show the dialog
-  await showManagedDialog<(bool?, List<AnilistMapping>)?>(
+  await showManagedDialog(
     context: context,
     id: 'linkAnilist:${series.path}',
     title: 'Link to Anilist',

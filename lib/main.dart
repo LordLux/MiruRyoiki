@@ -76,8 +76,8 @@ void main() async {
   runApp(
     MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (context) => Library()),
-        ChangeNotifierProvider(create: (context) => AnilistProvider()),
+        ChangeNotifierProvider(create: (_) => Library(), lazy: false),
+        ChangeNotifierProvider(create: (_) => AnilistProvider()),
         ChangeNotifierProvider.value(value: _appTheme),
         ChangeNotifierProvider.value(value: _settings),
         ChangeNotifierProvider.value(value: _navigationManager),
@@ -124,6 +124,7 @@ class _MyAppState extends State<MyApp> {
       // Apply settings to app components
       settings.applySettings(context);
 
+      await libraryProvider.initialize();
       await libraryProvider.scanLibrary();
       await anilistProvider.initialize();
 
@@ -685,10 +686,10 @@ Future<void> _initializeWindowManager() async {
   await flutter_acrylic.Window.initialize();
   await flutter_acrylic.Window.hideWindowControls();
   await WindowManager.instance.ensureInitialized();
-  
+
   final Size initialSize = Size(1116.5, 700);
   final Size minSize = Size(900, 400);
-  
+
   doWhenWindowReady(() {
     final win = appWindow;
     win.size = initialSize;

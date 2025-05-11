@@ -52,7 +52,10 @@ class Series {
   final String path;
 
   /// Poster path for the series from the File System
-  final String? folderImagePath;
+  String? folderPosterPath;
+
+  /// Poster path for the series from the File System
+  String? folderBannerPath;
 
   /// List of seasons for the series from the File System
   final List<Season> seasons;
@@ -72,17 +75,22 @@ class Series {
   // The currently selected Anilist ID for display purposes
   int? _primaryAnilistId;
 
+  /// Preferred source for the images
   PosterSource? preferredPosterSource;
+  PosterSource? preferredBannerSource;
 
   Series({
     required this.name,
     required this.path,
-    this.folderImagePath,
+    this.folderPosterPath,
+    this.folderBannerPath,
     required this.seasons,
     this.relatedMedia = const [],
     this.anilistMappings = const [],
     AnilistAnime? anilistData,
     Color? dominantColor,
+    this.preferredPosterSource,
+    this.preferredBannerSource,
   })  : _anilistData = anilistData,
         _dominantColor = dominantColor;
 
@@ -176,10 +184,10 @@ class Series {
 
   /// Calculate and cache the dominant color from the poster image
   Future<Color?> calculateDominantColor() async {
-    if (folderImagePath == null) return null;
+    if (folderPosterPath == null) return null;
 
     try {
-      final File imageFile = File(folderImagePath!);
+      final File imageFile = File(folderPosterPath!);
       if (!imageFile.existsSync()) return null;
 
       final PaletteGenerator paletteGenerator = await PaletteGenerator.fromImageProvider(
@@ -202,13 +210,14 @@ class Series {
     return {
       'name': name,
       'path': path,
-      'posterPath': folderImagePath,
+      'posterPath': folderPosterPath,
       'seasons': seasons.map((s) => s.toJson()).toList(),
       'relatedMedia': relatedMedia.map((e) => e.toJson()).toList(),
       'anilistMappings': anilistMappings.map((m) => m.toJson()).toList(),
       'dominantColor': _dominantColor?.value,
       'primaryAnilistId': _primaryAnilistId,
       if (preferredPosterSource != null) 'preferredPosterSource': preferredPosterSource!.name_,
+      if (preferredBannerSource != null) 'preferredBannerSource': preferredBannerSource!.name_,
     };
   }
 
@@ -312,7 +321,8 @@ class Series {
       final series = Series(
         name: name,
         path: path,
-        folderImagePath: json['posterPath'] as String?,
+        folderPosterPath: json['posterPath'] as String?,
+        folderBannerPath: json['bannerPath'] as String?,
         seasons: seasons,
         relatedMedia: relatedMedia,
         anilistMappings: mappings,
@@ -344,6 +354,20 @@ class Series {
         }
       } catch (e) {
         debugPrint('Error setting preferredPosterSource: $e');
+      }
+      
+      // Set preferred banner source if available
+      try {
+        if (json['preferredBannerSource'] != null) {
+          final sourceStr = json['preferredBannerSource'] as String?;
+          if (sourceStr == 'local')
+            series.preferredBannerSource = PosterSource.local;
+          else if (sourceStr == 'anilist') //
+            series.preferredBannerSource = PosterSource.anilist;
+          // if the preferred source is not set, it will be decided by the setting
+        }
+      } catch (e) {
+        debugPrint('Error setting preferredBannerSource: $e');
       }
 
       return series;
@@ -421,22 +445,22 @@ class Series {
     final PosterSource effectiveSource = preferredPosterSource ?? Manager.defaultPosterSource;
 
     // Determine available options
-    final bool hasLocalPoster = folderImagePath != null;
+    final bool hasLocalPoster = folderPosterPath != null;
     final bool hasAnilistPoster = _anilistData?.posterImage != null;
 
     // Apply fallback logic based on source preference
     switch (effectiveSource) {
       case PosterSource.local:
-        return hasLocalPoster ? folderImagePath : (hasAnilistPoster ? _anilistData?.posterImage : null);
+        return hasLocalPoster ? folderPosterPath : (hasAnilistPoster ? _anilistData?.posterImage : null);
 
       case PosterSource.anilist:
-        return hasAnilistPoster ? _anilistData?.posterImage : (hasLocalPoster ? folderImagePath : null);
+        return hasAnilistPoster ? _anilistData?.posterImage : (hasLocalPoster ? folderPosterPath : null);
 
       case PosterSource.autoLocal:
-        return hasLocalPoster ? folderImagePath : (hasAnilistPoster ? _anilistData?.posterImage : null);
+        return hasLocalPoster ? folderPosterPath : (hasAnilistPoster ? _anilistData?.posterImage : null);
 
       case PosterSource.autoAnilist:
-        return hasAnilistPoster ? _anilistData?.posterImage : (hasLocalPoster ? folderImagePath : null);
+        return hasAnilistPoster ? _anilistData?.posterImage : (hasLocalPoster ? folderPosterPath : null);
     }
   }
 
@@ -449,6 +473,44 @@ class Series {
   /// Getter to check if the poster actually being used is from a local file
   bool get isLocalPoster {
     if (effectivePosterPath == null) return false;
-    return effectivePosterPath == folderImagePath;
+    return effectivePosterPath == folderPosterPath;
+  }
+
+  //
+  //
+  /// Getter to check if the banner is from Anilist or local file
+  String? get effectiveBannerPath {
+    final PosterSource effectiveSource = preferredBannerSource ?? Manager.defaultPosterSource;
+
+    // Determine available options
+    final bool hasLocalBanner = folderBannerPath != null;
+    final bool hasAnilistBanner = _anilistData?.bannerImage != null;
+
+    // Apply fallback logic based on source preference
+    switch (effectiveSource) {
+      case PosterSource.local:
+        return hasLocalBanner ? folderBannerPath : (hasAnilistBanner ? _anilistData?.bannerImage : null);
+
+      case PosterSource.anilist:
+        return hasAnilistBanner ? _anilistData?.bannerImage : (hasLocalBanner ? folderBannerPath : null);
+
+      case PosterSource.autoLocal:
+        return hasLocalBanner ? folderBannerPath : (hasAnilistBanner ? _anilistData?.bannerImage : null);
+
+      case PosterSource.autoAnilist:
+        return hasAnilistBanner ? _anilistData?.bannerImage : (hasLocalBanner ? folderBannerPath : null);
+    }
+  }
+
+  /// Getter to check if the banner actually being used is from Anilist
+  bool get isAnilistBanner {
+    if (effectiveBannerPath == null) return false;
+    return effectiveBannerPath == _anilistData?.bannerImage;
+  }
+
+  /// Getter to check if the banner actually being used is from a local file
+  bool get isLocalBanner {
+    if (effectiveBannerPath == null) return false;
+    return effectiveBannerPath == folderBannerPath;
   }
 }

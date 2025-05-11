@@ -1,5 +1,5 @@
 import 'dart:io';
-import 'dart:math';
+import 'dart:math' show min;
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:transparent_image/transparent_image.dart';
 import 'package:provider/provider.dart';
@@ -14,34 +14,47 @@ import '../services/navigation/dialogs.dart';
 import '../services/navigation/show_info.dart';
 import '../services/cache.dart';
 import '../utils/image_utils.dart';
+import '../utils/logging.dart';
 import '../utils/screen_utils.dart';
 import '../widgets/transparency_shadow_image.dart';
 
-class PosterSelectionDialog extends ManagedDialog {
+class ImageSelectionDialog extends ManagedDialog {
   final Series series;
 
-  PosterSelectionDialog({
+  ImageSelectionDialog({
     super.key,
     required this.series,
     required super.popContext,
-    super.title = const Text('Select Poster Image'),
+    required isBanner,
+    String? title,
     super.constraints = const BoxConstraints(maxWidth: 1000, maxHeight: 700),
   }) : super(
-          contentBuilder: (context, constraints) => _PosterSelectionContent(
+          title: Text(title ?? (isBanner ? 'Select Banner Image' : 'Select Poster Image')),
+          contentBuilder: (context, constraints) => _ImageSelectionContent(
             series: series,
             constraints: constraints,
-            onSave: (source) {
+            isBanner: isBanner,
+            onSave: (source, path) async {
               // Save the selection
               final library = Provider.of<Library>(popContext, listen: false);
-              series.preferredPosterSource = source;
-              library.saveSeries(series);
+
+              if (isBanner) {
+                series.preferredBannerSource = source;
+                series.folderBannerPath = path;
+              } else {
+                series.preferredPosterSource = source;
+                series.folderPosterPath = path;
+              }
+
+              // Explicitly save the entire series
+              await library.saveSeries(series);
 
               // Close dialog
               closeDialog(popContext, result: source);
 
               // Show confirmation
               snackBar(
-                'Poster preference saved',
+                isBanner ? 'Banner preference saved' : 'Poster preference saved',
                 severity: InfoBarSeverity.success,
               );
             },
@@ -52,30 +65,32 @@ class PosterSelectionDialog extends ManagedDialog {
         );
 }
 
-class _PosterSelectionContent extends StatefulWidget {
+class _ImageSelectionContent extends StatefulWidget {
   final Series series;
   final BoxConstraints constraints;
-  final Function(PosterSource) onSave;
+  final Function(PosterSource, String) onSave;
   final VoidCallback onCancel;
+  final bool isBanner;
 
-  const _PosterSelectionContent({
+  const _ImageSelectionContent({
     required this.series,
     required this.constraints,
     required this.onSave,
     required this.onCancel,
+    required this.isBanner,
   });
 
   @override
-  _PosterSelectionContentState createState() => _PosterSelectionContentState();
+  _ImageSelectionContentState createState() => _ImageSelectionContentState();
 }
 
-class _PosterSelectionContentState extends State<_PosterSelectionContent> {
+class _ImageSelectionContentState extends State<_ImageSelectionContent> {
   late PosterSource _selectedSource;
   bool _localImageLoading = false;
   bool _anilistImageLoading = false;
   // ignore: unused_field
-  ImageProvider? _localPosterProvider;
-  ImageProvider? _anilistPosterProvider;
+  ImageProvider? _localImageProvider;
+  ImageProvider? _anilistImageProvider;
 
   List<File> _localImageFiles = [];
   int _selectedLocalImageIndex = 0;
@@ -83,7 +98,9 @@ class _PosterSelectionContentState extends State<_PosterSelectionContent> {
   @override
   void initState() {
     super.initState();
-    _selectedSource = widget.series.preferredPosterSource ?? Manager.defaultPosterSource;
+    _selectedSource = widget.isBanner //
+        ? widget.series.preferredBannerSource ?? Manager.defaultPosterSource
+        : widget.series.preferredPosterSource ?? Manager.defaultPosterSource;
     _loadImages();
   }
 
@@ -99,8 +116,12 @@ class _PosterSelectionContentState extends State<_PosterSelectionContent> {
     }).toList();
 
     // Set selected index to current poster if it exists
-    if (widget.series.folderImagePath != null) {
-      final index = _localImageFiles.indexWhere((f) => f.path == widget.series.folderImagePath);
+    if (widget.isBanner && widget.series.folderBannerPath != null) {
+      final index = _localImageFiles.indexWhere((f) => f.path == widget.series.folderBannerPath);
+      if (index >= 0) _selectedLocalImageIndex = index;
+      // Set selected index to current bannerif it exists
+    } else if (!widget.isBanner && widget.series.folderPosterPath != null) {
+      final index = _localImageFiles.indexWhere((f) => f.path == widget.series.folderPosterPath);
       if (index >= 0) _selectedLocalImageIndex = index;
     }
 
@@ -112,21 +133,30 @@ class _PosterSelectionContentState extends State<_PosterSelectionContent> {
   Future<void> _loadImages() async {
     setState(() {
       _localImageLoading = true;
-      _anilistImageLoading = widget.series.anilistData?.posterImage != null;
+
+      // Check for the correct image type based on what we're selecting
+      final String? anilistImageUrl = widget.isBanner
+          ? widget.series.anilistData?.bannerImage // banner URL
+          : widget.series.anilistData?.posterImage; // poster URL
+
+      _anilistImageLoading = anilistImageUrl != null;
     });
 
     await _findLocalImages();
 
-    if (widget.series.anilistData?.posterImage != null) {
+    // Get the appropriate AniList image based on banner/poster selection
+    final String? anilistImageUrl = widget.isBanner ? widget.series.anilistData?.bannerImage : widget.series.anilistData?.posterImage;
+
+    if (anilistImageUrl != null) {
       final imageCache = ImageCacheService();
-      final cachedFile = await imageCache.getCachedImageFile(widget.series.anilistData!.posterImage!);
+      final cachedFile = await imageCache.getCachedImageFile(anilistImageUrl);
 
       if (cachedFile != null) {
-        _anilistPosterProvider = FileImage(cachedFile);
+        _anilistImageProvider = FileImage(cachedFile);
       } else {
-        _anilistPosterProvider = NetworkImage(widget.series.anilistData!.posterImage!);
+        _anilistImageProvider = NetworkImage(anilistImageUrl);
         // Start caching in background
-        imageCache.cacheImage(widget.series.anilistData!.posterImage!);
+        imageCache.cacheImage(anilistImageUrl);
       }
 
       if (mounted) setState(() => _anilistImageLoading = false);
@@ -135,10 +165,10 @@ class _PosterSelectionContentState extends State<_PosterSelectionContent> {
 
   void _loadSelectedLocalImage() {
     if (_localImageFiles.isNotEmpty && _selectedLocalImageIndex < _localImageFiles.length) {
-      _localPosterProvider = FileImage(_localImageFiles[_selectedLocalImageIndex]);
+      _localImageProvider = FileImage(_localImageFiles[_selectedLocalImageIndex]);
       if (mounted) setState(() => _localImageLoading = false);
     } else {
-      _localPosterProvider = null;
+      _localImageProvider = null;
       if (mounted) setState(() => _localImageLoading = false);
     }
   }
@@ -149,7 +179,7 @@ class _PosterSelectionContentState extends State<_PosterSelectionContent> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Choose the poster image source for "${widget.series.name}"',
+          'Choose the ${widget.isBanner ? 'banner' : 'poster'} image source for "${widget.series.name}"',
           style: FluentTheme.of(context).typography.bodyLarge,
         ),
         SizedBox(height: 20),
@@ -178,7 +208,7 @@ class _PosterSelectionContentState extends State<_PosterSelectionContent> {
                   title: 'Anilist Image',
                   isAvailable: widget.series.anilistData?.posterImage != null,
                   isLoading: _anilistImageLoading,
-                  posterProvider: _anilistPosterProvider,
+                  posterProvider: _anilistImageProvider,
                   source: PosterSource.anilist,
                   unavailableMessage: 'No Anilist image available',
                   linkToAnilistAction: () {
@@ -204,18 +234,43 @@ class _PosterSelectionContentState extends State<_PosterSelectionContent> {
         SizedBox(height: 20),
         // Action buttons
         Row(
-          mainAxisAlignment: MainAxisAlignment.end,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Button(
-              onPressed: widget.onCancel,
-              child: Text('Cancel'),
+            TooltipTheme(
+              data: TooltipThemeData(
+                waitDuration: const Duration(milliseconds: 100),
+              ),
+              child: Tooltip(
+                message: 'Reset to ${_getSourceDisplayName(Manager.defaultPosterSource)}\nThis setting can be changed in settings',
+                child: Button(
+                  onPressed: widget.onCancel,
+                  child: Text('Reset to Auto'),
+                ),
+              ),
             ),
-            SizedBox(width: 8),
-            FilledButton(
-              child: Text('Save Preference'),
-              onPressed: () {
-                widget.onSave(_selectedSource);
-              },
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                Button(
+                  onPressed: widget.onCancel,
+                  child: Text('Cancel'),
+                ),
+                SizedBox(width: 8),
+                FilledButton(
+                  child: Text('Save Preference'),
+                  onPressed: () {
+                    widget.onSave(
+                        _selectedSource,
+                        widget.isBanner
+                            ? _selectedSource == PosterSource.local
+                                ? _localImageFiles[_selectedLocalImageIndex].path
+                                : widget.series.anilistData?.bannerImage ?? ''
+                            : _selectedSource == PosterSource.local
+                                ? _localImageFiles[_selectedLocalImageIndex].path
+                                : widget.series.anilistData?.posterImage ?? '');
+                  },
+                ),
+              ],
             ),
           ],
         ),
@@ -245,8 +300,8 @@ class _PosterSelectionContentState extends State<_PosterSelectionContent> {
     required String unavailableMessage,
     VoidCallback? linkToAnilistAction,
   }) {
-    final isSelected = _selectedSource == source;
     final needsAnilistLink = source == PosterSource.anilist && widget.series.primaryAnilistId == null;
+    final isSelected = _selectedSource == source;
 
     return GestureDetector(
       onTap: isAvailable

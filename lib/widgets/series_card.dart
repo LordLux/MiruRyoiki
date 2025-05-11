@@ -1,6 +1,7 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/material.dart' show InkWell, Material;
 import 'package:transparent_image/transparent_image.dart';
+import '../enums.dart';
 import '../manager.dart';
 import '../services/cache.dart';
 import 'dart:io';
@@ -25,17 +26,41 @@ class _SeriesCardState extends State<SeriesCard> {
   bool _isHovering = false;
   bool _loading = true;
   ImageProvider? _posterImageProvider;
+  PosterSource? _lastKnownDefaultSource;
 
   @override
   void initState() {
     super.initState();
     _loadImage();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (widget.series.effectivePosterPath != null && //
+          widget.series.preferredPosterSource == PosterSource.autoAnilist &&
+          widget.series.anilistData?.posterImage != null) {
+        _loadImage(); // Re-evaluate after initial build
+      }
+    });
   }
 
   @override
   void didUpdateWidget(SeriesCard oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.series != widget.series) _loadImage();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+
+    // Check if the default poster source changed (from settings)
+    final currentDefaultSource = Manager.defaultPosterSource;
+    if (_lastKnownDefaultSource != currentDefaultSource) {
+      _lastKnownDefaultSource = currentDefaultSource;
+      if (widget.series.preferredPosterSource == null) {
+        // If using default source and it changed, reload the image
+        _loadImage();
+      }
+    }
   }
 
   Future<void> _loadImage() async {
@@ -74,19 +99,17 @@ class _SeriesCardState extends State<SeriesCard> {
 
   Widget _getSeriesImage() {
     if (_loading) return const Center(child: ProgressRing(strokeWidth: 3));
-    
-    Widget noImg = LayoutBuilder(
-          builder: (context, constraints) {
-            return Align(
-              alignment: Alignment.topCenter,
-              child: SizedBox(
-                width: constraints.maxWidth,
-                height: constraints.maxWidth * 1.05,
-                child: Icon(FluentIcons.file_image, size: constraints.maxWidth * 0.25),
-              ),
-            );
-          }
-        );
+
+    Widget noImg = LayoutBuilder(builder: (context, constraints) {
+      return Align(
+        alignment: Alignment.topCenter,
+        child: SizedBox(
+          width: constraints.maxWidth,
+          height: constraints.maxWidth * 1.05,
+          child: Icon(FluentIcons.file_image, size: constraints.maxWidth * 0.25),
+        ),
+      );
+    });
 
     if (_posterImageProvider != null) {
       return FadeInImage(

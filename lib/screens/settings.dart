@@ -389,20 +389,45 @@ class _SettingsScreenState extends State<SettingsScreen> {
               // ),
               // //
               // const SizedBox(height: 24),
-              Text(
-                'Default poster source for new series.',
-                style: FluentTheme.of(context).typography.body,
+              Row(
+                children: [
+                  Column(
+                    children: [
+                      Text(
+                        'Default Poster source for series.',
+                        style: FluentTheme.of(context).typography.body,
+                      ),
+                      const SizedBox(height: 12),
+                      ToggleSwitch(
+                        checked: Manager.defaultPosterSource == PosterSource.autoAnilist,
+                        content: Manager.defaultPosterSource == PosterSource.autoAnilist ? Text('Prefer Anilist Posters') : Text('Prefer Local Posters'),
+                        onChanged: (value) {
+                          settings.defaultPosterSource = value ? PosterSource.autoAnilist : PosterSource.autoLocal;
+                          settings.set('defaultPosterSource', settings.defaultPosterSource.name_);
+                        },
+                      ),
+                    ],
+                  ),
+                  const SizedBox(width: 24),
+                  Column(
+                    children: [
+                      Text(
+                        'Default Banner source for series.',
+                        style: FluentTheme.of(context).typography.body,
+                      ),
+                      const SizedBox(height: 12),
+                      ToggleSwitch(
+                        checked: Manager.defaultBannerSource == PosterSource.autoAnilist,
+                        content: Manager.defaultBannerSource == PosterSource.autoAnilist ? Text('Prefer Anilist Banners') : Text('Prefer Local Banners'),
+                        onChanged: (value) {
+                          settings.defaultBannerSource = value ? PosterSource.autoAnilist : PosterSource.autoLocal;
+                          settings.set('defaultBannerSource', settings.defaultBannerSource.name_);
+                        },
+                      ),
+                    ],
+                  ),
+                ],
               ),
-              const SizedBox(height: 12),
-              ToggleSwitch(
-                checked: Manager.defaultPosterSource == PosterSource.autoAnilist,
-                content: Manager.defaultPosterSource == PosterSource.autoAnilist ? Text('Prefer Anilist posters') : Text('Prefer local posters'),
-                onChanged: (value) {
-                  settings.defaultPosterSource = value ? PosterSource.autoAnilist : PosterSource.autoLocal;
-                  settings.set('defaultPosterSource', settings.defaultPosterSource.name_);
-                },
-              ),
-              const SizedBox(height: 24),
             ],
           ),
           const SizedBox(height: 24),
