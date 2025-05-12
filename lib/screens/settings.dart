@@ -16,6 +16,7 @@ import '../manager.dart';
 import '../utils/registry_utils.dart';
 import '../models/library.dart';
 import '../theme.dart';
+import '../utils/time_utils.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -277,7 +278,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       const SizedBox(width: 12),
                       toggle.ToggleSwitch(
                         animate: true,
-                        animationDuration: dimDuration.inMilliseconds,
+                        animationDuration: getDuration(dimDuration).inMilliseconds,
                         initialLabelIndex: context.watch<AppTheme>().dim.index,
                         totalSwitches: Dim.values.length,
                         activeFgColor: Colors.white,
@@ -325,6 +326,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                 ],
                 const SizedBox(height: 12),
+                // Disable Animations
+                ...[
+                  Row(
+                    children: [
+                      Text(
+                        'Animations',
+                        style: FluentTheme.of(context).typography.body,
+                      ),
+                      const SizedBox(width: 12),
+                      ToggleSwitch(
+                        checked: settings.disableAnimations,
+                        content: settings.disableAnimations ? const Text('Disabled') : const Text('Enabled'),
+                        onChanged: (value) {
+                          settings.disableAnimations = value;
+                          settings.set('disableAnimations', value);
+                        },
+                      ),
+                    ],
+                  ),
+                ],
+                const SizedBox(height: 12),
                 // Library colors
                 ...[
                   Row(
@@ -340,7 +362,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           child: toggle.ToggleSwitch(
                             animate: true,
                             multiLineText: true,
-                            animationDuration: dimDuration.inMilliseconds,
+                            animationDuration: getDuration(dimDuration).inMilliseconds,
                             initialLabelIndex: settings.libColView.index,
                             totalSwitches: LibraryColorView.values.length,
                             activeFgColor: Colors.white,

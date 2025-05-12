@@ -180,7 +180,6 @@ class ManagedDialogState extends State<ManagedDialog> {
         color: Colors.transparent,
         child: Container(
           constraints: _currentConstraints,
-          // duration: const Duration(milliseconds: 300),
           child: widget.contentBuilder != null ? widget.contentBuilder!(context, _currentConstraints) : null,
         ),
       ),

@@ -33,7 +33,8 @@ dependencies:
   flutter_secure_storage: ^9.2.4
   http: ^1.3.0
   url_launcher: ^6.3.1
-  smooth_scroll_multiplatform: ^1.0.8
+  smooth_scroll_multiplatform:
+    path: M:/Projects/dyn_mouse_scroll/
   app_links: ^6.4.0
   flutter_acrylic: ^1.1.4
   system_theme: ^3.1.2

@@ -17,6 +17,7 @@ import '../utils/image_utils.dart';
 import '../utils/logging.dart';
 import '../utils/path_utils.dart';
 import '../utils/screen_utils.dart';
+import '../utils/time_utils.dart';
 import '../widgets/transparency_shadow_image.dart';
 
 class ImageSelectionDialog extends ManagedDialog {
@@ -338,7 +339,7 @@ class _ImageSelectionContentState extends State<_ImageSelectionContent> {
                                 placeholder: MemoryImage(kTransparentImage),
                                 image: posterProvider,
                                 fit: BoxFit.contain,
-                                fadeInDuration: const Duration(milliseconds: 300),
+                                fadeInDuration: getDuration(const Duration(milliseconds: 300)),
                                 fadeInCurve: Curves.easeIn,
                               ),
                             )
@@ -570,7 +571,7 @@ class _ImageSelectionContentState extends State<_ImageSelectionContent> {
                                                 placeholder: MemoryImage(kTransparentImage),
                                                 image: FileImage(file),
                                                 fit: BoxFit.contain,
-                                                fadeInDuration: const Duration(milliseconds: 300),
+                                                fadeInDuration: getDuration(const Duration(milliseconds: 300)),
                                                 fadeInCurve: Curves.easeIn,
                                               ),
                                             ),

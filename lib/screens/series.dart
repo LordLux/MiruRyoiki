@@ -23,6 +23,7 @@ import '../services/navigation/dialogs.dart';
 import '../services/navigation/shortcuts.dart';
 import '../utils/image_utils.dart';
 import '../utils/logging.dart';
+import '../utils/time_utils.dart';
 import '../widgets/episode_grid.dart';
 import '../widgets/gradient_mask.dart';
 import '../widgets/transparency_shadow_image.dart';
@@ -526,7 +527,7 @@ class SeriesScreenState extends State<SeriesScreen> {
     );
   }
 
-  Duration get stickyHeaderDuration => const Duration(milliseconds: 430);
+  Duration get stickyHeaderDuration => getDuration(const Duration(milliseconds: 430));
 
   Duration get shortStickyHeaderDuration => Duration(milliseconds: stickyHeaderDuration.inMilliseconds ~/ 3);
 

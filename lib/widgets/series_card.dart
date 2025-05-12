@@ -7,6 +7,7 @@ import '../services/cache.dart';
 import 'dart:io';
 
 import '../models/series.dart';
+import '../utils/time_utils.dart';
 
 class SeriesCard extends StatefulWidget {
   final Series series;
@@ -117,7 +118,7 @@ class _SeriesCardState extends State<SeriesCard> {
         image: _posterImageProvider!,
         fit: BoxFit.fitWidth,
         alignment: Alignment.topCenter,
-        fadeInDuration: const Duration(milliseconds: 250),
+        fadeInDuration: getDuration(const Duration(milliseconds: 250)),
         fadeInCurve: Curves.easeIn,
         imageErrorBuilder: (context, error, stackTrace) => noImg,
       );
@@ -135,7 +136,7 @@ class _SeriesCardState extends State<SeriesCard> {
       child: ClipRRect(
         borderRadius: BorderRadius.circular(8.0),
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 150),
+          duration: getDuration(const Duration(milliseconds: 150)),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(8.0),
             color: Colors.transparent,
@@ -250,7 +251,7 @@ class _SeriesCardState extends State<SeriesCard> {
                     highlightColor: Colors.white.withOpacity(0.05),
                     borderRadius: BorderRadius.circular(8.0),
                     child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 150),
+                      duration: getDuration(const Duration(milliseconds: 150)),
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(8.0),
                         color: _isHovering ? Colors.white.withOpacity(0.03) : Colors.transparent,

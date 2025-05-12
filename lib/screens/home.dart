@@ -1,4 +1,5 @@
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:miruryoiki/manager.dart';
 import 'package:provider/provider.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:smooth_scroll_multiplatform/smooth_scroll_multiplatform.dart';
@@ -138,23 +139,27 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             Expanded(
               child: FadingEdgeScrollView(
+                fadeReach: 20,
                 child: DynMouseScroll(
                   // Tune these parameters to your liking
-                  scrollSpeed: () {
-                    // Calculate actual card height based on width and aspect ratio
-                    double cardHeight = cardWidth(constraints) / 0.71; // using the childAspectRatio
-                    // Calculate total distance to scroll (card + padding)
-                    double scrollDistance = cardHeight + cardPadding;
-                    // Convert to appropriate scroll speed value
-                    // The multiplier 0.015 is a scaling factor that you can fine-tune
-                    return scrollDistance * 0.09415;
-                  }(),
+                  // scrollSpeed: () {
+                  //   // Calculate actual card height based on width and aspect ratio
+                  //   double cardHeight = cardWidth(constraints) / 0.71; // using the childAspectRatio
+                  //   // Calculate total distance to scroll (card + padding)
+                  //   double scrollDistance = cardHeight + cardPadding;
+                  //   // Convert to appropriate scroll speed value
+                  //   // The multiplier 0.015 is a scaling factor that you can fine-tune
+                  //   return scrollDistance * 0.09415;
+                  // }(),
+                  enableSmoothScroll: Manager.animationsEnabled,
+                  scrollAmount: ((cardWidth(constraints) / 0.71) + cardPadding) * 8.26, // using the childAspectRatio
+                  controller: widget.scrollController,
                   durationMS: 300,
                   animationCurve: Curves.ease,
                   builder: (context, controller, physics) => GridView.builder(
                     controller: controller,
                     physics: physics,
-                    padding: const EdgeInsets.only(top: 16, bottom: 24),
+                    padding: const EdgeInsets.only(top: 16, bottom: 8),
                     gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                       crossAxisCount: crossAxisCount(constraints),
                       childAspectRatio: 0.71,

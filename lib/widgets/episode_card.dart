@@ -6,6 +6,7 @@ import 'package:flutter/material.dart' show InkWell, Material;
 import '../functions.dart';
 import '../models/episode.dart';
 import '../models/series.dart';
+import '../utils/time_utils.dart';
 import 'watched_badge.dart';
 
 class HoverableEpisodeTile extends StatefulWidget {
@@ -34,7 +35,7 @@ class _HoverableEpisodeTileState extends State<HoverableEpisodeTile> {
       onExit: (_) => setState(() => _isHovering = false),
       cursor: SystemMouseCursors.click,
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
+        duration: getDuration(const Duration(milliseconds: 150)),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(4.0),
           boxShadow: _isHovering
@@ -138,7 +139,7 @@ class _HoverableEpisodeTileState extends State<HoverableEpisodeTile> {
                   highlightColor: Colors.white.withOpacity(0.05),
                   borderRadius: BorderRadius.circular(4.0),
                   child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 150),
+                    duration: getDuration(const Duration(milliseconds: 150)),
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(4.0),
                       color: _isHovering ? Colors.white.withOpacity(0.03) : Colors.transparent,

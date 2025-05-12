@@ -1,20 +1,21 @@
 // ignore_for_file: use_build_context_synchronously
 
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart' show Icons, Material, MaterialPageRoute, ScaffoldMessenger;
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter_acrylic/flutter_acrylic.dart';
 import 'package:flutter_acrylic/window.dart' as flutter_acrylic;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:miruryoiki/services/navigation/dialogs.dart';
 import 'package:provider/provider.dart';
 import 'package:app_links/app_links.dart';
 import 'package:system_theme/system_theme.dart';
-import 'dart:io';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:bitsdojo_window/bitsdojo_window.dart';
 import 'package:window_manager/window_manager.dart';
 
+import 'services/navigation/dialogs.dart';
+import 'utils/logging.dart';
 import 'manager.dart';
 import 'models/library.dart';
 import 'screens/accounts.dart';
@@ -31,6 +32,8 @@ import 'services/navigation/show_info.dart';
 import 'services/window.dart';
 import 'theme.dart';
 import 'utils/color_utils.dart';
+import 'utils/time_utils.dart';
+import 'widgets/menu_button.dart';
 import 'widgets/reverse_animation_flyout.dart' show ToggleableFlyoutContent, ToggleableFlyoutContentState;
 import 'widgets/simple_flyout.dart' hide ToggleableFlyoutContent;
 import 'widgets/window_buttons.dart';
@@ -276,12 +279,48 @@ class _AppRootState extends State<AppRoot> {
   bool _isSeriesView = false;
   String? lastSelectedSeriesPath;
 
+  final ScrollController seriesController = ScrollController();
+  double _savedScrollPosition = 0.0;
+
   bool get _isLibraryView => !(_isSeriesView && _selectedSeriesPath != null);
   bool get isSeriesView => _isSeriesView;
+
+  bool _isNavigationPaneCollapsed = false;
 
   final GlobalKey<NavigationViewState> _paneKey = GlobalKey<NavigationViewState>();
 
   final SimpleFlyoutController flyoutController = SimpleFlyoutController();
+
+  // Save current scroll position
+  void _saveScrollPosition() {
+    if (seriesController.hasClients) {
+      _savedScrollPosition = seriesController.offset;
+      logTrace('Saved scroll position: $_savedScrollPosition');
+    }
+  }
+
+// Restore saved scroll position
+  void _restoreScrollPosition() {
+    // Use post frame callback to ensure the grid is built
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (seriesController.hasClients) {
+        // Make sure we don't scroll beyond the content
+        final maxScroll = seriesController.position.maxScrollExtent;
+        final scrollTo = _savedScrollPosition.clamp(0.0, maxScroll);
+        seriesController.jumpTo(scrollTo);
+        logTrace('Restored scroll position: $scrollTo');
+      }
+    });
+  }
+
+// Reset scroll position to top
+  void _resetScrollPosition() {
+    _savedScrollPosition = 0.0;
+    if (seriesController.hasClients) {
+      seriesController.jumpTo(0.0);
+      logTrace('Reset scroll position to top');
+    }
+  }
 
   void showDialog() {
     Manager.flyout?.showFlyout(
@@ -291,8 +330,8 @@ class _AppRootState extends State<AppRoot> {
       barrierBlocking: false,
       barrierMargin: EdgeInsets.only(top: Manager.titleBarHeight),
       dismissOnPointerMoveAway: false,
-      closingDuration: Duration(milliseconds: 150),
-      transitionDuration: Duration(milliseconds: 100),
+      closingDuration: getDuration(Duration(milliseconds: 150)),
+      transitionDuration: getDuration(Duration(milliseconds: 100)),
       onBarrierDismiss: () => Manager.closeFlyout(true),
       margin: 0,
       // position: Offset(MediaQuery.of(context).size.width / 2 - flyoutWidth / 2 + 3.5, 4),
@@ -303,7 +342,7 @@ class _AppRootState extends State<AppRoot> {
               builder: (context, setState) {
                 return ToggleableFlyoutContent(
                   key: reverseAnimationPaletteKey,
-                  duration: const Duration(milliseconds: 100),
+                  duration: getDuration(const Duration(milliseconds: 100)),
                   child: Stack(
                     alignment: Alignment.topCenter,
                     children: [],
@@ -335,7 +374,7 @@ class _AppRootState extends State<AppRoot> {
   @override
   Widget build(BuildContext context) {
     return AnimatedContainer(
-      duration: dimDuration,
+      duration: getDuration(dimDuration),
       color: getDimmableBlack(context),
       child: Stack(
         children: [
@@ -343,25 +382,32 @@ class _AppRootState extends State<AppRoot> {
             child: Padding(
               padding: EdgeInsets.only(top: Manager.titleBarHeight), // Adjust for title bar height
               child: AnimatedContainer(
-                duration: dimDuration,
+                duration: getDuration(dimDuration),
                 color: getDimmableBlack(context),
                 child: SimpleFlyoutTarget(
                   controller: flyoutController,
                   child: NavigationView(
+                    onDisplayModeChanged: (value) => nextFrame(() => setState(() {
+                          _isNavigationPaneCollapsed = _paneKey.currentState?.displayMode == PaneDisplayMode.compact;
+                        })),
                     key: _paneKey,
                     pane: NavigationPane(
-                      menuButton: _isLibraryView
-                          ? Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 11.0),
-                              child: _appTitle(),
-                            )
-                          : null,
+                      menuButton: _appTitle(),
                       selected: _selectedIndex,
                       onChanged: (index) => setState(() {
+                        if (_selectedIndex == index) {
+                          // If clicking the same tab, reset its scroll position
+                          if (index == 0) _resetScrollPosition();
+                          return;
+                        }
+
                         _selectedIndex = index;
                         lastSelectedSeriesPath = _selectedSeriesPath;
                         _selectedSeriesPath = null;
                         _isSeriesView = false;
+
+                        // Reset scroll when directly navigating to library
+                        if (index == 0) _resetScrollPosition();
 
                         // Register in navigation stack - add this code
                         final navManager = Provider.of<NavigationManager>(context, listen: false);
@@ -391,7 +437,7 @@ class _AppRootState extends State<AppRoot> {
                             clipBehavior: Clip.none,
                             children: [
                               AnimatedContainer(
-                                duration: const Duration(milliseconds: 100),
+                                duration: getDuration(const Duration(milliseconds: 100)),
                                 child: const Icon(Icons.ondemand_video_outlined, size: 18),
                               ),
                               // divider, discarted
@@ -411,7 +457,7 @@ class _AppRootState extends State<AppRoot> {
                           ),
                           title: const Text('Library'),
                           body: AnimatedSwitcher(
-                            duration: const Duration(milliseconds: 300),
+                            duration: getDuration(const Duration(milliseconds: 300)),
                             child: _isSeriesView && _selectedSeriesPath != null
                                 ? SeriesScreen(
                                     key: seriesScreenKey,
@@ -420,6 +466,7 @@ class _AppRootState extends State<AppRoot> {
                                   )
                                 : HomeScreen(
                                     onSeriesSelected: navigateToSeries,
+                                    scrollController: seriesController,
                                   ),
                           ),
                         ),
@@ -486,7 +533,7 @@ class _AppRootState extends State<AppRoot> {
   Widget _buildTitleBar() {
     double winButtonsWidth = 128;
     return AnimatedContainer(
-      duration: dimDuration,
+      duration: getDuration(dimDuration),
       color: getDimmableBlack(context),
       height: Manager.titleBarHeight,
       child: Stack(
@@ -576,22 +623,30 @@ class _AppRootState extends State<AppRoot> {
     );
   }
 
-  Widget _appTitle() {
-    return SizedBox(
-      height: 24,
-      child: Align(
-        alignment: Alignment.centerLeft,
-        child: Transform.translate(
-          offset: const Offset(-5, 0),
-          child: Text(
-            Manager.appTitle,
-            overflow: TextOverflow.clip,
-            maxLines: 1,
-            textAlign: TextAlign.center,
-            style: GoogleFonts.sora(
-              fontSize: 15,
-              fontWeight: FontWeight.w300,
-              color: FluentTheme.of(context).typography.body!.color,
+  Widget? _appTitle() {
+    if (FluentTheme.maybeOf(context) == null)
+      return buildHamburgerButton(
+        context,
+      );
+    if (_isNavigationPaneCollapsed || _isSeriesView) return null;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 11.0),
+      child: SizedBox(
+        height: 24,
+        child: Align(
+          alignment: Alignment.centerLeft,
+          child: Transform.translate(
+            offset: const Offset(-5, 0),
+            child: Text(
+              Manager.appTitle,
+              overflow: TextOverflow.clip,
+              maxLines: 1,
+              textAlign: TextAlign.center,
+              style: GoogleFonts.sora(
+                fontSize: 15,
+                fontWeight: FontWeight.w300,
+                color: FluentTheme.of(context).typography.body!.color,
+              ),
             ),
           ),
         ),
@@ -601,6 +656,9 @@ class _AppRootState extends State<AppRoot> {
 
   // Update navigateToSeries method:
   void navigateToSeries(String seriesPath) {
+    // Save scroll position when navigating to a series
+    _saveScrollPosition();
+
     final series = Provider.of<Library>(context, listen: false).getSeriesByPath(seriesPath);
     final seriesName = series?.name ?? 'Series';
 
@@ -626,6 +684,9 @@ class _AppRootState extends State<AppRoot> {
       _selectedSeriesPath = null;
       _isSeriesView = false;
     });
+
+    // Restore scroll position when returning to library
+    _restoreScrollPosition();
   }
 
   // Add this helper method
@@ -633,15 +694,18 @@ class _AppRootState extends State<AppRoot> {
     final navManager = Provider.of<NavigationManager>(context, listen: false);
 
     if (navManager.hasDialog) {
+      log('Closing dialog');
       // Find active dialogs and close them
       // This assumes dialogs are managed through Flutter's dialog system
       // and will be removed from stack using the showManagedDialog helper
       // closeDialog(context);
       return true;
     } else if (_isSeriesView) {
+      log('Exiting series view');
       exitSeriesView();
       return true;
     } else if (navManager.canGoBack) {
+      log('Going back in navigation stack');
       navManager.goBack();
 
       // Navigate based on the new current item
