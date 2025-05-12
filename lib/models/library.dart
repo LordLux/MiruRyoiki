@@ -11,6 +11,7 @@ import '../services/cache.dart';
 import '../services/file_scanner.dart';
 import '../services/player_trackers/mpchc.dart';
 import '../services/navigation/show_info.dart';
+import '../utils/path_utils.dart';
 import 'anilist/anime.dart';
 import 'anilist/mapping.dart';
 import 'series.dart';
@@ -39,10 +40,45 @@ class Library with ChangeNotifier {
     _mpcTracker = MPCHCTracker()..addListener(_onMpcTrackerUpdate);
     _initAutoSave();
   }
-  
+
   Future<void> initialize() async {
     if (!_initialized) {
       await _loadLibrary();
+      _initialized = true;
+
+      // async cache validation
+      cacheValidation();
+    }
+  }
+
+  Future<void> cacheValidation() async {
+    if (!_initialized) {
+      final imageCache = ImageCacheService();
+      await imageCache.init();
+
+      // Validate cache for all series with Anilist data
+      for (final series in _series) {
+        if (series.anilistData?.posterImage != null) {
+          // Verify and reconnect poster image
+          final cachedPosterPath = await imageCache.getCachedImagePath(series.anilistData!.posterImage!);
+          if (cachedPosterPath == null && series.anilistData!.posterImage != null) {
+            // If not in cache but URL exists, cache it
+            imageCache.cacheImage(series.anilistData!.posterImage!);
+            debugPrint('Re-caching poster for: ${series.name}');
+          }
+
+          // Verify and reconnect banner image
+          if (series.anilistData?.bannerImage != null) {
+            final cachedBannerPath = await imageCache.getCachedImagePath(series.anilistData!.bannerImage!);
+            if (cachedBannerPath == null) {
+              // If not in cache but URL exists, cache it
+              imageCache.cacheImage(series.anilistData!.bannerImage!);
+              debugPrint('Re-caching banner for: ${series.name}');
+            }
+          }
+        }
+      }
+
       _initialized = true;
     }
   }
@@ -235,7 +271,7 @@ class Library with ChangeNotifier {
     final index = _series.indexWhere((s) => s.path == series.path);
     if (index >= 0) {
       _series[index] = series;
-      log('Series updated: ${series.name}, ${series.effectivePosterPath}');
+      log('Series updated: ${series.name}, ${PathUtils.getFileName(series.effectivePosterPath ?? '')}, ${PathUtils.getFileName(series.effectiveBannerPath ?? '')}');
       _isDirty = true;
       await _saveLibrary();
       notifyListeners();
@@ -319,24 +355,27 @@ class Library with ChangeNotifier {
 
   Future<void> scanLibrary() async {
     if (_libraryPath == null) {
-      log('Skipping scan, library path is null');
+      logDebug('Skipping scan, library path is null');
       return;
     }
     if (_isLoading) return;
-    log('Scanning library at $_libraryPath');
+    logInfo('Scanning library at $_libraryPath');
 
     _isLoading = true;
     notifyListeners();
 
     try {
-      _series = await _fileScanner.scanLibrary(_libraryPath!);
+      // Create a map of existing series for quick lookup
+      final existingSeriesMap = {for (var s in _series) s.path: s};
+      _series = await _fileScanner.scanLibrary(_libraryPath!, existingSeriesMap);
 
       // Update watched status from tracker
       _updateWatchedStatus();
 
-      await calculateDominantColors();
+      calculateDominantColors().then((_) => notifyListeners());
+      
       _isDirty = true;
-      await _saveLibrary();
+      _saveLibrary().then((_) => notifyListeners());
     } catch (e) {
       debugPrint('Error scanning library: $e');
     } finally {
@@ -636,7 +675,5 @@ class Library with ChangeNotifier {
       if (series.dominantColor == null && series.folderPosterPath != null) //
         await series.calculateDominantColor();
     }
-    // Save library after calculating all colors
-    await _saveLibrary();
   }
 }

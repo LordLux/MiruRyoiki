@@ -1,3 +1,6 @@
+import 'package:flutter/widgets.dart';
+import 'package:miruryoiki/enums.dart';
+
 class AnilistAnime {
   final int id;
   final String? bannerImage;
@@ -44,7 +47,7 @@ class AnilistAnime {
       id: json['id'] as int,
       bannerImage: json['bannerImage'] as String?,
       posterImage: json['coverImage'] != null ? json['coverImage']['extraLarge'] as String? : null,
-      dominantColor: json['coverImage'] != null ? json['coverImage']['color'] as String? : null,
+      dominantColor: json['coverImage'] != null ? json['coverImage']['color'] as String? : null, // from doc: coverImage{ extraLarge, color }
       title: AnilistTitle.fromJson(json['title']),
       description: json['description'] as String?,
       meanScore: json['meanScore'] as int?,

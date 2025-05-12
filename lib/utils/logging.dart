@@ -22,7 +22,15 @@ void log(final dynamic msg, [final Color color = Colors.purpleAccent, final Colo
   if (!doLogRelease && !kDebugMode) return;
   String escapeCode = getColorEscapeCode(color);
   String bgEscapeCode = getColorEscapeCodeBg(bgColor);
-  developer.log('$escapeCode$bgEscapeCode${msg.toString()}', error: error);
+
+  String formattedMsg = msg.toString();
+  // Handle newlines by applying escape codes to each line
+  if (formattedMsg.contains('\n'))
+    formattedMsg = formattedMsg.split('\n').map((line) => '$escapeCode$bgEscapeCode$line').join('\n');
+  else
+    formattedMsg = '$escapeCode$bgEscapeCode$formattedMsg';
+
+  developer.log(formattedMsg, error: error);
   if (!kDebugMode) print(msg);
 }
 

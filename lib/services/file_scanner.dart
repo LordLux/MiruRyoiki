@@ -5,8 +5,10 @@ import 'package:fluent_ui/fluent_ui.dart' show decodeImageFromList;
 import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
 
+import '../main.dart';
 import '../models/series.dart';
 import '../models/episode.dart';
+import '../utils/logging.dart';
 
 class FileScanner {
   static const List<String> _videoExtensions = ['.mkv', '.mp4', '.avi', '.mov', '.wmv', '.m4v', '.flv'];
@@ -14,20 +16,19 @@ class FileScanner {
   static const List<String> _imageExtensions = ['.ico', '.png', '.jpg', '.jpeg', '.webp'];
 
   /// Scan the library directory and build the series list
-  Future<List<Series>> scanLibrary(String libraryPath) async {
+  Future<List<Series>> scanLibrary(String libraryPath, [Map<String, Series>? existingSeries]) async {
     final series = <Series>[];
     final dir = Directory(libraryPath);
+    existingSeries ??= {};
 
-    if (!await dir.exists()) {
-      return series;
-    }
+    if (!await dir.exists()) return series;
 
     // Get all first level directories (each is a series)
     await for (final entity in dir.list()) {
       if (entity is Directory) {
         try {
-          print('Processing series: ${entity.path}');
-          final seriesItem = await _processSeries(entity);
+          final existingSeries_ = existingSeries[entity.path];
+          final seriesItem = await _processSeries(entity, existingSeries: existingSeries_);
           series.add(seriesItem);
         } catch (e) {
           debugPrint('Error processing series ${entity.path}: $e');
@@ -39,10 +40,20 @@ class FileScanner {
   }
 
   /// Process a series directory to extract seasons and episodes
-  Future<Series> _processSeries(Directory seriesDir) async {
+  Future<Series> _processSeries(Directory seriesDir, {Series? existingSeries}) async {
     final name = p.basename(seriesDir.path);
-    final posterPath = await _findPosterImage(seriesDir);
-    final bannerPath = await _findBannerImage(seriesDir);
+    // Use existing poster/banner paths if the series already exists
+    String? posterPath = existingSeries?.folderPosterPath;
+    String? bannerPath = existingSeries?.folderBannerPath;
+
+    // Only auto-detect images if this is a new series
+    if (existingSeries == null) {
+      posterPath = await _findPosterImage(seriesDir);
+      bannerPath = await _findBannerImage(seriesDir);
+      log('New series: $name | Auto-detected Poster: ${posterPath?.split(ps).lastOrNull ?? 'None'} | Banner: ${bannerPath?.split(ps).lastOrNull ?? 'None'}');
+    } else {
+      log('Existing series: $name | Using saved Poster: ${posterPath?.split(ps).lastOrNull ?? 'None'} | Banner: ${bannerPath?.split(ps).lastOrNull ?? 'None'}');
+    }
 
     // Check for subdirectories that match the season pattern
     final seasonDirs = <Directory>[];
@@ -122,6 +133,9 @@ class FileScanner {
       folderBannerPath: bannerPath,
       seasons: seasons,
       relatedMedia: relatedMedia,
+      preferredPosterSource: existingSeries?.preferredPosterSource,
+      preferredBannerSource: existingSeries?.preferredBannerSource,
+      anilistMappings: existingSeries?.anilistMappings ?? [],
     );
   }
 

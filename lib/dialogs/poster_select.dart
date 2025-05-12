@@ -15,6 +15,7 @@ import '../services/navigation/show_info.dart';
 import '../services/cache.dart';
 import '../utils/image_utils.dart';
 import '../utils/logging.dart';
+import '../utils/path_utils.dart';
 import '../utils/screen_utils.dart';
 import '../widgets/transparency_shadow_image.dart';
 
@@ -45,6 +46,8 @@ class ImageSelectionDialog extends ManagedDialog {
                 series.preferredPosterSource = source;
                 series.folderPosterPath = path;
               }
+              
+              log('Saving ${isBanner ? 'banner' : 'poster'} preference: $source, path: ${PathUtils.getFileName(path)}');
 
               // Explicitly save the entire series
               await library.saveSeries(series);
@@ -438,7 +441,6 @@ class _ImageSelectionContentState extends State<_ImageSelectionContent> {
                                     enableFeedback: true,
                                     richMessage: WidgetSpan(
                                       child: LayoutBuilder(builder: (context, c) {
-                                        print(ScreenUtils.width);
                                         final maxWidth = ScreenUtils.width * 0.5;
                                         final maxHeight = ScreenUtils.height * 0.7;
                                         return FutureBuilder(

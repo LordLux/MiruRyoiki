@@ -10,11 +10,13 @@ import '../widgets/gradient_mask.dart';
 import '../widgets/series_card.dart';
 
 class HomeScreen extends StatefulWidget {
+  final ScrollController? scrollController;
   final Function(String) onSeriesSelected;
 
   const HomeScreen({
     super.key,
     required this.onSeriesSelected,
+    this.scrollController,
   });
 
   @override
