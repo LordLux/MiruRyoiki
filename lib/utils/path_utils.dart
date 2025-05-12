@@ -21,4 +21,12 @@ class PathUtils {
   static Future<bool> directoryExists(String path) async {
     return await Directory(path).exists();
   }
+  
+  static String getFileName(String path) {
+    return p.basename(path);
+  }
+
+  static String getFileExtension(String path) {
+    return p.extension(path);
+  }
 }

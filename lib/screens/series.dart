@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'dart:io';
-import 'dart:math';
+import 'dart:math' as math;
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/material.dart' as mat;
 import 'package:miruryoiki/services/navigation/show_info.dart';
@@ -22,6 +22,7 @@ import '../services/anilist/provider.dart';
 import '../services/navigation/dialogs.dart';
 import '../services/navigation/shortcuts.dart';
 import '../utils/image_utils.dart';
+import '../utils/logging.dart';
 import '../widgets/episode_grid.dart';
 import '../widgets/gradient_mask.dart';
 import '../widgets/transparency_shadow_image.dart';
@@ -83,34 +84,17 @@ class SeriesScreenState extends State<SeriesScreen> {
         0, 0, 0, 1, 0,
       ]);
 
-  void _selectPoster(BuildContext context) {
+  void _selectImage(BuildContext context, bool isBanner) {
     showManagedDialog<PosterSource?>(
       context: context,
-      id: 'posterSelection:${series!.path}',
-      title: 'Select Poster',
+      id: isBanner ? 'bannerSelection:${series!.path}' : 'posterSelection:${series!.path}',
+      title: isBanner ? 'Select Banner' : 'Select Poster',
       enableBarrierDismiss: true,
       barrierDismissCheck: () => true,
       builder: (context) => ImageSelectionDialog(
         series: series!,
         popContext: context,
-        isBanner: false,
-      ),
-    ).then((source) {
-      if (source != null && mounted) setState(() {});
-    });
-  }
-
-  void _selectBanner(BuildContext context) {
-    showManagedDialog<PosterSource?>(
-      context: context,
-      id: 'bannerSelection:${series!.path}',
-      title: 'Select Banner',
-      enableBarrierDismiss: true,
-      barrierDismissCheck: () => true,
-      builder: (context) => ImageSelectionDialog(
-        series: series!,
-        popContext: context,
-        isBanner: true,
+        isBanner: isBanner,
       ),
     ).then((source) {
       if (source != null && mounted) setState(() {});
@@ -239,11 +223,12 @@ class SeriesScreenState extends State<SeriesScreen> {
   Widget _buildSeriesHeader(BuildContext context, Series series) {
     return Stack(
       children: [
+        // Banner
         ShiftClickableHover(
           series: series,
-          imageProvider: _getBannerImage(series),
+          imageProvider: _getBannerImage(series), // Banner
           enabled: _isBannerHovering,
-          onTap: (context) => _selectBanner(context),
+          onTap: (context) => _selectImage(context, true),
           onEnter: () => setState(() => _isBannerHovering = true),
           onExit: () => setState(() => _isBannerHovering = false),
           final_child: (BuildContext context, bool enabled) => LayoutBuilder(builder: (context, constraints) {
@@ -296,7 +281,7 @@ class SeriesScreenState extends State<SeriesScreen> {
                 // Title and watched percentage
                 Positioned(
                   bottom: 0,
-                  left: max(constraints.maxWidth / 2 - 380 + 10, _infoBarWidth - (6 * 2) + 42),
+                  left: math.max(constraints.maxWidth / 2 - 380 + 10, _infoBarWidth - (6 * 2) + 42),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -323,6 +308,7 @@ class SeriesScreenState extends State<SeriesScreen> {
                           color: Colors.white,
                         ),
                       ),
+                      const SizedBox(height: 12),
                     ],
                   ),
                 ),
@@ -338,6 +324,13 @@ class SeriesScreenState extends State<SeriesScreen> {
               widget.onBack,
               const Icon(FluentIcons.back),
               'Back to Library',
+            ),
+            _buildButton(
+              () {
+                log(series);
+              },
+              const Icon(FluentIcons.info),
+              'Print Series',
             ),
             _buildButton(
               series.watchedPercentage == 1
@@ -626,7 +619,7 @@ class SeriesScreenState extends State<SeriesScreen> {
                                         posterHeight = posterWidth * effectiveAspectRatio;
                                       }
                                     }
-                                    getInfoBarOffset = max(posterHeight - squareSize - 16, 0);
+                                    getInfoBarOffset = math.max(posterHeight - squareSize - 16, 0);
                                   }
                                 }
 
@@ -657,7 +650,7 @@ class SeriesScreenState extends State<SeriesScreen> {
                                                 controller: controller,
                                                 physics: physics,
                                                 child: Padding(
-                                                  padding: EdgeInsets.only(top: max(0, getInfoBarOffset)),
+                                                  padding: EdgeInsets.only(top: math.max(0, getInfoBarOffset)),
                                                   child: _infoBar(series),
                                                 ),
                                               );
@@ -675,11 +668,12 @@ class SeriesScreenState extends State<SeriesScreen> {
                                       child: DeferPointer(
                                         link: deferredPointerLink,
                                         paintOnTop: true,
+                                        // Poster
                                         child: ShiftClickableHover(
                                           series: series,
                                           imageProvider: imageProvider,
                                           enabled: _isPosterHovering,
-                                          onTap: (context) => _selectPoster(context),
+                                          onTap: (context) => _selectImage(context, false), // Poster
                                           onEnter: () => setState(() => _isPosterHovering = true),
                                           onExit: () => setState(() => _isPosterHovering = false),
                                           final_child: (BuildContext context, bool enabled) => Stack(
@@ -688,55 +682,69 @@ class SeriesScreenState extends State<SeriesScreen> {
                                               SizedBox(
                                                 width: posterWidth,
                                                 height: posterHeight,
-                                                child: AnimatedOpacity(
-                                                  duration: shortStickyHeaderDuration,
-                                                  opacity: enabled ? 0.75 : 1,
-                                                  child: Builder(builder: (context) {
-                                                    if (imageProvider != null)
-                                                      // Image available -> show it
-                                                      return ShadowedImage(
-                                                        imageProvider: imageProvider,
-                                                        fit: BoxFit.cover,
-                                                        colorFilter: series.posterImage != null ? ColorFilter.mode(Colors.black.withOpacity(0), BlendMode.darken) : null,
-                                                        blurSigma: 10,
-                                                        shadowColorOpacity: .5,
-                                                      );
-
-                                                    // No image -> image + plus to add first
-                                                    return AnimatedContainer(
-                                                      duration: shortStickyHeaderDuration,
-                                                      decoration: BoxDecoration(
-                                                        color: dominantColor.withOpacity(enabled ? 1 : 0),
-                                                        borderRadius: BorderRadius.circular(4),
-                                                      ),
-                                                      child: Center(
-                                                        child: Stack(
-                                                          children: [
-                                                            AnimatedOpacity(
-                                                              duration: shortStickyHeaderDuration,
-                                                              opacity: enabled ? 0 : 1,
-                                                              child: Icon(FluentIcons.picture, size: 48, color: Colors.white),
-                                                            ),
-                                                            AnimatedOpacity(
-                                                              duration: shortStickyHeaderDuration,
-                                                              opacity: enabled ? 1 : 0,
-                                                              child: Icon(FluentIcons.add, size: 48, color: Colors.white),
-                                                            ),
-                                                          ],
-                                                        ),
-                                                      ),
+                                                child: Builder(builder: (context) {
+                                                  if (imageProvider != null)
+                                                    // Image available -> show it
+                                                    return ShadowedImage(
+                                                      imageProvider: imageProvider,
+                                                      fit: BoxFit.cover,
+                                                      colorFilter: series.posterImage != null ? ColorFilter.mode(Colors.black.withOpacity(0), BlendMode.darken) : null,
+                                                      blurSigma: 10,
+                                                      shadowColorOpacity: .5,
                                                     );
-                                                  }),
-                                                ),
+
+                                                  // No image -> image + plus to add first
+                                                  return Center(
+                                                    child: Stack(
+                                                      children: [
+                                                        AnimatedOpacity(
+                                                          duration: shortStickyHeaderDuration,
+                                                          opacity: enabled ? 0 : 1,
+                                                          child: Icon(FluentIcons.picture, size: 48, color: Colors.white),
+                                                        ),
+                                                        AnimatedOpacity(
+                                                          duration: shortStickyHeaderDuration,
+                                                          opacity: enabled ? 1 : 0,
+                                                          child: Icon(FluentIcons.add, size: 48, color: Colors.white),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  );
+                                                }),
                                               ),
                                               // Edit poster
-                                              AnimatedOpacity(
-                                                duration: shortStickyHeaderDuration,
-                                                opacity: enabled && imageProvider != null ? 1 : 0,
-                                                child: Center(
-                                                  child: Icon(FluentIcons.edit, size: 35, color: Colors.white),
+                                              ...[
+                                                AnimatedOpacity(
+                                                  duration: shortStickyHeaderDuration,
+                                                  opacity: enabled && imageProvider != null ? 1 : 0,
+                                                  child: AnimatedContainer(
+                                                    width: posterWidth / 2,
+                                                    height: posterHeight / 2,
+                                                    duration: shortStickyHeaderDuration,
+                                                    decoration: BoxDecoration(
+                                                      gradient: RadialGradient(
+                                                        colors: [
+                                                          Colors.black.withOpacity(.95),
+                                                          Colors.black.withOpacity(0),
+                                                        ],
+                                                        radius: 0.5,
+                                                        center: Alignment.center,
+                                                        focal: Alignment.center,
+                                                      ),
+                                                    ),
+                                                    child: Center(
+                                                      child: Icon(FluentIcons.edit, size: 35, color: Colors.white),
+                                                    ),
+                                                  ),
                                                 ),
-                                              ),
+                                                AnimatedOpacity(
+                                                  duration: shortStickyHeaderDuration,
+                                                  opacity: enabled && imageProvider != null ? 1 : 0,
+                                                  child: Center(
+                                                    child: Icon(FluentIcons.edit, size: 35, color: Colors.white),
+                                                  ),
+                                                ),
+                                              ],
                                             ],
                                           ),
                                         ),
@@ -816,9 +824,15 @@ class SeriesScreenState extends State<SeriesScreen> {
               child: mat.InkWell(
                 onTap: isShiftPressed && enabled ? () => onTap(context) : null,
                 splashColor: (series.dominantColor ?? Manager.accentColor).withOpacity(1),
-                hoverColor: Colors.green.withOpacity(.1),
+                // hoverColor: (series.dominantColor ?? Manager.accentColor).withOpacity(.1),
                 borderRadius: BorderRadius.circular(8.0),
-                child: final_child(context, isShiftPressed && enabled),
+                child: AnimatedContainer(
+                    duration: shortStickyHeaderDuration,
+                    decoration: BoxDecoration(
+                      color: (series.dominantColor ?? Manager.accentColor).withOpacity(isShiftPressed && enabled ? .35 : 0),
+                      borderRadius: BorderRadius.circular(8.0),
+                    ),
+                    child: final_child(context, isShiftPressed && enabled)),
               ),
             ));
   }
@@ -967,8 +981,6 @@ void linkWithAnilist(BuildContext context, Series? series, Future<void> Function
           snackBar('Failed to link with Anilist', severity: InfoBarSeverity.error);
           return;
         }
-
-        // if (mappings.isEmpty) return; // no mappings to update
 
         // if dialog was closed with a result, and it was successful, update the series mappings
         final library = Provider.of<Library>(context, listen: false);

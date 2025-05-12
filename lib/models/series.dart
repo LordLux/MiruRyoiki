@@ -5,6 +5,7 @@ import 'package:palette_generator/palette_generator.dart';
 import 'package:collection/collection.dart';
 
 import '../manager.dart';
+import '../utils/path_utils.dart';
 import 'anilist/anime.dart';
 import 'anilist/mapping.dart';
 import 'episode.dart';
@@ -20,6 +21,15 @@ class Season {
     required this.path,
     required this.episodes,
   });
+
+  @override
+  String toString() {
+    return '''
+Season(
+  name: $name, path: $path,
+  episodes: $episodes
+    )''';
+  }
 
   int get watchedCount => episodes.where((e) => e.watched).length;
   int get totalCount => episodes.length;
@@ -93,6 +103,19 @@ class Series {
     this.preferredBannerSource,
   })  : _anilistData = anilistData,
         _dominantColor = dominantColor;
+
+  @override
+  String toString() {
+    return '''
+Series(
+  name: $name,
+  path: '$path', 
+  relatedMedia: $relatedMedia,
+  preferredPosterSource: ${preferredPosterSource?.name_ ?? 'None'}, folderPosterPath: '${PathUtils.getFileName(folderPosterPath ?? '')}',
+  preferredBannerSource: ${preferredBannerSource?.name_ ?? 'None'}, folderBannerPath: '${PathUtils.getFileName(folderBannerPath ?? '')}',
+  anilistMappings: $anilistMappings
+)''';
+  }
 
 // Getter and setter for primaryAnilistId
   int? get primaryAnilistId => _primaryAnilistId ?? anilistId; // Fall back to the first mapping
@@ -211,6 +234,7 @@ class Series {
       'name': name,
       'path': path,
       'posterPath': folderPosterPath,
+      'bannerPath': folderBannerPath,
       'seasons': seasons.map((s) => s.toJson()).toList(),
       'relatedMedia': relatedMedia.map((e) => e.toJson()).toList(),
       'anilistMappings': anilistMappings.map((m) => m.toJson()).toList(),
@@ -355,7 +379,7 @@ class Series {
       } catch (e) {
         debugPrint('Error setting preferredPosterSource: $e');
       }
-      
+
       // Set preferred banner source if available
       try {
         if (json['preferredBannerSource'] != null) {
@@ -480,7 +504,7 @@ class Series {
   //
   /// Getter to check if the banner is from Anilist or local file
   String? get effectiveBannerPath {
-    final PosterSource effectiveSource = preferredBannerSource ?? Manager.defaultPosterSource;
+    final PosterSource effectiveSource = preferredBannerSource ?? Manager.defaultBannerSource;
 
     // Determine available options
     final bool hasLocalBanner = folderBannerPath != null;

@@ -116,29 +116,33 @@ class _MyAppState extends State<MyApp> {
       // Listen for deep links while app is running
       _handleIncomingLinks();
 
-      // Providers initialization
+      // Get Providers
       final libraryProvider = Provider.of<Library>(context, listen: false);
       final anilistProvider = Provider.of<AnilistProvider>(context, listen: false);
       final settings = Provider.of<SettingsManager>(context, listen: false);
+      final appTheme = Provider.of<AppTheme>(context, listen: false);
 
       // Apply settings to app components
       settings.applySettings(context);
 
-      await libraryProvider.initialize();
-      await libraryProvider.scanLibrary();
-      await anilistProvider.initialize();
+      setState(() {}); // Force UI refresh
 
+      await libraryProvider.initialize();
+      appTheme.setEffect(appTheme.windowEffect, rootNavigatorKey.currentContext!);
+
+      final scanFuture = libraryProvider.scanLibrary();
+      final anilistFuture = anilistProvider.initialize();
+
+      setState(() {/* Update UI to show library */});
+
+      await Future.wait([scanFuture, anilistFuture]);
       await Future.delayed(const Duration(milliseconds: kDebugMode ? 200 : 50));
-      await libraryProvider.loadAnilistPostersForLibrary(onProgress: (loaded, total) {
+      libraryProvider.loadAnilistPostersForLibrary(onProgress: (loaded, total) {
         if (loaded % 5 == 0 || loaded == total) {
           // Force UI refresh every 5 items or on completion
           setState(() {});
         }
       });
-
-      await Future.delayed(const Duration(milliseconds: kDebugMode ? 250 : 50)); // TODO fix delay for release
-      final appTheme = Provider.of<AppTheme>(context, listen: false);
-      appTheme.setEffect(appTheme.windowEffect, rootNavigatorKey.currentContext!);
     });
   }
 
