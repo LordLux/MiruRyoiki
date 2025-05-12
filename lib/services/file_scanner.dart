@@ -50,9 +50,9 @@ class FileScanner {
     if (existingSeries == null) {
       posterPath = await _findPosterImage(seriesDir);
       bannerPath = await _findBannerImage(seriesDir);
-      log('New series: $name | Auto-detected Poster: ${posterPath?.split(ps).lastOrNull ?? 'None'} | Banner: ${bannerPath?.split(ps).lastOrNull ?? 'None'}');
+      logTrace('New series: $name | Auto-detected Poster: ${posterPath?.split(ps).lastOrNull ?? 'None'} | Banner: ${bannerPath?.split(ps).lastOrNull ?? 'None'}');
     } else {
-      log('Existing series: $name | Using saved Poster: ${posterPath?.split(ps).lastOrNull ?? 'None'} | Banner: ${bannerPath?.split(ps).lastOrNull ?? 'None'}');
+      logTrace('Existing series: $name | Using saved Poster: ${posterPath?.split(ps).lastOrNull ?? 'None'} | Banner: ${bannerPath?.split(ps).lastOrNull ?? 'None'}');
     }
 
     // Check for subdirectories that match the season pattern

@@ -935,10 +935,9 @@ packages:
   smooth_scroll_multiplatform:
     dependency: "direct main"
     description:
-      name: smooth_scroll_multiplatform
-      sha256: c3b8998c3c70eaf480e8ce16608ffc80c0aac1722697a08992fde10e1c97a742
-      url: "https://pub.dev"
-    source: hosted
+      path: "M:\\Projects\\dyn_mouse_scroll"
+      relative: false
+    source: path
     version: "1.0.8"
   source_span:
     dependency: transitive

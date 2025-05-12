@@ -44,6 +44,11 @@ class Manager {
     final settings = Provider.of<SettingsManager>(homeKey.currentContext!, listen: false);
     return settings.defaultBannerSource;
   }
+  
+  static bool get animationsEnabled {
+    final settings = Provider.of<SettingsManager>(homeKey.currentContext!, listen: false);
+    return !settings.disableAnimations;
+  }
 
   /// Checks if the current platform is MacOS
   static bool get isMacOS => Platform.isMacOS;
@@ -82,6 +87,9 @@ class SettingsManager extends ChangeNotifier {
 
   Color get accentColor => _getString('accentColor', defaultValue: Color(0xFF0078d4).toHex()).fromHex();
   set accentColor(Color value) => _setString('accentColor', value.toHex());
+  
+  bool get disableAnimations => _getBool('disableAnimations', defaultValue: false);
+  set disableAnimations(bool value) => _setBool('disableAnimations', value);
 
   // Behavior
   bool get autoLoadAnilistPosters => _getBool('autoLoadAnilistPosters', defaultValue: true);
