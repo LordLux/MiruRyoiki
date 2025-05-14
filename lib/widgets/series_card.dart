@@ -145,7 +145,7 @@ class _SeriesCardState extends State<SeriesCard> {
               boxShadow: _isHovering
                   ? [
                       BoxShadow(
-                        color: (widget.series.dominantColor ?? Manager.accentColor).withOpacity(0.05),
+                        color: (widget.series.dominantColor ?? Manager.genericGray).withOpacity(0.05),
                         blurRadius: 8,
                         spreadRadius: 1,
                       )
@@ -162,14 +162,14 @@ class _SeriesCardState extends State<SeriesCard> {
                   ),
                 ),
                 // to fix visual glitch
-                Positioned(
-                  bottom: 0,
-                  child: Container(
-                    color: Colors.grey,
-                    height: 1,
-                    width: 1000,
-                  ),
-                ),
+                // Positioned(
+                //   bottom: 0,
+                //   child: Container(
+                //     color: Colors.black,
+                //     height: 1,
+                //     width: 1000,
+                //   ),
+                // ),
                 Card(
                   padding: EdgeInsets.zero,
                   borderRadius: BorderRadius.circular(8.0),
@@ -177,13 +177,13 @@ class _SeriesCardState extends State<SeriesCard> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       // Poster image
-                      Expanded(
-                        child: Container(),
-                      ),
+                      Expanded(child: SizedBox.shrink()),
 
                       // Series info
                       Builder(builder: (context) {
-                        Color nicerColor = (widget.series.dominantColor ?? Manager.accentColor).lerpWith(Colors.grey, widget.series.isAnilistPoster ? .66 : .9);
+                        final Color? temp = widget.series.dominantColor;
+                        final double value = widget.series.isAnilistPoster ? .66 : .9;
+                        final Color nicerColor = temp?.lerpWith(Colors.grey, value) ?? Manager.genericGray.withOpacity(.2);
 
                         Widget child = Padding(
                           padding: const EdgeInsets.all(12.0),
@@ -224,7 +224,7 @@ class _SeriesCardState extends State<SeriesCard> {
                         );
                         if (widget.series.isAnilistPoster) {
                           return Transform.scale(
-                            scale: 1.01,
+                            scale: 1.02,
                             child: Transform.translate(
                               offset: Offset(0, 1),
                               child: Acrylic(
