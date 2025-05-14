@@ -7,6 +7,7 @@ import 'package:miruryoiki/enums.dart';
 import 'package:miruryoiki/utils/logging.dart';
 import 'package:path_provider/path_provider.dart';
 
+import '../manager.dart';
 import '../services/anilist/linking.dart';
 import '../services/cache.dart';
 import '../services/file_scanner.dart';
@@ -82,6 +83,7 @@ class Library with ChangeNotifier {
       }
 
       _initialized = true;
+      notifyListeners();
     }
   }
 
@@ -112,11 +114,16 @@ class Library with ChangeNotifier {
     await imageCache.init(); // Ensure the cache is initialized
 
     final needPosters = <Series>[];
-    final alreadyCached = <Series, String>{};
+    final alreadyCached = <Series>[];
+    final recalculateColor = <Series>[];
 
     // Find series that need Anilist posters
     for (final series in _series) {
-      if (series.folderPosterPath == null && series.anilistMappings.isNotEmpty) {
+      // For all linked series, check if they need to use Anilist posters based on preferences
+      if (series.isLinked) {
+        final effectiveSource = series.preferredPosterSource ?? Manager.defaultPosterSource;
+        final shouldUseAnilist = effectiveSource == ImageSource.anilist || effectiveSource == ImageSource.autoAnilist;
+
         // Check if we can find the poster URL without fetching
         final mapping = series.anilistMappings.firstWhere(
           (m) => m.anilistId == (series.primaryAnilistId ?? series.anilistMappings.first.anilistId),
@@ -127,20 +134,32 @@ class Library with ChangeNotifier {
         if (mapping.anilistData?.posterImage != null) {
           final cached = await imageCache.getCachedImagePath(mapping.anilistData!.posterImage!);
           if (cached != null) {
-            // Already cached -> save the path
-            alreadyCached[series] = cached;
+            // Already cached -> make sure series data is properly updated
+            alreadyCached.add(series);
 
             // Make sure series.anilistData is set correctly
-            if (series.primaryAnilistId == mapping.anilistId || series.primaryAnilistId == null) //
+            if (series.primaryAnilistId == mapping.anilistId || series.primaryAnilistId == null) {
               series.anilistData = mapping.anilistData;
-          } else {
-            // Not cached -> need to fetch
+              // Need to recalculate the dominant color for this series
+              recalculateColor.add(series);
+            }
+          } else if (shouldUseAnilist || series.folderPosterPath == null) {
+            // Not cached -> need to fetch if we should use Anilist or have no local poster
             needPosters.add(series);
           }
-        } else {
+        } else if (shouldUseAnilist || series.folderPosterPath == null) {
           // No anilistData or no posterImage -> need to fetch
           needPosters.add(series);
         }
+      }
+    }
+
+    // Calculate dominant colors for already cached series
+    if (recalculateColor.isNotEmpty) {
+      logDebug('Calculating dominant colors for ${recalculateColor.length} already cached series');
+      for (final series in recalculateColor) {
+        log("${series.name}, ${series.dominantColor?.toHex()}");
+        await series.calculateDominantColor();
       }
     }
 
@@ -219,10 +238,10 @@ class Library with ChangeNotifier {
     // Identify series that need refreshing
     for (final series in _series) {
       if (forceAll) {
-        if (series.anilistMappings.isNotEmpty) {
+        if (series.isLinked) {
           refreshSeries.add(series);
         }
-      } else if (series.folderPosterPath == null && series.anilistMappings.isNotEmpty) {
+      } else if (series.folderPosterPath == null && series.isLinked) {
         refreshSeries.add(series);
       }
     }
@@ -280,16 +299,27 @@ class Library with ChangeNotifier {
       bool anilistChanged = oldSeries.primaryAnilistId != series.primaryAnilistId;
       bool preferenceChanged = oldSeries.preferredPosterSource != series.preferredPosterSource || oldSeries.preferredBannerSource != series.preferredBannerSource;
 
-      // Update the series
-      _series[index] = series;
-
       // Recalculate dominant color if relevant changes occurred
       if (posterChanged || bannerChanged || anilistChanged || preferenceChanged) {
         logDebug('Image source changed for ${series.name} - updating dominant color');
         await series.calculateDominantColor(forceRecalculate: true);
       }
 
+      // Update the series
+      _series[index] = series;
+
       log('Series updated: ${series.name}, ${PathUtils.getFileName(series.effectivePosterPath ?? '')}, ${PathUtils.getFileName(series.effectiveBannerPath ?? '')}');
+      _isDirty = true;
+      await _saveLibrary();
+      notifyListeners();
+    }
+  }
+
+  Future<void> patchSeries(Series series) async {
+    final index = _series.indexWhere((s) => s.path == series.path);
+    if (index >= 0) {
+      final newSeries = _series[index];
+      _series[index] = series;
       _isDirty = true;
       await _saveLibrary();
       notifyListeners();
@@ -370,8 +400,9 @@ class Library with ChangeNotifier {
           (error) => snackBar('Error reloading library: $error', severity: InfoBarSeverity.error, hasError: true),
         );
   }
-
-  Future<void> scanLibrary() async {
+  
+  /// Scan the library for new series
+  Future<void> scanLibrary({bool showSnack = false}) async {
     if (_libraryPath == null) {
       logDebug('Skipping scan, library path is null');
       return;
@@ -406,7 +437,16 @@ class Library with ChangeNotifier {
       }
 
       _isDirty = true;
-      _saveLibrary().then((_) => notifyListeners());
+      _saveLibrary().then((_) {
+        if (showSnack) {
+          final newCount = _series.length - previousSeriesCount;
+          snackBar(
+            'Library reloaded: ${_series.length} series ${newCount == 0 ? "" : "($newCount new)"}',
+            severity: InfoBarSeverity.success,
+          );
+        }
+        notifyListeners();
+      });
     } catch (e) {
       logErr('Error scanning library', e);
     } finally {
@@ -437,9 +477,10 @@ class Library with ChangeNotifier {
     logTrace('Finished getting watched status for all series');
   }
 
-  Future<Directory> get miruRyoiokiSaveDirectory async {
-    final dir = await getApplicationSupportDirectory();
-    final miruRyoiokiDir = Directory('${dir.path}/miruRyoioki');
+  static Future<Directory> get miruRyoiokiSaveDirectory async {
+    final appDataDir = await getApplicationSupportDirectory();
+    final parentPath = appDataDir.path.split('com.lordlux').first;
+    final miruRyoiokiDir = Directory('${parentPath}MiruRyoiki');
     if (!await miruRyoiokiDir.exists()) await miruRyoiokiDir.create(recursive: true);
     return miruRyoiokiDir;
   }
@@ -480,6 +521,7 @@ class Library with ChangeNotifier {
   }
 
   // LIBRARY
+  /// Load library from saved JSON file
   Future<void> _loadLibrary() async {
     try {
       await _loadSettings();
@@ -493,6 +535,11 @@ class Library with ChangeNotifier {
           final content = await file.readAsString();
           final data = jsonDecode(content) as List;
           _series = data.map((s) => Series.fromJson(s)).toList();
+
+          // Log loaded dominant colors for debugging
+          for (final series in _series) {
+            logDebug('Loaded series: ${series.name}, Dominant Color: ${series.dominantColor?.toHex() ?? "None"}');
+          }
 
           // Validate that we loaded series properly
           if (_series.isNotEmpty) {
@@ -712,7 +759,12 @@ class Library with ChangeNotifier {
   /// Calculate dominant colors only for series that need it
   Future<void> calculateDominantColors({bool forceRecalculate = false}) async {
     // Determine which series need processing
-    final seriesToProcess = forceRecalculate ? _series : _series.where((s) => s.dominantColor == null).toList();
+    final seriesToProcess = forceRecalculate
+        ? _series
+        : _series.where((s) {
+            log('Checking series ${s.name}, ${s.dominantColor?.toHex()}');
+            return s.dominantColor == null;
+          }).toList();
 
     if (seriesToProcess.isEmpty) {
       logTrace('No series need dominant color calculation');

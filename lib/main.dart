@@ -141,7 +141,8 @@ class _MyAppState extends State<MyApp> {
 
       await Future.wait([scanFuture, anilistFuture]);
       await Future.delayed(const Duration(milliseconds: kDebugMode ? 200 : 50));
-      libraryProvider.loadAnilistPostersForLibrary(onProgress: (loaded, total) {
+
+      await libraryProvider.loadAnilistPostersForLibrary(onProgress: (loaded, total) {
         if (loaded % 5 == 0 || loaded == total) {
           // Force UI refresh every 5 items or on completion
           setState(() {});

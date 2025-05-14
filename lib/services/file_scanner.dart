@@ -136,6 +136,8 @@ class FileScanner {
       preferredPosterSource: existingSeries?.preferredPosterSource,
       preferredBannerSource: existingSeries?.preferredBannerSource,
       anilistMappings: existingSeries?.anilistMappings ?? [],
+      dominantColor: existingSeries?.dominantColor,
+      primaryAnilistId: existingSeries?.primaryAnilistId,
     );
   }
 

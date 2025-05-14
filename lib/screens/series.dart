@@ -102,7 +102,7 @@ class SeriesScreenState extends State<SeriesScreen> {
   Future<void> _loadAnilistDataForCurrentSeries() async {
     if (series == null) return;
 
-    if (series!.anilistMappings.isEmpty) {
+    if (!series!.isLinked) {
       setState(() {
         // Clear any Anilist data references to ensure UI updates
         series!.anilistData = null;
@@ -194,13 +194,14 @@ class SeriesScreenState extends State<SeriesScreen> {
     return DeferredPointerHandler(
       key: ValueKey(series!.path),
       link: deferredPointerLink,
-      child: Container(
+      child: AnimatedContainer(
+        duration: gradientChangeDuration,
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              dominantColor.withOpacity(series!.anilistMappings.isEmpty ? 0.15 : 0.5),
+              dominantColor.withOpacity(series!.isLinked ? 0.5 : 0.15),
               Colors.transparent,
             ],
           ),

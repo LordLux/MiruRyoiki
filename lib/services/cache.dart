@@ -5,6 +5,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:crypto/crypto.dart';
 import 'dart:convert';
 
+import '../models/library.dart';
 import '../utils/logging.dart';
 
 class ImageCacheService {
@@ -20,7 +21,7 @@ class ImageCacheService {
   Future<void> init() async {
     if (_initialized) return;
 
-    final dir = await getApplicationSupportDirectory();
+    final dir = await Library.miruRyoiokiSaveDirectory;
     _cacheDir = Directory('${dir.path}/image_cache');
 
     if (!await _cacheDir!.exists()) //

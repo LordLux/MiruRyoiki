@@ -106,8 +106,40 @@ class Series {
     Color? dominantColor,
     this.preferredPosterSource,
     this.preferredBannerSource,
+    int? primaryAnilistId,
   })  : _anilistData = anilistData,
-        _dominantColor = dominantColor;
+        _dominantColor = dominantColor,
+        _primaryAnilistId = primaryAnilistId ?? anilistMappings.firstOrNull?.anilistId;
+  
+  Series copyWith({
+    String? name,
+    String? path,
+    String? folderPosterPath,
+    String? folderBannerPath,
+    List<Season>? seasons,
+    List<Episode>? relatedMedia,
+    List<AnilistMapping>? anilistMappings,
+    AnilistAnime? anilistData,
+    Color? dominantColor,
+    ImageSource? preferredPosterSource,
+    ImageSource? preferredBannerSource,
+    int? primaryAnilistId,
+  }) {
+    return Series(
+      name: name ?? this.name,
+      path: path ?? this.path,
+      folderPosterPath: folderPosterPath ?? this.folderPosterPath,
+      folderBannerPath: folderBannerPath ?? this.folderBannerPath,
+      seasons: seasons ?? this.seasons,
+      relatedMedia: relatedMedia ?? this.relatedMedia,
+      anilistMappings: anilistMappings ?? this.anilistMappings,
+      anilistData: anilistData ?? this._anilistData,
+      dominantColor: dominantColor ?? this._dominantColor,
+      preferredPosterSource: preferredPosterSource ?? this.preferredPosterSource,
+      preferredBannerSource: preferredBannerSource ?? this.preferredBannerSource,
+      primaryAnilistId: primaryAnilistId ?? this._primaryAnilistId,
+    );
+  }
 
   @override
   String toString() {
@@ -140,12 +172,12 @@ Series(
   }
 
   // Backwards compatibility for older versions
-  int? get anilistId => anilistMappings.isNotEmpty ? anilistMappings.first.anilistId : null;
+  int? get anilistId => isLinked ? anilistMappings.first.anilistId : null;
 
   set anilistId(int? value) {
     if (value == null) {
       anilistMappings.clear();
-    } else if (anilistMappings.isEmpty) {
+    } else if (!isLinked) {
       anilistMappings.add(AnilistMapping(
         localPath: path,
         anilistId: value,
@@ -198,17 +230,20 @@ Series(
 
   /// Primary color from the series poster image
   Color? get dominantColor {
-    // If Anilist provides a color, use that
+    // Always prioritize locally calculated color which respects DominantColorSource
+    if (_dominantColor != null) {
+      return _dominantColor;
+    }
+
+    // Fall back to Anilist color if locally calculated color is not available
     if (_anilistData?.dominantColor != null) {
       try {
         return _anilistData!.dominantColor!.fromHex();
       } catch (e) {
-        // Fall back to locally calculated color
-        return _dominantColor;
+        return null;
       }
     }
-    // Otherwise use locally calculated color
-    return _dominantColor;
+    return null;
   }
 
   /// Calculate and cache the dominant color from the image
@@ -335,6 +370,7 @@ Series(
       'relatedMedia': relatedMedia.map((e) => e.toJson()).toList(),
       'anilistMappings': anilistMappings.map((m) => m.toJson()).toList(),
       'dominantColor': _dominantColor?.value,
+      'dataVersion': _dataVersion,
       'primaryAnilistId': _primaryAnilistId,
       if (preferredPosterSource != null) 'preferredPosterSource': preferredPosterSource!.name_,
       if (preferredBannerSource != null) 'preferredBannerSource': preferredBannerSource!.name_,
@@ -343,31 +379,22 @@ Series(
 
   /// JSON deserialization
   factory Series.fromJson(Map<String, dynamic> json) {
-    try {
-      // Validate required fields
-      final name = json['name'] as String? ?? '';
-      final path = json['path'] as String? ?? '';
-
-      if (name.isEmpty || path.isEmpty) {
-        logDebug('Warning: Series JSON missing required name or path: $json');
-      }
-
-      // Process dominant color with safe parsing
-      Color? dominantColor;
-      if (json['dominantColor'] != null) {
+    Color? extractDominantColor(Map<String, dynamic> json) {
+      if (json.containsKey('dominantColor') && json['dominantColor'] != null) {
         try {
-          dominantColor = Color(json['dominantColor'] as int);
+          return Color(json['dominantColor'] as int);
         } catch (e) {
           logDebug('Error parsing dominant color: $e');
         }
       }
+      return null;
+    }
 
-      // Process anilist mappings with validation
-      List<AnilistMapping> mappings = [];
-
+    List<AnilistMapping> extractAnilistMapping(Map<String, dynamic> json, String path) {
+      final List<AnilistMapping> mappings = [];
       try {
-        // Handle newer format with anilistMappings array
         if (json.containsKey('anilistMappings') && json['anilistMappings'] != null) {
+          // Handle newer format with anilistMappings array
           final mappingsJson = json['anilistMappings'] as List?;
           if (mappingsJson != null) {
             for (final mapping in mappingsJson) {
@@ -381,18 +408,20 @@ Series(
             }
           }
         }
-        // Support legacy format with single anilistId
-        else if (json.containsKey('anilistId') && json['anilistId'] != null) {
-          mappings.add(AnilistMapping(
-            localPath: path,
-            anilistId: json['anilistId'] as int,
-          ));
-        }
+        // // Support legacy format with single anilistId
+        // else if (json.containsKey('anilistId') && json['anilistId'] != null) {
+        //   mappings.add(AnilistMapping(
+        //     localPath: path,
+        //     anilistId: json['anilistId'] as int,
+        //   ));
+        // }
       } catch (e) {
         logDebug('Error processing Anilist mappings: $e');
       }
+      return mappings;
+    }
 
-      // Process seasons with validation
+    List<Season> extractSeasons(Map<String, dynamic> json, String path) {
       List<Season> seasons = [];
       try {
         if (json.containsKey('seasons') && json['seasons'] != null) {
@@ -415,8 +444,10 @@ Series(
         if (seasons.isEmpty) //
           seasons = [Season(name: 'Season 1', path: path, episodes: [])];
       }
+      return seasons;
+    }
 
-      // Process related media with validation
+    List<Episode> extractRelatedMedia(Map<String, dynamic> json, String path) {
       List<Episode> relatedMedia = [];
       try {
         if (json.containsKey('relatedMedia') && json['relatedMedia'] != null) {
@@ -436,6 +467,28 @@ Series(
       } catch (e) {
         logDebug('Error processing related media: $e');
       }
+      return relatedMedia;
+    }
+
+    try {
+      // Validate required fields
+      final name = json['name'] as String? ?? '';
+      final path = json['path'] as String? ?? '';
+
+      if (name.isEmpty || path.isEmpty) //
+        logDebug('Warning: Series JSON missing required name or path: $json');
+
+      // Process dominant color with safe parsing
+      Color? dominantColor = extractDominantColor(json);
+
+      // Process anilist mappings with validation
+      List<AnilistMapping> mappings = extractAnilistMapping(json, path);
+
+      // Process seasons with validation
+      List<Season> seasons = extractSeasons(json, path);
+
+      // Process related media with validation
+      List<Episode> relatedMedia = extractRelatedMedia(json, path);
 
       // Create the Series instance
       final series = Series(
@@ -447,11 +500,13 @@ Series(
         relatedMedia: relatedMedia,
         anilistMappings: mappings,
         dominantColor: dominantColor,
+        // preferredPosterSource and preferredBannerSource
+        // are null by default to be set by the settings
       );
 
       // Set primary Anilist ID if available
       try {
-        if (json['primaryAnilistId'] != null) {
+        if (json.containsKey('primaryAnilistId') && json['primaryAnilistId'] != null) {
           series._primaryAnilistId = json['primaryAnilistId'] as int?;
           // Validate that the primary ID exists in mappings
           if (series._primaryAnilistId != null && !mappings.any((m) => m.anilistId == series._primaryAnilistId)) {
@@ -489,7 +544,6 @@ Series(
       } catch (e) {
         logDebug('Error setting preferredBannerSource: $e');
       }
-
       return series;
     } catch (e) {
       // If anything fails critically, create a minimal valid series
@@ -567,6 +621,8 @@ Series(
   }
 
   // Anilist Getters
+  bool get isLinked => anilistMappings.isNotEmpty;
+
   /// Banner image from Anilist
   String? get bannerImage => currentAnilistData?.bannerImage;
 
@@ -668,4 +724,55 @@ Series(
     if (effectiveBannerPath == null) return false;
     return effectiveBannerPath == folderBannerPath;
   }
+}
+
+class Series_ {
+  /// Name of the series from the File System
+  final String? name;
+
+  /// Path for the series from the File System
+  final String? path;
+
+  /// Poster path for the series from the File System
+  final String? folderPosterPath;
+
+  /// Poster path for the series from the File System
+  final String? folderBannerPath;
+
+  /// List of seasons for the series from the File System
+  final List<Season>? seasons;
+
+  /// List of related media (ONA/OVA) for the series from the File System
+  final List<Episode>? relatedMedia;
+
+  /// Anilist IDs for the series
+  List<AnilistMapping>? anilistMappings;
+
+  /// Anilist data for the series
+  final AnilistAnime? anilistData;
+
+  /// Cached dominant color from poster image
+  final Color? dominantColor;
+
+  // The currently selected Anilist ID for display purposes
+  final int? primaryAnilistId;
+
+  /// Preferred source for the images
+  final ImageSource? preferredPosterSource;
+  final ImageSource? preferredBannerSource;
+
+  Series_({
+    this.name,
+    this.path,
+    this.folderPosterPath,
+    this.folderBannerPath,
+    this.seasons,
+    this.relatedMedia,
+    this.anilistMappings,
+    this.anilistData,
+    this.dominantColor,
+    this.preferredPosterSource,
+    this.preferredBannerSource,
+    this.primaryAnilistId,
+  });
 }

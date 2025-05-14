@@ -40,34 +40,26 @@ class ImageSelectionDialog extends ManagedDialog {
               // Save the selection
               final library = Provider.of<Library>(popContext, listen: false);
 
-              final updatedSeries = Series.fromValues(
-                  name: series.name,
-                  path: series.path,
-                  folderPosterPath: isBanner ? series.folderPosterPath : (source == ImageSource.local ? path : series.folderPosterPath),
-                  folderBannerPath: isBanner ? (source == ImageSource.local ? path : series.folderBannerPath) : series.folderBannerPath,
-                  seasons: series.seasons,
-                  relatedMedia: series.relatedMedia,
-                  preferredPosterSource: isBanner ? series.preferredPosterSource : source,
-                  preferredBannerSource: isBanner ? source : series.preferredBannerSource,
-                  anilistMappings: series.anilistMappings,
-                  primaryAnilistId: series.primaryAnilistId,
-                  anilistData: series.anilistData,
-                  dominantColor: series.dominantColor);
+              final Series updatedSeries = series.copyWith(
+                folderPosterPath: isBanner ? series.folderPosterPath : (source == ImageSource.local ? path : series.folderPosterPath),
+                folderBannerPath: isBanner ? (source == ImageSource.local ? path : series.folderBannerPath) : series.folderBannerPath,
+                preferredPosterSource: isBanner ? series.preferredPosterSource : source,
+                preferredBannerSource: isBanner ? source : series.preferredBannerSource,
+              );
 
               logTrace('Saving ${isBanner ? 'banner' : 'poster'} preference: $source, path: ${PathUtils.getFileName(path)}');
 
-              // Explicitly save the entire series
-              await library.saveSeries(updatedSeries);
+              // Explicitly save the entire series and show confirmation
+              library.saveSeries(updatedSeries).then((_) {
+                snackBar(
+                  isBanner ? 'Banner preference saved' : 'Poster preference saved',
+                  severity: InfoBarSeverity.success,
+                );
+                Manager.setState();
+              });
 
               // Close dialog
-              // ignore: use_build_context_synchronously
               closeDialog(popContext, result: source);
-
-              // Show confirmation
-              snackBar(
-                isBanner ? 'Banner preference saved' : 'Poster preference saved',
-                severity: InfoBarSeverity.success,
-              );
             },
             onCancel: () {
               closeDialog(popContext);

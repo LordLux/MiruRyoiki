@@ -14,6 +14,8 @@ Duration getDuration(Duration duration) {
   return Duration(milliseconds: 1);
 }
 
+Duration get gradientChangeDuration => getDuration(const Duration(milliseconds: 1300));
+
 Duration get stickyHeaderDuration => getDuration(const Duration(milliseconds: 430));
 
 Duration get shortStickyHeaderDuration => Duration(milliseconds: stickyHeaderDuration.inMilliseconds ~/ 3);

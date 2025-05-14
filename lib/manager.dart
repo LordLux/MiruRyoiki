@@ -29,10 +29,16 @@ class Manager {
       Manager.flyout?.close();
     });
   }
-  
+
+  static void setState() {
+    if (homeKey.currentState != null) homeKey.currentState!.setState(() {});
+  }
+
   static SettingsManager get settings => Provider.of<SettingsManager>(homeKey.currentContext!, listen: false);
 
   static AccentColor get accentColor => settings.accentColor.toAccentColor();
+
+  static Color get genericGray => FluentTheme.of(homeKey.currentContext!).acrylicBackgroundColor;
 
   static ImageSource get defaultPosterSource => settings.defaultPosterSource;
 
@@ -102,7 +108,7 @@ class SettingsManager extends ChangeNotifier {
   // // Generic getters with type safety
   bool _getBool(String key, {required bool defaultValue}) {
     if (!_settings.containsKey(key)) {
-      logTrace('Key $key not found in settings, returning default value: $defaultValue');
+      // logTrace('Key $key not found in settings, returning default value: $defaultValue');
       return defaultValue;
     }
     final value = _settings[key];
@@ -113,7 +119,7 @@ class SettingsManager extends ChangeNotifier {
 
   double _getDouble(String key, {required double defaultValue}) {
     if (!_settings.containsKey(key)) {
-      logTrace('Key $key not found in settings, returning default value: $defaultValue');
+      // logTrace('Key $key not found in settings, returning default value: $defaultValue');
       return defaultValue;
     }
     final value = _settings[key];
@@ -125,7 +131,7 @@ class SettingsManager extends ChangeNotifier {
 
   String _getString(String key, {required String defaultValue}) {
     if (!_settings.containsKey(key)) {
-      logTrace('Key $key not found in settings, returning default value: $defaultValue');
+      // logTrace('Key $key not found in settings, returning default value: $defaultValue');
       return defaultValue;
     }
     final value = _settings[key];
