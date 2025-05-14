@@ -358,21 +358,22 @@ class SeriesScreenState extends State<SeriesScreen> {
               const Icon(FluentIcons.check_mark),
               series.watchedPercentage == 1 ? 'You have already watched all episodes' : 'Mark All as Watched',
             ),
-            _buildButton(
-              context.watch<AnilistProvider>().isLoggedIn && series.seasons.isNotEmpty
-                  ? () => linkWithAnilist(
-                        context,
-                        series,
-                        _loadAnilistData,
-                        setState,
-                      )
-                  : null,
-              Icon(
-                series.anilistId != null ? FluentIcons.link : FluentIcons.add_link,
-                color: Colors.white,
+            if (context.watch<AnilistProvider>().isLoggedIn)
+              _buildButton(
+                series.seasons.isNotEmpty
+                    ? () => linkWithAnilist(
+                          context,
+                          series,
+                          _loadAnilistData,
+                          setState,
+                        )
+                    : null,
+                Icon(
+                  series.anilistId != null ? FluentIcons.link : FluentIcons.add_link,
+                  color: Colors.white,
+                ),
+                series.anilistId != null ? 'Update Anilist Link' : 'Link with Anilist',
               ),
-              series.anilistId != null ? 'Update Anilist Link' : 'Link with Anilist',
-            ),
           ],
         )
       ],

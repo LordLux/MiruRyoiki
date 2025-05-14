@@ -96,7 +96,7 @@ class _ImageSelectionContentState extends State<_ImageSelectionContent> {
   ImageProvider? _anilistImageProvider;
 
   List<File> _localImageFiles = [];
-  int _selectedLocalImageIndex = 0;
+  int? _selectedLocalImageIndex;
 
   @override
   void initState() {
@@ -119,11 +119,11 @@ class _ImageSelectionContentState extends State<_ImageSelectionContent> {
     }).toList();
 
     // Set selected index to current poster if it exists
-    if (widget.isBanner && widget.series.folderBannerPath != null) {
+    if (_selectedSource != ImageSource.autoAnilist && _selectedSource != ImageSource.autoLocal && widget.isBanner && widget.series.folderBannerPath != null) {
       final index = _localImageFiles.indexWhere((f) => f.path == widget.series.folderBannerPath);
       if (index >= 0) _selectedLocalImageIndex = index;
       // Set selected index to current bannerif it exists
-    } else if (!widget.isBanner && widget.series.folderPosterPath != null) {
+    } else if (_selectedSource != ImageSource.autoAnilist && _selectedSource != ImageSource.autoLocal && !widget.isBanner && widget.series.folderPosterPath != null) {
       final index = _localImageFiles.indexWhere((f) => f.path == widget.series.folderPosterPath);
       if (index >= 0) _selectedLocalImageIndex = index;
     }
@@ -167,8 +167,8 @@ class _ImageSelectionContentState extends State<_ImageSelectionContent> {
   }
 
   void _loadSelectedLocalImage() {
-    if (_localImageFiles.isNotEmpty && _selectedLocalImageIndex < _localImageFiles.length) {
-      _localImageProvider = FileImage(_localImageFiles[_selectedLocalImageIndex]);
+    if (_localImageFiles.isNotEmpty && _selectedLocalImageIndex != null && _selectedLocalImageIndex! < _localImageFiles.length && _selectedLocalImageIndex! >= 0) {
+      _localImageProvider = FileImage(_localImageFiles[_selectedLocalImageIndex!]);
       if (mounted) setState(() => _localImageLoading = false);
     } else {
       _localImageProvider = null;
@@ -246,7 +246,20 @@ class _ImageSelectionContentState extends State<_ImageSelectionContent> {
               child: Tooltip(
                 message: 'Reset to ${_getSourceDisplayName(Manager.defaultPosterSource)}\nThis setting can be changed in settings',
                 child: Button(
-                  onPressed: widget.onCancel,
+                  onPressed: () {
+                    if (widget.isBanner) {
+                      widget.series.preferredBannerSource = null;
+                    } else {
+                      widget.series.preferredPosterSource = null;
+                    }
+
+                    snackBar(
+                      'Reset to ${_getSourceDisplayName(Manager.defaultPosterSource)}',
+                      severity: InfoBarSeverity.success,
+                    );
+                    Manager.setState();
+                    widget.onCancel.call();
+                  },
                   child: Text('Reset to Auto'),
                 ),
               ),
@@ -259,19 +272,22 @@ class _ImageSelectionContentState extends State<_ImageSelectionContent> {
                   child: Text('Cancel'),
                 ),
                 SizedBox(width: 8),
-                FilledButton(
-                  child: Text('Save Preference'),
-                  onPressed: () {
-                    widget.onSave(
-                        _selectedSource,
-                        widget.isBanner
-                            ? _selectedSource == ImageSource.local
-                                ? _localImageFiles[_selectedLocalImageIndex].path
-                                : widget.series.anilistData?.bannerImage ?? ''
-                            : _selectedSource == ImageSource.local
-                                ? _localImageFiles[_selectedLocalImageIndex].path
-                                : widget.series.anilistData?.posterImage ?? '');
-                  },
+                Tooltip(
+                  message: _selectedLocalImageIndex != null ? null : 'Save the selected image preference',
+                  child: FilledButton(
+                    onPressed: _selectedLocalImageIndex == null ? null : () {
+                      widget.onSave(
+                          _selectedSource,
+                          widget.isBanner
+                              ? _selectedSource == ImageSource.local
+                                  ? _localImageFiles[_selectedLocalImageIndex!].path
+                                  : widget.series.anilistData?.bannerImage ?? ''
+                              : _selectedSource == ImageSource.local
+                                  ? _localImageFiles[_selectedLocalImageIndex!].path
+                                  : widget.series.anilistData?.posterImage ?? '');
+                    },
+                    child: Text('Save Preference'),
+                  ),
                 ),
               ],
             ),
@@ -435,7 +451,7 @@ class _ImageSelectionContentState extends State<_ImageSelectionContent> {
                                 return TooltipTheme(
                                   data: TooltipThemeData(
                                     decoration: BoxDecoration(color: Colors.transparent),
-                                    waitDuration: const Duration(milliseconds: 500),
+                                    waitDuration: const Duration(milliseconds: 1200),
                                   ),
                                   child: Tooltip(
                                     enableFeedback: true,
@@ -610,7 +626,7 @@ class _ImageSelectionContentState extends State<_ImageSelectionContent> {
                     },
                   ),
                   SizedBox(width: 8),
-                  Text('Use ${_localImageFiles.isEmpty ? "selected local image" : _localImageFiles[_selectedLocalImageIndex].path.split(Platform.pathSeparator).last}'),
+                  Text('Use ${_localImageFiles.isEmpty ? "selected local image" : _selectedLocalImageIndex != null ? _localImageFiles[_selectedLocalImageIndex!].path.split(Platform.pathSeparator).last : ""}'),
                 ],
               ),
             ],
