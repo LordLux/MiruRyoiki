@@ -5,6 +5,7 @@ import '../../../models/anilist/anime.dart';
 import '../../../models/anilist/user_list.dart';
 import '../../main.dart';
 import '../../manager.dart';
+import '../../utils/logging.dart';
 import 'auth.dart';
 
 class AnilistService {
@@ -64,7 +65,7 @@ class AnilistService {
   Future<void> logout() async {
     await _authService.logout();
     Manager.accounts.remove('Anilist');
-    debugPrint('Anilist logged out');
+    logInfo('Anilist logged out');
     _client = null;
   }
 
@@ -76,18 +77,18 @@ class AnilistService {
     if (_client == null) {
       // Try to initialize if not already initialized
       if (isLoggedIn && !await initialize()) {
-        debugPrint('Failed to initialize Anilist client');
+        logErr('Failed to initialize Anilist client');
         return [];
       }
 
       // Still null after attempted initialization
       if (_client == null) {
-        debugPrint('Anilist client is null, cannot search');
+        logErr('Anilist client is null, cannot search');
         return [];
       }
     }
 
-    debugPrint('Searching Anilist for "$query"...');
+    logTrace('Searching Anilist for "$query"...');
     const searchQuery = r'''
       query SearchAnime($search: String, $limit: Int) {
         Page(perPage: $limit) {
@@ -128,14 +129,14 @@ class AnilistService {
       );
 
       if (result.hasException) {
-        debugPrint('Error searching Anilist: ${result.exception}');
+        logErr('Error searching Anilist', result.exception);
         return [];
       }
 
       final List<dynamic> media = result.data?['Page']['media'] ?? [];
       return media.map((item) => AnilistAnime.fromJson(item)).toList();
     } catch (e) {
-      debugPrint('Error querying Anilist: $e');
+      logErr('Error querying Anilist', e);
       return [];
     }
   }
@@ -143,6 +144,8 @@ class AnilistService {
   /// Get detailed anime information by ID
   Future<AnilistAnime?> getAnimeDetails(int id) async {
     if (_client == null) return null;
+    
+    logTrace('Fetching Anilist details for ID: $id');
 
     const detailsQuery = r'''
       query GetAnimeDetails($id: Int!) {
@@ -190,14 +193,14 @@ class AnilistService {
       );
 
       if (result.hasException) {
-        debugPrint('Error getting anime details: ${result.exception}');
+        logErr('Error getting anime details', result.exception);
         return null;
       }
 
       final media = result.data?['Media'];
       return media != null ? AnilistAnime.fromJson(media) : null;
     } catch (e) {
-      debugPrint('Error querying Anilist: $e');
+      logErr('Error querying Anilist', e);
       return null;
     }
   }
@@ -205,6 +208,8 @@ class AnilistService {
   /// Get current user information
   Future<AnilistUser?> getCurrentUser() async {
     if (_client == null) return null;
+    
+    logTrace('Fetching current user info from Anilist...');
 
     const userQuery = r'''
       query {
@@ -227,14 +232,14 @@ class AnilistService {
       );
 
       if (result.hasException) {
-        debugPrint('Error getting user info: ${result.exception}');
+        logErr('Error getting user info', result.exception);
         return null;
       }
 
       final userData = result.data?['Viewer'];
       return userData != null ? AnilistUser.fromJson(userData) : null;
     } catch (e) {
-      debugPrint('Error querying Anilist: $e');
+      logErr('Error querying Anilist', e);
       return null;
     }
   }
@@ -242,6 +247,8 @@ class AnilistService {
   /// Get user anime lists (watching, completed, etc.)
   Future<Map<String, AnilistUserList>> getUserAnimeLists({String? userName, int? userId}) async {
     if (_client == null) return {};
+    
+    logTrace('Fetching ]anime lists from Anilist for user $userName ($userId)...');
 
     const listsQuery = r'''
       query GetUserAnimeLists($userName: String, $userId: Int) {
@@ -301,7 +308,7 @@ class AnilistService {
       );
 
       if (result.hasException) {
-        debugPrint('Error getting anime lists: ${result.exception}');
+        logErr('Error getting anime lists', result.exception);
         return {};
       }
 
@@ -348,14 +355,14 @@ class AnilistService {
                   entryCustomLists = jsonDecode(customListsData) as Map<String, dynamic>?;
                 } catch (e) {
                   // If JSON parsing fails, the string might not be proper JSON
-                  debugPrint('Error parsing customLists: $e');
-                  debugPrint('Raw customLists value: $customListsData');
+                  logErr('Error parsing customLists', e);
+                  log('Raw customLists value: $customListsData');
 
                   // Continue to next entry, skip this one
                   continue;
                 }
               } else if (customListsData != null) {
-                debugPrint('Unexpected customLists type: ${customListsData.runtimeType}');
+                logErr('Unexpected customLists type: ${customListsData.runtimeType}');
                 continue;
               } else {
                 // customLists is null
@@ -385,7 +392,7 @@ class AnilistService {
 
       return lists;
     } catch (e) {
-      debugPrint('Error querying Anilist: $e');
+      logErr('Error querying Anilist', e);
       return {};
     }
   }

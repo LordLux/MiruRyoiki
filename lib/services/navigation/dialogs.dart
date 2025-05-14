@@ -2,6 +2,7 @@ import 'package:fluent_ui/fluent_ui.dart' show Button, ContentDialog, ContentDia
 import 'package:flutter/material.dart';
 import 'package:miruryoiki/main.dart';
 import 'package:provider/provider.dart';
+import '../../utils/logging.dart';
 import 'debug.dart';
 import 'navigation.dart';
 
@@ -30,7 +31,7 @@ Future<T?> showManagedDialog<T>({
         return _DismissibleWrapper(
           onBarrierTap: () {
             // Update our custom stack but don't pop - Flutter will do that
-            debugPrint('Custom navigation stack pop');
+            logDebug('Custom navigation stack pop');
             navManager.popDialog();
           },
           barrierDismissCheck: barrierDismissCheck,
@@ -44,6 +45,52 @@ Future<T?> showManagedDialog<T>({
 
   return result;
 }
+
+Future<T?> showSimpleManagedDialog<T>({
+  required BuildContext context,
+  required String id,
+  required String title,
+  required String body,
+  BoxConstraints? constraints,
+  String positiveButtonText = 'OK',
+  String negativeButtonText = 'Cancel',
+  Function()? onPositive,
+  Function()? onNegative,
+}) async =>
+    showManagedDialog(
+      context: context,
+      id: id,
+      title: title,
+      barrierDismissCheck: () => true,
+      enableBarrierDismiss: true,
+      builder: (context) {
+        return ManagedDialog(
+          popContext: context,
+          title: Text(title),
+          contentBuilder: (_, __) => Text(body),
+          constraints: constraints ?? const BoxConstraints(
+            maxWidth: 500,
+            minWidth: 300,
+          ),
+          actions: (popContext) => [
+            ManagedDialogButton(
+              popContext: popContext,
+              text: negativeButtonText,
+              onPressed: () {
+                onNegative?.call();
+              },
+            ),
+            ManagedDialogButton(
+              popContext: popContext,
+              text: positiveButtonText,
+              onPressed: () {
+                onPositive?.call();
+              },
+            ),
+          ],
+        );
+      },
+    );
 
 // Wrapper that handles barrier dismissal callbacks
 class _DismissibleWrapper extends StatelessWidget {
@@ -64,7 +111,7 @@ class _DismissibleWrapper extends StatelessWidget {
       onWillPop: () async {
         // Check if we should allow the barrier to dismiss
         if (barrierDismissCheck != null) {
-          debugPrint('Barrier dismiss check: ${barrierDismissCheck!() ? "Popped!" : "Not popped"}');
+          logTrace('Barrier dismiss check: ${barrierDismissCheck!() ? "Popped!" : "Not popped"}');
 
           if (barrierDismissCheck!()) {
             onBarrierTap();
@@ -72,7 +119,7 @@ class _DismissibleWrapper extends StatelessWidget {
           }
           return false; // Prevent the barrier from dismissing
         }
-        debugPrint('No barrier dismiss check provided, allowing pop');
+        logTrace('No barrier dismiss check provided, allowing pop');
         // Default behavior: allow the barrier to dismiss
         return true;
       },
@@ -82,6 +129,7 @@ class _DismissibleWrapper extends StatelessWidget {
 }
 
 class ManagedDialogButton extends StatelessWidget {
+  /// Callback to be executed when the button is pressed, the closing of the dialog is handled by the widget itself
   final VoidCallback? onPressed;
   final String text;
   final BuildContext popContext;
@@ -120,7 +168,7 @@ void closeDialog<T>(BuildContext popContext, {T? result}) {
     // Pop the actual dialog
     Navigator.of(popContext).pop(result);
   } else {
-    debugPrint('No dialog to pop in Flutter Navigator');
+    logDebug('No dialog to pop in Flutter Navigator');
   }
 }
 

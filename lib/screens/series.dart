@@ -23,6 +23,7 @@ import '../services/navigation/dialogs.dart';
 import '../services/navigation/shortcuts.dart';
 import '../utils/image_utils.dart';
 import '../utils/logging.dart';
+import '../utils/screen_utils.dart';
 import '../utils/time_utils.dart';
 import '../widgets/episode_grid.dart';
 import '../widgets/gradient_mask.dart';
@@ -46,10 +47,6 @@ class SeriesScreen extends StatefulWidget {
 class SeriesScreenState extends State<SeriesScreen> {
   // final ScrollController _scrollController = ScrollController();
   late double _headerHeight;
-  static const double _maxHeaderHeight = 290.0;
-  static const double _minHeaderHeight = 150.0;
-  static const double _infoBarWidth = 300.0;
-  static const double _maxContentWidth = 1400.0;
 
   final Map<int, GlobalKey<ExpanderState>> _seasonExpanderKeys = {};
 
@@ -71,7 +68,7 @@ class SeriesScreenState extends State<SeriesScreen> {
   @override
   void initState() {
     super.initState();
-    _headerHeight = _maxHeaderHeight;
+    _headerHeight = ScreenUtils.maxHeaderHeight;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadAnilistDataForCurrentSeries();
     });
@@ -86,7 +83,7 @@ class SeriesScreenState extends State<SeriesScreen> {
       ]);
 
   void _selectImage(BuildContext context, bool isBanner) {
-    showManagedDialog<PosterSource?>(
+    showManagedDialog<ImageSource?>(
       context: context,
       id: isBanner ? 'bannerSelection:${series!.path}' : 'posterSelection:${series!.path}',
       title: isBanner ? 'Select Banner' : 'Select Poster',
@@ -149,7 +146,7 @@ class SeriesScreenState extends State<SeriesScreen> {
         }
       });
     } else {
-      debugPrint('Failed to load Anilist data for ID: $anilistId'); // Use debugPrint instead of print
+      logDebug('Failed to load Anilist data for ID: $anilistId'); // Use logDebug instead of print
     }
   }
 
@@ -161,7 +158,7 @@ class SeriesScreenState extends State<SeriesScreen> {
         expanderKey.currentState!.isExpanded = !isOpen;
       });
     } else {
-      debugPrint('No expander key found for season $seasonNumber');
+      logDebug('No expander key found for season $seasonNumber');
     }
   }
 
@@ -240,7 +237,7 @@ class SeriesScreenState extends State<SeriesScreen> {
                   opacity: enabled ? 0.75 : 1,
                   child: AnimatedContainer(
                     duration: shortStickyHeaderDuration,
-                    height: _maxHeaderHeight,
+                    height: ScreenUtils.maxHeaderHeight,
                     width: double.infinity,
                     // Background image
                     decoration: BoxDecoration(
@@ -282,7 +279,7 @@ class SeriesScreenState extends State<SeriesScreen> {
                 // Title and watched percentage
                 Positioned(
                   bottom: 0,
-                  left: math.max(constraints.maxWidth / 2 - 380 + 10, _infoBarWidth - (6 * 2) + 42),
+                  left: math.max(constraints.maxWidth / 2 - 380 + 10, ScreenUtils.infoBarWidth - (6 * 2) + 42),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -290,7 +287,7 @@ class SeriesScreenState extends State<SeriesScreen> {
                     children: [
                       // Series title
                       SizedBox(
-                        width: _maxContentWidth - _infoBarWidth - 32,
+                        width: ScreenUtils.maxContentWidth - ScreenUtils.infoBarWidth - 32,
                         child: Text(
                           series.displayTitle,
                           style: const TextStyle(
@@ -329,6 +326,16 @@ class SeriesScreenState extends State<SeriesScreen> {
             _buildButton(
               () {
                 log(series);
+                showSimpleManagedDialog(
+                  context: context,
+                  id: 'showSeries:${series.hashCode}',
+                  title: 'Series Info',
+                  constraints: const BoxConstraints(
+                    maxWidth: 800,
+                    maxHeight: 500,
+                  ),
+                  body: series.toString(),
+                );
               },
               const Icon(FluentIcons.info),
               'Print Series',
@@ -336,35 +343,16 @@ class SeriesScreenState extends State<SeriesScreen> {
             _buildButton(
               series.watchedPercentage == 1
                   ? null
-                  : () => showManagedDialog(
+                  : () => showSimpleManagedDialog(
                         context: context,
                         id: 'confirmWatchAll',
                         title: 'Confirm Watch All',
-                        enableBarrierDismiss: true,
-                        builder: (popContext) => ManagedDialog(
-                          constraints: const BoxConstraints(
-                            maxWidth: 500,
-                            maxHeight: 200,
-                          ),
-                          title: Text('Mark All Watched'),
-                          popContext: popContext,
-                          contentBuilder: (popContext, constraints) => //
-                              Text('Are you sure you want to mark all episodes of "${series.displayTitle}" as watched?'),
-                          actions: (_) => [
-                            ManagedDialogButton(
-                              popContext: popContext,
-                              text: 'Cancel',
-                            ),
-                            ManagedDialogButton(
-                              text: 'Confirm',
-                              popContext: popContext,
-                              onPressed: () {
-                                final library = popContext.read<Library>();
-                                library.markSeriesWatched(series);
-                              },
-                            ),
-                          ],
-                        ),
+                        body: 'Are you sure you want to mark all episodes of "${series.displayTitle}" as watched?',
+                        positiveButtonText: 'Confirm',
+                        onPositive: () {
+                          final library = context.read<Library>();
+                          library.markSeriesWatched(series);
+                        },
                       ),
               const Icon(FluentIcons.check_mark),
               series.watchedPercentage == 1 ? 'You have already watched all episodes' : 'Mark All as Watched',
@@ -527,10 +515,6 @@ class SeriesScreenState extends State<SeriesScreen> {
     );
   }
 
-  Duration get stickyHeaderDuration => getDuration(const Duration(milliseconds: 430));
-
-  Duration get shortStickyHeaderDuration => Duration(milliseconds: stickyHeaderDuration.inMilliseconds ~/ 3);
-
   Widget _buildSeriesContent(BuildContext context, Series series) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16.0),
@@ -548,7 +532,7 @@ class SeriesScreenState extends State<SeriesScreen> {
           ),
           Expanded(
             child: SizedBox(
-              width: _maxContentWidth,
+              width: ScreenUtils.maxContentWidth,
               child: Builder(builder: (context) {
                 double posterWidth = 230.0; // Default width
                 double posterHeight = 230.0; // Default height 326.0
@@ -572,7 +556,7 @@ class SeriesScreenState extends State<SeriesScreen> {
                           borderRadius: BorderRadius.circular(8.0),
                         ),
                         height: double.infinity,
-                        width: _infoBarWidth,
+                        width: ScreenUtils.infoBarWidth,
                         child: Builder(
                           builder: (context) {
                             return FutureBuilder(
@@ -644,6 +628,7 @@ class SeriesScreenState extends State<SeriesScreen> {
                                           behavior: ScrollConfiguration.of(context).copyWith(overscroll: true, platform: TargetPlatform.windows, scrollbars: false),
                                           child: DynMouseScroll(
                                             scrollSpeed: 1.0,
+                                            enableSmoothScroll: Manager.animationsEnabled,
                                             durationMS: 350,
                                             animationCurve: Curves.easeOutQuint,
                                             builder: (context, controller, physics) {
@@ -664,8 +649,8 @@ class SeriesScreenState extends State<SeriesScreen> {
                                     // Poster image that overflows the info bar from above to appear 'in' the header
                                     AnimatedPositioned(
                                       duration: stickyHeaderDuration,
-                                      left: (_infoBarWidth) / 2 - (posterWidth) / 2,
-                                      top: -(_maxHeaderHeight) + 32,
+                                      left: (ScreenUtils.infoBarWidth) / 2 - (posterWidth) / 2,
+                                      top: -(ScreenUtils.maxHeaderHeight) + 32,
                                       child: DeferPointer(
                                         link: deferredPointerLink,
                                         paintOnTop: true,
@@ -764,17 +749,18 @@ class SeriesScreenState extends State<SeriesScreen> {
                       child: Align(
                         alignment: Alignment.topCenter,
                         child: FadingEdgeScrollView(
-                          fadeReach: 16,
+                          fadeEdges: const EdgeInsets.symmetric(vertical: 16),
                           child: ScrollConfiguration(
                             behavior: ScrollConfiguration.of(context).copyWith(overscroll: true, platform: TargetPlatform.windows, scrollbars: false),
                             child: DynMouseScroll(
                               scrollSpeed: 1.8,
+                              enableSmoothScroll: Manager.animationsEnabled,
                               durationMS: 350,
                               animationCurve: Curves.easeOut,
                               builder: (context, controller, physics) {
                                 controller.addListener(() {
                                   final offset = controller.offset;
-                                  final double newHeight = offset > 0 ? _minHeaderHeight : _maxHeaderHeight;
+                                  final double newHeight = offset > 0 ? ScreenUtils.minHeaderHeight : ScreenUtils.maxHeaderHeight;
 
                                   if (newHeight != _headerHeight && mounted) //
                                     setState(() => _headerHeight = newHeight);
@@ -972,13 +958,13 @@ void linkWithAnilist(BuildContext context, Series? series, Future<void> Function
       onDialogComplete: (success, mappings) async {
         // if the dialog was closed without a result, do nothing
         if (success == null) {
-          debugPrint('Dialog closed without result');
+          logDebug('Dialog closed without result');
           return;
         }
 
         // if the dialog was closed with a result, check if it was successful
         if (!success) {
-          debugPrint('Linking failed');
+          logDebug('Linking failed');
           snackBar('Failed to link with Anilist', severity: InfoBarSeverity.error);
           return;
         }

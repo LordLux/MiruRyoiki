@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../models/series.dart';
 import '../../models/anilist/anime.dart';
+import '../../utils/logging.dart';
 import 'queries.dart';
 
 class SeriesLinkService {
@@ -29,7 +30,7 @@ class SeriesLinkService {
         return true;
       }
     } catch (e) {
-      debugPrint('Error linking series to Anilist: $e');
+      logErr('Error linking series to Anilist', e);
     }
     return false;
   }
@@ -65,7 +66,7 @@ class SeriesLinkService {
         return true;
       }
     } catch (e) {
-      debugPrint('Error refreshing Anilist metadata: $e');
+      logErr('Error refreshing Anilist metadata', e);
     }
     return false;
   }

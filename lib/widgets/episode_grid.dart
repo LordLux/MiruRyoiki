@@ -1,6 +1,7 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import '../models/episode.dart';
 import '../models/series.dart';
+import '../utils/logging.dart';
 import 'episode_card.dart';
 
 class EpisodeGrid extends StatefulWidget {
@@ -49,7 +50,7 @@ class _EpisodeGridState extends State<EpisodeGrid> {
           return MouseRegion(
             onEnter: (_) {
               // link specific season to the correct anilist page (anilist keeps each season as a separate page)
-              debugPrint('Linking to Anilist page for ${widget.title}');
+              logTrace('Linking to Anilist page for ${widget.title}');
             },
             child: Padding(
               padding: const EdgeInsets.fromLTRB(0, 0, 0, 0),

@@ -27,7 +27,7 @@ class _SeriesCardState extends State<SeriesCard> {
   bool _isHovering = false;
   bool _loading = true;
   ImageProvider? _posterImageProvider;
-  PosterSource? _lastKnownDefaultSource;
+  ImageSource? _lastKnownDefaultSource;
 
   @override
   void initState() {
@@ -36,7 +36,7 @@ class _SeriesCardState extends State<SeriesCard> {
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (widget.series.effectivePosterPath != null && //
-          widget.series.preferredPosterSource == PosterSource.autoAnilist &&
+          widget.series.preferredPosterSource == ImageSource.autoAnilist &&
           widget.series.anilistData?.posterImage != null) {
         _loadImage(); // Re-evaluate after initial build
       }
@@ -129,138 +129,141 @@ class _SeriesCardState extends State<SeriesCard> {
 
   @override
   Widget build(BuildContext context) {
-    return MouseRegion(
-      onEnter: (_) => setState(() => _isHovering = true),
-      onExit: (_) => setState(() => _isHovering = false),
-      cursor: SystemMouseCursors.click,
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(8.0),
-        child: AnimatedContainer(
-          duration: getDuration(const Duration(milliseconds: 150)),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(8.0),
-            color: Colors.transparent,
-            boxShadow: _isHovering
-                ? [
-                    BoxShadow(
-                      color: (widget.series.dominantColor ?? Manager.accentColor).withOpacity(0.05),
-                      blurRadius: 8,
-                      spreadRadius: 1,
-                    )
-                  ]
-                : null,
-          ),
-          child: Stack(
-            children: [
-              // Poster image
-              Positioned.fill(
-                top: 0,
-                child: Container(
-                  child: _getSeriesImage(),
+    return KeyedSubtree(
+      key: ValueKey('${widget.series.path}-${widget.series.dominantColor?.value ?? 0}'),
+      child: MouseRegion(
+        onEnter: (_) => setState(() => _isHovering = true),
+        onExit: (_) => setState(() => _isHovering = false),
+        cursor: SystemMouseCursors.click,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(8.0),
+          child: AnimatedContainer(
+            duration: getDuration(const Duration(milliseconds: 150)),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(8.0),
+              color: Colors.transparent,
+              boxShadow: _isHovering
+                  ? [
+                      BoxShadow(
+                        color: (widget.series.dominantColor ?? Manager.accentColor).withOpacity(0.05),
+                        blurRadius: 8,
+                        spreadRadius: 1,
+                      )
+                    ]
+                  : null,
+            ),
+            child: Stack(
+              children: [
+                // Poster image
+                Positioned.fill(
+                  top: 0,
+                  child: Container(
+                    child: _getSeriesImage(),
+                  ),
                 ),
-              ),
-              // to fix visual glitch
-              Positioned(
-                bottom: 0,
-                child: Container(
-                  color: Colors.grey,
-                  height: 1,
-                  width: 1000,
+                // to fix visual glitch
+                Positioned(
+                  bottom: 0,
+                  child: Container(
+                    color: Colors.grey,
+                    height: 1,
+                    width: 1000,
+                  ),
                 ),
-              ),
-              Card(
-                padding: EdgeInsets.zero,
-                borderRadius: BorderRadius.circular(8.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Poster image
-                    Expanded(
-                      child: Container(),
-                    ),
+                Card(
+                  padding: EdgeInsets.zero,
+                  borderRadius: BorderRadius.circular(8.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Poster image
+                      Expanded(
+                        child: Container(),
+                      ),
 
-                    // Series info
-                    Builder(builder: (context) {
-                      Color nicerColor = (widget.series.dominantColor ?? Manager.accentColor).lerpWith(Colors.grey, widget.series.isAnilistPoster ? .66 : .9);
+                      // Series info
+                      Builder(builder: (context) {
+                        Color nicerColor = (widget.series.dominantColor ?? Manager.accentColor).lerpWith(Colors.grey, widget.series.isAnilistPoster ? .66 : .9);
 
-                      Widget child = Padding(
-                        padding: const EdgeInsets.all(12.0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              widget.series.name,
-                              style: FluentTheme.of(context).typography.bodyStrong,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            const SizedBox(height: 4),
-                            Row(
-                              children: [
-                                Text(
-                                  '${widget.series.totalEpisodes} episodes',
-                                  style: FluentTheme.of(context).typography.caption,
-                                ),
-                                const Spacer(),
-                                Text(
-                                  '${(widget.series.watchedPercentage * 100).round()}%',
-                                  style: FluentTheme.of(context).typography.caption,
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 8),
-                            SizedBox(
-                              width: 200,
-                              child: ProgressBar(
-                                value: widget.series.watchedPercentage * 100,
-                                activeColor: widget.series.watchedPercentage == 0 ? Colors.transparent : widget.series.dominantColor,
-                                backgroundColor: Color.lerp(Colors.black.withOpacity(0.2), widget.series.dominantColor, 0),
+                        Widget child = Padding(
+                          padding: const EdgeInsets.all(12.0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                widget.series.name,
+                                style: FluentTheme.of(context).typography.bodyStrong,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
-                            ),
-                          ],
-                        ),
-                      );
-                      if (widget.series.isAnilistPoster) {
-                        return Transform.scale(
-                          scale: 1.01,
-                          child: Transform.translate(
-                            offset: Offset(0, 1),
-                            child: Acrylic(
-                              blurAmount: 5,
-                              tint: nicerColor,
-                              elevation: 0.5,
-                              tintAlpha: 0.5,
-                              luminosityAlpha: 0.4,
-                              child: child,
-                            ),
+                              const SizedBox(height: 4),
+                              Row(
+                                children: [
+                                  Text(
+                                    '${widget.series.totalEpisodes} episodes',
+                                    style: FluentTheme.of(context).typography.caption,
+                                  ),
+                                  const Spacer(),
+                                  Text(
+                                    '${(widget.series.watchedPercentage * 100).round()}%',
+                                    style: FluentTheme.of(context).typography.caption,
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              SizedBox(
+                                width: 200,
+                                child: ProgressBar(
+                                  value: widget.series.watchedPercentage * 100,
+                                  activeColor: widget.series.watchedPercentage == 0 ? Colors.transparent : widget.series.dominantColor,
+                                  backgroundColor: Color.lerp(Colors.black.withOpacity(0.2), widget.series.dominantColor, 0),
+                                ),
+                              ),
+                            ],
                           ),
                         );
-                      }
-                      return Container(color: nicerColor, child: child);
-                    }),
-                  ],
+                        if (widget.series.isAnilistPoster) {
+                          return Transform.scale(
+                            scale: 1.01,
+                            child: Transform.translate(
+                              offset: Offset(0, 1),
+                              child: Acrylic(
+                                blurAmount: 5,
+                                tint: nicerColor,
+                                elevation: 0.5,
+                                tintAlpha: 0.5,
+                                luminosityAlpha: 0.4,
+                                child: child,
+                              ),
+                            ),
+                          );
+                        }
+                        return Container(color: nicerColor, child: child);
+                      }),
+                    ],
+                  ),
                 ),
-              ),
-              // Hover overlay
-              Positioned.fill(
-                child: Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    onTap: widget.onTap,
-                    splashColor: (widget.series.dominantColor ?? Manager.accentColor).withOpacity(0.1),
-                    highlightColor: Colors.white.withOpacity(0.05),
-                    borderRadius: BorderRadius.circular(8.0),
-                    child: AnimatedContainer(
-                      duration: getDuration(const Duration(milliseconds: 150)),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(8.0),
-                        color: _isHovering ? Colors.white.withOpacity(0.03) : Colors.transparent,
+                // Hover overlay
+                Positioned.fill(
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: widget.onTap,
+                      splashColor: (widget.series.dominantColor ?? Manager.accentColor).withOpacity(0.1),
+                      highlightColor: Colors.white.withOpacity(0.05),
+                      borderRadius: BorderRadius.circular(8.0),
+                      child: AnimatedContainer(
+                        duration: getDuration(const Duration(milliseconds: 150)),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(8.0),
+                          color: _isHovering ? Colors.white.withOpacity(0.03) : Colors.transparent,
+                        ),
                       ),
                     ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

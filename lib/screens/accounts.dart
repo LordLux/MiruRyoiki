@@ -4,6 +4,7 @@ import 'package:jovial_svg/jovial_svg.dart';
 import 'package:miruryoiki/services/anilist/provider.dart';
 import 'package:provider/provider.dart';
 
+import '../utils/logging.dart';
 import 'anilist_settings.dart';
 import 'settings.dart';
 
@@ -70,7 +71,7 @@ class AccountsScreenState extends State<AccountsScreen> {
                           isLocalLoading = true;
 
                           await anilistProvider.login();
-                          debugPrint('Logging in to Anilist...');
+                          logInfo('Logging in to Anilist...');
                         },
                   child: Row(
                     mainAxisSize: MainAxisSize.min,

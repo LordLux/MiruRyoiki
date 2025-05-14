@@ -2,6 +2,7 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:provider/provider.dart';
 import '../../services/anilist/provider.dart';
 import '../manager.dart';
+import '../utils/logging.dart';
 import 'accounts.dart';
 
 class AnilistSettingsScreen extends StatelessWidget {
@@ -193,7 +194,7 @@ class AnilistSettingsScreen extends StatelessWidget {
             onPressed: () async {
               await provider.logout();
               onLogout.call();
-              debugPrint('Logged out of Anilist');
+              logInfo('Logged out of Anilist');
             },
           ),
         ],

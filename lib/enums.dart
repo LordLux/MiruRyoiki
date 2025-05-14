@@ -6,7 +6,9 @@ import 'package:recase/recase.dart';
 // ENUMS
 enum Dim { dimmed, normal, brightened }
 
-enum PosterSource { local, anilist, autoLocal, autoAnilist }
+enum ImageSource { local, anilist, autoLocal, autoAnilist }
+
+enum DominantColorSource { poster, banner }
 
 enum LibraryColorView { all, onlyHover, onlyBackground, none }
 
@@ -51,30 +53,56 @@ extension LibraryColorViewX on LibraryColorView {
       );
 }
 
-extension PosterSourceX on PosterSource {
+extension PosterSourceX on ImageSource {
   String get name_ {
     switch (this) {
-      case PosterSource.local:
+      case ImageSource.local:
         return 'Local';
-      case PosterSource.anilist:
+      case ImageSource.anilist:
         return 'AniList';
-      case PosterSource.autoLocal:
+      case ImageSource.autoLocal:
         return 'Auto Local';
-      case PosterSource.autoAnilist:
+      case ImageSource.autoAnilist:
         return 'Auto AniList';
     }
   }
 
-  static PosterSource fromString(String value, {PosterSource? defaultValue}) => fromStringX<PosterSource>(
+  static ImageSource fromString(String value, {ImageSource? defaultValue}) => fromStringX<ImageSource>(
         value,
-        PosterSource.values,
+        ImageSource.values,
         defaultValue,
       );
 }
 
+extension DominantColorSourceX on DominantColorSource {
+  String get name_ {
+    switch (this) {
+      case DominantColorSource.poster:
+        return 'Poster';
+      case DominantColorSource.banner:
+        return 'Banner';
+    }
+  }
+
+  static DominantColorSource fromString(String value) {
+    // Migration from old ImageSource values
+    if (value == 'local' || value == 'anilist' || value == 'autoAnilist') {
+      return DominantColorSource.poster;
+    } else if (value == 'autoLocal') {
+      return DominantColorSource.banner;
+    }
+    
+    try {
+      return DominantColorSource.values.firstWhere((e) => e.name_ == value);
+    } catch (e) {
+      return DominantColorSource.poster; // Default
+    }
+  }
+}
+
 String enumToString<T>(T enumValue, [bool pretty = true]) {
   if (!pretty) {
-    logTrace(' [Enum to String: ${enumValue.toString().split('.').last.replaceAll(" ", "").toLowerCase()}]');
+    // logTrace(' [Enum to String: ${enumValue.toString().split('.').last.replaceAll(" ", "").toLowerCase()}]');
     return enumValue.toString().split('.').last.replaceAll(" ", "").toLowerCase();
   }
 
@@ -93,11 +121,11 @@ String enumToString<T>(T enumValue, [bool pretty = true]) {
 /// Extension to convert a string to an enum value, with a default value fallback
 T fromStringX<T>(String value, List<T> values, [T? defaultValue]) {
   value = value.replaceAll(" ", "").toLowerCase();
-  logTrace('Converting string to enum: $value');
+  // logTrace('Converting string to enum: $value');
   return values.firstWhere(
     (e) => enumToString<T>(e, false).toLowerCase() == value,
     orElse: () {
-      if (defaultValue == null) logTrace('Invalid value: $value not found in [${values.map((v) => enumToString<T>(v, false)).join(', ')}], returning first value: ${values.first}');
+      // if (defaultValue == null) logTrace('Invalid value: $value not found in [${values.map((v) => enumToString<T>(v, false)).join(', ')}], returning first value: ${values.first}');
       return defaultValue ?? values.first;
     },
   );
@@ -111,7 +139,7 @@ extension HexColor on Color {
       '${red.toRadixString(16).padLeft(2, '0')}'
       '${green.toRadixString(16).padLeft(2, '0')}'
       '${blue.toRadixString(16).padLeft(2, '0')}';
-      
+
   int toHexInt() => int.parse(toHex().replaceAll('#', ''), radix: 16);
 }
 

@@ -40,20 +40,27 @@ class ImageSelectionDialog extends ManagedDialog {
               // Save the selection
               final library = Provider.of<Library>(popContext, listen: false);
 
-              if (isBanner) {
-                series.preferredBannerSource = source;
-                series.folderBannerPath = path;
-              } else {
-                series.preferredPosterSource = source;
-                series.folderPosterPath = path;
-              }
-              
-              log('Saving ${isBanner ? 'banner' : 'poster'} preference: $source, path: ${PathUtils.getFileName(path)}');
+              final updatedSeries = Series.fromValues(
+                  name: series.name,
+                  path: series.path,
+                  folderPosterPath: isBanner ? series.folderPosterPath : (source == ImageSource.local ? path : series.folderPosterPath),
+                  folderBannerPath: isBanner ? (source == ImageSource.local ? path : series.folderBannerPath) : series.folderBannerPath,
+                  seasons: series.seasons,
+                  relatedMedia: series.relatedMedia,
+                  preferredPosterSource: isBanner ? series.preferredPosterSource : source,
+                  preferredBannerSource: isBanner ? source : series.preferredBannerSource,
+                  anilistMappings: series.anilistMappings,
+                  primaryAnilistId: series.primaryAnilistId,
+                  anilistData: series.anilistData,
+                  dominantColor: series.dominantColor);
+
+              logTrace('Saving ${isBanner ? 'banner' : 'poster'} preference: $source, path: ${PathUtils.getFileName(path)}');
 
               // Explicitly save the entire series
-              await library.saveSeries(series);
+              await library.saveSeries(updatedSeries);
 
               // Close dialog
+              // ignore: use_build_context_synchronously
               closeDialog(popContext, result: source);
 
               // Show confirmation
@@ -72,7 +79,7 @@ class ImageSelectionDialog extends ManagedDialog {
 class _ImageSelectionContent extends StatefulWidget {
   final Series series;
   final BoxConstraints constraints;
-  final Function(PosterSource, String) onSave;
+  final Function(ImageSource, String) onSave;
   final VoidCallback onCancel;
   final bool isBanner;
 
@@ -89,7 +96,7 @@ class _ImageSelectionContent extends StatefulWidget {
 }
 
 class _ImageSelectionContentState extends State<_ImageSelectionContent> {
-  late PosterSource _selectedSource;
+  late ImageSource _selectedSource;
   bool _localImageLoading = false;
   bool _anilistImageLoading = false;
   // ignore: unused_field
@@ -200,7 +207,7 @@ class _ImageSelectionContentState extends State<_ImageSelectionContent> {
                         isAvailable: false,
                         isLoading: _localImageLoading,
                         posterProvider: null,
-                        source: PosterSource.local,
+                        source: ImageSource.local,
                         unavailableMessage: 'No local images available,\nPlease add images to the folder',
                       )
                     : _buildLocalImagesOption(),
@@ -213,7 +220,7 @@ class _ImageSelectionContentState extends State<_ImageSelectionContent> {
                   isAvailable: widget.series.anilistData?.posterImage != null,
                   isLoading: _anilistImageLoading,
                   posterProvider: _anilistImageProvider,
-                  source: PosterSource.anilist,
+                  source: ImageSource.anilist,
                   unavailableMessage: 'No Anilist image available',
                   linkToAnilistAction: () {
                     linkWithAnilist(
@@ -266,10 +273,10 @@ class _ImageSelectionContentState extends State<_ImageSelectionContent> {
                     widget.onSave(
                         _selectedSource,
                         widget.isBanner
-                            ? _selectedSource == PosterSource.local
+                            ? _selectedSource == ImageSource.local
                                 ? _localImageFiles[_selectedLocalImageIndex].path
                                 : widget.series.anilistData?.bannerImage ?? ''
-                            : _selectedSource == PosterSource.local
+                            : _selectedSource == ImageSource.local
                                 ? _localImageFiles[_selectedLocalImageIndex].path
                                 : widget.series.anilistData?.posterImage ?? '');
                   },
@@ -282,15 +289,15 @@ class _ImageSelectionContentState extends State<_ImageSelectionContent> {
     );
   }
 
-  String _getSourceDisplayName(PosterSource source) {
+  String _getSourceDisplayName(ImageSource source) {
     switch (source) {
-      case PosterSource.local:
+      case ImageSource.local:
         return 'Local Image';
-      case PosterSource.anilist:
+      case ImageSource.anilist:
         return 'Anilist Image';
-      case PosterSource.autoLocal:
+      case ImageSource.autoLocal:
         return 'Automatic (Local if available, otherwise Anilist)';
-      case PosterSource.autoAnilist:
+      case ImageSource.autoAnilist:
         return 'Automatic (Anilist if available, otherwise Local)';
     }
   }
@@ -300,11 +307,11 @@ class _ImageSelectionContentState extends State<_ImageSelectionContent> {
     required bool isAvailable,
     required bool isLoading,
     required ImageProvider? posterProvider,
-    required PosterSource source,
+    required ImageSource source,
     required String unavailableMessage,
     VoidCallback? linkToAnilistAction,
   }) {
-    final needsAnilistLink = source == PosterSource.anilist && widget.series.primaryAnilistId == null;
+    final needsAnilistLink = source == ImageSource.anilist && widget.series.primaryAnilistId == null;
     final isSelected = _selectedSource == source;
 
     return GestureDetector(
@@ -391,7 +398,7 @@ class _ImageSelectionContentState extends State<_ImageSelectionContent> {
   }
 
   Widget _buildLocalImagesOption() {
-    final isSelected = _selectedSource == PosterSource.local;
+    final isSelected = _selectedSource == ImageSource.local;
     // Track hovered image for filename display
     String? hoveredImageName;
 
@@ -399,7 +406,7 @@ class _ImageSelectionContentState extends State<_ImageSelectionContent> {
       return GestureDetector(
         onTap: () {
           setState(() {
-            _selectedSource = PosterSource.local;
+            _selectedSource = ImageSource.local;
           });
         },
         child: Card(
@@ -463,7 +470,6 @@ class _ImageSelectionContentState extends State<_ImageSelectionContent> {
                                               }
 
                                               final String dimensions = "${width.toInt()}x${height.toInt()}";
-                                              final int dimensionsLength = dimensions.length;
 
                                               return SizedBox(
                                                 width: width,
@@ -557,7 +563,7 @@ class _ImageSelectionContentState extends State<_ImageSelectionContent> {
                                             setState(() {
                                               _selectedLocalImageIndex = index;
                                               _loadSelectedLocalImage();
-                                              _selectedSource = PosterSource.local;
+                                              _selectedSource = ImageSource.local;
                                             });
                                           },
                                           child: Container(
@@ -604,10 +610,10 @@ class _ImageSelectionContentState extends State<_ImageSelectionContent> {
               Row(
                 children: [
                   RadioButton(
-                    checked: _selectedSource == PosterSource.local,
+                    checked: _selectedSource == ImageSource.local,
                     onChanged: (_) {
                       setState(() {
-                        _selectedSource = PosterSource.local;
+                        _selectedSource = ImageSource.local;
                       });
                     },
                   ),

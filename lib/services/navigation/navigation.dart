@@ -3,6 +3,8 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/foundation.dart';
 
+import '../../utils/logging.dart';
+
 enum NavigationLevel {
   pane, // Top-level navigation items (Library, Settings)
   page, // Secondary screens (Series detail)
@@ -133,13 +135,13 @@ class NavigationManager extends ChangeNotifier {
 
   void _logCurrentStack() {
     if (false && kDebugMode) {
-      debugPrint('----------------------------------------------');
-      debugPrint('Navigation Stack:');
+      logDebug('----------------------------------------------');
+      logDebug('Navigation Stack:');
       for (int i = 0; i < _stack.length; i++) {
         final item = _stack.reversed.toList()[i];
-        debugPrint('  ${i == 0 ? '→' : ' '} ${item.level.name}: ${item.title}');
+        logDebug('  ${i == 0 ? '→' : ' '} ${item.level.name}: ${item.title}');
       }
-      debugPrint('----------------------------------------------');
+      logDebug('----------------------------------------------');
     }
   }
 

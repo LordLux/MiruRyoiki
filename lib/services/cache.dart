@@ -5,6 +5,8 @@ import 'package:path_provider/path_provider.dart';
 import 'package:crypto/crypto.dart';
 import 'dart:convert';
 
+import '../utils/logging.dart';
+
 class ImageCacheService {
   static final ImageCacheService _instance = ImageCacheService._internal();
   factory ImageCacheService() => _instance;
@@ -82,7 +84,7 @@ class ImageCacheService {
         return file;
       }
     } catch (e) {
-      debugPrint('Failed to cache image: $e');
+      logErr('Failed to cache image', e);
     }
     return null;
   }

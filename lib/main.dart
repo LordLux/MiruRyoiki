@@ -32,6 +32,7 @@ import 'services/navigation/show_info.dart';
 import 'services/window.dart';
 import 'theme.dart';
 import 'utils/color_utils.dart';
+import 'utils/screen_utils.dart';
 import 'utils/time_utils.dart';
 import 'widgets/menu_button.dart';
 import 'widgets/reverse_animation_flyout.dart' show ToggleableFlyoutContent, ToggleableFlyoutContentState;
@@ -159,7 +160,7 @@ class _MyAppState extends State<MyApp> {
           _handleDeepLink(initialUri);
         }
       } catch (e) {
-        debugPrint('Error handling initial uri: $e');
+        logDebug('Error handling initial uri: $e');
       }
     }
   }
@@ -170,7 +171,7 @@ class _MyAppState extends State<MyApp> {
         _handleDeepLink(uri);
       }
     }, onError: (err) {
-      debugPrint('Error handling incoming links: $err');
+      logDebug('Error handling incoming links: $err');
     });
   }
 
@@ -271,8 +272,6 @@ class AppRoot extends StatefulWidget {
   State<AppRoot> createState() => _AppRootState();
 }
 
-const Duration dimDuration = Duration(milliseconds: 200);
-
 class _AppRootState extends State<AppRoot> {
   int _selectedIndex = 0;
   String? _selectedSeriesPath;
@@ -281,6 +280,9 @@ class _AppRootState extends State<AppRoot> {
 
   final ScrollController seriesController = ScrollController();
   double _savedScrollPosition = 0.0;
+
+  int? _previousGridColumnCount;
+  bool _isTransitioning = false;
 
   bool get _isLibraryView => !(_isSeriesView && _selectedSeriesPath != null);
   bool get isSeriesView => _isSeriesView;
@@ -291,16 +293,20 @@ class _AppRootState extends State<AppRoot> {
 
   final SimpleFlyoutController flyoutController = SimpleFlyoutController();
 
-  // Save current scroll position
-  void _saveScrollPosition() {
+  // Save current scroll position and grid column count
+  void _saveContextBeforeSwitch() {
+    // save the current grid column count
+    _previousGridColumnCount = (ScreenUtils.width ~/ 200).clamp(1, 10);
+
+    // save the current scroll position
     if (seriesController.hasClients) {
       _savedScrollPosition = seriesController.offset;
       logTrace('Saved scroll position: $_savedScrollPosition');
     }
   }
 
-// Restore saved scroll position
-  void _restoreScrollPosition() {
+// Restore saved scroll position and grid column count
+  void _restoreContextAfterSwitch() {
     // Use post frame callback to ensure the grid is built
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (seriesController.hasClients) {
@@ -309,6 +315,15 @@ class _AppRootState extends State<AppRoot> {
         final scrollTo = _savedScrollPosition.clamp(0.0, maxScroll);
         seriesController.jumpTo(scrollTo);
         logTrace('Restored scroll position: $scrollTo');
+      }
+    });
+    // Delay the transition to avoid flickering
+    Future.delayed(const Duration(milliseconds: 300), () {
+      if (mounted) {
+        setState(() {
+          _isTransitioning = false;
+          _previousGridColumnCount = null;
+        });
       }
     });
   }
@@ -467,6 +482,7 @@ class _AppRootState extends State<AppRoot> {
                                 : HomeScreen(
                                     onSeriesSelected: navigateToSeries,
                                     scrollController: seriesController,
+                                    fixedColumnCount: _isTransitioning ? _previousGridColumnCount : null,
                                   ),
                           ),
                         ),
@@ -657,7 +673,7 @@ class _AppRootState extends State<AppRoot> {
   // Update navigateToSeries method:
   void navigateToSeries(String seriesPath) {
     // Save scroll position when navigating to a series
-    _saveScrollPosition();
+    _saveContextBeforeSwitch();
 
     final series = Provider.of<Library>(context, listen: false).getSeriesByPath(seriesPath);
     final seriesName = series?.name ?? 'Series';
@@ -675,9 +691,8 @@ class _AppRootState extends State<AppRoot> {
   void exitSeriesView() {
     final navManager = Provider.of<NavigationManager>(context, listen: false);
 
-    if (navManager.currentView?.level == NavigationLevel.page) {
+    if (navManager.currentView?.level == NavigationLevel.page) //
       navManager.goBack();
-    }
 
     setState(() {
       lastSelectedSeriesPath = _selectedSeriesPath ?? lastSelectedSeriesPath;
@@ -686,7 +701,7 @@ class _AppRootState extends State<AppRoot> {
     });
 
     // Restore scroll position when returning to library
-    _restoreScrollPosition();
+    _restoreContextAfterSwitch();
   }
 
   // Add this helper method
@@ -795,7 +810,7 @@ void setIcon() async {
   if (await File(iconPath).exists()) {
     // await windowManager.setIcon(iconPath);
   } else {
-    debugPrint('Icon file does not exist: $iconPath');
+    logDebug('Icon file does not exist: $iconPath');
   }
 }
 
@@ -807,4 +822,3 @@ String get ps => Platform.pathSeparator;
 
 // TODO series not being linked after restart sometimes
 // TODO library view series libviewcol
-// TODO check if sidebar is autoclosed -> set menu icon to null

@@ -7,6 +7,8 @@ import 'package:oauth2/oauth2.dart' as oauth2;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../utils/logging.dart';
+
 const String mRyoikiAnilistScheme = 'mryoiki';
 const String redirectUrl = '$mRyoikiAnilistScheme://auth-callback';
 
@@ -49,7 +51,7 @@ class AnilistAuthService {
         }
       }
     } catch (e) {
-      debugPrint('Error loading Anilist credentials: $e');
+      logErr('Error loading Anilist credentials', e);
       await logout();
     }
     return false;
@@ -104,7 +106,7 @@ class AnilistAuthService {
         return true;
       }
     } catch (e) {
-      debugPrint('Error handling Anilist auth callback: $e');
+      logErr('Error handling Anilist auth callback', e);
     }
     return false;
   }
@@ -140,7 +142,7 @@ class AnilistAuthService {
         return true;
       }
     } catch (e) {
-      debugPrint('Error refreshing Anilist token: $e');
+      logErr('Error refreshing Anilist token', e);
     }
 
     return false;

@@ -13,11 +13,13 @@ import '../widgets/series_card.dart';
 class HomeScreen extends StatefulWidget {
   final ScrollController? scrollController;
   final Function(String) onSeriesSelected;
+  final int? fixedColumnCount;
 
   const HomeScreen({
     super.key,
     required this.onSeriesSelected,
     this.scrollController,
+    this.fixedColumnCount,
   });
 
   @override
@@ -93,7 +95,7 @@ class _HomeScreenState extends State<HomeScreen> {
   static const double maxCardWidth = 200;
   static const double cardPadding = 16;
 
-  int crossAxisCount(BoxConstraints constraints) => (constraints.maxWidth ~/ maxCardWidth).clamp(1, 10);
+  int crossAxisCount(BoxConstraints constraints) => widget.fixedColumnCount != null ? widget.fixedColumnCount! : (constraints.maxWidth ~/ maxCardWidth).clamp(1, 10);
 
   double cardWidth(BoxConstraints constraints) => (constraints.maxWidth / (crossAxisCount(constraints) + cardPadding * (crossAxisCount(constraints) - 1))).clamp(0, maxCardWidth);
 
@@ -139,7 +141,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             Expanded(
               child: FadingEdgeScrollView(
-                fadeReach: 20,
+                fadeEdges: const EdgeInsets.symmetric(vertical: 20),
                 child: DynMouseScroll(
                   // Tune these parameters to your liking
                   // scrollSpeed: () {

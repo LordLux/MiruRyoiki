@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:miruryoiki/utils/logging.dart';
 import 'package:win32/win32.dart';
 
 import '../../utils/registry_utils.dart';
@@ -51,7 +52,7 @@ class MPCHCTracker with ChangeNotifier {
       final hMediaHistory = RegistryUtils.openKey(HKEY_CURRENT_USER, _mpcHcRegPath);
       
       if (hMediaHistory == 0) {
-        debugPrint('Failed to open MPC-HC MediaHistory registry key');
+        logWarn('Failed to open MPC-HC MediaHistory registry key');
         return;
       }
 
@@ -81,7 +82,7 @@ class MPCHCTracker with ChangeNotifier {
                 _fileToKeyMap[filename] = subKey;
                 _keyToPositionMap[subKey] = percentage;
                 
-                //debugPrint('Indexed: $filename -> $subKey (${(percentage * 100).toStringAsFixed(1)}%)');
+                //logDebug('Indexed: $filename -> $subKey (${(percentage * 100).toStringAsFixed(1)}%)');
               }
             } finally {
               RegistryUtils.closeKey(hFileKey);
@@ -95,7 +96,7 @@ class MPCHCTracker with ChangeNotifier {
         RegistryUtils.closeKey(hMediaHistory);
       }
     } catch (e) {
-      debugPrint('Error indexing MPC-HC registry: $e');
+      logErr('Error indexing MPC-HC registry', e);
     }
   }
 
@@ -191,7 +192,7 @@ class MPCHCTracker with ChangeNotifier {
         RegistryUtils.closeKey(hMediaHistory);
       }
     } catch (e) {
-      debugPrint('Error checking MPC-HC registry updates: $e');
+      logDebug('Error checking MPC-HC registry updates: $e');
     }
     
     if (watchedFiles.isNotEmpty) {
