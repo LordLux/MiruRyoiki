@@ -1,10 +1,15 @@
 import 'dart:io';
+import 'dart:ui';
 
-import 'package:flutter/widgets.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart' show Colors;
+import 'package:flutter/widgets.dart' hide Image;
 import 'package:palette_generator/palette_generator.dart';
 import 'package:collection/collection.dart';
 
 import '../manager.dart';
+import '../services/cache.dart';
+import '../utils/logging.dart';
 import '../utils/path_utils.dart';
 import 'anilist/anime.dart';
 import 'anilist/mapping.dart';
@@ -86,8 +91,8 @@ class Series {
   int? _primaryAnilistId;
 
   /// Preferred source for the images
-  PosterSource? preferredPosterSource;
-  PosterSource? preferredBannerSource;
+  ImageSource? preferredPosterSource;
+  ImageSource? preferredBannerSource;
 
   Series({
     required this.name,
@@ -113,7 +118,8 @@ Series(
   relatedMedia: $relatedMedia,
   preferredPosterSource: ${preferredPosterSource?.name_ ?? 'None'}, folderPosterPath: '${PathUtils.getFileName(folderPosterPath ?? '')}',
   preferredBannerSource: ${preferredBannerSource?.name_ ?? 'None'}, folderBannerPath: '${PathUtils.getFileName(folderBannerPath ?? '')}',
-  anilistMappings: $anilistMappings
+  anilistMappings: $anilistMappings,
+  dominantColor: ${_dominantColor?.toHex() ?? 'None'},
 )''';
   }
 
@@ -195,7 +201,7 @@ Series(
     // If Anilist provides a color, use that
     if (_anilistData?.dominantColor != null) {
       try {
-        return Color(int.parse(_anilistData!.dominantColor!.replaceAll('#', '0xff')));
+        return _anilistData!.dominantColor!.fromHex();
       } catch (e) {
         // Fall back to locally calculated color
         return _dominantColor;
@@ -205,30 +211,120 @@ Series(
     return _dominantColor;
   }
 
-  /// Calculate and cache the dominant color from the poster image
-  Future<Color?> calculateDominantColor() async {
-    if (folderPosterPath == null) return null;
-
-    try {
-      final File imageFile = File(folderPosterPath!);
-      if (!imageFile.existsSync()) return null;
-
-      final PaletteGenerator paletteGenerator = await PaletteGenerator.fromImageProvider(
-        FileImage(imageFile),
-        maximumColorCount: 10,
-      );
-
-      // Try to get a vibrant color first for better UI aesthetics
-      _dominantColor = paletteGenerator.vibrantColor?.color ?? paletteGenerator.dominantColor?.color ?? Manager.accentColor; // Fallback color
-
+  /// Calculate and cache the dominant color from the image
+  Future<Color?> calculateDominantColor({bool forceRecalculate = false}) async {
+    // If color already calculated and not forced, return cached color
+    if (_dominantColor != null && !forceRecalculate) {
+      logTrace('Using cached dominant color for $name: ${_dominantColor!.toHex()}');
       return _dominantColor;
+    }
+
+    // Skip if binding not initialized or no poster path
+    if (!WidgetsBinding.instance.isRootWidgetAttached) {
+      logDebug('WidgetsBinding not initialized, initializing...');
+      WidgetsFlutterBinding.ensureInitialized();
+    }
+    if (folderPosterPath == null) {
+      logTrace('No poster path available');
+      return null;
+    }
+
+    logTrace('Calculating dominant color for $name...');
+    // Get source type
+    final sourceType = Manager.dominantColorSource;
+    String? imagePath;
+
+    // Get image path based on source type
+    if (sourceType == DominantColorSource.poster) {
+      logTrace('Using local poster for dominant color calculation: "$folderPosterPath"');
+      imagePath = folderPosterPath;
+    } else {
+      // DominantColorSource.banner
+      logTrace('Using local banner for dominant color calculation: "$folderBannerPath"');
+      imagePath = folderBannerPath;
+    }
+
+    // If no path from primary source, try Anilist
+    if (imagePath == null) {
+      logTrace('No image path from primary source, trying Poster, Banner and cached Anilist...');
+      // Fall back to any available image
+      imagePath = folderPosterPath ?? folderBannerPath ?? await _getAnilistCachedImagePath();
+
+      if (imagePath == null) {
+        logWarn('No image available for dominant color calculation: $name');
+        return null;
+      }
+    }
+
+    // Calculate color using compute to avoid UI blocking
+    try {
+      // Use compute to process on a background thread
+      final imageFile = File(imagePath);
+      if (await imageFile.exists()) {
+        final Uint8List imageBytes = await imageFile.readAsBytes();
+        final Image image = (await decodeImageFromList(imageBytes));
+        final ByteData byteData = (await image.toByteData())!;
+
+        // Force UI update by using a separate isolate
+        final Color? newColor = await compute(_isolateExtractColor, (byteData, image.width, image.height));
+        logMulti([
+          ['Dominant color calculated: '],
+          [newColor?.toHex() ?? 'None', newColor ?? Colors.yellow, newColor == null ? Colors.red : Colors.transparent],
+        ]);
+
+        // Only update if the color actually changed
+        if (newColor != null && (_dominantColor?.value != newColor.value)) {
+          _dominantColor = newColor;
+          _dataVersion++;
+        }
+        return _dominantColor;
+      }
     } catch (e) {
-      debugPrint('Error extracting dominant color: $e');
+      logErr('Error extracting dominant color', e);
+    }
+    return _dominantColor;
+  }
+
+  // Helper method to get cached Anilist images
+  Future<String?> _getAnilistCachedImagePath() async {
+    if (anilistData == null) return null;
+
+    final imageCache = ImageCacheService();
+    await imageCache.init();
+
+    // Try poster first
+    if (anilistData?.posterImage != null) {
+      final path = await imageCache.getCachedImagePath(anilistData!.posterImage!);
+      if (path != null) return path;
+    }
+
+    // Try banner next
+    if (anilistData?.bannerImage != null) {
+      return await imageCache.getCachedImagePath(anilistData!.bannerImage!);
+    }
+
+    return null;
+  }
+
+  // Static method to run in isolate
+  static Future<Color?> _isolateExtractColor((ByteData, int, int) data) async {
+    try {
+      final byteData = data.$1;
+      final width = data.$2;
+      final height = data.$3;
+      final EncodedImage encoded_image = EncodedImage(byteData, height: height, width: width);
+
+      final paletteGenerator = await PaletteGenerator.fromByteData(encoded_image);
+
+      // Try vibrant color first, fall back to dominant
+      return paletteGenerator.vibrantColor?.color ?? paletteGenerator.dominantColor?.color;
+    } catch (e) {
+      logErr('Error extracting color from image', e);
       return null;
     }
   }
 
-  // For JSON serialization
+  /// JSON serialization
   Map<String, dynamic> toJson() {
     return {
       'name': name,
@@ -245,7 +341,7 @@ Series(
     };
   }
 
-  // For JSON deserialization
+  /// JSON deserialization
   factory Series.fromJson(Map<String, dynamic> json) {
     try {
       // Validate required fields
@@ -253,7 +349,7 @@ Series(
       final path = json['path'] as String? ?? '';
 
       if (name.isEmpty || path.isEmpty) {
-        debugPrint('Warning: Series JSON missing required name or path: $json');
+        logDebug('Warning: Series JSON missing required name or path: $json');
       }
 
       // Process dominant color with safe parsing
@@ -262,7 +358,7 @@ Series(
         try {
           dominantColor = Color(json['dominantColor'] as int);
         } catch (e) {
-          debugPrint('Error parsing dominant color: $e');
+          logDebug('Error parsing dominant color: $e');
         }
       }
 
@@ -279,7 +375,7 @@ Series(
                 try {
                   mappings.add(AnilistMapping.fromJson(mapping));
                 } catch (e) {
-                  debugPrint('Error parsing individual Anilist mapping: $e');
+                  logDebug('Error parsing individual Anilist mapping: $e');
                 }
               }
             }
@@ -293,7 +389,7 @@ Series(
           ));
         }
       } catch (e) {
-        debugPrint('Error processing Anilist mappings: $e');
+        logDebug('Error processing Anilist mappings: $e');
       }
 
       // Process seasons with validation
@@ -307,14 +403,14 @@ Series(
                 try {
                   seasons.add(Season.fromJson(season));
                 } catch (e) {
-                  debugPrint('Error parsing season: $e');
+                  logDebug('Error parsing season: $e');
                 }
               }
             }
           }
         }
       } catch (e) {
-        debugPrint('Error processing seasons: $e');
+        logDebug('Error processing seasons: $e');
         // Create empty season if none parsed successfully (required field)
         if (seasons.isEmpty) //
           seasons = [Season(name: 'Season 1', path: path, episodes: [])];
@@ -331,14 +427,14 @@ Series(
                 try {
                   relatedMedia.add(Episode.fromJson(episode));
                 } catch (e) {
-                  debugPrint('Error parsing related media episode: $e');
+                  logDebug('Error parsing related media episode: $e');
                 }
               }
             }
           }
         }
       } catch (e) {
-        debugPrint('Error processing related media: $e');
+        logDebug('Error processing related media: $e');
       }
 
       // Create the Series instance
@@ -359,11 +455,11 @@ Series(
           series._primaryAnilistId = json['primaryAnilistId'] as int?;
           // Validate that the primary ID exists in mappings
           if (series._primaryAnilistId != null && !mappings.any((m) => m.anilistId == series._primaryAnilistId)) {
-            debugPrint('Warning: primaryAnilistId ${series._primaryAnilistId} not found in mappings');
+            logDebug('Warning: primaryAnilistId ${series._primaryAnilistId} not found in mappings');
           }
         }
       } catch (e) {
-        debugPrint('Error setting primaryAnilistId: $e');
+        logDebug('Error setting primaryAnilistId: $e');
       }
 
       // Set preferred poster source if available
@@ -371,13 +467,13 @@ Series(
         if (json['preferredPosterSource'] != null) {
           final sourceStr = json['preferredPosterSource'] as String?;
           if (sourceStr == 'local')
-            series.preferredPosterSource = PosterSource.local;
+            series.preferredPosterSource = ImageSource.local;
           else if (sourceStr == 'anilist') //
-            series.preferredPosterSource = PosterSource.anilist;
+            series.preferredPosterSource = ImageSource.anilist;
           // if the preferred source is not set, it will be decided by the setting
         }
       } catch (e) {
-        debugPrint('Error setting preferredPosterSource: $e');
+        logDebug('Error setting preferredPosterSource: $e');
       }
 
       // Set preferred banner source if available
@@ -385,19 +481,19 @@ Series(
         if (json['preferredBannerSource'] != null) {
           final sourceStr = json['preferredBannerSource'] as String?;
           if (sourceStr == 'local')
-            series.preferredBannerSource = PosterSource.local;
+            series.preferredBannerSource = ImageSource.local;
           else if (sourceStr == 'anilist') //
-            series.preferredBannerSource = PosterSource.anilist;
+            series.preferredBannerSource = ImageSource.anilist;
           // if the preferred source is not set, it will be decided by the setting
         }
       } catch (e) {
-        debugPrint('Error setting preferredBannerSource: $e');
+        logDebug('Error setting preferredBannerSource: $e');
       }
 
       return series;
     } catch (e) {
       // If anything fails critically, create a minimal valid series
-      debugPrint('Critical error parsing Series.fromJson: $e');
+      logDebug('Critical error parsing Series.fromJson: $e');
       return Series(
         name: json['name'] as String? ?? 'Unknown Series',
         path: json['path'] as String? ?? '',
@@ -406,6 +502,40 @@ Series(
     }
   }
 
+  factory Series.fromValues({
+    required String name,
+    required String path,
+    String? folderPosterPath,
+    String? folderBannerPath,
+    required List<Season> seasons,
+    List<Episode> relatedMedia = const [],
+    List<AnilistMapping> anilistMappings = const [],
+    int? primaryAnilistId,
+    AnilistAnime? anilistData,
+    ImageSource? preferredPosterSource,
+    ImageSource? preferredBannerSource,
+    Color? dominantColor,
+  }) {
+    final series = Series(
+      name: name,
+      path: path,
+      folderPosterPath: folderPosterPath,
+      folderBannerPath: folderBannerPath,
+      seasons: seasons,
+      relatedMedia: relatedMedia,
+      anilistMappings: anilistMappings,
+      dominantColor: dominantColor,
+      preferredPosterSource: preferredPosterSource,
+      preferredBannerSource: preferredBannerSource,
+    );
+
+    series._primaryAnilistId = primaryAnilistId;
+    series._anilistData = anilistData;
+
+    return series;
+  }
+
+  /// Getters for seasons and episodes
   List<Episode> getEpisodesForSeason([int i = 1]) {
     // TODO check if series has global episodes numbering or not
     if (i < 1 || i > seasons.length) //
@@ -414,12 +544,13 @@ Series(
     return seasons[i - 1].episodes;
   }
 
-  // ONA/OVA
+  /// Get ONA/OVA
   List<Episode> getUncategorizedEpisodes() {
     final categorizedEpisodes = seasons.expand((s) => s.episodes).toSet();
     return relatedMedia.where((e) => !categorizedEpisodes.contains(e)).toList();
   }
 
+  /// Get the current Anilist data based on the primary Anilist ID
   AnilistAnime? get currentAnilistData {
     if (_primaryAnilistId == null) return _anilistData;
 
@@ -466,7 +597,7 @@ Series(
 
   /// Getter to check if the poster is from Anilist
   String? get effectivePosterPath {
-    final PosterSource effectiveSource = preferredPosterSource ?? Manager.defaultPosterSource;
+    final ImageSource effectiveSource = preferredPosterSource ?? Manager.defaultPosterSource;
 
     // Determine available options
     final bool hasLocalPoster = folderPosterPath != null;
@@ -474,16 +605,16 @@ Series(
 
     // Apply fallback logic based on source preference
     switch (effectiveSource) {
-      case PosterSource.local:
+      case ImageSource.local:
         return hasLocalPoster ? folderPosterPath : (hasAnilistPoster ? _anilistData?.posterImage : null);
 
-      case PosterSource.anilist:
+      case ImageSource.anilist:
         return hasAnilistPoster ? _anilistData?.posterImage : (hasLocalPoster ? folderPosterPath : null);
 
-      case PosterSource.autoLocal:
+      case ImageSource.autoLocal:
         return hasLocalPoster ? folderPosterPath : (hasAnilistPoster ? _anilistData?.posterImage : null);
 
-      case PosterSource.autoAnilist:
+      case ImageSource.autoAnilist:
         return hasAnilistPoster ? _anilistData?.posterImage : (hasLocalPoster ? folderPosterPath : null);
     }
   }
@@ -504,7 +635,7 @@ Series(
   //
   /// Getter to check if the banner is from Anilist or local file
   String? get effectiveBannerPath {
-    final PosterSource effectiveSource = preferredBannerSource ?? Manager.defaultBannerSource;
+    final ImageSource effectiveSource = preferredBannerSource ?? Manager.defaultBannerSource;
 
     // Determine available options
     final bool hasLocalBanner = folderBannerPath != null;
@@ -512,16 +643,16 @@ Series(
 
     // Apply fallback logic based on source preference
     switch (effectiveSource) {
-      case PosterSource.local:
+      case ImageSource.local:
         return hasLocalBanner ? folderBannerPath : (hasAnilistBanner ? _anilistData?.bannerImage : null);
 
-      case PosterSource.anilist:
+      case ImageSource.anilist:
         return hasAnilistBanner ? _anilistData?.bannerImage : (hasLocalBanner ? folderBannerPath : null);
 
-      case PosterSource.autoLocal:
+      case ImageSource.autoLocal:
         return hasLocalBanner ? folderBannerPath : (hasAnilistBanner ? _anilistData?.bannerImage : null);
 
-      case PosterSource.autoAnilist:
+      case ImageSource.autoAnilist:
         return hasAnilistBanner ? _anilistData?.bannerImage : (hasLocalBanner ? folderBannerPath : null);
     }
   }

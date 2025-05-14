@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'dart:typed_data';
+import 'package:image/image.dart' as img;
 
 import '../enums.dart';
 import '../theme.dart';
@@ -37,7 +39,6 @@ ColorScheme generateColorScheme(Color baseColor, {Brightness brightness = Bright
   }
 }
 
-
 Color getDimmable(Color color, BuildContext context, [List<double> opacity = const [0.25, 0.15, 0]]) {
   final appTheme = Provider.of<AppTheme>(context, listen: false);
   if (appTheme.mode == ThemeMode.light) return Colors.transparent;
@@ -51,6 +52,7 @@ Color getDimmable(Color color, BuildContext context, [List<double> opacity = con
 Color getDimmableBlack(BuildContext context) {
   return getDimmable(Colors.black, context, [0.25, 0.15, 0]);
 }
+
 Color getDimmableWhite(BuildContext context) {
   return getDimmable(Colors.white, context, [0.01, 0.015, 0.03]);
 }

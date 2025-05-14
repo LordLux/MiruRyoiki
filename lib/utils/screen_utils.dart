@@ -8,4 +8,9 @@ class ScreenUtils {
   static double get pixelRatio => _mediaQuery.devicePixelRatio;
   static double get textScaleFactor => _mediaQuery.textScaleFactor;
   static double get devicePixelRatio => _mediaQuery.devicePixelRatio;
+  
+  static const double maxHeaderHeight = 290.0;
+  static const double minHeaderHeight = 150.0;
+  static const double infoBarWidth = 300.0;
+  static const double maxContentWidth = 1400.0;
 }

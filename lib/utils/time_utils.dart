@@ -7,13 +7,23 @@ DateTime get now => DateTime.now();
 
 Duration getDuration(Duration duration) {
   if (Manager.animationsEnabled) {
-    logTrace('Animation duration: ${duration.inMilliseconds} ms');
+    // logTrace('Animation duration: ${duration.inMilliseconds} ms');
     return duration;
   }
-  logTrace('Animations (disabled)');
+  // logTrace('Animations (disabled)');
   return Duration(milliseconds: 1);
 }
 
+Duration get stickyHeaderDuration => getDuration(const Duration(milliseconds: 430));
+
+Duration get shortStickyHeaderDuration => Duration(milliseconds: stickyHeaderDuration.inMilliseconds ~/ 3);
+
+Duration get dimDuration => getDuration(const Duration(milliseconds: 200));
+
+
+/// Runs a function after the current frame is rendered.
+///
+/// This is useful for ensuring that the UI is fully built before executing
 void nextFrame(VoidCallback function) {
   WidgetsBinding.instance.addPostFrameCallback((_) => function());
 }

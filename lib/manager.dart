@@ -29,26 +29,18 @@ class Manager {
       Manager.flyout?.close();
     });
   }
-
-  static AccentColor get accentColor {
-    final settings = Provider.of<SettingsManager>(homeKey.currentContext!, listen: false);
-    return settings.accentColor.toAccentColor();
-  }
-
-  static PosterSource get defaultPosterSource {
-    final settings = Provider.of<SettingsManager>(homeKey.currentContext!, listen: false);
-    return settings.defaultPosterSource;
-  }
   
-  static PosterSource get defaultBannerSource {
-    final settings = Provider.of<SettingsManager>(homeKey.currentContext!, listen: false);
-    return settings.defaultBannerSource;
-  }
-  
-  static bool get animationsEnabled {
-    final settings = Provider.of<SettingsManager>(homeKey.currentContext!, listen: false);
-    return !settings.disableAnimations;
-  }
+  static SettingsManager get settings => Provider.of<SettingsManager>(homeKey.currentContext!, listen: false);
+
+  static AccentColor get accentColor => settings.accentColor.toAccentColor();
+
+  static ImageSource get defaultPosterSource => settings.defaultPosterSource;
+
+  static ImageSource get defaultBannerSource => settings.defaultBannerSource;
+
+  static bool get animationsEnabled => !settings.disableAnimations;
+
+  static DominantColorSource get dominantColorSource => settings.dominantColorSource;
 
   /// Checks if the current platform is MacOS
   static bool get isMacOS => Platform.isMacOS;
@@ -87,7 +79,7 @@ class SettingsManager extends ChangeNotifier {
 
   Color get accentColor => _getString('accentColor', defaultValue: Color(0xFF0078d4).toHex()).fromHex();
   set accentColor(Color value) => _setString('accentColor', value.toHex());
-  
+
   bool get disableAnimations => _getBool('disableAnimations', defaultValue: false);
   set disableAnimations(bool value) => _setBool('disableAnimations', value);
 
@@ -98,11 +90,14 @@ class SettingsManager extends ChangeNotifier {
   LibraryColorView get libColView => LibraryColorViewX.fromString(_getString('libColView', defaultValue: LibraryColorView.all.name_));
   set libColView(LibraryColorView value) => _setString('libColView', value.name_);
 
-  PosterSource get defaultPosterSource => PosterSourceX.fromString(_getString('defaultPosterSource', defaultValue: PosterSource.autoAnilist.name_));
-  set defaultPosterSource(PosterSource value) => _setString('defaultPosterSource', value.name_);
-  
-  PosterSource get defaultBannerSource => PosterSourceX.fromString(_getString('defaultBannerSource', defaultValue: PosterSource.autoAnilist.name_));
-  set defaultBannerSource(PosterSource value) => _setString('defaultBannerSource', value.name_);
+  ImageSource get defaultPosterSource => PosterSourceX.fromString(_getString('defaultPosterSource', defaultValue: ImageSource.autoAnilist.name_));
+  set defaultPosterSource(ImageSource value) => _setString('defaultPosterSource', value.name_);
+
+  ImageSource get defaultBannerSource => PosterSourceX.fromString(_getString('defaultBannerSource', defaultValue: ImageSource.autoAnilist.name_));
+  set defaultBannerSource(ImageSource value) => _setString('defaultBannerSource', value.name_);
+
+  DominantColorSource get dominantColorSource => DominantColorSourceX.fromString(_getString('dominantColorSource', defaultValue: DominantColorSource.poster.name_));
+  set dominantColorSource(DominantColorSource value) => _setString('dominantColorSource', value.name_);
 
   // // Generic getters with type safety
   bool _getBool(String key, {required bool defaultValue}) {

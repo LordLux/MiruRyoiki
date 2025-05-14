@@ -31,7 +31,7 @@ class FileScanner {
           final seriesItem = await _processSeries(entity, existingSeries: existingSeries_);
           series.add(seriesItem);
         } catch (e) {
-          debugPrint('Error processing series ${entity.path}: $e');
+          logDebug('Error processing series ${entity.path}: $e');
         }
       }
     }
@@ -205,7 +205,7 @@ class FileScanner {
         }
       }
     } catch (e) {
-      debugPrint('Error finding banner image: $e');
+      logDebug('Error finding banner image: $e');
     }
     return null;
   }

@@ -8,6 +8,7 @@ import 'package:provider/provider.dart';
 import '../../main.dart';
 import '../../manager.dart';
 import '../../models/library.dart';
+import '../../utils/logging.dart';
 
 class KeyboardState {
   static final ValueNotifier<bool> ctrlPressedNotifier = ValueNotifier<bool>(false);
@@ -40,23 +41,21 @@ class _CustomKeyboardListenerState extends State<CustomKeyboardListener> {
         if (isSuperPressed(event)) {
           isCtrlPressed = true;
           KeyboardState.ctrlPressedNotifier.value = true;
-          debugPrint('Ctrl pressed');
         }
         if (event.logicalKey == LogicalKeyboardKey.shiftLeft || event.logicalKey == LogicalKeyboardKey.shiftRight) {
           isShiftPressed = true;
-          debugPrint('Shift pressed');
           KeyboardState.shiftPressedNotifier.value = true;
         }
 
         /// Handle specific key combinations
         // Open settings
         if (isCtrlPressed && event.logicalKey == LogicalKeyboardKey.comma) {
-          debugPrint('Ctrl + , pressed: Open settings');
+          logTrace('Ctrl + , pressed: Open settings');
         } else
         //
         // Open search Palette
         if (isCtrlPressed && event.logicalKey == LogicalKeyboardKey.keyF) {
-          debugPrint('Ctrl + f pressed: Search');
+          logTrace('Ctrl + f pressed: Search');
         } else
         //
         // Reload
@@ -72,23 +71,23 @@ class _CustomKeyboardListenerState extends State<CustomKeyboardListener> {
         //
         //
         if (event.logicalKey == LogicalKeyboardKey.enter) {
-          debugPrint('Enter pressed');
+          logTrace('Enter pressed');
         } else
         //
         // Debug
         if (event.logicalKey == LogicalKeyboardKey.f1) {
-          debugPrint('F1 pressed: Debug');
+          logTrace('F1 pressed: Debug');
           showDebugDialog(ctx);
         } else
         //
         // Rename
         if (event.logicalKey == LogicalKeyboardKey.f2) {
-          debugPrint('F2 pressed: Rename');
+          logTrace('F2 pressed: Rename');
         } else
         //
         // Modify path
         if (event.logicalKey == LogicalKeyboardKey.f4) {
-          debugPrint('F4 pressed: Modify path');
+          logTrace('F4 pressed: Modify path');
         } else
         //
         // ctrl + N to expand/collapse Nth season
@@ -156,10 +155,10 @@ class _CustomKeyboardListenerState extends State<CustomKeyboardListener> {
       final seriesScreenState = seriesScreenKey.currentState;
 
       if (seriesScreenState != null) {
-        debugPrint('Ctrl + $season pressed: Toggling season $season');
+        logTrace('Ctrl + $season pressed: Toggling season $season');
         seriesScreenState.toggleSeasonExpander(season);
       } else {
-        debugPrint('SeriesScreenState not found');
+        logDebug('SeriesScreenState not found');
       }
     }
   }

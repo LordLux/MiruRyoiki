@@ -9,7 +9,7 @@ import 'package:logger/logger.dart';
 import 'time_utils.dart';
 
 bool doLogRelease = false; // Set to true to enable logging in release mode
-bool doLogTrace = false; // Set to true to enable trace logging
+bool doLogTrace = true; // Set to true to enable trace logging
 bool doLogComplexError = false; // Set to true to enable complex error logging
 
 /// Logs a message with an optional text color and background color.
@@ -92,6 +92,16 @@ Logger logger = Logger();
 /// The `messages` parameter is a list of lists, where each inner list contains the String `message`,
 /// the Color `text color` (optional, defaults to [Colors.white]),
 /// and the Color `background color` (optional, defaults to [Colors.transparent]).
+/// 
+/// example:
+/// ```dart
+/// logMulti([
+///   ['Message 1', Colors.red],
+///   ['Message 2', Colors.green, Colors.black],
+///  ['Message 3', Colors.blue, Colors.yellow],
+/// ]);
+/// ```
+/// This will log three messages with different text and background colors.
 void logMulti(List<List<dynamic>> messages) {
   if (!doLogRelease && !kDebugMode) return;
   String logMessage = '';

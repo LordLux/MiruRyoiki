@@ -1,4 +1,4 @@
-import 'dart:math';
+import 'dart:math' as math;
 
 import 'package:fluent_ui/fluent_ui.dart' as fluent;
 import 'package:fluent_ui/fluent_ui.dart';
@@ -6,9 +6,10 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart' as mat;
 
 import '../../main.dart';
+import '../../utils/logging.dart';
 
 void snackBar(String message, {fluent.Color color = const mat.Color(0xFF333333), fluent.InfoBarSeverity severity = fluent.InfoBarSeverity.info, bool hasError = false, BuildContext? context}) {
-  if (severity == fluent.InfoBarSeverity.error && kDebugMode) debugPrint("Error: $message");
+  if (severity == fluent.InfoBarSeverity.error && kDebugMode) log("Error: $message");
 
   fluent.displayInfoBar(
     context ?? rootNavigatorKey.currentContext!,
@@ -76,7 +77,7 @@ void showNonModalDialog(BuildContext context, Widget dialogContent, BoxConstrain
             child: GestureDetector(
               behavior: HitTestBehavior.opaque, // Block taps from passing through the background
               onTap: () {
-                debugPrint("Tapped background");
+                logDebug("Tapped background");
                 removeOverlay(); // Dismiss the dialog
               }, // Block taps from passing through the background
               child: Container(
@@ -93,7 +94,7 @@ void showNonModalDialog(BuildContext context, Widget dialogContent, BoxConstrain
             child: GestureDetector(
               behavior: HitTestBehavior.translucent, // Allows the child to block tap events
               onTap: () {
-                debugPrint("Tapped top of dialog");
+                logDebug("Tapped top of dialog");
                 removeOverlay(); // Dismiss the dialog
               },
             ),
@@ -101,8 +102,8 @@ void showNonModalDialog(BuildContext context, Widget dialogContent, BoxConstrain
           // Centered Dialog
           Center(
             child: Builder(builder: (context) {
-              double maxWidth = min(constraints.maxWidth - 200, 1200.0);
-              double maxHeight = min(mat.MediaQuery.of(context).size.height - 180, 800.0);
+              double maxWidth = math.min(constraints.maxWidth - 200, 1200.0);
+              double maxHeight = math.min(mat.MediaQuery.of(context).size.height - 180, 800.0);
               return ConstrainedBox(
                 constraints: BoxConstraints(maxWidth: maxWidth, maxHeight: maxHeight),
                 child: SizedBox(
@@ -112,7 +113,7 @@ void showNonModalDialog(BuildContext context, Widget dialogContent, BoxConstrain
                   child: GestureDetector(
                     behavior: HitTestBehavior.translucent, // Allows the child to block tap events
                     onTap: () {
-                      debugPrint("Tapped inside dialog");
+                      logDebug("Tapped inside dialog");
                     }, // Prevents dismissal when clicking inside the dialog
                     child: FluentTheme(
                       data: FluentTheme.of(context),
