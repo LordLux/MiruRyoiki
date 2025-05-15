@@ -113,24 +113,18 @@ class _HomeScreenState extends State<HomeScreen> {
                   'Your Media Library',
                   style: FluentTheme.of(context).typography.title,
                 ),
-                Row(
-                  children: [
-                    Button(
-                      child: const Text('Refresh'),
-                      onPressed: () {
-                        library.scanLibrary();
-                      },
-                    ),
-                    const SizedBox(width: 8),
-                    Button(
-                      child: Text('Refresh Anilist Posters'),
-                      onPressed: () {
-                        final library = Provider.of<Library>(context, listen: false);
-                        library.loadAnilistPostersForLibrary();
-                        snackBar('Refreshing Anilist posters...', severity: InfoBarSeverity.info);
-                      },
-                    ),
-                  ],
+                Button(
+                  child: const Text('Refresh'),
+                  onPressed: () async {
+                    snackBar('Refreshing Anilist posters...', severity: InfoBarSeverity.info);
+                    await library.scanLibrary();
+                    await library.loadAnilistPostersForLibrary(onProgress: (loaded, total) {
+                      if (loaded % 5 == 0 || loaded == total) {
+                        // Force UI refresh every 5 items or on completion
+                        setState(() {});
+                      }
+                    });
+                  },
                 ),
               ],
             ),

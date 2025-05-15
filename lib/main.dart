@@ -142,7 +142,7 @@ class _MyAppState extends State<MyApp> {
       await Future.wait([scanFuture, anilistFuture]);
       await Future.delayed(const Duration(milliseconds: kDebugMode ? 200 : 50));
 
-      await libraryProvider.loadAnilistPostersForLibrary(onProgress: (loaded, total) {
+      libraryProvider.loadAnilistPostersForLibrary(onProgress: (loaded, total) {
         if (loaded % 5 == 0 || loaded == total) {
           // Force UI refresh every 5 items or on completion
           setState(() {});
@@ -821,5 +821,5 @@ String get iconPath => '$assets${ps}system${ps}icon.ico';
 String get iconPng => '$assets${ps}system${ps}icon.png';
 String get ps => Platform.pathSeparator;
 
-// TODO series not being linked after restart sometimes
 // TODO library view series libviewcol
+// TODO when reloading library, anilist posters are not updated until the series is opened
