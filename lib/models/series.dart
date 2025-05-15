@@ -110,7 +110,7 @@ class Series {
   })  : _anilistData = anilistData,
         _dominantColor = dominantColor,
         _primaryAnilistId = primaryAnilistId ?? anilistMappings.firstOrNull?.anilistId;
-  
+
   Series copyWith({
     String? name,
     String? path,
@@ -263,38 +263,45 @@ Series(
       logTrace('No poster path available');
       return null;
     }
-
     logTrace('Calculating dominant color for $name...');
     // Get source type
-    final sourceType = Manager.dominantColorSource;
+    final DominantColorSource sourceType = Manager.dominantColorSource;
     String? imagePath;
 
-    // Get image path based on source type
+    // Use the existing logic from effectivePosterPath/effectiveBannerPath
     if (sourceType == DominantColorSource.poster) {
-      logTrace('Using local poster for dominant color calculation: "$folderPosterPath"');
-      imagePath = folderPosterPath;
+      // For poster source, use the effectivePosterPath
+      imagePath = effectivePosterPath;
+      if (imagePath != null) {
+        logTrace(isAnilistPoster ? 'Using Anilist poster for dominant color calculation' : 'Using local poster for dominant color calculation: "$imagePath"');
+      }
     } else {
-      // DominantColorSource.banner
-      logTrace('Using local banner for dominant color calculation: "$folderBannerPath"');
-      imagePath = folderBannerPath;
-    }
-
-    // If no path from primary source, try Anilist
-    if (imagePath == null) {
-      logTrace('No image path from primary source, trying Poster, Banner and cached Anilist...');
-      // Fall back to any available image
-      imagePath = folderPosterPath ?? folderBannerPath ?? await _getAnilistCachedImagePath();
-
-      if (imagePath == null) {
-        logWarn('No image available for dominant color calculation: $name');
-        return null;
+      // For banner source, use the effectiveBannerPath
+      imagePath = effectiveBannerPath;
+      if (imagePath != null) {
+        logTrace(isAnilistBanner ? 'Using Anilist banner for dominant color calculation' : 'Using local banner for dominant color calculation: "$imagePath"');
       }
     }
 
+    // If no image path found, return null
+    if (imagePath == null) {
+      logTrace('No image available for dominant color extraction');
+      return null;
+    }
+
+    // For Anilist images, we need to get the cached path
+    if ((sourceType == DominantColorSource.poster && isAnilistPoster) || (sourceType == DominantColorSource.banner && isAnilistBanner)) {
+      imagePath = await _getAnilistCachedImagePath();
+      if (imagePath == null) {
+        logTrace('Failed to get cached Anilist image');
+        return null;
+      }
+    }
+    
     // Calculate color using compute to avoid UI blocking
     try {
       // Use compute to process on a background thread
-      final imageFile = File(imagePath);
+      final imageFile = File(imagePath!);
       if (await imageFile.exists()) {
         final Uint8List imageBytes = await imageFile.readAsBytes();
         final Image image = (await decodeImageFromList(imageBytes));
