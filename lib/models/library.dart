@@ -288,7 +288,7 @@ class Library with ChangeNotifier {
   }
 
   /// Save a single series with updated properties
-  Future<void> saveSeries(Series series) async {
+  Future<void> updateSeries(Series series) async {
     final index = _series.indexWhere((s) => s.path == series.path);
     if (index >= 0) {
       final oldSeries = _series[index];
@@ -308,40 +308,10 @@ class Library with ChangeNotifier {
       // Update the series
       _series[index] = series;
 
-      log('Series updated: ${series.name}, ${PathUtils.getFileName(series.effectivePosterPath ?? '')}, ${PathUtils.getFileName(series.effectiveBannerPath ?? '')}');
+      logTrace('Series updated: ${series.name}, ${PathUtils.getFileName(series.effectivePosterPath ?? '')}, ${PathUtils.getFileName(series.effectiveBannerPath ?? '')}');
       _isDirty = true;
       await _saveLibrary();
       notifyListeners();
-    }
-  }
-
-  Future<void> patchSeries(Series series) async {
-    final index = _series.indexWhere((s) => s.path == series.path);
-    if (index >= 0) {
-      final newSeries = _series[index];
-      _series[index] = series;
-      _isDirty = true;
-      await _saveLibrary();
-      notifyListeners();
-    }
-  }
-
-  // Add this method if it doesn't exist, or replace it if it does
-  Future<void> forceImmediateSave() async {
-    logDebug('Force immediate save requested');
-    try {
-      // Cancel any pending save operations
-      _saveDebouncer?.cancel();
-      _saveDebouncer = null;
-
-      // Perform save directly and wait for it to complete
-      await _saveLibrary();
-      logDebug('Force immediate save completed');
-    } catch (e) {
-      logDebug('Error during force save: $e');
-      // Try one more time after a short delay
-      await Future.delayed(const Duration(milliseconds: 100));
-      await _saveLibrary();
     }
   }
 
@@ -400,7 +370,7 @@ class Library with ChangeNotifier {
           (error) => snackBar('Error reloading library: $error', severity: InfoBarSeverity.error, hasError: true),
         );
   }
-  
+
   /// Scan the library for new series
   Future<void> scanLibrary({bool showSnack = false}) async {
     if (_libraryPath == null) {
@@ -575,7 +545,9 @@ class Library with ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> _saveLibrary() async {
+  Future<void> forceImmediateSave() async => _saveLibrary(immediate: true);
+
+  Future<void> _performSave() async {
     try {
       final dir = await miruRyoiokiSaveDirectory;
       final file = File('${dir.path}/$miruryoikiLibrary.json');
@@ -604,12 +576,19 @@ class Library with ChangeNotifier {
     }
   }
 
-  void _saveWithDebounce() {
+  Future<void> _saveLibrary({bool immediate = false}) async {
     _isDirty = true;
-    _saveDebouncer?.cancel();
-    _saveDebouncer = Timer(const Duration(milliseconds: 500), () {
-      _saveLibrary();
-    });
+
+    if (immediate) {
+      // Cancel any pending saves
+      _saveDebouncer?.cancel();
+      _saveDebouncer = null;
+      return _performSave();
+    } else {
+      // Use debounce pattern
+      _saveDebouncer?.cancel();
+      _saveDebouncer = Timer(const Duration(milliseconds: 500), _performSave);
+    }
   }
 
   // EPISODES
@@ -626,7 +605,7 @@ class Library with ChangeNotifier {
 
     if (save) {
       _isDirty = true;
-      _saveWithDebounce();
+      _saveLibrary();
       notifyListeners();
     }
   }
@@ -637,7 +616,7 @@ class Library with ChangeNotifier {
 
     if (save) {
       _isDirty = true;
-      _saveWithDebounce();
+      _saveLibrary();
       notifyListeners();
     }
   }
@@ -651,7 +630,7 @@ class Library with ChangeNotifier {
     }
 
     _isDirty = true;
-    _saveWithDebounce();
+    _saveLibrary();
     notifyListeners();
   }
 

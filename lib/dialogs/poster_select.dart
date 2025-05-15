@@ -50,7 +50,7 @@ class ImageSelectionDialog extends ManagedDialog {
               logTrace('Saving ${isBanner ? 'banner' : 'poster'} preference: $source, path: ${PathUtils.getFileName(path)}');
 
               // Explicitly save the entire series and show confirmation
-              library.saveSeries(updatedSeries).then((_) {
+              library.updateSeries(updatedSeries).then((_) {
                 snackBar(
                   isBanner ? 'Banner preference saved' : 'Poster preference saved',
                   severity: InfoBarSeverity.success,
@@ -104,7 +104,34 @@ class _ImageSelectionContentState extends State<_ImageSelectionContent> {
     _selectedSource = widget.isBanner //
         ? widget.series.preferredBannerSource ?? Manager.defaultPosterSource
         : widget.series.preferredPosterSource ?? Manager.defaultPosterSource;
+
+    // Don't start with any selection if using auto sources
+    if (_selectedSource != ImageSource.local) {
+      log('starting with no local image selected');
+      _selectedLocalImageIndex = null;
+    }
+
     _loadImages();
+  }
+
+  void _selectAnilistImage() {
+    setState(() {
+      _selectedSource = ImageSource.anilist;
+      _selectedLocalImageIndex = null; // Deselect any local image
+    });
+  }
+
+  void _deselectEverything() {
+    setState(() {
+      if (widget.isBanner) {
+        widget.series.preferredBannerSource = null;
+        _selectedSource = Manager.defaultPosterSource;
+      } else {
+        widget.series.preferredPosterSource = null;
+        _selectedSource = Manager.defaultPosterSource;
+      }
+      _selectedLocalImageIndex = null; // Deselect any local image
+    });
   }
 
   Future<void> _findLocalImages() async {
@@ -119,11 +146,11 @@ class _ImageSelectionContentState extends State<_ImageSelectionContent> {
     }).toList();
 
     // Set selected index to current poster if it exists
-    if (_selectedSource != ImageSource.autoAnilist && _selectedSource != ImageSource.autoLocal && widget.isBanner && widget.series.folderBannerPath != null) {
+    if (_selectedSource == ImageSource.local && widget.isBanner && widget.series.folderBannerPath != null) {
       final index = _localImageFiles.indexWhere((f) => f.path == widget.series.folderBannerPath);
       if (index >= 0) _selectedLocalImageIndex = index;
       // Set selected index to current bannerif it exists
-    } else if (_selectedSource != ImageSource.autoAnilist && _selectedSource != ImageSource.autoLocal && !widget.isBanner && widget.series.folderPosterPath != null) {
+    } else if (_selectedSource == ImageSource.local && !widget.isBanner && widget.series.folderPosterPath != null) {
       final index = _localImageFiles.indexWhere((f) => f.path == widget.series.folderPosterPath);
       if (index >= 0) _selectedLocalImageIndex = index;
     }
@@ -230,10 +257,31 @@ class _ImageSelectionContentState extends State<_ImageSelectionContent> {
 
         SizedBox(height: 20),
         // Status message
-        Text(
-          'Current preference: ${_getSourceDisplayName(widget.series.preferredPosterSource ?? Manager.defaultPosterSource)}',
-          style: FluentTheme.of(context).typography.bodyStrong,
-        ),
+        _canSavePreference()
+            ? Text.rich(
+                TextSpan(children: [
+                  TextSpan(
+                    text: 'New preference: ',
+                    style: FluentTheme.of(context).typography.bodyStrong,
+                  ),
+                  TextSpan(
+                    text: _getSourceDisplayName(_selectedSource),
+                    style: FluentTheme.of(context).typography.bodyStrong!.copyWith(color: Manager.accentColor.lighter),
+                  ),
+                ]),
+              )
+            : Text.rich(
+                TextSpan(children: [
+                  TextSpan(
+                    text: 'Current preference: ',
+                    style: FluentTheme.of(context).typography.bodyStrong,
+                  ),
+                  TextSpan(
+                    text: widget.isBanner ? _getSourceDisplayName(widget.series.preferredBannerSource ?? Manager.defaultPosterSource) : _getSourceDisplayName(widget.series.preferredPosterSource ?? Manager.defaultPosterSource),
+                    style: FluentTheme.of(context).typography.bodyStrong,
+                  ),
+                ]),
+              ),
         SizedBox(height: 20),
         // Action buttons
         Row(
@@ -247,18 +295,8 @@ class _ImageSelectionContentState extends State<_ImageSelectionContent> {
                 message: 'Reset to ${_getSourceDisplayName(Manager.defaultPosterSource)}\nThis setting can be changed in settings',
                 child: Button(
                   onPressed: () {
-                    if (widget.isBanner) {
-                      widget.series.preferredBannerSource = null;
-                    } else {
-                      widget.series.preferredPosterSource = null;
-                    }
-
-                    snackBar(
-                      'Reset to ${_getSourceDisplayName(Manager.defaultPosterSource)}',
-                      severity: InfoBarSeverity.success,
-                    );
+                    _deselectEverything();
                     Manager.setState();
-                    widget.onCancel.call();
                   },
                   child: Text('Reset to Auto'),
                 ),
@@ -273,19 +311,21 @@ class _ImageSelectionContentState extends State<_ImageSelectionContent> {
                 ),
                 SizedBox(width: 8),
                 Tooltip(
-                  message: _selectedLocalImageIndex != null ? null : 'Save the selected image preference',
+                  message: _canSavePreference() ? 'Save the selected image preference' : 'Select an image first',
                   child: FilledButton(
-                    onPressed: _selectedLocalImageIndex == null ? null : () {
-                      widget.onSave(
-                          _selectedSource,
-                          widget.isBanner
-                              ? _selectedSource == ImageSource.local
-                                  ? _localImageFiles[_selectedLocalImageIndex!].path
-                                  : widget.series.anilistData?.bannerImage ?? ''
-                              : _selectedSource == ImageSource.local
-                                  ? _localImageFiles[_selectedLocalImageIndex!].path
-                                  : widget.series.anilistData?.posterImage ?? '');
-                    },
+                    onPressed: _canSavePreference()
+                        ? () {
+                            widget.onSave(
+                                _selectedSource,
+                                widget.isBanner
+                                    ? _selectedSource == ImageSource.local
+                                        ? _localImageFiles[_selectedLocalImageIndex!].path
+                                        : widget.series.anilistData?.bannerImage ?? ''
+                                    : _selectedSource == ImageSource.local
+                                        ? _localImageFiles[_selectedLocalImageIndex!].path
+                                        : widget.series.anilistData?.posterImage ?? '');
+                          }
+                        : null,
                     child: Text('Save Preference'),
                   ),
                 ),
@@ -295,6 +335,16 @@ class _ImageSelectionContentState extends State<_ImageSelectionContent> {
         ),
       ],
     );
+  }
+
+  bool _canSavePreference() {
+    if (_selectedSource == ImageSource.local) {
+      return _selectedLocalImageIndex != null;
+    } else if (_selectedSource == ImageSource.anilist) {
+      final String? anilistImageUrl = widget.isBanner ? widget.series.anilistData?.bannerImage : widget.series.anilistData?.posterImage;
+      return anilistImageUrl != null;
+    }
+    return false;
   }
 
   String _getSourceDisplayName(ImageSource source) {
@@ -325,9 +375,13 @@ class _ImageSelectionContentState extends State<_ImageSelectionContent> {
     return GestureDetector(
       onTap: isAvailable
           ? () {
-              setState(() {
-                _selectedSource = source;
-              });
+              if (source == ImageSource.anilist) {
+                _selectAnilistImage();
+              } else {
+                setState(() {
+                  _selectedSource = source;
+                });
+              }
             }
           : null,
       child: Card(
@@ -385,13 +439,17 @@ class _ImageSelectionContentState extends State<_ImageSelectionContent> {
                   RadioButton(
                     checked: _selectedSource == source,
                     onChanged: (_) {
-                      setState(() {
-                        _selectedSource = source;
-                      });
+                      if (source == ImageSource.anilist) {
+                        _selectAnilistImage();
+                      } else {
+                        setState(() {
+                          _selectedSource = source;
+                        });
+                      }
                     },
                   ),
                   SizedBox(width: 8),
-                  Text('Use this image'),
+                  Text('Use Anilist image'),
                 ],
               ),
             if (!isAvailable)
@@ -451,7 +509,7 @@ class _ImageSelectionContentState extends State<_ImageSelectionContent> {
                                 return TooltipTheme(
                                   data: TooltipThemeData(
                                     decoration: BoxDecoration(color: Colors.transparent),
-                                    waitDuration: const Duration(milliseconds: 1200),
+                                    waitDuration: const Duration(milliseconds: 1500),
                                   ),
                                   child: Tooltip(
                                     enableFeedback: true,
@@ -626,7 +684,7 @@ class _ImageSelectionContentState extends State<_ImageSelectionContent> {
                     },
                   ),
                   SizedBox(width: 8),
-                  Text('Use ${_localImageFiles.isEmpty ? "selected local image" : _selectedLocalImageIndex != null ? _localImageFiles[_selectedLocalImageIndex!].path.split(Platform.pathSeparator).last : ""}'),
+                  Text('Use ${_localImageFiles.isEmpty ? "selected local image" : _selectedLocalImageIndex != null ? _localImageFiles[_selectedLocalImageIndex!].path.split(Platform.pathSeparator).last : "Local Image"}'),
                 ],
               ),
             ],
