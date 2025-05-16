@@ -312,7 +312,8 @@ class _AppRootState extends State<AppRoot> {
   }
 
 // Restore saved scroll position and grid column count
-  void _restoreContextAfterSwitch() {//TODO fix scrolled to the bottom gets pushed a little bit up???
+  void _restoreContextAfterSwitch() {
+    //TODO fix scrolled to the bottom gets pushed a little bit up???
     // Use post frame callback to ensure the grid is built
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (seriesController.hasClients) {
@@ -827,4 +828,5 @@ String get iconPng => '$assets${ps}system${ps}icon.png';
 String get ps => Platform.pathSeparator;
 
 // TODO library view series libviewcol
-// TODO when reloading library, anilist posters are not updated until the series is opened
+// TODO test series formatter
+// TODO create autolinker
