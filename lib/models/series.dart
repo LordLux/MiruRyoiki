@@ -727,6 +727,28 @@ Series(
     return effectivePosterPath == folderPosterPath;
   }
 
+  /// Get the effective poster image as an ImageProvider
+  Future<ImageProvider?> getPosterImage() async {
+    final path = effectivePosterPath;
+    if (path == null) return null;
+
+    if (isLocalPoster) {
+      return FileImage(File(path));
+    } else if (isAnilistPoster) {
+      final imageCache = ImageCacheService();
+      final cachedFile = await imageCache.getCachedImageFile(path);
+
+      if (cachedFile != null) {
+        return FileImage(cachedFile);
+      } else {
+        // Also start caching for future use
+        imageCache.cacheImage(path);
+        return NetworkImage(path);
+      }
+    }
+    return null;
+  }
+
   //
   //
   /// Getter to check if the banner is from Anilist or local file
@@ -763,5 +785,27 @@ Series(
   bool get isLocalBanner {
     if (effectiveBannerPath == null) return false;
     return effectiveBannerPath == folderBannerPath;
+  }
+
+  /// Get the effective banner image as an ImageProvider
+  Future<ImageProvider?> getBannerImage() async {
+    final path = effectiveBannerPath;
+    if (path == null) return null;
+
+    if (isLocalBanner) {
+      return FileImage(File(path));
+    } else if (isAnilistBanner) {
+      final imageCache = ImageCacheService();
+      final cachedFile = await imageCache.getCachedImageFile(path);
+
+      if (cachedFile != null) {
+        return FileImage(cachedFile);
+      } else {
+        // Also start caching for future use
+        imageCache.cacheImage(path);
+        return NetworkImage(path);
+      }
+    }
+    return null;
   }
 }

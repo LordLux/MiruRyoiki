@@ -8,6 +8,7 @@ import 'dart:io';
 
 import '../models/series.dart';
 import '../utils/time_utils.dart';
+import 'series_image.dart';
 
 class SeriesCard extends StatefulWidget {
   final Series series;
@@ -25,107 +26,6 @@ class SeriesCard extends StatefulWidget {
 
 class _SeriesCardState extends State<SeriesCard> {
   bool _isHovering = false;
-  bool _loading = true;
-  ImageProvider? _posterImageProvider;
-  ImageSource? _lastKnownDefaultSource;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadImage();
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (widget.series.effectivePosterPath != null && //
-          widget.series.preferredPosterSource == ImageSource.autoAnilist &&
-          widget.series.anilistPosterUrl != null) {
-        _loadImage(); // Re-evaluate after initial build
-      }
-    });
-  }
-
-  @override
-  void didUpdateWidget(SeriesCard oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.series != widget.series) _loadImage();
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-
-    // Check if the default poster source changed (from settings)
-    final currentDefaultSource = Manager.defaultPosterSource;
-    if (_lastKnownDefaultSource != currentDefaultSource) {
-      _lastKnownDefaultSource = currentDefaultSource;
-      if (widget.series.preferredPosterSource == null) {
-        // If using default source and it changed, reload the image
-        _loadImage();
-      }
-    }
-  }
-
-  Future<void> _loadImage() async {
-    if (!mounted) return;
-
-    setState(() => _loading = true);
-
-    // Get effective poster path based on user preference
-    final effectivePath = widget.series.effectivePosterPath;
-
-    if (effectivePath == null) {
-      setState(() => _loading = false);
-      return;
-    }
-
-    // Check if local poster exists
-    if (widget.series.isLocalPoster) {
-      _posterImageProvider = FileImage(File(effectivePath));
-    } else
-    // Check if anilist poster exists (cache/network)
-    if (widget.series.isAnilistPoster) {
-      final imageCache = ImageCacheService();
-      final cachedFile = await imageCache.getCachedImageFile(effectivePath);
-
-      if (cachedFile != null)
-        _posterImageProvider = FileImage(cachedFile);
-      else {
-        // If not in cache, use NetworkImage
-        _posterImageProvider = NetworkImage(effectivePath);
-        // and start caching in background for future use
-        imageCache.cacheImage(effectivePath);
-      }
-    }
-    if (mounted) setState(() => _loading = false);
-  }
-
-  Widget _getSeriesImage() {
-    if (_loading) return const Center(child: ProgressRing(strokeWidth: 3));
-
-    Widget noImg = LayoutBuilder(builder: (context, constraints) {
-      return Align(
-        alignment: Alignment.topCenter,
-        child: SizedBox(
-          width: constraints.maxWidth,
-          height: constraints.maxWidth * 1.05,
-          child: Icon(FluentIcons.file_image, size: constraints.maxWidth * 0.25),
-        ),
-      );
-    });
-
-    if (_posterImageProvider != null) {
-      return FadeInImage(
-        placeholder: MemoryImage(kTransparentImage),
-        image: _posterImageProvider!,
-        fit: BoxFit.fitWidth,
-        alignment: Alignment.topCenter,
-        fadeInDuration: getDuration(const Duration(milliseconds: 250)),
-        fadeInCurve: Curves.easeIn,
-        imageErrorBuilder: (context, error, stackTrace) => noImg,
-      );
-    }
-
-    return noImg;
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -157,8 +57,16 @@ class _SeriesCardState extends State<SeriesCard> {
                 // Poster image
                 Positioned.fill(
                   top: 0,
-                  child: Container(
-                    child: _getSeriesImage(),
+                  child: RepaintBoundary(
+                    child: SeriesImageBuilder.poster(
+                      widget.series,
+                      key: ValueKey('${widget.series.path}:${widget.series.effectivePosterPath}'),
+                      fit: BoxFit.fitWidth,
+                      alignment: Alignment.topCenter,
+                      fadeInDuration: const Duration(milliseconds: 250),
+                      fadeInCurve: Curves.easeIn,
+                      skipLoadingIndicator: true,
+                    ),
                   ),
                 ),
                 // to fix visual glitch

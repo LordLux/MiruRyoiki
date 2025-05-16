@@ -14,7 +14,7 @@ Future<T?> showManagedDialog<T>({
   required String title,
   required ManagedDialog Function(BuildContext) builder,
   Object? data,
-  bool enableBarrierDismiss = false,
+  bool doDialogPop = false,
   bool Function()? barrierDismissCheck,
 }) async {
   final navManager = Provider.of<NavigationManager>(rootNavigatorKey.currentContext!, listen: false);
@@ -26,9 +26,13 @@ Future<T?> showManagedDialog<T>({
   final result = await showDialog<T>(
     context: rootNavigatorKey.currentContext!,
     useRootNavigator: true,
-    barrierDismissible: enableBarrierDismiss, // disables esc and click outside to close
+    dismissWithEsc: doDialogPop,
+    barrierDismissible: doDialogPop, // disables esc and click outside to close
     builder: (context) {
-      return builder(context);
+      return PopScope(
+        canPop: false,
+        child: builder(context),
+      );
     },
   ).then((_) {
     log('$nowFormatted | Dialog closed');
@@ -68,7 +72,7 @@ Future<T?> showSimpleManagedDialog<T>({
     id: id,
     title: title,
     barrierDismissCheck: () => true,
-    enableBarrierDismiss: true,
+    doDialogPop: true,
     builder: (context) {
       return ManagedDialog(
         popContext: context,
@@ -117,7 +121,7 @@ Future<T?> showSimpleOneButtonManagedDialog<T>({
       id: id,
       title: title,
       barrierDismissCheck: () => true,
-      enableBarrierDismiss: true,
+      doDialogPop: true,
       builder: (context) {
         return ManagedDialog(
           popContext: context,
@@ -227,7 +231,6 @@ void closeDialog<T>(BuildContext popContext, {T? result}) {
 
     // Pop the actual dialog
     Navigator.of(popContext).pop(result);
-    logTrace('Poppingg');
   } else {
     logDebug('No dialog to pop in Flutter Navigator');
   }
@@ -317,7 +320,7 @@ void showDebugDialog(BuildContext context) {
     context: context,
     id: 'history:debug',
     title: 'Debug History',
-    enableBarrierDismiss: true,
+    doDialogPop: true,
     barrierDismissCheck: () => true,
     builder: (context) => ManagedDialog(
       popContext: context,
