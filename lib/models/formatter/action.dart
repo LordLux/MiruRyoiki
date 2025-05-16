@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:collection/collection.dart';
 import 'package:path/path.dart' as p;
 import 'package:fluent_ui/fluent_ui.dart';
 import '../../utils/logging.dart';
@@ -168,36 +169,20 @@ Future<SeriesFormatPreview> formatSeriesFolders({
       } else if (entity is File && _isVideoFile(entity.path, config.videoExtensions)) {
         rootFiles.add(entity);
       }
+      // else ignore non-video files
     }
 
     // First pass: Identify season folders and related media
     final Map<int, Directory> seasonFolders = {};
     Directory? relatedMediaFolder;
 
-    // Create standard directories if needed
-    if (config.detectRelatedMedia) {
-      final relatedMediaPath = p.join(seriesPath, 'Related Media');
-      final relatedDir = Directory(relatedMediaPath);
-
-      if (!await relatedDir.exists() && (await _hasRelatedMedia(seriesPath, config) || rootFiles.isNotEmpty)) {
-        actions.add(FormatAction(
-          type: ActionType.createFolder,
-          sourcePath: relatedMediaPath,
-          destPath: relatedMediaPath,
-        ));
-        relatedMediaFolder = relatedDir;
-      } else if (await relatedDir.exists()) {
-        relatedMediaFolder = relatedDir;
-      }
-    }
-
-    // Process existing folders
+    // Process existing folders to identify seasons and related media
     for (final dir in directories) {
       final dirName = p.basename(dir.path);
       final seasonInfo = _parseSeasonFolder(dirName);
 
-      if (seasonInfo != null) {
-        // This is a season folder that needs standardization
+      if (seasonInfo.seasonNumber != null) {
+        // This is a season folder that may need standardization
         final seasonNum = seasonInfo.seasonNumber!;
         final standardName = 'Season ${seasonNum.toString().padLeft(2, '0')}';
         final standardPath = p.join(seriesPath, standardName);
@@ -228,43 +213,103 @@ Future<SeriesFormatPreview> formatSeriesFolders({
       }
     }
 
-    // Process files in root directory
-    final Map<int, List<FileInfo>> episodesBySeason = {};
-    final List<FileInfo> relatedMediaFiles = [];
+    // Process multiple related media folders if present
+    final List<Directory> relatedMediaFolders = directories.where((dir) {
+      final dirName = p.basename(dir.path).toLowerCase();
+      return dirName == 'related media' || dirName == 'specials' || dirName == 'ovas' || dirName == 'extras' || dirName == 'movies';
+    }).toList();
 
-    // First pass: analyze files in root
-    if (rootFiles.isNotEmpty) {
-      for (final file in rootFiles) {
-        final fileInfo = _analyzeFile(file.path);
+    // If we have multiple related folders, consolidate them
+    // If we have related folders
+    if (relatedMediaFolders.isNotEmpty) {
+      // First check if we already have a standard "Related Media" folder
+      Directory? existingRelatedMedia = relatedMediaFolders.firstWhereOrNull((dir) => p.basename(dir.path) == 'Related Media');
 
-        if (fileInfo.isRelatedMedia) {
-          relatedMediaFiles.add(FileInfo(
-            file: file,
-            mediaInfo: fileInfo,
-          ));
-        } else if (fileInfo.seasonNumber != null) {
-          final seasonNum = fileInfo.seasonNumber!;
-          if (!episodesBySeason.containsKey(seasonNum)) {
-            episodesBySeason[seasonNum] = [];
+      final targetPath = p.join(seriesPath, 'Related Media');
+
+      // If no standard "Related Media" folder exists, create one
+      if (existingRelatedMedia == null) {
+        actions.add(FormatAction(
+          type: ActionType.createFolder,
+          sourcePath: targetPath,
+          destPath: targetPath,
+        ));
+
+        // Process all related media folders
+        for (final folder in relatedMediaFolders) {
+          // Standardize folder name if necessary
+          if (p.basename(folder.path) != 'Related Media') {
+            // Get files from this folder
+            final files = await _getVideoFilesInDir(folder, config.videoExtensions);
+
+            // Move all files to the standard folder
+            for (final file in files) {
+              final destPath = p.join(targetPath, p.basename(file.path));
+
+              actions.add(FormatAction(
+                type: ActionType.moveFile,
+                sourcePath: file.path,
+                destPath: destPath,
+              ));
+            }
           }
+        }
+      }
+      // We have an existing Related Media folder
+      else {
+        // Process other related folders only
+        for (final folder in relatedMediaFolders) {
+          if (folder.path == existingRelatedMedia.path) continue;
 
-          episodesBySeason[seasonNum]!.add(FileInfo(
-            file: file,
-            mediaInfo: fileInfo,
-          ));
+          // Standardize any other related media folder names if needed
+          if (p.basename(folder.path) != 'Related Media') {
+            // Get files from this folder
+            final files = await _getVideoFilesInDir(folder, config.videoExtensions);
+
+            // Move all files to the standard folder
+            for (final file in files) {
+              final destPath = p.join(existingRelatedMedia.path, p.basename(file.path));
+
+              actions.add(FormatAction(
+                type: ActionType.moveFile,
+                sourcePath: file.path,
+                destPath: destPath,
+              ));
+            }
+
+            // Don't plan folder deletion
+          }
+        }
+      }
+    }
+
+    // Special handling for flat structure (no subfolders or no season folders)
+    if ((directories.isEmpty || seasonFolders.isEmpty) && rootFiles.isNotEmpty) {
+      logTrace('Flat series structure detected. Organizing files into season folders.');
+
+      // Analyze and group files by season
+      final Map<int, List<FileInfo>> seasonGroups = {};
+      final List<FileInfo> specialFiles = [];
+
+      // First pass - identify files
+      for (final file in rootFiles) {
+        final info = _analyzeFile(file.path);
+
+        if (info.isRelatedMedia) {
+          specialFiles.add(FileInfo(file: file, mediaInfo: info));
+        } else if (info.seasonNumber != null) {
+          final seasonNum = info.seasonNumber!;
+          seasonGroups.putIfAbsent(seasonNum, () => []);
+          seasonGroups[seasonNum]!.add(FileInfo(file: file, mediaInfo: info));
         } else {
-          // If we can't determine season, assume it's related media
-          relatedMediaFiles.add(FileInfo(
-            file: file,
-            mediaInfo: fileInfo,
-          ));
-
-          issues.add('Could not determine season for file: ${p.basename(file.path)}');
+          // If we can't determine season or special, default to specials
+          specialFiles.add(FileInfo(file: file, mediaInfo: info));
+          issues.add('Could not determine type for file: ${p.basename(file.path)}');
         }
       }
 
-      // Create season folders that don't exist yet
-      for (final seasonNum in episodesBySeason.keys) {
+      // Create season folders for each detected season (only if we don't already have them)
+      for (final seasonNum in seasonGroups.keys) {
         if (!seasonFolders.containsKey(seasonNum)) {
           final seasonName = 'Season ${seasonNum.toString().padLeft(2, '0')}';
           final seasonPath = p.join(seriesPath, seasonName);
@@ -275,29 +320,25 @@ Future<SeriesFormatPreview> formatSeriesFolders({
             destPath: seasonPath,
             seasonNumber: seasonNum,
           ));
-
-          seasonFolders[seasonNum] = Directory(seasonPath);
         }
       }
 
-      // Plan moves for episodes by season
-      for (final entry in episodesBySeason.entries) {
+      // Plan episode moves
+      for (final entry in seasonGroups.entries) {
         final seasonNum = entry.key;
         final episodes = entry.value;
         final seasonName = 'Season ${seasonNum.toString().padLeft(2, '0')}';
         final seasonPath = p.join(seriesPath, seasonName);
 
-        for (final episode in episodes) {
-          final file = episode.file;
-          final info = episode.mediaInfo;
-          final episodeNum = info.episodeNumber;
+        for (final episodeInfo in episodes) {
+          final file = episodeInfo.file;
+          final mediaInfo = episodeInfo.mediaInfo;
+          final episodeNum = mediaInfo.episodeNumber;
 
           String destFileName;
           if (episodeNum != null) {
-            // Format as standardized episode name
-            destFileName = '${episodeNum.toString().padLeft(2, '0')} - ${info.cleanTitle}${p.extension(file.path)}';
+            destFileName = '${episodeNum.toString().padLeft(2, '0')} - ${mediaInfo.cleanTitle}${p.extension(file.path)}';
           } else {
-            // Keep original name if can't determine episode number
             destFileName = p.basename(file.path);
           }
 
@@ -313,21 +354,19 @@ Future<SeriesFormatPreview> formatSeriesFolders({
         }
       }
 
-      // Plan moves for related media
-      if (relatedMediaFiles.isNotEmpty) {
-        if (relatedMediaFolder == null) {
-          final relatedMediaPath = p.join(seriesPath, 'Related Media');
-          actions.add(FormatAction(
-            type: ActionType.createFolder,
-            sourcePath: relatedMediaPath,
-            destPath: relatedMediaPath,
-          ));
-          relatedMediaFolder = Directory(relatedMediaPath);
-        }
+      // Handle special files if any exist
+      if (specialFiles.isNotEmpty && relatedMediaFolder == null) {
+        final relatedMediaPath = p.join(seriesPath, 'Related Media');
 
-        for (final fileInfo in relatedMediaFiles) {
-          final file = fileInfo.file;
-          final destPath = p.join(relatedMediaFolder.path, p.basename(file.path));
+        actions.add(FormatAction(
+          type: ActionType.createFolder,
+          sourcePath: relatedMediaPath,
+          destPath: relatedMediaPath,
+        ));
+
+        for (final specialInfo in specialFiles) {
+          final file = specialInfo.file;
+          final destPath = p.join(relatedMediaPath, p.basename(file.path));
 
           actions.add(FormatAction(
             type: ActionType.moveFile,
@@ -338,145 +377,56 @@ Future<SeriesFormatPreview> formatSeriesFolders({
       }
     }
 
-    // Process files in existing folders
+    // Process files in existing folders to standardize filenames if needed
     for (final dir in directories) {
       final dirName = p.basename(dir.path);
-      final isSeasonFolder = _parseSeasonFolder(dirName) != null;
-      final isRelatedFolder = dirName.toLowerCase() == 'related media' || dirName.toLowerCase() == 'specials' || dirName.toLowerCase() == 'ovas' || dirName.toLowerCase() == 'extras';
+      final seasonInfo = _parseSeasonFolder(dirName);
 
-      // Skip if we already processed this as a season or related folder
-      if (!isSeasonFolder && !isRelatedFolder) {
-        // Analyze files in this unknown folder
+      if (seasonInfo.seasonNumber != null) {
+        final seasonNum = seasonInfo.seasonNumber!;
+        final seasonPath = p.join(seriesPath, 'Season ${seasonNum.toString().padLeft(2, '0')}');
+
+        // Get files in this season folder
         final files = await _getVideoFilesInDir(dir, config.videoExtensions);
 
-        if (files.isEmpty) continue;
+        // Only process files if we need to standardize episode names
+        if (config.organizeEpisodesByNumber) {
+          for (final file in files) {
+            final info = _analyzeFile(file.path);
+            final episodeNum = info.episodeNumber;
 
-        // Try to determine what kind of folder this is
-        int? detectedSeason;
-        bool isAllRelatedMedia = true;
+            if (episodeNum != null) {
+              final standardName = '${episodeNum.toString().padLeft(2, '0')} - ${info.cleanTitle}${p.extension(file.path)}';
+              final currentName = p.basename(file.path);
 
-        for (final file in files) {
-          final info = _analyzeFile(file.path);
+              if (standardName != currentName) {
+                final destPath = p.join(seasonPath, standardName);
 
-          if (!info.isRelatedMedia) {
-            isAllRelatedMedia = false;
-          }
-
-          if (info.seasonNumber != null && detectedSeason == null) {
-            detectedSeason = info.seasonNumber;
-          } else if (info.seasonNumber != null && detectedSeason != info.seasonNumber) {
-            // Mixed seasons in one folder - mark as issue
-            issues.add('Mixed seasons detected in folder: ${dir.path}');
-            detectedSeason = null;
-            break;
-          }
-        }
-
-        if (detectedSeason != null) {
-          // This appears to be a season folder with a non-standard name
-          final seasonName = 'Season ${detectedSeason.toString().padLeft(2, '0')}';
-          final seasonPath = p.join(seriesPath, seasonName);
-
-          if (seasonFolders.containsKey(detectedSeason)) {
-            // Season folder already exists, move files there
-            for (final file in files) {
-              final info = _analyzeFile(file.path);
-              final episodeNum = info.episodeNumber;
-
-              String destFileName;
-              if (episodeNum != null) {
-                destFileName = '${episodeNum.toString().padLeft(2, '0')} - ${info.cleanTitle}${p.extension(file.path)}';
-              } else {
-                destFileName = p.basename(file.path);
-              }
-
-              final destPath = p.join(seasonPath, destFileName);
-
-              actions.add(FormatAction(
-                type: ActionType.moveFile,
-                sourcePath: file.path,
-                destPath: destPath,
-                seasonNumber: detectedSeason,
-                episodeNumber: episodeNum,
-              ));
-            }
-
-            // Plan to delete the empty folder if all files moved
-            if (config.deleteEmptyFolders) {
-              actions.add(FormatAction(
-                type: ActionType.deleteEmptyFolder,
-                sourcePath: dir.path,
-                destPath: dir.path, // Not used but needed for the action
-              ));
-            }
-          } else {
-            // Rename this folder to standard season folder
-            actions.add(FormatAction(
-              type: ActionType.renameFolder,
-              sourcePath: dir.path,
-              destPath: seasonPath,
-              seasonNumber: detectedSeason,
-            ));
-
-            // Plan to standardize episode filenames in this folder
-            for (final file in files) {
-              final info = _analyzeFile(file.path);
-              final episodeNum = info.episodeNumber;
-
-              if (episodeNum != null && config.organizeEpisodesByNumber) {
-                final destFileName = '${episodeNum.toString().padLeft(2, '0')} - ${info.cleanTitle}${p.extension(file.path)}';
-                final destPath = p.join(seasonPath, destFileName);
-
-                if (p.basename(file.path) != destFileName) {
-                  actions.add(FormatAction(
-                    type: ActionType.renameFile,
-                    sourcePath: file.path,
-                    destPath: destPath,
-                    seasonNumber: detectedSeason,
-                    episodeNumber: episodeNum,
-                  ));
-                }
+                actions.add(FormatAction(
+                  type: ActionType.renameFile,
+                  sourcePath: file.path,
+                  destPath: destPath,
+                  seasonNumber: seasonNum,
+                  episodeNumber: episodeNum,
+                ));
               }
             }
           }
-        } else if (isAllRelatedMedia) {
-          // This appears to be a related media folder with a non-standard name
-          if (relatedMediaFolder != null && relatedMediaFolder.path != dir.path) {
-            // Related media folder already exists, move files there
-            for (final file in files) {
-              final destPath = p.join(relatedMediaFolder.path, p.basename(file.path));
-
-              actions.add(FormatAction(
-                type: ActionType.moveFile,
-                sourcePath: file.path,
-                destPath: destPath,
-              ));
-            }
-
-            // Plan to delete the empty folder if all files moved
-            if (config.deleteEmptyFolders) {
-              actions.add(FormatAction(
-                type: ActionType.deleteEmptyFolder,
-                sourcePath: dir.path,
-                destPath: dir.path, // Not used but needed for the action
-              ));
-            }
-          } else {
-            // Rename this folder to standard related media folder
-            final relatedMediaPath = p.join(seriesPath, 'Related Media');
-            actions.add(FormatAction(
-              type: ActionType.renameFolder,
-              sourcePath: dir.path,
-              destPath: relatedMediaPath,
-            ));
-            relatedMediaFolder = Directory(relatedMediaPath);
-          }
-        } else {
-          // Mixed or unknown content, mark as issue
-          issues.add('Could not determine folder type for: ${dir.path}');
         }
       }
     }
+
+    // Deduplicate actions - prevent redundant moves/renames
+    final Set<String> processedFiles = {};
+    actions.removeWhere((action) {
+      if (action.type == ActionType.moveFile || action.type == ActionType.renameFile) {
+        if (processedFiles.contains(action.sourcePath)) {
+          return true; // Remove duplicate actions
+        }
+        processedFiles.add(action.sourcePath);
+      }
+      return false;
+    });
   } catch (e, stackTrace) {
     issues.add('Error analyzing series: $e');
     logErr('Error in formatSeriesFolders', e, stackTrace);
@@ -742,6 +692,54 @@ MediaInfo _parseSeasonFolder(String folderName) {
       }
     }
   }
+  // Check for season names with words (Season Two, Season Three, etc.)
+  final wordSeasonPattern = RegExp(r'[Ss]eason\s+(Two|Three|Four|Five|Six|Seven|Eight|Nine|Ten)', caseSensitive: false);
+  final wordMatch = wordSeasonPattern.firstMatch(folderName);
+  if (wordMatch != null) {
+    final word = wordMatch.group(1)!.toLowerCase();
+    int seasonNum;
+
+    switch (word) {
+      case 'two':
+        seasonNum = 2;
+        break;
+      case 'three':
+        seasonNum = 3;
+        break;
+      case 'four':
+        seasonNum = 4;
+        break;
+      case 'five':
+        seasonNum = 5;
+        break;
+      case 'six':
+        seasonNum = 6;
+        break;
+      case 'seven':
+        seasonNum = 7;
+        break;
+      case 'eight':
+        seasonNum = 8;
+        break;
+      case 'nine':
+        seasonNum = 9;
+        break;
+      case 'ten':
+        seasonNum = 10;
+        break;
+      default:
+        seasonNum = 1;
+        break;
+    }
+
+    return MediaInfo(
+      seasonNumber: seasonNum,
+      episodeNumber: null,
+      isRelatedMedia: false,
+      cleanTitle: folderName,
+      originalFilename: folderName,
+    );
+  }
 
   return MediaInfo(
     seasonNumber: null,
@@ -776,9 +774,8 @@ Future<bool> _hasRelatedMedia(String seriesPath, FormatterConfig config) async {
     await for (final entity in dir.list(recursive: true)) {
       if (entity is File && _isVideoFile(entity.path, config.videoExtensions)) {
         final info = _analyzeFile(entity.path);
-        if (info.isRelatedMedia) {
+        if (info.isRelatedMedia) //
           return true;
-        }
       }
     }
   } catch (e) {
@@ -788,10 +785,19 @@ Future<bool> _hasRelatedMedia(String seriesPath, FormatterConfig config) async {
   return false;
 }
 
+/// Cleans up a string by removing unwanted characters and reducing multiple spaces
+String cleanedString(String input) {
+  // Remove unwanted characters and reduce multiple spaces
+  return input
+      .replaceAll(RegExp(r'[-_.]+'), ' ') // - _ . -> space
+      .replaceAll(RegExp(r'^\s+|\s+$'), '') // Trim leading/trailing spaces
+      .replaceAll(RegExp(r'\s{2,}'), ' '); // Reduce multiple spaces to single space
+}
+
 MediaInfo _analyzeFile(String filePath) {
   final fileName = p.basenameWithoutExtension(filePath);
 
-  // Check for S01E01 pattern
+  // 1. Check for S01E01 pattern (standard season/episode)
   final seasonEpisodePattern = RegExp(r'[Ss](\d{1,2})[Ee](\d{1,2})', caseSensitive: false);
   final seasonEpisodeMatch = seasonEpisodePattern.firstMatch(fileName);
 
@@ -800,7 +806,7 @@ MediaInfo _analyzeFile(String filePath) {
     final episodeNum = int.parse(seasonEpisodeMatch.group(2)!);
 
     // Clean up the title by removing the pattern and extra characters
-    String cleanTitle = fileName.replaceFirst(seasonEpisodePattern, '').replaceAll(RegExp(r'[-_.]+'), ' ').replaceAll(RegExp(r'^\s+|\s+$'), '').replaceAll(RegExp(r'\s{2,}'), ' ');
+    String cleanTitle = cleanedString(fileName.replaceFirst(seasonEpisodePattern, ''));
 
     return MediaInfo(
       seasonNumber: seasonNum,
@@ -811,17 +817,32 @@ MediaInfo _analyzeFile(String filePath) {
     );
   }
 
-  // Check for specific numbered pattern like "01 - Episode Title"
+  // 2. Check for standalone season marker (S01 without episode part)
+  // This should be treated as a special if not followed by E01 pattern
+  final standaloneSeasonPattern = RegExp(r'^[Ss](\d{1,2})(?![Ee])', caseSensitive: false);
+  final standaloneSeasonMatch = standaloneSeasonPattern.firstMatch(fileName);
+
+  if (standaloneSeasonMatch != null) {
+    return MediaInfo(
+      seasonNumber: null,
+      episodeNumber: null,
+      isRelatedMedia: true, // Treat as special/related media
+      cleanTitle: fileName,
+      originalFilename: fileName,
+    );
+  }
+
+  // 3. Check for specific numbered pattern like "01 - Episode Title"
   final numberedEpisodePattern = RegExp(r'^(\d{1,4})(\s*[-_.]\s*|\s+)(.+)$');
   final numberedMatch = numberedEpisodePattern.firstMatch(fileName);
 
   if (numberedMatch != null) {
     final episodeNum = int.parse(numberedMatch.group(1)!);
-    final cleanTitle = numberedMatch.group(3)!.replaceAll(RegExp(r'[-_.]+'), ' ').replaceAll(RegExp(r'^\s+|\s+$'), '').replaceAll(RegExp(r'\s{2,}'), ' ');
+    final cleanTitle = cleanedString(numberedMatch.group(3)!);
 
-    // Assume season 1 if episode number pattern is found but no season
+    // Always assume season 1 if only episode number is found
     return MediaInfo(
-      seasonNumber: 1,
+      seasonNumber: 1, // Default to Season 1 for numbered episodes
       episodeNumber: episodeNum,
       isRelatedMedia: false,
       cleanTitle: cleanTitle,
@@ -829,23 +850,23 @@ MediaInfo _analyzeFile(String filePath) {
     );
   }
 
-  // Check for OVA/ONA/Movie/Special
-  final specialPattern = RegExp(r'(OVA|ONA|Movie|Special|SP\d+|Extra)', caseSensitive: false);
-  if (specialPattern.hasMatch(fileName)) {
+  // 4. Enhanced special detection: Check for Special, SP prefixes
+  final specialPrefixPattern = RegExp(r'^(Special|SP\d*|OVA|ONA|Movie|Extra)', caseSensitive: false);
+  if (specialPrefixPattern.hasMatch(fileName)) {
     return MediaInfo(
       seasonNumber: null,
       episodeNumber: null,
-      isRelatedMedia: true,
+      isRelatedMedia: true, // Mark as related media
       cleanTitle: fileName,
       originalFilename: fileName,
     );
   }
 
-  // If no pattern matched, return a default with no season/episode
+  // 5. If no pattern matched, return a default with no season/episode
   return MediaInfo(
     seasonNumber: null,
     episodeNumber: null,
-    isRelatedMedia: false,
+    isRelatedMedia: false, // defaults to not related media
     cleanTitle: fileName,
     originalFilename: fileName,
   );
