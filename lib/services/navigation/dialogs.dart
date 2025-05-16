@@ -1,5 +1,5 @@
-import 'package:fluent_ui/fluent_ui.dart' show Button, ContentDialog, ContentDialogThemeData;
-import 'package:flutter/material.dart';
+import 'package:fluent_ui/fluent_ui.dart';
+import 'package:flutter/material.dart' show Material;
 import 'package:miruryoiki/main.dart';
 import 'package:provider/provider.dart';
 import '../../utils/logging.dart';
@@ -50,12 +50,75 @@ Future<T?> showSimpleManagedDialog<T>({
   required BuildContext context,
   required String id,
   required String title,
+
+  /// Body text of the dialog, if not provided, builder will be used
+  String body = '',
+  BoxConstraints? constraints,
+
+  /// Builder for the dialog content, if not provided, defaults to a Text widget
+  Widget Function(BuildContext)? builder,
+  String positiveButtonText = 'OK',
+  String negativeButtonText = 'Cancel',
+  bool isPositiveButtonPrimary = false,
+
+  /// Callback for the positive button, automatically closes the dialog
+  Function()? onPositive,
+
+  /// Callback for the negative button, automatically closes the dialog
+  Function()? onNegative,
+}) async {
+  assert(
+    body.isNotEmpty || builder != null,
+    'Either body or builder must be provided for the dialog content',
+  );
+  return showManagedDialog(
+    context: context,
+    id: id,
+    title: title,
+    barrierDismissCheck: () => true,
+    enableBarrierDismiss: true,
+    builder: (context) {
+      return ManagedDialog(
+        popContext: context,
+        title: Text(title),
+        contentBuilder: (context, __) => builder != null ? builder(context) : Text(body),
+        constraints: constraints ??
+            const BoxConstraints(
+              maxWidth: 500,
+              minWidth: 300,
+            ),
+        actions: (popContext) => [
+          ManagedDialogButton(
+            popContext: popContext,
+            text: negativeButtonText,
+            onPressed: () {
+              onNegative?.call();
+            },
+          ),
+          ManagedDialogButton(
+            isPrimary: isPositiveButtonPrimary,
+            popContext: popContext,
+            text: positiveButtonText,
+            onPressed: () {
+              onPositive?.call();
+            },
+          ),
+        ],
+      );
+    },
+  );
+}
+
+Future<T?> showSimpleOneButtonManagedDialog<T>({
+  required BuildContext context,
+  required String id,
+  required String title,
   required String body,
   BoxConstraints? constraints,
   String positiveButtonText = 'OK',
-  String negativeButtonText = 'Cancel',
+
+  /// Callback for the positive button, automatically closes the dialog
   Function()? onPositive,
-  Function()? onNegative,
 }) async =>
     showManagedDialog(
       context: context,
@@ -68,18 +131,12 @@ Future<T?> showSimpleManagedDialog<T>({
           popContext: context,
           title: Text(title),
           contentBuilder: (_, __) => Text(body),
-          constraints: constraints ?? const BoxConstraints(
-            maxWidth: 500,
-            minWidth: 300,
-          ),
+          constraints: constraints ??
+              const BoxConstraints(
+                maxWidth: 500,
+                minWidth: 300,
+              ),
           actions: (popContext) => [
-            ManagedDialogButton(
-              popContext: popContext,
-              text: negativeButtonText,
-              onPressed: () {
-                onNegative?.call();
-              },
-            ),
             ManagedDialogButton(
               popContext: popContext,
               text: positiveButtonText,
@@ -133,26 +190,37 @@ class ManagedDialogButton extends StatelessWidget {
   final VoidCallback? onPressed;
   final String text;
   final BuildContext popContext;
+  final bool isPrimary;
 
   const ManagedDialogButton({
     super.key,
     this.onPressed,
     this.text = 'Cancel',
+    this.isPrimary = false,
     required this.popContext,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Button(
-      child: Text(text),
-      onPressed: () async {
-        // Callbacks
-        onPressed?.call();
+    finalOnPressed() async {
+      // Callbacks
+      onPressed?.call();
 
-        // Close the dialog
-        closeDialog(popContext);
-        closeDialog(popContext);
-      },
+      // Close the dialog
+      closeDialog(popContext);
+      closeDialog(popContext);
+    }
+
+    if (isPrimary)
+      return FilledButton(
+        style: FluentTheme.of(context).buttonTheme.filledButtonStyle,
+        onPressed: finalOnPressed,
+        child: Text(text),
+      );
+
+    return Button(
+      onPressed: finalOnPressed,
+      child: Text(text),
     );
   }
 }

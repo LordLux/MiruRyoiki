@@ -1,6 +1,8 @@
 // import 'package:flutter/material.dart';
 // ignore_for_file: use_build_context_synchronously
 
+import 'dart:math' show min;
+
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_acrylic/window_effect.dart';
@@ -14,8 +16,11 @@ import 'dart:io';
 import '../enums.dart';
 import '../main.dart';
 import '../manager.dart';
+import '../models/formatter/action.dart';
+import '../models/series.dart';
 import '../services/navigation/dialogs.dart';
 import '../services/navigation/show_info.dart';
+import '../utils/logging.dart';
 import '../utils/registry_utils.dart';
 import '../models/library.dart';
 import '../theme.dart';
@@ -52,6 +57,590 @@ class _SettingsScreenState extends State<SettingsScreen> {
   FlyoutController controller = FlyoutController();
   Color tempColor = Colors.transparent;
   late double _headerHeight;
+  List<SeriesFormatPreview> _issuesPreview = [];
+  // ignore: unused_field
+  bool _isFormatting = false;
+
+  final ScrollController issueController = ScrollController();
+
+  Widget standard(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Standard Format Structure:', style: FluentTheme.of(context).typography.bodyStrong),
+        SizedBox(height: 12),
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Root series folder
+                RichText(
+                  text: TextSpan(
+                    children: [
+                      TextSpan(text: '📁 ', style: TextStyle(fontFamily: 'Segoe UI Emoji')),
+                      TextSpan(text: 'Series Name: ', style: FluentTheme.of(context).typography.body),
+                      TextSpan(
+                        text: '<any Windows compatible name>',
+                        style: TextStyle(color: Manager.accentColor.lightest, fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ),
+                ),
+                SizedBox(height: 8),
+
+                // Season folders
+                Padding(
+                  padding: EdgeInsets.only(left: 20),
+                  child: RichText(
+                    text: TextSpan(
+                      children: [
+                        TextSpan(text: '📁 ', style: TextStyle(fontFamily: 'Segoe UI Emoji')),
+                        TextSpan(text: 'Season Folders: ', style: FluentTheme.of(context).typography.body),
+                        TextSpan(
+                          text: 'Season XX',
+                          style: TextStyle(color: Manager.accentColor.lightest, fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
+                // Episode files
+                Padding(
+                  padding: EdgeInsets.only(left: 40),
+                  child: RichText(
+                    text: TextSpan(
+                      children: [
+                        TextSpan(text: '🎬 ', style: TextStyle(fontFamily: 'Segoe UI Emoji')),
+                        TextSpan(text: 'Episodes: ', style: FluentTheme.of(context).typography.body),
+                        TextSpan(
+                          text: 'XX - Episode Title.ext',
+                          style: TextStyle(color: Manager.accentColor.lightest, fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
+                SizedBox(height: 8),
+
+                // Related Media folder
+                Padding(
+                  padding: EdgeInsets.only(left: 20),
+                  child: RichText(
+                    text: TextSpan(
+                      children: [
+                        TextSpan(text: '📁 ', style: TextStyle(fontFamily: 'Segoe UI Emoji')),
+                        TextSpan(text: 'Related Media', style: FluentTheme.of(context).typography.bodyStrong),
+                      ],
+                    ),
+                  ),
+                ),
+
+                // Specials files
+                Padding(
+                  padding: EdgeInsets.only(left: 40),
+                  child: RichText(
+                    text: TextSpan(
+                      children: [
+                        TextSpan(text: '🎬 ', style: TextStyle(fontFamily: 'Segoe UI Emoji')),
+                        TextSpan(text: 'Specials: ', style: FluentTheme.of(context).typography.body),
+                        TextSpan(
+                          text: 'SPXX - Special Title.ext',
+                          style: TextStyle(color: Manager.accentColor.lightest, fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
+                // Movie files
+                Padding(
+                  padding: EdgeInsets.only(left: 40),
+                  child: RichText(
+                    text: TextSpan(
+                      children: [
+                        TextSpan(text: '🎬 ', style: TextStyle(fontFamily: 'Segoe UI Emoji')),
+                        TextSpan(text: 'Movies: ', style: FluentTheme.of(context).typography.body),
+                        TextSpan(
+                          text: 'Movie Title.ext',
+                          style: TextStyle(color: Manager.accentColor.lightest, fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        SizedBox(height: 4),
+        Text('Note: XX represents a 2 > digit number (01, 02, 100, etc.)', style: FluentTheme.of(context).typography.caption),
+      ],
+    );
+  }
+
+  // Show dialog to confirm formatting action
+  void _showSeriesFormatterDialog(BuildContext context) {
+    final library = Provider.of<Library>(context, listen: false);
+
+    if (library.series.isEmpty) {
+      snackBar('No series found in the library', severity: InfoBarSeverity.warning);
+      return;
+    }
+
+    showSimpleManagedDialog(
+      context: context,
+      id: 'formatSeriesConfirm',
+      title: 'Format Series',
+      builder: (context) {
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('This will scan your library and suggest changes to organize folders and files into a standard structure. Continue?'),
+            SizedBox(height: 16),
+            standard(context),
+            SizedBox(height: 16),
+            Text.rich(
+              TextSpan(
+                children: [
+                  TextSpan(text: 'This process will '),
+                  TextSpan(text: 'not', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+                  TextSpan(text: ' modify any files until you confirm the changes in the next dialog.'),
+                ],
+              ),
+              style: FluentTheme.of(context).typography.caption,
+            ),
+          ],
+        );
+      },
+      isPositiveButtonPrimary: true,
+      positiveButtonText: 'Scan Library and Preview Changes',
+      constraints: BoxConstraints(maxWidth: 600),
+      negativeButtonText: 'Cancel',
+      onPositive: () async {
+        setState(() {
+          _isFormatting = true;
+        });
+        try {
+          // Get all series paths
+          final seriesPaths = library.series.map((s) => s.path).toList();
+
+          // Run the formatter preview
+          final Map<String, SeriesFormatPreview> results = await formatLibrary(
+            seriesPaths: seriesPaths,
+            progressCallback: (processed, total) {
+              // You could update progress here if desired
+              logTrace('Formatter progress: $processed/$total');
+            },
+          );
+
+          // Process results
+          _showFormatterResults(context, results);
+        } catch (e, stackTrace) {
+          logErr('Error during series formatting', e, stackTrace);
+          Navigator.of(context).pop(); // Close loading dialog
+          snackBar('Error scanning library: $e', severity: InfoBarSeverity.error);
+        } finally {
+          setState(() {
+            _isFormatting = false;
+          });
+        }
+      },
+    );
+  }
+
+  // Show results dialog
+  void _showFormatterResults(BuildContext context, Map<String, SeriesFormatPreview> results) {
+    // Count total actions and issues
+    int totalActions = 0;
+    int seriesWithIssues = 0;
+    List<SeriesFormatPreview> issuesList = [];
+
+    for (final preview in results.values) {
+      totalActions += preview.actions.length;
+      if (preview.hasIssues) {
+        seriesWithIssues++;
+        issuesList.add(preview);
+      }
+    }
+
+    if (totalActions == 0) {
+      showSimpleOneButtonManagedDialog(
+        context: context,
+        id: 'formatterNoChanges',
+        title: 'No Changes Needed',
+        body: 'Your library is already well-organized! No changes are required.',
+        positiveButtonText: 'OK',
+      );
+      return;
+    }
+
+    // Update list of series with issues
+    setState(() {
+      _issuesPreview = issuesList;
+    });
+
+    // Show results with options
+    showManagedDialog(
+      context: context,
+      id: 'formatterResults',
+      title: 'Formatter Results',
+      enableBarrierDismiss: true,
+      builder: (context) => ManagedDialog(
+        popContext: context,
+        title: Text('Formatter Results'),
+        constraints: BoxConstraints(maxWidth: 900, maxHeight: 500),
+        contentBuilder: (_, constraints) {
+          return SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text.rich(
+                  TextSpan(
+                    children: [
+                      TextSpan(text: "Found ${results.length} series with $totalActions suggested changes.\n", style: FluentTheme.of(context).typography.subtitle),
+                      WidgetSpan(child: SizedBox(height: 16)),
+                      TextSpan(text: "Don't worry about the big number of changes, the majority of them are just renaming files and folders to match the standard structure.  ", style: FluentTheme.of(context).typography.caption),
+                      WidgetSpan(
+                        child: TooltipTheme(
+                          data: TooltipThemeData(waitDuration: const Duration(milliseconds: 100), preferBelow: true),
+                          child: Tooltip(
+                            richMessage: WidgetSpan(
+                              child: standard(context),
+                            ),
+                            child: Transform.translate(
+                              offset: Offset(0, -2),
+                              child: Icon(FluentIcons.info, size: 13, color: FluentTheme.of(context).resources.textFillColorPrimary.withOpacity(.5)),
+                            ),
+                          ),
+                        ),
+                      )
+                    ],
+                  ),
+                  style: FluentTheme.of(context).typography.bodyLarge,
+                ),
+                SizedBox(height: 12),
+
+                // Summary of actions
+                SizedBox(
+                  width: 500,
+                  child: Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Summary:', style: FluentTheme.of(context).typography.bodyStrong),
+                          SizedBox(height: 8),
+                          _buildSummaryItem('Series to modify:', '${results.length}'),
+                          _buildSummaryItem('Files to move:', '${_countActionType(results, ActionType.moveFile)}'),
+                          _buildSummaryItem('Files to rename:', '${_countActionType(results, ActionType.renameFile)}'),
+                          _buildSummaryItem('Folders to create:', '${_countActionType(results, ActionType.createFolder)}'),
+                          _buildSummaryItem('Folders to rename:', '${_countActionType(results, ActionType.renameFolder)}'),
+                          if (seriesWithIssues > 0) ...[
+                            SizedBox(height: 12),
+                            Text(
+                              'Warning: $seriesWithIssues series have potential issues that require your attention.',
+                              style: TextStyle(color: Colors.orange),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+        actions: (popContext) => [
+          if (seriesWithIssues > 0) ...[
+            // If there are issues, show three options
+            ManagedDialogButton(
+              popContext: popContext,
+              text: 'Cancel',
+              onPressed: () {
+                // Do nothing, just close the dialog
+              },
+            ),
+            ManagedDialogButton(
+              popContext: popContext,
+              text: 'Apply (Skip Issues)',
+              onPressed: () {
+                _applyFormatting(context, results, skipIssues: true);
+              },
+            ),
+            ManagedDialogButton(
+              popContext: popContext,
+              text: 'Apply All',
+              onPressed: () {
+                _applyFormatting(context, results, skipIssues: false);
+              },
+            ),
+          ] else ...[
+            // If no issues, just Apply or Cancel
+            ManagedDialogButton(
+              popContext: popContext,
+              text: 'Cancel',
+              onPressed: () {
+                // Do nothing, just close the dialog
+              },
+            ),
+            ManagedDialogButton(
+              popContext: popContext,
+              text: 'Apply Changes',
+              onPressed: () {
+                _applyFormatting(context, results, skipIssues: false);
+              },
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  // Apply the formatting changes
+  Future<void> _applyFormatting(BuildContext context, Map<String, SeriesFormatPreview> results, {required bool skipIssues}) async {
+    // Show loading dialog
+    showManagedDialog(
+      context: context,
+      id: 'applyingFormat',
+      title: 'Applying Changes',
+      enableBarrierDismiss: false,
+      builder: (context) => ManagedDialog(
+        popContext: context,
+        title: Text('Applying Changes'),
+        contentBuilder: (_, __) => Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ProgressRing(),
+              SizedBox(height: 16),
+              Text('Formatting your library...\nThis may take a moment.'),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    try {
+      int processed = 0;
+      int successful = 0;
+
+      for (final preview in results.values) {
+        processed++;
+
+        // Skip if there are issues and we're skipping issues
+        if (preview.hasIssues && skipIssues) {
+          continue;
+        }
+
+        // Apply the formatting
+        final success = await applySeriesFormatting(preview, skipIssues: skipIssues);
+        if (success) successful++;
+      }
+
+      // Close loading dialog
+      Navigator.of(context).pop();
+
+      // Show completion dialog
+      showSimpleManagedDialog(
+        context: context,
+        id: 'formattingComplete',
+        title: 'Formatting Complete',
+        body: 'Successfully formatted $successful out of $processed series.',
+        positiveButtonText: 'OK',
+        negativeButtonText: '',
+        onPositive: () {
+          // Refresh the library to show updated structure
+          final library = Provider.of<Library>(context, listen: false);
+          library.reloadLibrary();
+        },
+      );
+    } catch (e, stackTrace) {
+      logErr('Error applying formatting', e, stackTrace);
+      Navigator.of(context).pop(); // Close loading dialog
+      snackBar('Error applying formatting: $e', severity: InfoBarSeverity.error);
+    }
+  }
+
+// Helper method to build a summary item
+  Widget _buildSummaryItem(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4.0),
+      child: Row(
+        children: [
+          Text(label),
+          const Spacer(),
+          Text(value, style: const TextStyle(fontWeight: FontWeight.bold)),
+        ],
+      ),
+    );
+  }
+
+// Helper method to count actions of a specific type
+  int _countActionType(Map<String, SeriesFormatPreview> results, ActionType type) {
+    int count = 0;
+    for (final preview in results.values) {
+      count += preview.actions.where((a) => a.type == type).length;
+    }
+    return count;
+  }
+
+// Build a list item for a series with issues
+  Widget _buildSeriesIssueItem(BuildContext context, SeriesFormatPreview preview, Series? series, List previewSeries, int index) {
+    return Card(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Series poster
+          if (series != null)
+            Container(
+              width: 91 * 0.71,
+              height: 91,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(4),
+                image: series.effectivePosterPath != null
+                    ? DecorationImage(
+                        image: FileImage(File(series.effectivePosterPath!)),
+                        fit: BoxFit.contain,
+                      )
+                    : null,
+                color: FluentTheme.of(context).resources.controlStrokeColorDefault,
+              ),
+              child: series.effectivePosterPath == null ? Center(child: Icon(FluentIcons.picture, size: 24)) : null,
+            )
+          else
+            Container(
+              width: 91 * 0.71,
+              height: 91,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(4),
+                color: FluentTheme.of(context).resources.controlStrokeColorDefault,
+              ),
+              child: Center(child: Icon(FluentIcons.picture, size: 24)),
+            ),
+          SizedBox(width: 12),
+
+          // Series name and issues
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  series?.name ?? preview.seriesName,
+                  style: FluentTheme.of(context).typography.bodyStrong,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                SizedBox(height: 4),
+                Text(
+                  '${preview.actions.length} changes recommended',
+                  style: FluentTheme.of(context).typography.caption,
+                ),
+                SizedBox(height: 4),
+                if (preview.issues.length == 1)
+                  Text(
+                    'Issue: ${preview.issues.take(1).join(", ")}',
+                    style: TextStyle(color: Colors.orange),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                if (preview.issues.length > 1)
+                  Expander(
+                    header: Text('Issues (${preview.issues.length})', style: TextStyle(color: Colors.orange)),
+                    onStateChanged: (isExpanded) async {
+                      if (index == previewSeries.length - 1 && isExpanded) {
+                        final int frameUpdateNumber = 30;
+                        final int totalDuration = 150;
+                        for (int i = 0; i < totalDuration; i += (totalDuration / frameUpdateNumber).round()) {
+                          nextFrame(() {
+                            issueController.jumpTo(issueController.position.maxScrollExtent);
+                          });
+                          await Future.delayed(Duration(milliseconds: totalDuration ~/ frameUpdateNumber));
+                        }
+                      }
+                    },
+                    content: Column(crossAxisAlignment: CrossAxisAlignment.start, children: preview.issues.map((issue) => Text(issue)).toList()),
+                  ),
+              ],
+            ),
+          ),
+
+          // Action buttons
+          Row(
+            children: [
+              Tooltip(
+                message: 'View Series',
+                child: IconButton(
+                  icon: Icon(FluentIcons.view),
+                  onPressed: () {
+                    // Navigate to series
+                    _navigateToSeries(context, preview.seriesPath);
+                  },
+                ),
+              ),
+              SizedBox(width: 8),
+              Tooltip(
+                message: 'Apply Formatting',
+                child: IconButton(
+                  icon: Icon(FluentIcons.accept),
+                  onPressed: () {
+                    // Apply formatting just for this series
+                    _applyFormattingForSeries(context, preview);
+                  },
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Navigate to a series
+  void _navigateToSeries(BuildContext context, String seriesPath) {
+    // Get the AppRoot state via the global key
+    final appState = homeKey.currentState;
+    if (appState != null) {
+      // Close any open dialogs
+      Navigator.of(context).pop();
+
+      // Use the navigateToSeries method from AppRoot
+      appState.navigateToSeries(seriesPath);
+    }
+  }
+
+// Apply formatting for a single series
+  Future<void> _applyFormattingForSeries(BuildContext context, SeriesFormatPreview preview) async {
+    try {
+      final result = await applySeriesFormatting(preview, skipIssues: false);
+
+      if (result) {
+        // Remove from the list if successful
+        setState(() {
+          _issuesPreview.removeWhere((p) => p.seriesPath == preview.seriesPath);
+        });
+
+        snackBar('Formatting applied successfully', severity: InfoBarSeverity.success);
+
+        // Refresh the library
+        final library = Provider.of<Library>(context, listen: false);
+        library.reloadLibrary();
+      } else {
+        snackBar('Failed to apply formatting', severity: InfoBarSeverity.error);
+      }
+    } catch (e) {
+      logErr('Error applying formatting', e);
+      snackBar('Error: $e', severity: InfoBarSeverity.error);
+    }
+  }
 
   @override
   void initState() {
@@ -115,9 +704,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     dialogTitle: 'Select Library Folder',
                                   );
 
-                                  if (result != null) {
-                                    library.setLibraryPath(result);
-                                  }
+                                  if (result != null) library.setLibraryPath(result);
                                 },
                               ),
                             ],
@@ -141,6 +728,57 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     ),
                                   ),
                               ],
+                            ),
+                          ],
+
+                          const SizedBox(height: 24),
+                          Text(
+                            'Series Formatter',
+                            style: FluentTheme.of(context).typography.subtitle,
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            'The Series Formatter helps organize your media files into a standardized structure.',
+                            style: FluentTheme.of(context).typography.body,
+                          ),
+                          const SizedBox(height: 16),
+                          Row(
+                            children: [
+                              FilledButton(
+                                child: Text('Format Library Series'),
+                                onPressed: () => _showSeriesFormatterDialog(context),
+                              ),
+                            ],
+                          ),
+
+                          // This section will show series with formatting issues
+                          if (_issuesPreview.isNotEmpty) ...[
+                            const SizedBox(height: 24),
+                            Text('Last Scan: ', style: FluentTheme.of(context).typography.subtitle),
+                            const SizedBox(height: 12),
+                            Text(
+                              "Series that couldn't be automatically formatted (${_issuesPreview.length})",
+                              style: FluentTheme.of(context).typography.bodyStrong,
+                            ),
+                            const SizedBox(height: 8),
+                            Container(
+                              height: min(500, _issuesPreview.length * 100),
+                              decoration: BoxDecoration(
+                                border: Border.all(
+                                  color: FluentTheme.of(context).resources.controlStrokeColorDefault,
+                                ),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: ListView.builder(
+                                itemCount: _issuesPreview.length,
+                                controller: issueController,
+                                itemBuilder: (context, index) {
+                                  final preview = _issuesPreview[index];
+                                  final series = library.getSeriesByPath(preview.seriesPath);
+
+                                  return _buildSeriesIssueItem(context, preview, series, _issuesPreview, index);
+                                },
+                              ),
                             ),
                           ],
                         ],

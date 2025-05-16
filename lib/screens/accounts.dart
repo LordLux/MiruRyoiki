@@ -5,6 +5,7 @@ import 'package:miruryoiki/services/anilist/provider.dart';
 import 'package:provider/provider.dart';
 
 import '../utils/logging.dart';
+import '../widgets/loading_button.dart';
 import 'anilist_settings.dart';
 import 'settings.dart';
 
@@ -18,8 +19,6 @@ class AccountsScreen extends StatefulWidget {
 class AccountsScreenState extends State<AccountsScreen> {
   bool isLocalLoading = false;
 
-  bool showLoggedIn = false;
-
   @override
   Widget build(BuildContext context) {
     final anilistProvider = Provider.of<AnilistProvider>(context, listen: true);
@@ -31,20 +30,13 @@ class AccountsScreenState extends State<AccountsScreen> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text('Accounts'),
-            ToggleSwitch(
-                checked: showLoggedIn,
-                onChanged: (value) {
-                  setState(() {
-                    showLoggedIn = value;
-                  });
-                }),
           ],
         ),
       ),
       content: ListView(
         padding: const EdgeInsets.all(20),
         children: [
-          if (!showLoggedIn)
+          if (!anilistProvider.isLoggedIn) ...[
             SettingsCard(children: [
               AnilistCardTitle(),
               const SizedBox(height: 12),
@@ -54,43 +46,22 @@ class AccountsScreenState extends State<AccountsScreen> {
               ),
               Align(
                 alignment: Alignment.topRight,
-                child: Button(
-                  style: ButtonStyle(
-                    padding: WidgetStatePropertyAll(
-                      EdgeInsets.symmetric(
-                        vertical: 12,
-                        horizontal: (isLocalLoading || anilistProvider.isLoading) ? 24 : 32,
-                      ),
-                    ),
-                  ),
-                  onPressed: isButtonDisabled
-                      ? null
-                      : () async {
-                          if (isLocalLoading) return;
+                child: LoadingButton(
+                  isLoading: isLocalLoading || anilistProvider.isLoading,
+                  isButtonDisabled: isButtonDisabled,
+                  label: 'Connect Anilist',
+                  onPressed: () async {
+                    if (isLocalLoading) return;
 
-                          isLocalLoading = true;
+                    isLocalLoading = true;
 
-                          await anilistProvider.login();
-                          logInfo('Logging in to Anilist...');
-                        },
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Text('Connect Anilist'),
-                      if (isLocalLoading || anilistProvider.isLoading) ...[
-                        const SizedBox(width: 8),
-                        const SizedBox(
-                          width: 25,
-                          height: 25,
-                          child: ProgressRing(),
-                        )
-                      ],
-                    ],
-                  ),
+                    await anilistProvider.login();
+                    logInfo('Logging in to Anilist...');
+                  },
                 ),
               ),
-            ]),
-          if (showLoggedIn)
+            ])
+          ] else ...[
             SizedBox(
               height: 1500,
               child: SettingsCard(children: [
@@ -103,6 +74,7 @@ class AccountsScreenState extends State<AccountsScreen> {
                 )),
               ]),
             )
+          ]
         ],
       ),
     );
