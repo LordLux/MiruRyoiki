@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter_acrylic/window_effect.dart';
 import 'package:miruryoiki/main.dart';
+import 'package:miruryoiki/services/navigation/navigation.dart';
 import 'package:miruryoiki/utils/logging.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -33,6 +34,8 @@ class Manager {
   static void setState() {
     if (homeKey.currentState != null) homeKey.currentState!.setState(() {});
   }
+  
+  static NavigationManager get navigation => Provider.of<NavigationManager>(homeKey.currentContext!, listen: false);
 
   static SettingsManager get settings => Provider.of<SettingsManager>(homeKey.currentContext!, listen: false);
 

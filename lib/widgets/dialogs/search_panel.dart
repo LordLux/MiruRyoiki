@@ -1,11 +1,11 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:miruryoiki/main.dart';
 import 'package:provider/provider.dart';
-import '../models/series.dart';
-import '../models/anilist/anime.dart';
-import '../services/anilist/linking.dart';
-import '../services/anilist/provider.dart';
-import '../services/navigation/dialogs.dart';
+import '../../models/series.dart';
+import '../../models/anilist/anime.dart';
+import '../../services/anilist/linking.dart';
+import '../../services/anilist/provider.dart';
+import '../../services/navigation/dialogs.dart';
 
 class AnilistSearchPanel extends StatefulWidget {
   /// The series to link to Anilist.

@@ -91,6 +91,7 @@ class NavigationManager extends ChangeNotifier {
   }
 
   void _push(NavigationItem item) {
+    
     _stack.add(item);
     notifyListeners();
     _logCurrentStack();
@@ -98,7 +99,7 @@ class NavigationManager extends ChangeNotifier {
 
   bool goBack() {
     if (!canGoBack) return false;
-
+    
     _stack.removeLast();
     notifyListeners();
     _logCurrentStack();

@@ -9,8 +9,8 @@ import 'package:provider/provider.dart';
 import 'package:smooth_scroll_multiplatform/smooth_scroll_multiplatform.dart';
 import 'package:defer_pointer/defer_pointer.dart';
 
-import '../dialogs/link_anilist_multi.dart';
-import '../dialogs/poster_select.dart';
+import '../widgets/dialogs/link_anilist_multi.dart';
+import '../widgets/dialogs/poster_select.dart';
 import '../enums.dart';
 import '../manager.dart';
 import '../models/anilist/mapping.dart';
@@ -132,7 +132,7 @@ class SeriesScreenState extends State<SeriesScreen> {
               localPath: series!.anilistMappings[i].localPath,
               anilistId: anilistId,
               title: series!.anilistMappings[i].title,
-              lastSynced: DateTime.now(),
+              lastSynced: now,
               anilistData: anime,
             );
 

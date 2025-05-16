@@ -50,6 +50,7 @@ class AccountsScreenState extends State<AccountsScreen> {
                   isLoading: isLocalLoading || anilistProvider.isLoading,
                   isButtonDisabled: isButtonDisabled,
                   label: 'Connect Anilist',
+                  isAlreadyBig: true,
                   onPressed: () async {
                     if (isLocalLoading) return;
 

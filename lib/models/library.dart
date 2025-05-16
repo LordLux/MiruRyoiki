@@ -256,7 +256,7 @@ class Library with ChangeNotifier {
                 localPath: series.anilistMappings[j].localPath,
                 anilistId: anilistId,
                 title: series.anilistMappings[j].title,
-                lastSynced: DateTime.now(),
+                lastSynced: now,
                 anilistData: anime,
               );
             }
@@ -319,7 +319,7 @@ class Library with ChangeNotifier {
                 localPath: series.anilistMappings[j].localPath,
                 anilistId: anilistId,
                 title: series.anilistMappings[j].title,
-                lastSynced: DateTime.now(),
+                lastSynced: now,
                 anilistData: anime,
               );
             }
@@ -694,7 +694,7 @@ class Library with ChangeNotifier {
           localPath: path,
           anilistId: anilistId,
           title: title ?? series.anilistMappings[i].title,
-          lastSynced: DateTime.now(),
+          lastSynced: now,
         );
         isNewLink = true;
         break;
@@ -707,7 +707,7 @@ class Library with ChangeNotifier {
         localPath: path,
         anilistId: anilistId,
         title: title,
-        lastSynced: DateTime.now(),
+        lastSynced: now,
       ));
     }
 

@@ -5,6 +5,8 @@ import '../manager.dart';
 
 DateTime get now => DateTime.now();
 
+String get nowFormatted => '${now.hour}:${now.minute}:${now.second}.${now.millisecond.toString().padLeft(3, '0')}';
+
 Duration getDuration(Duration duration) {
   if (Manager.animationsEnabled) {
     // logTrace('Animation duration: ${duration.inMilliseconds} ms');

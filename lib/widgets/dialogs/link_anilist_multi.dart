@@ -3,13 +3,13 @@
 import 'dart:io';
 import 'package:fluent_ui/fluent_ui.dart';
 
-import '../main.dart';
-import '../manager.dart';
-import '../models/anilist/mapping.dart';
-import '../models/series.dart';
-import '../services/anilist/linking.dart';
-import '../services/navigation/dialogs.dart';
-import '../services/navigation/show_info.dart';
+import '../../main.dart';
+import '../../manager.dart';
+import '../../models/anilist/mapping.dart';
+import '../../models/series.dart';
+import '../../services/anilist/linking.dart';
+import '../../services/navigation/dialogs.dart';
+import '../../services/navigation/show_info.dart';
 import 'search_panel.dart';
 
 class AnilistLinkMultiDialog extends ManagedDialog {
@@ -34,26 +34,15 @@ class AnilistLinkMultiDialog extends ManagedDialog {
             onLink: onLink,
             constraints: constraints,
             onSave: (mappings) {
-              // Call the callback if provided
               onDialogComplete?.call(true, mappings);
 
               if (mappings.isEmpty) {
-                closeDialog(popContext, result: (true, <AnilistMapping>[]));
-                closeDialog(popContext, result: (true, <AnilistMapping>[]));
                 homeKey.currentState?.setState(() {});
                 return;
               }
-              closeDialog(popContext, result: (true, mappings));
-              closeDialog(popContext, result: (true, mappings));
               homeKey.currentState?.setState(() {});
             },
-            onCancel: () {
-              // Call the callback if provided
-              onDialogComplete?.call(null, <AnilistMapping>[]);
-
-              closeDialog(popContext, result: (null, <AnilistMapping>[]));
-              closeDialog(popContext, result: (null, <AnilistMapping>[]));
-            },
+            onCancel: () => onDialogComplete?.call(null, <AnilistMapping>[]),
           ),
           actions: (_) => [],
         );

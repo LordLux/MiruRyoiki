@@ -7,9 +7,11 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_acrylic/window_effect.dart';
 import 'package:miruryoiki/widgets/gradient_mask.dart';
+import 'package:miruryoiki/widgets/loading_button.dart';
 import 'package:provider/provider.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:recase/recase.dart';
+import 'package:smooth_scroll_multiplatform/smooth_scroll_multiplatform.dart';
 import 'package:toggle_switch/toggle_switch.dart' as toggle;
 import 'dart:io';
 
@@ -61,7 +63,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
   // ignore: unused_field
   bool _isFormatting = false;
 
+  final ScrollController _scrollController = ScrollController();
   final ScrollController issueController = ScrollController();
+
+  double prevPos = 0;
 
   Widget standard(BuildContext context) {
     return Column(
@@ -295,65 +300,70 @@ class _SettingsScreenState extends State<SettingsScreen> {
         constraints: BoxConstraints(maxWidth: 900, maxHeight: 500),
         contentBuilder: (_, constraints) {
           return SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text.rich(
-                  TextSpan(
-                    children: [
-                      TextSpan(text: "Found ${results.length} series with $totalActions suggested changes.\n", style: FluentTheme.of(context).typography.subtitle),
-                      WidgetSpan(child: SizedBox(height: 16)),
-                      TextSpan(text: "Don't worry about the big number of changes, the majority of them are just renaming files and folders to match the standard structure.  ", style: FluentTheme.of(context).typography.caption),
-                      WidgetSpan(
-                        child: TooltipTheme(
-                          data: TooltipThemeData(waitDuration: const Duration(milliseconds: 100), preferBelow: true),
-                          child: Tooltip(
-                            richMessage: WidgetSpan(
-                              child: standard(context),
-                            ),
-                            child: Transform.translate(
-                              offset: Offset(0, -2),
-                              child: Icon(FluentIcons.info, size: 13, color: FluentTheme.of(context).resources.textFillColorPrimary.withOpacity(.5)),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text.rich(
+                    TextSpan(
+                      children: [
+                        TextSpan(text: "Found ${results.length} series with $totalActions suggested changes.\n", style: FluentTheme.of(context).typography.subtitle),
+                        WidgetSpan(child: SizedBox(height: 16)),
+                        TextSpan(text: "Don't worry about the big number of changes, the majority of them are just renaming files and folders to match the standard structure.  ", style: FluentTheme.of(context).typography.caption),
+                        WidgetSpan(
+                          child: TooltipTheme(
+                            data: TooltipThemeData(waitDuration: const Duration(milliseconds: 100), preferBelow: true),
+                            child: Tooltip(
+                              richMessage: WidgetSpan(
+                                child: standard(context),
+                              ),
+                              child: Transform.translate(
+                                offset: Offset(0, -2),
+                                child: Icon(FluentIcons.info, size: 13, color: FluentTheme.of(context).resources.textFillColorPrimary.withOpacity(.5)),
+                              ),
                             ),
                           ),
-                        ),
-                      )
-                    ],
+                        )
+                      ],
+                    ),
+                    style: FluentTheme.of(context).typography.bodyLarge,
                   ),
-                  style: FluentTheme.of(context).typography.bodyLarge,
-                ),
-                SizedBox(height: 12),
-
-                // Summary of actions
-                SizedBox(
-                  width: 500,
-                  child: Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('Summary:', style: FluentTheme.of(context).typography.bodyStrong),
-                          SizedBox(height: 8),
-                          _buildSummaryItem('Series to modify:', '${results.length}'),
-                          _buildSummaryItem('Files to move:', '${_countActionType(results, ActionType.moveFile)}'),
-                          _buildSummaryItem('Files to rename:', '${_countActionType(results, ActionType.renameFile)}'),
-                          _buildSummaryItem('Folders to create:', '${_countActionType(results, ActionType.createFolder)}'),
-                          _buildSummaryItem('Folders to rename:', '${_countActionType(results, ActionType.renameFolder)}'),
-                          if (seriesWithIssues > 0) ...[
-                            SizedBox(height: 12),
-                            Text(
-                              'Warning: $seriesWithIssues series have potential issues that require your attention.',
-                              style: TextStyle(color: Colors.orange),
-                            ),
-                          ],
-                        ],
+                  SizedBox(height: 12),
+              
+                  // Summary of actions
+                  Center(
+                    child: SizedBox(
+                      width: 500,
+                      child: Card(
+                        child: Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Summary:', style: FluentTheme.of(context).typography.bodyStrong),
+                              SizedBox(height: 8),
+                              _buildSummaryItem('Series to modify:', '${results.length}'),
+                              _buildSummaryItem('Files to move:', '${_countActionType(results, ActionType.moveFile)}'),
+                              _buildSummaryItem('Files to rename:', '${_countActionType(results, ActionType.renameFile)}'),
+                              _buildSummaryItem('Folders to create:', '${_countActionType(results, ActionType.createFolder)}'),
+                              _buildSummaryItem('Folders to rename:', '${_countActionType(results, ActionType.renameFolder)}'),
+                              if (seriesWithIssues > 0) ...[
+                                SizedBox(height: 12),
+                                Text(
+                                  'Warning: $seriesWithIssues series have potential issues that require your attention.',
+                                  style: TextStyle(color: Colors.orange),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
                       ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           );
         },
@@ -411,6 +421,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       id: 'applyingFormat',
       title: 'Applying Changes',
       enableBarrierDismiss: false,
+      barrierDismissCheck: () => false,
       builder: (context) => ManagedDialog(
         popContext: context,
         title: Text('Applying Changes'),
@@ -560,9 +571,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         final int frameUpdateNumber = 30;
                         final int totalDuration = 150;
                         for (int i = 0; i < totalDuration; i += (totalDuration / frameUpdateNumber).round()) {
-                          nextFrame(() {
-                            issueController.jumpTo(issueController.position.maxScrollExtent);
-                          });
+                          nextFrame(() => issueController.jumpTo(issueController.position.maxScrollExtent));
+
                           await Future.delayed(Duration(milliseconds: totalDuration ~/ frameUpdateNumber));
                         }
                       }
@@ -642,10 +652,30 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+  void issueScrollMove() {
+    // Get current position
+    final currentPos = issueController.position.pixels;
+
+    // Log for debugging
+    log('Issue controller position: $currentPos (previous: $prevPos)');
+
+    // Compare with previous position before updating
+    if (currentPos != prevPos) {
+      log('Issue controller scrolled to: 200');
+      nextFrame(() => _scrollController.animateTo(380, duration: Duration(milliseconds: 300), curve: Curves.ease));
+    }
+
+    // Update previous position after comparison
+    prevPos = currentPos;
+  }
+
   @override
   void initState() {
     super.initState();
     _headerHeight = ScreenUtils.minHeaderHeight;
+
+    issueController.addListener(issueScrollMove);
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final settings = Provider.of<SettingsManager>(context, listen: false);
       tempColor = settings.accentColor;
@@ -669,502 +699,514 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 child: FadingEdgeScrollView(
                   fadeEdges: const EdgeInsets.only(top: 70, bottom: 32),
                   debug: false,
-                  child: ListView(
-                    padding: const EdgeInsets.only(left: 20, right: 20, top: 80, bottom: 20),
-                    children: [
-                      // Library location section
-                      SettingsCard(
+                  child: DynMouseScroll(
+                    enableSmoothScroll: Manager.animationsEnabled,
+                    scrollSpeed: 2.0,
+                    controller: _scrollController,
+                    durationMS: 300,
+                    animationCurve: Curves.ease,
+                    // ignore: no_leading_underscores_for_local_identifiers
+                    builder: (context, _controller, physics) {
+                      return ListView(
+                        controller: _controller,
+                        physics: physics,
+                        padding: const EdgeInsets.only(left: 20, right: 20, top: 80, bottom: 20),
                         children: [
-                          Text(
-                            'Library Location',
-                            style: FluentTheme.of(context).typography.subtitle,
-                          ),
-                          const SizedBox(height: 12),
-                          Text(
-                            'Select the folder that contains your media library. '
-                            'The app will scan this folder for video files.',
-                            style: FluentTheme.of(context).typography.body,
-                          ),
-                          const SizedBox(height: 24),
-                          Row(
+                          // Library location section
+                          SettingsCard(
                             children: [
-                              Expanded(
-                                child: TextBox(
-                                  placeholder: 'No folder selected',
-                                  controller: TextEditingController(text: library.libraryPath ?? ''),
-                                  readOnly: true,
-                                  enabled: false,
-                                ),
+                              Text(
+                                'Library Location',
+                                style: FluentTheme.of(context).typography.subtitle,
                               ),
-                              const SizedBox(width: 12),
-                              FilledButton(
-                                child: const Text('Browse'),
-                                onPressed: () async {
-                                  final result = await FilePicker.platform.getDirectoryPath(
-                                    dialogTitle: 'Select Library Folder',
-                                  );
-
-                                  if (result != null) library.setLibraryPath(result);
-                                },
+                              const SizedBox(height: 12),
+                              Text(
+                                'Select the folder that contains your media library. '
+                                'The app will scan this folder for video files.',
+                                style: FluentTheme.of(context).typography.body,
                               ),
-                            ],
-                          ),
-                          if (library.libraryPath != null) ...[
-                            const SizedBox(height: 16),
-                            Row(
-                              children: [
-                                Button(
-                                  child: const Text('Scan Library'),
-                                  onPressed: () {
-                                    library.reloadLibrary();
-                                  },
-                                ),
-                                const SizedBox(width: 8),
-                                if (library.isLoading)
-                                  SizedBox.square(
-                                    dimension: 20,
-                                    child: const ProgressRing(
-                                      strokeWidth: 2,
-                                    ),
-                                  ),
-                              ],
-                            ),
-                          ],
-
-                          const SizedBox(height: 24),
-                          Text(
-                            'Series Formatter',
-                            style: FluentTheme.of(context).typography.subtitle,
-                          ),
-                          const SizedBox(height: 12),
-                          Text(
-                            'The Series Formatter helps organize your media files into a standardized structure.',
-                            style: FluentTheme.of(context).typography.body,
-                          ),
-                          const SizedBox(height: 16),
-                          Row(
-                            children: [
-                              FilledButton(
-                                child: Text('Format Library Series'),
-                                onPressed: () => _showSeriesFormatterDialog(context),
-                              ),
-                            ],
-                          ),
-
-                          // This section will show series with formatting issues
-                          if (_issuesPreview.isNotEmpty) ...[
-                            const SizedBox(height: 24),
-                            Text('Last Scan: ', style: FluentTheme.of(context).typography.subtitle),
-                            const SizedBox(height: 12),
-                            Text(
-                              "Series that couldn't be automatically formatted (${_issuesPreview.length})",
-                              style: FluentTheme.of(context).typography.bodyStrong,
-                            ),
-                            const SizedBox(height: 8),
-                            Container(
-                              height: min(500, _issuesPreview.length * 100),
-                              decoration: BoxDecoration(
-                                border: Border.all(
-                                  color: FluentTheme.of(context).resources.controlStrokeColorDefault,
-                                ),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: ListView.builder(
-                                itemCount: _issuesPreview.length,
-                                controller: issueController,
-                                itemBuilder: (context, index) {
-                                  final preview = _issuesPreview[index];
-                                  final series = library.getSeriesByPath(preview.seriesPath);
-
-                                  return _buildSeriesIssueItem(context, preview, series, _issuesPreview, index);
-                                },
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
-                      const SizedBox(height: 24),
-                      // Appearance section
-                      Builder(builder: (context) {
-                        final appTheme = context.watch<AppTheme>();
-
-                        return SettingsCard(
-                          children: [
-                            Text(
-                              'Appearance',
-                              style: FluentTheme.of(context).typography.subtitle,
-                            ),
-                            const SizedBox(height: 12),
-                            // Theme and font effect settings
-                            ...[
-                              Text('Edit how MiruRyoiki looks and feels.', style: FluentTheme.of(context).typography.body),
                               const SizedBox(height: 24),
-                              Row(children: [
-                                // Theme
-                                const Text('Theme:'),
-                                const SizedBox(width: 12),
-                                ComboBox<ThemeMode>(
-                                  value: appTheme.mode,
-                                  items: <ThemeMode>[ThemeMode.system, ThemeMode.light, ThemeMode.dark].map((ThemeMode value) {
-                                    return ComboBoxItem<ThemeMode>(
-                                      value: value,
-                                      child: Text(value.name.titleCase),
-                                    );
-                                  }).toList(),
-                                  onChanged: (ThemeMode? newValue) async {
-                                    appTheme.mode = newValue!;
-                                    appTheme.setEffect(appTheme.windowEffect, context);
-                                    settings.set('themeMode', newValue.name_);
-
-                                    await Future.delayed(const Duration(milliseconds: 300));
-                                    appTheme.setEffect(appTheme.windowEffect, context);
-                                  },
-                                ),
-                              ]),
-                            ],
-                            const SizedBox(height: 12),
-                            // Effect
-                            ...[
                               Row(
                                 children: [
                                   Expanded(
-                                    child: Row(
-                                      children: [
-                                        const Text('Effect:'),
-                                        const SizedBox(width: 12),
-                                        ComboBox<WindowEffect>(
-                                          value: appTheme.windowEffect,
-                                          items: _PlatformWindowEffects.map((WindowEffect value) {
-                                            return ComboBoxItem<WindowEffect>(
-                                              value: value,
-                                              child: Text(value.name_),
-                                            );
-                                          }).toList(),
-                                          onChanged: (WindowEffect? newValue) {
-                                            appTheme.windowEffect = newValue!;
-                                            appTheme.setEffect(newValue, context);
-                                            settings.set('windowEffect', newValue.name);
-                                          },
-                                        ),
-                                      ],
+                                    child: TextBox(
+                                      placeholder: 'No folder selected',
+                                      controller: TextEditingController(text: library.libraryPath ?? ''),
+                                      readOnly: true,
+                                      enabled: false,
                                     ),
                                   ),
-                                  if (!Manager.isWin11)
-                                    TooltipTheme(
-                                      data: TooltipThemeData(waitDuration: const Duration(milliseconds: 100)),
-                                      child: Tooltip(
-                                        message: 'Mica Effect is unfortunately only available on Windows 11',
-                                        child: Opacity(opacity: .5, child: Icon(FluentIcons.info)),
-                                      ),
-                                    ),
-                                ],
-                              ),
-                            ],
-                            const SizedBox(height: 12),
-                            // Accent Color
-                            ...[
-                              Row(
-                                children: [
-                                  const Text('Accent Color:'),
                                   const SizedBox(width: 12),
-                                  FlyoutTarget(
-                                    controller: controller,
-                                    child: GestureDetector(
-                                      child: Container(
-                                        width: 34,
-                                        height: 34,
-                                        decoration: BoxDecoration(
-                                          color: settings.accentColor,
-                                          border: Border.all(
-                                            color: settings.accentColor.lerpWith(Colors.black, .25),
-                                            width: 1.25,
-                                          ),
-                                          borderRadius: BorderRadius.circular(4),
-                                        ),
-                                      ),
-                                      onTapDown: (_) {
-                                        // ignore: avoid_single_cascade_in_expression_statements
-                                        controller.showFlyout(
-                                          autoModeConfiguration: FlyoutAutoConfiguration(
-                                            preferredMode: FlyoutPlacementMode.right,
-                                            horizontal: true,
-                                          ),
-                                          barrierDismissible: true,
-                                          dismissOnPointerMoveAway: true,
-                                          dismissWithEsc: true,
-                                          navigatorKey: rootNavigatorKey.currentState,
-                                          builder: (context) {
-                                            return FlyoutContent(
-                                              child: ColorPicker(
-                                                color: settings.accentColor,
-                                                onChanged: (color) {
-                                                  tempColor = color;
-                                                },
-                                                minValue: 100,
-                                                isAlphaSliderVisible: true,
-                                                colorSpectrumShape: ColorSpectrumShape.box,
-                                                isMoreButtonVisible: false,
-                                                isColorSliderVisible: false,
-                                                isColorChannelTextInputVisible: false,
-                                                isHexInputVisible: false,
-                                                isAlphaEnabled: false,
-                                              ),
-                                            );
-                                          },
-                                        )..then((_) {
-                                            settings.accentColor = tempColor;
-                                            appTheme.color = settings.accentColor.toAccentColor();
-                                            settings.set('accentColor', settings.accentColor.toHex(leadingHashSign: true));
-                                          });
-                                      },
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                            // Extra dim for acrylic and mica
-                            if (appTheme.windowEffect == WindowEffect.aero || appTheme.windowEffect == WindowEffect.acrylic || appTheme.windowEffect == WindowEffect.mica) //
-                              ...[
-                              const SizedBox(height: 12),
-                              Row(
-                                children: [
-                                  const Text('Dim'),
-                                  const SizedBox(width: 12),
-                                  toggle.ToggleSwitch(
-                                    animate: true,
-                                    animationDuration: getDuration(dimDuration).inMilliseconds,
-                                    initialLabelIndex: context.watch<AppTheme>().dim.index,
-                                    totalSwitches: Dim.values.length,
-                                    activeFgColor: Colors.white,
-                                    activeBgColors: [
-                                      [FluentTheme.of(context).accentColor.light],
-                                      [FluentTheme.of(context).accentColor.lighter],
-                                      [FluentTheme.of(context).accentColor.lightest],
-                                    ],
-                                    minWidth: 130.0,
-                                    labels: [
-                                      Dim.values[0].name_,
-                                      Dim.values[1].name_,
-                                      Dim.values[2].name_,
-                                    ],
-                                    onToggle: (int? value) {
-                                      final appTheme = context.read<AppTheme>();
-                                      appTheme.dim = Dim.values[value!];
-                                      settings.set('dim', Dim.values[value].name_.toLowerCase());
+                                  LoadingButton(
+                                    label: 'Scan Library',
+                                    onPressed: () {
+                                      library.reloadLibrary();
                                     },
+                                    isLoading: library.isLoading,
+                                    isSmall: true,
+                                    isAlreadyBig: true,
                                   ),
-                                ],
-                              ),
-                            ],
-                            const SizedBox(height: 12),
-                            // Font Size
-                            ...[
-                              Row(
-                                children: [
-                                  const Text('Font Size:'),
-                                  const SizedBox(width: 12),
-                                  ComboBox<double>(
-                                    value: appTheme.fontSize,
-                                    items: <double>[10, 12, 14, 16, 18, 20].map((double value) {
-                                      return ComboBoxItem<double>(
-                                        value: value,
-                                        child: Text(value.toString()),
+                                  const SizedBox(width: 6),
+                                  FilledButton(
+                                    child: const Text('Browse'),
+                                    onPressed: () async {
+                                      final result = await FilePicker.platform.getDirectoryPath(
+                                        dialogTitle: 'Select Library Folder',
                                       );
-                                    }).toList(),
-                                    onChanged: (double? newValue) {
-                                      appTheme.fontSize = newValue!;
-                                      settings.set('fontSize', newValue);
-                                    },
-                                  ),
-                                ],
-                              ),
-                            ],
-                            const SizedBox(height: 12),
-                            // Disable Animations
-                            ...[
-                              Row(
-                                children: [
-                                  Text(
-                                    'Disable Most Animations',
-                                    style: FluentTheme.of(context).typography.body,
-                                  ),
-                                  const SizedBox(width: 12),
-                                  ToggleSwitch(
-                                    checked: settings.disableAnimations,
-                                    content: settings.disableAnimations ? const Text('Animations Disabled') : const Text('Animations Enabled'),
-                                    onChanged: (value) {
-                                      settings.disableAnimations = value;
-                                      settings.set('disableAnimations', value);
-                                    },
-                                  ),
-                                ],
-                              ),
-                            ],
-                            const SizedBox(height: 12),
-                            // Library colors
-                            ...[
-                              Row(
-                                children: [
-                                  Text(
-                                    'Library Hover',
-                                    style: FluentTheme.of(context).typography.body,
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Builder(builder: (context) {
-                                    final List<double> customWidths = [80.0, 130, 150, 80.0];
-                                    return Flexible(
-                                      child: toggle.ToggleSwitch(
-                                        animate: true,
-                                        multiLineText: true,
-                                        animationDuration: getDuration(dimDuration).inMilliseconds,
-                                        initialLabelIndex: settings.libColView.index,
-                                        totalSwitches: LibraryColorView.values.length,
-                                        activeFgColor: Colors.white,
-                                        activeBgColor: [FluentTheme.of(context).accentColor.lighter],
-                                        customWidths: customWidths,
-                                        labels: [
-                                          LibraryColorView.values[0].name_,
-                                          LibraryColorView.values[1].name_,
-                                          LibraryColorView.values[2].name_,
-                                          LibraryColorView.values[3].name_,
-                                        ],
-                                        onToggle: (int? value) {
-                                          settings.libColView = LibraryColorView.values[value!];
-                                          settings.set('libColView', LibraryColorView.values[value].name_);
-                                        },
-                                      ),
-                                    );
-                                  }),
-                                ],
-                              ),
-                            ],
-                            ...[
-                              // Add this to the UI settings section
-                              const SizedBox(height: 12),
-                              Text('Dominant Color Source:'),
-                              const SizedBox(height: 12),
-                              EnumToggle<DominantColorSource>(
-                                enumValues: DominantColorSource.values,
-                                labelExtractor: (value) => value.name_,
-                                currentValue: settings.dominantColorSource,
-                                onChanged: (value) {
-                                  showSimpleManagedDialog(
-                                    context: context,
-                                    id: 'dominantColorSource',
-                                    title: 'Recalculate Colors?',
-                                    body: 'Would you like to recalculate all dominant colors using the new source?',
-                                    onPositive: () {
-                                      settings.dominantColorSource = value;
-                                      settings.set('dominantColorSource', value.name_);
-                                      final library = Provider.of<Library>(context, listen: false);
-                                      library.calculateDominantColors(forceRecalculate: true);
 
-                                      snackBar(
-                                        'Dominant colors recalculated using ${value.name_} source.',
-                                        severity: InfoBarSeverity.info,
+                                      if (result != null) library.setLibraryPath(result);
+                                    },
+                                  ),
+                                ],
+                              ),
+                              if (library.libraryPath != null) ...[],
+
+                              const SizedBox(height: 24),
+                              Text(
+                                'Series Formatter',
+                                style: FluentTheme.of(context).typography.subtitle,
+                              ),
+                              const SizedBox(height: 12),
+                              Text(
+                                'The Series Formatter helps organize your media files into a standardized structure.',
+                                style: FluentTheme.of(context).typography.body,
+                              ),
+                              const SizedBox(height: 16),
+                              Row(
+                                children: [
+                                  FilledButton(
+                                    child: Text('Format Library Series'),
+                                    onPressed: () => _showSeriesFormatterDialog(context),
+                                  ),
+                                ],
+                              ),
+
+                              // This section will show series with formatting issues
+                              if (_issuesPreview.isNotEmpty) ...[
+                                const SizedBox(height: 24),
+                                Text('Last Scan: ', style: FluentTheme.of(context).typography.subtitle),
+                                const SizedBox(height: 12),
+                                Text(
+                                  "Series that couldn't be automatically formatted (${_issuesPreview.length})",
+                                  style: FluentTheme.of(context).typography.bodyStrong,
+                                ),
+                                const SizedBox(height: 8),
+                                Container(
+                                  height: min(500, _issuesPreview.length * 100),
+                                  decoration: BoxDecoration(
+                                    border: Border.all(
+                                      color: FluentTheme.of(context).resources.controlStrokeColorDefault,
+                                    ),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: DynMouseScroll(
+                                    enableSmoothScroll: Manager.animationsEnabled,
+                                    scrollAmount: 200,
+                                    controller: issueController,
+                                    durationMS: 300,
+                                    animationCurve: Curves.ease,
+                                    builder: (context, newIssueController, physics) {
+                                      return ListView.builder(
+                                        itemCount: _issuesPreview.length,
+                                        controller: newIssueController,
+                                        physics: physics,
+                                        itemBuilder: (context, index) {
+                                          final preview = _issuesPreview[index];
+                                          final series = library.getSeriesByPath(preview.seriesPath);
+
+                                          return _buildSeriesIssueItem(context, preview, series, _issuesPreview, index);
+                                        },
                                       );
                                     },
-                                  );
-                                },
-                              ),
+                                  ),
+                                ),
+                              ],
                             ],
-                            //
-                          ],
-                        );
-                      }),
-                      const SizedBox(height: 24),
-                      // Behavior section
-                      SettingsCard(
-                        children: [
-                          Text(
-                            'Behavior',
-                            style: FluentTheme.of(context).typography.subtitle,
-                          ),
-                          const SizedBox(height: 12),
-                          // Text(
-                          //   'Automatically load Anilist posters for series without local posters.',
-                          //   style: FluentTheme.of(context).typography.body,
-                          // ),
-                          // const SizedBox(height: 12),
-                          // ToggleSwitch(
-                          //   checked: settings.autoLoadAnilistPosters,
-                          //   content: const Text('Anilist posters will be automatically loaded for series without local images'),
-                          //   onChanged: (value) {
-                          //     settings.autoLoadAnilistPosters = value;
-                          //     settings.set('autoLoadAnilistPosters', value);
-                          //   },
-                          // ),
-                          // //
-                          // const SizedBox(height: 24),
-                          Row(
-                            children: [
-                              Column(
-                                children: [
-                                  Text(
-                                    'Default Poster source for series.',
-                                    style: FluentTheme.of(context).typography.body,
-                                  ),
-                                  const SizedBox(height: 12),
-                                  ToggleSwitch(
-                                    checked: Manager.defaultPosterSource == ImageSource.autoAnilist,
-                                    content: Manager.defaultPosterSource == ImageSource.autoAnilist ? Text('Prefer Anilist Posters') : Text('Prefer Local Posters'),
-                                    onChanged: (value) {
-                                      settings.defaultPosterSource = value ? ImageSource.autoAnilist : ImageSource.autoLocal;
-                                      settings.set('defaultPosterSource', settings.defaultPosterSource.name_);
-                                    },
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(width: 24),
-                              Column(
-                                children: [
-                                  Text(
-                                    'Default Banner source for series.',
-                                    style: FluentTheme.of(context).typography.body,
-                                  ),
-                                  const SizedBox(height: 12),
-                                  ToggleSwitch(
-                                    checked: Manager.defaultBannerSource == ImageSource.autoAnilist,
-                                    content: Manager.defaultBannerSource == ImageSource.autoAnilist ? Text('Prefer Anilist Banners') : Text('Prefer Local Banners'),
-                                    onChanged: (value) {
-                                      settings.defaultBannerSource = value ? ImageSource.autoAnilist : ImageSource.autoLocal;
-                                      settings.set('defaultBannerSource', settings.defaultBannerSource.name_);
-                                    },
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 24),
-                      // About section
-                      SettingsCard(
-                        children: [
-                          Text(
-                            'About ${Manager.appTitle}',
-                            style: FluentTheme.of(context).typography.subtitle,
-                          ),
-                          const SizedBox(height: 12),
-                          const Text(
-                            '${Manager.appTitle} is a video tracking application that integrates with '
-                            'Media Player Classic: Home Cinema to track your watched videos.',
                           ),
                           const SizedBox(height: 24),
-                          const InfoBar(
-                            title: Text('MPC-HC Integration'),
-                            content: Padding(
-                              padding: EdgeInsets.only(right: 8.0),
-                              child: Text(
-                                'This app reads data from the Windows Registry to detect videos played in MPC-HC. '
-                                'Please ensure MPC-HC is installed and configured properly.',
+                          // Appearance section
+                          Builder(builder: (context) {
+                            final appTheme = context.watch<AppTheme>();
+
+                            return SettingsCard(
+                              children: [
+                                Text(
+                                  'Appearance',
+                                  style: FluentTheme.of(context).typography.subtitle,
+                                ),
+                                const SizedBox(height: 12),
+                                // Theme and font effect settings
+                                ...[
+                                  Text('Edit how MiruRyoiki looks and feels.', style: FluentTheme.of(context).typography.body),
+                                  const SizedBox(height: 24),
+                                  Row(children: [
+                                    // Theme
+                                    const Text('Theme:'),
+                                    const SizedBox(width: 12),
+                                    ComboBox<ThemeMode>(
+                                      value: appTheme.mode,
+                                      items: <ThemeMode>[ThemeMode.system, ThemeMode.light, ThemeMode.dark].map((ThemeMode value) {
+                                        return ComboBoxItem<ThemeMode>(
+                                          value: value,
+                                          child: Text(value.name.titleCase),
+                                        );
+                                      }).toList(),
+                                      onChanged: (ThemeMode? newValue) async {
+                                        appTheme.mode = newValue!;
+                                        appTheme.setEffect(appTheme.windowEffect, context);
+                                        settings.set('themeMode', newValue.name_);
+
+                                        await Future.delayed(const Duration(milliseconds: 300));
+                                        appTheme.setEffect(appTheme.windowEffect, context);
+                                      },
+                                    ),
+                                  ]),
+                                ],
+                                const SizedBox(height: 12),
+                                // Effect
+                                ...[
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: Row(
+                                          children: [
+                                            const Text('Effect:'),
+                                            const SizedBox(width: 12),
+                                            ComboBox<WindowEffect>(
+                                              value: appTheme.windowEffect,
+                                              items: _PlatformWindowEffects.map((WindowEffect value) {
+                                                return ComboBoxItem<WindowEffect>(
+                                                  value: value,
+                                                  child: Text(value.name_),
+                                                );
+                                              }).toList(),
+                                              onChanged: (WindowEffect? newValue) {
+                                                appTheme.windowEffect = newValue!;
+                                                appTheme.setEffect(newValue, context);
+                                                settings.set('windowEffect', newValue.name);
+                                              },
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      if (!Manager.isWin11)
+                                        TooltipTheme(
+                                          data: TooltipThemeData(waitDuration: const Duration(milliseconds: 100)),
+                                          child: Tooltip(
+                                            message: 'Mica Effect is unfortunately only available on Windows 11',
+                                            child: Opacity(opacity: .5, child: Icon(FluentIcons.info)),
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                ],
+                                const SizedBox(height: 12),
+                                // Accent Color
+                                ...[
+                                  Row(
+                                    children: [
+                                      const Text('Accent Color:'),
+                                      const SizedBox(width: 12),
+                                      FlyoutTarget(
+                                        controller: controller,
+                                        child: GestureDetector(
+                                          child: Container(
+                                            width: 34,
+                                            height: 34,
+                                            decoration: BoxDecoration(
+                                              color: settings.accentColor,
+                                              border: Border.all(
+                                                color: settings.accentColor.lerpWith(Colors.black, .25),
+                                                width: 1.25,
+                                              ),
+                                              borderRadius: BorderRadius.circular(4),
+                                            ),
+                                          ),
+                                          onTapDown: (_) {
+                                            // ignore: avoid_single_cascade_in_expression_statements
+                                            controller.showFlyout(
+                                              autoModeConfiguration: FlyoutAutoConfiguration(
+                                                preferredMode: FlyoutPlacementMode.right,
+                                                horizontal: true,
+                                              ),
+                                              barrierDismissible: true,
+                                              dismissOnPointerMoveAway: true,
+                                              dismissWithEsc: true,
+                                              navigatorKey: rootNavigatorKey.currentState,
+                                              builder: (context) {
+                                                return FlyoutContent(
+                                                  child: ColorPicker(
+                                                    color: settings.accentColor,
+                                                    onChanged: (color) {
+                                                      tempColor = color;
+                                                    },
+                                                    minValue: 100,
+                                                    isAlphaSliderVisible: true,
+                                                    colorSpectrumShape: ColorSpectrumShape.box,
+                                                    isMoreButtonVisible: false,
+                                                    isColorSliderVisible: false,
+                                                    isColorChannelTextInputVisible: false,
+                                                    isHexInputVisible: false,
+                                                    isAlphaEnabled: false,
+                                                  ),
+                                                );
+                                              },
+                                            )..then((_) {
+                                                settings.accentColor = tempColor;
+                                                appTheme.color = settings.accentColor.toAccentColor();
+                                                settings.set('accentColor', settings.accentColor.toHex(leadingHashSign: true));
+                                              });
+                                          },
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                                // Extra dim for acrylic and mica
+                                if (appTheme.windowEffect == WindowEffect.aero || appTheme.windowEffect == WindowEffect.acrylic || appTheme.windowEffect == WindowEffect.mica) //
+                                  ...[
+                                  const SizedBox(height: 12),
+                                  Row(
+                                    children: [
+                                      const Text('Dim'),
+                                      const SizedBox(width: 12),
+                                      toggle.ToggleSwitch(
+                                        animate: true,
+                                        animationDuration: getDuration(dimDuration).inMilliseconds,
+                                        initialLabelIndex: context.watch<AppTheme>().dim.index,
+                                        totalSwitches: Dim.values.length,
+                                        activeFgColor: Colors.white,
+                                        activeBgColors: [
+                                          [FluentTheme.of(context).accentColor.light],
+                                          [FluentTheme.of(context).accentColor.lighter],
+                                          [FluentTheme.of(context).accentColor.lightest],
+                                        ],
+                                        minWidth: 130.0,
+                                        labels: [
+                                          Dim.values[0].name_,
+                                          Dim.values[1].name_,
+                                          Dim.values[2].name_,
+                                        ],
+                                        onToggle: (int? value) {
+                                          final appTheme = context.read<AppTheme>();
+                                          appTheme.dim = Dim.values[value!];
+                                          settings.set('dim', Dim.values[value].name_.toLowerCase());
+                                        },
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                                const SizedBox(height: 12),
+                                // Font Size
+                                ...[
+                                  Row(
+                                    children: [
+                                      const Text('Font Size:'),
+                                      const SizedBox(width: 12),
+                                      ComboBox<double>(
+                                        value: appTheme.fontSize,
+                                        items: <double>[10, 12, 14, 16, 18, 20].map((double value) {
+                                          return ComboBoxItem<double>(
+                                            value: value,
+                                            child: Text(value.toString()),
+                                          );
+                                        }).toList(),
+                                        onChanged: (double? newValue) {
+                                          appTheme.fontSize = newValue!;
+                                          settings.set('fontSize', newValue);
+                                        },
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                                const SizedBox(height: 12),
+                                // Disable Animations
+                                ...[
+                                  Row(
+                                    children: [
+                                      Text(
+                                        'Disable Most Animations',
+                                        style: FluentTheme.of(context).typography.body,
+                                      ),
+                                      const SizedBox(width: 12),
+                                      ToggleSwitch(
+                                        checked: settings.disableAnimations,
+                                        content: settings.disableAnimations ? const Text('Animations Disabled') : const Text('Animations Enabled'),
+                                        onChanged: (value) {
+                                          settings.disableAnimations = value;
+                                          settings.set('disableAnimations', value);
+                                        },
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                                const SizedBox(height: 12),
+                                // Library colors
+                                ...[
+                                  Row(
+                                    children: [
+                                      Text(
+                                        'Library Hover',
+                                        style: FluentTheme.of(context).typography.body,
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Builder(builder: (context) {
+                                        final List<double> customWidths = [80.0, 130, 150, 80.0];
+                                        return Flexible(
+                                          child: toggle.ToggleSwitch(
+                                            animate: true,
+                                            multiLineText: true,
+                                            animationDuration: getDuration(dimDuration).inMilliseconds,
+                                            initialLabelIndex: settings.libColView.index,
+                                            totalSwitches: LibraryColorView.values.length,
+                                            activeFgColor: Colors.white,
+                                            activeBgColor: [FluentTheme.of(context).accentColor.lighter],
+                                            customWidths: customWidths,
+                                            labels: [
+                                              LibraryColorView.values[0].name_,
+                                              LibraryColorView.values[1].name_,
+                                              LibraryColorView.values[2].name_,
+                                              LibraryColorView.values[3].name_,
+                                            ],
+                                            onToggle: (int? value) {
+                                              settings.libColView = LibraryColorView.values[value!];
+                                              settings.set('libColView', LibraryColorView.values[value].name_);
+                                            },
+                                          ),
+                                        );
+                                      }),
+                                    ],
+                                  ),
+                                ],
+                                ...[
+                                  // Add this to the UI settings section
+                                  const SizedBox(height: 12),
+                                  Text('Dominant Color Source:'),
+                                  const SizedBox(height: 12),
+                                  EnumToggle<DominantColorSource>(
+                                    enumValues: DominantColorSource.values,
+                                    labelExtractor: (value) => value.name_,
+                                    currentValue: settings.dominantColorSource,
+                                    onChanged: (value) {
+                                      showSimpleManagedDialog(
+                                        context: context,
+                                        id: 'dominantColorSource',
+                                        title: 'Recalculate Colors?',
+                                        body: 'Would you like to recalculate all dominant colors using the new source?',
+                                        onPositive: () {
+                                          settings.dominantColorSource = value;
+                                          settings.set('dominantColorSource', value.name_);
+                                          final library = Provider.of<Library>(context, listen: false);
+                                          library.calculateDominantColors(forceRecalculate: true);
+
+                                          snackBar(
+                                            'Dominant colors recalculated using ${value.name_} source.',
+                                            severity: InfoBarSeverity.info,
+                                          );
+                                        },
+                                      );
+                                    },
+                                  ),
+                                ],
+                                //
+                              ],
+                            );
+                          }),
+                          const SizedBox(height: 24),
+                          // Behavior section
+                          SettingsCard(
+                            children: [
+                              Text(
+                                'Behavior',
+                                style: FluentTheme.of(context).typography.subtitle,
                               ),
-                            ),
-                            severity: InfoBarSeverity.info,
+                              const SizedBox(height: 12),
+                              // Text(
+                              //   'Automatically load Anilist posters for series without local posters.',
+                              //   style: FluentTheme.of(context).typography.body,
+                              // ),
+                              // const SizedBox(height: 12),
+                              // ToggleSwitch(
+                              //   checked: settings.autoLoadAnilistPosters,
+                              //   content: const Text('Anilist posters will be automatically loaded for series without local images'),
+                              //   onChanged: (value) {
+                              //     settings.autoLoadAnilistPosters = value;
+                              //     settings.set('autoLoadAnilistPosters', value);
+                              //   },
+                              // ),
+                              // //
+                              // const SizedBox(height: 24),
+                              Row(
+                                children: [
+                                  Column(
+                                    children: [
+                                      Text(
+                                        'Default Poster source for series.',
+                                        style: FluentTheme.of(context).typography.body,
+                                      ),
+                                      const SizedBox(height: 12),
+                                      ToggleSwitch(
+                                        checked: Manager.defaultPosterSource == ImageSource.autoAnilist,
+                                        content: Manager.defaultPosterSource == ImageSource.autoAnilist ? Text('Prefer Anilist Posters') : Text('Prefer Local Posters'),
+                                        onChanged: (value) {
+                                          settings.defaultPosterSource = value ? ImageSource.autoAnilist : ImageSource.autoLocal;
+                                          settings.set('defaultPosterSource', settings.defaultPosterSource.name_);
+                                        },
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(width: 24),
+                                  Column(
+                                    children: [
+                                      Text(
+                                        'Default Banner source for series.',
+                                        style: FluentTheme.of(context).typography.body,
+                                      ),
+                                      const SizedBox(height: 12),
+                                      ToggleSwitch(
+                                        checked: Manager.defaultBannerSource == ImageSource.autoAnilist,
+                                        content: Manager.defaultBannerSource == ImageSource.autoAnilist ? Text('Prefer Anilist Banners') : Text('Prefer Local Banners'),
+                                        onChanged: (value) {
+                                          settings.defaultBannerSource = value ? ImageSource.autoAnilist : ImageSource.autoLocal;
+                                          settings.set('defaultBannerSource', settings.defaultBannerSource.name_);
+                                        },
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 24),
+                          // About section
+                          SettingsCard(
+                            children: [
+                              Text(
+                                'About ${Manager.appTitle}',
+                                style: FluentTheme.of(context).typography.subtitle,
+                              ),
+                              const SizedBox(height: 12),
+                              const Text(
+                                '${Manager.appTitle} is a video tracking application that integrates with '
+                                'Media Player Classic: Home Cinema to track your watched videos.',
+                              ),
+                              const SizedBox(height: 24),
+                              const InfoBar(
+                                title: Text('MPC-HC Integration'),
+                                content: Padding(
+                                  padding: EdgeInsets.only(right: 8.0),
+                                  child: Text(
+                                    'This app reads data from the Windows Registry to detect videos played in MPC-HC. '
+                                    'Please ensure MPC-HC is installed and configured properly.',
+                                  ),
+                                ),
+                                severity: InfoBarSeverity.info,
+                              ),
+                            ],
                           ),
                         ],
-                      ),
-                    ],
+                      );
+                    },
                   ),
                 ),
               ),
