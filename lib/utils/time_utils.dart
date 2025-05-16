@@ -22,10 +22,19 @@ Duration get shortStickyHeaderDuration => Duration(milliseconds: stickyHeaderDur
 
 Duration get dimDuration => getDuration(const Duration(milliseconds: 200));
 
-
 /// Runs a function after the current frame is rendered.
 ///
 /// This is useful for ensuring that the UI is fully built before executing
-void nextFrame(VoidCallback function) {
-  WidgetsBinding.instance.addPostFrameCallback((_) => function());
+void nextFrame(
+  /// a function, optionally with a delay.
+  VoidCallback function, {
+  /// delay in milliseconds before running the function 
+  int delay = 0,
+}) {
+  if (delay > 0)
+    Future.delayed(Duration(milliseconds: delay), () => _runAfterFrame(function));
+  else
+    _runAfterFrame(function);
 }
+
+void _runAfterFrame(VoidCallback function) => WidgetsBinding.instance.addPostFrameCallback((_) => function());
