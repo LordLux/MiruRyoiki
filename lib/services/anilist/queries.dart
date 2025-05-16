@@ -22,9 +22,12 @@ class AnilistService {
     final authenticated = await _authService.init();
 
     if (authenticated) {
+      logTrace('2 Setting up GraphQL client...');
       _setupGraphQLClient();
       return true;
     }
+    
+    logTrace('2 AnilistService initialization failed, not authenticated');
     return false;
   }
 
@@ -39,6 +42,7 @@ class AnilistService {
       cache: GraphQLCache(),
       link: authLink.concat(httpLink),
     );
+    logTrace('2 GraphQL client setup complete');
   }
 
   /// Start the login flow
@@ -248,7 +252,7 @@ class AnilistService {
   Future<Map<String, AnilistUserList>> getUserAnimeLists({String? userName, int? userId}) async {
     if (_client == null) return {};
     
-    logTrace('Fetching ]anime lists from Anilist for user $userName ($userId)...');
+    logTrace('2 Fetching ]anime lists from Anilist for user $userName ($userId)...');
 
     const listsQuery = r'''
       query GetUserAnimeLists($userName: String, $userId: Int) {
@@ -308,7 +312,7 @@ class AnilistService {
       );
 
       if (result.hasException) {
-        logErr('Error getting anime lists', result.exception);
+        logErr('2 Error getting anime lists', result.exception);
         return {};
       }
 

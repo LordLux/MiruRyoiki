@@ -37,7 +37,7 @@ class _SeriesCardState extends State<SeriesCard> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (widget.series.effectivePosterPath != null && //
           widget.series.preferredPosterSource == ImageSource.autoAnilist &&
-          widget.series.anilistData?.posterImage != null) {
+          widget.series.anilistPosterUrl != null) {
         _loadImage(); // Re-evaluate after initial build
       }
     });

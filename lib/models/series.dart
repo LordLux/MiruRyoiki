@@ -90,9 +90,17 @@ class Series {
   // The currently selected Anilist ID for display purposes
   int? _primaryAnilistId;
 
-  /// Preferred source for the images
+  /// Preferred source for the Poster
   ImageSource? preferredPosterSource;
+
+  /// Preferred source for the Banner
   ImageSource? preferredBannerSource;
+
+  /// Cached URL for Anilist Poster
+  String? _anilistPosterUrl;
+
+  /// Cached URL for Anilist Banner
+  String? _anilistBannerUrl;
 
   Series({
     required this.name,
@@ -106,9 +114,13 @@ class Series {
     Color? dominantColor,
     this.preferredPosterSource,
     this.preferredBannerSource,
+    String? anilistPoster,
+    String? anilistBanner,
     int? primaryAnilistId,
   })  : _anilistData = anilistData,
         _dominantColor = dominantColor,
+        _anilistPosterUrl = anilistPoster,
+        _anilistBannerUrl = anilistBanner,
         _primaryAnilistId = primaryAnilistId ?? anilistMappings.firstOrNull?.anilistId;
 
   Series copyWith({
@@ -124,6 +136,8 @@ class Series {
     ImageSource? preferredPosterSource,
     ImageSource? preferredBannerSource,
     int? primaryAnilistId,
+    String? anilistPoster,
+    String? anilistBanner,
   }) {
     return Series(
       name: name ?? this.name,
@@ -138,6 +152,8 @@ class Series {
       preferredPosterSource: preferredPosterSource ?? this.preferredPosterSource,
       preferredBannerSource: preferredBannerSource ?? this.preferredBannerSource,
       primaryAnilistId: primaryAnilistId ?? this._primaryAnilistId,
+      anilistPoster: anilistPoster ?? this._anilistPosterUrl,
+      anilistBanner: anilistBanner ?? this._anilistBannerUrl,
     );
   }
 
@@ -147,11 +163,10 @@ class Series {
 Series(
   name: $name,
   path: '$path', 
-  relatedMedia: $relatedMedia,
-  preferredPosterSource: ${preferredPosterSource?.name_ ?? 'None'}, folderPosterPath: '${PathUtils.getFileName(folderPosterPath ?? '')}',
-  preferredBannerSource: ${preferredBannerSource?.name_ ?? 'None'}, folderBannerPath: '${PathUtils.getFileName(folderBannerPath ?? '')}',
-  anilistMappings: $anilistMappings,
   dominantColor: ${_dominantColor?.toHex() ?? 'None'},
+  anilistData: ${_anilistData ?? 'None'},
+  anilistPosterUrl: ${_anilistPosterUrl ?? 'None'},
+  anilistBannerUrl: ${_anilistBannerUrl ?? 'None'},
 )''';
   }
 
@@ -168,6 +183,9 @@ Series(
 
   set anilistData(AnilistAnime? value) {
     _anilistData = value;
+    _anilistPosterUrl = value?.posterImage;
+    _anilistBannerUrl = value?.bannerImage;
+
     _dataVersion++;
   }
 
@@ -246,6 +264,10 @@ Series(
     return null;
   }
 
+  // Add getters
+  String? get anilistPosterUrl => _anilistPosterUrl ?? _anilistData?.posterImage;
+  String? get anilistBannerUrl => _anilistBannerUrl ?? _anilistData?.bannerImage;
+
   /// Calculate and cache the dominant color from the image
   Future<Color?> calculateDominantColor({bool forceRecalculate = false}) async {
     // If color already calculated and not forced, return cached color
@@ -297,7 +319,7 @@ Series(
         return null;
       }
     }
-    
+
     // Calculate color using compute to avoid UI blocking
     try {
       // Use compute to process on a background thread
@@ -368,6 +390,8 @@ Series(
 
   /// JSON serialization
   Map<String, dynamic> toJson() {
+    log("ani poster: $_anilistPosterUrl\n"
+        "ani banner: $_anilistBannerUrl");
     return {
       'name': name,
       'path': path,
@@ -379,6 +403,8 @@ Series(
       'dominantColor': _dominantColor?.value,
       'dataVersion': _dataVersion,
       'primaryAnilistId': _primaryAnilistId,
+      'anilistPosterUrl': _anilistPosterUrl ?? _anilistData?.posterImage,
+      'anilistBannerUrl': _anilistBannerUrl ?? _anilistData?.bannerImage,
       if (preferredPosterSource != null) 'preferredPosterSource': preferredPosterSource!.name_,
       if (preferredBannerSource != null) 'preferredBannerSource': preferredBannerSource!.name_,
     };
@@ -507,6 +533,9 @@ Series(
         relatedMedia: relatedMedia,
         anilistMappings: mappings,
         dominantColor: dominantColor,
+        anilistPoster: json['anilistPosterUrl'] as String?,
+        anilistBanner: json['anilistBannerUrl'] as String?,
+        // anilistData is not serialized directly, but retrieved on demand
         // preferredPosterSource and preferredBannerSource
         // are null by default to be set by the settings
       );
@@ -551,6 +580,7 @@ Series(
       } catch (e) {
         logDebug('Error setting preferredBannerSource: $e');
       }
+
       return series;
     } catch (e) {
       // If anything fails critically, create a minimal valid series
@@ -576,6 +606,8 @@ Series(
     ImageSource? preferredPosterSource,
     ImageSource? preferredBannerSource,
     Color? dominantColor,
+    String? anilistPoster,
+    String? anilistBanner,
   }) {
     final series = Series(
       name: name,
@@ -588,10 +620,11 @@ Series(
       dominantColor: dominantColor,
       preferredPosterSource: preferredPosterSource,
       preferredBannerSource: preferredBannerSource,
+      anilistData: anilistData,
+      primaryAnilistId: primaryAnilistId,
+      anilistBanner: anilistBanner,
+      anilistPoster: anilistPoster,
     );
-
-    series._primaryAnilistId = primaryAnilistId;
-    series._anilistData = anilistData;
 
     return series;
   }
@@ -664,28 +697,28 @@ Series(
 
     // Determine available options
     final bool hasLocalPoster = folderPosterPath != null;
-    final bool hasAnilistPoster = _anilistData?.posterImage != null;
+    final bool hasAnilistPoster = anilistPosterUrl != null;
 
     // Apply fallback logic based on source preference
     switch (effectiveSource) {
       case ImageSource.local:
-        return hasLocalPoster ? folderPosterPath : (hasAnilistPoster ? _anilistData?.posterImage : null);
+        return hasLocalPoster ? folderPosterPath : (hasAnilistPoster ? anilistPosterUrl : null);
 
       case ImageSource.anilist:
-        return hasAnilistPoster ? _anilistData?.posterImage : (hasLocalPoster ? folderPosterPath : null);
+        return hasAnilistPoster ? anilistPosterUrl : (hasLocalPoster ? folderPosterPath : null);
 
       case ImageSource.autoLocal:
-        return hasLocalPoster ? folderPosterPath : (hasAnilistPoster ? _anilistData?.posterImage : null);
+        return hasLocalPoster ? folderPosterPath : (hasAnilistPoster ? anilistPosterUrl : null);
 
       case ImageSource.autoAnilist:
-        return hasAnilistPoster ? _anilistData?.posterImage : (hasLocalPoster ? folderPosterPath : null);
+        return hasAnilistPoster ? anilistPosterUrl : (hasLocalPoster ? folderPosterPath : null);
     }
   }
 
   /// Getter to check if the poster actually being used is from Anilist
   bool get isAnilistPoster {
     if (effectivePosterPath == null) return false;
-    return effectivePosterPath == _anilistData?.posterImage;
+    return effectivePosterPath == anilistPosterUrl;
   }
 
   /// Getter to check if the poster actually being used is from a local file
@@ -702,28 +735,28 @@ Series(
 
     // Determine available options
     final bool hasLocalBanner = folderBannerPath != null;
-    final bool hasAnilistBanner = _anilistData?.bannerImage != null;
+    final bool hasAnilistBanner = anilistBannerUrl != null;
 
     // Apply fallback logic based on source preference
     switch (effectiveSource) {
       case ImageSource.local:
-        return hasLocalBanner ? folderBannerPath : (hasAnilistBanner ? _anilistData?.bannerImage : null);
+        return hasLocalBanner ? folderBannerPath : (hasAnilistBanner ? anilistBannerUrl : null);
 
       case ImageSource.anilist:
-        return hasAnilistBanner ? _anilistData?.bannerImage : (hasLocalBanner ? folderBannerPath : null);
+        return hasAnilistBanner ? anilistBannerUrl : (hasLocalBanner ? folderBannerPath : null);
 
       case ImageSource.autoLocal:
-        return hasLocalBanner ? folderBannerPath : (hasAnilistBanner ? _anilistData?.bannerImage : null);
+        return hasLocalBanner ? folderBannerPath : (hasAnilistBanner ? anilistBannerUrl : null);
 
       case ImageSource.autoAnilist:
-        return hasAnilistBanner ? _anilistData?.bannerImage : (hasLocalBanner ? folderBannerPath : null);
+        return hasAnilistBanner ? anilistBannerUrl : (hasLocalBanner ? folderBannerPath : null);
     }
   }
 
   /// Getter to check if the banner actually being used is from Anilist
   bool get isAnilistBanner {
     if (effectiveBannerPath == null) return false;
-    return effectiveBannerPath == _anilistData?.bannerImage;
+    return effectiveBannerPath == anilistBannerUrl;
   }
 
   /// Getter to check if the banner actually being used is from a local file
@@ -731,55 +764,4 @@ Series(
     if (effectiveBannerPath == null) return false;
     return effectiveBannerPath == folderBannerPath;
   }
-}
-
-class Series_ {
-  /// Name of the series from the File System
-  final String? name;
-
-  /// Path for the series from the File System
-  final String? path;
-
-  /// Poster path for the series from the File System
-  final String? folderPosterPath;
-
-  /// Poster path for the series from the File System
-  final String? folderBannerPath;
-
-  /// List of seasons for the series from the File System
-  final List<Season>? seasons;
-
-  /// List of related media (ONA/OVA) for the series from the File System
-  final List<Episode>? relatedMedia;
-
-  /// Anilist IDs for the series
-  List<AnilistMapping>? anilistMappings;
-
-  /// Anilist data for the series
-  final AnilistAnime? anilistData;
-
-  /// Cached dominant color from poster image
-  final Color? dominantColor;
-
-  // The currently selected Anilist ID for display purposes
-  final int? primaryAnilistId;
-
-  /// Preferred source for the images
-  final ImageSource? preferredPosterSource;
-  final ImageSource? preferredBannerSource;
-
-  Series_({
-    this.name,
-    this.path,
-    this.folderPosterPath,
-    this.folderBannerPath,
-    this.seasons,
-    this.relatedMedia,
-    this.anilistMappings,
-    this.anilistData,
-    this.dominantColor,
-    this.preferredPosterSource,
-    this.preferredBannerSource,
-    this.primaryAnilistId,
-  });
 }

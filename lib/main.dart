@@ -110,7 +110,7 @@ class _MyAppState extends State<MyApp> {
     super.initState();
 
     // Initialize providers
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
+    nextFrame(() async {
       // Initialize AppLinks
       _appLinks = AppLinks();
 
@@ -131,21 +131,26 @@ class _MyAppState extends State<MyApp> {
 
       setState(() {}); // Force UI refresh
 
+      // 1 Initialize library
       await libraryProvider.initialize();
       appTheme.setEffect(appTheme.windowEffect, rootNavigatorKey.currentContext!);
 
-      final scanFuture = libraryProvider.scanLibrary();
-      final anilistFuture = anilistProvider.initialize();
+      // 2 Initialize Anilist API
+      await anilistProvider.initialize();
 
-      setState(() {/* Update UI to show library */});
+      // 3 Scan Library
+      // await libraryProvider.scanLibrary();
 
-      await Future.wait([scanFuture, anilistFuture]);
-      await Future.delayed(const Duration(milliseconds: kDebugMode ? 200 : 50));
+      // 4 Validate Cache
+      await libraryProvider.ensureCacheValidated();
 
-      libraryProvider.loadAnilistPostersForLibrary(onProgress: (loaded, total) {
-        if (loaded % 5 == 0 || loaded == total) {
+      await Future.delayed(const Duration(milliseconds: kDebugMode ? 1200 : 50));
+
+      // 5 Load posters for library
+      await libraryProvider.loadAnilistPostersForLibrary(onProgress: (loaded, total) {
+        if (loaded % 2 == 0 || loaded == total) {
           // Force UI refresh every 5 items or on completion
-          setState(() {});
+          Manager.setState();
         }
       });
     });
@@ -302,12 +307,12 @@ class _AppRootState extends State<AppRoot> {
     // save the current scroll position
     if (seriesController.hasClients) {
       _savedScrollPosition = seriesController.offset;
-      logTrace('Saved scroll position: $_savedScrollPosition');
+      // logTrace('Saved scroll position: $_savedScrollPosition');
     }
   }
 
 // Restore saved scroll position and grid column count
-  void _restoreContextAfterSwitch() {
+  void _restoreContextAfterSwitch() {//TODO fix scrolled to the bottom gets pushed a little bit up???
     // Use post frame callback to ensure the grid is built
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (seriesController.hasClients) {
@@ -315,7 +320,7 @@ class _AppRootState extends State<AppRoot> {
         final maxScroll = seriesController.position.maxScrollExtent;
         final scrollTo = _savedScrollPosition.clamp(0.0, maxScroll);
         seriesController.jumpTo(scrollTo);
-        logTrace('Restored scroll position: $scrollTo');
+        // logTrace('Restored scroll position: $scrollTo');
       }
     });
     // Delay the transition to avoid flickering
@@ -717,7 +722,7 @@ class _AppRootState extends State<AppRoot> {
       // closeDialog(context);
       return true;
     } else if (_isSeriesView) {
-      log('Exiting series view');
+      // log('Exiting series view');
       exitSeriesView();
       return true;
     } else if (navManager.canGoBack) {

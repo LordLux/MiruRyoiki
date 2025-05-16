@@ -1,5 +1,6 @@
 import 'package:flutter/widgets.dart';
 import 'package:miruryoiki/enums.dart';
+import 'package:path/path.dart';
 
 class AnilistAnime {
   final int id;
@@ -63,6 +64,53 @@ class AnilistAnime {
       trending: json['trending'] as int?,
       rankings: json['rankings'] != null && (json['rankings'] as List).isNotEmpty ? (json['rankings'] as List).first['rank'] : null,
     );
+  }
+  
+  AnilistAnime copyWith({
+    int? id,
+    String? bannerImage,
+    String? posterImage,
+    String? dominantColor,
+    AnilistTitle? title,
+    String? description,
+    int? meanScore,
+    int? popularity,
+    int? favourites,
+    String? status,
+    String? format,
+    int? episodes,
+    int? seasonYear,
+    String? season,
+    List<String>? genres,
+    int? averageScore,
+    int? trending,
+    int? rankings,
+  }) {
+    return AnilistAnime(
+      id: id ?? this.id,
+      bannerImage: bannerImage ?? this.bannerImage,
+      posterImage: posterImage ?? this.posterImage,
+      dominantColor: dominantColor ?? this.dominantColor,
+      title: title ?? this.title,
+      description: description ?? this.description,
+      meanScore: meanScore ?? this.meanScore,
+      popularity: popularity ?? this.popularity,
+      favourites: favourites ?? this.favourites,
+      status: status ?? this.status,
+      format: format ?? this.format,
+      episodes: episodes ?? this.episodes,
+      seasonYear: seasonYear ?? this.seasonYear,
+      season: season ?? this.season,
+      genres: genres ?? this.genres,
+      averageScore: averageScore ?? this.averageScore,
+      trending: trending ?? this.trending,
+      rankings: rankings ?? this.rankings,
+    );
+  }
+
+  @override
+  String toString() {
+    return 'AnilistAnime(id: $id, title: ${title.romaji}, status: $status, episodes: $episodes, bannerImage: ${basename(bannerImage ?? '')}, posterImage: ${basename(posterImage ?? '')})';
   }
 }
 

@@ -129,7 +129,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 Button(
                                   child: const Text('Scan Library'),
                                   onPressed: () {
-                                    library.scanLibrary();
+                                    library.reloadLibrary();
                                   },
                                 ),
                                 const SizedBox(width: 8),

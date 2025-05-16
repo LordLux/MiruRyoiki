@@ -2,9 +2,11 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:collection/collection.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:miruryoiki/enums.dart';
 import 'package:miruryoiki/utils/logging.dart';
+import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
 
 import '../manager.dart';
@@ -30,6 +32,7 @@ class Library with ChangeNotifier {
 
   bool _initialized = false;
   bool get initialized => _initialized;
+  bool _cacheValidated = false;
 
   Timer? _autoSaveTimer;
   Timer? _saveDebouncer;
@@ -48,43 +51,61 @@ class Library with ChangeNotifier {
     if (!_initialized) {
       await _loadLibrary();
       _initialized = true;
-
-      // async cache validation
-      nextFrame(() => cacheValidation());
     }
   }
 
   Future<void> cacheValidation() async {
-    if (!_initialized) {
+    if (!_cacheValidated) {
+      logTrace('4 Ensuring cache validation...');
       final imageCache = ImageCacheService();
       await imageCache.init();
 
       // Validate cache for all series with Anilist data
       for (final series in _series) {
+        // First check the series' primary data (what's shown in UI)
         if (series.anilistData?.posterImage != null) {
-          // Verify and reconnect poster image
           final cachedPosterPath = await imageCache.getCachedImagePath(series.anilistData!.posterImage!);
-          if (cachedPosterPath == null && series.anilistData!.posterImage != null) {
-            // If not in cache but URL exists, cache it
+          if (cachedPosterPath == null) {
             imageCache.cacheImage(series.anilistData!.posterImage!);
-            logDebug('Re-caching poster for: ${series.name}');
+            logDebug('4 Re-caching poster for: ${series.name}');
+          }
+        }
+
+        if (series.anilistData?.bannerImage != null) {
+          final cachedBannerPath = await imageCache.getCachedImagePath(series.anilistData!.bannerImage!);
+          if (cachedBannerPath == null) {
+            imageCache.cacheImage(series.anilistData!.bannerImage!);
+            logDebug('4 Re-caching banner for: ${series.name}');
+          }
+        }
+
+        // Then check each mapping's anilist data as a fallback
+        for (final mapping in series.anilistMappings) {
+          if (mapping.anilistData?.posterImage != null && mapping.anilistData?.posterImage != series.anilistData?.posterImage) {
+            final cachedPath = await imageCache.getCachedImagePath(mapping.anilistData!.posterImage!);
+            if (cachedPath == null) {
+              imageCache.cacheImage(mapping.anilistData!.posterImage!);
+              logDebug('4 Re-caching mapping poster for: ${series.name}');
+            }
           }
 
-          // Verify and reconnect banner image
-          if (series.anilistData?.bannerImage != null) {
-            final cachedBannerPath = await imageCache.getCachedImagePath(series.anilistData!.bannerImage!);
-            if (cachedBannerPath == null) {
-              // If not in cache but URL exists, cache it
-              imageCache.cacheImage(series.anilistData!.bannerImage!);
-              logDebug('Re-caching banner for: ${series.name}');
+          if (mapping.anilistData?.bannerImage != null && mapping.anilistData?.bannerImage != series.anilistData?.bannerImage) {
+            final cachedPath = await imageCache.getCachedImagePath(mapping.anilistData!.bannerImage!);
+            if (cachedPath == null) {
+              imageCache.cacheImage(mapping.anilistData!.bannerImage!);
+              logDebug('4 Re-caching mapping banner for: ${series.name}');
             }
           }
         }
       }
 
-      _initialized = true;
+      _cacheValidated = true;
       notifyListeners();
     }
+  }
+
+  Future<void> ensureCacheValidated() async {
+    if (!_cacheValidated) await cacheValidation();
   }
 
   void _initAutoSave() {
@@ -107,6 +128,22 @@ class Library with ChangeNotifier {
     super.dispose();
   }
 
+  Future<void> reloadLibrary() async {
+    if (_libraryPath == null || _isLoading) return;
+    logDebug('Reloading library...');
+    // snackBar('Reloading Library...', severity: InfoBarSeverity.info);
+    await cacheValidation();
+    await scanLibrary();
+    await loadAnilistPostersForLibrary(onProgress: (loaded, total) {
+      if (loaded % 2 == 0 || loaded == total) {
+        // Force UI refresh every 5 items or on completion
+        Manager.setState();
+      }
+    });
+    logDebug('Finished Reloading Library');
+    // snackBar('Library Reloaded', severity: InfoBarSeverity.success);
+  }
+
   /// Load Anilist posters for series that have links but no local images
   Future<void> loadAnilistPostersForLibrary({Function(int loaded, int total)? onProgress}) async {
     final linkService = SeriesLinkService();
@@ -124,16 +161,30 @@ class Library with ChangeNotifier {
         final effectiveSource = series.preferredPosterSource ?? Manager.defaultPosterSource;
         final shouldUseAnilist = effectiveSource == ImageSource.anilist || effectiveSource == ImageSource.autoAnilist;
 
+        // First check if the series itself has poster data
+        if (series.anilistPosterUrl != null) {
+          final String? cached = await imageCache.getCachedImagePath(series.anilistPosterUrl!);
+          log('5 TEST cached: $cached, series: ${series.name}, poster: ${basename(series.anilistPosterUrl!)}');
+          if (cached != null) {
+            log('5 Poster for ${series.name} is already cached in series: ${series.anilistPosterUrl!}');
+            alreadyCached.add(series);
+            recalculateColor.add(series);
+            continue; // Skip checking mappings if series already has data
+          }
+        }
+
         // Check if we can find the poster URL without fetching
-        final mapping = series.anilistMappings.firstWhere(
+        final AnilistMapping mapping = series.anilistMappings.firstWhere(
           (m) => m.anilistId == (series.primaryAnilistId ?? series.anilistMappings.first.anilistId),
           orElse: () => series.anilistMappings.first,
         );
 
         // If we have anilistData with a poster URL check if it's cached
-        if (mapping.anilistData?.posterImage != null) {
-          final cached = await imageCache.getCachedImagePath(mapping.anilistData!.posterImage!);
+        log("series: $series\nprimaryAnilistId: ${series.primaryAnilistId}, primaryID from first mapping:${series.anilistMappings.firstOrNull?.anilistId}\nmapping: ${mapping.anilistData?.id}");
+        if (series.anilistPosterUrl != null) {
+          final String? cached = await imageCache.getCachedImagePath(series.anilistPosterUrl!);
           if (cached != null) {
+            log('5 Poster for ${series.name} is already cached: ${series.anilistPosterUrl!}');
             // Already cached -> make sure series data is properly updated
             alreadyCached.add(series);
 
@@ -144,19 +195,22 @@ class Library with ChangeNotifier {
               recalculateColor.add(series);
             }
           } else if (shouldUseAnilist || series.folderPosterPath == null) {
+            log('5 Poster for ${series.name} is not cached, needs fetching: ${series.anilistPosterUrl}');
             // Not cached -> need to fetch if we should use Anilist or have no local poster
             needPosters.add(series);
           }
         } else if (shouldUseAnilist || series.folderPosterPath == null) {
+          log('5 No poster image for ${series.name}, needs fetching from Anilist\npath: "${series.folderPosterPath}", shouldUseAnilist: $shouldUseAnilist');
           // No anilistData or no posterImage -> need to fetch
           needPosters.add(series);
-        }
+        } else
+          log('5 Skipping ${series.name}, no Anilist poster needed based on preferences');
       }
     }
 
     // Calculate dominant colors for already cached series
     if (recalculateColor.isNotEmpty) {
-      logDebug('Calculating dominant colors for ${recalculateColor.length} already cached series');
+      logDebug('5 Calculating dominant colors for ${recalculateColor.length} already cached series');
       for (final series in recalculateColor) {
         log("${series.name}, ${series.dominantColor?.toHex()}");
         await series.calculateDominantColor();
@@ -170,7 +224,7 @@ class Library with ChangeNotifier {
 
     if (needPosters.isEmpty) return;
 
-    logDebug('Loading Anilist posters for ${needPosters.length} series');
+    logDebug('5 Loading Anilist posters for ${needPosters.length} series');
 
     // Fetch posters in batches
     int loaded = alreadyCached.length;
@@ -181,8 +235,8 @@ class Library with ChangeNotifier {
       final batch = needPosters.sublist(i, i + 5 > needPosters.length ? needPosters.length : i + 5);
 
       await Future.wait(batch.map((series) async {
-        final anilistId = series.primaryAnilistId ?? series.anilistMappings.first.anilistId;
-        final anime = await linkService.fetchAnimeDetails(anilistId);
+        final int anilistId = series.primaryAnilistId ?? series.anilistMappings.first.anilistId;
+        final AnilistAnime? anime = await linkService.fetchAnimeDetails(anilistId);
 
         if (anime != null) {
           // Pre-cache the image if URL exists
@@ -354,31 +408,17 @@ class Library with ChangeNotifier {
   Future<void> setLibraryPath(String path) async {
     _libraryPath = path;
     await _saveSettings();
-    await scanLibrary();
-  }
-
-  void reloadLibrary() {
-    if (_libraryPath == null || _isLoading) return;
-
-    snackBar('Reloading library...', severity: InfoBarSeverity.info);
-
-    scanLibrary()
-        .then(
-          (_) => snackBar('Library reloaded', severity: InfoBarSeverity.success),
-        )
-        .catchError(
-          (error) => snackBar('Error reloading library: $error', severity: InfoBarSeverity.error, hasError: true),
-        );
+    await reloadLibrary();
   }
 
   /// Scan the library for new series
   Future<void> scanLibrary({bool showSnack = false}) async {
     if (_libraryPath == null) {
-      logDebug('Skipping scan, library path is null');
+      logDebug('3 Skipping scan, library path is null');
       return;
     }
     if (_isLoading) return;
-    logDebug('Scanning library at $_libraryPath');
+    logDebug('3 Scanning library at $_libraryPath');
 
     _isLoading = true;
     notifyListeners();
@@ -400,7 +440,7 @@ class Library with ChangeNotifier {
       _updateWatchedStatus();
 
       if (newSeries.isNotEmpty) {
-        logDebug('Calculating dominant colors for ${newSeries.length} new series');
+        logDebug('3 Calculating dominant colors for ${newSeries.length} new series');
         for (final series in newSeries) {
           await series.calculateDominantColor();
         }
@@ -418,7 +458,7 @@ class Library with ChangeNotifier {
         notifyListeners();
       });
     } catch (e) {
-      logErr('Error scanning library', e);
+      logErr('3 Error scanning library', e);
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -427,7 +467,7 @@ class Library with ChangeNotifier {
 
   void _updateWatchedStatus() {
     if (!_mpcTracker.isInitialized) return;
-    logTrace('Getting watched status for all series');
+    logTrace('1/3 Getting watched status for all series');
 
     for (final series in _series) {
       // Update seasons/episodes
@@ -444,7 +484,6 @@ class Library with ChangeNotifier {
         episode.watched = _mpcTracker.isWatched(episode.path);
       }
     }
-    logTrace('Finished getting watched status for all series');
   }
 
   static Future<Directory> get miruRyoiokiSaveDirectory async {
@@ -468,10 +507,10 @@ class Library with ChangeNotifier {
         final content = await file.readAsString();
         final data = jsonDecode(content);
         _libraryPath = data['libraryPath'];
-        logInfo('Loaded settings: $_libraryPath');
+        logInfo('1 Loaded settings: $_libraryPath');
       }
     } catch (e) {
-      logDebug('Error loading settings: $e');
+      logDebug('1 Error loading settings: $e');
     }
   }
 
@@ -508,30 +547,30 @@ class Library with ChangeNotifier {
 
           // Log loaded dominant colors for debugging
           for (final series in _series) {
-            logDebug('Loaded series: ${series.name}, Dominant Color: ${series.dominantColor?.toHex() ?? "None"}');
+            logDebug('Loaded series: ${series.name}, AnilistPoster: ${series.anilistPosterUrl}, AnilistBanner: ${series.anilistBannerUrl}');
           }
 
           // Validate that we loaded series properly
           if (_series.isNotEmpty) {
             // Success - create a backup
             await file.copy(backupFile.path);
-            logDebug('Library loaded successfully (${_series.length} series)');
+            logDebug('1 Library loaded successfully (${_series.length} series)');
           } else {
             throw Exception('Loaded library contains no series');
           }
         } catch (e) {
-          logDebug('Error loading library file, trying backup: $e');
+          logDebug('1 Error loading library file, trying backup: $e');
           // If main file load fails, try the backup
           if (await backupFile.exists()) {
             final backupContent = await backupFile.readAsString();
             final backupData = jsonDecode(backupContent) as List;
             _series = backupData.map((s) => Series.fromJson(s)).toList();
-            logDebug('Loaded library from backup (${_series.length} series)');
+            logDebug('1 Loaded library from backup (${_series.length} series)');
 
             // Restore from backup
             await backupFile.copy(file.path);
           } else {
-            logDebug('No backup file found, starting with an empty library');
+            logDebug('1 No backup file found, starting with an empty library');
             _series = [];
           }
         }
@@ -540,7 +579,7 @@ class Library with ChangeNotifier {
       // Update watched status
       _updateWatchedStatus();
     } catch (e) {
-      logDebug('Error loading library: $e');
+      logDebug('1 Error loading library: $e');
     }
     notifyListeners();
   }
