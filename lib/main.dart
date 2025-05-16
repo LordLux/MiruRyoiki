@@ -712,23 +712,26 @@ class _AppRootState extends State<AppRoot> {
   }
 
   // Add this helper method
-  bool handleBackNavigation() {
+  bool handleBackNavigation({bool isEsc = false}) {
     final navManager = Provider.of<NavigationManager>(context, listen: false);
 
-    if (navManager.hasDialog) {
-      log('Closing dialog');
+    if (navManager.hasDialog && !isEsc) {
+      logTrace('$nowFormatted | Back Mouse Button Pressed: Closing dialog');
       // Find active dialogs and close them
       // This assumes dialogs are managed through Flutter's dialog system
       // and will be removed from stack using the showManagedDialog helper
-      // closeDialog(context);
+      closeDialog(rootNavigatorKey.currentContext!);
       return true;
     } else if (_isSeriesView) {
-      // log('Exiting series view');
-      exitSeriesView();
+      if (!navManager.hasDialog) {
+        // Coming back from series view
+        log('Going back in navigation stack! -> Library');
+        exitSeriesView();
+      }
       return true;
     } else if (navManager.canGoBack) {
-      log('Going back in navigation stack');
-      navManager.goBack();
+      log('Going back in navigation stack -> ${navManager.stack[navManager.stack.length - 2].title}');
+      // navManager.goBack();
 
       // Navigate based on the new current item
       final currentItem = navManager.currentView;

@@ -8,6 +8,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../utils/logging.dart';
+import '../../utils/time_utils.dart';
 
 const String mRyoikiAnilistScheme = 'mryoiki';
 const String redirectUrl = '$mRyoikiAnilistScheme://auth-callback';
@@ -93,7 +94,7 @@ class AnilistAuthService {
         final credentials = oauth2.Credentials(
           data['access_token'],
           refreshToken: data['refresh_token'],
-          expiration: DateTime.now().add(Duration(seconds: data['expires_in'])),
+          expiration: now.add(Duration(seconds: data['expires_in'])),
         );
 
         // Save credentials
@@ -129,7 +130,7 @@ class AnilistAuthService {
         final newCredentials = oauth2.Credentials(
           data['access_token'],
           refreshToken: data['refresh_token'],
-          expiration: DateTime.now().add(Duration(seconds: data['expires_in'])),
+          expiration: now.add(Duration(seconds: data['expires_in'])),
         );
 
         // Save new credentials

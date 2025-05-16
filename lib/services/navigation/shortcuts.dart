@@ -66,7 +66,7 @@ class _CustomKeyboardListenerState extends State<CustomKeyboardListener> {
         //
         // Esc
         if (event.logicalKey == LogicalKeyboardKey.escape) {
-          _handleBackNavigation();
+          _handleBackNavigation(isEsc: true);
         } else
         //
         //
@@ -133,11 +133,11 @@ class _CustomKeyboardListenerState extends State<CustomKeyboardListener> {
       _handleForwardNavigation();
   }
 
-  void _handleBackNavigation() {
+  void _handleBackNavigation({bool isEsc = false}) {
     final homeState = homeKey.currentState;
 
     if (homeState != null && homeState.mounted) {
-      if (homeState.handleBackNavigation()) {
+      if (homeState.handleBackNavigation(isEsc: isEsc)) {
         // Handled by AppRoot
         return;
       }

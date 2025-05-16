@@ -4,21 +4,21 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:transparent_image/transparent_image.dart';
 import 'package:provider/provider.dart';
 
-import '../enums.dart';
-import '../main.dart';
-import '../manager.dart';
-import '../models/series.dart';
-import '../models/library.dart';
-import '../screens/series.dart';
-import '../services/navigation/dialogs.dart';
-import '../services/navigation/show_info.dart';
-import '../services/cache.dart';
-import '../utils/image_utils.dart';
-import '../utils/logging.dart';
-import '../utils/path_utils.dart';
-import '../utils/screen_utils.dart';
-import '../utils/time_utils.dart';
-import '../widgets/transparency_shadow_image.dart';
+import '../../enums.dart';
+import '../../main.dart';
+import '../../manager.dart';
+import '../../models/series.dart';
+import '../../models/library.dart';
+import '../../screens/series.dart';
+import '../../services/navigation/dialogs.dart';
+import '../../services/navigation/show_info.dart';
+import '../../services/cache.dart';
+import '../../utils/image_utils.dart';
+import '../../utils/logging.dart';
+import '../../utils/path_utils.dart';
+import '../../utils/screen_utils.dart';
+import '../../utils/time_utils.dart';
+import '../transparency_shadow_image.dart';
 
 class ImageSelectionDialog extends ManagedDialog {
   final Series series;
@@ -57,12 +57,6 @@ class ImageSelectionDialog extends ManagedDialog {
                 );
                 Manager.setState();
               });
-
-              // Close dialog
-              closeDialog(popContext, result: source);
-            },
-            onCancel: () {
-              closeDialog(popContext);
             },
           ),
         );
@@ -72,14 +66,14 @@ class _ImageSelectionContent extends StatefulWidget {
   final Series series;
   final BoxConstraints constraints;
   final Function(ImageSource, String) onSave;
-  final VoidCallback onCancel;
+  final VoidCallback? onCancel;
   final bool isBanner;
 
   const _ImageSelectionContent({
     required this.series,
     required this.constraints,
     required this.onSave,
-    required this.onCancel,
+    this.onCancel,
     required this.isBanner,
   });
 
@@ -293,26 +287,31 @@ class _ImageSelectionContentState extends State<_ImageSelectionContent> {
               ),
               child: Tooltip(
                 message: 'Reset to ${_getSourceDisplayName(Manager.defaultPosterSource)}\nThis setting can be changed in settings',
-                child: Button(
+                child: ManagedDialogButton(
+                  popContext: context,
                   onPressed: () {
                     _deselectEverything();
                     Manager.setState();
                   },
-                  child: Text('Reset to Auto'),
+                  text: 'Reset to Auto',
                 ),
               ),
             ),
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                Button(
+                ManagedDialogButton(
+                  text: 'Cancel',
+                  popContext: context,
                   onPressed: widget.onCancel,
-                  child: Text('Cancel'),
                 ),
                 SizedBox(width: 8),
                 Tooltip(
                   message: _canSavePreference() ? 'Save the selected image preference' : 'Select an image first',
-                  child: FilledButton(
+                  child: ManagedDialogButton(
+                    popContext: context,
+                    isPrimary: true,
+                    text: 'Save Preference',
                     onPressed: _canSavePreference()
                         ? () {
                             widget.onSave(
@@ -326,7 +325,6 @@ class _ImageSelectionContentState extends State<_ImageSelectionContent> {
                                         : widget.series.anilistData?.posterImage ?? '');
                           }
                         : null,
-                    child: Text('Save Preference'),
                   ),
                 ),
               ],

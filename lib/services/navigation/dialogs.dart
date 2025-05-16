@@ -3,6 +3,7 @@ import 'package:flutter/material.dart' show Material;
 import 'package:miruryoiki/main.dart';
 import 'package:provider/provider.dart';
 import '../../utils/logging.dart';
+import '../../utils/time_utils.dart';
 import 'debug.dart';
 import 'navigation.dart';
 
@@ -25,23 +26,14 @@ Future<T?> showManagedDialog<T>({
   final result = await showDialog<T>(
     context: rootNavigatorKey.currentContext!,
     useRootNavigator: true,
-    barrierDismissible: true, // disables esc and click outside to close
+    barrierDismissible: enableBarrierDismiss, // disables esc and click outside to close
     builder: (context) {
-      if (enableBarrierDismiss) {
-        return _DismissibleWrapper(
-          onBarrierTap: () {
-            // Update our custom stack but don't pop - Flutter will do that
-            logDebug('Custom navigation stack pop');
-            navManager.popDialog();
-          },
-          barrierDismissCheck: barrierDismissCheck,
-          child: builder(context),
-        );
-      } else {
-        return builder(context);
-      }
+      return builder(context);
     },
-  );
+  ).then((_) {
+    log('$nowFormatted | Dialog closed');
+    navManager.popDialog();
+  });
 
   return result;
 }
@@ -150,6 +142,7 @@ Future<T?> showSimpleOneButtonManagedDialog<T>({
     );
 
 // Wrapper that handles barrier dismissal callbacks
+@Deprecated('')
 class _DismissibleWrapper extends StatelessWidget {
   final VoidCallback onBarrierTap;
   final Widget child;
@@ -208,18 +201,17 @@ class ManagedDialogButton extends StatelessWidget {
 
       // Close the dialog
       closeDialog(popContext);
-      closeDialog(popContext);
     }
 
     if (isPrimary)
       return FilledButton(
         style: FluentTheme.of(context).buttonTheme.filledButtonStyle,
-        onPressed: finalOnPressed,
+        onPressed: onPressed != null ? finalOnPressed : null,
         child: Text(text),
       );
 
     return Button(
-      onPressed: finalOnPressed,
+      onPressed: onPressed != null ? finalOnPressed : null,
       child: Text(text),
     );
   }
@@ -231,10 +223,11 @@ void closeDialog<T>(BuildContext popContext, {T? result}) {
   // First check if Flutter's Navigator has a dialog to pop
   if (Navigator.of(popContext).canPop() && navManager.hasDialog) {
     // Update custom navigation stack if needed
-    navManager.popDialog();
+    // navManager.popDialog();
 
     // Pop the actual dialog
     Navigator.of(popContext).pop(result);
+    logTrace('Poppingg');
   } else {
     logDebug('No dialog to pop in Flutter Navigator');
   }

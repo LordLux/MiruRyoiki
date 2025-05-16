@@ -30,7 +30,7 @@ void log(final dynamic msg, [final Color color = Colors.purpleAccent, final Colo
   else
     formattedMsg = '$escapeCode$bgEscapeCode$formattedMsg';
     
-    formattedMsg = '${now.hour}:${now.minute}:${now.second}.${now.millisecond.toString().padLeft(3, '0')} | $formattedMsg\x1B[0m'; // Reset color at the end
+    formattedMsg = '$nowFormatted | $formattedMsg\x1B[0m'; // Reset color at the end
 
   developer.log(formattedMsg, error: error, stackTrace: stackTrace, time: now);
   if (!kDebugMode) print(msg);
