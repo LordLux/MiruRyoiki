@@ -87,7 +87,7 @@ class SeriesScreenState extends State<SeriesScreen> {
       context: context,
       id: isBanner ? 'bannerSelection:${series!.path}' : 'posterSelection:${series!.path}',
       title: isBanner ? 'Select Banner' : 'Select Poster',
-      enableBarrierDismiss: true,
+      doDialogPop: true,
       barrierDismissCheck: () => true,
       builder: (context) => ImageSelectionDialog(
         series: series!,
@@ -220,179 +220,171 @@ class SeriesScreenState extends State<SeriesScreen> {
   }
 
   Widget _buildSeriesHeader(BuildContext context, Series series) {
-    return Stack(
-      children: [
-        // Banner
-        ShiftClickableHover(
-          series: series,
-          imageProvider: _getBannerImage(series), // Banner
-          enabled: _isBannerHovering,
-          onTap: (context) => _selectImage(context, true),
-          onEnter: () => setState(() => _isBannerHovering = true),
-          onExit: () => setState(() => _isBannerHovering = false),
-          final_child: (BuildContext context, bool enabled) => LayoutBuilder(builder: (context, constraints) {
-            return Stack(
-              children: [
-                AnimatedOpacity(
-                  duration: shortStickyHeaderDuration,
-                  opacity: enabled ? 0.75 : 1,
-                  child: AnimatedContainer(
-                    duration: shortStickyHeaderDuration,
-                    height: ScreenUtils.maxHeaderHeight,
-                    width: double.infinity,
-                    // Background image
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          dominantColor.withOpacity(0.27),
-                          Colors.transparent,
-                        ],
-                      ),
-                      color: enabled ? (series.dominantColor ?? Manager.accentColor).withOpacity(0.75) : Colors.transparent,
-                      image: _getBannerDecoration(series),
-                    ),
-                    padding: const EdgeInsets.only(bottom: 16.0),
-                    alignment: Alignment.bottomLeft,
-                    child: Builder(builder: (context) {
-                      if (_getBannerImage(series) != null) return SizedBox.shrink();
+    return FutureBuilder(
+        future: series.getBannerImage(),
+        builder: (context, snapshot) {
+          return Stack(
+            children: [
+              // Banner
+              ShiftClickableHover(
+                series: series,
+                enabled: _isBannerHovering,
+                onTap: (context) => _selectImage(context, true),
+                onEnter: () => setState(() => _isBannerHovering = true),
+                onExit: () => setState(() => _isBannerHovering = false),
+                final_child: (BuildContext context, bool enabled) => LayoutBuilder(builder: (context, constraints) {
+                  return Stack(
+                    children: [
+                      AnimatedOpacity(
+                        duration: shortStickyHeaderDuration,
+                        opacity: enabled ? 0.75 : 1,
+                        child: AnimatedContainer(
+                          duration: shortStickyHeaderDuration,
+                          height: ScreenUtils.maxHeaderHeight,
+                          width: double.infinity,
+                          // Background image
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [
+                                dominantColor.withOpacity(0.27),
+                                Colors.transparent,
+                              ],
+                            ),
+                            color: enabled ? (series.dominantColor ?? Manager.accentColor).withOpacity(0.75) : Colors.transparent,
+                            image: _getBannerDecoration(snapshot.data),
+                          ),
+                          padding: const EdgeInsets.only(bottom: 16.0),
+                          alignment: Alignment.bottomLeft,
+                          child: Builder(builder: (context) {
+                            if (snapshot.data != null) return SizedBox.shrink();
 
-                      return Center(
-                        child: Stack(
+                            return Center(
+                              child: Stack(
+                                children: [
+                                  AnimatedOpacity(
+                                    duration: shortStickyHeaderDuration,
+                                    opacity: enabled ? 0 : 1,
+                                    child: Icon(FluentIcons.picture, size: 48, color: Colors.white),
+                                  ),
+                                  AnimatedOpacity(
+                                    duration: shortStickyHeaderDuration,
+                                    opacity: enabled ? 1 : 0,
+                                    child: Icon(FluentIcons.add, size: 48, color: Colors.white),
+                                  ),
+                                ],
+                              ),
+                            );
+                          }),
+                        ),
+                      ),
+                      // Title and watched percentage
+                      Positioned(
+                        bottom: 0,
+                        left: math.max(constraints.maxWidth / 2 - 380 + 10, ScreenUtils.infoBarWidth - (6 * 2) + 42),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.start,
                           children: [
-                            AnimatedOpacity(
-                              duration: shortStickyHeaderDuration,
-                              opacity: enabled ? 0 : 1,
-                              child: Icon(FluentIcons.picture, size: 48, color: Colors.white),
+                            // Series title
+                            SizedBox(
+                              width: ScreenUtils.maxContentWidth - ScreenUtils.infoBarWidth - 32,
+                              child: Text(
+                                series.displayTitle,
+                                style: const TextStyle(
+                                  fontSize: 32,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
                             ),
-                            AnimatedOpacity(
-                              duration: shortStickyHeaderDuration,
-                              opacity: enabled ? 1 : 0,
-                              child: Icon(FluentIcons.add, size: 48, color: Colors.white),
+                            const SizedBox(height: 8),
+                            // Watched percentage
+                            Text(
+                              'Episodes: ${series.totalEpisodes} | Watched: ${series.watchedEpisodes} (${(series.watchedPercentage * 100).round()}%)',
+                              style: const TextStyle(
+                                fontSize: 16,
+                                color: Colors.white,
+                              ),
                             ),
+                            const SizedBox(height: 12),
                           ],
                         ),
-                      );
-                    }),
-                  ),
-                ),
-                // Title and watched percentage
-                Positioned(
-                  bottom: 0,
-                  left: math.max(constraints.maxWidth / 2 - 380 + 10, ScreenUtils.infoBarWidth - (6 * 2) + 42),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.start,
-                    children: [
-                      // Series title
-                      SizedBox(
-                        width: ScreenUtils.maxContentWidth - ScreenUtils.infoBarWidth - 32,
-                        child: Text(
-                          series.displayTitle,
-                          style: const TextStyle(
-                            fontSize: 32,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
                       ),
-                      const SizedBox(height: 8),
-                      // Watched percentage
-                      Text(
-                        'Episodes: ${series.totalEpisodes} | Watched: ${series.watchedEpisodes} (${(series.watchedPercentage * 100).round()}%)',
-                        style: const TextStyle(
-                          fontSize: 16,
-                          color: Colors.white,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
                     ],
-                  ),
-                ),
-              ],
-            );
-          }),
-        ),
-        // temp buttons
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            _buildButton(
-              widget.onBack,
-              const Icon(FluentIcons.back),
-              'Back to Library',
-            ),
-            _buildButton(
-              () {
-                log(series);
-                showSimpleManagedDialog(
-                  context: context,
-                  id: 'showSeries:${series.hashCode}',
-                  title: 'Series Info',
-                  constraints: const BoxConstraints(
-                    maxWidth: 800,
-                    maxHeight: 500,
-                  ),
-                  body: series.toString(),
-                );
-              },
-              const Icon(FluentIcons.info),
-              'Print Series',
-            ),
-            _buildButton(
-              series.watchedPercentage == 1
-                  ? null
-                  : () => showSimpleManagedDialog(
-                        context: context,
-                        id: 'confirmWatchAll',
-                        title: 'Confirm Watch All',
-                        body: 'Are you sure you want to mark all episodes of "${series.displayTitle}" as watched?',
-                        positiveButtonText: 'Confirm',
-                        onPositive: () {
-                          final library = context.read<Library>();
-                          library.markSeriesWatched(series);
-                        },
-                      ),
-              const Icon(FluentIcons.check_mark),
-              series.watchedPercentage == 1 ? 'You have already watched all episodes' : 'Mark All as Watched',
-            ),
-            if (context.watch<AnilistProvider>().isLoggedIn)
-              _buildButton(
-                series.seasons.isNotEmpty
-                    ? () => linkWithAnilist(
-                          context,
-                          series,
-                          _loadAnilistData,
-                          setState,
-                        )
-                    : null,
-                Icon(
-                  series.anilistId != null ? FluentIcons.link : FluentIcons.add_link,
-                  color: Colors.white,
-                ),
-                series.anilistId != null ? 'Update Anilist Link' : 'Link with Anilist',
+                  );
+                }),
               ),
-          ],
-        )
-      ],
-    );
-  }
-
-  ImageProvider? _getBannerImage(Series series) {
-    final effectivePath = series.effectiveBannerPath;
-    if (effectivePath == null) return null;
-
-    // Priority: Anilist banner -> local poster
-    if (series.isLocalBanner) // Prefer Anilist banner if available
-      return FileImage(File(effectivePath));
-    return NetworkImage(effectivePath);
+              // temp buttons
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  _buildButton(
+                    widget.onBack,
+                    const Icon(FluentIcons.back),
+                    'Back to Library',
+                  ),
+                  _buildButton(
+                    () {
+                      log(series);
+                      showSimpleManagedDialog(
+                        context: context,
+                        id: 'showSeries:${series.hashCode}',
+                        title: 'Series Info',
+                        constraints: const BoxConstraints(
+                          maxWidth: 800,
+                          maxHeight: 500,
+                        ),
+                        body: series.toString(),
+                      );
+                    },
+                    const Icon(FluentIcons.info),
+                    'Print Series',
+                  ),
+                  _buildButton(
+                    series.watchedPercentage == 1
+                        ? null
+                        : () => showSimpleManagedDialog(
+                              context: context,
+                              id: 'confirmWatchAll',
+                              title: 'Confirm Watch All',
+                              body: 'Are you sure you want to mark all episodes of "${series.displayTitle}" as watched?',
+                              positiveButtonText: 'Confirm',
+                              onPositive: () {
+                                final library = context.read<Library>();
+                                library.markSeriesWatched(series);
+                              },
+                            ),
+                    const Icon(FluentIcons.check_mark),
+                    series.watchedPercentage == 1 ? 'You have already watched all episodes' : 'Mark All as Watched',
+                  ),
+                  if (context.watch<AnilistProvider>().isLoggedIn)
+                    _buildButton(
+                      series.seasons.isNotEmpty
+                          ? () => linkWithAnilist(
+                                context,
+                                series,
+                                _loadAnilistData,
+                                setState,
+                              )
+                          : null,
+                      Icon(
+                        series.anilistId != null ? FluentIcons.link : FluentIcons.add_link,
+                        color: Colors.white,
+                      ),
+                      series.anilistId != null ? 'Update Anilist Link' : 'Link with Anilist',
+                    ),
+                ],
+              )
+            ],
+          );
+        });
   }
 
   // Get the decoration image based on the banner image
-  DecorationImage? _getBannerDecoration(Series series) {
-    final imageProvider = _getBannerImage(series);
+  DecorationImage? _getBannerDecoration(imageProvider) {
     if (imageProvider == null) return null;
 
     return DecorationImage(
@@ -535,35 +527,28 @@ class SeriesScreenState extends State<SeriesScreen> {
           Expanded(
             child: SizedBox(
               width: ScreenUtils.maxContentWidth,
-              child: Builder(builder: (context) {
-                double posterWidth = 230.0; // Default width
-                double posterHeight = 230.0; // Default height 326.0
-                // Get image provider based on available sources
-                ImageProvider? imageProvider;
-                if (series.effectivePosterPath != null) {
-                  if (series.isAnilistPoster)
-                    imageProvider = NetworkImage(series.effectivePosterPath!);
-                  else
-                    imageProvider = FileImage(File(series.effectivePosterPath!));
-                }
+              child: Row(
+                children: [
+                  // Info bar on the left
+                  Padding(
+                    padding: const EdgeInsets.only(top: 16.0, left: 14.0),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.05),
+                        borderRadius: BorderRadius.circular(8.0),
+                      ),
+                      height: double.infinity,
+                      width: ScreenUtils.infoBarWidth,
+                      child: FutureBuilder(
+                          future: series.getPosterImage(),
+                          builder: (context, snapshot) {
+                            ImageProvider? imageProvider = snapshot.data;
 
-                return Row(
-                  children: [
-                    // Info bar on the left
-                    Padding(
-                      padding: const EdgeInsets.only(top: 16.0, left: 14.0),
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.05),
-                          borderRadius: BorderRadius.circular(8.0),
-                        ),
-                        height: double.infinity,
-                        width: ScreenUtils.infoBarWidth,
-                        child: Builder(
-                          builder: (context) {
                             return FutureBuilder(
                               future: getImageDimensions(imageProvider),
-                              builder: (context, AsyncSnapshot<Size> snapshot) {
+                              builder: (BuildContext context, AsyncSnapshot<Size> snapshot) {
+                                double posterWidth = 230.0; // Default width
+                                double posterHeight = 230.0; // Default height 326.0
                                 final double squareSize = 253.0;
                                 double getInfoBarOffset = 0;
 
@@ -659,7 +644,6 @@ class SeriesScreenState extends State<SeriesScreen> {
                                         // Poster
                                         child: ShiftClickableHover(
                                           series: series,
-                                          imageProvider: imageProvider,
                                           enabled: _isPosterHovering,
                                           onTap: (context) => _selectImage(context, false), // Poster
                                           onEnter: () => setState(() => _isPosterHovering = true),
@@ -742,51 +726,49 @@ class SeriesScreenState extends State<SeriesScreen> {
                                 );
                               },
                             );
-                          },
-                        ),
-                      ),
+                          }),
                     ),
-                    // Content area on the right
-                    Expanded(
-                      child: Align(
-                        alignment: Alignment.topCenter,
-                        child: FadingEdgeScrollView(
-                          fadeEdges: const EdgeInsets.symmetric(vertical: 16),
-                          child: ScrollConfiguration(
-                            behavior: ScrollConfiguration.of(context).copyWith(overscroll: true, platform: TargetPlatform.windows, scrollbars: false),
-                            child: DynMouseScroll(
-                              scrollSpeed: 1.8,
-                              enableSmoothScroll: Manager.animationsEnabled,
-                              durationMS: 350,
-                              animationCurve: Curves.easeOut,
-                              builder: (context, controller, physics) {
-                                controller.addListener(() {
-                                  final offset = controller.offset;
-                                  final double newHeight = offset > 0 ? ScreenUtils.minHeaderHeight : ScreenUtils.maxHeaderHeight;
+                  ),
+                  // Content area on the right
+                  Expanded(
+                    child: Align(
+                      alignment: Alignment.topCenter,
+                      child: FadingEdgeScrollView(
+                        fadeEdges: const EdgeInsets.symmetric(vertical: 16),
+                        child: ScrollConfiguration(
+                          behavior: ScrollConfiguration.of(context).copyWith(overscroll: true, platform: TargetPlatform.windows, scrollbars: false),
+                          child: DynMouseScroll(
+                            scrollSpeed: 1.8,
+                            enableSmoothScroll: Manager.animationsEnabled,
+                            durationMS: 350,
+                            animationCurve: Curves.easeOut,
+                            builder: (context, controller, physics) {
+                              controller.addListener(() {
+                                final offset = controller.offset;
+                                final double newHeight = offset > 0 ? ScreenUtils.minHeaderHeight : ScreenUtils.maxHeaderHeight;
 
-                                  if (newHeight != _headerHeight && mounted) //
-                                    setState(() => _headerHeight = newHeight);
-                                });
+                                if (newHeight != _headerHeight && mounted) //
+                                  setState(() => _headerHeight = newHeight);
+                              });
 
-                                // Then use the controller for your scrollable content
-                                return CustomScrollView(
-                                  controller: controller,
-                                  physics: physics,
-                                  slivers: [
-                                    SliverToBoxAdapter(
-                                      child: _buildEpisodesList(context),
-                                    ),
-                                  ],
-                                );
-                              },
-                            ),
+                              // Then use the controller for your scrollable content
+                              return CustomScrollView(
+                                controller: controller,
+                                physics: physics,
+                                slivers: [
+                                  SliverToBoxAdapter(
+                                    child: _buildEpisodesList(context),
+                                  ),
+                                ],
+                              );
+                            },
                           ),
                         ),
                       ),
                     ),
-                  ],
-                );
-              }),
+                  ),
+                ],
+              ),
             ),
           ),
         ],
@@ -796,7 +778,6 @@ class SeriesScreenState extends State<SeriesScreen> {
 
   Widget ShiftClickableHover({
     required Series series,
-    required ImageProvider<Object>? imageProvider,
     required bool enabled,
     required VoidCallback onEnter,
     required VoidCallback onExit,
@@ -946,8 +927,11 @@ void linkWithAnilist(BuildContext context, Series? series, Future<void> Function
     id: 'linkAnilist:${series.path}',
     title: 'Link to Anilist',
     data: series.path,
-    enableBarrierDismiss: true,
-    barrierDismissCheck: () => true,
+    doDialogPop: true,
+    barrierDismissCheck: () {
+      print('Barrier dismissed check called');
+      return false;
+    },
     builder: (context) => AnilistLinkMultiDialog(
       constraints: const BoxConstraints(
         maxWidth: 1300,

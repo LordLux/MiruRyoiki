@@ -18,6 +18,7 @@ import '../../utils/logging.dart';
 import '../../utils/path_utils.dart';
 import '../../utils/screen_utils.dart';
 import '../../utils/time_utils.dart';
+import '../series_image.dart';
 import '../transparency_shadow_image.dart';
 
 class ImageSelectionDialog extends ManagedDialog {
@@ -168,33 +169,34 @@ class _ImageSelectionContentState extends State<_ImageSelectionContent> {
 
     await _findLocalImages();
 
-    // Get the appropriate AniList image based on banner/poster selection
-    final String? anilistImageUrl = widget.isBanner ? widget.series.anilistData?.bannerImage : widget.series.anilistData?.posterImage;
-
-    if (anilistImageUrl != null) {
-      final imageCache = ImageCacheService();
-      final cachedFile = await imageCache.getCachedImageFile(anilistImageUrl);
-
-      if (cachedFile != null) {
-        _anilistImageProvider = FileImage(cachedFile);
-      } else {
-        _anilistImageProvider = NetworkImage(anilistImageUrl);
-        // Start caching in background
-        imageCache.cacheImage(anilistImageUrl);
+    // Load Anilist image using the centralized method
+    if (widget.isBanner) {
+      if (widget.series.isAnilistBanner) {
+        final anilistImageProvider = await widget.series.getBannerImage();
+        if (anilistImageProvider != null) //
+          _anilistImageProvider = anilistImageProvider;
       }
-
-      if (mounted) setState(() => _anilistImageLoading = false);
+    } else {
+      if (widget.series.isAnilistPoster) {
+        final anilistImageProvider = await widget.series.getPosterImage();
+        if (anilistImageProvider != null) //
+          _anilistImageProvider = anilistImageProvider;
+      }
     }
+
+    if (mounted) setState(() => _anilistImageLoading = false);
   }
 
   void _loadSelectedLocalImage() {
-    if (_localImageFiles.isNotEmpty && _selectedLocalImageIndex != null && _selectedLocalImageIndex! < _localImageFiles.length && _selectedLocalImageIndex! >= 0) {
+    if (_localImageFiles.isNotEmpty && //
+        _selectedLocalImageIndex != null &&
+        _selectedLocalImageIndex! < _localImageFiles.length &&
+        _selectedLocalImageIndex! >= 0)
       _localImageProvider = FileImage(_localImageFiles[_selectedLocalImageIndex!]);
-      if (mounted) setState(() => _localImageLoading = false);
-    } else {
+    else
       _localImageProvider = null;
-      if (mounted) setState(() => _localImageLoading = false);
-    }
+
+    if (mounted) setState(() => _localImageLoading = false);
   }
 
   @override
@@ -303,7 +305,7 @@ class _ImageSelectionContentState extends State<_ImageSelectionContent> {
                 ManagedDialogButton(
                   text: 'Cancel',
                   popContext: context,
-                  onPressed: widget.onCancel,
+                  onPressed: () => widget.onCancel?.call(),
                 ),
                 SizedBox(width: 8),
                 Tooltip(
@@ -371,7 +373,7 @@ class _ImageSelectionContentState extends State<_ImageSelectionContent> {
     final isSelected = _selectedSource == source;
 
     return GestureDetector(
-      onTap: isAvailable
+      onTap: posterProvider != null && isAvailable
           ? () {
               if (source == ImageSource.anilist) {
                 _selectAnilistImage();
@@ -385,8 +387,8 @@ class _ImageSelectionContentState extends State<_ImageSelectionContent> {
       child: Card(
         padding: EdgeInsets.all(12),
         borderRadius: BorderRadius.circular(8),
-        backgroundColor: isSelected ? Manager.accentColor.lighter.withOpacity(0.1) : Colors.transparent,
-        borderColor: isSelected ? Manager.accentColor.lighter : FluentTheme.of(context).resources.controlStrokeColorDefault,
+        backgroundColor: posterProvider != null && isSelected ? Manager.accentColor.lighter.withOpacity(0.1) : Colors.transparent,
+        borderColor: posterProvider != null && isSelected ? Manager.accentColor.lighter : FluentTheme.of(context).resources.controlStrokeColorDefault,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -397,20 +399,18 @@ class _ImageSelectionContentState extends State<_ImageSelectionContent> {
             SizedBox(height: 12),
             Expanded(
               child: isAvailable
-                  ? isLoading
-                      ? Center(child: ProgressRing())
-                      : posterProvider != null
-                          ? ClipRRect(
-                              borderRadius: BorderRadius.circular(4),
-                              child: FadeInImage(
-                                placeholder: MemoryImage(kTransparentImage),
-                                image: posterProvider,
-                                fit: BoxFit.contain,
-                                fadeInDuration: getDuration(const Duration(milliseconds: 300)),
-                                fadeInCurve: Curves.easeIn,
-                              ),
-                            )
-                          : Center(child: Text('Error loading image'))
+                  ? !isLoading
+                      ? ClipRRect(
+                          borderRadius: BorderRadius.circular(4),
+                          child: SeriesImageBuilder(
+                            imageProviderFuture: Future.value(posterProvider),
+                            fit: BoxFit.contain,
+                            fadeInDuration: const Duration(milliseconds: 300),
+                            fadeInCurve: Curves.easeIn,
+                            skipLoadingIndicator: true,
+                          ),
+                        )
+                      : Center(child: Text('No image available', style: FluentTheme.of(context).typography.body))
                   : Center(
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
@@ -431,7 +431,7 @@ class _ImageSelectionContentState extends State<_ImageSelectionContent> {
                     ),
             ),
             SizedBox(height: 12),
-            if (isAvailable)
+            if (posterProvider != null && isAvailable)
               Row(
                 children: [
                   RadioButton(
@@ -637,12 +637,12 @@ class _ImageSelectionContentState extends State<_ImageSelectionContent> {
                                             ),
                                             child: ClipRRect(
                                               borderRadius: BorderRadius.circular(4),
-                                              child: FadeInImage(
-                                                placeholder: MemoryImage(kTransparentImage),
-                                                image: FileImage(file),
+                                              child: SeriesImageBuilder(
+                                                imageProviderFuture: Future.value(FileImage(file)),
                                                 fit: BoxFit.contain,
-                                                fadeInDuration: getDuration(const Duration(milliseconds: 300)),
+                                                fadeInDuration: const Duration(milliseconds: 300),
                                                 fadeInCurve: Curves.easeIn,
+                                                skipLoadingIndicator: true,
                                               ),
                                             ),
                                           ),

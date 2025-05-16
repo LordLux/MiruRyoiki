@@ -6,6 +6,7 @@ import '../../models/anilist/anime.dart';
 import '../../services/anilist/linking.dart';
 import '../../services/anilist/provider.dart';
 import '../../services/navigation/dialogs.dart';
+import 'link_anilist_multi.dart';
 
 class AnilistSearchPanel extends StatefulWidget {
   /// The series to link to Anilist.
@@ -49,6 +50,8 @@ class _AnilistSearchPanelState extends State<AnilistSearchPanel> {
   String? _error;
   List<AnilistAnime> _searchResults = [];
   final TextEditingController _searchController = TextEditingController();
+
+  AnilistAnime? _selectedSeries;
 
   @override
   void initState() {
@@ -159,8 +162,12 @@ class _AnilistSearchPanelState extends State<AnilistSearchPanel> {
               itemCount: _searchResults.length,
               itemBuilder: (context, index) {
                 final series = _searchResults[index];
-                return ListTile(
-                  leading: series.bannerImage != null
+                final isSelected = _selectedSeries?.id == series.id;
+
+                return SelectableTile(
+                  title: Text(series.title.userPreferred ?? series.title.english ?? series.title.romaji ?? 'Unknown'),
+                  subtitle: Text('${series.format ?? ''} ${series.seasonYear ?? ''} | ${series.episodes ?? '?'} eps'),
+                  icon: series.bannerImage != null
                       ? Image.network(
                           series.bannerImage!,
                           width: 60,
@@ -169,20 +176,10 @@ class _AnilistSearchPanelState extends State<AnilistSearchPanel> {
                           errorBuilder: (context, error, stack) => const Icon(FluentIcons.video),
                         )
                       : const Icon(FluentIcons.video),
-                  title: Text(series.title.english ?? series.title.romaji ?? 'Unknown'),
-                  subtitle: Text(
-                    '${series.format ?? ''} ${series.seasonYear ?? ''} | ${series.episodes ?? '?'} eps',
-                  ),
-                  onPressed: () async {
+                  isSelected: isSelected,
+                  onTap: () async {
                     await widget.onLink(series.id, series.title.userPreferred ?? series.title.english ?? series.title.romaji ?? 'Unknown');
-
-                    // if the dialog should not close automatically
-                    if (!widget.skipAutoClose) {
-                      // ignore: use_build_context_synchronously
-                      closeDialog(context);
-                    }
-
-                    homeKey.currentState?.setState(() {});
+                    setState(() => _selectedSeries = isSelected ? null : series);
                   },
                 );
               },

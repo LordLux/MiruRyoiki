@@ -2,6 +2,7 @@
 
 import 'dart:io';
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:miruryoiki/utils/time_utils.dart';
 
 import '../../main.dart';
 import '../../manager.dart';
@@ -181,6 +182,7 @@ class _AnilistLinkMultiContentState extends State<_AnilistLinkMultiContent> {
     }
   }
 
+  // View mode
   Widget _buildMappingsList() {
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -231,9 +233,8 @@ class _AnilistLinkMultiContentState extends State<_AnilistLinkMultiContent> {
                 FilledButton(
                   onPressed: _mappingsChanged ? () => widget.onSave(mappings) : null,
                   child: Text(
-                    mappings.isEmpty && oldMappings.isNotEmpty
-                        ? //
-                        'Remove All Links'
+                    mappings.isEmpty && oldMappings.isNotEmpty //
+                        ? 'Remove All Links'
                         : 'Save Changes',
                   ),
                 ),
@@ -247,37 +248,33 @@ class _AnilistLinkMultiContentState extends State<_AnilistLinkMultiContent> {
 
   Widget _buildMappingItem(AnilistMapping mapping) {
     final isRootMapping = mapping.localPath == widget.series.path;
-    return Card(
-      padding: EdgeInsets.zero,
-      borderRadius: BorderRadius.circular(4),
-      child: ListTile(
-        leading: Icon(
-          isRootMapping ? FluentIcons.archive : FluentIcons.link,
-          color: FluentTheme.of(context).accentColor,
+    return UnselectableTile(
+      color: widget.series.dominantColor,
+      icon: Icon(
+        isRootMapping ? FluentIcons.folder : FluentIcons.document,
+        color: Colors.white,
+      ),
+      title: Text(mapping.title ?? 'Anilist ID: ${mapping.anilistId}'),
+      subtitle: Text('Linked to: ${_getDisplayPath(mapping.localPath)}'),
+      trailing: IconButton(
+        icon: Transform.translate(
+          offset: const Offset(1, -1),
+          child: Icon(
+            FluentIcons.blocked12,
+            size: 18,
+            color: widget.series.dominantColor,
+          ),
         ),
-        title: Text(mapping.title ?? 'Anilist ID: ${mapping.anilistId}'),
-        subtitle: Text('Linked to: ${_getDisplayPath(mapping.localPath)}'),
-        trailing: IconButton(
-          icon: Icon(FluentIcons.delete),
-          onPressed: () {
-            setState(() {
-              mappings.remove(mapping);
-            });
-          },
-        ),
+        onPressed: () {
+          setState(() {
+            mappings.remove(mapping);
+          });
+        },
       ),
     );
   }
 
-  String _getDisplayPath(String path) {
-    final seriesPath = widget.series.path;
-    if (path == seriesPath) return '(Main Series Folder)';
-    if (path.startsWith(seriesPath)) {
-      return path.substring(seriesPath.length + 1);
-    }
-    return path;
-  }
-
+  // Add Links
   Widget _buildAddForm() {
     return Column(
       children: [
@@ -385,12 +382,22 @@ class _AnilistLinkMultiContentState extends State<_AnilistLinkMultiContent> {
     );
   }
 
+  String _getDisplayPath(String path) {
+    final seriesPath = widget.series.path;
+    if (path == seriesPath) return '(Main Series Folder)';
+    if (path.startsWith(seriesPath)) {
+      return path.substring(seriesPath.length + 1);
+    }
+    return path;
+  }
+
   Widget _buildPathSelector() {
-    return Container(
-      decoration: BoxDecoration(
-        border: Border.all(color: selectedLocalPath == null ? accent(.5) : Colors.transparent),
-        borderRadius: BorderRadius.circular(8),
-      ),
+    final isSelected = selectedLocalPath == null;
+    return Card(
+      padding: EdgeInsets.all(12),
+      borderRadius: BorderRadius.circular(8),
+      backgroundColor: isSelected ? Manager.accentColor.lighter.withOpacity(0.1) : Colors.transparent,
+      borderColor: isSelected ? Manager.accentColor.lighter : FluentTheme.of(context).resources.controlStrokeColorDefault,
       child: Column(
         children: [
           // Path navigation bar
@@ -426,29 +433,15 @@ class _AnilistLinkMultiContentState extends State<_AnilistLinkMultiContent> {
                   // Option to select the current directory itself
                   final isSelected = selectedLocalPath == currentDirectory;
                   // Option to select the current directory itself
-                  return Card(
-                    padding: EdgeInsets.zero,
-                    borderRadius: BorderRadius.circular(8),
-                    backgroundColor: isSelected ? FluentTheme.of(context).accentColor.withOpacity(0.1) : Colors.transparent,
-                    child: ListTile(
-                      leading: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(FluentIcons.folder, color: isSelected ? FluentTheme.of(context).accentColor : null),
-                          if (isSelected)
-                            Padding(
-                              padding: const EdgeInsets.only(left: 4),
-                              child: Icon(FluentIcons.check_mark, size: 12, color: FluentTheme.of(context).accentColor),
-                            ),
-                        ],
-                      ),
-                      title: Text('(This Folder)', style: isSelected ? TextStyle(fontWeight: FontWeight.bold) : null),
-                      onPressed: () {
-                        setState(() {
-                          selectedLocalPath = currentDirectory;
-                        });
-                      },
-                    ),
+                  return SelectableTile(
+                    icon: FileEntityIcon(context, true, isSelected),
+                    isSelected: isSelected,
+                    title: Text('(This Folder)', style: isSelected ? TextStyle(fontWeight: FontWeight.bold) : null),
+                    onTap: () {
+                      setState(() {
+                        selectedLocalPath = currentDirectory;
+                      });
+                    },
                   );
                 }
 
@@ -457,41 +450,24 @@ class _AnilistLinkMultiContentState extends State<_AnilistLinkMultiContent> {
                 final fileName = entity.path.split(Platform.pathSeparator).last;
                 final isSelected = selectedLocalPath == entity.path;
 
-                return Card(
-                  padding: EdgeInsets.zero,
-                  borderRadius: BorderRadius.circular(8),
-                  backgroundColor: isSelected ? FluentTheme.of(context).accentColor.withOpacity(0.1) : Colors.transparent,
-                  child: ListTile(
-                    leading: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          isDir ? FluentIcons.folder : FluentIcons.document,
-                          color: isSelected ? FluentTheme.of(context).accentColor : null,
-                        ),
-                        if (isSelected)
-                          Padding(
-                            padding: const EdgeInsets.only(left: 4),
-                            child: Icon(FluentIcons.check_mark, size: 12, color: FluentTheme.of(context).accentColor),
-                          ),
-                      ],
-                    ),
-                    title: Text(fileName, style: isSelected ? TextStyle(fontWeight: FontWeight.bold) : null),
-                    onPressed: () {
-                      if (isDir) {
-                        setState(() {
-                          // Both select and navigate to the folder
-                          selectedLocalPath = entity.path;
-                          currentDirectory = entity.path;
-                          _loadFolderContents();
-                        });
-                      } else {
-                        setState(() {
-                          selectedLocalPath = entity.path;
-                        });
-                      }
-                    },
-                  ),
+                return SelectableTile(
+                  title: Text(fileName, style: isSelected ? TextStyle(fontWeight: FontWeight.bold) : null),
+                  icon: FileEntityIcon(context, isDir, isSelected),
+                  isSelected: isSelected,
+                  onTap: () {
+                    if (isDir) {
+                      setState(() {
+                        // Both select and navigate to the folder
+                        selectedLocalPath = entity.path;
+                        currentDirectory = entity.path;
+                        _loadFolderContents();
+                      });
+                    } else {
+                      setState(() {
+                        selectedLocalPath = entity.path;
+                      });
+                    }
+                  },
                 );
               },
             ),
@@ -502,13 +478,15 @@ class _AnilistLinkMultiContentState extends State<_AnilistLinkMultiContent> {
   }
 
   Widget _buildAnilistSearch() {
-    return Opacity(
+    final isSelected = selectedLocalPath != null && selectedTitle == null;
+    return AnimatedOpacity(
+      duration: shortStickyHeaderDuration,
       opacity: selectedLocalPath != null ? 1 : 0.5,
-      child: Container(
-        decoration: BoxDecoration(
-          border: Border.all(color: selectedLocalPath != null ? accent(.5) : Colors.transparent),
-          borderRadius: BorderRadius.circular(8),
-        ),
+      child: Card(
+        padding: EdgeInsets.all(12),
+        borderRadius: BorderRadius.circular(8),
+        backgroundColor: isSelected ? Manager.accentColor.lighter.withOpacity(0.1) : Colors.transparent,
+        borderColor: isSelected ? Manager.accentColor.lighter : FluentTheme.of(context).resources.controlStrokeColorDefault,
         child: AnilistSearchPanel(
           initialSearch: widget.series.name,
           linkService: widget.linkService,
@@ -547,4 +525,116 @@ class _AnilistLinkMultiContentState extends State<_AnilistLinkMultiContent> {
       ),
     );
   }
+}
+
+class SelectableTile extends StatefulWidget {
+  final Widget title;
+  final Widget? subtitle;
+  final Widget icon;
+  final bool isSelected;
+  final VoidCallback? onTap;
+  final bool showTick;
+  final Widget? trailing;
+
+  const SelectableTile({
+    super.key,
+    required this.title,
+    required this.icon,
+    this.isSelected = false,
+    this.onTap,
+    this.subtitle,
+    this.showTick = false,
+    this.trailing,
+  });
+
+  @override
+  // ignore: library_private_types_in_public_api
+  _SelectableTileState createState() => _SelectableTileState();
+}
+
+class _SelectableTileState extends State<SelectableTile> {
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      padding: EdgeInsets.zero,
+      borderRadius: BorderRadius.circular(8),
+      backgroundColor: widget.isSelected ? FluentTheme.of(context).accentColor.darkest.withOpacity(0.2) : Colors.transparent,
+      child: ListTile(
+        cursor: SystemMouseCursors.click,
+        leading: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            widget.icon,
+            if (widget.isSelected && widget.showTick)
+              Padding(
+                padding: const EdgeInsets.only(left: 4),
+                child: Icon(FluentIcons.check_mark, size: 12, color: FluentTheme.of(context).accentColor.lightest),
+              ),
+          ],
+        ),
+        trailing: widget.trailing,
+        title: widget.title,
+        subtitle: widget.subtitle,
+        onPressed: widget.onTap,
+      ),
+    );
+  }
+}
+
+class UnselectableTile extends StatefulWidget {
+  final Widget title;
+  final Widget? subtitle;
+  final Widget icon;
+  final VoidCallback? onTap;
+  final Widget? trailing;
+  final MouseCursor? cursor;
+  final Color? color;
+
+  const UnselectableTile({
+    super.key,
+    required this.title,
+    required this.icon,
+    this.onTap,
+    this.subtitle,
+    this.trailing,
+    this.cursor,
+    this.color,
+  });
+
+  @override
+  // ignore: library_private_types_in_public_api
+  _UnselectableTileState createState() => _UnselectableTileState();
+}
+
+class _UnselectableTileState extends State<UnselectableTile> {
+  bool isHovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final backgroundColor = widget.color ?? FluentTheme.of(context).accentColor.darkest;
+    return MouseRegion(
+      onEnter: (_) => setState(() => isHovered = true),
+      onExit: (_) => setState(() => isHovered = false),
+      child: Card(
+        padding: EdgeInsets.zero,
+        borderRadius: BorderRadius.circular(8),
+        backgroundColor: backgroundColor.withOpacity(isHovered ? 0.1 : 0.05),
+        child: ListTile(
+          cursor: widget.cursor,
+          leading: widget.icon,
+          trailing: widget.trailing,
+          title: widget.title,
+          subtitle: widget.subtitle,
+          onPressed: widget.onTap,
+        ),
+      ),
+    );
+  }
+}
+
+Widget FileEntityIcon(BuildContext context, bool isDir, bool isSelected) {
+  return Icon(
+    isDir ? FluentIcons.folder : FluentIcons.document,
+    color: isSelected ? FluentTheme.of(context).accentColor : null,
+  );
 }
