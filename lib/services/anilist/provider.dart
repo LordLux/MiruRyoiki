@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../utils/logging.dart';
 import 'queries.dart';
 import '../../../models/anilist/anime.dart';
 import '../../../models/anilist/user_list.dart';
@@ -25,18 +26,19 @@ class AnilistProvider extends ChangeNotifier {
 
   /// Initialize the provider
   Future<void> initialize() async {
+    logDebug('2 Initializing AnilistService...');
     _isLoading = true;
     notifyListeners();
 
     _isInitialized = await _anilistService.initialize();
 
-    if (_isInitialized && isLoggedIn) {
+    if (_isInitialized && isLoggedIn) //
       await _loadUserData();
-    }
 
     _isReady = true;
     _isLoading = false;
     notifyListeners();
+    logTrace('2 AnilistProvider initialized: $_isInitialized');
   }
 
   Future<bool> ensureInitialized() async {
@@ -60,9 +62,8 @@ class AnilistProvider extends ChangeNotifier {
 
     final success = await _anilistService.handleAuthCallback(callbackUri);
 
-    if (success) {
+    if (success) //
       await _loadUserData();
-    }
 
     _isLoading = false;
     notifyListeners();

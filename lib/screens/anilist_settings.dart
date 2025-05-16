@@ -1,4 +1,5 @@
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:miruryoiki/models/library.dart';
 import 'package:provider/provider.dart';
 import '../../services/anilist/provider.dart';
 import '../manager.dart';
@@ -86,7 +87,9 @@ class AnilistSettingsScreen extends StatelessWidget {
                       Button(
                         child: const Text('Refresh All Metadata'),
                         onPressed: () {
-                          // TODO: Implement refresh
+                          final library = Provider.of<Library>(context, listen: false);
+                          library.refreshAllMetadata();
+                          logInfo('Refreshing all Anilist metadata');
                         },
                       ),
                     ],

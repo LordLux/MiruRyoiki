@@ -35,7 +35,7 @@ class ImageCacheService {
     final bytes = utf8.encode(url);
     final digest = md5.convert(bytes);
     final extension = url.split('.').last.split('?').first;
-
+    
     return '${digest.toString()}.$extension';
   }
 
@@ -46,7 +46,7 @@ class ImageCacheService {
     final filename = _getFilenameFromUrl(url);
     final file = File('${_cacheDir!.path}/$filename');
 
-    return file.exists();
+    return await file.exists();
   }
 
   // Get cached image as file
@@ -68,7 +68,7 @@ class ImageCacheService {
     if (cachedFile != null) return cachedFile;
 
     // Download and cache the image
-    return cacheImage(url);
+    return await cacheImage(url);
   }
 
   // Download and cache an image

@@ -31,7 +31,7 @@ class FileScanner {
           final seriesItem = await _processSeries(entity, existingSeries: existingSeries_);
           series.add(seriesItem);
         } catch (e) {
-          logDebug('Error processing series ${entity.path}: $e');
+          logDebug('3 Error processing series ${entity.path}: $e');
         }
       }
     }
@@ -52,7 +52,7 @@ class FileScanner {
       bannerPath = await _findBannerImage(seriesDir);
       logTrace('New series: $name | Auto-detected Poster: ${posterPath?.split(ps).lastOrNull ?? 'None'} | Banner: ${bannerPath?.split(ps).lastOrNull ?? 'None'}');
     } else {
-      logTrace('Existing series: $name | Using saved Poster: ${posterPath?.split(ps).lastOrNull ?? 'None'} | Banner: ${bannerPath?.split(ps).lastOrNull ?? 'None'}');
+      // logTrace('Existing series: $name | Using saved Poster: ${posterPath?.split(ps).lastOrNull ?? 'None'} | Banner: ${bannerPath?.split(ps).lastOrNull ?? 'None'}');
     }
 
     // Check for subdirectories that match the season pattern
@@ -126,19 +126,29 @@ class FileScanner {
       relatedMedia.addAll(episodes);
     }
 
-    return Series(
-      name: name,
-      path: seriesDir.path,
-      folderPosterPath: posterPath,
-      folderBannerPath: bannerPath,
-      seasons: seasons,
-      relatedMedia: relatedMedia,
-      preferredPosterSource: existingSeries?.preferredPosterSource,
-      preferredBannerSource: existingSeries?.preferredBannerSource,
-      anilistMappings: existingSeries?.anilistMappings ?? [],
-      dominantColor: existingSeries?.dominantColor,
-      primaryAnilistId: existingSeries?.primaryAnilistId,
-    );
+    return existingSeries?.copyWith(
+          name: name,
+          path: seriesDir.path,
+          folderPosterPath: posterPath,
+          folderBannerPath: bannerPath,
+          seasons: seasons,
+          relatedMedia: relatedMedia,
+        ) ??
+        Series(
+          name: name,
+          path: seriesDir.path,
+          folderPosterPath: posterPath,
+          folderBannerPath: bannerPath,
+          seasons: seasons,
+          relatedMedia: relatedMedia,
+          preferredPosterSource: existingSeries?.preferredPosterSource,
+          preferredBannerSource: existingSeries?.preferredBannerSource,
+          anilistMappings: existingSeries?.anilistMappings ?? [],
+          dominantColor: existingSeries?.dominantColor,
+          primaryAnilistId: existingSeries?.primaryAnilistId,
+          anilistPoster: existingSeries?.anilistPosterUrl,
+          anilistBanner: existingSeries?.anilistBannerUrl,
+        );
   }
 
   /// Process video files into Episode objects

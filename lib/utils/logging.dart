@@ -18,7 +18,7 @@ bool doLogComplexError = false; // Set to true to enable complex error logging
 /// The `msg` parameter is the message to be logged.
 /// The `color` parameter is the text color of the message (default is [Colors.purpleAccent] to make it more noticeable).
 /// The `bgColor` parameter is the background color of the message (default is [Colors.transparent]).
-void log(final dynamic msg, [final Color color = Colors.purpleAccent, final Color bgColor = Colors.transparent, Object? error]) {
+void log(final dynamic msg, [final Color color = Colors.purpleAccent, final Color bgColor = Colors.transparent, Object? error, StackTrace? stackTrace]) {
   if (!doLogRelease && !kDebugMode) return;
   String escapeCode = getColorEscapeCode(color);
   String bgEscapeCode = getColorEscapeCodeBg(bgColor);
@@ -29,8 +29,10 @@ void log(final dynamic msg, [final Color color = Colors.purpleAccent, final Colo
     formattedMsg = formattedMsg.split('\n').map((line) => '$escapeCode$bgEscapeCode$line').join('\n');
   else
     formattedMsg = '$escapeCode$bgEscapeCode$formattedMsg';
+    
+    formattedMsg = '${now.hour}:${now.minute}:${now.second}.${now.millisecond.toString().padLeft(3, '0')} | $formattedMsg\x1B[0m'; // Reset color at the end
 
-  developer.log(formattedMsg, error: error);
+  developer.log(formattedMsg, error: error, stackTrace: stackTrace, time: now);
   if (!kDebugMode) print(msg);
 }
 
@@ -47,10 +49,10 @@ void logDebug(final dynamic msg) {
 }
 
 /// Logs an error message with the specified [msg] and sets the text color to Red.
-void logErr(final dynamic msg, [Object? error]) {
+void logErr(final dynamic msg, [Object? error, StackTrace? stackTrace]) {
   logger.e(msg, error: error, stackTrace: StackTrace.current, time: now);
   if (!kDebugMode) print(msg); // print error to terminal in release mode
-  if (doLogComplexError) log(msg, Colors.red, Colors.transparent, error);
+  if (doLogComplexError) log(msg, Colors.red, Colors.transparent, error, stackTrace);
 }
 
 /// Logs an info message with the specified [msg] and sets the text color to Very Light Blue.

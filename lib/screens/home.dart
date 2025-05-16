@@ -115,16 +115,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 Button(
                   child: const Text('Refresh'),
-                  onPressed: () async {
-                    snackBar('Refreshing Anilist posters...', severity: InfoBarSeverity.info);
-                    await library.scanLibrary();
-                    await library.loadAnilistPostersForLibrary(onProgress: (loaded, total) {
-                      if (loaded % 5 == 0 || loaded == total) {
-                        // Force UI refresh every 5 items or on completion
-                        setState(() {});
-                      }
-                    });
-                  },
+                  onPressed: () => library.reloadLibrary(),
                 ),
               ],
             ),
