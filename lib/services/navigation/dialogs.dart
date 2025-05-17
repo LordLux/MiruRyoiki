@@ -2,10 +2,14 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/material.dart' show Material;
 import 'package:miruryoiki/main.dart';
 import 'package:provider/provider.dart';
+import '../../manager.dart';
 import '../../utils/logging.dart';
 import '../../utils/time_utils.dart';
 import 'debug.dart';
 import 'navigation.dart';
+
+bool kReturnTrueCallback() => true;
+bool kReturnFalseCallback() => false;
 
 /// Helper for managing dialog navigation state
 Future<T?> showManagedDialog<T>({
@@ -14,8 +18,8 @@ Future<T?> showManagedDialog<T>({
   required String title,
   required ManagedDialog Function(BuildContext) builder,
   Object? data,
-  bool doDialogPop = false,
-  bool Function()? barrierDismissCheck,
+  bool canUserPopDialog = true,
+  bool Function() doDialogPop = kReturnFalseCallback,
 }) async {
   final navManager = Provider.of<NavigationManager>(rootNavigatorKey.currentContext!, listen: false);
 
@@ -26,17 +30,25 @@ Future<T?> showManagedDialog<T>({
   final result = await showDialog<T>(
     context: rootNavigatorKey.currentContext!,
     useRootNavigator: true,
-    dismissWithEsc: doDialogPop,
-    barrierDismissible: doDialogPop, // disables esc and click outside to close
-    builder: (context) {
-      return PopScope(
-        canPop: false,
-        child: builder(context),
-      );
-    },
+    dismissWithEsc: false, // DO NOT allow ESC to close the dialog, as esc already triggers normal pop (wtf flutter?)
+    barrierDismissible: canUserPopDialog, // allow barrier to dismiss if no check provided
+    builder: (context) => PopScope(
+      canPop: false, // Prevent popping from the dialog itself
+      onPopInvoked: (didPop) async {
+        if (didPop) return; // If the pop was invoked, do nothing
+        
+        log('doDialogPop(): ${doDialogPop()}');
+        if (doDialogPop()) {
+          logTrace('Dialog pop invoked, closing dialog');
+          Navigator.of(context).pop(); // Close the dialog
+        }
+      },
+      child: builder(context),
+    ),
   ).then((_) {
     log('$nowFormatted | Dialog closed');
     navManager.popDialog();
+    Manager.canPopDialog = true; // Reset dialog pop state
   });
 
   return result;
@@ -71,8 +83,7 @@ Future<T?> showSimpleManagedDialog<T>({
     context: context,
     id: id,
     title: title,
-    barrierDismissCheck: () => true,
-    doDialogPop: true,
+    doDialogPop: () => true,
     builder: (context) {
       return ManagedDialog(
         popContext: context,
@@ -120,8 +131,7 @@ Future<T?> showSimpleOneButtonManagedDialog<T>({
       context: context,
       id: id,
       title: title,
-      barrierDismissCheck: () => true,
-      doDialogPop: true,
+      doDialogPop: () => true,
       builder: (context) {
         return ManagedDialog(
           popContext: context,
@@ -182,6 +192,8 @@ class _DismissibleWrapper extends StatelessWidget {
   }
 }
 
+void kEmptyVoidCallBack() {}
+
 class ManagedDialogButton extends StatelessWidget {
   /// Callback to be executed when the button is pressed, the closing of the dialog is handled by the widget itself
   final VoidCallback? onPressed;
@@ -191,7 +203,7 @@ class ManagedDialogButton extends StatelessWidget {
 
   const ManagedDialogButton({
     super.key,
-    this.onPressed,
+    this.onPressed = kEmptyVoidCallBack,
     this.text = 'Cancel',
     this.isPrimary = false,
     required this.popContext,
@@ -320,8 +332,7 @@ void showDebugDialog(BuildContext context) {
     context: context,
     id: 'history:debug',
     title: 'Debug History',
-    doDialogPop: true,
-    barrierDismissCheck: () => true,
+    doDialogPop: () => true,
     builder: (context) => ManagedDialog(
       popContext: context,
       theme: ContentDialogThemeData(
@@ -333,7 +344,7 @@ void showDebugDialog(BuildContext context) {
       actions: (popContext) => [
         ManagedDialogButton(
           popContext: popContext,
-          text: 'debug',
+          text: 'Close History Debug',
         )
       ],
       contentBuilder: (_, __) => const NavigationHistoryDebug(),
