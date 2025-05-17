@@ -87,8 +87,7 @@ class SeriesScreenState extends State<SeriesScreen> {
       context: context,
       id: isBanner ? 'bannerSelection:${series!.path}' : 'posterSelection:${series!.path}',
       title: isBanner ? 'Select Banner' : 'Select Poster',
-      doDialogPop: true,
-      barrierDismissCheck: () => true,
+      doDialogPop: () => true,
       builder: (context) => ImageSelectionDialog(
         series: series!,
         popContext: context,
@@ -927,11 +926,8 @@ void linkWithAnilist(BuildContext context, Series? series, Future<void> Function
     id: 'linkAnilist:${series.path}',
     title: 'Link to Anilist',
     data: series.path,
-    doDialogPop: true,
-    barrierDismissCheck: () {
-      print('Barrier dismissed check called');
-      return false;
-    },
+    canUserPopDialog: true,
+    doDialogPop: () => Manager.canPopDialog, // Allow popping only when in view mode
     builder: (context) => AnilistLinkMultiDialog(
       constraints: const BoxConstraints(
         maxWidth: 1300,
@@ -943,10 +939,9 @@ void linkWithAnilist(BuildContext context, Series? series, Future<void> Function
       onLink: (_, __) {},
       onDialogComplete: (success, mappings) async {
         // if the dialog was closed without a result, do nothing
-        if (success == null) {
-          logDebug('Dialog closed without result');
+        if (success == null)
+          // logDebug('Dialog closed without result');
           return;
-        }
 
         // if the dialog was closed with a result, check if it was successful
         if (!success) {

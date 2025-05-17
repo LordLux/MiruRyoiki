@@ -13,6 +13,8 @@ import '../../services/navigation/dialogs.dart';
 import '../../services/navigation/show_info.dart';
 import 'search_panel.dart';
 
+final GlobalKey<_AnilistLinkMultiContentState> linkMultiDialogKey = GlobalKey<_AnilistLinkMultiContentState>();
+
 class AnilistLinkMultiDialog extends ManagedDialog {
   final Series series;
   final SeriesLinkService linkService;
@@ -30,6 +32,7 @@ class AnilistLinkMultiDialog extends ManagedDialog {
     super.constraints = const BoxConstraints(maxWidth: 1000, maxHeight: 600),
   }) : super(
           contentBuilder: (context, constraints) => _AnilistLinkMultiContent(
+            key: linkMultiDialogKey,
             series: series,
             linkService: linkService,
             onLink: onLink,
@@ -58,6 +61,7 @@ class _AnilistLinkMultiContent extends StatefulWidget {
   final VoidCallback onCancel;
 
   const _AnilistLinkMultiContent({
+    super.key,
     required this.series,
     required this.linkService,
     this.onLink,
@@ -98,13 +102,14 @@ class _AnilistLinkMultiContentState extends State<_AnilistLinkMultiContent> {
   @override
   void initState() {
     super.initState();
+    Manager.canPopDialog = true;
     mappings = List.from(widget.series.anilistMappings);
     oldMappings = List.from(mappings);
     currentDirectory = widget.series.path;
     _loadFolderContents();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mode == 'view') _switchToViewMode();
+      if (mode == 'view') switchToViewMode();
     });
   }
 
@@ -133,7 +138,7 @@ class _AnilistLinkMultiContentState extends State<_AnilistLinkMultiContent> {
     return _buildContent();
   }
 
-  void _switchToViewMode() {
+  void switchToViewMode() {
     context.resizeManagedDialog(
       constraints: BoxConstraints(
         maxWidth: 700, // Smaller width for view mode
@@ -143,6 +148,7 @@ class _AnilistLinkMultiContentState extends State<_AnilistLinkMultiContent> {
 
     setState(() {
       mode = 'view';
+      Manager.canPopDialog = true; // Allow dialog to be popped in view mode
       selectedLocalPath = null;
       selectedAnilistId = null;
       selectedTitle = null;
@@ -163,6 +169,7 @@ class _AnilistLinkMultiContentState extends State<_AnilistLinkMultiContent> {
 
     setState(() {
       mode = 'add';
+      Manager.canPopDialog = false; // Prevent popping in add mode
       selectedLocalPath = null;
       selectedAnilistId = null;
       selectedTitle = null;
@@ -219,9 +226,10 @@ class _AnilistLinkMultiContentState extends State<_AnilistLinkMultiContent> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Button(
-              onPressed: widget.onCancel,
-              child: Text('Cancel'),
+            ManagedDialogButton(
+              text: 'Cancel',
+              popContext: context,
+              onPressed: () => widget.onCancel.call(),
             ),
             Row(
               children: [
@@ -230,13 +238,13 @@ class _AnilistLinkMultiContentState extends State<_AnilistLinkMultiContent> {
                   child: Text('Add New Link'),
                 ),
                 SizedBox(width: 8),
-                FilledButton(
+                ManagedDialogButton(
+                  text: mappings.isEmpty && oldMappings.isNotEmpty //
+                      ? 'Remove All Links'
+                      : 'Save Changes',
+                  isPrimary: true,
+                  popContext: context,
                   onPressed: _mappingsChanged ? () => widget.onSave(mappings) : null,
-                  child: Text(
-                    mappings.isEmpty && oldMappings.isNotEmpty //
-                        ? 'Remove All Links'
-                        : 'Save Changes',
-                  ),
                 ),
               ],
             ),
@@ -357,7 +365,7 @@ class _AnilistLinkMultiContentState extends State<_AnilistLinkMultiContent> {
 
             // Buttons
             Button(
-              onPressed: _switchToViewMode,
+              onPressed: switchToViewMode,
               child: Text('Back'),
             ),
             SizedBox(width: 8),
@@ -370,7 +378,7 @@ class _AnilistLinkMultiContentState extends State<_AnilistLinkMultiContent> {
                           anilistId: selectedAnilistId!,
                           title: selectedTitle,
                         ));
-                        _switchToViewMode();
+                        switchToViewMode();
                       });
                     }
                   : null,

@@ -18,6 +18,9 @@ class Manager {
   static const int dynMouseScrollDuration = 150;
   static const double dynMouseScrollScrollSpeed = 2;
   static const String appTitle = "MiruRyoiki";
+  
+  /// Indicates if the current dialog can be popped, used when dialogs have multiple 'views'
+  static bool canPopDialog = true;
 
   static List<String> accounts = [];
 

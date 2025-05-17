@@ -34,6 +34,7 @@ import 'theme.dart';
 import 'utils/color_utils.dart';
 import 'utils/screen_utils.dart';
 import 'utils/time_utils.dart';
+import 'widgets/dialogs/link_anilist_multi.dart';
 import 'widgets/menu_button.dart';
 import 'widgets/reverse_animation_flyout.dart' show ToggleableFlyoutContent, ToggleableFlyoutContentState;
 import 'widgets/simple_flyout.dart' hide ToggleableFlyoutContent;
@@ -720,13 +721,21 @@ class _AppRootState extends State<AppRoot> {
       // Find active dialogs and close them
       // This assumes dialogs are managed through Flutter's dialog system
       // and will be removed from stack using the showManagedDialog helper
-      closeDialog(rootNavigatorKey.currentContext!);
+
+      // closeDialog(rootNavigatorKey.currentContext!);
       return true;
     } else if (_isSeriesView) {
       if (!navManager.hasDialog) {
         // Coming back from series view
         log('Going back in navigation stack! -> Library');
         exitSeriesView();
+      } else {
+        if (!Manager.canPopDialog) {
+          if (navManager.currentView?.id.startsWith('linkAnilist') ?? false) {
+            log('Link Anilist dialog is open, switching to view mode');
+            nextFrame(() => linkMultiDialogKey.currentState?.switchToViewMode());
+          }
+        }
       }
       return true;
     } else if (navManager.canGoBack) {

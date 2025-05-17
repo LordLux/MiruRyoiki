@@ -293,7 +293,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       context: context,
       id: 'formatterResults',
       title: 'Formatter Results',
-      doDialogPop: true,
+      doDialogPop: () => true,
       builder: (context) => ManagedDialog(
         popContext: context,
         title: Text('Formatter Results'),
@@ -420,8 +420,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       context: context,
       id: 'applyingFormat',
       title: 'Applying Changes',
-      doDialogPop: false,
-      barrierDismissCheck: () => false,
+      doDialogPop: () => false,
       builder: (context) => ManagedDialog(
         popContext: context,
         title: Text('Applying Changes'),
