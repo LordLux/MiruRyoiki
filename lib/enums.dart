@@ -91,7 +91,7 @@ extension DominantColorSourceX on DominantColorSource {
     } else if (value == 'autoLocal') {
       return DominantColorSource.banner;
     }
-    
+
     try {
       return DominantColorSource.values.firstWhere((e) => e.name_ == value);
     } catch (e) {
@@ -153,5 +153,32 @@ extension HexString on String {
     } else {
       throw FormatException('Invalid hex color format: $this');
     }
+  }
+}
+
+extension DurationX on Duration {
+  Duration copyWith({
+    int? days,
+    int? hours,
+    int? minutes,
+    int? seconds,
+    int? milliseconds,
+    int? microseconds,
+  }) {
+    return Duration(
+      days: days ?? this.inDays,
+      hours: hours ?? this.inHours,
+      minutes: minutes ?? this.inMinutes,
+      seconds: seconds ?? this.inSeconds,
+      milliseconds: milliseconds ?? this.inMilliseconds,
+      microseconds: microseconds ?? this.inMicroseconds,
+    );
+  }
+  
+  /// Adds a number of milliseconds to the duration
+  Duration operator /(int other) {
+    return copyWith(
+      milliseconds: this.inMilliseconds + other,
+    );
   }
 }

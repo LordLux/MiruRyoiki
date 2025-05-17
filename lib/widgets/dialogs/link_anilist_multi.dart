@@ -108,7 +108,7 @@ class _AnilistLinkMultiContentState extends State<_AnilistLinkMultiContent> {
     currentDirectory = widget.series.path;
     _loadFolderContents();
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    nextFrame(() {
       if (mode == 'view') switchToViewMode();
     });
   }

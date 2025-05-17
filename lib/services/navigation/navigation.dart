@@ -2,6 +2,7 @@
 
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/foundation.dart';
+import 'package:miruryoiki/utils/time_utils.dart';
 
 import '../../utils/logging.dart';
 
@@ -45,6 +46,8 @@ class NavigationItem {
 
 class NavigationManager extends ChangeNotifier {
   final List<NavigationItem> _stack = [];
+
+  ValueNotifier<bool> stackNotifier = ValueNotifier<bool>(false);
 
   // Current state accessors
   List<NavigationItem> get stack => List.unmodifiable(_stack);
@@ -91,15 +94,15 @@ class NavigationManager extends ChangeNotifier {
   }
 
   void _push(NavigationItem item) {
-    
     _stack.add(item);
+    nextFrame(delay:70, () => stackNotifier.value = !stackNotifier.value); // Notify listeners that the stack has changed
     notifyListeners();
     _logCurrentStack();
   }
 
   bool goBack() {
     if (!canGoBack) return false;
-    
+
     _stack.removeLast();
     notifyListeners();
     _logCurrentStack();
@@ -149,7 +152,7 @@ class NavigationManager extends ChangeNotifier {
   /// Pops the current dialog from the stack and returns true if successful.
   bool popDialog() {
     if (!hasDialog) return false;
-    
+
     return goBack();
   }
 }
