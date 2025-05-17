@@ -69,8 +69,10 @@ class SeriesScreenState extends State<SeriesScreen> {
   void initState() {
     super.initState();
     _headerHeight = ScreenUtils.maxHeaderHeight;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    nextFrame(() {
       _loadAnilistDataForCurrentSeries();
+      Manager.currentDominantColor = dominantColor;
+      nextFrame(() => setState(() {}));
     });
   }
 
@@ -87,7 +89,7 @@ class SeriesScreenState extends State<SeriesScreen> {
       context: context,
       id: isBanner ? 'bannerSelection:${series!.path}' : 'posterSelection:${series!.path}',
       title: isBanner ? 'Select Banner' : 'Select Poster',
-      doDialogPop: () => true,
+      dialogDoPopCheck: () => true,
       builder: (context) => ImageSelectionDialog(
         series: series!,
         popContext: context,
@@ -926,8 +928,9 @@ void linkWithAnilist(BuildContext context, Series? series, Future<void> Function
     id: 'linkAnilist:${series.path}',
     title: 'Link to Anilist',
     data: series.path,
+    barrierColor: series.dominantColor?.withOpacity(0.5),
     canUserPopDialog: true,
-    doDialogPop: () => Manager.canPopDialog, // Allow popping only when in view mode
+    dialogDoPopCheck: () => Manager.canPopDialog, // Allow popping only when in view mode
     builder: (context) => AnilistLinkMultiDialog(
       constraints: const BoxConstraints(
         maxWidth: 1300,

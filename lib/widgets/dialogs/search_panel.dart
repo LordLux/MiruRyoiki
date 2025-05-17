@@ -6,12 +6,13 @@ import '../../models/anilist/anime.dart';
 import '../../services/anilist/linking.dart';
 import '../../services/anilist/provider.dart';
 import '../../services/navigation/dialogs.dart';
+import '../../utils/time_utils.dart';
 import 'link_anilist_multi.dart';
 
 class AnilistSearchPanel extends StatefulWidget {
   /// The series to link to Anilist.
   final Series series;
-  
+
   /// If true, the textbox is enabled, otherwise it is disabled.
   final bool enabled;
 
@@ -58,7 +59,7 @@ class _AnilistSearchPanelState extends State<AnilistSearchPanel> {
     super.initState();
     _searchController.text = widget.initialSearch ?? widget.series.name;
     _searchSeries();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    nextFrame(() {
       context.resizeManagedDialog(
         width: widget.constraints.maxWidth,
         height: widget.constraints.maxHeight,

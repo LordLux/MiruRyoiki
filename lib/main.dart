@@ -7,6 +7,7 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter_acrylic/flutter_acrylic.dart';
 import 'package:flutter_acrylic/window.dart' as flutter_acrylic;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:miruryoiki/enums.dart';
 import 'package:provider/provider.dart';
 import 'package:app_links/app_links.dart';
 import 'package:system_theme/system_theme.dart';
@@ -316,7 +317,7 @@ class _AppRootState extends State<AppRoot> {
   void _restoreContextAfterSwitch() {
     //TODO fix scrolled to the bottom gets pushed a little bit up???
     // Use post frame callback to ensure the grid is built
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    nextFrame(() {
       if (seriesController.hasClients) {
         // Make sure we don't scroll beyond the content
         final maxScroll = seriesController.position.maxScrollExtent;
@@ -380,7 +381,7 @@ class _AppRootState extends State<AppRoot> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    nextFrame(() {
       final navManager = Provider.of<NavigationManager>(context, listen: false);
       navManager.pushPane('library', 'Library');
     });
@@ -560,90 +561,98 @@ class _AppRootState extends State<AppRoot> {
       duration: getDuration(dimDuration),
       color: getDimmableBlack(context),
       height: Manager.titleBarHeight,
-      child: Stack(
-        children: [
-          Positioned.fill(
-            child: WindowTitleBarBox(
-              child: MoveWindow(
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.all(8.0),
-                      child: SizedBox(
-                        width: 30,
-                        child: Transform.translate(
-                          offset: const Offset(1, 2),
-                          child: Image.file(
-                            File(iconPath),
-                            width: 19,
-                            height: 19,
-                            errorBuilder: (_, __, ___) => const Icon(Icons.icecream_outlined, size: 19),
-                          ),
+      child: ValueListenableBuilder<bool>(
+          valueListenable: Manager.navigation.stackNotifier,
+          builder: (context, _, __) {
+            return AnimatedContainer(
+              duration: getDuration(dimDuration),
+              color: Manager.navigation.hasDialog ? getBarrierColor(Manager.currentDominantColor) : Colors.transparent,
+              child: Stack(
+                children: [
+                  Positioned.fill(
+                    child: WindowTitleBarBox(
+                      child: MoveWindow(
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.all(8.0),
+                              child: SizedBox(
+                                width: 30,
+                                child: Transform.translate(
+                                  offset: const Offset(1, 2),
+                                  child: Image.file(
+                                    File(iconPath),
+                                    width: 19,
+                                    height: 19,
+                                    errorBuilder: (_, __, ___) => const Icon(Icons.icecream_outlined, size: 19),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            SizedBox.shrink(),
+                            // Windows Window Buttons
+                            SizedBox(width: winButtonsWidth),
+                          ],
                         ),
                       ),
                     ),
-                    SizedBox.shrink(),
-                    // Windows Window Buttons
-                    SizedBox(width: winButtonsWidth),
-                  ],
-                ),
-              ),
-            ),
-          ),
-          Positioned.fill(
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                // Menu bar
-                SizedBox(
-                  width: winButtonsWidth + 71 + 13,
-                  child: Padding(
-                    padding: const EdgeInsets.only(left: 35 + 10),
-                    child: MenuBar(key: ValueKey('mainMenuBar'), items: [
-                      MenuBarItem(title: 'File', items: [
-                        MenuFlyoutItem(
-                          text: const Text('New Window'),
-                          onPressed: () {},
-                        ),
-                        MenuFlyoutItem(
-                          text: const Text('Exit'),
-                          leading: Icon(FluentIcons.calculator_multiply, color: Colors.red),
-                          onPressed: null,
-                          // onPressed: () => windowManager.close(),
-                        ),
-                      ]),
-                      MenuBarItem(title: 'View', items: [
-                        MenuFlyoutItem(
-                          text: const Text('New Window'),
-                          onPressed: () {},
-                        ),
-                        MenuFlyoutItem(
-                          text: const Text('Plain Text Documents'),
-                          onPressed: () {},
-                        ),
-                      ]),
-                      MenuBarItem(title: 'Help', items: [
-                        MenuFlyoutItem(
-                          text: const Text('Debug History'),
-                          onPressed: () {
-                            showDebugDialog(context);
-                          },
-                        ),
-                      ]),
-                    ]),
                   ),
-                ),
-                SizedBox(
-                  height: Manager.titleBarHeight,
-                  child: WindowButtons(),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
+                  Positioned.fill(
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        // Menu bar
+                        SizedBox(
+                          width: winButtonsWidth + 71 + 13,
+                          child: Padding(
+                            padding: const EdgeInsets.only(left: 35 + 10),
+                            child: MenuBar(key: ValueKey('mainMenuBar'), items: [
+                              MenuBarItem(title: 'File', items: [
+                                MenuFlyoutItem(
+                                  text: const Text('New Window'),
+                                  onPressed: () {},
+                                ),
+                                MenuFlyoutItem(
+                                  text: const Text('Exit'),
+                                  leading: Icon(FluentIcons.calculator_multiply, color: Colors.red),
+                                  onPressed: null,
+                                  // onPressed: () => windowManager.close(),
+                                ),
+                              ]),
+                              MenuBarItem(title: 'View', items: [
+                                MenuFlyoutItem(
+                                  text: const Text('New Window'),
+                                  onPressed: () {},
+                                ),
+                                MenuFlyoutItem(
+                                  text: const Text('Plain Text Documents'),
+                                  onPressed: () {},
+                                ),
+                              ]),
+                              MenuBarItem(title: 'Help', items: [
+                                MenuFlyoutItem(
+                                  text: const Text('Debug History'),
+                                  onPressed: () {
+                                    showDebugDialog(context);
+                                  },
+                                ),
+                              ]),
+                            ]),
+                          ),
+                        ),
+                        SizedBox(
+                          height: Manager.titleBarHeight,
+                          child: WindowButtons(),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }),
     );
   }
 
@@ -706,6 +715,7 @@ class _AppRootState extends State<AppRoot> {
       lastSelectedSeriesPath = _selectedSeriesPath ?? lastSelectedSeriesPath;
       _selectedSeriesPath = null;
       _isSeriesView = false;
+      Manager.currentDominantColor = null;
     });
 
     // Restore scroll position when returning to library
@@ -840,5 +850,5 @@ String get iconPng => '$assets${ps}system${ps}icon.png';
 String get ps => Platform.pathSeparator;
 
 // TODO library view series libviewcol
-// TODO test series formatter
 // TODO create autolinker
+// TODO fix back mouse button navigation

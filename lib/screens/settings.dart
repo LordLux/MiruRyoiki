@@ -293,7 +293,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       context: context,
       id: 'formatterResults',
       title: 'Formatter Results',
-      doDialogPop: () => true,
+      dialogDoPopCheck: () => true,
       builder: (context) => ManagedDialog(
         popContext: context,
         title: Text('Formatter Results'),
@@ -420,7 +420,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       context: context,
       id: 'applyingFormat',
       title: 'Applying Changes',
-      doDialogPop: () => false,
+      dialogDoPopCheck: () => false,
       builder: (context) => ManagedDialog(
         popContext: context,
         title: Text('Applying Changes'),
@@ -675,7 +675,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     issueController.addListener(issueScrollMove);
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    nextFrame(() {
       final settings = Provider.of<SettingsManager>(context, listen: false);
       tempColor = settings.accentColor;
     });

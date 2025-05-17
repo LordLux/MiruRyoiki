@@ -3,6 +3,8 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 
+import '../utils/time_utils.dart';
+
 /// A grid that can display widgets in an infinitely repeating pattern
 /// with transformation options and caching for performance.
 class TransformableGrid extends StatefulWidget {
@@ -112,7 +114,7 @@ class _TransformableGridState extends State<TransformableGrid> {
           // This will trigger the post-frame callback
           Builder(
             builder: (context) {
-              WidgetsBinding.instance.addPostFrameCallback((_) {
+             nextFrame(() {
                 _captureWidgets().then((_) {
                   setState(() {
                     _widgetsRendered = true;

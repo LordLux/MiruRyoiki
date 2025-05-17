@@ -5,11 +5,19 @@ import 'package:provider/provider.dart';
 import '../../manager.dart';
 import '../../utils/logging.dart';
 import '../../utils/time_utils.dart';
+import '../../widgets/dialogs/showDialog.dart';
 import 'debug.dart';
 import 'navigation.dart';
 
 bool kReturnTrueCallback() => true;
 bool kReturnFalseCallback() => false;
+
+Color getBarrierColor(Color? color) {
+  final Color baseColor = const Color(0xFF000000);
+  if (color == null) return baseColor.withAlpha(0x84);
+  // If no color is provided, use the default barrier color
+  return (baseColor.lerpWith(color, .025)).withAlpha(0x84);
+}
 
 /// Helper for managing dialog navigation state
 Future<T?> showManagedDialog<T>({
@@ -17,9 +25,10 @@ Future<T?> showManagedDialog<T>({
   required String id,
   required String title,
   required ManagedDialog Function(BuildContext) builder,
+  Color? barrierColor = const Color(0x8A000000),
   Object? data,
   bool canUserPopDialog = true,
-  bool Function() doDialogPop = kReturnFalseCallback,
+  bool Function() dialogDoPopCheck = kReturnFalseCallback,
 }) async {
   final navManager = Provider.of<NavigationManager>(rootNavigatorKey.currentContext!, listen: false);
 
@@ -27,18 +36,20 @@ Future<T?> showManagedDialog<T>({
   navManager.pushDialog(id, title, data: data);
 
   // Show the dialog
-  final result = await showDialog<T>(
+  final result = await showPaddedDialog<T>(
     context: rootNavigatorKey.currentContext!,
+    barrierColor: getBarrierColor(barrierColor),
     useRootNavigator: true,
     dismissWithEsc: false, // DO NOT allow ESC to close the dialog, as esc already triggers normal pop (wtf flutter?)
     barrierDismissible: canUserPopDialog, // allow barrier to dismiss if no check provided
+    barrierPadding: EdgeInsets.only(top: Manager.titleBarHeight),
     builder: (context) => PopScope(
       canPop: false, // Prevent popping from the dialog itself
       onPopInvoked: (didPop) async {
         if (didPop) return; // If the pop was invoked, do nothing
-        
-        log('doDialogPop(): ${doDialogPop()}');
-        if (doDialogPop()) {
+
+        log('doDialogPop(): ${dialogDoPopCheck()}');
+        if (dialogDoPopCheck()) {
           logTrace('Dialog pop invoked, closing dialog');
           Navigator.of(context).pop(); // Close the dialog
         }
@@ -49,6 +60,7 @@ Future<T?> showManagedDialog<T>({
     log('$nowFormatted | Dialog closed');
     navManager.popDialog();
     Manager.canPopDialog = true; // Reset dialog pop state
+    nextFrame(Manager.setState);
   });
 
   return result;
@@ -83,7 +95,7 @@ Future<T?> showSimpleManagedDialog<T>({
     context: context,
     id: id,
     title: title,
-    doDialogPop: () => true,
+    dialogDoPopCheck: () => true,
     builder: (context) {
       return ManagedDialog(
         popContext: context,
@@ -131,7 +143,7 @@ Future<T?> showSimpleOneButtonManagedDialog<T>({
       context: context,
       id: id,
       title: title,
-      doDialogPop: () => true,
+      dialogDoPopCheck: () => true,
       builder: (context) {
         return ManagedDialog(
           popContext: context,
@@ -307,9 +319,13 @@ class ManagedDialogState extends State<ManagedDialog> {
           child: widget.contentBuilder != null ? widget.contentBuilder!(context, _currentConstraints) : null,
         ),
       ),
-      actions: widget.actions?.call(widget.popContext),
+      actions: widget.actions != null ? widget.actions!.call(widget.popContext) : null,
       constraints: _currentConstraints,
     );
+  }
+
+  void popDialog() {
+    closeDialog(widget.popContext);
   }
 }
 
@@ -332,7 +348,7 @@ void showDebugDialog(BuildContext context) {
     context: context,
     id: 'history:debug',
     title: 'Debug History',
-    doDialogPop: () => true,
+    dialogDoPopCheck: () => true,
     builder: (context) => ManagedDialog(
       popContext: context,
       theme: ContentDialogThemeData(

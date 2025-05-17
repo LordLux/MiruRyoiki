@@ -18,9 +18,10 @@ class Manager {
   static const int dynMouseScrollDuration = 150;
   static const double dynMouseScrollScrollSpeed = 2;
   static const String appTitle = "MiruRyoiki";
-  
+
   /// Indicates if the current dialog can be popped, used when dialogs have multiple 'views'
   static bool canPopDialog = true;
+  static Color? currentDominantColor;
 
   static List<String> accounts = [];
 
@@ -37,7 +38,7 @@ class Manager {
   static void setState() {
     if (homeKey.currentState != null) homeKey.currentState!.setState(() {});
   }
-  
+
   static NavigationManager get navigation => Provider.of<NavigationManager>(homeKey.currentContext!, listen: false);
 
   static SettingsManager get settings => Provider.of<SettingsManager>(homeKey.currentContext!, listen: false);
