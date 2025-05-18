@@ -10,7 +10,7 @@ enum ImageSource { local, anilist, autoLocal, autoAnilist }
 
 enum DominantColorSource { poster, banner }
 
-enum LibraryColorView { all, onlyHover, onlyBackground, none }
+enum LibraryColorView { alwaysDominant, alwaysAccent, hoverDominant, hoverAccent, none }
 
 // EXTENSIONS
 extension ThemeX on ThemeMode {
@@ -174,7 +174,7 @@ extension DurationX on Duration {
       microseconds: microseconds ?? this.inMicroseconds,
     );
   }
-  
+
   /// Adds a number of milliseconds to the duration
   Duration operator /(int other) {
     return copyWith(

@@ -22,6 +22,7 @@ import '../models/formatter/action.dart';
 import '../models/series.dart';
 import '../services/navigation/dialogs.dart';
 import '../services/navigation/show_info.dart';
+import '../utils/color_utils.dart';
 import '../utils/logging.dart';
 import '../utils/registry_utils.dart';
 import '../models/library.dart';
@@ -65,6 +66,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   final ScrollController _scrollController = ScrollController();
   final ScrollController issueController = ScrollController();
+
+  bool showAccentLibViewCol = false;
 
   double prevPos = 0;
 
@@ -331,7 +334,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     style: FluentTheme.of(context).typography.bodyLarge,
                   ),
                   SizedBox(height: 12),
-              
+
                   // Summary of actions
                   Center(
                     child: SizedBox(
@@ -969,27 +972,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     children: [
                                       const Text('Dim'),
                                       const SizedBox(width: 12),
-                                      toggle.ToggleSwitch(
-                                        animate: true,
-                                        animationDuration: getDuration(dimDuration).inMilliseconds,
-                                        initialLabelIndex: context.watch<AppTheme>().dim.index,
-                                        totalSwitches: Dim.values.length,
-                                        activeFgColor: Colors.white,
-                                        activeBgColors: [
-                                          [FluentTheme.of(context).accentColor.light],
-                                          [FluentTheme.of(context).accentColor.lighter],
-                                          [FluentTheme.of(context).accentColor.lightest],
-                                        ],
-                                        minWidth: 130.0,
-                                        labels: [
-                                          Dim.values[0].name_,
-                                          Dim.values[1].name_,
-                                          Dim.values[2].name_,
-                                        ],
-                                        onToggle: (int? value) {
-                                          final appTheme = context.read<AppTheme>();
-                                          appTheme.dim = Dim.values[value!];
-                                          settings.set('dim', Dim.values[value].name_.toLowerCase());
+                                      EnumToggle<Dim>(
+                                        enumValues: Dim.values,
+                                        labelExtractor: (value) => value.name_,
+                                        currentValue: appTheme.dim,
+                                        onChanged: (value) {
+                                          appTheme.dim = value;
+                                          settings.set('dim', value.name_.toLowerCase());
                                         },
                                       ),
                                     ],
@@ -1045,31 +1034,60 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   Row(
                                     children: [
                                       Text(
-                                        'Library Hover',
+                                        'Library Cards Colors',
                                         style: FluentTheme.of(context).typography.body,
                                       ),
                                       const SizedBox(width: 12),
+                                      ToggleSwitch(
+                                        checked: showAccentLibViewCol,
+                                        onChanged: (value) => setState(() {
+                                          showAccentLibViewCol = value;
+
+                                          // Convert between equivalent modes when toggle changes
+                                          switch (settings.libColView) {
+                                            case LibraryColorView.alwaysAccent:
+                                            case LibraryColorView.alwaysDominant:
+                                              settings.libColView = value ? LibraryColorView.alwaysAccent : LibraryColorView.alwaysDominant;
+                                              break;
+
+                                            case LibraryColorView.hoverAccent:
+                                            case LibraryColorView.hoverDominant:
+                                              settings.libColView = value ? LibraryColorView.hoverAccent : LibraryColorView.hoverDominant;
+                                              break;
+
+                                            case LibraryColorView.none:
+                                              settings.libColView = LibraryColorView.none;
+                                              break;
+                                          }
+                                          settings.set('libColView', settings.libColView.name_);
+                                        }),
+                                      ),
                                       Builder(builder: (context) {
-                                        final List<double> customWidths = [80.0, 130, 150, 80.0];
+                                        final List<double> customWidths = [140.0, 130, 80.0];
+
+                                        // Define the options based on current toggle state
+                                        final options = showAccentLibViewCol ? [LibraryColorView.alwaysAccent, LibraryColorView.hoverAccent, LibraryColorView.none] : [LibraryColorView.alwaysDominant, LibraryColorView.hoverDominant, LibraryColorView.none];
+
+                                        // Find the correct index in our filtered list
+                                        int initialIndex = options.indexOf(settings.libColView);
+                                        if (initialIndex < 0) initialIndex = 0; // Fallback
+
                                         return Flexible(
                                           child: toggle.ToggleSwitch(
                                             animate: true,
                                             multiLineText: true,
                                             animationDuration: getDuration(dimDuration).inMilliseconds,
-                                            initialLabelIndex: settings.libColView.index,
-                                            totalSwitches: LibraryColorView.values.length,
-                                            activeFgColor: Colors.white,
+                                            initialLabelIndex: initialIndex,
+                                            totalSwitches: 3,
+                                            activeFgColor: getPrimaryColorBasedOnAccent(),
                                             activeBgColor: [FluentTheme.of(context).accentColor.lighter],
                                             customWidths: customWidths,
-                                            labels: [
-                                              LibraryColorView.values[0].name_,
-                                              LibraryColorView.values[1].name_,
-                                              LibraryColorView.values[2].name_,
-                                              LibraryColorView.values[3].name_,
-                                            ],
+                                            labels: options.map((opt) => opt.name_).toList(),
                                             onToggle: (int? value) {
-                                              settings.libColView = LibraryColorView.values[value!];
-                                              settings.set('libColView', LibraryColorView.values[value].name_);
+                                              if (value != null && value >= 0 && value < options.length) {
+                                                settings.libColView = options[value];
+                                                settings.set('libColView', settings.libColView.name_);
+                                              }
                                             },
                                           ),
                                         );

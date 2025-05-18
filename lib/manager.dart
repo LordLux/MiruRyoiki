@@ -45,7 +45,7 @@ class Manager {
 
   static AccentColor get accentColor => settings.accentColor.toAccentColor();
 
-  static Color get genericGray => FluentTheme.of(homeKey.currentContext!).acrylicBackgroundColor;
+  static Color get genericGray => FluentTheme.of(homeKey.currentContext!).acrylicBackgroundColor.lerpWith(const Color.fromARGB(255, 21, 35, 35), 0.5);
 
   static ImageSource get defaultPosterSource => settings.defaultPosterSource;
 
@@ -100,7 +100,7 @@ class SettingsManager extends ChangeNotifier {
   bool get autoLoadAnilistPosters => _getBool('autoLoadAnilistPosters', defaultValue: true);
   set autoLoadAnilistPosters(bool value) => _setBool('autoLoadAnilistPosters', value);
 
-  LibraryColorView get libColView => LibraryColorViewX.fromString(_getString('libColView', defaultValue: LibraryColorView.all.name_));
+  LibraryColorView get libColView => LibraryColorViewX.fromString(_getString('libColView', defaultValue: LibraryColorView.alwaysDominant.name_));
   set libColView(LibraryColorView value) => _setString('libColView', value.name_);
 
   ImageSource get defaultPosterSource => PosterSourceX.fromString(_getString('defaultPosterSource', defaultValue: ImageSource.autoAnilist.name_));

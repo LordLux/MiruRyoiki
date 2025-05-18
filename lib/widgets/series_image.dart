@@ -162,8 +162,25 @@ class _SeriesImageBuilderState extends State<SeriesImageBuilder> {
           );
         });
 
-    // If we're skipping the loading indicator and we've already loaded once before,
-    // don't show the loading state
+    // If loading and we have an image provider already, keep showing the image
+    // This prevents flickering when the app regains focus
+    if (_loading && _imageProvider != null) {
+      return SizedBox(
+        width: widget.width,
+        height: widget.height,
+        child: FadeInImage(
+          placeholder: MemoryImage(kTransparentImage),
+          image: _imageProvider!,
+          fit: widget.fit,
+          alignment: widget.alignment,
+          fadeInDuration: getDuration(widget.fadeInDuration),
+          fadeInCurve: widget.fadeInCurve,
+          imageErrorBuilder: (context, error, stackTrace) => noImageWidget,
+        ),
+      );
+    }
+
+    // Regular loading case
     if (_loading && !widget.skipLoadingIndicator) return loadingWidget;
 
     if (_hasError || _imageProvider == null) return noImageWidget;

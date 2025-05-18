@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:image/image.dart' as img;
 
 import '../enums.dart';
+import '../manager.dart';
 import '../theme.dart';
 
 /// Generate a color scheme from a dominant color
@@ -55,4 +56,12 @@ Color getDimmableBlack(BuildContext context) {
 
 Color getDimmableWhite(BuildContext context) {
   return getDimmable(Colors.white, context, [0.01, 0.015, 0.03]);
+}
+
+/// Returns white or black based on the brightness of the color
+Color getPrimaryColorBasedOnAccent() {
+  final Color accentColor = Manager.accentColor;
+  final HSLColor hsl = HSLColor.fromColor(accentColor);
+  final double brightness = hsl.lightness;
+  return brightness > 0.5 ? Colors.black : Colors.white;
 }
