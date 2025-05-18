@@ -3,6 +3,7 @@ import 'package:toggle_switch/toggle_switch.dart' as toggle;
 
 import '../main.dart';
 import '../manager.dart';
+import '../utils/color_utils.dart';
 import '../utils/time_utils.dart';
 
 class EnumToggle<T> extends StatefulWidget {
@@ -34,7 +35,7 @@ class _EnumToggleState<T> extends State<EnumToggle<T>> {
       animationDuration: getDuration(dimDuration).inMilliseconds,
       initialLabelIndex: currentIndex,
       totalSwitches: widget.enumValues.length,
-      activeFgColor: Colors.white,
+      activeFgColor: getPrimaryColorBasedOnAccent(),
       activeBgColors: List.generate(
         widget.enumValues.length,
         (index) => [index.isEven ? theme.accentColor.lighter : theme.accentColor.lightest],
