@@ -1,25 +1,19 @@
 import 'package:fluent_ui/fluent_ui.dart';
-import 'package:miruryoiki/manager.dart';
 import 'package:provider/provider.dart';
-import 'package:file_picker/file_picker.dart';
-import 'package:smooth_scroll_multiplatform/smooth_scroll_multiplatform.dart';
+import 'package:intl/intl.dart';
 
 import '../models/library.dart';
 import '../models/series.dart';
-import '../services/navigation/show_info.dart';
-import '../widgets/gradient_mask.dart';
+import '../services/anilist/provider.dart';
 import '../widgets/series_card.dart';
+import '../manager.dart';
 
 class HomeScreen extends StatefulWidget {
-  final ScrollController? scrollController;
   final Function(String) onSeriesSelected;
-  final int? fixedColumnCount;
 
   const HomeScreen({
     super.key,
     required this.onSeriesSelected,
-    this.scrollController,
-    this.fixedColumnCount,
   });
 
   @override
@@ -29,161 +23,167 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
-    final library = context.watch<Library>();
-
-    if (library.isLoading) return const Center(child: ProgressRing());
-
-    if (library.libraryPath == null) return _buildLibrarySelector();
-
-    if (library.series.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(
-              FluentIcons.folder_open,
-              size: 48,
-              color: Colors.grey,
-            ),
-            const SizedBox(height: 16),
-            const Text('No series found in your library'),
-            const SizedBox(height: 16),
-            Button(
-              onPressed: _selectLibraryFolder,
-              child: const Text('Change Library Folder'),
-            ),
-          ],
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        Text(
+          'Welcome Back',
+          style: FluentTheme.of(context).typography.title,
         ),
-      );
-    }
+        const SizedBox(height: 24),
 
-    return _buildLibraryView(library);
+        // Currently Watching Section
+        _buildSection(
+          title: 'Continue Watching',
+          child: _buildContinueWatchingSection(),
+        ),
+
+        const SizedBox(height: 24),
+
+        // Upcoming Episodes
+        _buildSection(
+          title: 'Upcoming Episodes',
+          child: _buildUpcomingEpisodesSection(),
+        ),
+
+        const SizedBox(height: 24),
+
+        // Recently Added
+        _buildSection(
+          title: 'Recently Added to Library',
+          child: _buildRecentlyAddedSection(),
+        ),
+      ],
+    );
   }
 
-  Widget _buildLibrarySelector() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            FluentIcons.folder_open,
-            size: 48,
-            color: Colors.purple,
-          ),
-          const SizedBox(height: 16),
-          const Text(
-            'Select your media library folder to get started',
-            style: TextStyle(fontSize: 16),
-          ),
-          const SizedBox(height: 24),
-          Button(
-            style: ButtonStyle(
-              padding: ButtonState.all(const EdgeInsets.symmetric(
-                horizontal: 20,
-                vertical: 8,
-              )),
+  Widget _buildSection({required String title, required Widget child}) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: FluentTheme.of(context).typography.subtitle,
+        ),
+        const SizedBox(height: 8),
+        child,
+      ],
+    );
+  }
+
+  Widget _buildContinueWatchingSection() {
+    final anilistProvider = Provider.of<AnilistProvider>(context);
+    final library = Provider.of<Library>(context);
+
+    // Filter to get only series that are in "Watching" list and in library
+    final watchingSeries = library.series
+        // TODO .where((s) => s.isLinked &&
+        //             s.anilistMappings.any((m) =>
+        //               m.status == 'CURRENT' || m.status == 'Watching'))
+        .toList();
+
+    if (watchingSeries.isEmpty) {
+      return _buildEmptyState('No series in your watching list', 'Link your series with Anilist and add them to your watching list');
+    }
+
+    return _buildHorizontalSeriesList(watchingSeries);
+  }
+
+  Widget _buildUpcomingEpisodesSection() {
+    final anilistProvider = Provider.of<AnilistProvider>(context);
+    final library = Provider.of<Library>(context);
+
+    // Get series with upcoming episodes
+    // This is a placeholder - you'd need to implement API calls to get actual airing info
+    final upcomingSeries = library.series
+        // TODO.where((s) => s.isLinked && s.anilistMappings.any((m) =>
+        //         m.nextAiringEpisode != null))
+        .toList();
+
+    // Sort by nearest airing date
+    // TODO upcomingSeries.sort((a, b) {
+    //   final aNext = a.anilistMappings.firstWhere(
+    //     (m) => m.nextAiringEpisode != null,
+    //     orElse: () => a.anilistMappings.first,
+    //   ).nextAiringEpisode?.airingAt ?? 0;
+
+    //   final bNext = b.anilistMappings.firstWhere(
+    //     (m) => m.nextAiringEpisode != null,
+    //     orElse: () => b.anilistMappings.first,
+    //   ).nextAiringEpisode?.airingAt ?? 0;
+
+    //   return aNext.compareTo(bNext);
+    // });
+
+    if (upcomingSeries.isEmpty) {
+      return _buildEmptyState('No upcoming episodes', 'None of your watched series have upcoming episodes scheduled');
+    }
+
+    return _buildHorizontalSeriesList(upcomingSeries);
+  }
+
+  Widget _buildRecentlyAddedSection() {
+    final library = Provider.of<Library>(context);
+
+    // Get recently added series - sort by dateAdded
+    final recentSeries = library.series.toList();
+    // TODO ..sort((a, b) => (b.dateAdded ?? DateTime.now())
+    //     .compareTo(a.dateAdded ?? DateTime.now()));
+
+    final topRecent = recentSeries.take(10).toList();
+
+    if (topRecent.isEmpty) //
+      return _buildEmptyState('No series in your library', 'Add series to your library to see them here');
+
+    return _buildHorizontalSeriesList(topRecent);
+  }
+
+  Widget _buildHorizontalSeriesList(List<Series> series) {
+    return SizedBox(
+      height: 220,
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        itemCount: series.length,
+        itemBuilder: (context, index) {
+          final currentSeries = series[index];
+          return Padding(
+            padding: const EdgeInsets.only(right: 12),
+            child: SizedBox(
+              width: 150,
+              child: SeriesCard(
+                series: currentSeries,
+                onTap: () => widget.onSeriesSelected(currentSeries.path),
+              ),
             ),
-            onPressed: _selectLibraryFolder,
-            child: const Text('Select Library Folder'),
-          ),
-        ],
+          );
+        },
       ),
     );
   }
-  // double singleChildHeight(int count) =>
 
-  static const double maxCardWidth = 200;
-  static const double cardPadding = 16;
-
-  int crossAxisCount(BoxConstraints constraints) => widget.fixedColumnCount != null ? widget.fixedColumnCount! : (constraints.maxWidth ~/ maxCardWidth).clamp(1, 10);
-
-  double cardWidth(BoxConstraints constraints) => (constraints.maxWidth / (crossAxisCount(constraints) + cardPadding * (crossAxisCount(constraints) - 1))).clamp(0, maxCardWidth);
-
-  Widget _buildLibraryView(Library library) {
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: LayoutBuilder(builder: (context, constraints) {
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _buildEmptyState(String title, String subtitle) {
+    return Container(
+      height: 150,
+      decoration: BoxDecoration(
+        color: FluentTheme.of(context).resources.cardBackgroundFillColorSecondary,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Your Media Library',
-                  style: FluentTheme.of(context).typography.title,
-                ),
-                Button(
-                  child: const Text('Refresh'),
-                  onPressed: () => library.reloadLibrary(),
-                ),
-              ],
-            ),
+            const Icon(FluentIcons.info, size: 32),
             const SizedBox(height: 8),
+            Text(title),
+            const SizedBox(height: 4),
             Text(
-              'Path: ${library.libraryPath}',
+              subtitle,
               style: FluentTheme.of(context).typography.caption,
-            ),
-            Expanded(
-              child: FadingEdgeScrollView(
-                fadeEdges: const EdgeInsets.symmetric(vertical: 20),
-                child: DynMouseScroll(
-                  // Tune these parameters to your liking
-                  // scrollSpeed: () {
-                  //   // Calculate actual card height based on width and aspect ratio
-                  //   double cardHeight = cardWidth(constraints) / 0.71; // using the childAspectRatio
-                  //   // Calculate total distance to scroll (card + padding)
-                  //   double scrollDistance = cardHeight + cardPadding;
-                  //   // Convert to appropriate scroll speed value
-                  //   // The multiplier 0.015 is a scaling factor that you can fine-tune
-                  //   return scrollDistance * 0.09415;
-                  // }(),
-                  enableSmoothScroll: Manager.animationsEnabled,
-                  scrollAmount: ((cardWidth(constraints) / 0.71) + cardPadding) * 8.26, // using the childAspectRatio
-                  controller: widget.scrollController,
-                  durationMS: 300,
-                  animationCurve: Curves.ease,
-                  builder: (context, controller, physics) => GridView.builder(
-                    controller: controller,
-                    physics: physics,
-                    padding: const EdgeInsets.only(top: 16, bottom: 8),
-                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: crossAxisCount(constraints),
-                      childAspectRatio: 0.71,
-                      crossAxisSpacing: cardPadding,
-                      mainAxisSpacing: cardPadding,
-                    ),
-                    itemCount: library.series.length,
-                    itemBuilder: (context, index) {
-                      final series = library.series[index % library.series.length];
-
-                      return SeriesCard(
-                        key: ValueKey('${series.path}:${series.effectivePosterPath ?? 'none'}'),
-                        series: series,
-                        onTap: () => _navigateToSeries(series),
-                      );
-                    },
-                  ),
-                ),
-              ),
+              textAlign: TextAlign.center,
             ),
           ],
-        );
-      }),
+        ),
+      ),
     );
   }
-
-  void _selectLibraryFolder() async {
-    final String? selectedDirectory = await FilePicker.platform.getDirectoryPath(
-      dialogTitle: 'Select Media Library Folder',
-    );
-
-    if (selectedDirectory != null) {
-      // ignore: use_build_context_synchronously
-      final library = context.read<Library>();
-      await library.setLibraryPath(selectedDirectory);
-    }
-  }
-
-  void _navigateToSeries(Series series) => widget.onSeriesSelected(series.path);
 }

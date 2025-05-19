@@ -101,6 +101,8 @@ class Series {
 
   /// Cached URL for Anilist Banner
   String? _anilistBannerUrl;
+  
+  // TODO add file info object to store info about the series folder (creation date, last modification date, size, etc)
 
   Series({
     required this.name,

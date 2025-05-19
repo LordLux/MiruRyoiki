@@ -8,19 +8,22 @@ import 'package:flutter_acrylic/flutter_acrylic.dart';
 import 'package:flutter_acrylic/window.dart' as flutter_acrylic;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:miruryoiki/enums.dart';
+import 'package:miruryoiki/screens/home.dart';
 import 'package:provider/provider.dart';
 import 'package:app_links/app_links.dart';
 import 'package:system_theme/system_theme.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:bitsdojo_window/bitsdojo_window.dart';
 import 'package:window_manager/window_manager.dart';
+import 'package:windows_single_instance/windows_single_instance.dart';
+import 'package:material_symbols_icons/material_symbols_icons.dart';
 
 import 'services/navigation/dialogs.dart';
 import 'utils/logging.dart';
 import 'manager.dart';
 import 'models/library.dart';
 import 'screens/accounts.dart';
-import 'screens/home.dart';
+import 'screens/library.dart';
 import 'screens/series.dart';
 import 'screens/settings.dart';
 import 'services/anilist/auth.dart';
@@ -53,8 +56,14 @@ final GlobalKey<AccountsScreenState> accountsKey = GlobalKey<AccountsScreenState
 final GlobalKey<State<StatefulWidget>> paletteOverlayKey = GlobalKey<State<StatefulWidget>>();
 final GlobalKey<ToggleableFlyoutContentState> reverseAnimationPaletteKey = GlobalKey<ToggleableFlyoutContentState>();
 
-void main() async {
+void main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  await WindowsSingleInstance.ensureSingleInstance(
+    args,
+    "custom_identifier",
+    onSecondWindow: (args) => log(args),
+  );
 
   // Only run on Windows
   if (!Platform.isWindows) throw UnimplementedError('This app is only supported on Windows (for now).');
@@ -457,28 +466,26 @@ class _AppRootState extends State<AppRoot> {
                       displayMode: _isSeriesView ? PaneDisplayMode.compact : PaneDisplayMode.auto,
                       items: [
                         PaneItem(
-                          icon: Stack(
-                            clipBehavior: Clip.none,
-                            children: [
-                              AnimatedContainer(
-                                duration: getDuration(const Duration(milliseconds: 100)),
-                                child: const Icon(Icons.ondemand_video_outlined, size: 18),
-                              ),
-                              // divider, discarted
-                              // Positioned(
-                              //   left: -9,
-                              //   bottom: 34,
-                              //   child: Container(
-                              //     width: 307,
-                              //     height: 1,
-                              //     decoration: BoxDecoration(
-                              //       color: FluentTheme.of(context).resources.dividerStrokeColorDefault,
-                              //       shape: BoxShape.rectangle,
-                              //     ),
-                              //   ),
-                              // ),
-                            ],
-                          ),
+                          icon: const Icon(FluentIcons.home, size: 18),
+                          title: const Text('Home'),
+                          body: _isSeriesView && _selectedSeriesPath != null
+                              ? SeriesScreen(
+                                  key: seriesScreenKey,
+                                  seriesPath: _selectedSeriesPath!,
+                                  onBack: exitSeriesView,
+                                )
+                              : HomeScreen(
+                                  key: seriesScreenKey,
+                                  onSeriesSelected: (path) {
+                                    setState(() {
+                                      _isSeriesView = true;
+                                      _selectedSeriesPath = path;
+                                    });
+                                  },
+                                ),
+                        ),
+                        PaneItem(
+                          icon: Icon(Symbols.newsstand, size: 18),
                           title: const Text('Library'),
                           body: AnimatedSwitcher(
                             duration: getDuration(const Duration(milliseconds: 300)),
@@ -488,7 +495,7 @@ class _AppRootState extends State<AppRoot> {
                                     seriesPath: _selectedSeriesPath!,
                                     onBack: exitSeriesView,
                                   )
-                                : HomeScreen(
+                                : LibraryScreen(
                                     onSeriesSelected: navigateToSeries,
                                     scrollController: seriesController,
                                     fixedColumnCount: _isTransitioning ? _previousGridColumnCount : null,
@@ -849,6 +856,10 @@ String get iconPath => '$assets${ps}system${ps}icon.ico';
 String get iconPng => '$assets${ps}system${ps}icon.png';
 String get ps => Platform.pathSeparator;
 
-// TODO library view series libviewcol
+// TODO fix series cards libcolview
+// TODO anilist grouping for 'About to Watch'
+// TODO custom grouping
 // TODO create autolinker
+// TODO context menu for series
+// TODO context menu for episodes
 // TODO fix back mouse button navigation

@@ -54,6 +54,8 @@ dependencies:
   collection: ^1.19.1
   ffi: ^2.1.4
   logger: ^2.5.0
+  windows_single_instance: ^1.0.1
+  material_symbols_icons: ^4.2815.0
 
 dev_dependencies:
   flutter_test:

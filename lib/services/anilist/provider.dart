@@ -18,10 +18,19 @@ class AnilistProvider extends ChangeNotifier {
 
   AnilistProvider({AnilistService? anilistService}) : _anilistService = anilistService ?? AnilistService();
 
+  /// Whether the provider has been initialized
   bool get isInitialized => _isInitialized;
+
+  /// Whether the provider is currently loading data
   bool get isLoading => _isLoading;
+
+  /// Whether the user is logged in
   bool get isLoggedIn => _anilistService.isLoggedIn;
+
+  /// Get the current user and their lists
   AnilistUser? get currentUser => _currentUser;
+
+  /// Get the user series lists
   Map<String, AnilistUserList> get userLists => _userLists;
 
   /// Initialize the provider
@@ -74,6 +83,10 @@ class AnilistProvider extends ChangeNotifier {
   /// Load user data and lists
   Future<void> _loadUserData() async {
     _currentUser = await _anilistService.getCurrentUser();
+    await _loadUserLists();
+  }
+
+  Future<void> _loadUserLists() async {
     _userLists = await _anilistService.getUserAnimeLists(userId: _currentUser?.id);
   }
 
@@ -121,7 +134,7 @@ class AnilistProvider extends ChangeNotifier {
     _isLoading = true;
     notifyListeners();
 
-    _userLists = await _anilistService.getUserAnimeLists(userId: _currentUser?.id);
+    await _loadUserLists();
 
     _isLoading = false;
     notifyListeners();
