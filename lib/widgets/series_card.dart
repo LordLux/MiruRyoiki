@@ -130,6 +130,24 @@ class _SeriesCardState extends State<SeriesCard> {
 
   @override
   Widget build(BuildContext context) {
+    final Color mainColor;
+    switch (Manager.settings.libColView) {
+      case LibraryColorView.alwaysDominant:
+        mainColor = widget.series.dominantColor ?? Manager.genericGray;
+        break;
+      case LibraryColorView.hoverDominant:
+        mainColor = _isHovering ? (widget.series.dominantColor ?? Manager.genericGray) : Manager.genericGray;
+        break;
+      case LibraryColorView.alwaysAccent:
+        mainColor = Manager.accentColor;
+        break;
+      case LibraryColorView.hoverAccent:
+        mainColor = _isHovering ? Manager.accentColor : Manager.genericGray;
+        break;
+      case LibraryColorView.none:
+        mainColor = Manager.genericGray;
+        break;
+    }
     return KeyedSubtree(
       key: ValueKey('${widget.series.path}-${widget.series.dominantColor?.value ?? 0}'),
       child: MouseRegion(
@@ -146,7 +164,7 @@ class _SeriesCardState extends State<SeriesCard> {
               boxShadow: _isHovering
                   ? [
                       BoxShadow(
-                        color: (widget.series.dominantColor ?? Manager.genericGray).withOpacity(0.05),
+                        color: mainColor.withOpacity(0.05),
                         blurRadius: 8,
                         spreadRadius: 1,
                       )
@@ -182,9 +200,8 @@ class _SeriesCardState extends State<SeriesCard> {
 
                       // Series info
                       Builder(builder: (context) {
-                        final Color? temp = widget.series.dominantColor;
-                        final double value = widget.series.isAnilistPoster ? .66 : .9;
-                        final Color nicerColor = temp?.lerpWith(Colors.grey, value) ?? Manager.genericGray.withOpacity(.2);
+                        final double value = widget.series.isAnilistPoster ? .76 : .9;
+                        final Color nicerColor = mainColor.lerpWith(Colors.grey, value);
 
                         Widget child = Padding(
                           padding: const EdgeInsets.all(12.0),
@@ -233,7 +250,7 @@ class _SeriesCardState extends State<SeriesCard> {
                                 tint: nicerColor,
                                 elevation: 0.5,
                                 tintAlpha: 0.5,
-                                luminosityAlpha: 0.4,
+                                luminosityAlpha: 0.8,
                                 child: child,
                               ),
                             ),
@@ -250,14 +267,14 @@ class _SeriesCardState extends State<SeriesCard> {
                     color: Colors.transparent,
                     child: InkWell(
                       onTap: widget.onTap,
-                      splashColor: (widget.series.dominantColor ?? Manager.accentColor).withOpacity(0.1),
-                      highlightColor: Colors.white.withOpacity(0.05),
+                      splashColor: mainColor.withOpacity(0.1),
+                      highlightColor: mainColor.withOpacity(0.05),
                       borderRadius: BorderRadius.circular(8.0),
                       child: AnimatedContainer(
                         duration: getDuration(const Duration(milliseconds: 150)),
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(8.0),
-                          color: _isHovering ? Colors.white.withOpacity(0.03) : Colors.transparent,
+                          color: _isHovering ? mainColor.withOpacity(0.1) : Colors.transparent,
                         ),
                       ),
                     ),
