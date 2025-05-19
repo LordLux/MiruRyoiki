@@ -856,7 +856,6 @@ String get iconPath => '$assets${ps}system${ps}icon.ico';
 String get iconPng => '$assets${ps}system${ps}icon.png';
 String get ps => Platform.pathSeparator;
 
-// TODO fix series cards libcolview
 // TODO anilist grouping for 'About to Watch'
 // TODO custom grouping
 // TODO create autolinker

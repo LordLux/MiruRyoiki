@@ -179,7 +179,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
 
   double cardWidth(BoxConstraints constraints) => (constraints.maxWidth / (crossAxisCount(constraints) + cardPadding * (crossAxisCount(constraints) - 1))).clamp(0, maxCardWidth);
   
-  double cardHeight(BoxConstraints constraints) => ((cardWidth(constraints) / 0.71) + cardPadding) * 8.26; // based on the aspect ratio of the series card
+  double cardHeight(BoxConstraints constraints) => ((cardWidth(constraints) / 0.71) + cardPadding) * 8.15; // based on the aspect ratio of the series card
 
   Widget _buildLibraryView(Library library) {
     final displayedSeries = _currentView == LibraryView.all //
@@ -214,7 +214,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
             ),
             Expanded(
               child: FadingEdgeScrollView(
-                fadeEdges: const EdgeInsets.symmetric(vertical: 20),
+                fadeEdges: const EdgeInsets.symmetric(vertical: 10),
                 child: _buildSeriesGrid(displayedSeries, constraints),
               ),
             ),
@@ -240,7 +240,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
     }
 
     Widget episodesGrid(List<Series> list, ScrollController controller, ScrollPhysics physics, bool includePadding) => GridView.builder(
-          padding: includePadding ? const EdgeInsets.only(top: 16, bottom: 8) : EdgeInsets.zero,
+          padding: includePadding ? const EdgeInsets.only(top: 16, bottom: 8, right: 12) : EdgeInsets.zero,
           cacheExtent: cardHeight(constraints) * 2,
           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: crossAxisCount(constraints),
@@ -262,7 +262,6 @@ class _LibraryScreenState extends State<LibraryScreen> {
           },
         );
 
-    log('Building series grid with ${series.length} series');
     // If grouping is enabled, show grouped view
     if (_groupBy != GroupBy.none) return _buildGroupedView(series, constraints, episodesGrid);
 
