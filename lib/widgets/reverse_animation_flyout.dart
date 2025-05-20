@@ -1,13 +1,35 @@
 import 'package:fluent_ui3/fluent_ui.dart';
 
+class ToggleableFlyoutConfig {
+  final double scaleBegin;
+  final double scaleEnd;
+  final double opacityBegin;
+  final double opacityEnd;
+  final Offset positionBegin;
+  final Offset positionEnd;
+
+  const ToggleableFlyoutConfig({
+    this.scaleBegin = 0.98,
+    this.scaleEnd = 1.0,
+    this.opacityBegin = 0.5,
+    this.opacityEnd = 1.0,
+    this.positionBegin = const Offset(0.0, -0.5),
+    this.positionEnd = Offset.zero,
+  });
+}
+
 class ToggleableFlyoutContent extends StatefulWidget {
   final Widget child;
   final Duration duration;
+  final Curve curve;
+  final ToggleableFlyoutConfig config;
 
   const ToggleableFlyoutContent({
     super.key,
     required this.child,
     this.duration = const Duration(milliseconds: 500),
+    this.config = const ToggleableFlyoutConfig(),
+    this.curve = Curves.easeOutCubic,
   });
 
   /// Provides a way to start the closing (reverse) animation.
@@ -30,16 +52,16 @@ class ToggleableFlyoutContentState extends State<ToggleableFlyoutContent> with S
       vsync: this,
       duration: widget.duration,
     );
-
+    final config = widget.config;
     // Create animations that mimic the TweenAnimationBuilder usage:
-    _opacity = Tween<double>(begin: 0.5, end: 1.0).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic),
+    _opacity = Tween<double>(begin: config.opacityBegin, end: config.opacityEnd).animate(
+      CurvedAnimation(parent: _controller, curve: widget.curve),
     );
-    _scale = Tween<double>(begin: 0.98, end: 1.0).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic),
+    _scale = Tween<double>(begin: config.scaleBegin, end: config.scaleEnd).animate(
+      CurvedAnimation(parent: _controller, curve: widget.curve),
     );
-    _position = Tween<Offset>(begin: Offset(0, -0.5), end: Offset.zero).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic),
+    _position = Tween<Offset>(begin: config.positionBegin, end: config.positionEnd).animate(
+      CurvedAnimation(parent: _controller, curve: widget.curve),
     );
 
     _controller.forward();

@@ -1,13 +1,13 @@
 // ignore_for_file: use_build_context_synchronously
 
 import 'dart:io';
+import 'package:fluent_ui2/fluent_ui.dart' as flyout;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart' show Icons, Material, MaterialPageRoute, ScaffoldMessenger;
-import 'package:fluent_ui/fluent_ui.dart';
+import 'package:fluent_ui/fluent_ui.dart' hide ColorExtension;
 import 'package:flutter_acrylic/flutter_acrylic.dart';
 import 'package:flutter_acrylic/window.dart' as flutter_acrylic;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:miruryoiki/enums.dart';
 import 'package:miruryoiki/screens/home.dart';
 import 'package:provider/provider.dart';
 import 'package:app_links/app_links.dart';
@@ -40,8 +40,7 @@ import 'utils/screen_utils.dart';
 import 'utils/time_utils.dart';
 import 'widgets/dialogs/link_anilist_multi.dart';
 import 'widgets/menu_button.dart';
-import 'widgets/reverse_animation_flyout.dart' show ToggleableFlyoutContent, ToggleableFlyoutContentState;
-import 'widgets/simple_flyout.dart' hide ToggleableFlyoutContent;
+import 'widgets/reverse_animation_flyout.dart';
 import 'widgets/window_buttons.dart';
 
 final _appTheme = AppTheme();
@@ -51,6 +50,7 @@ final _settings = SettingsManager();
 // ignore: library_private_types_in_public_api
 final GlobalKey<_AppRootState> homeKey = GlobalKey<_AppRootState>();
 final GlobalKey<SeriesScreenState> seriesScreenKey = GlobalKey<SeriesScreenState>();
+final GlobalKey<LibraryScreenState> libraryScreenKey = GlobalKey<LibraryScreenState>();
 final GlobalKey<AccountsScreenState> accountsKey = GlobalKey<AccountsScreenState>();
 
 final GlobalKey<State<StatefulWidget>> paletteOverlayKey = GlobalKey<State<StatefulWidget>>();
@@ -150,7 +150,7 @@ class _MyAppState extends State<MyApp> {
       await anilistProvider.initialize();
 
       // 3 Scan Library
-      // await libraryProvider.scanLibrary();
+      await libraryProvider.scanLibrary();
 
       // 4 Validate Cache
       await libraryProvider.ensureCacheValidated();
@@ -236,42 +236,58 @@ class _MyAppState extends State<MyApp> {
                   ),
                 ),
               ),
-              child: Navigator(
-                onGenerateRoute: (_) => MaterialPageRoute(
-                  builder: (context) => Overlay(
-                    initialEntries: [
-                      OverlayEntry(
-                        builder: (context) => ValueListenableBuilder(
-                          valueListenable: overlayEntry,
-                          builder: (context, overlay, _) {
-                            return Container(
-                              color: Colors.black.withOpacity(0.5),
-                              child: GestureDetector(
-                                behavior: overlay != null ? HitTestBehavior.opaque : HitTestBehavior.translucent,
-                                onTap: () {
-                                  removeOverlay();
-                                },
-                                child: Directionality(
-                                  textDirection: appTheme.textDirection,
-                                  child: NavigationPaneTheme(
-                                    data: NavigationPaneThemeData(
-                                      backgroundColor: appTheme.windowEffect != WindowEffect.disabled ? Colors.transparent : null,
-                                    ),
-                                    child: Material(
-                                      color: Colors.transparent,
-                                      child: child ?? const SizedBox.shrink(),
+              child: flyout.Builder(builder: (context) {
+                // Get theme data from context
+                final themeData = FluentTheme.of(context);
+                final settings = Provider.of<SettingsManager>(context, listen: false);
+
+                return flyout.FluentTheme(
+                  data: flyout.FluentThemeData(
+                    brightness: themeData.brightness,
+                    accentColor: settings.accentColor.toAccentColor(),
+                    visualDensity: themeData.visualDensity,
+                    focusTheme: flyout.FocusThemeData(
+                      glowFactor: themeData.focusTheme.glowFactor,
+                    ),
+                  ),
+                  child: Navigator(
+                    onGenerateRoute: (_) => MaterialPageRoute(
+                      builder: (context) => Overlay(
+                        initialEntries: [
+                          OverlayEntry(
+                            builder: (context) => ValueListenableBuilder(
+                              valueListenable: overlayEntry,
+                              builder: (context, overlay, _) {
+                                return Container(
+                                  color: Colors.black.withOpacity(0.5),
+                                  child: GestureDetector(
+                                    behavior: overlay != null ? HitTestBehavior.opaque : HitTestBehavior.translucent,
+                                    onTap: () {
+                                      removeOverlay();
+                                    },
+                                    child: Directionality(
+                                      textDirection: appTheme.textDirection,
+                                      child: NavigationPaneTheme(
+                                        data: NavigationPaneThemeData(
+                                          backgroundColor: appTheme.windowEffect != WindowEffect.disabled ? Colors.transparent : null,
+                                        ),
+                                        child: Material(
+                                          color: Colors.transparent,
+                                          child: child ?? const SizedBox.shrink(),
+                                        ),
+                                      ),
                                     ),
                                   ),
-                                ),
-                              ),
-                            );
-                          },
-                        ),
+                                );
+                              },
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
+                    ),
                   ),
-                ),
-              ),
+                );
+              }),
             );
           },
           navigatorKey: rootNavigatorKey,
@@ -307,8 +323,6 @@ class _AppRootState extends State<AppRoot> {
   bool _isNavigationPaneCollapsed = false;
 
   final GlobalKey<NavigationViewState> _paneKey = GlobalKey<NavigationViewState>();
-
-  final SimpleFlyoutController flyoutController = SimpleFlyoutController();
 
   // Save current scroll position and grid column count
   void _saveContextBeforeSwitch() {
@@ -355,38 +369,6 @@ class _AppRootState extends State<AppRoot> {
     }
   }
 
-  void showDialog() {
-    Manager.flyout?.showFlyout(
-      barrierColor: Colors.black.withOpacity(0.125),
-      barrierDismissible: true,
-      dismissWithEsc: true,
-      barrierBlocking: false,
-      barrierMargin: EdgeInsets.only(top: Manager.titleBarHeight),
-      dismissOnPointerMoveAway: false,
-      closingDuration: getDuration(Duration(milliseconds: 150)),
-      transitionDuration: getDuration(Duration(milliseconds: 100)),
-      onBarrierDismiss: () => Manager.closeFlyout(true),
-      margin: 0,
-      // position: Offset(MediaQuery.of(context).size.width / 2 - flyoutWidth / 2 + 3.5, 4),
-      builder: (context) {
-        return SizedBox.expand(
-          child: StatefulBuilder(
-              key: paletteOverlayKey,
-              builder: (context, setState) {
-                return ToggleableFlyoutContent(
-                  key: reverseAnimationPaletteKey,
-                  duration: getDuration(const Duration(milliseconds: 100)),
-                  child: Stack(
-                    alignment: Alignment.topCenter,
-                    children: [],
-                  ),
-                );
-              }),
-        );
-      },
-    );
-  }
-
   @override
   void initState() {
     super.initState();
@@ -398,7 +380,6 @@ class _AppRootState extends State<AppRoot> {
 
   @override
   void dispose() {
-    flyoutController.dispose();
     final navManager = Provider.of<NavigationManager>(context, listen: false);
     navManager.dispose();
     super.dispose();
@@ -417,133 +398,134 @@ class _AppRootState extends State<AppRoot> {
               child: AnimatedContainer(
                 duration: getDuration(dimDuration),
                 color: getDimmableBlack(context),
-                child: SimpleFlyoutTarget(
-                  controller: flyoutController,
-                  child: NavigationView(
-                    onDisplayModeChanged: (value) => nextFrame(() => setState(() {
-                          _isNavigationPaneCollapsed = _paneKey.currentState?.displayMode == PaneDisplayMode.compact;
-                        })),
-                    key: _paneKey,
-                    pane: NavigationPane(
-                      menuButton: _appTitle(),
-                      selected: _selectedIndex,
-                      onChanged: (index) => setState(() {
-                        if (_selectedIndex == index) {
-                          // If clicking the same tab, reset its scroll position
-                          if (index == 0) _resetScrollPosition();
-                          return;
-                        }
-
-                        _selectedIndex = index;
-                        lastSelectedSeriesPath = _selectedSeriesPath;
-                        _selectedSeriesPath = null;
-                        _isSeriesView = false;
-
-                        // Reset scroll when directly navigating to library
+                child: NavigationView(
+                  onDisplayModeChanged: (value) => nextFrame(() => setState(() {
+                        _isNavigationPaneCollapsed = _paneKey.currentState?.displayMode == PaneDisplayMode.compact;
+                      })),
+                  key: _paneKey,
+                  pane: NavigationPane(
+                    menuButton: const SizedBox.shrink(), //_appTitle(),
+                    selected: _selectedIndex,
+                    onChanged: (index) => setState(() {
+                      if (_selectedIndex == index) {
+                        // If clicking the same tab, reset its scroll position
                         if (index == 0) _resetScrollPosition();
+                        return;
+                      }
 
-                        // Register in navigation stack - add this code
-                        final navManager = Provider.of<NavigationManager>(context, listen: false);
+                      _selectedIndex = index;
+                      lastSelectedSeriesPath = _selectedSeriesPath;
+                      _selectedSeriesPath = null;
+                      _isSeriesView = false;
 
-                        // Clear everything before adding a new pane
-                        navManager.clearStack();
+                      // Reset scroll when directly navigating to library
+                      if (index == 0) _resetScrollPosition();
 
-                        // Register the selected pane
-                        switch (index) {
-                          case 0:
-                            navManager.pushPane('library', 'Library');
-                            break;
-                          case 1: // Assuming this is Account
-                            navManager.pushPane('accounts', 'Account');
-                            break;
-                          case 2: // Assuming this is Settings
-                            navManager.pushPane('settings', 'Settings');
-                            break;
-                          default:
-                            navManager.pushPane('unknown', 'Unknown Pane');
-                        }
-                      }),
-                      displayMode: _isSeriesView ? PaneDisplayMode.compact : PaneDisplayMode.auto,
-                      items: [
-                        PaneItem(
-                          icon: const Icon(FluentIcons.home, size: 18),
-                          title: const Text('Home'),
-                          body: _isSeriesView && _selectedSeriesPath != null
+                      // Register in navigation stack - add this code
+                      final navManager = Provider.of<NavigationManager>(context, listen: false);
+
+                      // Clear everything before adding a new pane
+                      navManager.clearStack();
+
+                      // Register the selected pane
+                      switch (index) {
+                        case 0:
+                          navManager.pushPane('home', 'Home');
+                        case 1:
+                          navManager.pushPane('library', 'Library');
+                          break;
+                        case 2: // Assuming this is Account
+                          navManager.pushPane('accounts', 'Account');
+                          break;
+                        case 3: // Assuming this is Settings
+                          navManager.pushPane('settings', 'Settings');
+                          break;
+                        default:
+                          navManager.pushPane('unknown', 'Unknown Pane');
+                      }
+                    }),
+                    displayMode: _isSeriesView ? PaneDisplayMode.compact : PaneDisplayMode.auto,
+                    items: [
+                      PaneItem(
+                        mouseCursor: SystemMouseCursors.click,
+                        icon: const Icon(FluentIcons.home, size: 18),
+                        title: const Text('Home'),
+                        body: _isSeriesView && _selectedSeriesPath != null
+                            ? SeriesScreen(
+                                key: seriesScreenKey,
+                                seriesPath: _selectedSeriesPath!,
+                                onBack: exitSeriesView,
+                              )
+                            : HomeScreen(
+                                key: seriesScreenKey,
+                                onSeriesSelected: (path) {
+                                  setState(() {
+                                    _isSeriesView = true;
+                                    _selectedSeriesPath = path;
+                                  });
+                                },
+                              ),
+                      ),
+                      PaneItem(
+                        icon: Icon(Symbols.newsstand, size: 18),
+                        title: const Text('Library'),
+                        body: AnimatedSwitcher(
+                          duration: getDuration(const Duration(milliseconds: 300)),
+                          child: _isSeriesView && _selectedSeriesPath != null
                               ? SeriesScreen(
                                   key: seriesScreenKey,
                                   seriesPath: _selectedSeriesPath!,
                                   onBack: exitSeriesView,
                                 )
-                              : HomeScreen(
-                                  key: seriesScreenKey,
-                                  onSeriesSelected: (path) {
-                                    setState(() {
-                                      _isSeriesView = true;
-                                      _selectedSeriesPath = path;
-                                    });
-                                  },
+                              : LibraryScreen(
+                                  key: libraryScreenKey,
+                                  onSeriesSelected: navigateToSeries,
+                                  scrollController: seriesController,
+                                  fixedColumnCount: _isTransitioning ? _previousGridColumnCount : null,
                                 ),
                         ),
-                        PaneItem(
-                          icon: Icon(Symbols.newsstand, size: 18),
-                          title: const Text('Library'),
-                          body: AnimatedSwitcher(
-                            duration: getDuration(const Duration(milliseconds: 300)),
-                            child: _isSeriesView && _selectedSeriesPath != null
-                                ? SeriesScreen(
-                                    key: seriesScreenKey,
-                                    seriesPath: _selectedSeriesPath!,
-                                    onBack: exitSeriesView,
-                                  )
-                                : LibraryScreen(
-                                    onSeriesSelected: navigateToSeries,
-                                    scrollController: seriesController,
-                                    fixedColumnCount: _isTransitioning ? _previousGridColumnCount : null,
-                                  ),
-                          ),
+                      ),
+                    ],
+                    footerItems: [
+                      PaneItemSeparator(),
+                      // if (Manager.accounts.length <= 1)
+                      PaneItem(
+                        icon: SizedBox(
+                            height: 25,
+                            width: 18,
+                            child: Transform.translate(
+                              offset: const Offset(1.5, 0),
+                              child: Transform.scale(scale: 1.45, child: AnilistLogo()),
+                            )),
+                        title: const Text('Account'),
+                        body: AccountsScreen(key: accountsKey),
+                      ),
+                      // if (Manager.accounts.length >= 2)
+                      //   PaneItemExpander(
+                      //     icon: Padding(
+                      //       padding: const EdgeInsets.only(left: 2.5),
+                      //       child: Icon(FluentIcons.people),
+                      //     ),
+                      //     title: const Text('Account'),
+                      //     body: const AccountsScreen(),
+                      //     items: [
+                      //       if (Manager.accounts.contains('Anilist'))
+                      //         PaneItem(
+                      //           icon: Padding(padding: const EdgeInsets.only(left: 2.5), child: AnilistLogo()),
+                      //           title: Text('Anilist'),
+                      //           body: const Anilist(),
+                      //         ),
+                      //     ],
+                      //   ),
+                      PaneItem(
+                        icon: Padding(
+                          padding: const EdgeInsets.only(left: 2.5),
+                          child: const Icon(FluentIcons.settings),
                         ),
-                      ],
-                      footerItems: [
-                        PaneItemSeparator(),
-                        // if (Manager.accounts.length <= 1)
-                        PaneItem(
-                          icon: SizedBox(
-                              height: 25,
-                              width: 18,
-                              child: Transform.translate(
-                                offset: const Offset(1.5, 0),
-                                child: Transform.scale(scale: 1.45, child: AnilistLogo()),
-                              )),
-                          title: const Text('Account'),
-                          body: AccountsScreen(key: accountsKey),
-                        ),
-                        // if (Manager.accounts.length >= 2)
-                        //   PaneItemExpander(
-                        //     icon: Padding(
-                        //       padding: const EdgeInsets.only(left: 2.5),
-                        //       child: Icon(FluentIcons.people),
-                        //     ),
-                        //     title: const Text('Account'),
-                        //     body: const AccountsScreen(),
-                        //     items: [
-                        //       if (Manager.accounts.contains('Anilist'))
-                        //         PaneItem(
-                        //           icon: Padding(padding: const EdgeInsets.only(left: 2.5), child: AnilistLogo()),
-                        //           title: Text('Anilist'),
-                        //           body: const Anilist(),
-                        //         ),
-                        //     ],
-                        //   ),
-                        PaneItem(
-                          icon: Padding(
-                            padding: const EdgeInsets.only(left: 2.5),
-                            child: const Icon(FluentIcons.settings),
-                          ),
-                          title: const Text('Settings'),
-                          body: const SettingsScreen(),
-                        ),
-                      ],
-                    ),
+                        title: const Text('Settings'),
+                        body: const SettingsScreen(),
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -587,7 +569,7 @@ class _AppRootState extends State<AppRoot> {
                               child: SizedBox(
                                 width: 30,
                                 child: Transform.translate(
-                                  offset: const Offset(1, 2),
+                                  offset: const Offset(-1, 2),
                                   child: Image.file(
                                     File(iconPath),
                                     width: 19,
@@ -611,42 +593,56 @@ class _AppRootState extends State<AppRoot> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         // Menu bar
-                        SizedBox(
-                          width: winButtonsWidth + 71 + 13,
-                          child: Padding(
-                            padding: const EdgeInsets.only(left: 35 + 10),
-                            child: MenuBar(key: ValueKey('mainMenuBar'), items: [
-                              MenuBarItem(title: 'File', items: [
-                                MenuFlyoutItem(
-                                  text: const Text('New Window'),
-                                  onPressed: () {},
-                                ),
-                                MenuFlyoutItem(
-                                  text: const Text('Exit'),
-                                  leading: Icon(FluentIcons.calculator_multiply, color: Colors.red),
-                                  onPressed: null,
-                                  // onPressed: () => windowManager.close(),
-                                ),
-                              ]),
-                              MenuBarItem(title: 'View', items: [
-                                MenuFlyoutItem(
-                                  text: const Text('New Window'),
-                                  onPressed: () {},
-                                ),
-                                MenuFlyoutItem(
-                                  text: const Text('Plain Text Documents'),
-                                  onPressed: () {},
-                                ),
-                              ]),
-                              MenuBarItem(title: 'Help', items: [
-                                MenuFlyoutItem(
-                                  text: const Text('Debug History'),
-                                  onPressed: () {
-                                    showDebugDialog(context);
-                                  },
-                                ),
-                              ]),
-                            ]),
+                        Transform.translate(
+                          offset: const Offset(-17, 3),
+                          child: SizedBox(
+                            width: winButtonsWidth + 71 + 13,
+                            child: Text(
+                              Manager.appTitle,
+                              overflow: TextOverflow.clip,
+                              maxLines: 1,
+                              textAlign: TextAlign.center,
+                              style: GoogleFonts.raleway(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w300,
+                                color: FluentTheme.of(context).typography.body!.color,
+                              ),
+                            ),
+                            // child: Padding(
+                            //   padding: const EdgeInsets.only(left: 35 + 10),
+                            //   child: MenuBar(key: ValueKey('mainMenuBar'), items: [
+                            //     MenuBarItem(title: 'File', items: [
+                            //       MenuFlyoutItem(
+                            //         text: const Text('New Window'),
+                            //         onPressed: () {},
+                            //       ),
+                            //       MenuFlyoutItem(
+                            //         text: const Text('Exit'),
+                            //         leading: Icon(FluentIcons.calculator_multiply, color: Colors.red),
+                            //         onPressed: null,
+                            //         // onPressed: () => windowManager.close(),
+                            //       ),
+                            //     ]),
+                            //     MenuBarItem(title: 'View', items: [
+                            //       MenuFlyoutItem(
+                            //         text: const Text('New Window'),
+                            //         onPressed: () {},
+                            //       ),
+                            //       MenuFlyoutItem(
+                            //         text: const Text('Plain Text Documents'),
+                            //         onPressed: () {},
+                            //       ),
+                            //     ]),
+                            //     MenuBarItem(title: 'Help', items: [
+                            //       MenuFlyoutItem(
+                            //         text: const Text('Debug History'),
+                            //         onPressed: () {
+                            //           showDebugDialog(context);
+                            //         },
+                            //       ),
+                            //     ]),
+                            //   ]),
+                            // ),
                           ),
                         ),
                         SizedBox(
@@ -682,7 +678,7 @@ class _AppRootState extends State<AppRoot> {
               overflow: TextOverflow.clip,
               maxLines: 1,
               textAlign: TextAlign.center,
-              style: GoogleFonts.sora(
+              style: GoogleFonts.raleway(
                 fontSize: 15,
                 fontWeight: FontWeight.w300,
                 color: FluentTheme.of(context).typography.body!.color,
@@ -744,19 +740,20 @@ class _AppRootState extends State<AppRoot> {
     } else if (_isSeriesView) {
       if (!navManager.hasDialog) {
         // Coming back from series view
-        log('Going back in navigation stack! -> Library');
+        logTrace('Going back in navigation stack! -> Library');
         exitSeriesView();
       } else {
         if (!Manager.canPopDialog) {
           if (navManager.currentView?.id.startsWith('linkAnilist') ?? false) {
-            log('Link Anilist dialog is open, switching to view mode');
+            logTrace('Link Anilist dialog is open, switching to view mode');
             nextFrame(() => linkMultiDialogKey.currentState?.switchToViewMode());
           }
         }
       }
       return true;
     } else if (navManager.canGoBack) {
-      log('Going back in navigation stack -> ${navManager.stack[navManager.stack.length - 2].title}');
+      logDebug('Going back in navigation stack -> ${navManager.stack[navManager.stack.length - 2].title}');
+      libraryScreenKey.currentState?.closeFlyout();
       // navManager.goBack();
 
       // Navigate based on the new current item
@@ -856,9 +853,12 @@ String get iconPath => '$assets${ps}system${ps}icon.ico';
 String get iconPng => '$assets${ps}system${ps}icon.png';
 String get ps => Platform.pathSeparator;
 
+// TODO after reloading/scanning fix scroll to saved position
 // TODO anilist grouping for 'About to Watch'
-// TODO custom grouping
+// TODO fix scroll position when switching between screens
+// TODO add folder/file metadata to series
 // TODO create autolinker
+// TODO change FORMATTER format for specials (allow specials inside season, OVA/ONAs in separate folder if not alone)
 // TODO context menu for series
 // TODO context menu for episodes
 // TODO fix back mouse button navigation

@@ -6,9 +6,6 @@ import '../utils/logging.dart';
 Widget buildHamburgerButton(BuildContext context) {
   return IconButton(
     icon: const Icon(FluentIcons.test_add),
-    onPressed: () {
-      // Your custom action when the button is pressed
-      log('Menu button pressed');
-    },
+    onPressed: () {},
   );
 }

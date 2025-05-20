@@ -1,6 +1,7 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
+import 'package:recase/recase.dart';
 
 import '../models/library.dart';
 import '../models/series.dart';
@@ -26,10 +27,37 @@ class _HomeScreenState extends State<HomeScreen> {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        Text(
-          'Welcome Back',
-          style: FluentTheme.of(context).typography.title,
-        ),
+        Consumer<AnilistProvider>(builder: (context, anilistProvider, _) {
+          final userName = anilistProvider.currentUser?.name;
+          return Row(
+            children: [
+              Text(
+                'Welcome Back${userName != null ? "," : ""} ',
+                style: FluentTheme.of(context).typography.title,
+              ),
+              if (userName != null) ShaderMask(
+                shaderCallback: (bounds) {
+                  return LinearGradient(
+                    colors: [
+                      const Color(0xFF02A9FF), // AniList blue
+                      const Color(0xFFB480FF), // Soft purple
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ).createShader(bounds);
+                },
+                child: Text(
+                  userName.titleCase,
+                  style: FluentTheme.of(context).typography.title,
+                ),
+              ),
+              Text(
+                '!',
+                style: FluentTheme.of(context).typography.title,
+              ),
+            ],
+          );
+        }),
         const SizedBox(height: 24),
 
         // Currently Watching Section

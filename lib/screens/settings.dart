@@ -658,14 +658,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     // Get current position
     final currentPos = issueController.position.pixels;
 
-    // Log for debugging
-    log('Issue controller position: $currentPos (previous: $prevPos)');
-
     // Compare with previous position before updating
-    if (currentPos != prevPos) {
-      log('Issue controller scrolled to: 200');
+    if (currentPos != prevPos) //
       nextFrame(() => _scrollController.animateTo(380, duration: Duration(milliseconds: 300), curve: Curves.ease));
-    }
 
     // Update previous position after comparison
     prevPos = currentPos;
@@ -836,35 +831,35 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   'Appearance',
                                   style: FluentTheme.of(context).typography.subtitle,
                                 ),
-                                const SizedBox(height: 12),
+                                const SizedBox(height: 6),
                                 // Theme and font effect settings
                                 ...[
                                   Text('Edit how MiruRyoiki looks and feels.', style: FluentTheme.of(context).typography.body),
                                   const SizedBox(height: 24),
-                                  Row(children: [
-                                    // Theme
-                                    const Text('Theme:'),
-                                    const SizedBox(width: 12),
-                                    ComboBox<ThemeMode>(
-                                      value: appTheme.mode,
-                                      items: <ThemeMode>[ThemeMode.system, ThemeMode.light, ThemeMode.dark].map((ThemeMode value) {
-                                        return ComboBoxItem<ThemeMode>(
-                                          value: value,
-                                          child: Text(value.name.titleCase),
-                                        );
-                                      }).toList(),
-                                      onChanged: (ThemeMode? newValue) async {
-                                        appTheme.mode = newValue!;
-                                        appTheme.setEffect(appTheme.windowEffect, context);
-                                        settings.set('themeMode', newValue.name_);
+                                  // Row(children: [
+                                  //   // Theme
+                                  //   const Text('Theme:'),
+                                  //   const SizedBox(width: 12),
+                                  //   ComboBox<ThemeMode>(
+                                  //     value: appTheme.mode,
+                                  //     items: <ThemeMode>[ThemeMode.system, ThemeMode.light, ThemeMode.dark].map((ThemeMode value) {
+                                  //       return ComboBoxItem<ThemeMode>(
+                                  //         value: value,
+                                  //         child: Text(value.name.titleCase),
+                                  //       );
+                                  //     }).toList(),
+                                  //     onChanged: (ThemeMode? newValue) async {
+                                  //       appTheme.mode = newValue!;
+                                  //       appTheme.setEffect(appTheme.windowEffect, context);
+                                  //       settings.set('themeMode', newValue.name_);
 
-                                        await Future.delayed(const Duration(milliseconds: 300));
-                                        appTheme.setEffect(appTheme.windowEffect, context);
-                                      },
-                                    ),
-                                  ]),
+                                  //       await Future.delayed(const Duration(milliseconds: 300));
+                                  //       appTheme.setEffect(appTheme.windowEffect, context);
+                                  //     },
+                                  //   ),
+                                  // ]),
                                 ],
-                                const SizedBox(height: 12),
+                                // const SizedBox(height: 12),
                                 // Effect
                                 ...[
                                   Row(

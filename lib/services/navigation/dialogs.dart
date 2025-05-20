@@ -48,7 +48,7 @@ Future<T?> showManagedDialog<T>({
       onPopInvoked: (didPop) async {
         if (didPop) return; // If the pop was invoked, do nothing
 
-        log('doDialogPop(): ${dialogDoPopCheck()}');
+        // log('doDialogPop(): ${dialogDoPopCheck()}');
         if (dialogDoPopCheck()) {
           logTrace('Dialog pop invoked, closing dialog');
           Navigator.of(context).pop(); // Close the dialog
@@ -57,7 +57,6 @@ Future<T?> showManagedDialog<T>({
       child: builder(context),
     ),
   ).then((_) {
-    log('$nowFormatted | Dialog closed');
     navManager.popDialog();
     Manager.canPopDialog = true; // Reset dialog pop state
     nextFrame(Manager.setState);
