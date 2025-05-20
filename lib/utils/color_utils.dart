@@ -40,6 +40,16 @@ ColorScheme generateColorScheme(Color baseColor, {Brightness brightness = Bright
   }
 }
 
+Color darken(Color color, [double amount = 0.1]) {
+  assert(amount >= 0 && amount <= 1, 'Amount must be between 0 and 1');
+  return Color.fromRGBO(
+    (color.red * (1 - amount)).round(),
+    (color.green * (1 - amount)).round(),
+    (color.blue * (1 - amount)).round(),
+    color.opacity,
+  );
+}
+
 Color getDimmable(Color color, BuildContext context, [List<double> opacity = const [0.25, 0.15, 0]]) {
   final appTheme = Provider.of<AppTheme>(context, listen: false);
   if (appTheme.mode == ThemeMode.light) return Colors.transparent;
@@ -48,6 +58,12 @@ Color getDimmable(Color color, BuildContext context, [List<double> opacity = con
       : appTheme.dim == Dim.normal
           ? opacity[1]
           : opacity[2]);
+}
+
+Color getDimmableBG(BuildContext context) {
+  final appTheme = Provider.of<AppTheme>(context, listen: false);
+  if (appTheme.mode == ThemeMode.light) return getDimmableWhite(context);
+  return getDimmableBlack(context);
 }
 
 Color getDimmableBlack(BuildContext context) {
@@ -60,7 +76,7 @@ Color getDimmableWhite(BuildContext context) {
 
 /// Returns white or black based on the brightness of the color
 Color getPrimaryColorBasedOnAccent() {
-  final Color accentColor = Manager.accentColor;
+  final Color accentColor = Manager.accentColor.lighter;
   final HSLColor hsl = HSLColor.fromColor(accentColor);
   final double brightness = hsl.lightness;
   return brightness > 0.5 ? Colors.black : Colors.white;

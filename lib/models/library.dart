@@ -56,7 +56,7 @@ class Library with ChangeNotifier {
 
   Future<void> cacheValidation() async {
     if (!_cacheValidated) {
-      logTrace('4 Ensuring cache validation...');
+      logDebug('4 Ensuring cache validation...');
       final imageCache = ImageCacheService();
       await imageCache.init();
 
@@ -67,7 +67,7 @@ class Library with ChangeNotifier {
           final cachedPosterPath = await imageCache.getCachedImagePath(series.anilistData!.posterImage!);
           if (cachedPosterPath == null) {
             imageCache.cacheImage(series.anilistData!.posterImage!);
-            logDebug('4 Re-caching poster for: ${series.name}');
+            logTrace('4 Re-caching poster for: ${series.name}');
           }
         }
 
@@ -75,7 +75,7 @@ class Library with ChangeNotifier {
           final cachedBannerPath = await imageCache.getCachedImagePath(series.anilistData!.bannerImage!);
           if (cachedBannerPath == null) {
             imageCache.cacheImage(series.anilistData!.bannerImage!);
-            logDebug('4 Re-caching banner for: ${series.name}');
+            logTrace('4 Re-caching banner for: ${series.name}');
           }
         }
 
@@ -85,7 +85,7 @@ class Library with ChangeNotifier {
             final cachedPath = await imageCache.getCachedImagePath(mapping.anilistData!.posterImage!);
             if (cachedPath == null) {
               imageCache.cacheImage(mapping.anilistData!.posterImage!);
-              logDebug('4 Re-caching mapping poster for: ${series.name}');
+              logTrace('4 Re-caching mapping poster for: ${series.name}');
             }
           }
 
@@ -93,7 +93,7 @@ class Library with ChangeNotifier {
             final cachedPath = await imageCache.getCachedImagePath(mapping.anilistData!.bannerImage!);
             if (cachedPath == null) {
               imageCache.cacheImage(mapping.anilistData!.bannerImage!);
-              logDebug('4 Re-caching mapping banner for: ${series.name}');
+              logTrace('4 Re-caching mapping banner for: ${series.name}');
             }
           }
         }
@@ -132,8 +132,8 @@ class Library with ChangeNotifier {
     if (_libraryPath == null || _isLoading) return;
     logDebug('Reloading library...');
     // snackBar('Reloading Library...', severity: InfoBarSeverity.info);
-    await cacheValidation();
     await scanLibrary();
+    await cacheValidation();
     await loadAnilistPostersForLibrary(onProgress: (loaded, total) {
       if (loaded % 2 == 0 || loaded == total) {
         // Force UI refresh every 5 items or on completion
@@ -153,7 +153,9 @@ class Library with ChangeNotifier {
     final needPosters = <Series>[];
     final alreadyCached = <Series>[];
     final recalculateColor = <Series>[];
-
+    
+    
+    logDebug('5 Loading Anilist posters for library');
     // Find series that need Anilist posters
     for (final series in _series) {
       // For all linked series, check if they need to use Anilist posters based on preferences
@@ -164,9 +166,8 @@ class Library with ChangeNotifier {
         // First check if the series itself has poster data
         if (series.anilistPosterUrl != null) {
           final String? cached = await imageCache.getCachedImagePath(series.anilistPosterUrl!);
-          log('5 TEST cached: $cached, series: ${series.name}, poster: ${basename(series.anilistPosterUrl!)}');
           if (cached != null) {
-            log('5 Poster for ${series.name} is already cached in series: ${series.anilistPosterUrl!}');
+            logTrace('5 Poster for ${series.name} is already cached in series: ${basename(series.anilistPosterUrl!)}');
             alreadyCached.add(series);
             recalculateColor.add(series);
             continue; // Skip checking mappings if series already has data
@@ -180,11 +181,11 @@ class Library with ChangeNotifier {
         );
 
         // If we have anilistData with a poster URL check if it's cached
-        log("series: $series\nprimaryAnilistId: ${series.primaryAnilistId}, primaryID from first mapping:${series.anilistMappings.firstOrNull?.anilistId}\nmapping: ${mapping.anilistData?.id}");
+        // logTrace("series: $series\nprimaryAnilistId: ${series.primaryAnilistId}, primaryID from first mapping:${series.anilistMappings.firstOrNull?.anilistId}\nmapping: ${mapping.anilistData?.id}");
         if (series.anilistPosterUrl != null) {
           final String? cached = await imageCache.getCachedImagePath(series.anilistPosterUrl!);
           if (cached != null) {
-            log('5 Poster for ${series.name} is already cached: ${series.anilistPosterUrl!}');
+            logTrace('5 Poster for ${series.name} is already cached: ${series.anilistPosterUrl!}');
             // Already cached -> make sure series data is properly updated
             alreadyCached.add(series);
 
@@ -195,24 +196,24 @@ class Library with ChangeNotifier {
               recalculateColor.add(series);
             }
           } else if (shouldUseAnilist || series.folderPosterPath == null) {
-            log('5 Poster for ${series.name} is not cached, needs fetching: ${series.anilistPosterUrl}');
+            logTrace('5 Poster for ${series.name} is not cached, needs fetching: ${series.anilistPosterUrl}');
             // Not cached -> need to fetch if we should use Anilist or have no local poster
             needPosters.add(series);
           }
         } else if (shouldUseAnilist || series.folderPosterPath == null) {
-          log('5 No poster image for ${series.name}, needs fetching from Anilist\npath: "${series.folderPosterPath}", shouldUseAnilist: $shouldUseAnilist');
+          logTrace('5 No poster image for ${series.name}, needs fetching from Anilist\npath: "${series.folderPosterPath}", shouldUseAnilist: $shouldUseAnilist');
           // No anilistData or no posterImage -> need to fetch
           needPosters.add(series);
         } else
-          log('5 Skipping ${series.name}, no Anilist poster needed based on preferences');
+          logTrace('5 Skipping ${series.name}, no Anilist poster needed based on preferences');
       }
     }
 
     // Calculate dominant colors for already cached series
     if (recalculateColor.isNotEmpty) {
-      logDebug('5 Calculating dominant colors for ${recalculateColor.length} already cached series');
+      logTrace('5 Calculating dominant colors for ${recalculateColor.length} already cached series');
       for (final series in recalculateColor) {
-        log("${series.name}, ${series.dominantColor?.toHex()}");
+        // logTrace("${series.name}, ${series.dominantColor?.toHex()}");
         await series.calculateDominantColor();
       }
     }
@@ -507,10 +508,10 @@ class Library with ChangeNotifier {
         final content = await file.readAsString();
         final data = jsonDecode(content);
         _libraryPath = data['libraryPath'];
-        logInfo('1 Loaded settings: $_libraryPath');
+        logInfo('0 Loaded settings: $_libraryPath');
       }
     } catch (e) {
-      logDebug('1 Error loading settings: $e');
+      logDebug('0 Error loading settings: $e');
     }
   }
 
@@ -546,9 +547,9 @@ class Library with ChangeNotifier {
           _series = data.map((s) => Series.fromJson(s)).toList();
 
           // Log loaded dominant colors for debugging
-          for (final series in _series) {
-            logDebug('Loaded series: ${series.name}, AnilistPoster: ${series.anilistPosterUrl}, AnilistBanner: ${series.anilistBannerUrl}');
-          }
+          // for (final series in _series) {
+          //   logTrace('Loaded series: ${series.name}, AnilistPoster: ${series.anilistPosterUrl}, AnilistBanner: ${series.anilistBannerUrl}');
+          // }
 
           // Validate that we loaded series properly
           if (_series.isNotEmpty) {
@@ -777,12 +778,9 @@ class Library with ChangeNotifier {
   /// Calculate dominant colors only for series that need it
   Future<void> calculateDominantColors({bool forceRecalculate = false}) async {
     // Determine which series need processing
-    final seriesToProcess = forceRecalculate
+    final seriesToProcess = forceRecalculate //
         ? _series
-        : _series.where((s) {
-            log('Checking series ${s.name}, ${s.dominantColor?.toHex()}');
-            return s.dominantColor == null;
-          }).toList();
+        : _series.where((s) => s.dominantColor == null).toList();
 
     if (seriesToProcess.isEmpty) {
       logTrace('No series need dominant color calculation');

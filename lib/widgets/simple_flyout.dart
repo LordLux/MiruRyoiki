@@ -1,7 +1,9 @@
 import 'dart:async';
+import 'dart:math' as math;
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import 'esc.dart';
 
@@ -94,11 +96,11 @@ class SimpleFlyoutController with ChangeNotifier {
     _overlayEntry = OverlayEntry(
       builder: (context) {
         return DismissOnEsc(
-          onDismiss: closeOverlay,
+          onDismiss: _closeOverlay,
           child: Builder(builder: (context) {
             transitionBuilder = (context, animation, flyout) => SlideTransition(
                   position: Tween<Offset>(
-                    begin: const Offset(0, 0.25),
+                    begin: const Offset(0, 1),
                     end: const Offset(0, 0),
                   ).animate(animation),
                   child: flyout,
@@ -117,7 +119,7 @@ class SimpleFlyoutController with ChangeNotifier {
                   parent: const AlwaysStoppedAnimation<double>(1)),
               onDismiss: () {
                 onBarrierDismiss?.call();
-                closeOverlay();
+                _closeOverlay();
               },
               barrierColor: barrierColor ?? Colors.black.withOpacity(0.3),
               barrierMargin: barrierMargin,
@@ -149,10 +151,10 @@ class SimpleFlyoutController with ChangeNotifier {
 
   void close([bool force = false]) {
     if (!isAttached) return;
-    closeOverlay(force);
+    _closeOverlay(force);
   }
 
-  void closeOverlay([bool force = false]) {
+  void _closeOverlay([bool force = false]) {
     if (_overlayEntry != null) {
       if (_barrierColorKey.currentState != null) {
         _barrierColorKey.currentState!.updateBarrierColor(Colors.transparent);
@@ -628,7 +630,7 @@ class SimpleFlyoutState extends State<SimpleFlyout> {
     final navigatorKey = parent?.widget.root ?? widget.root;
     assert(navigatorKey != null, 'The flyout is not open');
 
-    navigatorKey!.maybePop();
+    navigatorKey!.pop();
   }
 
   @override

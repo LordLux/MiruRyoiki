@@ -357,9 +357,9 @@ class AnilistService {
                 try {
                   // Try to parse as JSON
                   entryCustomLists = jsonDecode(customListsData) as Map<String, dynamic>?;
-                } catch (e) {
+                } catch (e, stackTrace) {
                   // If JSON parsing fails, the string might not be proper JSON
-                  logErr('Error parsing customLists', e);
+                  logErr('Error parsing customLists', e, stackTrace);
                   log('Raw customLists value: $customListsData');
 
                   // Continue to next entry, skip this one

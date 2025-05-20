@@ -392,8 +392,6 @@ Series(
 
   /// JSON serialization
   Map<String, dynamic> toJson() {
-    log("ani poster: $_anilistPosterUrl\n"
-        "ani banner: $_anilistBannerUrl");
     return {
       'name': name,
       'path': path,

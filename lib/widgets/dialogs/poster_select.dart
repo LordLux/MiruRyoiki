@@ -102,7 +102,7 @@ class _ImageSelectionContentState extends State<_ImageSelectionContent> {
 
     // Don't start with any selection if using auto sources
     if (_selectedSource != ImageSource.local) {
-      log('starting with no local image selected');
+      logTrace('Starting with no local image selected');
       _selectedLocalImageIndex = null;
     }
 

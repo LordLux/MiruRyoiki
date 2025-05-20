@@ -11,7 +11,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'enums.dart';
 import 'services/navigation/shortcuts.dart';
 import 'theme.dart';
-import 'widgets/simple_flyout.dart';
 
 class Manager {
   static const double titleBarHeight = 40.0;
@@ -24,16 +23,6 @@ class Manager {
   static Color? currentDominantColor;
 
   static List<String> accounts = [];
-
-  static SimpleFlyoutController? get flyout => homeKey.currentState?.flyoutController;
-  static bool get isFlyoutOpen => flyout?.isOpen ?? false;
-  static void closeFlyout(bool close) {
-    if (!close) return;
-    // Close the palette
-    reverseAnimationPaletteKey.currentState?.reverseAnimation().then((value) {
-      Manager.flyout?.close();
-    });
-  }
 
   static void setState() {
     if (homeKey.currentState != null) homeKey.currentState!.setState(() {});
