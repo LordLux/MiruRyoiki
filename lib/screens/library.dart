@@ -20,7 +20,18 @@ import '../widgets/series_card.dart';
 
 enum LibraryView { all, linked }
 
-enum SortOrder { alphabetical, dateAdded, lastModified, custom }
+enum SortOrder {
+  alphabetical,
+  score,
+  progress,
+  lastModified,
+  dateAdded,
+  startDate,
+  completedDate,
+  averageScore,
+  releaseDate,
+  popularity,
+}
 
 enum GroupBy { none, anilistLists }
 
@@ -648,15 +659,85 @@ class LibraryScreenState extends State<LibraryScreen> {
     Comparator<Series> comparator;
 
     switch (_sortOrder) {
-      case SortOrder.dateAdded:
-      // comparator = (a, b) => (a.dateAdded ?? DateTime.now()).compareTo(b.dateAdded ?? DateTime.now());
-      case SortOrder.lastModified:
-      // comparator = (a, b) => (a.lastModified ?? DateTime.now()).compareTo(b.lastModified ?? DateTime.now());
-      case SortOrder.custom:
-      // TODO For now, just use alphabetical order as fallback
-      // comparator = (a, b) => a.name.compareTo(b.name);
       case SortOrder.alphabetical:
         comparator = (a, b) => a.name.compareTo(b.name);
+
+      case SortOrder.score:
+        comparator = (a, b) {
+          final aScore = a.meanScore ?? 0;
+          final bScore = b.meanScore ?? 0;
+          return aScore.compareTo(bScore);
+        };
+
+      case SortOrder.progress:
+        comparator = (a, b) => a.watchedPercentage.compareTo(b.watchedPercentage);
+
+      case SortOrder.lastModified:
+        // Use timestamp from Anilist's updatedAt field
+        comparator = (a, b) {
+          final aUpdated = a.currentAnilistData?.updatedAt ?? 0;
+          final bUpdated = b.currentAnilistData?.updatedAt ?? 0;
+          return aUpdated.compareTo(bUpdated);
+        };
+
+      case SortOrder.dateAdded:
+        // TODO // Use timestamp from Anilist's createdAt field
+        // comparator = (a, b) {
+        //   final aCreated = a.currentAnilistData?.createdAt ?? 0;
+        //   final bCreated = b.currentAnilistData?.createdAt ?? 0;
+        //   return aCreated.compareTo(bCreated);
+        // };
+
+      case SortOrder.startDate:
+        comparator = (a, b) {
+          final aDate = a.currentAnilistData?.startDate?.toDateTime();
+          final bDate = b.currentAnilistData?.startDate?.toDateTime();
+
+          if (aDate == null && bDate == null) return 0;
+          if (aDate == null) return 1;
+          if (bDate == null) return -1;
+
+          return aDate.compareTo(bDate);
+        };
+
+      case SortOrder.completedDate:
+        comparator = (a, b) {
+          final aDate = a.currentAnilistData?.completedAt?.toDateTime();
+          final bDate = b.currentAnilistData?.completedAt?.toDateTime();
+
+          if (aDate == null && bDate == null) return 0;
+          if (aDate == null) return 1;
+          if (bDate == null) return -1;
+
+          return aDate.compareTo(bDate);
+        };
+
+      case SortOrder.averageScore:
+        comparator = (a, b) {
+          final aScore = a.currentAnilistData?.averageScore ?? 0;
+          final bScore = b.currentAnilistData?.averageScore ?? 0;
+          return aScore.compareTo(bScore);
+        };
+
+      case SortOrder.releaseDate:
+        comparator = (a, b) {
+          // Try to get release date from Anilist data
+          final aDate = a.currentAnilistData?.startDate?.toDateTime();
+          final bDate = b.currentAnilistData?.startDate?.toDateTime();
+
+          if (aDate == null && bDate == null) return 0;
+          if (aDate == null) return 1;
+          if (bDate == null) return -1;
+
+          return aDate.compareTo(bDate);
+        };
+
+      case SortOrder.popularity:
+        comparator = (a, b) {
+          final aPopularity = a.currentAnilistData?.popularity ?? 0;
+          final bPopularity = b.currentAnilistData?.popularity ?? 0;
+          return aPopularity.compareTo(bPopularity);
+        };
     }
 
     // Apply the sorting direction
@@ -835,13 +916,25 @@ class LibraryScreenState extends State<LibraryScreen> {
   String _getSortText(SortOrder order) {
     switch (order) {
       case SortOrder.alphabetical:
-        return 'A-Z';
+        return 'Title (A-Z)';
+      case SortOrder.score:
+        return 'Score';
+      case SortOrder.progress:
+        return 'Progress';
+      case SortOrder.lastModified:
+        return 'Last Updated';
       case SortOrder.dateAdded:
         return 'Date Added';
-      case SortOrder.lastModified:
-        return 'Last Modified';
-      case SortOrder.custom:
-        return 'Custom Order';
+      case SortOrder.startDate:
+        return 'Start Date';
+      case SortOrder.completedDate:
+        return 'Completed Date';
+      case SortOrder.averageScore:
+        return 'Average Score';
+      case SortOrder.releaseDate:
+        return 'Release Date';
+      case SortOrder.popularity:
+        return 'Popularity';
     }
   }
 

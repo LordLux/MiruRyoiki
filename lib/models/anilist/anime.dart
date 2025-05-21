@@ -21,6 +21,15 @@ class AnilistAnime {
   final int? averageScore;
   final int? trending;
   final int? rankings;
+  final DateValue? startDate;
+  final DateValue? endDate;
+  final int? updatedAt;
+  final DateValue? startedAt;
+  final DateValue? completedAt;
+  final Map<String, int>? advancedScores;
+  final AiringEpisode? nextAiringEpisode;
+  final bool? isFavourite;
+  final String? siteUrl;
 
   AnilistAnime({
     required this.id,
@@ -41,8 +50,16 @@ class AnilistAnime {
     this.averageScore,
     this.trending,
     this.rankings,
+    this.startDate,
+    this.endDate,
+    this.updatedAt,
+    this.startedAt,
+    this.completedAt,
+    this.advancedScores,
+    this.nextAiringEpisode,
+    this.isFavourite,
+    this.siteUrl,
   });
-
   factory AnilistAnime.fromJson(Map<String, dynamic> json) {
     return AnilistAnime(
       id: json['id'] as int,
@@ -63,9 +80,18 @@ class AnilistAnime {
       averageScore: json['averageScore'] as int?,
       trending: json['trending'] as int?,
       rankings: json['rankings'] != null && (json['rankings'] as List).isNotEmpty ? (json['rankings'] as List).first['rank'] : null,
+      startDate: json['startDate'] != null ? DateValue.fromJson(json['startDate']) : null,
+      endDate: json['endDate'] != null ? DateValue.fromJson(json['endDate']) : null,
+      updatedAt: json['updatedAt'] as int?,
+      startedAt: json['startedAt'] != null ? DateValue.fromJson(json['startedAt']) : null,
+      completedAt: json['completedAt'] != null ? DateValue.fromJson(json['completedAt']) : null,
+      advancedScores: json['advancedScores'] != null ? Map<String, int>.from(json['advancedScores']) : null,
+      nextAiringEpisode: json['nextAiringEpisode'] != null ? AiringEpisode.fromJson(json['nextAiringEpisode']) : null,
+      isFavourite: json['isFavourite'] as bool?,
+      siteUrl: json['siteUrl'] as String?,
     );
   }
-  
+
   AnilistAnime copyWith({
     int? id,
     String? bannerImage,
@@ -85,6 +111,16 @@ class AnilistAnime {
     int? averageScore,
     int? trending,
     int? rankings,
+    DateValue? startDate,
+    DateValue? endDate,
+    int? updatedAt,
+    int? createdAt,
+    DateValue? startedAt,
+    DateValue? completedAt,
+    Map<String, int>? advancedScores,
+    AiringEpisode? nextAiringEpisode,
+    bool? isFavourite,
+    String? siteUrl,
   }) {
     return AnilistAnime(
       id: id ?? this.id,
@@ -105,6 +141,15 @@ class AnilistAnime {
       averageScore: averageScore ?? this.averageScore,
       trending: trending ?? this.trending,
       rankings: rankings ?? this.rankings,
+      startDate: startDate ?? this.startDate,
+      endDate: endDate ?? this.endDate,
+      updatedAt: updatedAt ?? this.updatedAt,
+      startedAt: startedAt ?? this.startedAt,
+      completedAt: completedAt ?? this.completedAt,
+      advancedScores: advancedScores ?? this.advancedScores,
+      nextAiringEpisode: nextAiringEpisode ?? this.nextAiringEpisode,
+      isFavourite: isFavourite ?? this.isFavourite,
+      siteUrl: siteUrl ?? this.siteUrl,
     );
   }
 
@@ -133,6 +178,46 @@ class AnilistTitle {
       english: json['english'] as String?,
       native: json['native'] as String?,
       userPreferred: json['userPreferred'] as String?,
+    );
+  }
+}
+
+// Helper class for date values
+class DateValue {
+  final int? year;
+  final int? month;
+  final int? day;
+
+  DateValue({this.year, this.month, this.day});
+
+  factory DateValue.fromJson(Map<String, dynamic> json) {
+    return DateValue(
+      year: json['year'] as int?,
+      month: json['month'] as int?,
+      day: json['day'] as int?,
+    );
+  }
+
+  DateTime? toDateTime() {
+    if (year != null && month != null && day != null) return DateTime(year!, month!, day!);
+
+    return null;
+  }
+}
+
+// Helper class for airing episode information
+class AiringEpisode {
+  final int? airingAt;
+  final int? episode;
+  final int? timeUntilAiring;
+
+  AiringEpisode({this.airingAt, this.episode, this.timeUntilAiring});
+
+  factory AiringEpisode.fromJson(Map<String, dynamic> json) {
+    return AiringEpisode(
+      airingAt: json['airingAt'] as int?,
+      episode: json['episode'] as int?,
+      timeUntilAiring: json['timeUntilAiring'] as int?,
     );
   }
 }

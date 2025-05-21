@@ -681,6 +681,9 @@ Series(
 
   /// Rating from Anilist
   int? get rating => currentAnilistData?.averageScore;
+  
+  /// Mean score from Anilist
+  int? get meanScore => currentAnilistData?.meanScore;
 
   /// Popularity from Anilist
   int? get popularity => currentAnilistData?.popularity;
