@@ -433,13 +433,10 @@ class _AppRootState extends State<AppRoot> {
                           navManager.pushPane('home', 'Home');
                         case 1:
                           navManager.pushPane('library', 'Library');
-                          break;
-                        case 2: // Assuming this is Account
+                        case 2:
                           navManager.pushPane('accounts', 'Account');
-                          break;
-                        case 3: // Assuming this is Settings
+                        case 3:
                           navManager.pushPane('settings', 'Settings');
-                          break;
                         default:
                           navManager.pushPane('unknown', 'Unknown Pane');
                       }
@@ -500,23 +497,6 @@ class _AppRootState extends State<AppRoot> {
                         title: const Text('Account'),
                         body: AccountsScreen(key: accountsKey),
                       ),
-                      // if (Manager.accounts.length >= 2)
-                      //   PaneItemExpander(
-                      //     icon: Padding(
-                      //       padding: const EdgeInsets.only(left: 2.5),
-                      //       child: Icon(FluentIcons.people),
-                      //     ),
-                      //     title: const Text('Account'),
-                      //     body: const AccountsScreen(),
-                      //     items: [
-                      //       if (Manager.accounts.contains('Anilist'))
-                      //         PaneItem(
-                      //           icon: Padding(padding: const EdgeInsets.only(left: 2.5), child: AnilistLogo()),
-                      //           title: Text('Anilist'),
-                      //           body: const Anilist(),
-                      //         ),
-                      //     ],
-                      //   ),
                       PaneItem(
                         icon: Padding(
                           padding: const EdgeInsets.only(left: 2.5),
@@ -608,41 +588,6 @@ class _AppRootState extends State<AppRoot> {
                                 color: FluentTheme.of(context).typography.body!.color,
                               ),
                             ),
-                            // child: Padding(
-                            //   padding: const EdgeInsets.only(left: 35 + 10),
-                            //   child: MenuBar(key: ValueKey('mainMenuBar'), items: [
-                            //     MenuBarItem(title: 'File', items: [
-                            //       MenuFlyoutItem(
-                            //         text: const Text('New Window'),
-                            //         onPressed: () {},
-                            //       ),
-                            //       MenuFlyoutItem(
-                            //         text: const Text('Exit'),
-                            //         leading: Icon(FluentIcons.calculator_multiply, color: Colors.red),
-                            //         onPressed: null,
-                            //         // onPressed: () => windowManager.close(),
-                            //       ),
-                            //     ]),
-                            //     MenuBarItem(title: 'View', items: [
-                            //       MenuFlyoutItem(
-                            //         text: const Text('New Window'),
-                            //         onPressed: () {},
-                            //       ),
-                            //       MenuFlyoutItem(
-                            //         text: const Text('Plain Text Documents'),
-                            //         onPressed: () {},
-                            //       ),
-                            //     ]),
-                            //     MenuBarItem(title: 'Help', items: [
-                            //       MenuFlyoutItem(
-                            //         text: const Text('Debug History'),
-                            //         onPressed: () {
-                            //           showDebugDialog(context);
-                            //         },
-                            //       ),
-                            //     ]),
-                            //   ]),
-                            // ),
                           ),
                         ),
                         SizedBox(

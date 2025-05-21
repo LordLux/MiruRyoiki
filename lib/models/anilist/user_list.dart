@@ -1,22 +1,45 @@
+// ignore_for_file: constant_identifier_names
+
 import 'anime.dart';
 
 enum AnilistListStatus {
-  current,
-  planning,
-  completed,
-  dropped,
-  paused,
+  CURRENT,
+  PLANNING,
+  COMPLETED,
+  DROPPED,
+  PAUSED,
+  REPEATING,
+  CUSTOM,
+}
+
+extension AnilistListStatusExtension on String {
+  AnilistListStatus? toListStatus() {
+    return switch (this) {
+      'CURRENT' => AnilistListStatus.CURRENT,
+      'PLANNING' => AnilistListStatus.PLANNING,
+      'COMPLETED' => AnilistListStatus.COMPLETED,
+      'DROPPED' => AnilistListStatus.DROPPED,
+      'PAUSED' => AnilistListStatus.PAUSED,
+      'REPEATING' => AnilistListStatus.REPEATING,
+      _ => null,
+    };
+  }
 }
 
 class AnilistMediaListEntry {
   final int id;
   final int mediaId;
   final AnilistAnime media;
-  final String status;
+  final AnilistListStatus status;
   final int? progress;
   final int? score;
   final String? customLists;
-  
+  final bool hiddenFromStatusLists;
+  final int? priority;
+  final DateValue? startedAt;
+  final DateValue? completedAt;
+  final int? createdAt;
+
   AnilistMediaListEntry({
     required this.id,
     required this.mediaId,
@@ -25,17 +48,27 @@ class AnilistMediaListEntry {
     this.progress,
     this.score,
     this.customLists,
+    this.hiddenFromStatusLists = false,
+    this.priority,
+    this.startedAt,
+    this.completedAt,
+    this.createdAt,
   });
-  
+
   factory AnilistMediaListEntry.fromJson(Map<String, dynamic> json) {
     return AnilistMediaListEntry(
       id: json['id'],
       mediaId: json['mediaId'],
       media: AnilistAnime.fromJson(json['media']),
-      status: json['status'],
+      status: json['status'].toString().toListStatus() ?? AnilistListStatus.CURRENT,
       progress: json['progress'],
       score: json['score'],
       customLists: json['customLists']?.toString(),
+      hiddenFromStatusLists: json['hiddenFromStatusLists'] ?? false,
+      priority: json['priority'],
+      startedAt: json['startedAt'] != null ? DateValue.fromJson(json['startedAt']) : null,
+      completedAt: json['completedAt'] != null ? DateValue.fromJson(json['completedAt']) : null,
+      createdAt: json['createdAt'],
     );
   }
 }
@@ -43,33 +76,33 @@ class AnilistMediaListEntry {
 class AnilistUserList {
   final List<AnilistMediaListEntry> entries;
   final String name;
-  final bool isCustomList;
-  
+  final AnilistListStatus? status;
+
   AnilistUserList({
     required this.entries,
     required this.name,
-    this.isCustomList = false,
+    this.status,
   });
-  
+
+  bool get isCustomList => status == null || status == AnilistListStatus.CUSTOM;
+
   factory AnilistUserList.fromJson(Map<String, dynamic> json, String name, {bool isCustomList = false}) {
     final lists = json['lists'] as List<dynamic>?;
     final entries = <AnilistMediaListEntry>[];
-    
+
     if (lists != null) {
       for (final list in lists) {
         final listEntries = list['entries'] as List<dynamic>?;
         if (listEntries != null) {
-          entries.addAll(
-            listEntries.map((e) => AnilistMediaListEntry.fromJson(e as Map<String, dynamic>))
-          );
+          entries.addAll(listEntries.map((e) => AnilistMediaListEntry.fromJson(e as Map<String, dynamic>)));
         }
       }
     }
-    
+
     return AnilistUserList(
       entries: entries,
       name: name,
-      isCustomList: isCustomList,
+      status: isCustomList ? AnilistListStatus.CUSTOM : json['status']?.toString().toListStatus(),
     );
   }
 }
@@ -79,14 +112,14 @@ class AnilistUser {
   final String name;
   final String? avatar;
   final String? bannerImage;
-  
+
   AnilistUser({
     required this.id,
     required this.name,
     this.avatar,
     this.bannerImage,
   });
-  
+
   factory AnilistUser.fromJson(Map<String, dynamic> json) {
     return AnilistUser(
       id: json['id'],

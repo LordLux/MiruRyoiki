@@ -26,7 +26,7 @@ class AnilistService {
       _setupGraphQLClient();
       return true;
     }
-    
+
     logTrace('2 AnilistService initialization failed, not authenticated');
     return false;
   }
@@ -116,6 +116,26 @@ class AnilistService {
             status
             seasonYear
             season
+            
+            startDate {
+              year
+              month
+              day
+            }
+            endDate {
+              year
+              month
+              day
+            }
+            updatedAt
+            createdAt
+            nextAiringEpisode {
+              airingAt
+              episode
+              timeUntilAiring
+            }
+            isFavourite
+            siteUrl
           }
         }
       }
@@ -148,7 +168,7 @@ class AnilistService {
   /// Get detailed anime information by ID
   Future<AnilistAnime?> getAnimeDetails(int id) async {
     if (_client == null) return null;
-    
+
     logTrace('Fetching Anilist details for ID: $id');
 
     const detailsQuery = r'''
@@ -159,6 +179,7 @@ class AnilistService {
             romaji
             english
             native
+            userPreferred
           }
           bannerImage
           coverImage {
@@ -182,6 +203,26 @@ class AnilistService {
             type
             context
           }
+          
+          startDate {
+            year
+            month
+            day
+          }
+          endDate {
+            year
+            month
+            day
+          }
+          updatedAt
+          createdAt
+          nextAiringEpisode {
+            airingAt
+            episode
+            timeUntilAiring
+          }
+          isFavourite
+          siteUrl
         }
       }
     ''';
@@ -212,7 +253,7 @@ class AnilistService {
   /// Get current user information
   Future<AnilistUser?> getCurrentUser() async {
     if (_client == null) return null;
-    
+
     logTrace('Fetching current user info from Anilist...');
 
     const userQuery = r'''
@@ -251,7 +292,7 @@ class AnilistService {
   /// Get user anime lists (watching, completed, etc.)
   Future<Map<String, AnilistUserList>> getUserAnimeLists({String? userName, int? userId}) async {
     if (_client == null) return {};
-    
+
     logTrace('2 Fetching ]anime lists from Anilist for user $userName ($userId)...');
 
     const listsQuery = r'''
@@ -266,6 +307,19 @@ class AnilistService {
               status
               progress
               score(format: POINT_10)
+              hiddenFromStatusLists
+              priority
+              createdAt
+              startedAt {
+                year
+                month
+                day
+              }
+              completedAt {
+                year
+                month
+                day
+              }
               media {
                 id
                 title {
@@ -279,6 +333,28 @@ class AnilistService {
                   color
                 }
                 episodes
+                format
+                status
+                seasonYear
+                season
+                nextAiringEpisode {
+                  airingAt
+                  episode
+                  timeUntilAiring
+                }
+                startDate {
+                  year
+                  month
+                  day
+                }
+                endDate {
+                  year
+                  month
+                  day
+                }
+                updatedAt
+                isFavourite
+                siteUrl
               }
               customLists
             }
