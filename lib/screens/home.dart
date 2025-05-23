@@ -22,6 +22,15 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  Color _shiftHue(Color color, double shift) {
+    final hsvColor = HSVColor.fromColor(color);
+    final newHue = (hsvColor.hue + shift) % 360;
+    return hsvColor.withHue(newHue).toColor();
+  }
+
+  Color get lessGradientColor => _shiftHue(Manager.accentColor.lighter, -60);
+  Color get moreGradientColor => _shiftHue(Manager.accentColor.lighter, 10);
+
   @override
   Widget build(BuildContext context) {
     return ListView(
@@ -35,22 +44,23 @@ class _HomeScreenState extends State<HomeScreen> {
                 'Welcome Back${userName != null ? "," : ""} ',
                 style: FluentTheme.of(context).typography.title,
               ),
-              if (userName != null) ShaderMask(
-                shaderCallback: (bounds) {
-                  return LinearGradient(
-                    colors: [
-                      const Color(0xFF02A9FF), // AniList blue
-                      const Color(0xFFB480FF), // Soft purple
-                    ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ).createShader(bounds);
-                },
-                child: Text(
-                  userName.titleCase,
-                  style: FluentTheme.of(context).typography.title,
+              if (userName != null)
+                ShaderMask(
+                  shaderCallback: (bounds) {
+                    return LinearGradient(
+                      colors: [
+                        lessGradientColor,
+                        moreGradientColor,
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ).createShader(bounds);
+                  },
+                  child: Text(
+                    userName.titleCase,
+                    style: FluentTheme.of(context).typography.title,
+                  ),
                 ),
-              ),
               Text(
                 '!',
                 style: FluentTheme.of(context).typography.title,

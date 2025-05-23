@@ -39,6 +39,7 @@ class AnilistMediaListEntry {
   final DateValue? startedAt;
   final DateValue? completedAt;
   final int? createdAt;
+  final int? updatedAt;
 
   AnilistMediaListEntry({
     required this.id,
@@ -53,6 +54,7 @@ class AnilistMediaListEntry {
     this.startedAt,
     this.completedAt,
     this.createdAt,
+    this.updatedAt,
   });
 
   factory AnilistMediaListEntry.fromJson(Map<String, dynamic> json) {
@@ -69,6 +71,7 @@ class AnilistMediaListEntry {
       startedAt: json['startedAt'] != null ? DateValue.fromJson(json['startedAt']) : null,
       completedAt: json['completedAt'] != null ? DateValue.fromJson(json['completedAt']) : null,
       createdAt: json['createdAt'],
+      updatedAt: json['updatedAt'],
     );
   }
 }

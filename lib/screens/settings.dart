@@ -5,6 +5,7 @@ import 'dart:math' show min;
 
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter_acrylic/window_effect.dart';
 import 'package:miruryoiki/widgets/gradient_mask.dart';
 import 'package:miruryoiki/widgets/loading_button.dart';
@@ -22,6 +23,7 @@ import '../models/formatter/action.dart';
 import '../models/series.dart';
 import '../services/navigation/dialogs.dart';
 import '../services/navigation/show_info.dart';
+import '../settings.dart';
 import '../utils/color_utils.dart';
 import '../utils/logging.dart';
 import '../utils/registry_utils.dart';
@@ -41,10 +43,10 @@ class SettingsScreen extends StatefulWidget {
 
 // ignore: non_constant_identifier_names
 List<WindowEffect> _WindowsWindowEffects = [
-  WindowEffect.solid,
-  WindowEffect.transparent,
-  WindowEffect.aero,
   WindowEffect.acrylic,
+  WindowEffect.solid,
+  WindowEffect.aero,
+  WindowEffect.transparent,
   if (Manager.isWin11) WindowEffect.mica,
 ];
 
@@ -919,7 +921,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                               borderRadius: BorderRadius.circular(4),
                                             ),
                                           ),
-                                          onTapDown: (_) {
+                                          onTapDown: (details) {
+                                            final Offset offset = details.localPosition;
+                                            final RenderBox renderBox = context.findRenderObject() as RenderBox;
+                                            final Offset globalOffset = renderBox.localToGlobal(offset);
+                                            final Offset flyoutOffset = Offset(globalOffset.dx, globalOffset.dy + renderBox.size.height/3);
+                                            
                                             // ignore: avoid_single_cascade_in_expression_statements
                                             controller.showFlyout(
                                               autoModeConfiguration: FlyoutAutoConfiguration(
@@ -930,6 +937,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                               dismissOnPointerMoveAway: true,
                                               dismissWithEsc: true,
                                               navigatorKey: rootNavigatorKey.currentState,
+                                              position: flyoutOffset,
                                               builder: (context) {
                                                 return FlyoutContent(
                                                   child: ColorPicker(

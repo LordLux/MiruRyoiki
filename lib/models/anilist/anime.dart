@@ -1,6 +1,7 @@
-import 'package:flutter/widgets.dart';
 import 'package:miruryoiki/enums.dart';
 import 'package:path/path.dart';
+
+import '../../utils/time_utils.dart';
 
 class AnilistAnime {
   final int id;
@@ -114,7 +115,6 @@ class AnilistAnime {
     DateValue? startDate,
     DateValue? endDate,
     int? updatedAt,
-    int? createdAt,
     DateValue? startedAt,
     DateValue? completedAt,
     Map<String, int>? advancedScores,
@@ -202,6 +202,82 @@ class DateValue {
     if (year != null && month != null && day != null) return DateTime(year!, month!, day!);
 
     return null;
+  }
+
+  @override
+  String toString() => toDateTime().pretty();
+
+  @override
+  int get hashCode => Object.hash(year, month, day);
+  
+  @override
+  operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is DateValue && other.year == year && other.month == month && other.day == day;
+  }
+  
+  operator >(DateValue other) {
+    if (year != null && other.year != null) {
+      if (year! > other.year!) return true;
+      if (year! < other.year!) return false;
+    }
+    if (month != null && other.month != null) {
+      if (month! > other.month!) return true;
+      if (month! < other.month!) return false;
+    }
+    if (day != null && other.day != null) {
+      if (day! > other.day!) return true;
+      if (day! < other.day!) return false;
+    }
+    return false;
+  }
+  
+  operator <(DateValue other) {
+    if (year != null && other.year != null) {
+      if (year! < other.year!) return true;
+      if (year! > other.year!) return false;
+    }
+    if (month != null && other.month != null) {
+      if (month! < other.month!) return true;
+      if (month! > other.month!) return false;
+    }
+    if (day != null && other.day != null) {
+      if (day! < other.day!) return true;
+      if (day! > other.day!) return false;
+    }
+    return false;
+  }
+  
+  operator >=(DateValue other) {
+    if (year != null && other.year != null) {
+      if (year! >= other.year!) return true;
+      if (year! < other.year!) return false;
+    }
+    if (month != null && other.month != null) {
+      if (month! >= other.month!) return true;
+      if (month! < other.month!) return false;
+    }
+    if (day != null && other.day != null) {
+      if (day! >= other.day!) return true;
+      if (day! < other.day!) return false;
+    }
+    return false;
+  }
+  
+  operator <=(DateValue other) {
+    if (year != null && other.year != null) {
+      if (year! <= other.year!) return true;
+      if (year! > other.year!) return false;
+    }
+    if (month != null && other.month != null) {
+      if (month! <= other.month!) return true;
+      if (month! > other.month!) return false;
+    }
+    if (day != null && other.day != null) {
+      if (day! <= other.day!) return true;
+      if (day! > other.day!) return false;
+    }
+    return false;
   }
 }
 

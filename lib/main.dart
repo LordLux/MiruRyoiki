@@ -19,6 +19,7 @@ import 'package:windows_single_instance/windows_single_instance.dart';
 import 'package:material_symbols_icons/material_symbols_icons.dart';
 
 import 'services/navigation/dialogs.dart';
+import 'settings.dart';
 import 'utils/logging.dart';
 import 'manager.dart';
 import 'models/library.dart';
@@ -673,6 +674,7 @@ class _AppRootState extends State<AppRoot> {
   // Add this helper method
   bool handleBackNavigation({bool isEsc = false}) {
     final navManager = Provider.of<NavigationManager>(context, listen: false);
+    libraryScreenKey.currentState?.toggleFiltersSidebar(value: false);
 
     if (navManager.hasDialog && !isEsc) {
       logTrace('$nowFormatted | Back Mouse Button Pressed: Closing dialog');
@@ -698,7 +700,6 @@ class _AppRootState extends State<AppRoot> {
       return true;
     } else if (navManager.canGoBack) {
       logDebug('Going back in navigation stack -> ${navManager.stack[navManager.stack.length - 2].title}');
-      libraryScreenKey.currentState?.closeFlyout();
       // navManager.goBack();
 
       // Navigate based on the new current item
