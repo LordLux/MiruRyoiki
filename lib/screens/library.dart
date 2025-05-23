@@ -2,7 +2,9 @@ import 'dart:convert';
 
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_custom_cursor/flutter_custom_cursor.dart';
 import 'package:miruryoiki/manager.dart';
+import 'package:miruryoiki/widgets/cursors.dart';
 import 'package:provider/provider.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:smooth_scroll_multiplatform/smooth_scroll_multiplatform.dart';
@@ -80,6 +82,7 @@ class LibraryScreenState extends State<LibraryScreen> {
   bool _needsSort = true;
 
   double _savedScrollPosition = 0.0;
+  bool _isReordering = false;
 
   Widget get filterIcon {
     IconData icon;
@@ -167,8 +170,21 @@ class LibraryScreenState extends State<LibraryScreen> {
     return false;
   }
 
+  void _onViewChanged(LibraryView? value) {
+    if (value != null && value != _currentView) {
+      setState(() {
+        _currentView = value;
+        _needsSort = true;
+        _hasAppliedSorting = false;
+        _sortedGroupedSeries.clear();
+        _sortedUngroupedSeries.clear();
+      });
+      _saveUserPreferences();
+    }
+  }
+
   void _onSortOrderChanged(SortOrder? value) {
-    if (value != null) {
+    if (value != null && value != _sortOrder) {
       setState(() {
         _sortOrder = value;
         _needsSort = true;
@@ -213,82 +229,75 @@ class LibraryScreenState extends State<LibraryScreen> {
 
     const double filterAngle = -0.01;
     const double width = 350;
+    const double headerHeight = 63;
 
-    return GestureDetector(
-      behavior: HitTestBehavior.deferToChild,
-      onTapDown: (_) => showFilters ? toggleFiltersSidebar() : null,
-      child: Container(
-        color: Colors.transparent,
-        child: Padding(
-          padding: const EdgeInsets.only(bottom: 0, top: 16.0, left: 6.0),
-          child: Column(
-            children: [
-              _buildHeader(library),
-              // const SizedBox(height: 8),
-              Expanded(
-                child: Stack(
-                  children: [
-                    // Library entries
-                    Positioned.fill(
-                      child: Padding(
-                        padding: const EdgeInsets.only(right: 6.0),
-                        child: _buildLibraryView(library),
-                      ),
-                    ),
-
-                    // Library filters sidebar
-                    AnimatedPositioned(
-                      duration: getDuration(shortStickyHeaderDuration),
-                      top: 0,
-                      right: showFilters
-                          ? -0
-                          : _filterHintShowing
-                              ? -(width - 20)
-                              : -width,
-                      child: AnimatedRotation(
-                        duration: getDuration(shortStickyHeaderDuration),
-                        turns: _filterHintShowing ? filterAngle : 0,
-                        child: GestureDetector(
-                          onTapDown: (_) => _filterHintShowing ? toggleFiltersSidebar() : null,
-                          child: SizedBox(
-                            height: 2000,
-                            width: width,
-                            child: Acrylic(
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.only(topLeft: Radius.circular(8), bottomLeft: Radius.circular(8))),
-                              blurAmount: 7,
-                              elevation: 0,
-                              luminosityAlpha: .4,
-                              shadowColor: Manager.accentColor,
-                              child: _buildFiltersSidebar(),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                    // Mouse detection
-                    if (!showFilters)
-                      Positioned(
-                        right: -95,
-                        child: AnimatedRotation(
-                          duration: getDuration(shortStickyHeaderDuration),
-                          turns: _filterHintShowing ? filterAngle : 0,
-                          child: SizedBox(
-                            width: 100,
-                            height: 2000,
-                            child: MouseRegion(
-                              onEnter: (event) => setState(() => _filterHintShowing = true),
-                              onExit: (event) => setState(() => _filterHintShowing = false),
-                              hitTestBehavior: HitTestBehavior.translucent,
-                            ),
-                          ),
-                        ),
-                      ),
-                  ],
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 0, top: 16.0, left: 6.0),
+      child: Column(
+        children: [
+          SizedBox(height: headerHeight, child: _buildHeader(library)),
+          Expanded(
+            child: Stack(
+              children: [
+                // Library entries
+                Positioned.fill(
+                  child: Padding(
+                    padding: const EdgeInsets.only(right: 6.0),
+                    child: _buildLibraryView(library),
+                  ),
                 ),
-              ),
-            ],
+
+                // Library filters sidebar
+                AnimatedPositioned(
+                  duration: getDuration(shortStickyHeaderDuration),
+                  top: 0,
+                  right: showFilters
+                      ? -0
+                      : _filterHintShowing
+                          ? -(width - 20)
+                          : -width,
+                  child: AnimatedRotation(
+                    duration: getDuration(shortStickyHeaderDuration),
+                    turns: _filterHintShowing ? filterAngle : 0,
+                    child: GestureDetector(
+                      onTapDown: (_) => _filterHintShowing ? toggleFiltersSidebar() : null,
+                      child: SizedBox(
+                        height: ScreenUtils.height - headerHeight - 16 - Manager.titleBarHeight,
+                        width: width,
+                        child: Acrylic(
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.only(topLeft: Radius.circular(8), bottomLeft: Radius.circular(8))),
+                          blurAmount: 7,
+                          elevation: 0,
+                          luminosityAlpha: .4,
+                          shadowColor: Manager.accentColor,
+                          child: _buildFiltersSidebar(),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                // Mouse detection
+                if (!showFilters)
+                  Positioned(
+                    right: -95,
+                    child: AnimatedRotation(
+                      duration: getDuration(shortStickyHeaderDuration),
+                      turns: _filterHintShowing ? filterAngle : 0,
+                      child: SizedBox(
+                        width: 100,
+                        height: 2000,
+                        child: MouseRegion(
+                          onEnter: (event) => setState(() => _filterHintShowing = true),
+                          onExit: (event) => setState(() => _filterHintShowing = false),
+                          hitTestBehavior: HitTestBehavior.translucent,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
@@ -306,90 +315,87 @@ class LibraryScreenState extends State<LibraryScreen> {
               duration: getDuration(shortStickyHeaderDuration),
               child: Padding(
                 padding: const EdgeInsets.only(left: 16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Display Options',
-                      style: FluentTheme.of(context).typography.subtitle,
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Library View Switch
-                    InfoLabel(
-                      label: 'View',
-                      child: ComboBox<LibraryView>(
-                        value: _currentView,
-                        items: [
-                          ComboBoxItem(value: LibraryView.all, child: Text('All Series')),
-                          ComboBoxItem(value: LibraryView.linked, child: Text('Linked Series Only')),
-                        ],
-                        onChanged: (value) {
-                          if (value != null) setState(() => _currentView = value);
-                          _saveUserPreferences();
-                        },
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Grouping Toggle
-                    ToggleSwitch(
-                      checked: _showGrouped,
-                      content: Text('Group by AniList Lists'),
-                      onChanged: (value) {
-                        setState(() {
-                          _showGrouped = value;
-                          _groupBy = value ? GroupBy.anilistLists : GroupBy.none;
-                          _saveUserPreferences();
-                        });
-                      },
-                    ),
-
-                    const SizedBox(height: 24),
-                    Text(
-                      'Sort Options',
-                      style: FluentTheme.of(context).typography.subtitle,
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Sort Order
-                    InfoLabel(
-                      label: 'Sort by',
-                      child: Row(
-                        children: [
-                          ComboBox<SortOrder>(
-                            value: _sortOrder,
-                            items: SortOrder.values.map((order) => ComboBoxItem(value: order, child: Text(_getSortText(order)))).toList(),
-                            onChanged: _onSortOrderChanged,
-                          ),
-                          const SizedBox(width: 8),
-                          IconButton(
-                            icon: AnimatedRotation(
-                              duration: getDuration(shortStickyHeaderDuration),
-                              turns: _sortDescending ? 0 : 1,
-                              child: Icon(_sortDescending ? FluentIcons.sort_lines : FluentIcons.sort_lines_ascending),
-                            ),
-                            onPressed: _onSortDirectionChanged,
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-
-                    // Only show list order UI when grouping is enabled
-                    if (_showGrouped) ...[
-                      const SizedBox(height: 24),
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
                       Text(
-                        'List Order',
+                        'Display Options',
                         style: FluentTheme.of(context).typography.subtitle,
                       ),
                       const SizedBox(height: 16),
-                      SizedBox(
-                        height: 300,
-                        child: _buildListOrderUI(),
+
+                      // Library View Switch
+                      InfoLabel(
+                        label: 'View',
+                        child: ComboBox<LibraryView>(
+                          value: _currentView,
+                          items: [
+                            ComboBoxItem(value: LibraryView.all, child: Text('All Series')),
+                            ComboBoxItem(value: LibraryView.linked, child: Text('Linked Series Only')),
+                          ],
+                          onChanged: _onViewChanged,
+                        ),
                       ),
+                      const SizedBox(height: 16),
+
+                      // Grouping Toggle
+                      ToggleSwitch(
+                        checked: _showGrouped,
+                        content: Text('Group by AniList Lists'),
+                        onChanged: (value) {
+                          setState(() {
+                            _showGrouped = value;
+                            _groupBy = value ? GroupBy.anilistLists : GroupBy.none;
+                            _saveUserPreferences();
+                          });
+                        },
+                      ),
+
+                      const SizedBox(height: 24),
+                      Text(
+                        'Sort Options',
+                        style: FluentTheme.of(context).typography.subtitle,
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Sort Order
+                      InfoLabel(
+                        label: 'Sort by',
+                        child: Row(
+                          children: [
+                            ComboBox<SortOrder>(
+                              value: _sortOrder,
+                              items: SortOrder.values.map((order) => ComboBoxItem(value: order, child: Text(_getSortText(order)))).toList(),
+                              onChanged: _onSortOrderChanged,
+                            ),
+                            const SizedBox(width: 8),
+                            IconButton(
+                              icon: AnimatedRotation(
+                                duration: getDuration(shortStickyHeaderDuration),
+                                turns: _sortDescending ? 0 : 1,
+                                child: Icon(_sortDescending ? FluentIcons.sort_lines : FluentIcons.sort_lines_ascending),
+                              ),
+                              onPressed: _onSortDirectionChanged,
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+
+                      // Only show list order UI when grouping is enabled
+                      if (_showGrouped) ...[
+                        const SizedBox(height: 24),
+                        Text(
+                          'List Order',
+                          style: FluentTheme.of(context).typography.subtitle,
+                        ),
+                        const SizedBox(height: 16),
+                        _buildListOrderUI(),
+                      ],
                     ],
-                  ],
+                  ),
                 ),
               ),
             ),
@@ -428,36 +434,63 @@ class LibraryScreenState extends State<LibraryScreen> {
     allLists.add('__unlinked');
 
     // If _customListOrder is empty or outdated, initialize with default order
-    if (_customListOrder.isEmpty || !_areListsEqual(_customListOrder, allLists)) {
+    if (_customListOrder.isEmpty || !_areListsEqual(_customListOrder, allLists)) //
       _customListOrder = List.from(allLists);
-    }
 
-    return ReorderableListView.builder(
-      itemCount: _customListOrder.length,
-      buildDefaultDragHandles: false,
-      onReorder: (oldIndex, newIndex) {
-        setState(() {
-          if (oldIndex < newIndex) {
-            newIndex -= 1;
-          }
-          final item = _customListOrder.removeAt(oldIndex);
-          _customListOrder.insert(newIndex, item);
-          _saveUserPreferences();
-        });
-      },
-      itemBuilder: (context, index) {
-        final listName = _customListOrder[index];
-        final displayName = listName == '__unlinked' ? 'Unlinked' : _fromApiListName(listName);
+    final double childHeight = 40;
 
-        return ListTile(
-          key: ValueKey(listName),
+    Widget buildTile(String listName, String displayName, int index, bool selected) {
+      return MouseRegion(
+        cursor: SystemMouseCursors.click,
+        key: ValueKey(listName),
+        child: ListTile(
+          tileColor: WidgetStatePropertyAll(selected ? Colors.white.withOpacity(.1) : Colors.white.withOpacity(.05)),
           title: Text(displayName),
-          leading: Icon(FluentIcons.drag_object),
+          leading: ReorderableDragStartListener(
+            index: index,
+            child: MouseRegion(
+              cursor: FlutterCustomMemoryImageCursor(key: _isReordering ? systemMouseCursorGrabbing : systemMouseCursorGrab),
+              child: Icon(FluentIcons.drag_object),
+            ),
+          ),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(4),
           ),
-        );
-      },
+        ),
+      );
+    }
+
+    return SizedBox(
+      height: _customListOrder.length * childHeight,
+      child: ReorderableListView.builder(
+        itemCount: _customListOrder.length,
+        buildDefaultDragHandles: false,
+        clipBehavior: Clip.none,
+        proxyDecorator: (child, index, animation) {
+          _isReordering = true;
+          final name = _customListOrder[index];
+          return buildTile(name, _fromApiListName(name), index, true);
+        },
+        onReorderStart: (_) => setState(() => _isReordering = true),
+        onReorderEnd: (_) => setState(() => _isReordering = false),
+        onReorder: (oldIndex, newIndex) {
+          setState(() {
+            if (oldIndex < newIndex) {
+              newIndex -= 1;
+            }
+            final item = _customListOrder.removeAt(oldIndex);
+            _customListOrder.insert(newIndex, item);
+            _saveUserPreferences();
+          });
+        },
+        prototypeItem: SizedBox(height: childHeight),
+        itemBuilder: (context, index) {
+          final listName = _customListOrder[index];
+          final displayName = listName == '__unlinked' ? 'Unlinked' : _fromApiListName(listName);
+
+          return buildTile(listName, displayName, index, false);
+        },
+      ),
     );
   }
 
@@ -548,7 +581,7 @@ class LibraryScreenState extends State<LibraryScreen> {
         ? library.series.toList()
         : library.series.where((s) => s.isLinked).toList();
 
-    if (library.isLoading || _isProcessing) return const Center(child: ProgressRing());
+    if (library.isLoading) return const Center(child: ProgressRing());
 
     if (library.series.isEmpty)
       return Center(
@@ -641,7 +674,6 @@ class LibraryScreenState extends State<LibraryScreen> {
 
     if (widget.scrollController.hasClients == true) {
       _savedScrollPosition = widget.scrollController.offset;
-      print('Saved scroll position: $_savedScrollPosition');
     }
 
     _isProcessing = true;
@@ -681,16 +713,17 @@ class LibraryScreenState extends State<LibraryScreen> {
             _lastAppliedSortOrder = _sortOrder;
             _lastAppliedSortDescending = _sortDescending;
             _hasAppliedSorting = true;
-            _isProcessing = false;
           });
           // Finally, after scroll position is restored, hide loading indicator
           nextFrame(() {
             if (widget.scrollController.hasClients == true) {
               final maxScroll = widget.scrollController.position.maxScrollExtent;
               final scrollTo = _savedScrollPosition.clamp(0.0, maxScroll);
-              print('Restoring scroll to: $scrollTo (max: $maxScroll)');
               widget.scrollController.jumpTo(scrollTo);
-              setState(() {});
+
+              setState(() {
+                _isProcessing = false;
+              });
             }
           });
         }
