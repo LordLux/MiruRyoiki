@@ -6,6 +6,7 @@ list(APPEND FLUTTER_PLUGIN_LIST
   app_links
   bitsdojo_window_windows
   flutter_acrylic
+  flutter_custom_cursor
   flutter_secure_storage_windows
   screen_retriever_windows
   system_theme

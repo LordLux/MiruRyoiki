@@ -39,6 +39,7 @@ import 'theme.dart';
 import 'utils/color_utils.dart';
 import 'utils/screen_utils.dart';
 import 'utils/time_utils.dart';
+import 'widgets/cursors.dart';
 import 'widgets/dialogs/link_anilist_multi.dart';
 import 'widgets/menu_button.dart';
 import 'widgets/reverse_animation_flyout.dart';
@@ -68,6 +69,11 @@ void main(List<String> args) async {
 
   // Only run on Windows
   if (!Platform.isWindows) throw UnimplementedError('This app is only supported on Windows (for now).');
+
+  // Load custom mouse cursors
+  await initSystemMouseCursor();
+  await disposeSystemMouseCursor();
+  await initSystemMouseCursor();
 
   // Load environment variables
   await dotenv.load(fileName: '.env');
@@ -166,6 +172,17 @@ class _MyAppState extends State<MyApp> {
         }
       });
     });
+  }
+
+  @override
+  void dispose() {
+    // Dispose of providers
+    final libraryProvider = Provider.of<Library>(context, listen: false);
+    final anilistProvider = Provider.of<AnilistProvider>(context, listen: false);
+    libraryProvider.dispose();
+    anilistProvider.dispose();
+    disposeSystemMouseCursor();
+    super.dispose();
   }
 
   Future<void> _handleInitialUri() async {
