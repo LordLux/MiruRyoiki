@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart' show Icons;
 import 'package:flutter_custom_cursor/flutter_custom_cursor.dart';
 import 'package:miruryoiki/manager.dart';
 import 'package:miruryoiki/widgets/cursors.dart';
@@ -231,74 +232,85 @@ class LibraryScreenState extends State<LibraryScreen> {
     const double width = 350;
     const double headerHeight = 63;
 
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 0, top: 16.0, left: 6.0),
-      child: Column(
-        children: [
-          SizedBox(height: headerHeight, child: _buildHeader(library)),
-          Expanded(
-            child: Stack(
-              children: [
-                // Library entries
-                Positioned.fill(
+    return Column(
+      children: [
+        Expanded(
+          child: Stack(
+            children: [
+              Positioned.fill(
+                top: 0,
+                child: GestureDetector(
+                  onTap: () => toggleFiltersSidebar(value: false),
+                  behavior: HitTestBehavior.translucent,
                   child: Padding(
-                    padding: const EdgeInsets.only(right: 6.0),
+                    padding: const EdgeInsets.only(top: 16.0, left: 6.0),
+                    child: SizedBox(height: headerHeight, child: _buildHeader(library)),
+                  ),
+                ),
+              ),
+              // Library entries
+              Positioned.fill(
+                child: GestureDetector(
+                  onTap: () => toggleFiltersSidebar(value: false),
+                  behavior: HitTestBehavior.deferToChild,
+                  child: Padding(
+                    padding: const EdgeInsets.only(right: 6.0, top: headerHeight + 16.0, left: 6.0),
                     child: _buildLibraryView(library),
                   ),
                 ),
+              ),
 
-                // Library filters sidebar
-                AnimatedPositioned(
+              // Library filters sidebar
+              AnimatedPositioned(
+                duration: getDuration(shortStickyHeaderDuration),
+                top: headerHeight + 16,
+                right: showFilters
+                    ? -0
+                    : _filterHintShowing
+                        ? -(width - 20)
+                        : -width,
+                child: AnimatedRotation(
                   duration: getDuration(shortStickyHeaderDuration),
-                  top: 0,
-                  right: showFilters
-                      ? -0
-                      : _filterHintShowing
-                          ? -(width - 20)
-                          : -width,
-                  child: AnimatedRotation(
-                    duration: getDuration(shortStickyHeaderDuration),
-                    turns: _filterHintShowing ? filterAngle : 0,
-                    child: GestureDetector(
-                      onTapDown: (_) => _filterHintShowing ? toggleFiltersSidebar() : null,
-                      child: SizedBox(
-                        height: ScreenUtils.height - headerHeight - 16 - Manager.titleBarHeight,
-                        width: width,
-                        child: Acrylic(
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.only(topLeft: Radius.circular(8), bottomLeft: Radius.circular(8))),
-                          blurAmount: 7,
-                          elevation: 0,
-                          luminosityAlpha: .4,
-                          shadowColor: Manager.accentColor,
-                          child: _buildFiltersSidebar(),
-                        ),
+                  turns: _filterHintShowing ? filterAngle : 0,
+                  child: GestureDetector(
+                    onTapDown: (_) => _filterHintShowing ? toggleFiltersSidebar() : null,
+                    child: SizedBox(
+                      height: ScreenUtils.height - headerHeight - 16 - Manager.titleBarHeight,
+                      width: width,
+                      child: Acrylic(
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.only(topLeft: Radius.circular(8), bottomLeft: Radius.circular(8))),
+                        blurAmount: 7,
+                        elevation: 0,
+                        luminosityAlpha: .4,
+                        shadowColor: Manager.accentColor,
+                        child: _buildFiltersSidebar(),
                       ),
                     ),
                   ),
                 ),
-                // Mouse detection
-                if (!showFilters)
-                  Positioned(
-                    right: -95,
-                    child: AnimatedRotation(
-                      duration: getDuration(shortStickyHeaderDuration),
-                      turns: _filterHintShowing ? filterAngle : 0,
-                      child: SizedBox(
-                        width: 100,
-                        height: 2000,
-                        child: MouseRegion(
-                          onEnter: (event) => setState(() => _filterHintShowing = true),
-                          onExit: (event) => setState(() => _filterHintShowing = false),
-                          hitTestBehavior: HitTestBehavior.translucent,
-                        ),
+              ),
+              // Mouse detection
+              if (!showFilters)
+                Positioned(
+                  right: -95,
+                  child: AnimatedRotation(
+                    duration: getDuration(shortStickyHeaderDuration),
+                    turns: _filterHintShowing ? filterAngle : 0,
+                    child: SizedBox(
+                      width: 100,
+                      height: 2000,
+                      child: MouseRegion(
+                        onEnter: (event) => setState(() => _filterHintShowing = true),
+                        onExit: (event) => setState(() => _filterHintShowing = false),
+                        hitTestBehavior: HitTestBehavior.translucent,
                       ),
                     ),
                   ),
-              ],
-            ),
+                ),
+            ],
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -437,24 +449,47 @@ class LibraryScreenState extends State<LibraryScreen> {
     if (_customListOrder.isEmpty || !_areListsEqual(_customListOrder, allLists)) //
       _customListOrder = List.from(allLists);
 
-    final double childHeight = 40;
+    final double childHeight = 45;
 
-    Widget buildTile(String listName, String displayName, int index, bool selected) {
-      return MouseRegion(
-        cursor: SystemMouseCursors.click,
+    Widget buildTile(String listName, String displayName, int index, bool selected, {Animation<double>? animation}) {
+      return ReorderableDragStartListener(
         key: ValueKey(listName),
-        child: ListTile(
-          tileColor: WidgetStatePropertyAll(selected ? Colors.white.withOpacity(.1) : Colors.white.withOpacity(.05)),
-          title: Text(displayName),
-          leading: ReorderableDragStartListener(
-            index: index,
-            child: MouseRegion(
-              cursor: FlutterCustomMemoryImageCursor(key: _isReordering ? systemMouseCursorGrabbing : systemMouseCursorGrab),
-              child: Icon(FluentIcons.drag_object),
-            ),
-          ),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(4),
+        index: index,
+        child: MouseRegion(
+          cursor: FlutterCustomMemoryImageCursor(key: _isReordering ? systemMouseCursorGrabbing : systemMouseCursorGrab),
+          child: Builder(
+            builder: (context) {
+              Color animatedColor = (selected ? Color.lerp(Colors.white.withOpacity(.15), Manager.accentColor, .75)! : Colors.white.withOpacity(.05));
+
+              Widget wrapper(Widget Function(BuildContext, Color) child) {
+                if (selected && animation != null) {
+                  return AnimatedBuilder(
+                    animation: animation,
+                    builder: (context, child) {
+                      animatedColor = Color.lerp(
+                        Colors.white.withOpacity(.05),
+                        Color.lerp(Colors.white.withOpacity(.15), Manager.accentColor, .75)!,
+                        animation.value,
+                      )!;
+                      return child!;
+                    },
+                    child: child(context, animatedColor),
+                  );
+                }
+                return child(context, animatedColor);
+              }
+
+              return wrapper(
+                (context, color) => ListTile(
+                  tileColor: WidgetStatePropertyAll(color),
+                  title: Text(displayName),
+                  leading: Icon(!selected ? Icons.drag_handle : FluentIcons.drag_object),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
+              );
+            },
           ),
         ),
       );
