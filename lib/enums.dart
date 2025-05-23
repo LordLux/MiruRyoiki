@@ -2,6 +2,7 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter_acrylic/window_effect.dart';
 import 'package:miruryoiki/utils/logging.dart';
 import 'package:recase/recase.dart';
+import 'package:intl/intl.dart';
 
 // ENUMS
 enum Dim { dimmed, normal, brightened }
@@ -180,5 +181,12 @@ extension DurationX on Duration {
     return copyWith(
       milliseconds: this.inMilliseconds + other,
     );
+  }
+}
+
+extension DateTimeX on DateTime? {
+  String pretty() {
+    if (this == null) return 'null';
+    return DateFormat('dd MMM yy', 'en').format(this!);
   }
 }

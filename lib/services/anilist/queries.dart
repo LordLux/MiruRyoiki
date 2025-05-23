@@ -128,7 +128,6 @@ class AnilistService {
               day
             }
             updatedAt
-            createdAt
             nextAiringEpisode {
               airingAt
               episode
@@ -215,7 +214,6 @@ class AnilistService {
             day
           }
           updatedAt
-          createdAt
           nextAiringEpisode {
             airingAt
             episode
@@ -310,6 +308,7 @@ class AnilistService {
               hiddenFromStatusLists
               priority
               createdAt
+              updatedAt
               startedAt {
                 year
                 month
@@ -355,6 +354,9 @@ class AnilistService {
                 updatedAt
                 isFavourite
                 siteUrl
+                mediaListEntry {
+                  id
+                }
               }
               customLists
             }

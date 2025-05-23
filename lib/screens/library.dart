@@ -1,14 +1,17 @@
 import 'dart:convert';
 
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:flutter/foundation.dart';
 import 'package:miruryoiki/manager.dart';
 import 'package:provider/provider.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:smooth_scroll_multiplatform/smooth_scroll_multiplatform.dart';
 
+import '../models/anilist/anime.dart';
 import '../models/library.dart';
 import '../models/series.dart';
 import '../services/anilist/provider.dart';
+import '../settings.dart';
 import '../utils/logging.dart';
 import '../utils/screen_utils.dart';
 import '../utils/time_utils.dart';
@@ -59,10 +62,21 @@ class LibraryScreenState extends State<LibraryScreen> {
   GroupBy _groupBy = GroupBy.anilistLists;
   final SimpleFlyoutController filterFlyoutController = SimpleFlyoutController();
 
+  bool _showGrouped = false;
   bool showFilters = false;
   bool _sortDescending = false;
   bool _filterHintShowing = false;
+
   List<String> _customListOrder = [];
+  Map<String, List<Series>> _sortedGroupedSeries = {};
+  List<Series> _sortedUngroupedSeries = [];
+  bool _hasAppliedSorting = false;
+
+  bool _isProcessing = false;
+  Future<void>? _currentSortOperation;
+  SortOrder? _lastAppliedSortOrder;
+  bool? _lastAppliedSortDescending;
+  bool _needsSort = true;
 
   Widget get filterIcon {
     IconData icon;
@@ -71,11 +85,7 @@ class LibraryScreenState extends State<LibraryScreen> {
     else
       icon = FluentIcons.filter;
 
-    return AnimatedRotation(
-      duration: getDuration(shortStickyHeaderDuration),
-      turns: _sortDescending ? 0.5 : 0,
-      child: Icon(icon, size: 16),
-    );
+    return Icon(icon, size: 16);
   }
 
   bool _areListsEqual(List<String> list1, List<String> list2) {
@@ -85,180 +95,105 @@ class LibraryScreenState extends State<LibraryScreen> {
     return set1.difference(set2).isEmpty;
   }
 
-  void closeFlyout() {
-    log('Closing filter flyout');
-    Manager.navigation.popDialog();
-    Manager.canPopDialog = true;
-
-    reverseAnimationPaletteKey.currentState?.reverseAnimation().then((value) {
-      filterFlyoutController.close(true);
-    });
-  }
-
-  void _showFilterFlyout() {
-    Manager.navigation.pushDialog('filterFlyout', 'filterFlyout');
-
-    filterFlyoutController.showFlyout(
-      barrierDismissible: true,
-      dismissWithEsc: true,
-      barrierMargin: EdgeInsets.only(top: Manager.titleBarHeight),
-      dismissOnPointerMoveAway: false,
-      position: Offset(ScreenUtils.width - 107, 287),
-      barrierBlocking: false,
-      closingDuration: Duration(milliseconds: 150),
-      transitionDuration: Duration(milliseconds: 100),
-      onBarrierDismiss: () => closeFlyout(),
-      margin: 0,
-      builder: (context) {
-        return Padding(
-          padding: const EdgeInsets.only(top: Manager.titleBarHeight + 8),
-          child: StatefulBuilder(builder: (context, setState2) {
-            return ToggleableFlyoutContent(
-              key: reverseAnimationPaletteKey,
-              config: const ToggleableFlyoutConfig(
-                scaleBegin: 0.98,
-                scaleEnd: 1.0,
-                opacityBegin: 0.5,
-                opacityEnd: 1.0,
-                positionBegin: Offset(0.0, -0.5),
-                positionEnd: Offset.zero,
-              ),
-              duration: const Duration(milliseconds: 100),
-              child: SimpleFlyoutContent(
-                shadowColor: Colors.transparent,
-                color: Colors.transparent,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      ToggleSwitch(
-                        checked: _currentView == LibraryView.linked,
-                        content: Text(_currentView == LibraryView.linked ? 'Linked Series' : 'All Series'),
-                        onChanged: (value) {
-                          setState2(() {
-                            _currentView = value ? LibraryView.linked : LibraryView.all;
-                          });
-                          nextFrame(() => setState(() {}), delay: 10);
-                        },
-                      ),
-                      const SizedBox(height: 8),
-                      ComboBox<SortOrder>(
-                        value: _sortOrder,
-                        items: SortOrder.values
-                            .map((order) => ComboBoxItem(
-                                  value: order,
-                                  child: Text(_getSortText(order)),
-                                ))
-                            .toList(),
-                        onChanged: (value) {
-                          if (value != null) {
-                            setState2(() => _sortOrder = value);
-                            nextFrame(() => setState(() {}), delay: 10);
-                          }
-                        },
-                      ),
-                      const SizedBox(height: 8),
-                      ComboBox<GroupBy>(
-                        value: _groupBy,
-                        items: GroupBy.values
-                            .map((group) => ComboBoxItem(
-                                  value: group,
-                                  child: Text(_getGroupText(group)),
-                                ))
-                            .toList(),
-                        onChanged: (value) {
-                          if (value != null) {
-                            setState2(() => _groupBy = value);
-                            nextFrame(() => setState(() {}), delay: 10);
-                          }
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            );
-          }),
-        );
-      },
-    );
-  }
-
-  void _toggleFiltersSidebar() {
+  void toggleFiltersSidebar({bool? value}) {
     setState(() {
-      showFilters = !showFilters;
+      showFilters = value ?? !showFilters;
       _filterHintShowing = false;
     });
   }
 
   // Save preferences
   void _saveUserPreferences() {
-    final settings = Provider.of<SettingsManager>(context, listen: false);
-
-    settings.set('librarySortOrder', _sortOrder.toString());
-    settings.set('librarySortDescending', _sortDescending.toString());
-    settings.set('libraryGroupBy', _groupBy.toString());
-
-    // Save the custom list order as JSON
-    if (_customListOrder.isNotEmpty) {
-      settings.set('libraryListOrder', jsonEncode(_customListOrder));
-    }
+    final manager = Manager.settings;
+    manager.set('library_view', _currentView.toString());
+    manager.set('library_sort_order', _sortOrder.toString());
+    manager.set('library_sort_descending', _sortDescending);
+    manager.set('library_group_by', _groupBy.toString());
+    manager.set('library_show_grouped', _showGrouped);
+    manager.set('library_list_order', json.encode(_customListOrder));
   }
 
   // Load preferences
-  Future<void> _loadUserPreferences() async {
-    final settings = Provider.of<SettingsManager>(context, listen: false);
+  void _loadUserPreferences() {
+    final manager = Manager.settings;
+    setState(() {
+      // Load view
+      final viewString = manager.get('library_view', defaultValue: LibraryView.all.toString());
+      _currentView = viewString == LibraryView.linked.toString() ? LibraryView.linked : LibraryView.all;
 
-    // Load sort order
-    final savedSortOrder = settings.get('librarySortOrder');
-    if (savedSortOrder != null) {
-      setState(() {
-        _sortOrder = SortOrder.values.firstWhere(
-          (order) => order.toString() == savedSortOrder,
-          orElse: () => SortOrder.alphabetical,
-        );
-      });
-    }
-
-    // Load sort direction
-    final savedSortDescending = settings.get('librarySortDescending');
-    if (savedSortDescending != null) {
-      setState(() {
-        _sortDescending = savedSortDescending == 'true';
-      });
-    }
-
-    // Load grouping
-    final savedGroupBy = settings.get('libraryGroupBy');
-    if (savedGroupBy != null) {
-      setState(() {
-        _groupBy = GroupBy.values.firstWhere(
-          (group) => group.toString() == savedGroupBy,
-          orElse: () => GroupBy.anilistLists,
-        );
-      });
-    }
-
-    // Load custom list order
-    final savedListOrder = settings.get('libraryListOrder');
-    if (savedListOrder != null) {
-      try {
-        final decoded = jsonDecode(savedListOrder) as List<dynamic>;
-        setState(() {
-          _customListOrder = decoded.map((e) => e.toString()).toList();
-        });
-      } catch (e) {
-        logErr('Error loading list order', e);
+      // Load sort order
+      final sortOrderString = manager.get('library_sort_order', defaultValue: SortOrder.alphabetical.toString());
+      for (final order in SortOrder.values) {
+        if (order.toString() == sortOrderString) {
+          _sortOrder = order;
+          break;
+        }
       }
+
+      // Load other settings - FIX HERE: convert string to boolean
+      final sortDescendingString = manager.get('library_sort_descending', defaultValue: 'false');
+      _sortDescending = sortDescendingString.toString() == 'true';
+
+      final groupByString = manager.get('library_group_by', defaultValue: GroupBy.none.toString());
+      for (final group in GroupBy.values) {
+        if (group.toString() == groupByString) {
+          _groupBy = group;
+          break;
+        }
+      }
+
+      final showGroupedString = manager.get('library_show_grouped', defaultValue: 'false');
+      _showGrouped = showGroupedString.toString() == 'true';
+
+      // Load list order
+      final listOrderString = manager.get('library_list_order', defaultValue: '[]');
+      try {
+        final decoded = json.decode(listOrderString);
+        if (decoded is List) {
+          _customListOrder = List<String>.from(decoded);
+        }
+      } catch (_) {
+        _customListOrder = [];
+      }
+    });
+  }
+
+  bool _sortingNeeded(List<Series> series) {
+    if (_needsSort || _lastAppliedSortOrder != _sortOrder || _lastAppliedSortDescending != _sortDescending) //
+      return true;
+    return false;
+  }
+
+  void _onSortOrderChanged(SortOrder? value) {
+    if (value != null) {
+      setState(() {
+        _sortOrder = value;
+        _needsSort = true;
+        _hasAppliedSorting = false;
+        _sortedGroupedSeries.clear();
+        _sortedUngroupedSeries.clear();
+      });
+      _saveUserPreferences();
     }
+  }
+
+  void _onSortDirectionChanged() {
+    setState(() {
+      _sortDescending = !_sortDescending;
+      _needsSort = true;
+      _hasAppliedSorting = false;
+      _sortedGroupedSeries.clear();
+      _sortedUngroupedSeries.clear();
+    });
+    _saveUserPreferences();
   }
 
   @override
   void initState() {
     super.initState();
     _loadUserPreferences();
+    _lastAppliedSortOrder = _sortOrder;
+    _lastAppliedSortDescending = _sortDescending;
   }
 
   @override
@@ -271,104 +206,86 @@ class LibraryScreenState extends State<LibraryScreen> {
   Widget build(BuildContext context) {
     final library = context.watch<Library>();
 
-    if (library.isLoading) return const Center(child: ProgressRing());
-
     if (library.libraryPath == null) return _buildLibrarySelector();
-
-    if (library.series.isEmpty)
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(
-              FluentIcons.folder_open,
-              size: 48,
-              color: Colors.grey,
-            ),
-            const SizedBox(height: 16),
-            const Text('No series found in your library'),
-            const SizedBox(height: 16),
-            Button(
-              onPressed: _selectLibraryFolder,
-              child: const Text('Change Library Folder'),
-            ),
-          ],
-        ),
-      );
 
     const double filterAngle = -0.01;
     const double width = 350;
 
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 0, top: 16.0, left: 6.0),
-      child: Column(
-        children: [
-          _buildHeader(library),
-          // const SizedBox(height: 8),
-          Expanded(
-            child: Stack(
-              children: [
-                // Library entries
-                Positioned.fill(
-                  child: GestureDetector(
-                    onTapDown: (_) => showFilters ? _toggleFiltersSidebar() : null,
-                    child: Padding(
-                      padding: const EdgeInsets.only(right: 6.0),
-                      child: _buildLibraryView(library),
-                    ),
-                  ),
-                ),
-
-                // Library filters sidebar
-                AnimatedPositioned(
-                  duration: getDuration(shortStickyHeaderDuration),
-                  top: 0,
-                  right: showFilters
-                      ? -0
-                      : _filterHintShowing
-                          ? -(width - 20)
-                          : -width,
-                  child: AnimatedRotation(
-                    duration: getDuration(shortStickyHeaderDuration),
-                    turns: _filterHintShowing ? filterAngle : 0,
-                    child: GestureDetector(
-                      onTapDown: (_) => _filterHintShowing ? _toggleFiltersSidebar() : null,
-                      child: SizedBox(
-                        height: 2000,
-                        width: width,
-                        child: Acrylic(
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.only(topLeft: Radius.circular(8), bottomLeft: Radius.circular(8))),
-                          blurAmount: 7,
-                          elevation: 0,
-                          luminosityAlpha: .4,
-                          shadowColor: Manager.accentColor,
-                          child: _buildFiltersSidebar(),
-                        ),
+    return GestureDetector(
+      behavior: HitTestBehavior.deferToChild,
+      onTapDown: (_) => showFilters ? toggleFiltersSidebar() : null,
+      child: Container(
+        color: Colors.transparent,
+        child: Padding(
+          padding: const EdgeInsets.only(bottom: 0, top: 16.0, left: 6.0),
+          child: Column(
+            children: [
+              _buildHeader(library),
+              // const SizedBox(height: 8),
+              Expanded(
+                child: Stack(
+                  children: [
+                    // Library entries
+                    Positioned.fill(
+                      child: Padding(
+                        padding: const EdgeInsets.only(right: 6.0),
+                        child: _buildLibraryView(library),
                       ),
                     ),
-                  ),
-                ),
-                // Mouse detection
-                if (!showFilters)
-                  Positioned(
-                      right: -95,
+
+                    // Library filters sidebar
+                    AnimatedPositioned(
+                      duration: getDuration(shortStickyHeaderDuration),
+                      top: 0,
+                      right: showFilters
+                          ? -0
+                          : _filterHintShowing
+                              ? -(width - 20)
+                              : -width,
                       child: AnimatedRotation(
                         duration: getDuration(shortStickyHeaderDuration),
                         turns: _filterHintShowing ? filterAngle : 0,
-                        child: SizedBox(
-                          width: 100,
-                          height: 2000,
-                          child: MouseRegion(
-                            onEnter: (event) => setState(() => _filterHintShowing = true),
-                            onExit: (event) => setState(() => _filterHintShowing = false),
-                            hitTestBehavior: HitTestBehavior.translucent,
+                        child: GestureDetector(
+                          onTapDown: (_) => _filterHintShowing ? toggleFiltersSidebar() : null,
+                          child: SizedBox(
+                            height: 2000,
+                            width: width,
+                            child: Acrylic(
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.only(topLeft: Radius.circular(8), bottomLeft: Radius.circular(8))),
+                              blurAmount: 7,
+                              elevation: 0,
+                              luminosityAlpha: .4,
+                              shadowColor: Manager.accentColor,
+                              child: _buildFiltersSidebar(),
+                            ),
                           ),
                         ),
-                      ))
-              ],
-            ),
+                      ),
+                    ),
+                    // Mouse detection
+                    if (!showFilters)
+                      Positioned(
+                        right: -95,
+                        child: AnimatedRotation(
+                          duration: getDuration(shortStickyHeaderDuration),
+                          turns: _filterHintShowing ? filterAngle : 0,
+                          child: SizedBox(
+                            width: 100,
+                            height: 2000,
+                            child: MouseRegion(
+                              onEnter: (event) => setState(() => _filterHintShowing = true),
+                              onExit: (event) => setState(() => _filterHintShowing = false),
+                              hitTestBehavior: HitTestBehavior.translucent,
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -384,59 +301,93 @@ class LibraryScreenState extends State<LibraryScreen> {
             child: AnimatedOpacity(
               opacity: _filterHintShowing ? 0.0 : 1.0,
               duration: getDuration(shortStickyHeaderDuration),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Sort order selector with ascending/descending toggle
-                  Row(
-                    children: [
-                      Expanded(
-                        child: ComboBox<SortOrder>(
-                          value: _sortOrder,
-                          items: SortOrder.values.map((order) => ComboBoxItem(value: order, child: Text(_getSortText(order)))).toList(),
-                          onChanged: (value) {
-                            if (value != null) setState(() => _sortOrder = value);
-                            _saveUserPreferences();
-                          },
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      IconButton(
-                        icon: Icon(_sortDescending ? FluentIcons.sort_down : FluentIcons.sort_up),
-                        onPressed: () {
-                          setState(() => _sortDescending = !_sortDescending);
+              child: Padding(
+                padding: const EdgeInsets.only(left: 16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Display Options',
+                      style: FluentTheme.of(context).typography.subtitle,
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Library View Switch
+                    InfoLabel(
+                      label: 'View',
+                      child: ComboBox<LibraryView>(
+                        value: _currentView,
+                        items: [
+                          ComboBoxItem(value: LibraryView.all, child: Text('All Series')),
+                          ComboBoxItem(value: LibraryView.linked, child: Text('Linked Series Only')),
+                        ],
+                        onChanged: (value) {
+                          if (value != null) setState(() => _currentView = value);
                           _saveUserPreferences();
                         },
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-
-                  // Grouping selector
-                  ComboBox<SortOrder>(
-                    value: _sortOrder,
-                    items: SortOrder.values.map((order) => ComboBoxItem(value: order, child: Text(_getSortText(order)))).toList(),
-                    onChanged: (value) {
-                      if (value != null) setState(() => _sortOrder = value);
-                      _saveUserPreferences();
-                    },
-                  ),
-                  const SizedBox(height: 8),
-
-                  // List order section (only show when grouping by Anilist lists)
-                  if (_groupBy == GroupBy.anilistLists) ...[
+                    ),
                     const SizedBox(height: 16),
+
+                    // Grouping Toggle
+                    ToggleSwitch(
+                      checked: _showGrouped,
+                      content: Text('Group by AniList Lists'),
+                      onChanged: (value) {
+                        setState(() {
+                          _showGrouped = value;
+                          _groupBy = value ? GroupBy.anilistLists : GroupBy.none;
+                          _saveUserPreferences();
+                        });
+                      },
+                    ),
+
+                    const SizedBox(height: 24),
                     Text(
-                      'List Order',
+                      'Sort Options',
                       style: FluentTheme.of(context).typography.subtitle,
                     ),
-                    const SizedBox(height: 8),
-                    SizedBox(
-                      height: 300,
-                      child: _buildListOrderUI(),
+                    const SizedBox(height: 16),
+
+                    // Sort Order
+                    InfoLabel(
+                      label: 'Sort by',
+                      child: Row(
+                        children: [
+                          ComboBox<SortOrder>(
+                            value: _sortOrder,
+                            items: SortOrder.values.map((order) => ComboBoxItem(value: order, child: Text(_getSortText(order)))).toList(),
+                            onChanged: _onSortOrderChanged,
+                          ),
+                          const SizedBox(width: 8),
+                          IconButton(
+                            icon: AnimatedRotation(
+                              duration: getDuration(shortStickyHeaderDuration),
+                              turns: _sortDescending ? 0 : 1,
+                              child: Icon(_sortDescending ? FluentIcons.sort_lines : FluentIcons.sort_lines_ascending),
+                            ),
+                            onPressed: _onSortDirectionChanged,
+                          ),
+                        ],
+                      ),
                     ),
+                    const SizedBox(height: 12),
+
+                    // Only show list order UI when grouping is enabled
+                    if (_showGrouped) ...[
+                      const SizedBox(height: 24),
+                      Text(
+                        'List Order',
+                        style: FluentTheme.of(context).typography.subtitle,
+                      ),
+                      const SizedBox(height: 16),
+                      SizedBox(
+                        height: 300,
+                        child: _buildListOrderUI(),
+                      ),
+                    ],
                   ],
-                ],
+                ),
               ),
             ),
           ),
@@ -493,7 +444,7 @@ class LibraryScreenState extends State<LibraryScreen> {
       },
       itemBuilder: (context, index) {
         final listName = _customListOrder[index];
-        final displayName = listName == '__unlinked' ? 'Unlinked' : _formatListName(listName);
+        final displayName = listName == '__unlinked' ? 'Unlinked' : _fromApiListName(listName);
 
         return ListTile(
           key: ValueKey(listName),
@@ -546,10 +497,10 @@ class LibraryScreenState extends State<LibraryScreen> {
                       children: [
                         filterIcon,
                         const SizedBox(width: 4),
-                        const Text('Filter'),
+                        const Text('Filter & Display'),
                       ],
                     ),
-                    onPressed: () => _toggleFiltersSidebar(),
+                    onPressed: () => toggleFiltersSidebar(),
                   ),
                 ),
               ),
@@ -590,11 +541,41 @@ class LibraryScreenState extends State<LibraryScreen> {
   double cardHeight(BoxConstraints constraints) => ((cardWidth(constraints) / 0.71) + cardPadding) * 8.15; // based on the aspect ratio of the series card
 
   Widget _buildLibraryView(Library library) {
-    final displayedSeries = _currentView == LibraryView.all //
+    List<Series> displayedSeries = _currentView == LibraryView.all //
         ? library.series.toList()
         : library.series.where((s) => s.isLinked).toList();
 
-    _sortSeries(displayedSeries);
+    if (library.isLoading || _isProcessing) return const Center(child: ProgressRing());
+
+    if (library.series.isEmpty)
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(
+              FluentIcons.folder_open,
+              size: 48,
+              color: Colors.grey,
+            ),
+            const SizedBox(height: 16),
+            Text(_currentView == LibraryView.linked ? 'No linked series found. Link your series with Anilist first.' : 'No series found in your library'),
+            const SizedBox(height: 16),
+            Button(
+              onPressed: _selectLibraryFolder,
+              child: const Text('Change Library Folder'),
+            ),
+          ],
+        ),
+      );
+
+    if (_sortingNeeded(displayedSeries) && !_isProcessing && _currentSortOperation == null) {
+      _needsSort = false;
+      _applySortingAsync(displayedSeries);
+      log('Sorting series in library view: ${_sortDescending ? 'descending' : 'ascending'}');
+    } else if (_hasAppliedSorting) {
+      // Use the already sorted list
+      displayedSeries = _sortedUngroupedSeries;
+    }
 
     return LayoutBuilder(builder: (context, constraints) {
       return FadingEdgeScrollView(
@@ -605,20 +586,6 @@ class LibraryScreenState extends State<LibraryScreen> {
   }
 
   Widget _buildSeriesGrid(List<Series> series, BoxConstraints constraints) {
-    // if the currently dispalyed library is empty
-    if (series.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(FluentIcons.warning, size: 48, color: Colors.warningPrimaryColor),
-            const SizedBox(height: 16),
-            Text(_currentView == LibraryView.linked ? 'No linked series found. Link your series with Anilist first.' : 'No series found in your library'),
-          ],
-        ),
-      );
-    }
-
     Widget episodesGrid(List<Series> list, ScrollController controller, ScrollPhysics physics, bool includePadding) => GridView.builder(
           padding: includePadding ? const EdgeInsets.only(top: 16, bottom: 8, right: 12) : EdgeInsets.zero,
           cacheExtent: cardHeight(constraints) * 2,
@@ -655,13 +622,74 @@ class LibraryScreenState extends State<LibraryScreen> {
     );
   }
 
-  void _sortSeries(List<Series> series) {
+  void _applySortingAsync(List<Series> series, {String? groupName}) {
+    if (_currentSortOperation != null) return;
+
+    _isProcessing = true;
+    nextFrame(() => setState(() {}));
+
+    final sortData = <int, Map<String, dynamic>>{};
+
+    // Pre-fetch any provider-dependent data
+    for (final series in series) {
+      sortData[series.hashCode] = {
+        'updatedAt': series.latestUpdatedAt, //        updatedAt    - list updated timestamp
+        'createdAt': series.earliestCreatedAt, //      createdAt    - added to list timestamp
+        'startedAt': series.earliestStartedAt, //      startedAt    - user started entry timestamp
+        'completedAt': series.latestCompletionDate, // completedAt  - user completion date
+        'averageScore': series.highestUserScore, //    averageScore - user score
+        'startDate': series.earliestReleaseDate, //    startDate    - release date
+        'popularity': series.highestPopularity, //     popularity   - popularity
+      };
+    }
+
+    _currentSortOperation = Future.microtask(() async {
+      try {
+        final sortedSeries = await compute(_sortSeriesInBackground, {
+          'series': series,
+          'sortOrder': _sortOrder.index,
+          'sortDescending': _sortDescending,
+          'sortData': sortData,
+        });
+
+        if (mounted) {
+          setState(() {
+            if (groupName != null) {
+              // Grouped, store in the state map
+              _sortedGroupedSeries[groupName] = sortedSeries;
+            } else {
+              // Ungrouped, store in the state list
+              _sortedUngroupedSeries = sortedSeries;
+            }
+            _isProcessing = false;
+            _lastAppliedSortOrder = _sortOrder;
+            _lastAppliedSortDescending = _sortDescending;
+            _hasAppliedSorting = true;
+          });
+        }
+      } finally {
+        _currentSortOperation = null;
+      }
+    });
+  }
+
+  static List<Series> _sortSeriesInBackground(Map<String, dynamic> params) {
+    final series = params['series'] as List<Series>;
+    final sortOrderIndex = params['sortOrder'] as int;
+    final sortDescending = params['sortDescending'] as bool;
+    final sortData = params['sortData'] as Map<int, Map<String, dynamic>>;
+    final sortOrder = SortOrder.values[sortOrderIndex];
+
+    final List<Series> seriesCopy = List.from(series);
+
     Comparator<Series> comparator;
 
-    switch (_sortOrder) {
+    switch (sortOrder) {
+      // Alphabetical order by title
       case SortOrder.alphabetical:
         comparator = (a, b) => a.name.compareTo(b.name);
 
+      // Median score from Anilist
       case SortOrder.score:
         comparator = (a, b) {
           final aScore = a.meanScore ?? 0;
@@ -669,9 +697,11 @@ class LibraryScreenState extends State<LibraryScreen> {
           return aScore.compareTo(bScore);
         };
 
+      // Progress percentage from Local TODO prefer anilist
       case SortOrder.progress:
         comparator = (a, b) => a.watchedPercentage.compareTo(b.watchedPercentage);
 
+      // Date the List Entry was last modified
       case SortOrder.lastModified:
         // Use timestamp from Anilist's updatedAt field
         comparator = (a, b) {
@@ -680,18 +710,23 @@ class LibraryScreenState extends State<LibraryScreen> {
           return aUpdated.compareTo(bUpdated);
         };
 
+      // Date the user added the series to their list
       case SortOrder.dateAdded:
-        // TODO // Use timestamp from Anilist's createdAt field
-        // comparator = (a, b) {
-        //   final aCreated = a.currentAnilistData?.createdAt ?? 0;
-        //   final bCreated = b.currentAnilistData?.createdAt ?? 0;
-        //   return aCreated.compareTo(bCreated);
-        // };
+        // Use timestamp from when the user added the series to their list
+        comparator = (a, b) {
+          final aCreated = sortData[a.hashCode]?['createdAt'] ?? 0;
+          final bCreated = sortData[b.hashCode]?['createdAt'] ?? 0;
+          return aCreated.compareTo(bCreated);
+        };
 
+      // Date the user started watching the series
       case SortOrder.startDate:
         comparator = (a, b) {
-          final aDate = a.currentAnilistData?.startDate?.toDateTime();
-          final bDate = b.currentAnilistData?.startDate?.toDateTime();
+          final aStarted = sortData[a.hashCode]?['startedAt'];
+          final bStarted = sortData[b.hashCode]?['startedAt'];
+
+          final aDate = aStarted != null ? DateValue.fromJson(aStarted).toDateTime() : null;
+          final bDate = bStarted != null ? DateValue.fromJson(bStarted).toDateTime() : null;
 
           if (aDate == null && bDate == null) return 0;
           if (aDate == null) return 1;
@@ -700,10 +735,14 @@ class LibraryScreenState extends State<LibraryScreen> {
           return aDate.compareTo(bDate);
         };
 
+      // Date the user completed watching the series
       case SortOrder.completedDate:
         comparator = (a, b) {
-          final aDate = a.currentAnilistData?.completedAt?.toDateTime();
-          final bDate = b.currentAnilistData?.completedAt?.toDateTime();
+          final aCompleted = sortData[a.hashCode]?['completedAt'];
+          final bCompleted = sortData[b.hashCode]?['completedAt'];
+
+          final aDate = aCompleted != null ? DateValue.fromJson(aCompleted).toDateTime() : null;
+          final bDate = bCompleted != null ? DateValue.fromJson(bCompleted).toDateTime() : null;
 
           if (aDate == null && bDate == null) return 0;
           if (aDate == null) return 1;
@@ -712,6 +751,7 @@ class LibraryScreenState extends State<LibraryScreen> {
           return aDate.compareTo(bDate);
         };
 
+      // Average score from Anilist
       case SortOrder.averageScore:
         comparator = (a, b) {
           final aScore = a.currentAnilistData?.averageScore ?? 0;
@@ -719,6 +759,7 @@ class LibraryScreenState extends State<LibraryScreen> {
           return aScore.compareTo(bScore);
         };
 
+      // Release date from Anilist
       case SortOrder.releaseDate:
         comparator = (a, b) {
           // Try to get release date from Anilist data
@@ -732,6 +773,7 @@ class LibraryScreenState extends State<LibraryScreen> {
           return aDate.compareTo(bDate);
         };
 
+      // Popularity from Anilist
       case SortOrder.popularity:
         comparator = (a, b) {
           final aPopularity = a.currentAnilistData?.popularity ?? 0;
@@ -741,15 +783,12 @@ class LibraryScreenState extends State<LibraryScreen> {
     }
 
     // Apply the sorting direction
-    if (_sortDescending)
-      series.sort((a, b) => comparator(b, a)); // Reverse the comparison
+    if (sortDescending)
+      seriesCopy.sort((a, b) => comparator(b, a)); // Reverse the comparison
     else
-      series.sort(comparator);
-  }
+      seriesCopy.sort(comparator);
 
-  // Convenience method to sort series within a group
-  void _sortSeriesInGroup(List<Series> series) {
-    _sortSeries(series);
+    return seriesCopy;
   }
 
   Widget _buildGroupedView(
@@ -765,7 +804,7 @@ class LibraryScreenState extends State<LibraryScreen> {
 
     // sort them to have CURRENT, PLAN TO WATCH, ON HOLD, COMPLETED, DROPPED
     for (final listName in _customListOrder) {
-      groups[listName == '__unlinked' ? 'Unlinked' : _formatListName(listName)] = [];
+      groups[listName == '__unlinked' ? 'Unlinked' : _fromApiListName(listName)] = [];
     }
 
     // Sort series into groups
@@ -781,7 +820,7 @@ class LibraryScreenState extends State<LibraryScreen> {
             final list = entry.value;
 
             if (list.entries.any((listEntry) => listEntry.mediaId == mapping.anilistId)) {
-              groups[_formatListName(listName)]?.add(series);
+              groups[_fromApiListName(listName)]?.add(series);
               foundInList = true;
               break;
             }
@@ -838,10 +877,18 @@ class LibraryScreenState extends State<LibraryScreen> {
             });
 
             final groupName = displayOrder[groupIndex];
-            final seriesInGroup = groups[groupName]!;
+            List<Series> seriesInGroup = groups[groupName]!;
+
+            if (_sortedGroupedSeries.containsKey(groupName)) {
+              seriesInGroup = _sortedGroupedSeries[groupName]!;
+            }
 
             // Sort the series within each group
-            _sortSeriesInGroup(seriesInGroup);
+            if (_sortingNeeded(seriesInGroup) && !_isProcessing && _currentSortOperation == null) {
+              _needsSort = false;
+              _applySortingAsync(seriesInGroup, groupName: groupName);
+              log('Sorting series in group: $groupName');
+            }
 
             return Expander(
               initiallyExpanded: true,
@@ -861,7 +908,7 @@ class LibraryScreenState extends State<LibraryScreen> {
   }
 
   // Helper method to format list names for display
-  String _formatListName(String listName) {
+  String _fromApiListName(String listName) {
     // Handle the standard Anilist list names which are in uppercase
     switch (listName) {
       case 'CURRENT':
@@ -905,7 +952,7 @@ class LibraryScreenState extends State<LibraryScreen> {
         final customLists = Provider.of<AnilistProvider>(context, listen: false).userLists.keys.where((k) => k.startsWith('custom_'));
 
         for (final customList in customLists) {
-          if (_formatListName(customList) == displayName) {
+          if (_fromApiListName(customList) == displayName) {
             return customList;
           }
         }
@@ -935,15 +982,6 @@ class LibraryScreenState extends State<LibraryScreen> {
         return 'Release Date';
       case SortOrder.popularity:
         return 'Popularity';
-    }
-  }
-
-  String _getGroupText(GroupBy group) {
-    switch (group) {
-      case GroupBy.none:
-        return 'No Grouping';
-      case GroupBy.anilistLists:
-        return 'Anilist Lists';
     }
   }
 
