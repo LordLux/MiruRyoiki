@@ -41,14 +41,14 @@ enum GroupBy { none, anilistLists }
 final GlobalKey<ToggleableFlyoutContentState> reverseAnimationPaletteKey = GlobalKey<ToggleableFlyoutContentState>();
 
 class LibraryScreen extends StatefulWidget {
-  final ScrollController? scrollController;
+  final ScrollController scrollController;
   final Function(String) onSeriesSelected;
   final int? fixedColumnCount;
 
   const LibraryScreen({
     super.key,
     required this.onSeriesSelected,
-    this.scrollController,
+    required this.scrollController,
     this.fixedColumnCount,
   });
 
@@ -68,6 +68,7 @@ class LibraryScreenState extends State<LibraryScreen> {
   bool _filterHintShowing = false;
 
   List<String> _customListOrder = [];
+  // ignore: prefer_final_fields
   Map<String, List<Series>> _sortedGroupedSeries = {};
   List<Series> _sortedUngroupedSeries = [];
   bool _hasAppliedSorting = false;
@@ -77,6 +78,8 @@ class LibraryScreenState extends State<LibraryScreen> {
   SortOrder? _lastAppliedSortOrder;
   bool? _lastAppliedSortDescending;
   bool _needsSort = true;
+
+  double _savedScrollPosition = 0.0;
 
   Widget get filterIcon {
     IconData icon;
@@ -578,9 +581,20 @@ class LibraryScreenState extends State<LibraryScreen> {
     }
 
     return LayoutBuilder(builder: (context, constraints) {
-      return FadingEdgeScrollView(
-        fadeEdges: const EdgeInsets.symmetric(vertical: 10),
-        child: _buildSeriesGrid(displayedSeries, constraints),
+      return Stack(
+        children: [
+          Opacity(
+            opacity: _isProcessing ? 0 : 1,
+            child: FadingEdgeScrollView(
+              fadeEdges: const EdgeInsets.symmetric(vertical: 10),
+              child: _buildSeriesGrid(displayedSeries, constraints),
+            ),
+          ),
+          if (_isProcessing)
+            Positioned.fill(
+              child: const Center(child: ProgressRing()),
+            ),
+        ],
       );
     });
   }
@@ -625,6 +639,11 @@ class LibraryScreenState extends State<LibraryScreen> {
   void _applySortingAsync(List<Series> series, {String? groupName}) {
     if (_currentSortOperation != null) return;
 
+    if (widget.scrollController.hasClients == true) {
+      _savedScrollPosition = widget.scrollController.offset;
+      print('Saved scroll position: $_savedScrollPosition');
+    }
+
     _isProcessing = true;
     nextFrame(() => setState(() {}));
 
@@ -653,18 +672,26 @@ class LibraryScreenState extends State<LibraryScreen> {
         });
 
         if (mounted) {
+          if (groupName != null) {
+            _sortedGroupedSeries[groupName] = sortedSeries;
+          } else {
+            _sortedUngroupedSeries = sortedSeries;
+          }
           setState(() {
-            if (groupName != null) {
-              // Grouped, store in the state map
-              _sortedGroupedSeries[groupName] = sortedSeries;
-            } else {
-              // Ungrouped, store in the state list
-              _sortedUngroupedSeries = sortedSeries;
-            }
-            _isProcessing = false;
             _lastAppliedSortOrder = _sortOrder;
             _lastAppliedSortDescending = _sortDescending;
             _hasAppliedSorting = true;
+            _isProcessing = false;
+          });
+          // Finally, after scroll position is restored, hide loading indicator
+          nextFrame(() {
+            if (widget.scrollController.hasClients == true) {
+              final maxScroll = widget.scrollController.position.maxScrollExtent;
+              final scrollTo = _savedScrollPosition.clamp(0.0, maxScroll);
+              print('Restoring scroll to: $scrollTo (max: $maxScroll)');
+              widget.scrollController.jumpTo(scrollTo);
+              setState(() {});
+            }
           });
         }
       } finally {
