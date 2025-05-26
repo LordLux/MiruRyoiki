@@ -35,7 +35,7 @@ class ImageCacheService {
     final bytes = utf8.encode(url);
     final digest = md5.convert(bytes);
     final extension = url.split('.').last.split('?').first;
-    
+
     return '${digest.toString()}.$extension';
   }
 

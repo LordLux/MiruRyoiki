@@ -6,6 +6,7 @@ import '../../manager.dart';
 import '../../utils/logging.dart';
 import '../../utils/time_utils.dart';
 import '../../widgets/dialogs/showDialog.dart';
+import '../../widgets/loading_button.dart';
 import 'debug.dart';
 import 'navigation.dart';
 
@@ -230,16 +231,19 @@ class ManagedDialogButton extends StatelessWidget {
       closeDialog(popContext);
     }
 
-    if (isPrimary)
-      return FilledButton(
-        style: FluentTheme.of(context).buttonTheme.filledButtonStyle,
-        onPressed: onPressed != null ? finalOnPressed : null,
-        child: Text(text),
-      );
-
-    return Button(
-      onPressed: onPressed != null ? finalOnPressed : null,
-      child: Text(text),
+    return MouseButtonWrapper(
+      child: Builder(builder: (context) {
+        if (isPrimary)
+          return FilledButton(
+            style: FluentTheme.of(context).buttonTheme.filledButtonStyle,
+            onPressed: onPressed != null ? finalOnPressed : null,
+            child: Text(text),
+          );
+        return Button(
+          onPressed: onPressed != null ? finalOnPressed : null,
+          child: Text(text),
+        );
+      }),
     );
   }
 }
@@ -308,18 +312,21 @@ class ManagedDialogState extends State<ManagedDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return ContentDialog(
-      style: widget.theme,
-      title: widget.title,
-      content: Material(
-        color: Colors.transparent,
-        child: Container(
-          constraints: _currentConstraints,
-          child: widget.contentBuilder != null ? widget.contentBuilder!(context, _currentConstraints) : null,
+    return Padding(
+      padding: const EdgeInsets.only(top: Manager.titleBarHeight - 5),
+      child: ContentDialog(
+        style: widget.theme,
+        title: widget.title,
+        content: Material(
+          color: Colors.transparent,
+          child: Container(
+            constraints: _currentConstraints,
+            child: widget.contentBuilder != null ? widget.contentBuilder!(context, _currentConstraints) : null,
+          ),
         ),
+        actions: widget.actions != null ? widget.actions!.call(widget.popContext) : null,
+        constraints: _currentConstraints,
       ),
-      actions: widget.actions != null ? widget.actions!.call(widget.popContext) : null,
-      constraints: _currentConstraints,
     );
   }
 

@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../services/anilist/provider.dart';
 import '../manager.dart';
 import '../utils/logging.dart';
+import '../widgets/loading_button.dart';
 import 'accounts.dart';
 
 class AnilistSettingsScreen extends StatelessWidget {
@@ -84,13 +85,15 @@ class AnilistSettingsScreen extends StatelessWidget {
                         },
                       ),
                       const SizedBox(height: 16),
-                      Button(
-                        child: const Text('Refresh All Metadata'),
-                        onPressed: () {
-                          final library = Provider.of<Library>(context, listen: false);
-                          library.refreshAllMetadata();
-                          logInfo('Refreshing all Anilist metadata');
-                        },
+                      MouseButtonWrapper(
+                        child: Button(
+                          child: const Text('Refresh All Metadata'),
+                          onPressed: () {
+                            final library = Provider.of<Library>(context, listen: false);
+                            library.refreshAllMetadata();
+                            logInfo('Refreshing all Anilist metadata');
+                          },
+                        ),
                       ),
                     ],
                   ),
@@ -116,11 +119,13 @@ class AnilistSettingsScreen extends StatelessWidget {
                         ],
                       ),
                       const SizedBox(height: 16),
-                      Button(
-                        child: const Text('Refresh Lists'),
-                        onPressed: () {
-                          anilistProvider.refreshUserLists();
-                        },
+                      MouseButtonWrapper(
+                        child: Button(
+                          child: const Text('Refresh Lists'),
+                          onPressed: () {
+                            anilistProvider.refreshUserLists();
+                          },
+                        ),
                       ),
                     ],
                   ),
@@ -192,8 +197,10 @@ class AnilistSettingsScreen extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 16),
-          Button(
-            child: const Text('Logout'),
+          LoadingButton(
+            label: 'Logout',
+            isLoading: false,
+            isAlreadyBig: true,
             onPressed: () async {
               await provider.logout();
               onLogout.call();

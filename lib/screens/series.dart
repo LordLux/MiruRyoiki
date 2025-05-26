@@ -27,6 +27,7 @@ import '../utils/screen_utils.dart';
 import '../utils/time_utils.dart';
 import '../widgets/episode_grid.dart';
 import '../widgets/gradient_mask.dart';
+import '../widgets/loading_button.dart';
 import '../widgets/transparency_shadow_image.dart';
 import 'anilist_settings.dart';
 
@@ -183,9 +184,11 @@ class SeriesScreenState extends State<SeriesScreen> {
           children: [
             const Text('Series not found'),
             const SizedBox(height: 16),
-            Button(
-              onPressed: widget.onBack,
-              child: const Text('Back to Library'),
+            MouseButtonWrapper(
+              child: Button(
+                onPressed: widget.onBack,
+                child: const Text('Back to Library'),
+              ),
             ),
           ],
         ),
@@ -809,34 +812,36 @@ class SeriesScreenState extends State<SeriesScreen> {
   }
 
   Widget _buildButton(void Function()? onTap, Widget child, String label) {
-    return mat.Tooltip(
-      richMessage: WidgetSpan(
-        child: Text(
-          label,
-          style: TextStyle(color: Colors.white),
+    return MouseButtonWrapper(
+      child: mat.Tooltip(
+        richMessage: WidgetSpan(
+          child: Text(
+            label,
+            style: TextStyle(color: Colors.white),
+          ),
         ),
-      ),
-      decoration: BoxDecoration(
-        color: Color.lerp(Color.lerp(Colors.black, Colors.white, 0.2)!, dominantColor, 0.4)!.withOpacity(0.8),
-        borderRadius: BorderRadius.circular(5.0),
-      ),
-      preferBelow: true,
-      padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 5.0),
-      child: Padding(
-        padding: const EdgeInsets.all(2.0),
-        child: IconButton(
-          style: ButtonStyle(
-            foregroundColor: ButtonState.all(Colors.white.withOpacity(onTap != null ? 1 : 0)),
-            elevation: ButtonState.all(0),
-            shape: ButtonState.all(RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(5.0),
-            )),
+        decoration: BoxDecoration(
+          color: Color.lerp(Color.lerp(Colors.black, Colors.white, 0.2)!, dominantColor, 0.4)!.withOpacity(0.8),
+          borderRadius: BorderRadius.circular(5.0),
+        ),
+        preferBelow: true,
+        padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 5.0),
+        child: Padding(
+          padding: const EdgeInsets.all(2.0),
+          child: IconButton(
+            style: ButtonStyle(
+              foregroundColor: ButtonState.all(Colors.white.withOpacity(onTap != null ? 1 : 0)),
+              elevation: ButtonState.all(0),
+              shape: ButtonState.all(RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(5.0),
+              )),
+            ),
+            icon: Padding(
+              padding: const EdgeInsets.all(6.0),
+              child: child,
+            ),
+            onPressed: onTap,
           ),
-          icon: Padding(
-            padding: const EdgeInsets.all(6.0),
-            child: child,
-          ),
-          onPressed: onTap,
         ),
       ),
     );

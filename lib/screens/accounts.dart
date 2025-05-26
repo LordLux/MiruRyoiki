@@ -47,8 +47,7 @@ class AccountsScreenState extends State<AccountsScreen> {
               Align(
                 alignment: Alignment.topRight,
                 child: LoadingButton(
-                  isLoading: isLocalLoading || anilistProvider.isLoading,
-                  isButtonDisabled: isButtonDisabled,
+                  isLoading: isButtonDisabled || isLocalLoading || anilistProvider.isLoading,
                   label: 'Connect Anilist',
                   isAlreadyBig: true,
                   onPressed: () async {

@@ -1,10 +1,12 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:miruryoiki/main.dart';
+import 'package:miruryoiki/widgets/series_image.dart';
 import 'package:provider/provider.dart';
 import '../../models/series.dart';
 import '../../models/anilist/anime.dart';
 import '../../services/anilist/linking.dart';
 import '../../services/anilist/provider.dart';
+import '../../services/cache.dart';
 import '../../services/navigation/dialogs.dart';
 import '../../utils/time_utils.dart';
 import 'link_anilist_multi.dart';
@@ -168,13 +170,12 @@ class _AnilistSearchPanelState extends State<AnilistSearchPanel> {
                 return SelectableTile(
                   title: Text(series.title.userPreferred ?? series.title.english ?? series.title.romaji ?? 'Unknown'),
                   subtitle: Text('${series.format ?? ''} ${series.seasonYear ?? ''} | ${series.episodes ?? '?'} eps'),
-                  icon: series.bannerImage != null
-                      ? Image.network(
-                          series.bannerImage!,
+                  icon: series.posterImage != null
+                      ? SeriesImageBuilder(
+                          imageProviderFuture: ImageCacheService().getImageProvider(series.posterImage!),
                           width: 60,
                           height: 40,
                           fit: BoxFit.cover,
-                          errorBuilder: (context, error, stack) => const Icon(FluentIcons.video),
                         )
                       : const Icon(FluentIcons.video),
                   isSelected: isSelected,
