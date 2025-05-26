@@ -3,14 +3,17 @@
 import 'dart:io';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:miruryoiki/utils/time_utils.dart';
+import 'package:miruryoiki/widgets/series_image.dart';
 
 import '../../main.dart';
 import '../../manager.dart';
 import '../../models/anilist/mapping.dart';
 import '../../models/series.dart';
 import '../../services/anilist/linking.dart';
+import '../../services/cache.dart';
 import '../../services/navigation/dialogs.dart';
 import '../../services/navigation/show_info.dart';
+import '../loading_button.dart';
 import 'search_panel.dart';
 
 final GlobalKey<_AnilistLinkMultiContentState> linkMultiDialogKey = GlobalKey<_AnilistLinkMultiContentState>();
@@ -29,7 +32,7 @@ class AnilistLinkMultiDialog extends ManagedDialog {
     required super.popContext,
     this.onDialogComplete,
     super.title = const Text('Link Local entry to Anilist entry'),
-    super.constraints = const BoxConstraints(maxWidth: 1000, maxHeight: 600),
+    super.constraints = const BoxConstraints(maxWidth: 1400, maxHeight: 700),
   }) : super(
           contentBuilder: (context, constraints) => _AnilistLinkMultiContent(
             key: linkMultiDialogKey,
@@ -99,6 +102,10 @@ class _AnilistLinkMultiContentState extends State<_AnilistLinkMultiContent> {
     return false;
   }
 
+  bool _isNewlyAddedMapping(AnilistMapping mapping) {
+    return !oldMappings.any((m) => m.anilistId == mapping.anilistId && m.localPath == mapping.localPath);
+  }
+
   @override
   void initState() {
     super.initState();
@@ -162,8 +169,8 @@ class _AnilistLinkMultiContentState extends State<_AnilistLinkMultiContent> {
   void _switchToAddMode() {
     context.resizeManagedDialog(
       constraints: BoxConstraints(
-        maxWidth: 1000, // Full width for add mode
-        maxHeight: 600,
+        maxWidth: 1300, // Full width for add mode
+        maxHeight: 700,
       ),
     );
 
@@ -233,9 +240,11 @@ class _AnilistLinkMultiContentState extends State<_AnilistLinkMultiContent> {
             ),
             Row(
               children: [
-                Button(
-                  onPressed: _switchToAddMode,
-                  child: Text('Add New Link'),
+                MouseButtonWrapper(
+                  child: Button(
+                    onPressed: _switchToAddMode,
+                    child: Text('Add New Link'),
+                  ),
                 ),
                 SizedBox(width: 8),
                 ManagedDialogButton(
@@ -255,29 +264,39 @@ class _AnilistLinkMultiContentState extends State<_AnilistLinkMultiContent> {
   }
 
   Widget _buildMappingItem(AnilistMapping mapping) {
-    final isRootMapping = mapping.localPath == widget.series.path;
     return UnselectableTile(
-      color: widget.series.dominantColor,
-      icon: Icon(
-        isRootMapping ? FluentIcons.folder : FluentIcons.document,
-        color: Colors.white,
-      ),
+      color: _isNewlyAddedMapping(mapping) ? null : widget.series.dominantColor ,
+      // use the series effective poster if available
+      icon: _isNewlyAddedMapping(mapping)
+          ? Icon(FluentIcons.add_link, color: Manager.accentColor)
+          : mapping.anilistData?.posterImage != null
+              ? SeriesImageBuilder(
+                  imageProviderFuture: ImageCacheService().getImageProvider(mapping.anilistData!.posterImage!),
+                  width: 40,
+                  fit: BoxFit.cover,
+                )
+              : Icon(FluentIcons.document, color: Colors.white),
       title: Text(mapping.title ?? 'Anilist ID: ${mapping.anilistId}'),
       subtitle: Text('Linked to: ${_getDisplayPath(mapping.localPath)}'),
-      trailing: IconButton(
-        icon: Transform.translate(
-          offset: const Offset(1, -1),
-          child: Icon(
-            FluentIcons.blocked12,
-            size: 18,
-            color: widget.series.dominantColor,
+      trailing: MouseButtonWrapper(
+        child: Tooltip(
+          message: 'Remove this link',
+          child: IconButton(
+            icon: Transform.translate(
+              offset: const Offset(1, -1),
+              child: Icon(
+                FluentIcons.blocked12,
+                size: 18,
+                color: _isNewlyAddedMapping(mapping) ? Manager.accentColor : widget.series.dominantColor,
+              ),
+            ),
+            onPressed: () {
+              setState(() {
+                mappings.remove(mapping);
+              });
+            },
           ),
         ),
-        onPressed: () {
-          setState(() {
-            mappings.remove(mapping);
-          });
-        },
       ),
     );
   }

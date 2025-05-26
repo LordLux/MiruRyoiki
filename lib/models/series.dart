@@ -948,16 +948,7 @@ class Series {
     if (isLocalPoster) {
       return FileImage(File(path));
     } else if (isAnilistPoster) {
-      final imageCache = ImageCacheService();
-      final cachedFile = await imageCache.getCachedImageFile(path);
-
-      if (cachedFile != null) {
-        return FileImage(cachedFile);
-      } else {
-        // Also start caching for future use
-        imageCache.cacheImage(path);
-        return NetworkImage(path);
-      }
+      return await ImageCacheService().getImageProvider(path);
     }
     return null;
   }
@@ -1008,16 +999,7 @@ class Series {
     if (isLocalBanner) {
       return FileImage(File(path));
     } else if (isAnilistBanner) {
-      final imageCache = ImageCacheService();
-      final cachedFile = await imageCache.getCachedImageFile(path);
-
-      if (cachedFile != null) {
-        return FileImage(cachedFile);
-      } else {
-        // Also start caching for future use
-        imageCache.cacheImage(path);
-        return NetworkImage(path);
-      }
+      return await ImageCacheService().getImageProvider(path);
     }
     return null;
   }

@@ -73,6 +73,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   double prevPos = 0;
 
+  bool _isSelectingFolder = false;
+
   Widget standard(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -590,25 +592,30 @@ class _SettingsScreenState extends State<SettingsScreen> {
           // Action buttons
           Row(
             children: [
-              Tooltip(
-                message: 'View Series',
-                child: IconButton(
-                  icon: Icon(FluentIcons.view),
-                  onPressed: () {
-                    // Navigate to series
-                    _navigateToSeries(context, preview.seriesPath);
-                  },
+              // TODO
+              MouseButtonWrapper(
+                child: Tooltip(
+                  message: 'View Series',
+                  child: IconButton(
+                    icon: Icon(FluentIcons.view),
+                    onPressed: () {
+                      // Navigate to series
+                      _navigateToSeries(context, preview.seriesPath);
+                    },
+                  ),
                 ),
               ),
               SizedBox(width: 8),
-              Tooltip(
-                message: 'Apply Formatting',
-                child: IconButton(
-                  icon: Icon(FluentIcons.accept),
-                  onPressed: () {
-                    // Apply formatting just for this series
-                    _applyFormattingForSeries(context, preview);
-                  },
+              MouseButtonWrapper(
+                child: Tooltip(
+                  message: 'Apply Formatting',
+                  child: IconButton(
+                    icon: Icon(FluentIcons.accept),
+                    onPressed: () {
+                      // Apply formatting just for this series
+                      _applyFormattingForSeries(context, preview);
+                    },
+                  ),
                 ),
               ),
             ],
@@ -738,23 +745,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   const SizedBox(width: 12),
                                   LoadingButton(
                                     label: 'Scan Library',
-                                    onPressed: () {
-                                      library.reloadLibrary();
-                                    },
+                                    onPressed: () => library.reloadLibrary(),
                                     isLoading: library.isLoading,
                                     isSmall: true,
                                     isAlreadyBig: true,
                                   ),
                                   const SizedBox(width: 6),
-                                  FilledButton(
-                                    child: const Text('Browse'),
-                                    onPressed: () async {
-                                      final result = await FilePicker.platform.getDirectoryPath(
-                                        dialogTitle: 'Select Library Folder',
-                                      );
+                                  MouseButtonWrapper(
+                                    isLoading: _isSelectingFolder,
+                                    child: FilledButton(
+                                      child: const Text('Browse'),
+                                      onPressed: () async {
+                                        setState(() => _isSelectingFolder = true);
+                                        
+                                        final result = await FilePicker.platform.getDirectoryPath(
+                                          dialogTitle: 'Select Library Folder',
+                                        );
+                                        
+                                        setState(() => _isSelectingFolder = false);
 
-                                      if (result != null) library.setLibraryPath(result);
-                                    },
+                                        if (result != null) library.setLibraryPath(result);
+                                      },
+                                    ),
                                   ),
                                 ],
                               ),
@@ -771,13 +783,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 style: FluentTheme.of(context).typography.body,
                               ),
                               const SizedBox(height: 16),
-                              Row(
-                                children: [
-                                  FilledButton(
-                                    child: Text('Format Library Series'),
-                                    onPressed: () => _showSeriesFormatterDialog(context),
-                                  ),
-                                ],
+                              MouseButtonWrapper(
+                                child: FilledButton(
+                                  child: Text('Format Library Series'),
+                                  onPressed: () => _showSeriesFormatterDialog(context),
+                                ),
                               ),
 
                               // This section will show series with formatting issues
@@ -925,8 +935,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                             final Offset offset = details.localPosition;
                                             final RenderBox renderBox = context.findRenderObject() as RenderBox;
                                             final Offset globalOffset = renderBox.localToGlobal(offset);
-                                            final Offset flyoutOffset = Offset(globalOffset.dx, globalOffset.dy + renderBox.size.height/3);
-                                            
+                                            final Offset flyoutOffset = Offset(globalOffset.dx, globalOffset.dy + renderBox.size.height / 3);
+
                                             // ignore: avoid_single_cascade_in_expression_statements
                                             controller.showFlyout(
                                               autoModeConfiguration: FlyoutAutoConfiguration(

@@ -38,41 +38,59 @@ class _LoadingButtonState extends State<LoadingButton> {
 
   @override
   Widget build(BuildContext context) {
-    print(horizPadding);
-    return Button(
-      onPressed: widget.isButtonDisabled ? null : widget.onPressed,
-      style: ButtonStyle(padding: WidgetStatePropertyAll(EdgeInsets.zero)),
-      child: SizedBox(
-        height: widget.isSmall ? 32 : 48,
-        child: Stack(
-          alignment: Alignment.center,
-          children: [
-            AnimatedSlide(
-              offset: widget.isLoading ? const Offset(-0.125, 0) : Offset.zero,
-              duration: shortStickyHeaderDuration,
-              curve: Curves.easeInOut,
-              child: Padding(
-                padding: EdgeInsets.symmetric(horizontal: horizPadding),
-                child: Text(widget.label),
-              ),
-            ),
-            Positioned(
-              right: 15,
-              child: AnimatedOpacity(
-                opacity: widget.isLoading ? 1.0 : 0.0,
+    return MouseButtonWrapper(
+      isButtonDisabled: widget.isButtonDisabled,
+      isLoading: widget.isLoading,
+      child: Button(
+        onPressed: widget.isButtonDisabled ? null : widget.onPressed,
+        style: ButtonStyle(padding: WidgetStatePropertyAll(EdgeInsets.zero)),
+        child: SizedBox(
+          height: widget.isSmall ? 32 : 48,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              AnimatedSlide(
+                offset: widget.isLoading ? const Offset(-0.125, 0) : Offset.zero,
                 duration: shortStickyHeaderDuration,
-                child: SizedBox(
-                  width: widget.isSmall ? 20 : 25,
-                  height: widget.isSmall ? 20 : 25,
-                  child: ProgressRing(
-                    strokeWidth: widget.isSmall ? 3.5 : 4,
+                curve: Curves.easeInOut,
+                child: Padding(
+                  padding: EdgeInsets.symmetric(horizontal: horizPadding),
+                  child: Text(widget.label),
+                ),
+              ),
+              Positioned(
+                right: 15,
+                child: AnimatedOpacity(
+                  opacity: widget.isLoading ? 1.0 : 0.0,
+                  duration: shortStickyHeaderDuration,
+                  child: SizedBox(
+                    width: widget.isSmall ? 20 : 25,
+                    height: widget.isSmall ? 20 : 25,
+                    child: ProgressRing(
+                      strokeWidth: widget.isSmall ? 3.5 : 4,
+                    ),
                   ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
+}
+
+Widget MouseButtonWrapper({
+  required Widget child,
+  bool isButtonDisabled = false,
+  bool isLoading = false,
+}) {
+  return MouseRegion(
+    cursor: isButtonDisabled
+        ? SystemMouseCursors.forbidden
+        : isLoading
+            ? SystemMouseCursors.progress
+            : SystemMouseCursors.click,
+    child: child,
+  );
 }
