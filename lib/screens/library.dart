@@ -45,13 +45,11 @@ enum GroupBy { none, anilistLists }
 class LibraryScreen extends StatefulWidget {
   final ScrollController scrollController;
   final Function(String) onSeriesSelected;
-  final int? fixedColumnCount;
 
   const LibraryScreen({
     super.key,
     required this.onSeriesSelected,
     required this.scrollController,
-    this.fixedColumnCount,
   });
 
   @override
@@ -230,6 +228,12 @@ class LibraryScreenState extends State<LibraryScreen> {
   void dispose() {
     filterFlyoutController.dispose();
     super.dispose();
+  }
+
+  double getHeight(int itemCount, double maxWidth) {
+    final cardHeight = ScreenUtils.cardHeight(maxWidth);
+    final rowCount = ScreenUtils.mainAxisCount(itemCount);
+    return (cardHeight * rowCount) - ScreenUtils.cardPadding;
   }
 
   @override
@@ -464,47 +468,13 @@ class LibraryScreenState extends State<LibraryScreen> {
     }
 
     // Add "Unlinked" pseudo-list
-    allLists.add('__unlinked');
+    if (currentView == LibraryView.all) allLists.add('__unlinked');
 
     // If _customListOrder is empty or outdated, initialize with default order
     if (customListOrder.isEmpty || !_areListsEqual(customListOrder, allLists)) //
       customListOrder = List.from(allLists);
 
     final double childHeight = 45;
-
-    Widget buildTile(String listName, String displayName, int index, bool selected, {Animation<double>? animation}) {
-      return ReorderableDragStartListener(
-        key: ValueKey(listName),
-        index: index,
-        child: MouseRegion(
-          cursor: FlutterCustomMemoryImageCursor(key: _isReordering ? systemMouseCursorGrabbing : systemMouseCursorGrab),
-          child: AnimatedBuilder(
-            animation: animation ?? const AlwaysStoppedAnimation(1.0),
-            builder: (context, _) {
-              // Calculate the animated color
-              final Color tileColor = selected && animation != null
-                  ? Color.lerp(
-                      Colors.white.withOpacity(.05),
-                      Color.lerp(Colors.white.withOpacity(.15), Manager.accentColor, .75)!,
-                      animation.value,
-                    )!
-                  : selected
-                      ? Color.lerp(Colors.white.withOpacity(.15), Manager.accentColor, .75)!
-                      : Colors.white.withOpacity(.05);
-
-              return ListTile(
-                tileColor: WidgetStatePropertyAll(tileColor),
-                title: Text(displayName),
-                leading: Icon(!selected ? Icons.drag_handle : FluentIcons.drag_object),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(4),
-                ),
-              );
-            },
-          ),
-        ),
-      );
-    }
 
     return SizedBox(
       height: customListOrder.length * childHeight,
@@ -514,15 +484,17 @@ class LibraryScreenState extends State<LibraryScreen> {
         clipBehavior: Clip.none,
         proxyDecorator: (child, index, animation) {
           _isReordering = true;
-          final name = customListOrder[index];
+          final listName = customListOrder[index];
+          final displayName = listName == '__unlinked' ? 'Unlinked' : _fromApiListName(listName);
+          
           return AnimatedOrderTile(
-            key: ValueKey('${name}_dragging'),
-            listName: name,
-            displayName: _fromApiListName(name),
+            key: ValueKey('${listName}_dragging'),
+            listName: listName,
+            displayName: displayName,
             index: index,
             selected: true,
             initialAnimation: true,
-            isReordering: _isReordering,
+            isReordering: true,
           );
         },
         onReorderStart: (_) => setState(() => _isReordering = true),
@@ -630,16 +602,6 @@ class LibraryScreenState extends State<LibraryScreen> {
       ),
     );
   }
-  // double singleChildHeight(int count) =>
-
-  static const double maxCardWidth = 200;
-  static const double cardPadding = 16;
-
-  int crossAxisCount(BoxConstraints constraints) => widget.fixedColumnCount != null ? widget.fixedColumnCount! : (constraints.maxWidth ~/ maxCardWidth).clamp(1, 10);
-
-  double cardWidth(BoxConstraints constraints) => (constraints.maxWidth / (crossAxisCount(constraints) + cardPadding * (crossAxisCount(constraints) - 1))).clamp(0, maxCardWidth);
-
-  double cardHeight(BoxConstraints constraints) => ((cardWidth(constraints) / 0.71) + cardPadding) * 8.15; // based on the aspect ratio of the series card
 
   Widget _buildLibraryView(Library library) {
     List<Series> displayedSeries = currentView == LibraryView.all //
@@ -703,24 +665,24 @@ class LibraryScreenState extends State<LibraryScreen> {
   Widget _buildSeriesGrid(List<Series> series, BoxConstraints constraints) {
     Widget episodesGrid(List<Series> list, ScrollController controller, ScrollPhysics physics, bool includePadding) {
       return ValueListenableBuilder(
-        valueListenable: previousGridColumnCount,
-        builder: (context, columns, __) {
-          log('Building series grid with $columns columns');
-          return GridView.builder(
+          valueListenable: previousGridColumnCount,
+          builder: (context, columns, __) {
+            // log('Building series grid with $columns columns');
+            return GridView.builder(
               padding: includePadding ? const EdgeInsets.only(top: 16, bottom: 8, right: 12) : EdgeInsets.zero,
-              cacheExtent: cardHeight(constraints) * 2,
+              cacheExtent: ScreenUtils.cardHeight(constraints.maxWidth) * 2,
               gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: columns ?? crossAxisCount(constraints),
+                crossAxisCount: columns ?? ScreenUtils.crossAxisCount(constraints.maxWidth),
                 childAspectRatio: 0.71,
-                crossAxisSpacing: cardPadding,
-                mainAxisSpacing: cardPadding,
+                crossAxisSpacing: ScreenUtils.cardPadding,
+                mainAxisSpacing: ScreenUtils.cardPadding,
               ),
               controller: controller,
               physics: physics,
               itemCount: list.length,
               itemBuilder: (context, index) {
                 final Series series_ = list[index % list.length]; // just to ensure we don't run out of bounds
-              
+
                 return SeriesCard(
                   key: ValueKey('${series_.path}:${series_.effectivePosterPath ?? 'none'}'),
                   series: series_,
@@ -728,8 +690,7 @@ class LibraryScreenState extends State<LibraryScreen> {
                 );
               },
             );
-        }
-      );
+          });
     }
 
     // If grouping is enabled, show grouped view
@@ -737,7 +698,7 @@ class LibraryScreenState extends State<LibraryScreen> {
 
     return DynMouseScroll(
       enableSmoothScroll: Manager.animationsEnabled,
-      scrollAmount: cardHeight(constraints),
+      scrollAmount: ScreenUtils.cardHeight(constraints.maxWidth),
       controller: widget.scrollController,
       durationMS: 300,
       animationCurve: Curves.ease,
@@ -1011,61 +972,66 @@ class LibraryScreenState extends State<LibraryScreen> {
     // Build the grouped ListView
     return Padding(
       padding: const EdgeInsets.only(top: 16),
-      child: DynMouseScroll(
-        enableSmoothScroll: Manager.animationsEnabled,
-        scrollAmount: cardHeight(constraints),
-        controller: widget.scrollController,
-        durationMS: 300,
-        animationCurve: Curves.ease,
-        builder: (context, controller, physics) => ListView.builder(
-          padding: EdgeInsets.only(right: 16),
-          controller: controller,
-          physics: physics,
-          itemCount: groups.length,
-          itemBuilder: (context, groupIndex) {
-            // Use the _customListOrder to determine display order
-            final displayOrder = groups.keys.toList();
-            displayOrder.sort((a, b) {
-              // Get the original position in _customListOrder
-              final aIndex = customListOrder.indexOf(a == 'Unlinked' ? '__unlinked' : _toApiListName(a));
-              final bIndex = customListOrder.indexOf(b == 'Unlinked' ? '__unlinked' : _toApiListName(b));
-
-              // If one is not found, put it at the end
-              if (aIndex == -1) return 1;
-              if (bIndex == -1) return -1;
-
-              // Otherwise use the custom order
-              return aIndex.compareTo(bIndex);
-            });
-
-            final groupName = displayOrder[groupIndex];
-            List<Series> seriesInGroup = groups[groupName]!;
-
-            if (sortedGroupedSeries.containsKey(groupName)) {
-              seriesInGroup = sortedGroupedSeries[groupName]!;
-            }
-
-            // Sort the series within each group
-            if (_sortingNeeded(seriesInGroup) && !isProcessing && _currentSortOperation == null) {
-              needsSort = false;
-              _applySortingAsync(seriesInGroup, groupName: groupName);
-              log('Sorting series in group: $groupName');
-            }
-
-            return Expander(
-              initiallyExpanded: true,
-              headerBackgroundColor: WidgetStatePropertyAll(FluentTheme.of(context).resources.cardBackgroundFillColorDefault.withOpacity(0.025)),
-              contentBackgroundColor: FluentTheme.of(context).resources.cardBackgroundFillColorSecondary.withOpacity(0),
-              header: Text(groupName, style: FluentTheme.of(context).typography.subtitle),
-              trailing: Text('${seriesInGroup.length} series'),
-              content: SizedBox(
-                height: cardHeight(constraints) * (seriesInGroup.length / crossAxisCount(constraints)).ceil() * 0.95,
-                child: episodesGrid(seriesInGroup, ScrollController(), NeverScrollableScrollPhysics(), false),
+      child: ValueListenableBuilder(
+          valueListenable: previousGridRowCount,
+          builder: (context, rowCount, __) {
+            log('Building grouped view with $rowCount rows');
+            return DynMouseScroll(
+              enableSmoothScroll: Manager.animationsEnabled,
+              scrollAmount: ScreenUtils.cardHeight(constraints.maxWidth),
+              controller: widget.scrollController,
+              durationMS: 300,
+              animationCurve: Curves.ease,
+              builder: (context, controller, physics) => ListView.builder(
+                padding: EdgeInsets.only(right: 16),
+                controller: controller,
+                physics: physics,
+                itemCount: groups.length,
+                itemBuilder: (context, groupIndex) {
+                  // Use the _customListOrder to determine display order
+                  final displayOrder = groups.keys.toList();
+                  displayOrder.sort((a, b) {
+                    // Get the original position in _customListOrder
+                    final aIndex = customListOrder.indexOf(a == 'Unlinked' ? '__unlinked' : _toApiListName(a));
+                    final bIndex = customListOrder.indexOf(b == 'Unlinked' ? '__unlinked' : _toApiListName(b));
+            
+                    // If one is not found, put it at the end
+                    if (aIndex == -1) return 1;
+                    if (bIndex == -1) return -1;
+            
+                    // Otherwise use the custom order
+                    return aIndex.compareTo(bIndex);
+                  });
+            
+                  final groupName = displayOrder[groupIndex];
+                  List<Series> seriesInGroup = groups[groupName]!;
+            
+                  if (sortedGroupedSeries.containsKey(groupName)) {
+                    seriesInGroup = sortedGroupedSeries[groupName]!;
+                  }
+            
+                  // Sort the series within each group
+                  if (_sortingNeeded(seriesInGroup) && !isProcessing && _currentSortOperation == null) {
+                    needsSort = false;
+                    _applySortingAsync(seriesInGroup, groupName: groupName);
+                    log('Sorting series in group: $groupName');
+                  }
+            
+                  return Expander(
+                    initiallyExpanded: true,
+                    headerBackgroundColor: WidgetStatePropertyAll(FluentTheme.of(context).resources.cardBackgroundFillColorDefault.withOpacity(0.025)),
+                    contentBackgroundColor: FluentTheme.of(context).resources.cardBackgroundFillColorSecondary.withOpacity(0),
+                    header: Text(groupName, style: FluentTheme.of(context).typography.subtitle),
+                    trailing: Text('${seriesInGroup.length} series'),
+                    content: SizedBox(
+                      height: getHeight(seriesInGroup.length, constraints.maxWidth),
+                      child: episodesGrid(seriesInGroup, ScrollController(), NeverScrollableScrollPhysics(), false),
+                    ),
+                  );
+                },
               ),
             );
-          },
-        ),
-      ),
+          }),
     );
   }
 
