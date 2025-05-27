@@ -10,7 +10,9 @@ import 'anilist_settings.dart';
 import 'settings.dart';
 
 class AccountsScreen extends StatefulWidget {
-  const AccountsScreen({super.key});
+  final ScrollController scrollController;
+
+  const AccountsScreen({super.key, required this.scrollController});
 
   @override
   State<AccountsScreen> createState() => AccountsScreenState();
