@@ -331,7 +331,10 @@ class _AppRootState extends State<AppRoot> {
   bool _isSeriesView = false;
   String? lastSelectedSeriesPath;
 
-  final ScrollController seriesController = ScrollController();
+  final ScrollController libraryController = ScrollController();
+  final ScrollController homeController = ScrollController();
+  final ScrollController accountsController = ScrollController();
+  final ScrollController settingsController = ScrollController();
 
   late final LibraryScreen _libraryScreen;
 
@@ -345,11 +348,50 @@ class _AppRootState extends State<AppRoot> {
 
   final GlobalKey<NavigationViewState> _paneKey = GlobalKey<NavigationViewState>();
 
+  final Widget anilistIcon = SizedBox(
+    height: 25,
+    width: 18,
+    child: Transform.translate(
+      offset: const Offset(1.5, 0),
+      child: Transform.scale(scale: 1.45, child: AnilistLogo()),
+    ),
+  );
+
+  Widget get settingsIcon => AnimatedRotation(
+        duration: getDuration(const Duration(milliseconds: 200)),
+        turns: _selectedIndex == settingsIndex ? 0.5 : 0.0,
+        child: const Icon(FluentIcons.settings, size: 18),
+      );
+
+  // Controllers will be added in initState
+  // Define static consts for navigation indices to avoid duplication
+  static const int homeIndex = 0;
+  static const int libraryIndex = 1;
+  static const int accountsIndex = 2;
+  static const int settingsIndex = 3;
+
+  final Map<int, Map<String, dynamic>> _navigationMap = {
+    homeIndex: {'id': 'home', 'title': 'Home', 'controller': null},
+    libraryIndex: {'id': 'library', 'title': 'Library', 'controller': null},
+    accountsIndex: {'id': 'accounts', 'title': 'Account', 'controller': null},
+    settingsIndex: {'id': 'settings', 'title': 'Settings', 'controller': null},
+  };
+
+  Map<String, dynamic> get _homeMap => _navigationMap[homeIndex]!;
+  Map<String, dynamic> get _libraryMap => _navigationMap[libraryIndex]!;
+  Map<String, dynamic> get _accountsMap => _navigationMap[accountsIndex]!;
+  Map<String, dynamic> get _settingsMap => _navigationMap[settingsIndex]!;
+
+  ScrollController _scrollController(int index) => _navigationMap[index]?['controller'] as ScrollController;
+
 // Reset scroll position to top
-  void _resetScrollPosition() {
-    if (seriesController.hasClients) {
-      seriesController.jumpTo(0.0);
-      logTrace('Reset scroll position to top');
+  void _resetScrollPosition(int index, {bool animate = false}) {
+    final controller = _scrollController(index);
+    if (controller.hasClients) {
+      if (animate)
+        controller.animateTo(0.0, duration: const Duration(milliseconds: 200), curve: Curves.easeInOut);
+      else
+        controller.jumpTo(0.0);
     }
   }
 
@@ -357,15 +399,21 @@ class _AppRootState extends State<AppRoot> {
   void initState() {
     super.initState();
     log('AppRoot initialized');
+    _homeMap['controller'] = homeController;
+    _libraryMap['controller'] = libraryController;
+    _accountsMap['controller'] = accountsController;
+    _settingsMap['controller'] = settingsController;
+
     _libraryScreen = LibraryScreen(
       key: libraryScreenKey,
       onSeriesSelected: navigateToSeries,
-      scrollController: seriesController,
+      scrollController: _libraryMap['controller'] as ScrollController,
     );
 
     nextFrame(() {
       final navManager = Provider.of<NavigationManager>(context, listen: false);
-      navManager.pushPane('library', 'Library');
+      final pane = _navigationMap[homeIndex]!;
+      navManager.pushPane(pane['id'], pane['title']);
     });
   }
 
@@ -397,20 +445,25 @@ class _AppRootState extends State<AppRoot> {
                   pane: NavigationPane(
                     menuButton: const SizedBox.shrink(), //_appTitle(),
                     selected: _selectedIndex,
-                    onChanged: (index) => setState(() {
+                    onItemPressed: (index) {
+                      log('Selected index changed to $index');
+                      if (_isSeriesView && _selectedSeriesPath != null) {
+                        // If in series view, exit series view first
+                        exitSeriesView();
+                      }
                       if (_selectedIndex == index) {
                         // If clicking the same tab, reset its scroll position
-                        if (index == 0) _resetScrollPosition();
-                        return;
+                        _resetScrollPosition(index, animate: true);
                       }
-
+                    },
+                    onChanged: (index) => setState(() {
                       _selectedIndex = index;
                       lastSelectedSeriesPath = _selectedSeriesPath;
                       _selectedSeriesPath = null;
                       _isSeriesView = false;
 
                       // Reset scroll when directly navigating to library
-                      if (index == 0) _resetScrollPosition();
+                      _resetScrollPosition(index);
 
                       // Register in navigation stack - add this code
                       final navManager = Provider.of<NavigationManager>(context, listen: false);
@@ -419,25 +472,14 @@ class _AppRootState extends State<AppRoot> {
                       navManager.clearStack();
 
                       // Register the selected pane
-                      switch (index) {
-                        case 0:
-                          navManager.pushPane('home', 'Home');
-                        case 1:
-                          navManager.pushPane('library', 'Library');
-                        case 2:
-                          navManager.pushPane('accounts', 'Account');
-                        case 3:
-                          navManager.pushPane('settings', 'Settings');
-                        default:
-                          navManager.pushPane('unknown', 'Unknown Pane');
-                      }
+                      final item = _navigationMap[index]!;
+                      navManager.pushPane(item['id'], item['title']);
                     }),
                     displayMode: _isSeriesView ? PaneDisplayMode.compact : PaneDisplayMode.auto,
                     items: [
-                      PaneItem(
-                        mouseCursor: _selectedIndex != 0 ? SystemMouseCursors.click : MouseCursor.defer,
+                      buildPaneItem(
+                        homeIndex,
                         icon: const Icon(FluentIcons.home, size: 18),
-                        title: const Text('Home'),
                         body: _isSeriesView && _selectedSeriesPath != null
                             ? SeriesScreen(
                                 key: seriesScreenKey,
@@ -454,10 +496,10 @@ class _AppRootState extends State<AppRoot> {
                                 },
                               ),
                       ),
-                      PaneItem(
-                        mouseCursor: _selectedIndex != 1 ? SystemMouseCursors.click : MouseCursor.defer,
+                      buildPaneItem(
+                        libraryIndex,
+                        mouseCursorClick: _selectedIndex != libraryIndex || _isSeriesView,
                         icon: Icon(Symbols.newsstand, size: 18),
-                        title: const Text('Library'),
                         body: Stack(
                           children: [
                             // Always keep LibraryScreen in the tree with Offstage
@@ -467,7 +509,10 @@ class _AppRootState extends State<AppRoot> {
                                 duration: getDuration(const Duration(milliseconds: 230)),
                                 opacity: _isSeriesView ? 0.0 : 1.0,
                                 curve: Curves.easeInOut,
-                                child: _libraryScreen,
+                                child: AbsorbPointer(
+                                  absorbing: _isSeriesView,
+                                  child: _libraryScreen,
+                                ),
                               ),
                             ),
 
@@ -480,10 +525,13 @@ class _AppRootState extends State<AppRoot> {
                                 onEnd: () => setState(() {
                                   if (_isSeriesView) _isFinishedTransitioning = true;
                                 }),
-                                child: SeriesScreen(
-                                  key: seriesScreenKey,
-                                  seriesPath: _selectedSeriesPath!,
-                                  onBack: exitSeriesView,
+                                child: AbsorbPointer(
+                                  absorbing: !_isSeriesView,
+                                  child: SeriesScreen(
+                                    key: seriesScreenKey,
+                                    seriesPath: _selectedSeriesPath!,
+                                    onBack: exitSeriesView,
+                                  ),
                                 ),
                               ),
                           ],
@@ -492,27 +540,23 @@ class _AppRootState extends State<AppRoot> {
                     ],
                     footerItems: [
                       PaneItemSeparator(),
-                      // if (Manager.accounts.length <= 1)
-                      PaneItem(
-                        mouseCursor: _selectedIndex != 2 ? SystemMouseCursors.click : MouseCursor.defer,
-                        icon: SizedBox(
-                            height: 25,
-                            width: 18,
-                            child: Transform.translate(
-                              offset: const Offset(1.5, 0),
-                              child: Transform.scale(scale: 1.45, child: AnilistLogo()),
-                            )),
-                        title: const Text('Account'),
-                        body: AccountsScreen(key: accountsKey),
+                      buildPaneItem(
+                        accountsIndex,
+                        icon: anilistIcon,
+                        body: AccountsScreen(
+                          key: accountsKey,
+                          scrollController: _accountsMap['controller'] as ScrollController,
+                        ),
                       ),
-                      PaneItem(
-                        mouseCursor: _selectedIndex != 3 ? SystemMouseCursors.click : MouseCursor.defer,
+                      buildPaneItem(
+                        settingsIndex,
                         icon: Padding(
                           padding: const EdgeInsets.only(left: 2.5),
                           child: const Icon(FluentIcons.settings),
                         ),
-                        title: const Text('Settings'),
-                        body: const SettingsScreen(),
+                        body: SettingsScreen(
+                          scrollController: _settingsMap['controller'] as ScrollController,
+                        ),
                       ),
                     ],
                   ),
@@ -529,6 +573,18 @@ class _AppRootState extends State<AppRoot> {
           ),
         ],
       ),
+    );
+  }
+
+  PaneItem buildPaneItem(int id, {required Widget icon, required Widget body, bool? mouseCursorClick}) {
+    final item = _navigationMap[id]!;
+    mouseCursorClick ??= _selectedIndex != id;
+    
+    return PaneItem(
+      mouseCursor: mouseCursorClick ? SystemMouseCursors.click : MouseCursor.defer,
+      title: Text(item['title']),
+      icon: icon,
+      body: body,
     );
   }
 
@@ -617,7 +673,7 @@ class _AppRootState extends State<AppRoot> {
   void navigateToSeries(String seriesPath) {
     previousGridColumnCount.value = ScreenUtils.crossAxisCount();
     // previousGridRowCount.value = libraryScreenKey.currentState!.getGridRowCount();
-    
+
     final series = Provider.of<Library>(context, listen: false).getSeriesByPath(seriesPath);
     final seriesName = series?.name ?? 'Series';
 
@@ -714,16 +770,11 @@ class _AppRootState extends State<AppRoot> {
 
 // Helper method to determine pane index from ID
   int? _getPaneIndexFromId(String id) {
-    switch (id) {
-      case 'library':
-        return 0;
-      case 'accounts':
-        return 1;
-      case 'settings':
-        return 2;
-      default:
-        return null;
+    // check dynamically inside the _navigationMap
+    for (final entry in _navigationMap.entries) {
+      if (entry.value['id'] == id) return entry.key;
     }
+    return null; // Not found
   }
 }
 
@@ -782,11 +833,9 @@ String get iconPath => '$assets${ps}system${ps}icon.ico';
 String get iconPng => '$assets${ps}system${ps}icon.png';
 String get ps => Platform.pathSeparator;
 
-// TODO save library scroll position when switching from series view
 // TODO warn user when mapping already linked file/anilist entry
 // TODO fix snackbar that says 'linked N items' when linking
 // TODO anilist grouping for 'About to Watch'
-// TODO fix scroll position when switching between screens
 // TODO add folder/file metadata to series
 // TODO create autolinker
 // TODO change FORMATTER format for specials (allow specials inside season, OVA/ONAs in separate folder if not alone)

@@ -31,7 +31,9 @@ import '../utils/time_utils.dart';
 import '../widgets/enum_toggle.dart';
 
 class SettingsScreen extends StatefulWidget {
-  const SettingsScreen({super.key});
+  final ScrollController scrollController;
+  
+  const SettingsScreen({super.key, required this.scrollController});
 
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();
@@ -62,7 +64,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
   // ignore: unused_field
   bool _isFormatting = false;
 
-  final ScrollController _scrollController = ScrollController();
   final ScrollController issueController = ScrollController();
 
   bool showAccentLibViewCol = false;
@@ -665,7 +666,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     // Compare with previous position before updating
     if (currentPos != prevPos) //
-      nextFrame(() => _scrollController.animateTo(380, duration: Duration(milliseconds: 300), curve: Curves.ease));
+      nextFrame(() => widget.scrollController.animateTo(380, duration: Duration(milliseconds: 300), curve: Curves.ease));
 
     // Update previous position after comparison
     prevPos = currentPos;
@@ -704,7 +705,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   child: DynMouseScroll(
                     enableSmoothScroll: Manager.animationsEnabled,
                     scrollSpeed: 2.0,
-                    controller: _scrollController,
+                    controller: widget.scrollController,
                     durationMS: 300,
                     animationCurve: Curves.ease,
                     // ignore: no_leading_underscores_for_local_identifiers
