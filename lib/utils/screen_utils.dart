@@ -20,7 +20,7 @@ class ScreenUtils {
           .clamp(0, ScreenUtils.maxCardWidth);
 
   static double cardHeight(double maxWidth) => //
-      ((ScreenUtils.cardWidth(maxWidth) / 0.71) + ScreenUtils.cardPadding) * 8.4575; //7.757575
+      ((ScreenUtils.cardWidth(maxWidth) / 0.71) + ScreenUtils.cardPadding) * 8.2575; //7.757575
 
   static const double maxCardWidth = 200.0;
   static const double cardPadding = 16.0;
