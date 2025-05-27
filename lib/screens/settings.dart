@@ -5,13 +5,11 @@ import 'dart:math' show min;
 
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/gestures.dart';
 import 'package:flutter_acrylic/window_effect.dart';
 import 'package:miruryoiki/widgets/gradient_mask.dart';
 import 'package:miruryoiki/widgets/loading_button.dart';
 import 'package:provider/provider.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:recase/recase.dart';
 import 'package:smooth_scroll_multiplatform/smooth_scroll_multiplatform.dart';
 import 'package:toggle_switch/toggle_switch.dart' as toggle;
 import 'dart:io';
@@ -26,13 +24,11 @@ import '../services/navigation/show_info.dart';
 import '../settings.dart';
 import '../utils/color_utils.dart';
 import '../utils/logging.dart';
-import '../utils/registry_utils.dart';
 import '../models/library.dart';
 import '../theme.dart';
 import '../utils/screen_utils.dart';
 import '../utils/time_utils.dart';
 import '../widgets/enum_toggle.dart';
-import '../widgets/trasformable_grid.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});

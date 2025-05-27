@@ -1,7 +1,6 @@
 import 'dart:io';
 import 'dart:math' show min;
 import 'package:fluent_ui/fluent_ui.dart';
-import 'package:transparent_image/transparent_image.dart';
 import 'package:provider/provider.dart';
 
 import '../../enums.dart';
@@ -12,12 +11,10 @@ import '../../models/library.dart';
 import '../../screens/series.dart';
 import '../../services/navigation/dialogs.dart';
 import '../../services/navigation/show_info.dart';
-import '../../services/cache.dart';
 import '../../utils/image_utils.dart';
 import '../../utils/logging.dart';
 import '../../utils/path_utils.dart';
 import '../../utils/screen_utils.dart';
-import '../../utils/time_utils.dart';
 import '../series_image.dart';
 import '../transparency_shadow_image.dart';
 
@@ -74,6 +71,7 @@ class _ImageSelectionContent extends StatefulWidget {
     required this.series,
     required this.constraints,
     required this.onSave,
+    // ignore: unused_element_parameter
     this.onCancel,
     required this.isBanner,
   });

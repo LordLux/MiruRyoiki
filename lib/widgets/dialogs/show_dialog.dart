@@ -1,6 +1,5 @@
 // ignore: file_names
 import 'package:fluent_ui/fluent_ui.dart';
-import 'package:miruryoiki/main.dart';
 
 /// The default constraints for [ContentDialog]
 const kDefaultContentDialogConstraints = BoxConstraints(

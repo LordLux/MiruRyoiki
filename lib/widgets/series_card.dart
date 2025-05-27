@@ -3,8 +3,6 @@ import 'package:flutter/material.dart' show InkWell, Material;
 import 'package:transparent_image/transparent_image.dart';
 import '../enums.dart';
 import '../manager.dart';
-import '../services/cache.dart';
-import 'dart:io';
 
 import '../models/series.dart';
 import '../utils/logging.dart';

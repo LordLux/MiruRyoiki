@@ -2,7 +2,6 @@ import 'dart:io';
 
 import 'package:collection/collection.dart';
 import 'package:fluent_ui/fluent_ui.dart' show decodeImageFromList;
-import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
 
 import '../main.dart';

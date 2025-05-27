@@ -1,7 +1,6 @@
 import 'package:fluent_ui2/fluent_ui.dart' show Acrylic, HoverButton, kMenuColorOpacity;
 import 'package:flutter/material.dart';
 
-import '../../functions.dart';
 import '../utils/color_utils.dart';
 
 /// Eyeballed value from Windows Home 11.

@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'package:flutter/material.dart';
 import 'package:graphql/client.dart';
 import '../../../models/anilist/anime.dart';
 import '../../../models/anilist/user_list.dart';

@@ -13,7 +13,6 @@ import '../manager.dart';
 import '../services/anilist/provider.dart';
 import '../services/cache.dart';
 import '../utils/logging.dart';
-import '../utils/path_utils.dart';
 import 'anilist/anime.dart';
 import 'anilist/mapping.dart';
 import 'anilist/user_list.dart';
@@ -153,13 +152,13 @@ class Series {
       seasons: seasons ?? this.seasons,
       relatedMedia: relatedMedia ?? this.relatedMedia,
       anilistMappings: anilistMappings ?? this.anilistMappings,
-      anilistData: anilistData ?? this._anilistData,
-      dominantColor: dominantColor ?? this._dominantColor,
+      anilistData: anilistData ?? _anilistData,
+      dominantColor: dominantColor ?? _dominantColor,
       preferredPosterSource: preferredPosterSource ?? this.preferredPosterSource,
       preferredBannerSource: preferredBannerSource ?? this.preferredBannerSource,
-      primaryAnilistId: primaryAnilistId ?? this._primaryAnilistId,
-      anilistPoster: anilistPoster ?? this._anilistPosterUrl,
-      anilistBanner: anilistBanner ?? this._anilistBannerUrl,
+      primaryAnilistId: primaryAnilistId ?? _primaryAnilistId,
+      anilistPoster: anilistPoster ?? _anilistPosterUrl,
+      anilistBanner: anilistBanner ?? _anilistBannerUrl,
     );
   }
 
@@ -334,7 +333,7 @@ class Series {
     // Calculate color using compute to avoid UI blocking
     try {
       // Use compute to process on a background thread
-      final imageFile = File(imagePath!);
+      final imageFile = File(imagePath);
       if (await imageFile.exists()) {
         final Uint8List imageBytes = await imageFile.readAsBytes();
         final Image image = (await decodeImageFromList(imageBytes));

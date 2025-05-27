@@ -1,6 +1,5 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter_acrylic/window_effect.dart';
-import 'package:miruryoiki/utils/logging.dart';
 import 'package:recase/recase.dart';
 import 'package:intl/intl.dart';
 
@@ -167,19 +166,19 @@ extension DurationX on Duration {
     int? microseconds,
   }) {
     return Duration(
-      days: days ?? this.inDays,
-      hours: hours ?? this.inHours,
-      minutes: minutes ?? this.inMinutes,
-      seconds: seconds ?? this.inSeconds,
-      milliseconds: milliseconds ?? this.inMilliseconds,
-      microseconds: microseconds ?? this.inMicroseconds,
+      days: days ?? inDays,
+      hours: hours ?? inHours,
+      minutes: minutes ?? inMinutes,
+      seconds: seconds ?? inSeconds,
+      milliseconds: milliseconds ?? inMilliseconds,
+      microseconds: microseconds ?? inMicroseconds,
     );
   }
 
   /// Adds a number of milliseconds to the duration
   Duration operator /(int other) {
     return copyWith(
-      milliseconds: this.inMilliseconds + other,
+      milliseconds: inMilliseconds + other,
     );
   }
 }

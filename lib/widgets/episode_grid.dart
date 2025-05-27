@@ -1,7 +1,6 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import '../models/episode.dart';
 import '../models/series.dart';
-import '../utils/logging.dart';
 import 'episode_card.dart';
 
 class EpisodeGrid extends StatefulWidget {

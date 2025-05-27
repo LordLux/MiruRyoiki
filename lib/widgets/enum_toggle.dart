@@ -1,8 +1,6 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:toggle_switch/toggle_switch.dart' as toggle;
 
-import '../main.dart';
-import '../manager.dart';
 import '../utils/color_utils.dart';
 import '../utils/time_utils.dart';
 

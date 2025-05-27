@@ -5,7 +5,7 @@ import 'package:provider/provider.dart';
 import '../../manager.dart';
 import '../../utils/logging.dart';
 import '../../utils/time_utils.dart';
-import '../../widgets/dialogs/showDialog.dart';
+import '../../widgets/dialogs/show_dialog.dart';
 import '../../widgets/loading_button.dart';
 import 'debug.dart';
 import 'navigation.dart';
@@ -138,70 +138,34 @@ Future<T?> showSimpleOneButtonManagedDialog<T>({
 
   /// Callback for the positive button, automatically closes the dialog
   Function()? onPositive,
-}) async =>
-    showManagedDialog(
-      context: context,
-      id: id,
-      title: title,
-      dialogDoPopCheck: () => true,
-      builder: (context) {
-        return ManagedDialog(
-          popContext: context,
-          title: Text(title),
-          contentBuilder: (_, __) => Text(body),
-          constraints: constraints ??
-              const BoxConstraints(
-                maxWidth: 500,
-                minWidth: 300,
-              ),
-          actions: (popContext) => [
-            ManagedDialogButton(
-              popContext: popContext,
-              text: positiveButtonText,
-              onPressed: () {
-                onPositive?.call();
-              },
+}) async {
+  return showManagedDialog(
+    context: context,
+    id: id,
+    title: title,
+    dialogDoPopCheck: () => true,
+    builder: (context) {
+      return ManagedDialog(
+        popContext: context,
+        title: Text(title),
+        contentBuilder: (_, __) => Text(body),
+        constraints: constraints ??
+            const BoxConstraints(
+              maxWidth: 500,
+              minWidth: 300,
             ),
-          ],
-        );
-      },
-    );
-
-// Wrapper that handles barrier dismissal callbacks
-@Deprecated('')
-class _DismissibleWrapper extends StatelessWidget {
-  final VoidCallback onBarrierTap;
-  final Widget child;
-  final bool Function()? barrierDismissCheck;
-
-  const _DismissibleWrapper({
-    required this.onBarrierTap,
-    required this.child,
-    this.barrierDismissCheck,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    // Listen for route pop signals
-    return WillPopScope(
-      onWillPop: () async {
-        // Check if we should allow the barrier to dismiss
-        if (barrierDismissCheck != null) {
-          logTrace('Barrier dismiss check: ${barrierDismissCheck!() ? "Popped!" : "Not popped"}');
-
-          if (barrierDismissCheck!()) {
-            onBarrierTap();
-            return true; // Allow the barrier to dismiss
-          }
-          return false; // Prevent the barrier from dismissing
-        }
-        logTrace('No barrier dismiss check provided, allowing pop');
-        // Default behavior: allow the barrier to dismiss
-        return true;
-      },
-      child: child,
-    );
-  }
+        actions: (popContext) => [
+          ManagedDialogButton(
+            popContext: popContext,
+            text: positiveButtonText,
+            onPressed: () {
+              onPositive?.call();
+            },
+          ),
+        ],
+      );
+    },
+  );
 }
 
 void kEmptyVoidCallBack() {}
@@ -324,6 +288,7 @@ class ManagedDialogState extends State<ManagedDialog> {
             child: widget.contentBuilder != null ? widget.contentBuilder!(context, _currentConstraints) : null,
           ),
         ),
+        // ignore: prefer_null_aware_operators
         actions: widget.actions != null ? widget.actions!.call(widget.popContext) : null,
         constraints: _currentConstraints,
       ),

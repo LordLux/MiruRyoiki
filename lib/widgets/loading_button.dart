@@ -1,8 +1,6 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:miruryoiki/utils/time_utils.dart';
 
-import '../utils/logging.dart';
-
 class LoadingButton extends StatefulWidget {
   final String label;
   final bool isLoading;
@@ -22,10 +20,10 @@ class LoadingButton extends StatefulWidget {
   });
 
   @override
-  _LoadingButtonState createState() => _LoadingButtonState();
+  LoadingButtonState createState() => LoadingButtonState();
 }
 
-class _LoadingButtonState extends State<LoadingButton> {
+class LoadingButtonState extends State<LoadingButton> {
   bool isLocalLoading = false;
 
   double get minusSmall => widget.isSmall ? 12 : 0;

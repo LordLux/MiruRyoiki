@@ -1,6 +1,5 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:provider/provider.dart';
-import 'package:intl/intl.dart';
 import 'package:recase/recase.dart';
 
 import '../models/library.dart';
@@ -110,6 +109,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildContinueWatchingSection() {
+    // ignore: unused_local_variable
     final anilistProvider = Provider.of<AnilistProvider>(context);
     final library = Provider.of<Library>(context);
 
@@ -128,6 +128,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildUpcomingEpisodesSection() {
+    // ignore: unused_local_variable
     final anilistProvider = Provider.of<AnilistProvider>(context);
     final library = Provider.of<Library>(context);
 

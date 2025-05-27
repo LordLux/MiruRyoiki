@@ -1,6 +1,5 @@
 import 'dart:io';
 import 'package:path/path.dart' as p;
-import 'package:fluent_ui/fluent_ui.dart';
 import '../../utils/logging.dart';
 import 'action.dart';
 

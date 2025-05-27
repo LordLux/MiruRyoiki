@@ -1,8 +1,6 @@
 import 'package:miruryoiki/enums.dart';
 import 'package:path/path.dart';
 
-import '../../utils/time_utils.dart';
-
 class AnilistAnime {
   final int id;
   final String? bannerImage;

@@ -1,13 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/services.dart';
-import 'package:flutter/material.dart' hide Image;
-import 'dart:typed_data';
-import 'dart:ffi';
-import 'dart:io';
-import 'package:flutter/services.dart';
 import 'package:flutter_custom_cursor/cursor_manager.dart';
-import 'package:flutter_custom_cursor/flutter_custom_cursor.dart';
 import 'package:path/path.dart';
 import 'package:image/image.dart' as img2;
 

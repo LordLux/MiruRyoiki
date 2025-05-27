@@ -18,7 +18,6 @@ import 'package:window_manager/window_manager.dart';
 import 'package:windows_single_instance/windows_single_instance.dart';
 import 'package:material_symbols_icons/material_symbols_icons.dart';
 
-import 'models/series.dart';
 import 'services/navigation/dialogs.dart';
 import 'settings.dart';
 import 'utils/logging.dart';
@@ -334,124 +333,22 @@ class _AppRootState extends State<AppRoot> {
   String? lastSelectedSeriesPath;
 
   final ScrollController seriesController = ScrollController();
-  double _savedScrollPosition = 0.0;
-  Map<String, List<Series>> _lastSortedGroupedSeries = {};
-  List<Series> _lastSortedUngroupedSeries = [];
-  SortOrder? _lastSortOrder;
-  bool? _lastSortDescending;
-  GroupBy? _lastGroupBy;
-  bool? _lastShowGrouped;
-  LibraryView? _lastLibraryView;
-  List<String>? _lastCustomListOrder;
-  bool _hasSavedLibraryState = false;
+
+  late final LibraryScreen _libraryScreen;
 
   bool _isTransitioning = false;
+  bool _isFinishedTransitioning = false;
 
-  bool get _isLibraryView => !(_isSeriesView && _selectedSeriesPath != null);
+  // bool get _isLibraryView => !(_isSeriesView && _selectedSeriesPath != null);
   bool get isSeriesView => _isSeriesView;
 
+  // ignore: unused_field
   bool _isNavigationPaneCollapsed = false;
 
   final GlobalKey<NavigationViewState> _paneKey = GlobalKey<NavigationViewState>();
 
-  // Save current scroll position and grid column count
-  void _saveContextBeforeSwitch() {
-    // save the current grid column count
-    previousGridColumnCount.value = ScreenUtils.crossAxisCount(/* no know constraints */);
-    log('Saving grid column count: ${previousGridColumnCount.value}');
-
-    final libraryState = libraryScreenKey.currentState;
-
-    if (libraryState != null) {
-      // Save the current scroll position
-      _savedScrollPosition = libraryState.saveCurrentScrollPosition();
-
-      // Save library state if library screen is active
-      _lastSortedGroupedSeries = Map.from(libraryState.sortedGroupedSeries);
-      _lastSortedUngroupedSeries = List.from(libraryState.sortedUngroupedSeries);
-      _lastSortOrder = libraryState.sortOrder;
-      _lastSortDescending = libraryState.sortDescending;
-      _lastGroupBy = libraryState.groupBy;
-      _lastShowGrouped = libraryState.showGrouped;
-      _lastLibraryView = libraryState.currentView;
-      _lastCustomListOrder = List.from(libraryState.customListOrder);
-      _hasSavedLibraryState = true;
-      logInfo('Saved context');
-    }
-  }
-
-// Restore saved scroll position and grid column count
-  void _restoreContextAfterSwitch() {
-    if (!_hasSavedLibraryState) {
-      logInfo('No saved library state to restore');
-      return;
-    }
-    //TODO fix scrolled to the bottom gets pushed a little bit up???
-    // Use post frame callback to ensure the grid is built
-
-    final libraryState = libraryScreenKey.currentState;
-    if (libraryState == null) {
-      logInfo('Library state is null, scheduling restoration for next frame');
-      // Retry on next frame since the widget might not be built yet
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _restoreContextAfterSwitch();
-      });
-      return;
-    }
-
-    logInfo('Restoring scroll position: $_savedScrollPosition');
-
-    // First set the flags to prevent re-sorting
-    libraryState.hasAppliedSorting = true;
-    libraryState.needsSort = false;
-    libraryState.isProcessing = false; // Force hide loading indicator
-
-    // Then restore all the state variables
-    libraryState.sortedGroupedSeries = _lastSortedGroupedSeries;
-    libraryState.sortedUngroupedSeries = _lastSortedUngroupedSeries;
-    libraryState.sortOrder = _lastSortOrder ?? libraryState.sortOrder;
-    libraryState.sortDescending = _lastSortDescending ?? libraryState.sortDescending;
-    libraryState.groupBy = _lastGroupBy ?? libraryState.groupBy;
-    libraryState.showGrouped = _lastShowGrouped ?? libraryState.showGrouped;
-    libraryState.currentView = _lastLibraryView ?? libraryState.currentView;
-    libraryState.customListOrder = _lastCustomListOrder ?? libraryState.customListOrder;
-    libraryState.lastAppliedSortOrder = libraryState.sortOrder;
-    libraryState.lastAppliedSortDescending = libraryState.sortDescending;
-    
-    previousGridColumnCount.value = ScreenUtils.crossAxisCount(/* no know constraints */);
-
-    // Force rebuild to apply the restored state
-    libraryState.setState(() {});
-
-    // Restore scroll position with a slight delay to ensure grid is built
-    nextFrame(delay: 50, () {
-      if (libraryState.mounted) {
-        libraryState.restoreScrollPosition(_savedScrollPosition);
-
-        // Ensure processing indicator is turned off
-        if (libraryState.isProcessing) {
-          libraryState.setState(() {
-            libraryState.isProcessing = false;
-          });
-        }
-      }
-    });
-
-    // Delay the transition to avoid flickering
-    Future.delayed(const Duration(milliseconds: 500), () {
-      if (mounted) {
-        setState(() {
-          _isTransitioning = false;
-          previousGridColumnCount.value = null;
-        });
-        logInfo('Restored context after switching screens 2');
-      }
-    });
-  }
-
 // Reset scroll position to top
   void _resetScrollPosition() {
-    _savedScrollPosition = 0.0;
     if (seriesController.hasClients) {
       seriesController.jumpTo(0.0);
       logTrace('Reset scroll position to top');
@@ -461,6 +358,13 @@ class _AppRootState extends State<AppRoot> {
   @override
   void initState() {
     super.initState();
+    log('AppRoot initialized');
+    _libraryScreen = LibraryScreen(
+      key: libraryScreenKey,
+      onSeriesSelected: navigateToSeries,
+      scrollController: seriesController,
+    );
+
     nextFrame(() {
       final navManager = Provider.of<NavigationManager>(context, listen: false);
       navManager.pushPane('library', 'Library');
@@ -556,20 +460,34 @@ class _AppRootState extends State<AppRoot> {
                         mouseCursor: _selectedIndex != 1 ? SystemMouseCursors.click : MouseCursor.defer,
                         icon: Icon(Symbols.newsstand, size: 18),
                         title: const Text('Library'),
-                        body: AnimatedSwitcher(
-                          duration: getDuration(const Duration(milliseconds: 300)),
-                          reverseDuration: getDuration(const Duration(milliseconds: 500)),
-                          child: _isSeriesView && _selectedSeriesPath != null
-                              ? SeriesScreen(
+                        body: Stack(
+                          children: [
+                            // Always keep LibraryScreen in the tree with Offstage
+                            Offstage(
+                              offstage: _isSeriesView && _selectedSeriesPath != null && _isFinishedTransitioning,
+                              child: AnimatedOpacity(
+                                duration: getDuration(const Duration(milliseconds: 300)),
+                                opacity: _isSeriesView ? 0.0 : 1.0,
+                                child: _libraryScreen,
+                              ),
+                            ),
+
+                            // Animated container for the SeriesScreen
+                            if (_selectedSeriesPath != null)
+                              AnimatedOpacity(
+                                duration: getDuration(const Duration(milliseconds: 300)),
+                                opacity: _isSeriesView ? 1.0 : 0.0,
+                                curve: Curves.easeInOut,
+                                onEnd: () => setState(() {
+                                  if (_isSeriesView) _isFinishedTransitioning = true;
+                                }),
+                                child: SeriesScreen(
                                   key: seriesScreenKey,
                                   seriesPath: _selectedSeriesPath!,
                                   onBack: exitSeriesView,
-                                )
-                              : LibraryScreen(
-                                  key: libraryScreenKey,
-                                  onSeriesSelected: navigateToSeries,
-                                  scrollController: seriesController,
                                 ),
+                              ),
+                          ],
                         ),
                       ),
                     ],
@@ -698,9 +616,9 @@ class _AppRootState extends State<AppRoot> {
 
   // Update navigateToSeries method:
   void navigateToSeries(String seriesPath) {
-    // Save scroll position when navigating to a series
-    _saveContextBeforeSwitch();
-
+    previousGridColumnCount.value = ScreenUtils.crossAxisCount();
+    // previousGridRowCount.value = libraryScreenKey.currentState!.getGridRowCount();
+    
     final series = Provider.of<Library>(context, listen: false).getSeriesByPath(seriesPath);
     final seriesName = series?.name ?? 'Series';
 
@@ -715,6 +633,8 @@ class _AppRootState extends State<AppRoot> {
 
   // Update exitSeriesView method:
   void exitSeriesView() {
+    previousGridColumnCount.value = ScreenUtils.crossAxisCount();
+
     final navManager = Provider.of<NavigationManager>(context, listen: false);
 
     if (navManager.currentView?.level == NavigationLevel.page) //
@@ -722,14 +642,19 @@ class _AppRootState extends State<AppRoot> {
 
     setState(() {
       lastSelectedSeriesPath = _selectedSeriesPath ?? lastSelectedSeriesPath;
-      _selectedSeriesPath = null;
       _isSeriesView = false;
       _isTransitioning = true;
+      _isFinishedTransitioning = false;
       Manager.currentDominantColor = null;
     });
 
-    // Restore scroll position when returning to library
-    _restoreContextAfterSwitch();
+    nextFrame(delay: 300, () {
+      setState(() {
+        _isTransitioning = false;
+        _selectedSeriesPath = null;
+        previousGridColumnCount.value = null;
+      });
+    });
   }
 
   // Add this helper method

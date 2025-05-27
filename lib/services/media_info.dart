@@ -1,5 +1,3 @@
-import 'package:flutter/foundation.dart';
-
 import '../utils/logging.dart';
 
 class MediaInfo {
