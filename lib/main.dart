@@ -325,6 +325,7 @@ class AppRoot extends StatefulWidget {
 }
 
 ValueNotifier<int?> previousGridColumnCount = ValueNotifier<int?>(null);
+ValueNotifier<int?> previousGridRowCount = ValueNotifier<int?>(null);
 
 class _AppRootState extends State<AppRoot> {
   int _selectedIndex = 0;
@@ -356,7 +357,7 @@ class _AppRootState extends State<AppRoot> {
   // Save current scroll position and grid column count
   void _saveContextBeforeSwitch() {
     // save the current grid column count
-    previousGridColumnCount.value = ((ScreenUtils.width - ScreenUtils.navigationBarWidth) ~/ LibraryScreenState.maxCardWidth).clamp(1, 10);
+    previousGridColumnCount.value = ScreenUtils.crossAxisCount(/* no know constraints */);
     log('Saving grid column count: ${previousGridColumnCount.value}');
 
     final libraryState = libraryScreenKey.currentState;
@@ -416,6 +417,8 @@ class _AppRootState extends State<AppRoot> {
     libraryState.customListOrder = _lastCustomListOrder ?? libraryState.customListOrder;
     libraryState.lastAppliedSortOrder = libraryState.sortOrder;
     libraryState.lastAppliedSortDescending = libraryState.sortDescending;
+    
+    previousGridColumnCount.value = ScreenUtils.crossAxisCount(/* no know constraints */);
 
     // Force rebuild to apply the restored state
     libraryState.setState(() {});
@@ -435,7 +438,7 @@ class _AppRootState extends State<AppRoot> {
     });
 
     // Delay the transition to avoid flickering
-    Future.delayed(const Duration(milliseconds: 300), () {
+    Future.delayed(const Duration(milliseconds: 500), () {
       if (mounted) {
         setState(() {
           _isTransitioning = false;
@@ -555,6 +558,7 @@ class _AppRootState extends State<AppRoot> {
                         title: const Text('Library'),
                         body: AnimatedSwitcher(
                           duration: getDuration(const Duration(milliseconds: 300)),
+                          reverseDuration: getDuration(const Duration(milliseconds: 500)),
                           child: _isSeriesView && _selectedSeriesPath != null
                               ? SeriesScreen(
                                   key: seriesScreenKey,
@@ -565,7 +569,6 @@ class _AppRootState extends State<AppRoot> {
                                   key: libraryScreenKey,
                                   onSeriesSelected: navigateToSeries,
                                   scrollController: seriesController,
-                                  fixedColumnCount: _isTransitioning ? previousGridColumnCount.value : null,
                                 ),
                         ),
                       ),
