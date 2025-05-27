@@ -324,7 +324,6 @@ class AppRoot extends StatefulWidget {
 }
 
 ValueNotifier<int?> previousGridColumnCount = ValueNotifier<int?>(null);
-ValueNotifier<int?> previousGridRowCount = ValueNotifier<int?>(null);
 
 class _AppRootState extends State<AppRoot> {
   int _selectedIndex = 0;
@@ -336,7 +335,6 @@ class _AppRootState extends State<AppRoot> {
 
   late final LibraryScreen _libraryScreen;
 
-  bool _isTransitioning = false;
   bool _isFinishedTransitioning = false;
 
   // bool get _isLibraryView => !(_isSeriesView && _selectedSeriesPath != null);
@@ -466,8 +464,9 @@ class _AppRootState extends State<AppRoot> {
                             Offstage(
                               offstage: _isSeriesView && _selectedSeriesPath != null && _isFinishedTransitioning,
                               child: AnimatedOpacity(
-                                duration: getDuration(const Duration(milliseconds: 300)),
+                                duration: getDuration(const Duration(milliseconds: 230)),
                                 opacity: _isSeriesView ? 0.0 : 1.0,
+                                curve: Curves.easeInOut,
                                 child: _libraryScreen,
                               ),
                             ),
@@ -643,14 +642,12 @@ class _AppRootState extends State<AppRoot> {
     setState(() {
       lastSelectedSeriesPath = _selectedSeriesPath ?? lastSelectedSeriesPath;
       _isSeriesView = false;
-      _isTransitioning = true;
       _isFinishedTransitioning = false;
       Manager.currentDominantColor = null;
     });
 
     nextFrame(delay: 300, () {
       setState(() {
-        _isTransitioning = false;
         _selectedSeriesPath = null;
         previousGridColumnCount.value = null;
       });
