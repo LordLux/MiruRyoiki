@@ -16,7 +16,7 @@ import '../../services/navigation/show_info.dart';
 import '../loading_button.dart';
 import 'search_panel.dart';
 
-final GlobalKey<_AnilistLinkMultiContentState> linkMultiDialogKey = GlobalKey<_AnilistLinkMultiContentState>();
+final GlobalKey<AnilistLinkMultiContentState> linkMultiDialogKey = GlobalKey<AnilistLinkMultiContentState>();
 
 class AnilistLinkMultiDialog extends ManagedDialog {
   final Series series;
@@ -74,10 +74,10 @@ class _AnilistLinkMultiContent extends StatefulWidget {
   });
 
   @override
-  _AnilistLinkMultiContentState createState() => _AnilistLinkMultiContentState();
+  AnilistLinkMultiContentState createState() => AnilistLinkMultiContentState();
 }
 
-class _AnilistLinkMultiContentState extends State<_AnilistLinkMultiContent> {
+class AnilistLinkMultiContentState extends State<_AnilistLinkMultiContent> {
   late List<AnilistMapping> mappings;
   late List<AnilistMapping> oldMappings;
   String mode = 'view';

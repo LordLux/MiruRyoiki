@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import '../../models/series.dart';
 import '../../models/anilist/anime.dart';
 import '../../utils/logging.dart';

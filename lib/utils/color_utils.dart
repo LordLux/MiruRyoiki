@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'dart:typed_data';
-import 'package:image/image.dart' as img;
 
 import '../enums.dart';
 import '../manager.dart';

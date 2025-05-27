@@ -1,5 +1,4 @@
 import 'package:fluent_ui/fluent_ui.dart';
-import 'package:miruryoiki/main.dart';
 import 'package:miruryoiki/widgets/series_image.dart';
 import 'package:provider/provider.dart';
 import '../../models/series.dart';

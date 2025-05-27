@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:collection/collection.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:miruryoiki/enums.dart';
 import 'package:miruryoiki/utils/logging.dart';
