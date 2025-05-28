@@ -8,6 +8,7 @@ import '../../services/anilist/provider.dart';
 import '../../services/cache.dart';
 import '../../services/navigation/dialogs.dart';
 import '../../services/navigation/shortcuts.dart';
+import '../../utils/screen_utils.dart';
 import '../../utils/time_utils.dart';
 import 'link_anilist_multi.dart';
 
@@ -148,7 +149,7 @@ class _AnilistSearchPanelState extends State<AnilistSearchPanel> {
           },
           onSubmitted: (_) => search(),
         ),
-        const SizedBox(height: 16),
+        VDiv(16),
         if (_isLoading)
           const Center(child: ProgressRing())
         else if (_error != null)

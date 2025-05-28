@@ -257,7 +257,7 @@ class LibraryScreenState extends State<LibraryScreen> {
 
     const double filterAngle = -0.01;
     const double width = 350;
-    const double headerHeight = 63;
+    final double headerHeight = 63 * Manager.fontSizeMultiplier;
 
     return Column(
       children: [
@@ -281,7 +281,7 @@ class LibraryScreenState extends State<LibraryScreen> {
                   onTap: () => toggleFiltersSidebar(value: false),
                   behavior: HitTestBehavior.deferToChild,
                   child: Padding(
-                    padding: const EdgeInsets.only(right: 6.0, top: headerHeight + 16.0, left: 6.0),
+                    padding: EdgeInsets.only(right: 6.0, top: headerHeight + 16.0, left: 6.0),
                     child: _buildLibraryView(library),
                   ),
                 ),
@@ -364,7 +364,7 @@ class LibraryScreenState extends State<LibraryScreen> {
                         'Display Options',
                         style: FluentTheme.of(context).typography.subtitle,
                       ),
-                      const SizedBox(height: 16),
+                      VDiv(16),
 
                       // Library View Switch
                       InfoLabel(
@@ -381,7 +381,7 @@ class LibraryScreenState extends State<LibraryScreen> {
                           ),
                         ),
                       ),
-                      const SizedBox(height: 16),
+                      VDiv(16),
 
                       // Grouping Toggle
                       MouseButtonWrapper(
@@ -398,12 +398,12 @@ class LibraryScreenState extends State<LibraryScreen> {
                         ),
                       ),
 
-                      const SizedBox(height: 24),
+                      VDiv(24),
                       Text(
                         'Sort Options',
                         style: FluentTheme.of(context).typography.subtitle,
                       ),
-                      const SizedBox(height: 16),
+                      VDiv(16),
 
                       // Sort Order
                       InfoLabel(
@@ -433,16 +433,16 @@ class LibraryScreenState extends State<LibraryScreen> {
                           ],
                         ),
                       ),
-                      const SizedBox(height: 12),
+                      VDiv(12),
 
                       // Only show list order UI when grouping is enabled
                       if (_showGrouped) ...[
-                        const SizedBox(height: 24),
+                        VDiv(24),
                         Text(
                           'List Order',
                           style: FluentTheme.of(context).typography.subtitle,
                         ),
-                        const SizedBox(height: 16),
+                        VDiv(16),
                         _buildListOrderUI(),
                       ],
                     ],
@@ -612,9 +612,9 @@ class LibraryScreenState extends State<LibraryScreen> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(FluentIcons.folder_open, size: 48, color: Colors.purple),
-          const SizedBox(height: 16),
+          VDiv(16),
           const Text('Select your media library folder to get started', style: TextStyle(fontSize: 16)),
-          const SizedBox(height: 24),
+          VDiv(24),
           MouseButtonWrapper(
             isLoading: _isSelectingFolder,
             child: Button(
@@ -645,9 +645,9 @@ class LibraryScreenState extends State<LibraryScreen> {
               size: 48,
               color: Colors.grey,
             ),
-            const SizedBox(height: 16),
+            VDiv(16),
             Text(_currentView == LibraryView.linked ? 'No linked series found. Link your series with Anilist first.' : 'No series found in your library'),
-            const SizedBox(height: 16),
+            VDiv(16),
             MouseButtonWrapper(
               isLoading: _isSelectingFolder,
               child: Button(

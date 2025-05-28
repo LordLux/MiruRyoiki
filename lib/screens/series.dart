@@ -182,7 +182,7 @@ class SeriesScreenState extends State<SeriesScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             const Text('Series not found'),
-            const SizedBox(height: 16),
+            VDiv(16),
             MouseButtonWrapper(
               child: Button(
                 onPressed: widget.onBack,
@@ -303,7 +303,7 @@ class SeriesScreenState extends State<SeriesScreen> {
                                 ),
                               ),
                             ),
-                            const SizedBox(height: 8),
+                            VDiv(8),
                             // Watched percentage
                             Text(
                               'Episodes: ${series.totalEpisodes} | Watched: ${series.watchedEpisodes} (${(series.watchedPercentage * 100).round()}%)',
@@ -312,7 +312,7 @@ class SeriesScreenState extends State<SeriesScreen> {
                                 color: Colors.white,
                               ),
                             ),
-                            const SizedBox(height: 12),
+                            VDiv(12),
                           ],
                         ),
                       ),
@@ -406,7 +406,7 @@ class SeriesScreenState extends State<SeriesScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text('Info', style: FluentTheme.of(context).typography.subtitle),
-          const SizedBox(height: 8),
+          VDiv(8),
 
           if (series.anilistMappings.length > 1) ...[
             InfoLabel(
@@ -434,7 +434,7 @@ class SeriesScreenState extends State<SeriesScreen> {
                 },
               ),
             ),
-            const SizedBox(height: 16),
+            VDiv(16),
           ],
 
           // Add description if available
@@ -444,7 +444,7 @@ class SeriesScreenState extends State<SeriesScreen> {
               maxLines: 4,
               overflow: TextOverflow.ellipsis,
             ),
-            const SizedBox(height: 16),
+            VDiv(16),
           ],
 
           // Series metadata
@@ -485,7 +485,7 @@ class SeriesScreenState extends State<SeriesScreen> {
 
           // Genre tags
           if (series.genres.isNotEmpty) ...[
-            const SizedBox(height: 16),
+            VDiv(16),
             Wrap(
               spacing: 8,
               runSpacing: 8,
@@ -494,7 +494,7 @@ class SeriesScreenState extends State<SeriesScreen> {
           ],
 
           // Progress bar
-          const SizedBox(height: 16),
+          VDiv(16),
           ProgressBar(
             value: series.watchedPercentage * 100,
             activeColor: dominantColor,

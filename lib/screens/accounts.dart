@@ -5,6 +5,7 @@ import 'package:miruryoiki/services/anilist/provider.dart';
 import 'package:provider/provider.dart';
 
 import '../utils/logging.dart';
+import '../utils/screen_utils.dart';
 import '../widgets/loading_button.dart';
 import 'anilist_settings.dart';
 import 'settings.dart';
@@ -41,7 +42,7 @@ class AccountsScreenState extends State<AccountsScreen> {
           if (!anilistProvider.isLoggedIn) ...[
             SettingsCard(children: [
               AnilistCardTitle(),
-              const SizedBox(height: 12),
+              VDiv(12),
               Text(
                 'Connect your Anilist account to sync your media library.',
                 style: FluentTheme.of(context).typography.body,

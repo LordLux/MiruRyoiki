@@ -39,13 +39,13 @@ class ScreenUtils {
 }
 
 /// Creates a horizontal divider with a fixed width based on the current font size multiplier
-Widget hDiv(double width) => SizedBox(width: width * Manager.fontSizeMultiplier);
+Widget HDiv(double width) => SizedBox(width: width * Manager.fontSizeMultiplier);
 
 /// Creates a vertical divider with a fixed height based on the current font size multiplier
-Widget vDiv(double height) => SizedBox(height: height * Manager.fontSizeMultiplier);
+Widget VDiv(double height) => SizedBox(height: height * Manager.fontSizeMultiplier);
 
 /// Creates a horizontal divider with a fixed pixel width
-Widget hDivPx(double width) => SizedBox(width: width);
+Widget HDivPx(double width) => SizedBox(width: width);
 
 /// Creates a vertical divider with a fixed pixel height
-Widget vDivPx(double height) => SizedBox(height: height);
+Widget VDivPx(double height) => SizedBox(height: height);

@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../services/anilist/provider.dart';
 import '../manager.dart';
 import '../utils/logging.dart';
+import '../utils/screen_utils.dart';
 import '../widgets/loading_button.dart';
 import 'accounts.dart';
 
@@ -36,7 +37,7 @@ class AnilistSettingsScreen extends StatelessWidget {
                       'Account',
                       style: FluentTheme.of(context).typography.subtitle,
                     ),
-                    const SizedBox(height: 16),
+                    VDiv(16),
                     Builder(builder: (context) {
                       if (anilistProvider.isLoading)
                         return const Center(child: ProgressRing());
@@ -48,7 +49,7 @@ class AnilistSettingsScreen extends StatelessWidget {
                 ),
               ),
             ),
-            const SizedBox(height: 24),
+            VDiv(24),
             if (anilistProvider.isLoggedIn) ...[
               Card(
                 child: Padding(
@@ -60,7 +61,7 @@ class AnilistSettingsScreen extends StatelessWidget {
                         'Sync Settings',
                         style: FluentTheme.of(context).typography.subtitle,
                       ),
-                      const SizedBox(height: 16),
+                      VDiv(16),
                       ToggleSwitch(
                         checked: true,
                         content: const Text('Automatically link local series to Anilist'),
@@ -68,7 +69,7 @@ class AnilistSettingsScreen extends StatelessWidget {
                           // TODO: Implement setting
                         },
                       ),
-                      const SizedBox(height: 8),
+                      VDiv(8),
                       ToggleSwitch(
                         checked: true,
                         content: const Text('Update watch progress on Anilist'),
@@ -76,7 +77,7 @@ class AnilistSettingsScreen extends StatelessWidget {
                           // TODO: Implement setting
                         },
                       ),
-                      const SizedBox(height: 8),
+                      VDiv(8),
                       ToggleSwitch(
                         checked: true,
                         content: const Text('Download metadata (posters, descriptions)'),
@@ -84,7 +85,7 @@ class AnilistSettingsScreen extends StatelessWidget {
                           // TODO: Implement setting
                         },
                       ),
-                      const SizedBox(height: 16),
+                      VDiv(16),
                       MouseButtonWrapper(
                         child: Button(
                           child: const Text('Refresh All Metadata'),
@@ -99,7 +100,7 @@ class AnilistSettingsScreen extends StatelessWidget {
                   ),
                 ),
               ),
-              const SizedBox(height: 24),
+              VDiv(24),
               Card(
                 child: Padding(
                   padding: const EdgeInsets.all(16.0),
@@ -110,7 +111,7 @@ class AnilistSettingsScreen extends StatelessWidget {
                         'Your Anilist',
                         style: FluentTheme.of(context).typography.subtitle,
                       ),
-                      const SizedBox(height: 16),
+                      VDiv(16),
                       Wrap(
                         spacing: 8.0,
                         runSpacing: 8.0,
@@ -118,7 +119,7 @@ class AnilistSettingsScreen extends StatelessWidget {
                           for (final list in anilistProvider.userLists.entries) _buildListChip(context, list.value),
                         ],
                       ),
-                      const SizedBox(height: 16),
+                      VDiv(16),
                       MouseButtonWrapper(
                         child: Button(
                           child: const Text('Refresh Lists'),
@@ -196,7 +197,7 @@ class AnilistSettingsScreen extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          VDiv(16),
           LoadingButton(
             label: 'Logout',
             isLoading: false,
