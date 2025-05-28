@@ -954,7 +954,7 @@ packages:
       path: "M:\\Projects\\dyn_mouse_scroll"
       relative: false
     source: path
-    version: "1.0.8"
+    version: "1.2.0"
   source_span:
     dependency: transitive
     description:

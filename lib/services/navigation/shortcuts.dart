@@ -3,12 +3,15 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:miruryoiki/services/navigation/dialogs.dart';
+import 'package:miruryoiki/theme.dart';
 import 'package:provider/provider.dart';
 
 import '../../main.dart';
 import '../../manager.dart';
 import '../../models/library.dart';
+import '../../settings.dart';
 import '../../utils/logging.dart';
+import '../../utils/screen_utils.dart';
 
 class KeyboardState {
   static final ValueNotifier<bool> ctrlPressedNotifier = ValueNotifier<bool>(false);
@@ -32,8 +35,35 @@ class _CustomKeyboardListenerState extends State<CustomKeyboardListener> {
     if (Manager.isMacOS) return event.logicalKey == LogicalKeyboardKey.metaLeft || event.logicalKey == LogicalKeyboardKey.metaRight;
     return event.logicalKey == LogicalKeyboardKey.controlLeft || event.logicalKey == LogicalKeyboardKey.controlRight;
   }
-  
+
   BuildContext get ctx => homeKey.currentContext ?? rootNavigatorKey.currentContext ?? context;
+
+  void _handleScrollSignal(PointerSignalEvent event) {
+    if (event is PointerScrollEvent && isCtrlPressed) {
+      // Scrolling up has negative delta.dy, scrolling down has positive
+      final bool isScrollingUp = event.scrollDelta.dy < 0;
+
+      // Get current font size from settings
+      final appTheme = Provider.of<AppTheme>(context, listen: false);
+      double newFontSize = appTheme.fontSize;
+
+      // Adjust font size
+      if (isScrollingUp)
+        newFontSize = (newFontSize + 2).clamp(ScreenUtils.kMinFontSize, ScreenUtils.kMaxFontSize); // Increase (limit to max 24)
+      else
+        newFontSize = (newFontSize - 2).clamp(ScreenUtils.kMinFontSize, ScreenUtils.kMaxFontSize); // Decrease (limit to min 10)
+
+      // Only update if changed
+      if (newFontSize != appTheme.fontSize) {
+        // Update settings
+        appTheme.fontSize = newFontSize;
+
+        // Optional: Show a small notification
+        log('Font size changed to: $newFontSize');
+        Manager.setState();
+      }
+    }
+  }
 
   void _handleKeyPress(RawKeyEvent event) {
     setState(() {
@@ -167,6 +197,7 @@ class _CustomKeyboardListenerState extends State<CustomKeyboardListener> {
   Widget build(BuildContext context) {
     return Listener(
       onPointerDown: _handlePointerSignal,
+      onPointerSignal: _handleScrollSignal,
       child: RawKeyboardListener(
         focusNode: FocusNode(),
         autofocus: true,

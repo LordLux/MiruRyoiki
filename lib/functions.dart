@@ -8,7 +8,6 @@ import 'services/navigation/show_info.dart';
 
 void copyToClipboard(String text) {
   Clipboard.setData(ClipboardData(text: text));
-  snackBar("'$text' copiato negli appunti");
 }
 
 void openFile(String path) async {

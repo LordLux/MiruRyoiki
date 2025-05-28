@@ -82,8 +82,10 @@ Widget MouseButtonWrapper({
   required Widget child,
   bool isButtonDisabled = false,
   bool isLoading = false,
+  String? tooltip,
+  Widget? tooltipWidget,
 }) {
-  return MouseRegion(
+  Widget button = MouseRegion(
     cursor: isButtonDisabled
         ? SystemMouseCursors.forbidden
         : isLoading
@@ -91,4 +93,12 @@ Widget MouseButtonWrapper({
             : SystemMouseCursors.click,
     child: child,
   );
+  // no tooltip
+  if (tooltip == null && tooltipWidget == null) return button;
+
+  // only string tooltip
+  if (tooltip == null && tooltipWidget != null) return Tooltip(richMessage: WidgetSpan(child: tooltipWidget), child: button);
+
+  // only widget tooltip
+  return Tooltip(message: tooltip, child: button);
 }

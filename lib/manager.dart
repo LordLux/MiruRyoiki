@@ -8,6 +8,9 @@ import 'package:provider/provider.dart';
 import 'enums.dart';
 import 'services/navigation/shortcuts.dart';
 import 'settings.dart';
+import 'theme.dart';
+import 'utils/screen_utils.dart';
+
 
 class Manager {
   static const double titleBarHeight = 40.0;
@@ -31,6 +34,8 @@ class Manager {
   static NavigationManager get navigation => Provider.of<NavigationManager>(homeKey.currentContext!, listen: false);
 
   static SettingsManager get settings => Provider.of<SettingsManager>(homeKey.currentContext!, listen: false);
+  
+  static AppTheme get appTheme => Provider.of<AppTheme>(homeKey.currentContext!, listen: false);
 
   static AccentColor get accentColor => settings.accentColor.toAccentColor();
 
@@ -43,6 +48,8 @@ class Manager {
   static bool get animationsEnabled => !settings.disableAnimations;
 
   static DominantColorSource get dominantColorSource => settings.dominantColorSource;
+  
+  static double get fontSizeMultiplier => ScreenUtils.textScaleFactor * ((homeKey.currentContext != null ? appTheme.fontSize : 14) / kDefaultFontSize);
 
   /// Checks if the current platform is MacOS
   static bool get isMacOS => Platform.isMacOS;
@@ -52,4 +59,14 @@ class Manager {
 
   static bool get isCtrlPressed => KeyboardState.ctrlPressedNotifier.value;
   static bool get isShiftPressed => KeyboardState.shiftPressedNotifier.value;
+  
+  
+  static TextStyle get bodyStyle => FluentTheme.of(context).typography.body!;
+  static TextStyle get bodyLargeStyle => FluentTheme.of(context).typography.bodyLarge!;
+  static TextStyle get bodyStrongStyle => FluentTheme.of(context).typography.bodyStrong!;
+  static TextStyle get captionStyle => FluentTheme.of(context).typography.caption!;
+  static TextStyle get displayStyle => FluentTheme.of(context).typography.display!;
+  static TextStyle get subtitleStyle => FluentTheme.of(context).typography.subtitle!;
+  static TextStyle get titleStyle => FluentTheme.of(context).typography.title!;
+  static TextStyle get titleLargeStyle => FluentTheme.of(context).typography.titleLarge!;
 }

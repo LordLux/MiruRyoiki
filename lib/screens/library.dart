@@ -12,6 +12,7 @@ import '../models/anilist/anime.dart';
 import '../models/library.dart';
 import '../models/series.dart';
 import '../services/anilist/provider.dart';
+import '../services/navigation/shortcuts.dart';
 import '../utils/color_utils.dart';
 import '../utils/logging.dart';
 import '../utils/screen_utils.dart';
@@ -239,8 +240,8 @@ class LibraryScreenState extends State<LibraryScreen> {
     // Calculate the card width based on the fixed column count
     final double effectiveCardWidth = (maxWidth - ((columns - 1) * ScreenUtils.cardPadding)) / columns;
 
-    // Calculate card height using the aspect ratio (0.71)
-    final double effectiveCardHeight = effectiveCardWidth / 0.71;
+    // Calculate card height using the aspect ratio (ScreenUtils.kDefaultAspectRatio)
+    final double effectiveCardHeight = effectiveCardWidth / ScreenUtils.kDefaultAspectRatio;
 
     // Total height includes cards plus padding between rows (but not at the bottom)
     final double totalHeight = (effectiveCardHeight * rowCount) + (rowCount > 1 ? (rowCount - 1) * ScreenUtils.cardPadding : 0);
@@ -317,8 +318,9 @@ class LibraryScreenState extends State<LibraryScreen> {
               ),
               // Mouse detection
               if (!_showFilters)
-                Positioned(
-                  right: -95,
+                AnimatedPositioned(
+                  duration: getDuration(shortStickyHeaderDuration),
+                  right: _filterHintShowing ? -84 : -95,
                   child: AnimatedRotation(
                     duration: getDuration(shortStickyHeaderDuration),
                     turns: _filterHintShowing ? filterAngle : 0,
@@ -341,18 +343,18 @@ class LibraryScreenState extends State<LibraryScreen> {
   }
 
   Widget _buildFiltersSidebar() {
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
+    return MouseRegion(
+      cursor: _filterHintShowing ? SystemMouseCursors.click : MouseCursor.defer,
       child: Stack(
         alignment: Alignment.topLeft,
         children: [
           AbsorbPointer(
             absorbing: _filterHintShowing,
             child: AnimatedOpacity(
-              opacity: _filterHintShowing ? 0.0 : 1.0,
+              opacity: _filterHintShowing || !_showFilters ? 0.0 : 1.0,
               duration: getDuration(shortStickyHeaderDuration),
               child: Padding(
-                padding: const EdgeInsets.only(left: 16.0),
+                padding: const EdgeInsets.only(left: 32.0, right: 16.0, top: 32.0, bottom: 16.0),
                 child: SingleChildScrollView(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -452,7 +454,13 @@ class LibraryScreenState extends State<LibraryScreen> {
           AnimatedOpacity(
             opacity: _filterHintShowing ? 1.0 : 0.0,
             duration: getDuration(shortStickyHeaderDuration),
-            child: RotatedBox(quarterTurns: 1, child: Text('Filters', style: FluentTheme.of(context).typography.title)),
+            child: RotatedBox(
+              quarterTurns: 1,
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Text('Filters', style: FluentTheme.of(context).typography.title),
+              ),
+            ),
           ),
         ],
       ),
@@ -490,52 +498,57 @@ class LibraryScreenState extends State<LibraryScreen> {
 
     return SizedBox(
       height: _customListOrder.length * childHeight,
-      child: ReorderableListView.builder(
-        itemCount: _customListOrder.length,
-        buildDefaultDragHandles: false,
-        clipBehavior: Clip.none,
-        proxyDecorator: (child, index, animation) {
-          _isReordering = true;
-          final listName = _customListOrder[index];
-          final displayName = listName == '__unlinked' ? 'Unlinked' : _fromApiListName(listName);
+      child: ValueListenableBuilder(
+          valueListenable: KeyboardState.ctrlPressedNotifier,
+          builder: (context, isCtrlPressed, _) {
+            return ReorderableListView.builder(
+              physics: isCtrlPressed ? const NeverScrollableScrollPhysics() : null,
+              itemCount: _customListOrder.length,
+              buildDefaultDragHandles: false,
+              clipBehavior: Clip.none,
+              proxyDecorator: (child, index, animation) {
+                _isReordering = true;
+                final listName = _customListOrder[index];
+                final displayName = listName == '__unlinked' ? 'Unlinked' : _fromApiListName(listName);
 
-          return AnimatedOrderTile(
-            key: ValueKey('${listName}_dragging'),
-            listName: listName,
-            displayName: displayName,
-            index: index,
-            selected: true,
-            initialAnimation: true,
-            isReordering: true,
-          );
-        },
-        onReorderStart: (_) => setState(() => _isReordering = true),
-        onReorderEnd: (_) => setState(() => _isReordering = false),
-        onReorder: (oldIndex, newIndex) {
-          setState(() {
-            if (oldIndex < newIndex) {
-              newIndex -= 1;
-            }
-            final item = _customListOrder.removeAt(oldIndex);
-            _customListOrder.insert(newIndex, item);
-            _saveUserPreferences();
-          });
-        },
-        prototypeItem: SizedBox(height: childHeight),
-        itemBuilder: (context, index) {
-          final listName = _customListOrder[index];
-          final displayName = listName == '__unlinked' ? 'Unlinked' : _fromApiListName(listName);
+                return AnimatedOrderTile(
+                  key: ValueKey('${listName}_dragging'),
+                  listName: listName,
+                  displayName: displayName,
+                  index: index,
+                  selected: true,
+                  initialAnimation: true,
+                  isReordering: true,
+                );
+              },
+              onReorderStart: (_) => setState(() => _isReordering = true),
+              onReorderEnd: (_) => setState(() => _isReordering = false),
+              onReorder: (oldIndex, newIndex) {
+                setState(() {
+                  if (oldIndex < newIndex) {
+                    newIndex -= 1;
+                  }
+                  final item = _customListOrder.removeAt(oldIndex);
+                  _customListOrder.insert(newIndex, item);
+                  _saveUserPreferences();
+                });
+              },
+              prototypeItem: SizedBox(height: childHeight),
+              itemBuilder: (context, index) {
+                final listName = _customListOrder[index];
+                final displayName = listName == '__unlinked' ? 'Unlinked' : _fromApiListName(listName);
 
-          return AnimatedOrderTile(
-            key: ValueKey(listName),
-            listName: listName,
-            displayName: displayName,
-            index: index,
-            selected: false,
-            isReordering: _isReordering,
-          );
-        },
-      ),
+                return AnimatedOrderTile(
+                  key: ValueKey(listName),
+                  listName: listName,
+                  displayName: displayName,
+                  index: index,
+                  selected: false,
+                  isReordering: _isReordering,
+                );
+              },
+            );
+          }),
     );
   }
 
@@ -677,38 +690,39 @@ class LibraryScreenState extends State<LibraryScreen> {
   Widget _buildSeriesGrid(List<Series> series, BoxConstraints constraints) {
     Widget episodesGrid(List<Series> list, ScrollController controller, ScrollPhysics physics, bool includePadding) {
       return ValueListenableBuilder(
-          valueListenable: previousGridColumnCount,
-          builder: (context, columns, __) {
-            // log('Building series grid with $columns columns');
-            return GridView.builder(
-              padding: includePadding ? const EdgeInsets.only(top: 16, bottom: 8, right: 12) : EdgeInsets.zero,
-              cacheExtent: ScreenUtils.cardHeight(constraints.maxWidth) * 2,
-              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: columns ?? ScreenUtils.crossAxisCount(constraints.maxWidth),
-                childAspectRatio: 0.71,
-                crossAxisSpacing: ScreenUtils.cardPadding,
-                mainAxisSpacing: ScreenUtils.cardPadding,
-              ),
-              controller: controller,
-              physics: physics,
-              itemCount: list.length,
-              itemBuilder: (context, index) {
-                final Series series_ = list[index % list.length]; // just to ensure we don't run out of bounds
-
-                return SeriesCard(
-                  key: ValueKey('${series_.path}:${series_.effectivePosterPath ?? 'none'}'),
-                  series: series_,
-                  onTap: () => _navigateToSeries(series_),
-                );
-              },
+        valueListenable: previousGridColumnCount,
+        builder: (context, columns, __) {
+          // log('Building series grid with $columns columns');
+          final List<Widget> children = List.generate(list.length, (index) {
+            final Series series_ = list[index % list.length];
+            return SeriesCard(
+              key: ValueKey('${series_.path}:${series_.effectivePosterPath ?? 'none'}'),
+              series: series_,
+              onTap: () => _navigateToSeries(series_),
             );
           });
+          return GridView(
+            padding: includePadding ? const EdgeInsets.only(top: 16, bottom: 8, right: 12) : EdgeInsets.zero,
+            cacheExtent: ScreenUtils.cardHeight(constraints.maxWidth) * 2,
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: columns ?? ScreenUtils.crossAxisCount(constraints.maxWidth),
+              childAspectRatio: ScreenUtils.kDefaultAspectRatio,
+              crossAxisSpacing: ScreenUtils.cardPadding,
+              mainAxisSpacing: ScreenUtils.cardPadding,
+            ),
+            controller: controller,
+            physics: physics,
+            children: children,
+          );
+        },
+      );
     }
 
     // If grouping is enabled, show grouped view
     if (_groupBy != GroupBy.none) return _buildGroupedView(series, constraints, episodesGrid);
 
     return DynMouseScroll(
+      stopScroll: KeyboardState.ctrlPressedNotifier,
       enableSmoothScroll: Manager.animationsEnabled,
       scrollAmount: ScreenUtils.cardHeight(constraints.maxWidth),
       controller: widget.scrollController,
@@ -951,6 +965,7 @@ class LibraryScreenState extends State<LibraryScreen> {
     return Padding(
       padding: const EdgeInsets.only(top: 16),
       child: DynMouseScroll(
+        stopScroll: KeyboardState.ctrlPressedNotifier,
         enableSmoothScroll: Manager.animationsEnabled,
         scrollAmount: ScreenUtils.cardHeight(constraints.maxWidth),
         controller: widget.scrollController,

@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'enums.dart';
+import 'manager.dart';
 import 'theme.dart';
 
 class SettingsManager extends ChangeNotifier {
@@ -19,8 +20,11 @@ class SettingsManager extends ChangeNotifier {
 
   // // Typed getters/setters for settings
   // Appearance
-  double get fontSize => _getDouble('fontSize', defaultValue: 14.0);
-  set fontSize(double value) => _setDouble('fontSize', value);
+  double get fontSize => Manager.appTheme.fontSize;
+  set fontSize(double value) {
+    Manager.appTheme.fontSize = value;
+    _setDouble('fontSize', value);
+  }
 
   WindowEffect get windowEffect => WindowEffectX.fromString(_getString('windowEffect', defaultValue: WindowEffect.acrylic.name_));
   set windowEffect(WindowEffect value) => _setString('windowEffect', value.name_);

@@ -242,9 +242,31 @@ class _MyAppState extends State<MyApp> {
           themeMode: appTheme.mode,
           home: AppRoot(key: homeKey),
           builder: (context, child) {
+            TextStyle scaleTextStyle(TextStyle style, double scaleFactor) {
+              return style.copyWith(fontSize: (style.fontSize ?? 14) * scaleFactor);
+            }
+
+            Typography scaleTypography(Typography typography, double scaleFactor) {
+              return Typography.raw(
+                display: scaleTextStyle(typography.display!, scaleFactor),
+                bodyLarge: scaleTextStyle(typography.bodyLarge!, scaleFactor),
+                bodyStrong: scaleTextStyle(typography.bodyStrong!, scaleFactor),
+                subtitle: scaleTextStyle(typography.subtitle!, scaleFactor),
+                titleLarge: scaleTextStyle(typography.titleLarge!, scaleFactor),
+                title: scaleTextStyle(typography.title!, scaleFactor),
+                body: scaleTextStyle(typography.body!, scaleFactor),
+                caption: scaleTextStyle(typography.caption!, scaleFactor),
+                // aggiungi altri se fluent_ui li definisce
+              );
+            }
+
             return FluentTheme(
               data: FluentTheme.of(context).copyWith(
                 cursorOpacityAnimates: true,
+                typography: scaleTypography(
+                  FluentTheme.of(context).typography,
+                  Manager.fontSizeMultiplier,
+                ),
                 buttonTheme: ButtonThemeData(
                   defaultButtonStyle: ButtonStyle(
                     padding: ButtonState.all(const EdgeInsets.symmetric(horizontal: 20, vertical: 8)),
@@ -480,21 +502,46 @@ class _AppRootState extends State<AppRoot> {
                       buildPaneItem(
                         homeIndex,
                         icon: const Icon(FluentIcons.home, size: 18),
-                        body: _isSeriesView && _selectedSeriesPath != null
-                            ? SeriesScreen(
-                                key: seriesScreenKey,
-                                seriesPath: _selectedSeriesPath!,
-                                onBack: exitSeriesView,
-                              )
-                            : HomeScreen(
-                                key: seriesScreenKey,
-                                onSeriesSelected: (path) {
-                                  setState(() {
-                                    _isSeriesView = true;
-                                    _selectedSeriesPath = path;
-                                  });
-                                },
+                        body: Stack(
+                          children: [
+                            // Always keep LibraryScreen in the tree with Offstage
+                            Offstage(
+                              offstage: _isSeriesView && _selectedSeriesPath != null && _isFinishedTransitioning,
+                              child: AnimatedOpacity(
+                                duration: getDuration(const Duration(milliseconds: 230)),
+                                opacity: _isSeriesView ? 0.0 : 1.0,
+                                curve: Curves.easeInOut,
+                                child: AbsorbPointer(
+                                  absorbing: _isSeriesView,
+                                  child: HomeScreen(
+                                    key: seriesScreenKey,
+                                    onSeriesSelected: navigateToSeries,
+                                    scrollController: _homeMap['controller'] as ScrollController,
+                                  ),
+                                ),
                               ),
+                            ),
+
+                            // Animated container for the SeriesScreen
+                            if (_selectedSeriesPath != null)
+                              AnimatedOpacity(
+                                duration: getDuration(const Duration(milliseconds: 300)),
+                                opacity: _isSeriesView ? 1.0 : 0.0,
+                                curve: Curves.easeInOut,
+                                onEnd: () => setState(() {
+                                  if (_isSeriesView) _isFinishedTransitioning = true;
+                                }),
+                                child: AbsorbPointer(
+                                  absorbing: !_isSeriesView,
+                                  child: SeriesScreen(
+                                    key: seriesScreenKey,
+                                    seriesPath: _selectedSeriesPath!,
+                                    onBack: exitSeriesView,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
                       ),
                       buildPaneItem(
                         libraryIndex,
@@ -579,7 +626,7 @@ class _AppRootState extends State<AppRoot> {
   PaneItem buildPaneItem(int id, {required Widget icon, required Widget body, bool? mouseCursorClick}) {
     final item = _navigationMap[id]!;
     mouseCursorClick ??= _selectedIndex != id;
-    
+
     return PaneItem(
       mouseCursor: mouseCursorClick ? SystemMouseCursors.click : MouseCursor.defer,
       title: Text(item['title']),
@@ -833,6 +880,8 @@ String get iconPath => '$assets${ps}system${ps}icon.ico';
 String get iconPng => '$assets${ps}system${ps}icon.png';
 String get ps => Platform.pathSeparator;
 
+// TODO edit view options for library to separate sort and view (grid, list etc) from filters
+// TODO homepage title inside header like in library + view options to choose what to show on homepage
 // TODO warn user when mapping already linked file/anilist entry
 // TODO fix snackbar that says 'linked N items' when linking
 // TODO anilist grouping for 'About to Watch'
@@ -842,3 +891,4 @@ String get ps => Platform.pathSeparator;
 // TODO context menu for series
 // TODO context menu for episodes
 // TODO fix back mouse button navigation
+// TODO add group traversal policies to app

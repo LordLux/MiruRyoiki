@@ -12,6 +12,7 @@ import '../../models/series.dart';
 import '../../services/anilist/linking.dart';
 import '../../services/cache.dart';
 import '../../services/navigation/dialogs.dart';
+import '../../services/navigation/shortcuts.dart';
 import '../../services/navigation/show_info.dart';
 import '../loading_button.dart';
 import 'search_panel.dart';
@@ -224,10 +225,15 @@ class AnilistLinkMultiContentState extends State<_AnilistLinkMultiContent> {
                     ],
                   ),
                 )
-              : ListView.builder(
-                  itemCount: mappings.length,
-                  itemBuilder: (context, index) => _buildMappingItem(mappings[index]),
-                ),
+              : ValueListenableBuilder(
+                  valueListenable: KeyboardState.ctrlPressedNotifier,
+                  builder: (context, isCtrlPressed, _) {
+                    return ListView.builder(
+                      physics: isCtrlPressed ? const NeverScrollableScrollPhysics() : null,
+                      itemCount: mappings.length,
+                      itemBuilder: (context, index) => _buildMappingItem(mappings[index]),
+                    );
+                  }),
         ),
         SizedBox(height: 10),
         Row(
@@ -265,7 +271,7 @@ class AnilistLinkMultiContentState extends State<_AnilistLinkMultiContent> {
 
   Widget _buildMappingItem(AnilistMapping mapping) {
     return UnselectableTile(
-      color: _isNewlyAddedMapping(mapping) ? null : widget.series.dominantColor ,
+      color: _isNewlyAddedMapping(mapping) ? null : widget.series.dominantColor,
       // use the series effective poster if available
       icon: _isNewlyAddedMapping(mapping)
           ? Icon(FluentIcons.add_link, color: Manager.accentColor)
@@ -453,51 +459,56 @@ class AnilistLinkMultiContentState extends State<_AnilistLinkMultiContent> {
           Divider(),
           // File/folder list
           Expanded(
-            child: ListView.builder(
-              itemCount: folderContents.length + 1, // +1 for current folder option
-              itemBuilder: (context, index) {
-                if (index == 0) {
-                  // Option to select the current directory itself
-                  final isSelected = selectedLocalPath == currentDirectory;
-                  // Option to select the current directory itself
-                  return SelectableTile(
-                    icon: FileEntityIcon(context, true, isSelected),
-                    isSelected: isSelected,
-                    title: Text('(This Folder)', style: isSelected ? TextStyle(fontWeight: FontWeight.bold) : null),
-                    onTap: () {
-                      setState(() {
-                        selectedLocalPath = currentDirectory;
-                      });
+            child: ValueListenableBuilder(
+                valueListenable: KeyboardState.ctrlPressedNotifier,
+                builder: (context, isCtrlPressed, _) {
+                  return ListView.builder(
+                    physics: isCtrlPressed ? const NeverScrollableScrollPhysics() : null,
+                    itemCount: folderContents.length + 1, // +1 for current folder option
+                    itemBuilder: (context, index) {
+                      if (index == 0) {
+                        // Option to select the current directory itself
+                        final isSelected = selectedLocalPath == currentDirectory;
+                        // Option to select the current directory itself
+                        return SelectableTile(
+                          icon: FileEntityIcon(context, true, isSelected),
+                          isSelected: isSelected,
+                          title: Text('(This Folder)', style: isSelected ? TextStyle(fontWeight: FontWeight.bold) : null),
+                          onTap: () {
+                            setState(() {
+                              selectedLocalPath = currentDirectory;
+                            });
+                          },
+                        );
+                      }
+
+                      final entity = folderContents[index - 1];
+                      final isDir = entity is Directory;
+                      final fileName = entity.path.split(Platform.pathSeparator).last;
+                      final isSelected = selectedLocalPath == entity.path;
+
+                      return SelectableTile(
+                        title: Text(fileName, style: isSelected ? TextStyle(fontWeight: FontWeight.bold) : null),
+                        icon: FileEntityIcon(context, isDir, isSelected),
+                        isSelected: isSelected,
+                        onTap: () {
+                          if (isDir) {
+                            setState(() {
+                              // Both select and navigate to the folder
+                              selectedLocalPath = entity.path;
+                              currentDirectory = entity.path;
+                              _loadFolderContents();
+                            });
+                          } else {
+                            setState(() {
+                              selectedLocalPath = entity.path;
+                            });
+                          }
+                        },
+                      );
                     },
                   );
-                }
-
-                final entity = folderContents[index - 1];
-                final isDir = entity is Directory;
-                final fileName = entity.path.split(Platform.pathSeparator).last;
-                final isSelected = selectedLocalPath == entity.path;
-
-                return SelectableTile(
-                  title: Text(fileName, style: isSelected ? TextStyle(fontWeight: FontWeight.bold) : null),
-                  icon: FileEntityIcon(context, isDir, isSelected),
-                  isSelected: isSelected,
-                  onTap: () {
-                    if (isDir) {
-                      setState(() {
-                        // Both select and navigate to the folder
-                        selectedLocalPath = entity.path;
-                        currentDirectory = entity.path;
-                        _loadFolderContents();
-                      });
-                    } else {
-                      setState(() {
-                        selectedLocalPath = entity.path;
-                      });
-                    }
-                  },
-                );
-              },
-            ),
+                }),
           ),
         ],
       ),
