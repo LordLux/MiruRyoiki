@@ -6,6 +6,7 @@ import '../models/library.dart';
 import '../models/series.dart';
 import '../services/anilist/provider.dart';
 import '../services/navigation/shortcuts.dart';
+import '../utils/screen_utils.dart';
 import '../widgets/series_card.dart';
 import '../manager.dart';
 
@@ -75,7 +76,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ],
                 );
               }),
-              const SizedBox(height: 24),
+              VDiv(24),
 
               // Currently Watching Section
               _buildSection(
@@ -83,7 +84,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: _buildContinueWatchingSection(),
               ),
 
-              const SizedBox(height: 24),
+              VDiv(24),
 
               // Upcoming Episodes
               _buildSection(
@@ -91,7 +92,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: _buildUpcomingEpisodesSection(),
               ),
 
-              const SizedBox(height: 24),
+              VDiv(24),
 
               // Recently Added
               _buildSection(
@@ -111,7 +112,7 @@ class _HomeScreenState extends State<HomeScreen> {
           title,
           style: FluentTheme.of(context).typography.subtitle,
         ),
-        const SizedBox(height: 8),
+        VDiv(8),
         child,
       ],
     );
@@ -226,9 +227,9 @@ class _HomeScreenState extends State<HomeScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             const Icon(FluentIcons.info, size: 32),
-            const SizedBox(height: 8),
+            VDiv(8),
             Text(title),
-            const SizedBox(height: 4),
+            VDiv(4),
             Text(
               subtitle,
               style: FluentTheme.of(context).typography.caption,

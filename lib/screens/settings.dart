@@ -728,13 +728,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                       'Library Location',
                                       style: Manager.subtitleStyle,
                                     ),
-                                    const SizedBox(height: 12),
+                                    VDiv(12),
                                     Text(
                                       'Select the folder that contains your media library. '
                                       'The app will scan this folder for video files.',
                                       style: Manager.bodyStyle,
                                     ),
-                                    const SizedBox(height: 24),
+                                    VDiv(24),
                                     Row(
                                       children: [
                                         Expanded(
@@ -841,17 +841,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     ),
                                     if (library.libraryPath != null) ...[],
 
-                                    const SizedBox(height: 24),
+                                    VDiv(24),
                                     Text(
                                       'Series Formatter',
                                       style: Manager.subtitleStyle,
                                     ),
-                                    const SizedBox(height: 12),
+                                    VDiv(12),
                                     Text(
                                       'The Series Formatter helps organize your media files into a standardized structure.',
                                       style: Manager.bodyStyle,
                                     ),
-                                    const SizedBox(height: 16),
+                                    VDiv(16),
                                     MouseButtonWrapper(
                                       child: FilledButton(
                                         child: Text('Format Library Series', style: Manager.bodyStrongStyle.copyWith(color: getPrimaryColorBasedOnAccent())),
@@ -861,14 +861,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
                                     // This section will show series with formatting issues
                                     if (_issuesPreview.isNotEmpty) ...[
-                                      const SizedBox(height: 24),
+                                      VDiv(24),
                                       Text('Last Scan: ', style: Manager.subtitleStyle),
-                                      const SizedBox(height: 12),
+                                      VDiv(12),
                                       Text(
                                         "Series that couldn't be automatically formatted (${_issuesPreview.length})",
                                         style: Manager.bodyStrongStyle,
                                       ),
-                                      const SizedBox(height: 8),
+                                      VDiv(8),
                                       Container(
                                         height: min(500, _issuesPreview.length * 100),
                                         decoration: BoxDecoration(
@@ -900,7 +900,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     ],
                                   ],
                                 ),
-                                const SizedBox(height: 24),
+                                VDiv(24),
                                 // Appearance section
                                 Builder(builder: (context) {
                                   final appTheme = context.watch<AppTheme>();
@@ -911,11 +911,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                         'Appearance',
                                         style: Manager.subtitleStyle,
                                       ),
-                                      const SizedBox(height: 6),
+                                      VDiv(6),
                                       // Theme and font effect settings
                                       ...[
                                         Text('Edit how MiruRyoiki looks and feels.', style: Manager.bodyStyle),
-                                        const SizedBox(height: 24),
+                                        VDiv(24),
                                         // Row(children: [
                                         //   // Theme
                                         //   const Text('Theme:'),
@@ -939,7 +939,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                         //   ),
                                         // ]),
                                       ],
-                                      // const SizedBox(height: 12),
+                                      // VDiv(12),
                                       // Effect
                                       ...[
                                         Row(
@@ -977,7 +977,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                           ],
                                         ),
                                       ],
-                                      const SizedBox(height: 12),
+                                      VDiv(12),
                                       // Accent Color
                                       ...[
                                         Row(
@@ -1048,7 +1048,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                       // Extra dim for acrylic and mica
                                       if (appTheme.windowEffect == WindowEffect.aero || appTheme.windowEffect == WindowEffect.acrylic || appTheme.windowEffect == WindowEffect.mica) //
                                         ...[
-                                        const SizedBox(height: 12),
+                                        VDiv(12),
                                         Row(
                                           children: [
                                             Text('Dim', style: Manager.bodyStyle),
@@ -1065,7 +1065,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                           ],
                                         ),
                                       ],
-                                      const SizedBox(height: 12),
+                                      VDiv(12),
                                       // Font Size
                                       ...[
                                         Row(
@@ -1089,7 +1089,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                           ],
                                         ),
                                       ],
-                                      const SizedBox(height: 16),
+                                      VDiv(16),
                                       // Disable Animations
                                       ...[
                                         Row(
@@ -1110,7 +1110,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                           ],
                                         ),
                                       ],
-                                      const SizedBox(height: 12),
+                                      VDiv(12),
                                       // Library colors
                                       ...[
                                         Row(
@@ -1182,7 +1182,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                           ],
                                         ),
                                       ],
-                                      const SizedBox(height: 6),
+                                      VDiv(6),
                                       ...[
                                         Row(
                                           children: [
@@ -1219,7 +1219,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     ],
                                   );
                                 }),
-                                const SizedBox(height: 24),
+                                VDiv(24),
                                 // Behavior section
                                 SettingsCard(
                                   children: [
@@ -1227,7 +1227,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                       'Behavior',
                                       style: Manager.subtitleStyle,
                                     ),
-                                    const SizedBox(height: 12),
+                                    VDiv(12),
                                     Row(
                                       children: [
                                         Column(
@@ -1236,7 +1236,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                               'Default Poster source for series.',
                                               style: Manager.bodyStyle,
                                             ),
-                                            const SizedBox(height: 12),
+                                            VDiv(12),
                                             ToggleSwitch(
                                               checked: Manager.defaultPosterSource == ImageSource.autoAnilist,
                                               content: Text(Manager.defaultPosterSource == ImageSource.autoAnilist ? 'Prefer Anilist Posters' : 'Prefer Local Posters', style: Manager.bodyStyle),
@@ -1254,7 +1254,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                               'Default Banner source for series.',
                                               style: Manager.bodyStyle,
                                             ),
-                                            const SizedBox(height: 12),
+                                            VDiv(12),
                                             ToggleSwitch(
                                               checked: Manager.defaultBannerSource == ImageSource.autoAnilist,
                                               content: Text(Manager.defaultBannerSource == ImageSource.autoAnilist ? 'Prefer Anilist Banners' : 'Prefer Local Banners', style: Manager.bodyStyle),
@@ -1269,7 +1269,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     ),
                                   ],
                                 ),
-                                const SizedBox(height: 24),
+                                VDiv(24),
                                 // About section
                                 SettingsCard(
                                   children: [
@@ -1277,13 +1277,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                       'About ${Manager.appTitle}',
                                       style: Manager.subtitleStyle,
                                     ),
-                                    const SizedBox(height: 12),
+                                    VDiv(12),
                                     Text(
                                       '${Manager.appTitle} is a video tracking application that integrates with '
                                       'Media Player Classic: Home Cinema to track your watched videos.',
                                       style: Manager.bodyStyle,
                                     ),
-                                    const SizedBox(height: 24),
+                                    VDiv(24),
                                     InfoBar(
                                       title: Text('MPC-HC Integration', style: Manager.bodyStrongStyle),
                                       content: Padding(

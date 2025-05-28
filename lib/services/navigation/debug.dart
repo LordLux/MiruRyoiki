@@ -1,5 +1,6 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:provider/provider.dart';
+import '../../utils/screen_utils.dart';
 import 'navigation.dart';
 
 class NavigationHistoryDebug extends StatelessWidget {
@@ -17,7 +18,7 @@ class NavigationHistoryDebug extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text('Navigation Stack:', style: TextStyle(color: Colors.white)),
-              const SizedBox(height: 8),
+              VDiv(8),
               ...navManager.stack.reversed.map((item) {
                 return Padding(
                   padding: const EdgeInsets.symmetric(vertical: 2),

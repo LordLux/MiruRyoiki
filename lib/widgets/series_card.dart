@@ -6,6 +6,7 @@ import '../manager.dart';
 
 import '../models/series.dart';
 import '../utils/logging.dart';
+import '../utils/screen_utils.dart';
 import '../utils/time_utils.dart';
 
 class SeriesCard extends StatefulWidget {
@@ -212,7 +213,7 @@ class _SeriesCardState extends State<SeriesCard> {
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                               ),
-                              const SizedBox(height: 4),
+                              VDiv(4),
                               Row(
                                 children: [
                                   Text(
@@ -226,7 +227,7 @@ class _SeriesCardState extends State<SeriesCard> {
                                   ),
                                 ],
                               ),
-                              const SizedBox(height: 8),
+                              VDiv(8),
                               SizedBox(
                                 width: 200,
                                 child: ProgressBar(
