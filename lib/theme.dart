@@ -30,7 +30,7 @@ class AppTheme extends ChangeNotifier {
     notifyListeners();
   }
 
-  double _fontSize = 14.0;
+  double _fontSize = kDefaultFontSize;
   double get fontSize => _fontSize;
   set fontSize(double fontSize) {
     _fontSize = fontSize;

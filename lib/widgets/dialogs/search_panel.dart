@@ -7,6 +7,7 @@ import '../../services/anilist/linking.dart';
 import '../../services/anilist/provider.dart';
 import '../../services/cache.dart';
 import '../../services/navigation/dialogs.dart';
+import '../../services/navigation/shortcuts.dart';
 import '../../utils/time_utils.dart';
 import 'link_anilist_multi.dart';
 
@@ -160,31 +161,36 @@ class _AnilistSearchPanelState extends State<AnilistSearchPanel> {
           const Center(child: Text('No results found'))
         else
           Expanded(
-            child: ListView.builder(
-              itemCount: _searchResults.length,
-              itemBuilder: (context, index) {
-                final series = _searchResults[index];
-                final isSelected = _selectedSeries?.id == series.id;
+            child: ValueListenableBuilder(
+                valueListenable: KeyboardState.ctrlPressedNotifier,
+                builder: (context, isCtrlPressed, _) {
+                  return ListView.builder(
+                    physics: isCtrlPressed ? const NeverScrollableScrollPhysics() : null,
+                    itemCount: _searchResults.length,
+                    itemBuilder: (context, index) {
+                      final series = _searchResults[index];
+                      final isSelected = _selectedSeries?.id == series.id;
 
-                return SelectableTile(
-                  title: Text(series.title.userPreferred ?? series.title.english ?? series.title.romaji ?? 'Unknown'),
-                  subtitle: Text('${series.format ?? ''} ${series.seasonYear ?? ''} | ${series.episodes ?? '?'} eps'),
-                  icon: series.posterImage != null
-                      ? SeriesImageBuilder(
-                          imageProviderFuture: ImageCacheService().getImageProvider(series.posterImage!),
-                          width: 60,
-                          height: 40,
-                          fit: BoxFit.cover,
-                        )
-                      : const Icon(FluentIcons.video),
-                  isSelected: isSelected,
-                  onTap: () async {
-                    await widget.onLink(series.id, series.title.userPreferred ?? series.title.english ?? series.title.romaji ?? 'Unknown');
-                    setState(() => _selectedSeries = isSelected ? null : series);
-                  },
-                );
-              },
-            ),
+                      return SelectableTile(
+                        title: Text(series.title.userPreferred ?? series.title.english ?? series.title.romaji ?? 'Unknown'),
+                        subtitle: Text('${series.format ?? ''} ${series.seasonYear ?? ''} | ${series.episodes ?? '?'} eps'),
+                        icon: series.posterImage != null
+                            ? SeriesImageBuilder(
+                                imageProviderFuture: ImageCacheService().getImageProvider(series.posterImage!),
+                                width: 60,
+                                height: 40,
+                                fit: BoxFit.cover,
+                              )
+                            : const Icon(FluentIcons.video),
+                        isSelected: isSelected,
+                        onTap: () async {
+                          await widget.onLink(series.id, series.title.userPreferred ?? series.title.english ?? series.title.romaji ?? 'Unknown');
+                          setState(() => _selectedSeries = isSelected ? null : series);
+                        },
+                      );
+                    },
+                  );
+                }),
           ),
       ],
     );

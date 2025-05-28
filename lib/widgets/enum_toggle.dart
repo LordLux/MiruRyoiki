@@ -1,6 +1,7 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:toggle_switch/toggle_switch.dart' as toggle;
 
+import '../manager.dart';
 import '../utils/color_utils.dart';
 import '../utils/time_utils.dart';
 
@@ -32,11 +33,14 @@ class _EnumToggleState<T> extends State<EnumToggle<T>> {
       animate: true,
       animationDuration: getDuration(dimDuration).inMilliseconds,
       initialLabelIndex: currentIndex,
+      customTextStyles: [ for (var i = 0; i < widget.enumValues.length; i++)
+        Manager.bodyStyle.copyWith(color: currentIndex == i ? getPrimaryColorBasedOnAccent() : null),
+      ],
       totalSwitches: widget.enumValues.length,
       activeFgColor: getPrimaryColorBasedOnAccent(),
       activeBgColors: List.generate(
         widget.enumValues.length,
-        (index) => [index.isEven ? theme.accentColor.lighter : theme.accentColor.lightest],
+        (index) => [theme.accentColor.lighter],
       ),
       minWidth: 130.0,
       labels: widget.enumValues.map((value) => widget.labelExtractor(value)).toList(),

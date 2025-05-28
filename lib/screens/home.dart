@@ -5,15 +5,18 @@ import 'package:recase/recase.dart';
 import '../models/library.dart';
 import '../models/series.dart';
 import '../services/anilist/provider.dart';
+import '../services/navigation/shortcuts.dart';
 import '../widgets/series_card.dart';
 import '../manager.dart';
 
 class HomeScreen extends StatefulWidget {
   final Function(String) onSeriesSelected;
+  final ScrollController scrollController;
 
   const HomeScreen({
     super.key,
     required this.onSeriesSelected,
+    required this.scrollController,
   });
 
   @override
@@ -32,66 +35,72 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        Consumer<AnilistProvider>(builder: (context, anilistProvider, _) {
-          final userName = anilistProvider.currentUser?.name;
-          return Row(
+    return ValueListenableBuilder(
+        valueListenable: KeyboardState.ctrlPressedNotifier,
+        builder: (context, isCtrlPressed, _) {
+          return ListView(
+            padding: const EdgeInsets.all(16),
+            controller: widget.scrollController,
+            physics: isCtrlPressed ? const NeverScrollableScrollPhysics() : null,
             children: [
-              Text(
-                'Welcome Back${userName != null ? "," : ""} ',
-                style: FluentTheme.of(context).typography.title,
+              Consumer<AnilistProvider>(builder: (context, anilistProvider, _) {
+                final userName = anilistProvider.currentUser?.name;
+                return Row(
+                  children: [
+                    Text(
+                      'Welcome Back${userName != null ? "," : ""} ',
+                      style: FluentTheme.of(context).typography.title,
+                    ),
+                    if (userName != null)
+                      ShaderMask(
+                        shaderCallback: (bounds) {
+                          return LinearGradient(
+                            colors: [
+                              lessGradientColor,
+                              moreGradientColor,
+                            ],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ).createShader(bounds);
+                        },
+                        child: Text(
+                          userName.titleCase,
+                          style: FluentTheme.of(context).typography.title,
+                        ),
+                      ),
+                    Text(
+                      '!',
+                      style: FluentTheme.of(context).typography.title,
+                    ),
+                  ],
+                );
+              }),
+              const SizedBox(height: 24),
+
+              // Currently Watching Section
+              _buildSection(
+                title: 'Continue Watching',
+                child: _buildContinueWatchingSection(),
               ),
-              if (userName != null)
-                ShaderMask(
-                  shaderCallback: (bounds) {
-                    return LinearGradient(
-                      colors: [
-                        lessGradientColor,
-                        moreGradientColor,
-                      ],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ).createShader(bounds);
-                  },
-                  child: Text(
-                    userName.titleCase,
-                    style: FluentTheme.of(context).typography.title,
-                  ),
-                ),
-              Text(
-                '!',
-                style: FluentTheme.of(context).typography.title,
+
+              const SizedBox(height: 24),
+
+              // Upcoming Episodes
+              _buildSection(
+                title: 'Upcoming Episodes',
+                child: _buildUpcomingEpisodesSection(),
+              ),
+
+              const SizedBox(height: 24),
+
+              // Recently Added
+              _buildSection(
+                title: 'Recently Added to Library',
+                child: _buildRecentlyAddedSection(),
               ),
             ],
           );
-        }),
-        const SizedBox(height: 24),
-
-        // Currently Watching Section
-        _buildSection(
-          title: 'Continue Watching',
-          child: _buildContinueWatchingSection(),
-        ),
-
-        const SizedBox(height: 24),
-
-        // Upcoming Episodes
-        _buildSection(
-          title: 'Upcoming Episodes',
-          child: _buildUpcomingEpisodesSection(),
-        ),
-
-        const SizedBox(height: 24),
-
-        // Recently Added
-        _buildSection(
-          title: 'Recently Added to Library',
-          child: _buildRecentlyAddedSection(),
-        ),
-      ],
-    );
+        });
   }
 
   Widget _buildSection({required String title, required Widget child}) {
@@ -180,23 +189,28 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildHorizontalSeriesList(List<Series> series) {
     return SizedBox(
       height: 220,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        itemCount: series.length,
-        itemBuilder: (context, index) {
-          final currentSeries = series[index];
-          return Padding(
-            padding: const EdgeInsets.only(right: 12),
-            child: SizedBox(
-              width: 150,
-              child: SeriesCard(
-                series: currentSeries,
-                onTap: () => widget.onSeriesSelected(currentSeries.path),
-              ),
-            ),
-          );
-        },
-      ),
+      child: ValueListenableBuilder(
+          valueListenable: KeyboardState.ctrlPressedNotifier,
+          builder: (context, isCtrlPressed, _) {
+            return ListView.builder(
+              physics: isCtrlPressed ? const NeverScrollableScrollPhysics() : null,
+              scrollDirection: Axis.horizontal,
+              itemCount: series.length,
+              itemBuilder: (context, index) {
+                final currentSeries = series[index];
+                return Padding(
+                  padding: const EdgeInsets.only(right: 12),
+                  child: SizedBox(
+                    width: 150,
+                    child: SeriesCard(
+                      series: currentSeries,
+                      onTap: () => widget.onSeriesSelected(currentSeries.path),
+                    ),
+                  ),
+                );
+              },
+            );
+          }),
     );
   }
 

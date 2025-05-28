@@ -68,7 +68,7 @@ class SeriesScreenState extends State<SeriesScreen> {
   @override
   void initState() {
     super.initState();
-    _headerHeight = ScreenUtils.maxHeaderHeight;
+    _headerHeight = ScreenUtils.kMaxHeaderHeight;
     nextFrame(() {
       _loadAnilistDataForCurrentSeries();
       Manager.currentDominantColor = dominantColor;
@@ -243,7 +243,7 @@ class SeriesScreenState extends State<SeriesScreen> {
                         opacity: enabled ? 0.75 : 1,
                         child: AnimatedContainer(
                           duration: shortStickyHeaderDuration,
-                          height: ScreenUtils.maxHeaderHeight,
+                          height: ScreenUtils.kMaxHeaderHeight,
                           width: double.infinity,
                           // Background image
                           decoration: BoxDecoration(
@@ -285,7 +285,7 @@ class SeriesScreenState extends State<SeriesScreen> {
                       // Title and watched percentage
                       Positioned(
                         bottom: 0,
-                        left: math.max(constraints.maxWidth / 2 - 380 + 10, ScreenUtils.infoBarWidth - (6 * 2) + 42),
+                        left: math.max(constraints.maxWidth / 2 - 380 + 10, ScreenUtils.kInfoBarWidth - (6 * 2) + 42),
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -293,7 +293,7 @@ class SeriesScreenState extends State<SeriesScreen> {
                           children: [
                             // Series title
                             SizedBox(
-                              width: ScreenUtils.maxContentWidth - ScreenUtils.infoBarWidth - 32,
+                              width: ScreenUtils.kMaxContentWidth - ScreenUtils.kInfoBarWidth - 32,
                               child: Text(
                                 series.displayTitle,
                                 style: const TextStyle(
@@ -529,7 +529,7 @@ class SeriesScreenState extends State<SeriesScreen> {
           ),
           Expanded(
             child: SizedBox(
-              width: ScreenUtils.maxContentWidth,
+              width: ScreenUtils.kMaxContentWidth,
               child: Row(
                 children: [
                   // Info bar on the left
@@ -541,7 +541,7 @@ class SeriesScreenState extends State<SeriesScreen> {
                         borderRadius: BorderRadius.circular(8.0),
                       ),
                       height: double.infinity,
-                      width: ScreenUtils.infoBarWidth,
+                      width: ScreenUtils.kInfoBarWidth,
                       child: FutureBuilder(
                           future: series.getPosterImage(),
                           builder: (context, snapshot) {
@@ -565,16 +565,16 @@ class SeriesScreenState extends State<SeriesScreen> {
                                     double maxWidth = 326.0;
                                     double maxHeight = 300.0;
 
-                                    // Constrain aspect ratio between 0.71 and 1.41
+                                    // Constrain aspect ratio between ScreenUtils.kDefaultAspectRatio and 1.41
                                     double effectiveAspectRatio = aspectRatio;
-                                    if (aspectRatio < 0.71) effectiveAspectRatio = 0.71;
+                                    if (aspectRatio < ScreenUtils.kDefaultAspectRatio) effectiveAspectRatio = ScreenUtils.kDefaultAspectRatio;
                                     if (aspectRatio > 1.41) effectiveAspectRatio = 1.41;
 
                                     // For square images (aspect ratio around 1), fit to the green box
                                     if (effectiveAspectRatio < 1) {
                                       // Wider than tall: linearly interpolate width based on distance from square
-                                      // As AR approaches 0.71, width approaches maxWidth (326)
-                                      double ratioFactor = (1 - effectiveAspectRatio) / (1 - 0.71); // 0 when AR=1, 1 when AR=0.71
+                                      // As AR approaches ScreenUtils.kDefaultAspectRatio, width approaches maxWidth (326)
+                                      double ratioFactor = (1 - effectiveAspectRatio) / (1 - ScreenUtils.kDefaultAspectRatio); // 0 when AR=1, 1 when AR=ScreenUtils.kDefaultAspectRatio
                                       posterWidth = squareSize + (maxWidth - squareSize) * ratioFactor;
                                       posterHeight = posterWidth * effectiveAspectRatio;
 
@@ -617,6 +617,7 @@ class SeriesScreenState extends State<SeriesScreen> {
                                         child: ScrollConfiguration(
                                           behavior: ScrollConfiguration.of(context).copyWith(overscroll: true, platform: TargetPlatform.windows, scrollbars: false),
                                           child: DynMouseScroll(
+                                            stopScroll: KeyboardState.ctrlPressedNotifier,
                                             scrollSpeed: 1.0,
                                             enableSmoothScroll: Manager.animationsEnabled,
                                             durationMS: 350,
@@ -639,8 +640,8 @@ class SeriesScreenState extends State<SeriesScreen> {
                                     // Poster image that overflows the info bar from above to appear 'in' the header
                                     AnimatedPositioned(
                                       duration: stickyHeaderDuration,
-                                      left: (ScreenUtils.infoBarWidth) / 2 - (posterWidth) / 2,
-                                      top: -(ScreenUtils.maxHeaderHeight) + 32,
+                                      left: (ScreenUtils.kInfoBarWidth) / 2 - (posterWidth) / 2,
+                                      top: -(ScreenUtils.kMaxHeaderHeight) + 32,
                                       child: DeferPointer(
                                         link: deferredPointerLink,
                                         paintOnTop: true,
@@ -741,6 +742,7 @@ class SeriesScreenState extends State<SeriesScreen> {
                         child: ScrollConfiguration(
                           behavior: ScrollConfiguration.of(context).copyWith(overscroll: true, platform: TargetPlatform.windows, scrollbars: false),
                           child: DynMouseScroll(
+                            stopScroll: KeyboardState.ctrlPressedNotifier,
                             scrollSpeed: 1.8,
                             enableSmoothScroll: Manager.animationsEnabled,
                             durationMS: 350,
@@ -748,7 +750,7 @@ class SeriesScreenState extends State<SeriesScreen> {
                             builder: (context, controller, physics) {
                               controller.addListener(() {
                                 final offset = controller.offset;
-                                final double newHeight = offset > 0 ? ScreenUtils.minHeaderHeight : ScreenUtils.maxHeaderHeight;
+                                final double newHeight = offset > 0 ? ScreenUtils.kMinHeaderHeight : ScreenUtils.kMaxHeaderHeight;
 
                                 if (newHeight != _headerHeight && mounted) //
                                   setState(() => _headerHeight = newHeight);
