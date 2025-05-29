@@ -7,7 +7,7 @@ import '../utils/logging.dart';
 import '../utils/time_utils.dart';
 import 'cursors.dart';
 
-class AnimatedOrderTile extends StatefulWidget {
+class AnimatedReorderableTile extends StatefulWidget {
   final String listName;
   final String displayName;
   final int index;
@@ -15,7 +15,7 @@ class AnimatedOrderTile extends StatefulWidget {
   final bool isReordering;
   final bool initialAnimation;
 
-  const AnimatedOrderTile({
+  const AnimatedReorderableTile({
     required super.key,
     required this.listName,
     required this.displayName,
@@ -26,10 +26,10 @@ class AnimatedOrderTile extends StatefulWidget {
   });
 
   @override
-  State<AnimatedOrderTile> createState() => _AnimatedOrderTileState();
+  State<AnimatedReorderableTile> createState() => _AnimatedReorderableTileState();
 }
 
-class _AnimatedOrderTileState extends State<AnimatedOrderTile> with SingleTickerProviderStateMixin {
+class _AnimatedReorderableTileState extends State<AnimatedReorderableTile> with SingleTickerProviderStateMixin {
   late AnimationController _animationController;
   late Animation<Color?> _colorAnimation;
 
@@ -54,13 +54,12 @@ class _AnimatedOrderTileState extends State<AnimatedOrderTile> with SingleTicker
       _animationController.value = widget.initialAnimation ? 0.0 : 1.0;
       if (widget.initialAnimation) {
         _animationController.forward();
-        log('Initial animation started for ${widget.listName}');
       }
     }
   }
 
   @override
-  void didUpdateWidget(AnimatedOrderTile oldWidget) {
+  void didUpdateWidget(AnimatedReorderableTile oldWidget) {
     super.didUpdateWidget(oldWidget);
 
     // If selected state changed, animate accordingly

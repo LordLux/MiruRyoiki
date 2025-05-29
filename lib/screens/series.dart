@@ -332,7 +332,7 @@ class SeriesScreenState extends State<SeriesScreen> {
                   ),
                   _buildButton(
                     () {
-                      log(series);
+                      logInfo(series);
                       showSimpleManagedDialog(
                         context: context,
                         id: 'showSeries:${series.hashCode}',

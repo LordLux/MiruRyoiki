@@ -50,7 +50,6 @@ Future<T?> showManagedDialog<T>({
       onPopInvoked: (didPop) async {
         if (didPop) return; // If the pop was invoked, do nothing
 
-        // log('doDialogPop(): ${dialogDoPopCheck()}');
         if (dialogDoPopCheck()) {
           logTrace('Dialog pop invoked, closing dialog');
           Navigator.of(context).pop(); // Close the dialog

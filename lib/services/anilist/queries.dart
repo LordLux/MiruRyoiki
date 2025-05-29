@@ -437,7 +437,7 @@ class AnilistService {
                 } catch (e, stackTrace) {
                   // If JSON parsing fails, the string might not be proper JSON
                   logErr('Error parsing customLists', e, stackTrace);
-                  log('Raw customLists value: $customListsData');
+                  logWarn('Raw customLists value: $customListsData');
 
                   // Continue to next entry, skip this one
                   continue;

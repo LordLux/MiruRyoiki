@@ -1,6 +1,7 @@
 import 'package:fluent_ui/fluent_ui.dart';
 
 import '../manager.dart';
+import 'logging.dart';
 
 class ScreenUtils {
   static const double kDefaultAspectRatio = 0.71; // 7:10 aspect ratio
@@ -24,8 +25,9 @@ class ScreenUtils {
   static double get maxCardWidth => Manager.fontSizeMultiplier * kDefaultCardWidth;
   static double get cardPadding => Manager.fontSizeMultiplier * kDefaultCardPadding;
 
-  static int crossAxisCount([double? maxConstrainedWidth]) => //
-      ((maxConstrainedWidth ?? (width - kNavigationBarWidth)) ~/ (maxCardWidth + ScreenUtils.cardPadding)).clamp(1, 10);
+  static int crossAxisCount([double? maxConstrainedWidth]) {
+    return ((maxConstrainedWidth ?? (width - kNavigationBarWidth - 32 /*padding*/)) ~/ (maxCardWidth + ScreenUtils.cardPadding)).clamp(1, 10);
+  }
 
   static int mainAxisCount(int cardNumber) => //
       ((cardNumber / crossAxisCount()).ceil()).clamp(1, 10);
