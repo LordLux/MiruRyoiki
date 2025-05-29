@@ -58,8 +58,6 @@ class _CustomKeyboardListenerState extends State<CustomKeyboardListener> {
         // Update settings
         appTheme.fontSize = newFontSize;
 
-        // Optional: Show a small notification
-        log('Font size changed to: $newFontSize');
         Manager.setState();
       }
     }

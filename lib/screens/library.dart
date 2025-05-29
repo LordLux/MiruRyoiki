@@ -223,13 +223,11 @@ class LibraryScreenState extends State<LibraryScreen> {
     _loadUserPreferences();
     _lastAppliedSortOrder = _sortOrder;
     _lastAppliedSortDescending = _sortDescending;
-    log('Library initialized');
   }
 
   @override
   void dispose() {
     filterFlyoutController.dispose();
-    log('Library disposed');
     super.dispose();
   }
 
@@ -514,7 +512,7 @@ class LibraryScreenState extends State<LibraryScreen> {
                 final listName = _customListOrder[index];
                 final displayName = listName == '__unlinked' ? 'Unlinked' : _fromApiListName(listName);
 
-                return AnimatedOrderTile(
+                return AnimatedReorderableTile(
                   key: ValueKey('${listName}_dragging'),
                   listName: listName,
                   displayName: displayName,
@@ -541,7 +539,7 @@ class LibraryScreenState extends State<LibraryScreen> {
                 final listName = _customListOrder[index];
                 final displayName = listName == '__unlinked' ? 'Unlinked' : _fromApiListName(listName);
 
-                return AnimatedOrderTile(
+                return AnimatedReorderableTile(
                   key: ValueKey(listName),
                   listName: listName,
                   displayName: displayName,
@@ -655,7 +653,6 @@ class LibraryScreenState extends State<LibraryScreen> {
     if (_sortingNeeded(displayedSeries) && !_isProcessing && _currentSortOperation == null) {
       _needsSort = false;
       _applySortingAsync(displayedSeries);
-      log('Sorting series in library view: ${_sortDescending ? 'descending' : 'ascending'}');
     } else if (_hasAppliedSorting) {
       // Use the already sorted list
       displayedSeries = _sortedUngroupedSeries;
@@ -992,7 +989,6 @@ class LibraryScreenState extends State<LibraryScreen> {
             if (_sortingNeeded(seriesInGroup) && !_isProcessing && _currentSortOperation == null) {
               _needsSort = false;
               _applySortingAsync(seriesInGroup, groupName: groupName);
-              log('Sorting series in group: $groupName');
             }
 
             groupWidgets.add(Expander(

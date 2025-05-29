@@ -420,7 +420,6 @@ class _AppRootState extends State<AppRoot> {
   @override
   void initState() {
     super.initState();
-    log('AppRoot initialized');
     _homeMap['controller'] = homeController;
     _libraryMap['controller'] = libraryController;
     _accountsMap['controller'] = accountsController;
@@ -468,7 +467,6 @@ class _AppRootState extends State<AppRoot> {
                     menuButton: const SizedBox.shrink(), //_appTitle(),
                     selected: _selectedIndex,
                     onItemPressed: (index) {
-                      log('Selected index changed to $index');
                       if (_isSeriesView && _selectedSeriesPath != null) {
                         // If in series view, exit series view first
                         exitSeriesView();
@@ -530,6 +528,7 @@ class _AppRootState extends State<AppRoot> {
                                 curve: Curves.easeInOut,
                                 onEnd: () => setState(() {
                                   if (_isSeriesView) _isFinishedTransitioning = true;
+                                  finishExitSeriesView();
                                 }),
                                 child: AbsorbPointer(
                                   absorbing: !_isSeriesView,
@@ -571,6 +570,7 @@ class _AppRootState extends State<AppRoot> {
                                 curve: Curves.easeInOut,
                                 onEnd: () => setState(() {
                                   if (_isSeriesView) _isFinishedTransitioning = true;
+                                  finishExitSeriesView();
                                 }),
                                 child: AbsorbPointer(
                                   absorbing: !_isSeriesView,
@@ -723,6 +723,7 @@ class _AppRootState extends State<AppRoot> {
   // Update navigateToSeries method:
   void navigateToSeries(String seriesPath) {
     previousGridColumnCount.value = ScreenUtils.crossAxisCount();
+    // logDebug('Previous grid column count: ${previousGridColumnCount.value}');
     // previousGridRowCount.value = libraryScreenKey.currentState!.getGridRowCount();
 
     final series = Provider.of<Library>(context, listen: false).getSeriesByPath(seriesPath);
@@ -753,11 +754,13 @@ class _AppRootState extends State<AppRoot> {
       Manager.currentDominantColor = null;
     });
 
-    nextFrame(delay: 300, () {
-      setState(() {
-        _selectedSeriesPath = null;
-        previousGridColumnCount.value = null;
-      });
+    // nextFrame(delay: 300, () => finishExitSeriesView());
+  }
+
+  void finishExitSeriesView() {
+    setState(() {
+      _selectedSeriesPath = null;
+      previousGridColumnCount.value = null;
     });
   }
 
@@ -771,7 +774,7 @@ class _AppRootState extends State<AppRoot> {
       // Find active dialogs and close them
       // This assumes dialogs are managed through Flutter's dialog system
       // and will be removed from stack using the showManagedDialog helper
-
+      // TODO
       // closeDialog(rootNavigatorKey.currentContext!);
       return true;
     } else if (_isSeriesView) {
@@ -885,7 +888,6 @@ String get iconPng => '$assets${ps}system${ps}icon.png';
 String get ps => Platform.pathSeparator;
 
 // TODO detect when offline
-// TODO fixed row when animating from/to series screen (cry)
 // TODO edit view options for library to separate sort and view (grid, list etc) from filters
 // TODO homepage title inside header like in library + view options to choose what to show on homepage
 // TODO fix settings link issues that tries to load link from filesystem instead of network request (try to see if cache is available first)
