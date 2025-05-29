@@ -5,8 +5,9 @@ import 'package:provider/provider.dart';
 import '../../manager.dart';
 import '../../utils/logging.dart';
 import '../../utils/time_utils.dart';
+import '../../widgets/buttons/wrapper.dart';
 import '../../widgets/dialogs/show_dialog.dart';
-import '../../widgets/loading_button.dart';
+import '../../widgets/buttons/loading_button.dart';
 import 'debug.dart';
 import 'navigation.dart';
 
@@ -196,7 +197,7 @@ class ManagedDialogButton extends StatelessWidget {
     }
 
     return MouseButtonWrapper(
-      child: Builder(builder: (context) {
+      child: (_) => Builder(builder: (context) {
         if (isPrimary)
           return FilledButton(
             style: FluentTheme.of(context).buttonTheme.filledButtonStyle,

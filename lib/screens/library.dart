@@ -18,8 +18,11 @@ import '../utils/logging.dart';
 import '../utils/screen_utils.dart';
 import '../utils/time_utils.dart';
 import '../widgets/animated_order_tile.dart';
+import '../widgets/buttons/button.dart';
+import '../widgets/buttons/switch_button.dart';
+import '../widgets/buttons/wrapper.dart';
 import '../widgets/gradient_mask.dart';
-import '../widgets/loading_button.dart';
+import '../widgets/buttons/loading_button.dart';
 import '../widgets/simple_flyout.dart' hide ToggleableFlyoutContent;
 import '../widgets/series_card.dart';
 
@@ -89,7 +92,7 @@ class LibraryScreenState extends State<LibraryScreen> {
     else
       icon = FluentIcons.filter;
 
-    return Icon(icon, size: 16);
+    return Icon(icon);
   }
 
   bool _areListsEqual(List<String> list1, List<String> list2) {
@@ -371,7 +374,7 @@ class LibraryScreenState extends State<LibraryScreen> {
                         label: 'View',
                         child: MouseButtonWrapper(
                           isLoading: _currentSortOperation != null,
-                          child: ComboBox<LibraryView>(
+                          child: (_) => ComboBox<LibraryView>(
                             value: _currentView,
                             items: [
                               ComboBoxItem(value: LibraryView.all, child: Text('All Series')),
@@ -385,7 +388,7 @@ class LibraryScreenState extends State<LibraryScreen> {
 
                       // Grouping Toggle
                       MouseButtonWrapper(
-                        child: ToggleSwitch(
+                        child: (_) => ToggleSwitch(
                           checked: _showGrouped,
                           content: Text('Group by AniList Lists'),
                           onChanged: (value) {
@@ -412,7 +415,7 @@ class LibraryScreenState extends State<LibraryScreen> {
                           children: [
                             MouseButtonWrapper(
                               isLoading: _currentSortOperation != null,
-                              child: ComboBox<SortOrder>(
+                              child: (_) => ComboBox<SortOrder>(
                                 value: _sortOrder,
                                 items: SortOrder.values.map((order) => ComboBoxItem(value: order, child: Text(_getSortText(order)))).toList(),
                                 onChanged: _onSortOrderChanged,
@@ -421,7 +424,7 @@ class LibraryScreenState extends State<LibraryScreen> {
                             const SizedBox(width: 8),
                             MouseButtonWrapper(
                               isLoading: _currentSortOperation != null,
-                              child: IconButton(
+                              child: (_) => IconButton(
                                 icon: AnimatedRotation(
                                   duration: getDuration(shortStickyHeaderDuration),
                                   turns: _sortDescending ? 0 : 1,
@@ -571,33 +574,23 @@ class LibraryScreenState extends State<LibraryScreen> {
           padding: const EdgeInsets.only(right: 8.0, top: 8.0),
           child: Row(
             children: [
-              MouseButtonWrapper(
-                child: Button(
-                  child: const Text('Refresh'),
-                  onPressed: () => library.reloadLibrary(),
-                ),
+              NormalButton(
+                tooltip: 'Refresh the library',
+                label: 'Refresh',
+                onPressed: () => library.reloadLibrary(),
               ),
               SizedBox(width: 8),
-              MouseButtonWrapper(
-                child: FluentTheme(
-                  data: FluentTheme.of(context).copyWith(
-                    buttonTheme: ButtonThemeData(
-                      filledButtonStyle: FluentTheme.of(context).buttonTheme.filledButtonStyle?.copyWith(
-                            backgroundColor: WidgetStatePropertyAll(_showFilters ? Manager.accentColor.light : Manager.accentColor.lighter),
-                          ),
-                    ),
-                  ),
-                  child: FilledButton(
-                    child: Row(
-                      children: [
-                        filterIcon,
-                        const SizedBox(width: 4),
-                        const Text('Filter & Display'),
-                      ],
-                    ),
-                    onPressed: () => toggleFiltersSidebar(),
-                  ),
+              SwitchButton(
+                labelWidget: (textStyle) => Row(
+                  children: [
+                    filterIcon,
+                    HDivPx(4),
+                    Text('Filter & Display', style: textStyle),
+                  ],
                 ),
+                isPressed: _showFilters,
+                isFilled: true,
+                onPressed: () => toggleFiltersSidebar(),
               ),
             ],
           ),
@@ -617,7 +610,7 @@ class LibraryScreenState extends State<LibraryScreen> {
           VDiv(24),
           MouseButtonWrapper(
             isLoading: _isSelectingFolder,
-            child: Button(
+            child: (_) => Button(
               style: ButtonStyle(padding: ButtonState.all(const EdgeInsets.symmetric(horizontal: 20, vertical: 8))),
               onPressed: _selectLibraryFolder,
               child: const Text('Select Library Folder'),
@@ -650,7 +643,7 @@ class LibraryScreenState extends State<LibraryScreen> {
             VDiv(16),
             MouseButtonWrapper(
               isLoading: _isSelectingFolder,
-              child: Button(
+              child: (_) => Button(
                 onPressed: _selectLibraryFolder,
                 child: const Text('Change Library Folder'),
               ),

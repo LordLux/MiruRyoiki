@@ -3,11 +3,13 @@ import 'dart:math' as math;
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/material.dart' as mat;
 import 'package:miruryoiki/services/navigation/show_info.dart';
+import 'package:miruryoiki/widgets/buttons/button.dart';
 import 'package:open_app_file/open_app_file.dart';
 import 'package:provider/provider.dart';
 import 'package:smooth_scroll_multiplatform/smooth_scroll_multiplatform.dart';
 import 'package:defer_pointer/defer_pointer.dart';
 
+import '../widgets/buttons/wrapper.dart';
 import '../widgets/dialogs/link_anilist_multi.dart';
 import '../widgets/dialogs/poster_select.dart';
 import '../enums.dart';
@@ -26,7 +28,7 @@ import '../utils/screen_utils.dart';
 import '../utils/time_utils.dart';
 import '../widgets/episode_grid.dart';
 import '../widgets/gradient_mask.dart';
-import '../widgets/loading_button.dart';
+import '../widgets/buttons/loading_button.dart';
 import '../widgets/transparency_shadow_image.dart';
 import 'anilist_settings.dart';
 
@@ -181,13 +183,12 @@ class SeriesScreenState extends State<SeriesScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Text('Series not found'),
+            Text('Series not found', style: Manager.subtitleStyle),
             VDiv(16),
-            MouseButtonWrapper(
-              child: Button(
-                onPressed: widget.onBack,
-                child: const Text('Back to Library'),
-              ),
+            NormalButton(
+              onPressed: widget.onBack,
+              tooltip: 'Go back to the library',
+              label: 'Back to Library',
             ),
           ],
         ),
@@ -814,7 +815,7 @@ class SeriesScreenState extends State<SeriesScreen> {
 
   Widget _buildButton(void Function()? onTap, Widget child, String label) {
     return MouseButtonWrapper(
-      child: mat.Tooltip(
+      child: (_) => mat.Tooltip(
         richMessage: WidgetSpan(
           child: Text(
             label,
@@ -962,17 +963,41 @@ void linkWithAnilist(BuildContext context, Series? series, Future<void> Function
         // if dialog was closed with a result, and it was successful, update the series mappings
         final library = Provider.of<Library>(context, listen: false);
 
+        // Calculate the number of new mappings
+        final oldMappings = series.anilistMappings;
+        int newMappingsCount = 0;
+
+        for (final mapping in mappings) {
+          bool isNew = !oldMappings.any((m) => m.anilistId == mapping.anilistId && m.localPath == mapping.localPath);
+          if (isNew) newMappingsCount++;
+        }
+
         // Important: Update the series mappings
         series.anilistMappings = mappings;
 
         // Ensure the library gets saved
         await library.updateSeriesMappings(series, mappings);
-
-        // Add feedback
-        snackBar(
-          'Successfully linked ${mappings.length} ${mappings.length == 1 ? 'item' : 'items'} with Anilist',
-          severity: InfoBarSeverity.success,
-        );
+        
+        // If links were added
+        if (newMappingsCount > 0) {
+          snackBar(
+            'Successfully linked $newMappingsCount ${newMappingsCount == 1 ? 'new item' : 'new items'} with Anilist',
+            severity: InfoBarSeverity.success,
+          );
+        } else if (mappings.length < oldMappings.length) {
+          // If links were removed
+          final removedCount = oldMappings.length - mappings.length;
+          snackBar(
+            'Removed $removedCount ${removedCount == 1 ? 'link' : 'links'} from Anilist',
+            severity: InfoBarSeverity.success,
+          );
+        } else {
+          // No changes in link count but mappings might have been updated
+          snackBar(
+            'Anilist links updated successfully',
+            severity: InfoBarSeverity.success,
+          );
+        }
 
         // Load Anilist data for the primary mapping
         if (mappings.isNotEmpty) {

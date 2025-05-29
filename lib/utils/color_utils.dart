@@ -48,6 +48,16 @@ Color darken(Color color, [double amount = 0.1]) {
   );
 }
 
+Color lighten(Color color, [double amount = 0.1]) {
+  assert(amount >= 0 && amount <= 1, 'Amount must be between 0 and 1');
+  return Color.fromRGBO(
+    (color.red * (1 + amount)).round(),
+    (color.green * (1 + amount)).round(),
+    (color.blue * (1 + amount)).round(),
+    color.opacity,
+  );
+}
+
 Color getDimmable(Color color, BuildContext context, [List<double> opacity = const [0.25, 0.15, 0]]) {
   final appTheme = Provider.of<AppTheme>(context, listen: false);
   if (appTheme.mode == ThemeMode.light) return Colors.transparent;
