@@ -8,7 +8,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_acrylic/window_effect.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:miruryoiki/widgets/gradient_mask.dart';
-import 'package:miruryoiki/widgets/loading_button.dart';
+import 'package:miruryoiki/widgets/buttons/loading_button.dart';
 import 'package:provider/provider.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:smooth_scroll_multiplatform/smooth_scroll_multiplatform.dart';
@@ -31,6 +31,8 @@ import '../models/library.dart';
 import '../theme.dart';
 import '../utils/screen_utils.dart';
 import '../utils/time_utils.dart';
+import '../widgets/buttons/button.dart';
+import '../widgets/buttons/wrapper.dart';
 import '../widgets/enum_toggle.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -598,7 +600,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               // TODO
               MouseButtonWrapper(
                 tooltip: 'View Series',
-                child: IconButton(
+                child: (_) => IconButton(
                   icon: Icon(FluentIcons.view),
                   onPressed: () {
                     // Navigate to series
@@ -609,7 +611,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               SizedBox(width: 8),
               MouseButtonWrapper(
                 tooltip: 'Apply Formatting',
-                child: IconButton(
+                child: (_) => IconButton(
                   icon: Icon(FluentIcons.accept),
                   onPressed: () {
                     // Apply formatting just for this series
@@ -756,7 +758,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                                       builder: (context, isShiftPressed, _) {
                                                         return MouseButtonWrapper(
                                                           tooltip: isShiftPressed ? 'Copy Library Folder Path' : 'Open Library Folder',
-                                                          child: SizedBox(
+                                                          child: (_) => SizedBox(
                                                             height: 28,
                                                             child: MouseRegion(
                                                               onEnter: (_) => setState(() => _isOpenFolderHovered = true),
@@ -810,32 +812,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                           isAlreadyBig: true,
                                         ),
                                         const SizedBox(width: 6),
-                                        MouseButtonWrapper(
+                                        NormalButton(
+                                          label: 'Browse',
+                                          isFilled: true,
+                                          isSmall: true,
+                                          tooltip: 'Select Library Folder',
                                           isLoading: _isSelectingFolder,
-                                          child: FilledButton(
-                                            style: ButtonStyle(padding: WidgetStatePropertyAll(EdgeInsets.zero)),
-                                            child: SizedBox(
-                                              height: 32,
-                                              width: 100,
-                                              child: Center(
-                                                child: Padding(
-                                                  padding: EdgeInsets.symmetric(horizontal: 12),
-                                                  child: Text('Browse', style: Manager.bodyStyle.copyWith(color: getPrimaryColorBasedOnAccent())),
-                                                ),
-                                              ),
-                                            ),
-                                            onPressed: () async {
-                                              setState(() => _isSelectingFolder = true);
+                                          onPressed: () async {
+                                            setState(() => _isSelectingFolder = true);
 
-                                              final result = await FilePicker.platform.getDirectoryPath(
-                                                dialogTitle: 'Select Library Folder',
-                                              );
+                                            final result = await FilePicker.platform.getDirectoryPath(
+                                              dialogTitle: 'Select Library Folder',
+                                            );
 
-                                              setState(() => _isSelectingFolder = false);
+                                            setState(() => _isSelectingFolder = false);
 
-                                              if (result != null) library.setLibraryPath(result);
-                                            },
-                                          ),
+                                            if (result != null) library.setLibraryPath(result);
+                                          },
                                         ),
                                       ],
                                     ),
@@ -852,11 +845,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                       style: Manager.bodyStyle,
                                     ),
                                     VDiv(16),
-                                    MouseButtonWrapper(
-                                      child: FilledButton(
-                                        child: Text('Format Library Series', style: Manager.bodyStrongStyle.copyWith(color: getPrimaryColorBasedOnAccent())),
-                                        onPressed: () => _showSeriesFormatterDialog(context),
-                                      ),
+                                    NormalButton(
+                                      label: 'Format Series',
+                                      isLoading: _isFormatting,
+                                      isFilled: true,
+                                      onPressed: () => _showSeriesFormatterDialog(context),
                                     ),
 
                                     // This section will show series with formatting issues

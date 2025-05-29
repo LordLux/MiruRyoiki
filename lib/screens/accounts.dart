@@ -6,7 +6,7 @@ import 'package:provider/provider.dart';
 
 import '../utils/logging.dart';
 import '../utils/screen_utils.dart';
-import '../widgets/loading_button.dart';
+import '../widgets/buttons/loading_button.dart';
 import 'anilist_settings.dart';
 import 'settings.dart';
 

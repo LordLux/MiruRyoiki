@@ -5,7 +5,9 @@ import '../../services/anilist/provider.dart';
 import '../manager.dart';
 import '../utils/logging.dart';
 import '../utils/screen_utils.dart';
-import '../widgets/loading_button.dart';
+import '../widgets/buttons/button.dart';
+import '../widgets/buttons/loading_button.dart';
+import '../widgets/buttons/wrapper.dart';
 import 'accounts.dart';
 
 class AnilistSettingsScreen extends StatelessWidget {
@@ -59,7 +61,7 @@ class AnilistSettingsScreen extends StatelessWidget {
                     children: [
                       Text(
                         'Sync Settings',
-                        style: FluentTheme.of(context).typography.subtitle,
+                        style: Manager.subtitleStyle,
                       ),
                       VDiv(16),
                       ToggleSwitch(
@@ -86,15 +88,14 @@ class AnilistSettingsScreen extends StatelessWidget {
                         },
                       ),
                       VDiv(16),
-                      MouseButtonWrapper(
-                        child: Button(
-                          child: const Text('Refresh All Metadata'),
-                          onPressed: () {
-                            final library = Provider.of<Library>(context, listen: false);
-                            library.refreshAllMetadata();
-                            logInfo('Refreshing all Anilist metadata');
-                          },
-                        ),
+                      NormalButton(
+                        tooltip: 'Refresh all Anilist metadata',
+                        label: 'Refresh All Metadata',
+                        onPressed: () {
+                          final library = Provider.of<Library>(context, listen: false);
+                          library.refreshAllMetadata();
+                          logInfo('Refreshing all Anilist metadata');
+                        },
                       ),
                     ],
                   ),
@@ -120,13 +121,10 @@ class AnilistSettingsScreen extends StatelessWidget {
                         ],
                       ),
                       VDiv(16),
-                      MouseButtonWrapper(
-                        child: Button(
-                          child: const Text('Refresh Lists'),
-                          onPressed: () {
-                            anilistProvider.refreshUserLists();
-                          },
-                        ),
+                      NormalButton(
+                        tooltip: 'Refresh your Anilist lists',
+                        label: 'Refresh Lists',
+                        onPressed: () => anilistProvider.refreshUserLists(),
                       ),
                     ],
                   ),

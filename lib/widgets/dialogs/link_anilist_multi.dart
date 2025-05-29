@@ -2,6 +2,7 @@
 
 import 'dart:io';
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:flutter/material.dart' show Icons;
 import 'package:miruryoiki/utils/time_utils.dart';
 import 'package:miruryoiki/widgets/series_image.dart';
 
@@ -14,7 +15,9 @@ import '../../services/cache.dart';
 import '../../services/navigation/dialogs.dart';
 import '../../services/navigation/shortcuts.dart';
 import '../../services/navigation/show_info.dart';
-import '../loading_button.dart';
+import '../../utils/color_utils.dart';
+import '../buttons/loading_button.dart';
+import '../buttons/wrapper.dart';
 import 'search_panel.dart';
 
 final GlobalKey<AnilistLinkMultiContentState> linkMultiDialogKey = GlobalKey<AnilistLinkMultiContentState>();
@@ -86,6 +89,12 @@ class AnilistLinkMultiContentState extends State<_AnilistLinkMultiContent> {
   int? selectedAnilistId;
   String? selectedTitle;
 
+  // For duplicate checking
+  bool _isExactDuplicate = false;
+  bool _hasDuplicateWarning = false;
+  AnilistMapping? _existingPathMapping;
+  AnilistMapping? _existingIdMapping;
+
   // For folder/file browser
   List<FileSystemEntity> folderContents = [];
   String? currentDirectory;
@@ -101,6 +110,43 @@ class AnilistLinkMultiContentState extends State<_AnilistLinkMultiContent> {
     }
 
     return false;
+  }
+
+  void _checkForDuplicates() {
+    if (selectedLocalPath == null || selectedAnilistId == null) {
+      setState(() {
+        _isExactDuplicate = false;
+        _hasDuplicateWarning = false;
+        _existingPathMapping = null;
+        _existingIdMapping = null;
+      });
+      return;
+    }
+
+    // Check for exact duplicates
+    bool exactDuplicate = mappings.any((m) => m.localPath == selectedLocalPath && m.anilistId == selectedAnilistId);
+
+    // Check if this path is already linked to a different Anilist entry
+    final pathMapping = mappings.firstWhere(
+      (m) => m.localPath == selectedLocalPath && m.anilistId != selectedAnilistId,
+      orElse: () => AnilistMapping(localPath: '', anilistId: -1),
+    );
+
+    // Check if this Anilist ID is already linked to a different path
+    final idMapping = mappings.firstWhere(
+      (m) => m.anilistId == selectedAnilistId && m.localPath != selectedLocalPath,
+      orElse: () => AnilistMapping(localPath: '', anilistId: -1),
+    );
+
+    final hasPathWarning = pathMapping.anilistId != -1;
+    final hasIdWarning = idMapping.anilistId != -1;
+
+    setState(() {
+      _isExactDuplicate = exactDuplicate;
+      _hasDuplicateWarning = hasPathWarning || hasIdWarning;
+      _existingPathMapping = hasPathWarning ? pathMapping : null;
+      _existingIdMapping = hasIdWarning ? idMapping : null;
+    });
   }
 
   bool _isNewlyAddedMapping(AnilistMapping mapping) {
@@ -247,7 +293,7 @@ class AnilistLinkMultiContentState extends State<_AnilistLinkMultiContent> {
             Row(
               children: [
                 MouseButtonWrapper(
-                  child: Button(
+                  child: (_) => Button(
                     onPressed: _switchToAddMode,
                     child: Text('Add New Link'),
                   ),
@@ -285,23 +331,21 @@ class AnilistLinkMultiContentState extends State<_AnilistLinkMultiContent> {
       title: Text(mapping.title ?? 'Anilist ID: ${mapping.anilistId}'),
       subtitle: Text('Linked to: ${_getDisplayPath(mapping.localPath)}'),
       trailing: MouseButtonWrapper(
-        child: Tooltip(
-          message: 'Remove this link',
-          child: IconButton(
-            icon: Transform.translate(
-              offset: const Offset(1, -1),
-              child: Icon(
-                FluentIcons.blocked12,
-                size: 18,
-                color: _isNewlyAddedMapping(mapping) ? Manager.accentColor : widget.series.dominantColor,
-              ),
+        tooltip: 'Remove this link',
+        child: (_) => IconButton(
+          icon: Transform.translate(
+            offset: const Offset(1, -1),
+            child: Icon(
+              FluentIcons.blocked12,
+              size: 18,
+              color: _isNewlyAddedMapping(mapping) ? Manager.accentColor : widget.series.dominantColor,
             ),
-            onPressed: () {
-              setState(() {
-                mappings.remove(mapping);
-              });
-            },
           ),
+          onPressed: () {
+            setState(() {
+              mappings.remove(mapping);
+            });
+          },
         ),
       ),
     );
@@ -394,20 +438,116 @@ class AnilistLinkMultiContentState extends State<_AnilistLinkMultiContent> {
               child: Text('Back'),
             ),
             SizedBox(width: 8),
-            FilledButton(
-              onPressed: selectedLocalPath != null && selectedAnilistId != null
-                  ? () {
-                      setState(() {
-                        mappings.add(AnilistMapping(
-                          localPath: selectedLocalPath!,
-                          anilistId: selectedAnilistId!,
-                          title: selectedTitle,
-                        ));
-                        switchToViewMode();
-                      });
-                    }
-                  : null,
-              child: Text('Add Link'),
+            MouseButtonWrapper(
+              isButtonDisabled: selectedLocalPath == null || selectedAnilistId == null || _isExactDuplicate,
+              tooltip: _isExactDuplicate
+                  ? 'This exact mapping already exists! You cannot add it again.'
+                  : _hasDuplicateWarning
+                      ? 'This link may cause conflicts with existing mappings.'
+                      : 'Add this link',
+              child: (_) => FilledButton(
+                style: _isExactDuplicate
+                    ? ButtonStyle(
+                        backgroundColor: ButtonState.all(darken(Colors.red, .4)),
+                        foregroundColor: ButtonState.all(darken(Colors.white, .3)),
+                      )
+                    : _hasDuplicateWarning
+                        ? ButtonStyle(
+                            backgroundColor: ButtonState.all(Colors.orange),
+                            foregroundColor: ButtonState.all(Colors.white),
+                          )
+                        : null,
+                onPressed: (selectedLocalPath != null && selectedAnilistId != null && !_isExactDuplicate)
+                    ? () {
+                        if (_isExactDuplicate) {
+                          snackBar('This exact mapping already exists', severity: InfoBarSeverity.warning);
+                          return;
+                        }
+
+                        if (_hasDuplicateWarning) {
+                          // Show warning dialog
+                          showManagedDialog(
+                            context: context,
+                            id: 'linkWarning',
+                            title: 'Warning: Potential Duplicate Link',
+                            builder: (context) => ManagedDialog(
+                              popContext: context,
+                              title: Text('Warning: Potential Duplicate Link'),
+                              contentBuilder: (context, _) => Column(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  if (_existingPathMapping != null)
+                                    Text(
+                                      'The selected file/folder is already linked to another Anilist entry (ID: ${_existingPathMapping!.anilistId}).',
+                                      style: FluentTheme.of(context).typography.body,
+                                    ),
+                                  if (_existingPathMapping != null) SizedBox(height: 8),
+                                  if (_existingIdMapping != null)
+                                    Text(
+                                      'The selected Anilist entry is already linked to another file/folder.',
+                                      style: FluentTheme.of(context).typography.body,
+                                    ),
+                                  SizedBox(height: 12),
+                                  Text(
+                                    'Creating this link may lead to unexpected behavior. Do you want to continue?',
+                                    style: FluentTheme.of(context).typography.body,
+                                  ),
+                                ],
+                              ),
+                              actions: (context) => <ManagedDialogButton>[
+                                ManagedDialogButton(
+                                  popContext: context,
+                                  text: 'Cancel',
+                                ),
+                                ManagedDialogButton(
+                                  popContext: context,
+                                  text: 'Create Link Anyway',
+                                  isPrimary: true,
+                                  onPressed: () {
+                                    setState(() {
+                                      mappings.add(AnilistMapping(
+                                        localPath: selectedLocalPath!,
+                                        anilistId: selectedAnilistId!,
+                                        title: selectedTitle,
+                                      ));
+                                      switchToViewMode();
+                                    });
+                                  },
+                                ),
+                              ],
+                            ),
+                          );
+                        } else {
+                          // No conflicts, add the mapping directly
+                          setState(() {
+                            mappings.add(AnilistMapping(
+                              localPath: selectedLocalPath!,
+                              anilistId: selectedAnilistId!,
+                              title: selectedTitle,
+                            ));
+                            switchToViewMode();
+                          });
+                        }
+                      }
+                    : null,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text('Add Link'),
+                    if (_hasDuplicateWarning)
+                      Padding(
+                        padding: const EdgeInsets.only(left: 8.0),
+                        child: Icon(FluentIcons.warning, size: 16),
+                      ),
+                    if (_isExactDuplicate)
+                      Padding(
+                        padding: const EdgeInsets.only(left: 8.0),
+                        child: Icon(Icons.block, size: 16),
+                      ),
+                  ],
+                ),
+              ),
             ),
           ],
         ),
@@ -478,6 +618,7 @@ class AnilistLinkMultiContentState extends State<_AnilistLinkMultiContent> {
                             setState(() {
                               selectedLocalPath = currentDirectory;
                             });
+                            _checkForDuplicates();
                           },
                         );
                       }
@@ -504,6 +645,7 @@ class AnilistLinkMultiContentState extends State<_AnilistLinkMultiContent> {
                               selectedLocalPath = entity.path;
                             });
                           }
+                          _checkForDuplicates();
                         },
                       );
                     },
@@ -537,6 +679,7 @@ class AnilistLinkMultiContentState extends State<_AnilistLinkMultiContent> {
               selectedAnilistId = id;
               selectedTitle = name;
             });
+            _checkForDuplicates();
           },
         ),
       ),

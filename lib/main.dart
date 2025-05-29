@@ -501,7 +501,7 @@ class _AppRootState extends State<AppRoot> {
                     items: [
                       buildPaneItem(
                         homeIndex,
-                        icon: const Icon(FluentIcons.home, size: 18),
+                        icon: const Icon(FluentIcons.home),
                         body: Stack(
                           children: [
                             // Always keep LibraryScreen in the tree with Offstage
@@ -546,7 +546,7 @@ class _AppRootState extends State<AppRoot> {
                       buildPaneItem(
                         libraryIndex,
                         mouseCursorClick: _selectedIndex != libraryIndex || _isSeriesView,
-                        icon: Icon(Symbols.newsstand, size: 18),
+                        icon: Icon(Symbols.newsstand),
                         body: Stack(
                           children: [
                             // Always keep LibraryScreen in the tree with Offstage
@@ -599,7 +599,11 @@ class _AppRootState extends State<AppRoot> {
                         settingsIndex,
                         icon: Padding(
                           padding: const EdgeInsets.only(left: 2.5),
-                          child: const Icon(FluentIcons.settings),
+                          child: AnimatedRotation(
+                            duration: getDuration(const Duration(milliseconds: 200)),
+                            turns: _selectedIndex == settingsIndex ? 0.5 : 0.0,
+                            child: const Icon(FluentIcons.settings),
+                          ),
                         ),
                         body: SettingsScreen(
                           scrollController: _settingsMap['controller'] as ScrollController,
@@ -629,7 +633,7 @@ class _AppRootState extends State<AppRoot> {
 
     return PaneItem(
       mouseCursor: mouseCursorClick ? SystemMouseCursors.click : MouseCursor.defer,
-      title: Text(item['title']),
+      title: Text(item['title'], style: Manager.bodyStyle),
       icon: icon,
       body: body,
     );
@@ -880,11 +884,16 @@ String get iconPath => '$assets${ps}system${ps}icon.ico';
 String get iconPng => '$assets${ps}system${ps}icon.png';
 String get ps => Platform.pathSeparator;
 
+// TODO detect when offline
+// TODO fixed row when animating from/to series screen (cry)
 // TODO edit view options for library to separate sort and view (grid, list etc) from filters
 // TODO homepage title inside header like in library + view options to choose what to show on homepage
-// TODO warn user when mapping already linked file/anilist entry
-// TODO fix snackbar that says 'linked N items' when linking
+// TODO fix settings link issues that tries to load link from filesystem instead of network request (try to see if cache is available first)
+// TODO understand what makes 'scan library' button smooth on rescale
+
+// TODO cache Anilist lists to be able to work offline
 // TODO anilist grouping for 'About to Watch'
+// TODO Local 'Unlinked' auto connect to Anilist 'About to Watch' (allow custom name to search for)
 // TODO add folder/file metadata to series
 // TODO create autolinker
 // TODO change FORMATTER format for specials (allow specials inside season, OVA/ONAs in separate folder if not alone)
