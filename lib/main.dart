@@ -890,7 +890,6 @@ String get ps => Platform.pathSeparator;
 // TODO detect when offline
 // TODO edit view options for library to separate sort and view (grid, list etc) from filters
 // TODO homepage title inside header like in library + view options to choose what to show on homepage
-// TODO fix settings link issues that tries to load link from filesystem instead of network request (try to see if cache is available first)
 // TODO understand what makes 'scan library' button smooth on rescale
 
 // TODO cache Anilist lists to be able to work offline
