@@ -34,6 +34,7 @@ import '../utils/time_utils.dart';
 import '../widgets/buttons/button.dart';
 import '../widgets/buttons/wrapper.dart';
 import '../widgets/enum_toggle.dart';
+import '../widgets/series_image.dart';
 
 class SettingsScreen extends StatefulWidget {
   final ScrollController scrollController;
@@ -70,7 +71,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _isFormatting = false;
   bool _isOpenFolderHovered = false;
 
-  final ScrollController issueController = ScrollController();
 
   bool showAccentLibViewCol = false;
 
@@ -522,20 +522,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
         children: [
           // Series poster
           if (series != null)
-            Container(
+            SeriesImageBuilder.poster(
+              series,
               width: 91 * ScreenUtils.kDefaultAspectRatio,
               height: 91,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(4),
-                image: series.effectivePosterPath != null
-                    ? DecorationImage(
-                        image: FileImage(File(series.effectivePosterPath!)),
-                        fit: BoxFit.contain,
-                      )
-                    : null,
-                color: FluentTheme.of(context).resources.controlStrokeColorDefault,
-              ),
-              child: series.effectivePosterPath == null ? Center(child: Icon(FluentIcons.picture, size: 24)) : null,
+              fit: BoxFit.contain,
+              alignment: Alignment.center,
+              skipLoadingIndicator: true,
             )
           else
             Container(
@@ -577,17 +570,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 if (preview.issues.length > 1)
                   Expander(
                     header: Text('Issues (${preview.issues.length})', style: Manager.bodyStyle.copyWith(color: Colors.orange)),
-                    onStateChanged: (isExpanded) async {
-                      if (index == previewSeries.length - 1 && isExpanded) {
-                        final int frameUpdateNumber = 30;
-                        final int totalDuration = 150;
-                        for (int i = 0; i < totalDuration; i += (totalDuration / frameUpdateNumber).round()) {
-                          nextFrame(() => issueController.jumpTo(issueController.position.maxScrollExtent));
-
-                          await Future.delayed(Duration(milliseconds: totalDuration ~/ frameUpdateNumber));
-                        }
-                      }
-                    },
                     content: Column(crossAxisAlignment: CrossAxisAlignment.start, children: preview.issues.map((issue) => Text(issue, style: Manager.bodyStyle.copyWith(color: Colors.orange))).toList()),
                   ),
               ],
@@ -664,24 +646,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-  void issueScrollMove() {
-    // Get current position
-    final currentPos = issueController.position.pixels;
-
-    // Compare with previous position before updating
-    if (currentPos != prevPos) //
-      nextFrame(() => widget.scrollController.animateTo(380, duration: Duration(milliseconds: 300), curve: Curves.ease));
-
-    // Update previous position after comparison
-    prevPos = currentPos;
-  }
-
   @override
   void initState() {
     super.initState();
     _headerHeight = ScreenUtils.kMinHeaderHeight;
-
-    issueController.addListener(issueScrollMove);
 
     nextFrame(() {
       final settings = Provider.of<SettingsManager>(context, listen: false);
@@ -857,37 +825,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                       VDiv(24),
                                       Text('Last Scan: ', style: Manager.subtitleStyle),
                                       VDiv(12),
-                                      Text(
-                                        "Series that couldn't be automatically formatted (${_issuesPreview.length})",
-                                        style: Manager.bodyStrongStyle,
-                                      ),
-                                      VDiv(8),
-                                      Container(
-                                        height: min(500, _issuesPreview.length * 100),
-                                        decoration: BoxDecoration(
-                                          border: Border.all(color: FluentTheme.of(context).resources.controlStrokeColorDefault),
-                                          borderRadius: BorderRadius.circular(8),
+                                      Expander(
+                                        header: Text(
+                                          "Series that couldn't be automatically parsed (${_issuesPreview.length})",
+                                          style: Manager.bodyStrongStyle,
                                         ),
-                                        child: DynMouseScroll(
-                                          stopScroll: KeyboardState.ctrlPressedNotifier,
-                                          enableSmoothScroll: Manager.animationsEnabled,
-                                          scrollAmount: 200,
-                                          controller: issueController,
-                                          durationMS: 300,
-                                          animationCurve: Curves.ease,
-                                          builder: (context, newIssueController, physics) {
-                                            return ListView.builder(
-                                              itemCount: _issuesPreview.length,
-                                              controller: newIssueController,
-                                              physics: physics,
-                                              itemBuilder: (context, index) {
-                                                final preview = _issuesPreview[index];
+                                        initiallyExpanded: true,
+                                        content: SizedBox(
+                                          height: 117.0 * _issuesPreview.length,
+                                          child: SingleChildScrollView(
+                                            child: Column(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: _issuesPreview.map((preview) {
                                                 final series = library.getSeriesByPath(preview.seriesPath);
-
-                                                return _buildSeriesIssueItem(context, preview, series, _issuesPreview, index);
-                                              },
-                                            );
-                                          },
+                                                return _buildSeriesIssueItem(context, preview, series, _issuesPreview, _issuesPreview.indexOf(preview));
+                                              }).toList(),
+                                            ),
+                                          ),
                                         ),
                                       ),
                                     ],

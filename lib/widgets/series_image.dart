@@ -44,7 +44,7 @@ class SeriesImageBuilder extends StatefulWidget {
     Widget? errorWidget,
     Duration fadeInDuration = const Duration(milliseconds: 250),
     Curve fadeInCurve = Curves.easeIn,
-    bool skipLoadingIndicator = false,
+    bool skipLoadingIndicator = true,
   }) {
     return SeriesImageBuilder(
       key: key,
