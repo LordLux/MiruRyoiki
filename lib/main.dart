@@ -1026,7 +1026,8 @@ void setIcon() async {
   }
 }
 
-// TODO detect when offline
+// TODO fix scrollAmount by very little (??? how did this happen, it worked before 😭)
+// TODO add global status bar at bottom right corner for Anilist sync status and internet connection status
 // TODO edit view options for library to separate sort and view (grid, list etc) from filters
 // TODO homepage title inside header like in library + view options to choose what to show on homepage
 // TODO understand what makes 'scan library' button smooth on rescale
