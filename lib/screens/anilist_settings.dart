@@ -1,7 +1,7 @@
 import 'package:fluent_ui/fluent_ui.dart';
-import 'package:miruryoiki/models/library.dart';
+import 'package:miruryoiki/services/library/library_provider.dart';
 import 'package:provider/provider.dart';
-import '../../services/anilist/provider.dart';
+import '../services/anilist/provider/anilist_provider.dart';
 import '../manager.dart';
 import '../utils/logging.dart';
 import '../utils/screen_utils.dart';

@@ -8,18 +8,18 @@ import 'package:miruryoiki/utils/logging.dart';
 import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
 
-import '../manager.dart';
-import '../services/anilist/linking.dart';
-import '../services/cache.dart';
-import '../services/file_scanner.dart';
-import '../services/player_trackers/mpchc.dart';
-import '../services/navigation/show_info.dart';
-import '../utils/path_utils.dart';
-import '../utils/time_utils.dart';
-import 'anilist/anime.dart';
-import 'anilist/mapping.dart';
-import 'series.dart';
-import 'episode.dart';
+import '../../manager.dart';
+import '../anilist/linking.dart';
+import '../cache.dart';
+import '../file_scanner.dart';
+import '../player_trackers/mpchc.dart';
+import '../navigation/show_info.dart';
+import '../../utils/path_utils.dart';
+import '../../utils/time_utils.dart';
+import '../../models/anilist/anime.dart';
+import '../../models/anilist/mapping.dart';
+import '../../models/series.dart';
+import '../../models/episode.dart';
 
 class Library with ChangeNotifier {
   List<Series> _series = [];

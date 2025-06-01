@@ -2,9 +2,9 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:provider/provider.dart';
 import 'package:recase/recase.dart';
 
-import '../models/library.dart';
+import '../services/library/library_provider.dart';
 import '../models/series.dart';
-import '../services/anilist/provider.dart';
+import '../services/anilist/provider/anilist_provider.dart';
 import '../services/navigation/shortcuts.dart';
 import '../utils/screen_utils.dart';
 import '../widgets/series_card.dart';

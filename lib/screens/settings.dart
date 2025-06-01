@@ -27,7 +27,7 @@ import '../services/navigation/show_info.dart';
 import '../settings.dart';
 import '../utils/color_utils.dart';
 import '../utils/logging.dart';
-import '../models/library.dart';
+import '../services/library/library_provider.dart';
 import '../theme.dart';
 import '../utils/screen_utils.dart';
 import '../utils/time_utils.dart';

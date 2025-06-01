@@ -4,7 +4,7 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/services.dart';
 // import 'package:flutter/material.dart';
 import 'package:jovial_svg/jovial_svg.dart';
-import 'package:miruryoiki/services/anilist/provider.dart';
+import '../services/anilist/provider/anilist_provider.dart';
 import 'package:miruryoiki/utils/time_utils.dart';
 import 'package:path/path.dart';
 import 'package:provider/provider.dart';

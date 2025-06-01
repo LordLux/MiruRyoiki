@@ -4,7 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:crypto/crypto.dart';
 import 'dart:convert';
 
-import '../models/library.dart';
+import 'library/library_provider.dart';
 import '../utils/logging.dart';
 import '../utils/path_utils.dart';
 
