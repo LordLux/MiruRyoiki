@@ -2,13 +2,14 @@ import 'dart:async';
 import 'dart:math' as math;
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/material.dart' as mat;
-import 'package:miruryoiki/services/navigation/show_info.dart';
-import 'package:miruryoiki/widgets/buttons/button.dart';
 import 'package:open_app_file/open_app_file.dart';
 import 'package:provider/provider.dart';
 import 'package:smooth_scroll_multiplatform/smooth_scroll_multiplatform.dart';
 import 'package:defer_pointer/defer_pointer.dart';
 
+import '../services/library/library_provider.dart';
+import '../services/navigation/show_info.dart';
+import '../widgets/buttons/button.dart';
 import '../services/anilist/provider/anilist_provider.dart';
 import '../widgets/buttons/wrapper.dart';
 import '../widgets/dialogs/link_anilist_multi.dart';
@@ -16,7 +17,6 @@ import '../widgets/dialogs/poster_select.dart';
 import '../enums.dart';
 import '../manager.dart';
 import '../models/anilist/mapping.dart';
-import '../services/library/library_provider.dart';
 import '../models/series.dart';
 import '../models/episode.dart';
 import '../services/anilist/linking.dart';
@@ -917,9 +917,9 @@ class SeriesScreenState extends State<SeriesScreen> {
     }
   }
 
-  void _playEpisode(Episode episode) async {
-    // Launch MPC-HC with the episode file
-    await OpenAppFile.open(episode.path);
+  void _playEpisode(Episode episode) {
+    final library = Provider.of<Library>(context, listen: false);
+    library.playEpisode(episode);
   }
 }
 
@@ -977,7 +977,7 @@ void linkWithAnilist(BuildContext context, Series? series, Future<void> Function
 
         // Ensure the library gets saved
         await library.updateSeriesMappings(series, mappings);
-        
+
         // If links were added
         if (newMappingsCount > 0) {
           snackBar(
