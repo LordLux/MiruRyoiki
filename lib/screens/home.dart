@@ -176,8 +176,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
     // Get recently added series - sort by dateAdded
     final recentSeries = library.series.toList();
-    // TODO ..sort((a, b) => (b.dateAdded ?? DateTime.now())
-    //     .compareTo(a.dateAdded ?? DateTime.now()));
+    // TODO ..sort((a, b) => (b.dateAdded ?? now)
+    //     .compareTo(a.dateAdded ?? now));
 
     final topRecent = recentSeries.take(10).toList();
 

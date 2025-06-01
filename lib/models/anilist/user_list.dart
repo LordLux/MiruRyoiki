@@ -13,6 +13,19 @@ enum AnilistListStatus {
   REPEATING,
   CUSTOM,
 }
+extension AnilistListStatusX on AnilistListStatus {
+  String get name_ {
+    return switch (this) {
+      AnilistListStatus.CURRENT => 'CURRENT',
+      AnilistListStatus.PLANNING => 'PLANNING',
+      AnilistListStatus.COMPLETED => 'COMPLETED',
+      AnilistListStatus.DROPPED => 'DROPPED',
+      AnilistListStatus.PAUSED => 'PAUSED',
+      AnilistListStatus.REPEATING => 'REPEATING',
+      AnilistListStatus.CUSTOM => 'CUSTOM',
+    };
+  }
+}
 
 extension AnilistListStatusExtension on String {
   AnilistListStatus? toListStatus() {
@@ -93,6 +106,38 @@ class AnilistMediaListEntry {
       'createdAt': createdAt,
       'updatedAt': updatedAt,
     };
+  }
+  
+  AnilistMediaListEntry copyWith({
+    int? id,
+    int? mediaId,
+    AnilistAnime? media,
+    AnilistListStatus? status,
+    int? progress,
+    int? score,
+    String? customLists,
+    bool? hiddenFromStatusLists,
+    int? priority,
+    DateValue? startedAt,
+    DateValue? completedAt,
+    int? createdAt,
+    int? updatedAt,
+  }) {
+    return AnilistMediaListEntry(
+      id: id ?? this.id,
+      mediaId: mediaId ?? this.mediaId,
+      media: media ?? this.media,
+      status: status ?? this.status,
+      progress: progress ?? this.progress,
+      score: score ?? this.score,
+      customLists: customLists ?? this.customLists,
+      hiddenFromStatusLists: hiddenFromStatusLists ?? this.hiddenFromStatusLists,
+      priority: priority ?? this.priority,
+      startedAt: startedAt ?? this.startedAt,
+      completedAt: completedAt ?? this.completedAt,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
   }
 }
 
