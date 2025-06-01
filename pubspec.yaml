@@ -72,6 +72,11 @@ flutter:
   assets:
     - .env
     - assets/
+    - assets/anilist/
+    - assets/anilist/logo.png
+    - assets/anilist/logo.si
+    - assets/anilist/offline.si
+    - assets/anilist/offline_logo.si
     - assets/system/
     - assets/system/icon.ico
     - assets/system/icon.png

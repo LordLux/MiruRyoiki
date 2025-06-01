@@ -1,19 +1,24 @@
 // ignore_for_file: use_build_context_synchronously
 
 import 'dart:io';
+import 'dart:math';
 import 'package:fluent_ui2/fluent_ui.dart' as flyout;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart' show Icons, Material, MaterialPageRoute, ScaffoldMessenger;
 import 'package:fluent_ui/fluent_ui.dart' hide ColorExtension;
+import 'package:flutter/services.dart';
 import 'package:flutter_acrylic/flutter_acrylic.dart';
 import 'package:flutter_acrylic/window.dart' as flutter_acrylic;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:jovial_svg/jovial_svg.dart';
 import 'package:miruryoiki/screens/home.dart';
 import 'package:provider/provider.dart';
 import 'package:app_links/app_links.dart';
+import 'package:recase/recase.dart';
 import 'package:system_theme/system_theme.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:bitsdojo_window/bitsdojo_window.dart';
+import 'package:url_launcher/url_launcher_string.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:windows_single_instance/windows_single_instance.dart';
 import 'package:material_symbols_icons/material_symbols_icons.dart';
@@ -37,8 +42,10 @@ import 'services/navigation/show_info.dart';
 import 'services/window.dart';
 import 'theme.dart';
 import 'utils/color_utils.dart';
+import 'utils/path_utils.dart';
 import 'utils/screen_utils.dart';
 import 'utils/time_utils.dart';
+import 'widgets/buttons/wrapper.dart';
 import 'widgets/cursors.dart';
 import 'widgets/dialogs/link_anilist_multi.dart';
 import 'widgets/reverse_animation_flyout.dart';
@@ -89,6 +96,10 @@ void main(List<String> args) async {
   // Initialize image cache
   final imageCache = ImageCacheService();
   await imageCache.init();
+
+  anilistLogo = ScalableImageSource.fromSI(rootBundle, 'assets/anilist/logo.si');
+  offlineIcon = ScalableImageSource.fromSI(rootBundle, 'assets/anilist/offline.si');
+  offlineLogo = ScalableImageSource.fromSI(rootBundle, 'assets/anilist/offline_logo.si');
 
   // Initialize settings
   await _settings.init();
@@ -154,6 +165,11 @@ class _MyAppState extends State<MyApp> {
 
       // 2 Initialize Anilist API
       await anilistProvider.initialize();
+
+      // if (!anilistProvider.isOffline && anilistProvider.isLoggedIn) {
+      //   // This will load the latest data and update the cache
+      //   await anilistProvider.refreshUserLists();
+      // }
 
       // 3 Scan Library
       await libraryProvider.scanLibrary();
@@ -352,6 +368,7 @@ class _AppRootState extends State<AppRoot> {
   String? _selectedSeriesPath;
   bool _isSeriesView = false;
   String? lastSelectedSeriesPath;
+  bool _showAnilistRedirectToProfile = false;
 
   final ScrollController libraryController = ScrollController();
   final ScrollController homeController = ScrollController();
@@ -370,14 +387,22 @@ class _AppRootState extends State<AppRoot> {
 
   final GlobalKey<NavigationViewState> _paneKey = GlobalKey<NavigationViewState>();
 
-  final Widget anilistIcon = SizedBox(
-    height: 25,
-    width: 18,
-    child: Transform.translate(
-      offset: const Offset(1.5, 0),
-      child: Transform.scale(scale: 1.45, child: AnilistLogo()),
-    ),
-  );
+  Widget anilistIcon(bool offline) => SizedBox(
+        height: 25,
+        width: 18,
+        child: Transform.translate(
+          offset: const Offset(2.5, 4),
+          child: Transform.scale(
+            scale: 1.45,
+            child: Stack(
+              children: [
+                if (!offline) AnilistLogo(),
+                if (offline) Svg(offlineLogo, switcher: (p0, p1) => p1),
+              ],
+            ),
+          ),
+        ),
+      );
 
   Widget get settingsIcon => AnimatedRotation(
         duration: getDuration(const Duration(milliseconds: 200)),
@@ -447,195 +472,315 @@ class _AppRootState extends State<AppRoot> {
 
   @override
   Widget build(BuildContext context) {
+    final anilistProvider = Provider.of<AnilistProvider>(context, listen: false);
+
     return AnimatedContainer(
       duration: getDuration(dimDuration),
       color: getDimmableBlack(context),
       child: Stack(
         children: [
+          // Actual Window Content
           Positioned.fill(
             child: Padding(
-              padding: EdgeInsets.only(top: Manager.titleBarHeight), // Adjust for title bar height
-              child: AnimatedContainer(
+              padding: EdgeInsets.only(top: ScreenUtils.kTitleBarHeight), // Adjust for title bar height
+              child: AnimatedPadding(
                 duration: getDuration(dimDuration),
-                color: getDimmableBlack(context),
-                child: NavigationView(
-                  onDisplayModeChanged: (value) => nextFrame(() => setState(() {
-                        _isNavigationPaneCollapsed = _paneKey.currentState?.displayMode == PaneDisplayMode.compact;
-                      })),
-                  key: _paneKey,
-                  pane: NavigationPane(
-                    menuButton: const SizedBox.shrink(), //_appTitle(),
-                    selected: _selectedIndex,
-                    onItemPressed: (index) {
-                      if (_isSeriesView && _selectedSeriesPath != null) {
-                        // If in series view, exit series view first
-                        exitSeriesView();
-                      }
-                      if (_selectedIndex == index) {
-                        // If clicking the same tab, reset its scroll position
-                        _resetScrollPosition(index, animate: true);
-                      }
-                    },
-                    onChanged: (index) => setState(() {
-                      _selectedIndex = index;
-                      lastSelectedSeriesPath = _selectedSeriesPath;
-                      _selectedSeriesPath = null;
-                      _isSeriesView = false;
+                padding: EdgeInsets.only(bottom: anilistProvider.isOffline ? 0 : 0),
+                child: AnimatedContainer(
+                  duration: getDuration(dimDuration),
+                  color: getDimmableBlack(context),
+                  child: NavigationView(
+                    onDisplayModeChanged: (value) => nextFrame(() => setState(() {
+                          _isNavigationPaneCollapsed = _paneKey.currentState?.displayMode == PaneDisplayMode.compact;
+                        })),
+                    key: _paneKey,
+                    pane: NavigationPane(
+                      menuButton: const SizedBox.shrink(), //_appTitle(),
+                      selected: _selectedIndex,
+                      onItemPressed: (index) {
+                        if (_isSeriesView && _selectedSeriesPath != null) {
+                          // If in series view, exit series view first
+                          exitSeriesView();
+                        }
+                        if (_selectedIndex == index) {
+                          // If clicking the same tab, reset its scroll position
+                          _resetScrollPosition(index, animate: true);
+                        }
+                      },
+                      onChanged: (index) => setState(() {
+                        _selectedIndex = index;
+                        lastSelectedSeriesPath = _selectedSeriesPath;
+                        _selectedSeriesPath = null;
+                        _isSeriesView = false;
 
-                      // Reset scroll when directly navigating to library
-                      _resetScrollPosition(index);
+                        // Reset scroll when directly navigating to library
+                        _resetScrollPosition(index);
 
-                      // Register in navigation stack - add this code
-                      final navManager = Provider.of<NavigationManager>(context, listen: false);
+                        // Register in navigation stack - add this code
+                        final navManager = Provider.of<NavigationManager>(context, listen: false);
 
-                      // Clear everything before adding a new pane
-                      navManager.clearStack();
+                        // Clear everything before adding a new pane
+                        navManager.clearStack();
 
-                      // Register the selected pane
-                      final item = _navigationMap[index]!;
-                      navManager.pushPane(item['id'], item['title']);
-                    }),
-                    displayMode: _isSeriesView ? PaneDisplayMode.compact : PaneDisplayMode.auto,
-                    items: [
-                      buildPaneItem(
-                        homeIndex,
-                        icon: const Icon(FluentIcons.home),
-                        body: Stack(
-                          children: [
-                            // Always keep LibraryScreen in the tree with Offstage
-                            Offstage(
-                              offstage: _isSeriesView && _selectedSeriesPath != null && _isFinishedTransitioning,
-                              child: AnimatedOpacity(
-                                duration: getDuration(const Duration(milliseconds: 230)),
-                                opacity: _isSeriesView ? 0.0 : 1.0,
-                                curve: Curves.easeInOut,
-                                child: AbsorbPointer(
-                                  absorbing: _isSeriesView,
-                                  child: HomeScreen(
-                                    key: seriesScreenKey,
-                                    onSeriesSelected: navigateToSeries,
-                                    scrollController: _homeMap['controller'] as ScrollController,
+                        // Register the selected pane
+                        final item = _navigationMap[index]!;
+                        navManager.pushPane(item['id'], item['title']);
+                      }),
+                      displayMode: _isSeriesView ? PaneDisplayMode.compact : PaneDisplayMode.auto,
+                      items: [
+                        buildPaneItem(
+                          homeIndex,
+                          icon: const Icon(FluentIcons.home),
+                          body: Stack(
+                            children: [
+                              // Always keep LibraryScreen in the tree with Offstage
+                              Offstage(
+                                offstage: _isSeriesView && _selectedSeriesPath != null && _isFinishedTransitioning,
+                                child: AnimatedOpacity(
+                                  duration: getDuration(const Duration(milliseconds: 230)),
+                                  opacity: _isSeriesView ? 0.0 : 1.0,
+                                  curve: Curves.easeInOut,
+                                  child: AbsorbPointer(
+                                    absorbing: _isSeriesView,
+                                    child: HomeScreen(
+                                      key: seriesScreenKey,
+                                      onSeriesSelected: navigateToSeries,
+                                      scrollController: _homeMap['controller'] as ScrollController,
+                                    ),
                                   ),
                                 ),
                               ),
-                            ),
 
-                            // Animated container for the SeriesScreen
-                            if (_selectedSeriesPath != null)
-                              AnimatedOpacity(
-                                duration: getDuration(const Duration(milliseconds: 300)),
-                                opacity: _isSeriesView ? 1.0 : 0.0,
-                                curve: Curves.easeInOut,
-                                onEnd: () => setState(() {
-                                  if (_isSeriesView) _isFinishedTransitioning = true;
-                                  finishExitSeriesView();
-                                }),
-                                child: AbsorbPointer(
-                                  absorbing: !_isSeriesView,
-                                  child: SeriesScreen(
-                                    key: seriesScreenKey,
-                                    seriesPath: _selectedSeriesPath!,
-                                    onBack: exitSeriesView,
+                              // Animated container for the SeriesScreen
+                              if (_selectedSeriesPath != null)
+                                AnimatedOpacity(
+                                  duration: getDuration(const Duration(milliseconds: 300)),
+                                  opacity: _isSeriesView ? 1.0 : 0.0,
+                                  curve: Curves.easeInOut,
+                                  onEnd: () => setState(() {
+                                    if (_isSeriesView) _isFinishedTransitioning = true;
+                                    finishExitSeriesView();
+                                  }),
+                                  child: AbsorbPointer(
+                                    absorbing: !_isSeriesView,
+                                    child: SeriesScreen(
+                                      key: seriesScreenKey,
+                                      seriesPath: _selectedSeriesPath!,
+                                      onBack: exitSeriesView,
+                                    ),
                                   ),
                                 ),
-                              ),
-                          ],
-                        ),
-                      ),
-                      buildPaneItem(
-                        libraryIndex,
-                        mouseCursorClick: _selectedIndex != libraryIndex || _isSeriesView,
-                        icon: Icon(Symbols.newsstand),
-                        body: Stack(
-                          children: [
-                            // Always keep LibraryScreen in the tree with Offstage
-                            Offstage(
-                              offstage: _isSeriesView && _selectedSeriesPath != null && _isFinishedTransitioning,
-                              child: AnimatedOpacity(
-                                duration: getDuration(const Duration(milliseconds: 230)),
-                                opacity: _isSeriesView ? 0.0 : 1.0,
-                                curve: Curves.easeInOut,
-                                child: AbsorbPointer(
-                                  absorbing: _isSeriesView,
-                                  child: _libraryScreen,
-                                ),
-                              ),
-                            ),
-
-                            // Animated container for the SeriesScreen
-                            if (_selectedSeriesPath != null)
-                              AnimatedOpacity(
-                                duration: getDuration(const Duration(milliseconds: 300)),
-                                opacity: _isSeriesView ? 1.0 : 0.0,
-                                curve: Curves.easeInOut,
-                                onEnd: () => setState(() {
-                                  if (_isSeriesView) _isFinishedTransitioning = true;
-                                  finishExitSeriesView();
-                                }),
-                                child: AbsorbPointer(
-                                  absorbing: !_isSeriesView,
-                                  child: SeriesScreen(
-                                    key: seriesScreenKey,
-                                    seriesPath: _selectedSeriesPath!,
-                                    onBack: exitSeriesView,
-                                  ),
-                                ),
-                              ),
-                          ],
-                        ),
-                      ),
-                    ],
-                    footerItems: [
-                      PaneItemSeparator(),
-                      buildPaneItem(
-                        accountsIndex,
-                        icon: anilistIcon,
-                        body: AccountsScreen(
-                          key: accountsKey,
-                          scrollController: _accountsMap['controller'] as ScrollController,
-                        ),
-                      ),
-                      buildPaneItem(
-                        settingsIndex,
-                        icon: Padding(
-                          padding: const EdgeInsets.only(left: 2.5),
-                          child: AnimatedRotation(
-                            duration: getDuration(const Duration(milliseconds: 200)),
-                            turns: _selectedIndex == settingsIndex ? 0.5 : 0.0,
-                            child: const Icon(FluentIcons.settings),
+                            ],
                           ),
                         ),
-                        body: SettingsScreen(
-                          scrollController: _settingsMap['controller'] as ScrollController,
+                        buildPaneItem(
+                          libraryIndex,
+                          mouseCursorClick: _selectedIndex != libraryIndex || _isSeriesView,
+                          icon: Icon(Symbols.newsstand),
+                          body: Stack(
+                            children: [
+                              // Always keep LibraryScreen in the tree with Offstage
+                              Offstage(
+                                offstage: _isSeriesView && _selectedSeriesPath != null && _isFinishedTransitioning,
+                                child: AnimatedOpacity(
+                                  duration: getDuration(const Duration(milliseconds: 230)),
+                                  opacity: _isSeriesView ? 0.0 : 1.0,
+                                  curve: Curves.easeInOut,
+                                  child: AbsorbPointer(
+                                    absorbing: _isSeriesView,
+                                    child: _libraryScreen,
+                                  ),
+                                ),
+                              ),
+
+                              // Animated container for the SeriesScreen
+                              if (_selectedSeriesPath != null)
+                                AnimatedOpacity(
+                                  duration: getDuration(const Duration(milliseconds: 300)),
+                                  opacity: _isSeriesView ? 1.0 : 0.0,
+                                  curve: Curves.easeInOut,
+                                  onEnd: () => setState(() {
+                                    if (_isSeriesView) _isFinishedTransitioning = true;
+                                    finishExitSeriesView();
+                                  }),
+                                  child: AbsorbPointer(
+                                    absorbing: !_isSeriesView,
+                                    child: SeriesScreen(
+                                      key: seriesScreenKey,
+                                      seriesPath: _selectedSeriesPath!,
+                                      onBack: exitSeriesView,
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                      footerItems: [
+                        PaneItemSeparator(),
+                        buildPaneItem(
+                          accountsIndex,
+                          icon: anilistIcon(anilistProvider.isOffline),
+                          body: AccountsScreen(
+                            key: accountsKey,
+                            scrollController: _accountsMap['controller'] as ScrollController,
+                          ),
+                          extra: (isHovered) {
+                            final anilistProvider = Provider.of<AnilistProvider>(context, listen: false);
+                            final user = anilistProvider.currentUser;
+
+                            if (user == null) return null;
+
+                            return Flexible(
+                              child: Align(
+                                alignment: Alignment.centerRight,
+                                child: Stack(
+                                  alignment: Alignment.centerRight,
+                                  children: [
+                                    // PFP
+                                    if (user.avatar != null)
+                                      SizedBox(
+                                        height: 50,
+                                        width: 50,
+                                        child: Padding(
+                                          padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 8.0),
+                                          child: CircleAvatar(
+                                            backgroundImage: NetworkImage(user.avatar!),
+                                            backgroundColor: Manager.accentColor.withOpacity(0.25),
+                                            radius: 17,
+                                          ),
+                                        ),
+                                      ),
+                                    // USERNAME
+                                    Padding(
+                                      padding: const EdgeInsets.only(right: 4.0),
+                                      child: SizedBox(
+                                        width: 40,
+                                        height: 40,
+                                        child: AnimatedOpacity(
+                                          duration: getDuration(const Duration(milliseconds: 200)),
+                                          opacity: _showAnilistRedirectToProfile ? 1 : 0,
+                                          child: ClipRRect(
+                                            borderRadius: BorderRadius.circular(20),
+                                            child: MouseButtonWrapper(
+                                              tooltip: 'Open Anilist Profile',
+                                              child: (_) => SizedBox(
+                                                height: 22,
+                                                child: MouseRegion(
+                                                  onEnter: (_) {
+                                                    if (!_showAnilistRedirectToProfile) setState(() => _showAnilistRedirectToProfile = true);
+                                                  },
+                                                  onExit: (_) {
+                                                    if (_showAnilistRedirectToProfile) setState(() => _showAnilistRedirectToProfile = false);
+                                                  },
+                                                  child: IconButton(
+                                                    icon: Icon(
+                                                      Symbols.open_in_new,
+                                                      size: 18,
+                                                      color: FluentTheme.of(context).resources.textFillColorPrimary,
+                                                    ),
+                                                    onPressed: !_showAnilistRedirectToProfile //
+                                                        ? null
+                                                        : () {
+                                                            // open profile page on anilist
+                                                            launchUrlString('https://anilist.co/user/${user.name}');
+                                                          },
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                        buildPaneItem(
+                          settingsIndex,
+                          icon: Padding(
+                            padding: const EdgeInsets.only(left: 2.5),
+                            child: AnimatedRotation(
+                              duration: getDuration(const Duration(milliseconds: 300)),
+                              turns: _selectedIndex == settingsIndex ? 0.5 : 0.0,
+                              child: const Icon(FluentIcons.settings),
+                            ),
+                          ),
+                          body: SettingsScreen(
+                            scrollController: _settingsMap['controller'] as ScrollController,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
             ),
           ),
+          // Title Bar
           Positioned(
             top: 0,
             left: 0,
             right: 0,
-            height: Manager.titleBarHeight, // Adjust for title bar height
+            height: ScreenUtils.kTitleBarHeight, // Adjust for title bar height
             child: _buildTitleBar(),
           ),
+          //TODO add timer for when we are back online, to hide this after a few seconds
+          // AnimatedPositioned(
+          //   duration: getDuration(dimDuration),
+          //   bottom: offline ? 0 : -20,
+          //   child: Container(
+          //     height: ScreenUtils.kOfflineBarMaxHeight,
+          //     width: _paneKey.currentState?.displayMode == PaneDisplayMode.compact ? 50 : 320,
+          //     color: (offline ? Colors.red : Colors.green).withOpacity(.5),
+          //     child: Center(
+          //       child: Text(
+          //         offline ? 'Offline' : 'Online',
+          //         style: Manager.bodyStyle,
+          //       ),
+          //     ),
+          //   ),
+          // ),
         ],
       ),
     );
   }
 
-  PaneItem buildPaneItem(int id, {required Widget icon, required Widget body, bool? mouseCursorClick}) {
+  PaneItem buildPaneItem(
+    int id, {
+    required Widget icon,
+    required Widget body,
+    bool? mouseCursorClick,
+    Widget? Function(bool isHovered)? extra,
+  }) {
+    final anilistProvider = Provider.of<AnilistProvider>(context, listen: false);
     final item = _navigationMap[id]!;
+    final title = item['title'];
     mouseCursorClick ??= _selectedIndex != id;
 
+    if (id == accountsIndex && anilistProvider.isOffline) {
+      final msg = 'You are Offline';
+      icon = TooltipTheme(
+        data: TooltipThemeData(
+          waitDuration: const Duration(milliseconds: 100),
+        ),
+        child: Tooltip(
+          message: msg,
+          child: icon,
+        ),
+      );
+    }
+
     return PaneItem(
+      key: ValueKey("pane_item_$id"),
       mouseCursor: mouseCursorClick ? SystemMouseCursors.click : MouseCursor.defer,
-      title: Text(item['title'], style: Manager.bodyStyle),
+      title: Text(title, style: Manager.bodyStyle),
       icon: icon,
       body: body,
+      trailing: extra?.call(true),
     );
   }
 
@@ -645,7 +790,7 @@ class _AppRootState extends State<AppRoot> {
     return AnimatedContainer(
       duration: getDuration(dimDuration),
       color: getDimmableBlack(context),
-      height: Manager.titleBarHeight,
+      height: ScreenUtils.kTitleBarHeight,
       child: ValueListenableBuilder<bool>(
           valueListenable: Manager.navigation.stackNotifier,
           builder: (context, _, __) {
@@ -665,12 +810,12 @@ class _AppRootState extends State<AppRoot> {
                               child: SizedBox(
                                 width: 30,
                                 child: Transform.translate(
-                                  offset: const Offset(-1, 2),
+                                  offset: const Offset(4, 5),
                                   child: Image.file(
                                     File(iconPath),
                                     width: 19,
                                     height: 19,
-                                    errorBuilder: (_, __, ___) => const Icon(Icons.icecream_outlined, size: 19),
+                                    errorBuilder: (_, __, ___) => Icon(Symbols.animated_images, size: 19),
                                   ),
                                 ),
                               ),
@@ -690,7 +835,7 @@ class _AppRootState extends State<AppRoot> {
                       children: [
                         // Menu bar
                         Transform.translate(
-                          offset: const Offset(-17, 3),
+                          offset: const Offset(-17, 4.75),
                           child: SizedBox(
                             width: winButtonsWidth + 71 + 13,
                             child: Text(
@@ -707,7 +852,7 @@ class _AppRootState extends State<AppRoot> {
                           ),
                         ),
                         SizedBox(
-                          height: Manager.titleBarHeight,
+                          height: ScreenUtils.kTitleBarHeight,
                           child: WindowButtons(),
                         ),
                       ],
@@ -875,17 +1020,11 @@ Future<void> _initializeWindowManager() async {
 
 void setIcon() async {
   if (await File(iconPath).exists()) {
-    // await windowManager.setIcon(iconPath);
+    await windowManager.setIcon(iconPath);
   } else {
     logDebug('Icon file does not exist: $iconPath');
   }
 }
-
-// String get assets => "${(Platform.resolvedExecutable.split(ps)..removeLast()).join(ps)}$ps${kDebugMode ? 'assets' : 'data${ps}flutter_assets${ps}assets'}";
-String get assets => "${(Platform.resolvedExecutable.split(ps)..removeLast()).join(ps)}${ps}data${ps}flutter_assets${ps}assets";
-String get iconPath => '$assets${ps}system${ps}icon.ico';
-String get iconPng => '$assets${ps}system${ps}icon.png';
-String get ps => Platform.pathSeparator;
 
 // TODO detect when offline
 // TODO edit view options for library to separate sort and view (grid, list etc) from filters

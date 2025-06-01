@@ -6,6 +6,7 @@ import 'dart:convert';
 
 import '../models/library.dart';
 import '../utils/logging.dart';
+import '../utils/path_utils.dart';
 
 class ImageCacheService {
   static final ImageCacheService _instance = ImageCacheService._internal();
@@ -20,7 +21,7 @@ class ImageCacheService {
   Future<void> init() async {
     if (_initialized) return;
 
-    final dir = await Library.miruRyoiokiSaveDirectory;
+    final dir = await miruRyoiokiSaveDirectory;
     _cacheDir = Directory('${dir.path}/image_cache');
 
     if (!await _cacheDir!.exists()) //

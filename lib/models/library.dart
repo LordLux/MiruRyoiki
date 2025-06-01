@@ -486,14 +486,6 @@ class Library with ChangeNotifier {
     }
   }
 
-  static Future<Directory> get miruRyoiokiSaveDirectory async {
-    final appDataDir = await getApplicationSupportDirectory();
-    final parentPath = appDataDir.path.split('com.lordlux').first;
-    final miruRyoiokiDir = Directory('${parentPath}MiruRyoiki');
-    if (!await miruRyoiokiDir.exists()) await miruRyoiokiDir.create(recursive: true);
-    return miruRyoiokiDir;
-  }
-
   static const String settingsFileName = 'settings';
   static const String miruryoikiLibrary = 'library';
 

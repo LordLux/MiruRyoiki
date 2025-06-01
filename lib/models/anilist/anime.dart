@@ -151,6 +151,38 @@ class AnilistAnime {
     );
   }
 
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'bannerImage': bannerImage,
+      'posterImage': posterImage,
+      'dominantColor': dominantColor,
+      'title': title.toJson(),
+      'description': description,
+      'meanScore': meanScore,
+      'popularity': popularity,
+      'favourites': favourites,
+      'status': status,
+      'format': format,
+      'episodes': episodes,
+      'seasonYear': seasonYear,
+      'season': season,
+      'genres': genres,
+      'averageScore': averageScore,
+      'trending': trending,
+      'rankings': rankings,
+      'startDate': startDate?.toJson(),
+      'endDate': endDate?.toJson(),
+      'updatedAt': updatedAt,
+      'startedAt': startedAt?.toJson(),
+      'completedAt': completedAt?.toJson(),
+      'advancedScores': advancedScores,
+      'nextAiringEpisode': nextAiringEpisode?.toJson(),
+      'isFavourite': isFavourite,
+      'siteUrl': siteUrl,
+    };
+  }
+
   @override
   String toString() {
     return 'AnilistAnime(id: $id, title: ${title.romaji}, status: $status, episodes: $episodes, bannerImage: ${basename(bannerImage ?? '')}, posterImage: ${basename(posterImage ?? '')})';
@@ -177,6 +209,15 @@ class AnilistTitle {
       native: json['native'] as String?,
       userPreferred: json['userPreferred'] as String?,
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'romaji': romaji,
+      'english': english,
+      'native': native,
+      'userPreferred': userPreferred,
+    };
   }
 }
 
@@ -207,13 +248,13 @@ class DateValue {
 
   @override
   int get hashCode => Object.hash(year, month, day);
-  
+
   @override
   operator ==(Object other) {
     if (identical(this, other)) return true;
     return other is DateValue && other.year == year && other.month == month && other.day == day;
   }
-  
+
   operator >(DateValue other) {
     if (year != null && other.year != null) {
       if (year! > other.year!) return true;
@@ -229,7 +270,7 @@ class DateValue {
     }
     return false;
   }
-  
+
   operator <(DateValue other) {
     if (year != null && other.year != null) {
       if (year! < other.year!) return true;
@@ -245,7 +286,7 @@ class DateValue {
     }
     return false;
   }
-  
+
   operator >=(DateValue other) {
     if (year != null && other.year != null) {
       if (year! >= other.year!) return true;
@@ -261,7 +302,7 @@ class DateValue {
     }
     return false;
   }
-  
+
   operator <=(DateValue other) {
     if (year != null && other.year != null) {
       if (year! <= other.year!) return true;
@@ -276,6 +317,14 @@ class DateValue {
       if (day! > other.day!) return false;
     }
     return false;
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'year': year,
+      'month': month,
+      'day': day,
+    };
   }
 }
 
@@ -293,5 +342,13 @@ class AiringEpisode {
       episode: json['episode'] as int?,
       timeUntilAiring: json['timeUntilAiring'] as int?,
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'airingAt': airingAt,
+      'episode': episode,
+      'timeUntilAiring': timeUntilAiring,
+    };
   }
 }

@@ -1,6 +1,7 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/material.dart' show Material;
 import 'package:miruryoiki/main.dart';
+import 'package:miruryoiki/utils/screen_utils.dart';
 import 'package:provider/provider.dart';
 import '../../manager.dart';
 import '../../utils/logging.dart';
@@ -44,7 +45,7 @@ Future<T?> showManagedDialog<T>({
     useRootNavigator: true,
     dismissWithEsc: false, // DO NOT allow ESC to close the dialog, as esc already triggers normal pop (wtf flutter?)
     barrierDismissible: canUserPopDialog, // allow barrier to dismiss if no check provided
-    barrierPadding: EdgeInsets.only(top: Manager.titleBarHeight),
+    barrierPadding: EdgeInsets.only(top: ScreenUtils.kTitleBarHeight),
     builder: (context) => PopScope(
       canPop: false, // Prevent popping from the dialog itself
       onPopInvoked: (didPop) async {
@@ -277,7 +278,7 @@ class ManagedDialogState extends State<ManagedDialog> {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(top: Manager.titleBarHeight - 5),
+      padding: const EdgeInsets.only(top: ScreenUtils.kTitleBarHeight - 5),
       child: ContentDialog(
         style: widget.theme,
         title: widget.title,

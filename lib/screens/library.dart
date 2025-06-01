@@ -303,7 +303,7 @@ class LibraryScreenState extends State<LibraryScreen> {
                   child: GestureDetector(
                     onTapDown: (_) => _filterHintShowing ? toggleFiltersSidebar() : null,
                     child: SizedBox(
-                      height: ScreenUtils.height - headerHeight - 16 - Manager.titleBarHeight,
+                      height: ScreenUtils.height - headerHeight - 16 - ScreenUtils.kTitleBarHeight,
                       width: width,
                       child: Acrylic(
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.only(topLeft: Radius.circular(8), bottomLeft: Radius.circular(8))),
