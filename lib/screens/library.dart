@@ -82,6 +82,7 @@ class LibraryScreenState extends State<LibraryScreen> {
   Future<void>? _currentSortOperation;
 
   bool _isReordering = false;
+  final GlobalKey firstCardKey = GlobalKey();
 
   bool _isSelectingFolder = false;
 
@@ -665,37 +666,51 @@ class LibraryScreenState extends State<LibraryScreen> {
             opacity: _isProcessing ? 0 : 1,
             child: FadingEdgeScrollView(
               fadeEdges: const EdgeInsets.symmetric(vertical: 10),
-              child: _buildSeriesGrid(displayedSeries, constraints),
+              child: _buildSeriesGrid(displayedSeries, constraints.maxWidth),
             ),
           ),
           if (_isProcessing)
             Positioned.fill(
               child: const Center(child: ProgressRing()),
             ),
+          // Positioned.fill(
+          //   child: Padding(
+          //     padding: EdgeInsets.only(right:12),
+          //     child: Container(
+          //       color: Colors.green.withOpacity(.25),
+          //     ),
+          //   ),
+          // )
         ],
       );
     });
   }
 
-  Widget _buildSeriesGrid(List<Series> series, BoxConstraints constraints) {
+  Widget _buildSeriesGrid(List<Series> series, double maxWidth) {
     Widget episodesGrid(List<Series> list, ScrollController controller, ScrollPhysics physics, bool includePadding) {
       return ValueListenableBuilder(
         valueListenable: previousGridColumnCount,
         builder: (context, columns, __) {
-          // log('Building series grid with $columns columns');
           final List<Widget> children = List.generate(list.length, (index) {
             final Series series_ = list[index % list.length];
             return SeriesCard(
-              key: ValueKey('${series_.path}:${series_.effectivePosterPath ?? 'none'}'),
+              key: index == 0 ? firstCardKey : ValueKey('${series_.path}:${series_.effectivePosterPath ?? 'none'}'),
               series: series_,
               onTap: () => _navigateToSeries(series_),
             );
           });
+
+          if (list.isNotEmpty) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              _measureFirstCard();
+            });
+          }
+
           return GridView(
             padding: includePadding ? const EdgeInsets.only(top: 16, bottom: 8, right: 12) : EdgeInsets.zero,
-            cacheExtent: ScreenUtils.cardHeight(constraints.maxWidth) * 2,
+            cacheExtent: (ScreenUtils.cardHeight ?? 200) * 5,
             gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: columns ?? ScreenUtils.crossAxisCount(constraints.maxWidth),
+              crossAxisCount: columns ?? ScreenUtils.crossAxisCount(maxWidth),
               childAspectRatio: ScreenUtils.kDefaultAspectRatio,
               crossAxisSpacing: ScreenUtils.cardPadding,
               mainAxisSpacing: ScreenUtils.cardPadding,
@@ -709,17 +724,33 @@ class LibraryScreenState extends State<LibraryScreen> {
     }
 
     // If grouping is enabled, show grouped view
-    if (_groupBy != GroupBy.none) return _buildGroupedView(series, constraints, episodesGrid);
+    if (_groupBy != GroupBy.none) return _buildGroupedView(series, maxWidth, episodesGrid);
 
     return DynMouseScroll(
       stopScroll: KeyboardState.ctrlPressedNotifier,
       enableSmoothScroll: Manager.animationsEnabled,
-      scrollAmount: ScreenUtils.cardHeight(constraints.maxWidth),
+      scrollAmount: ScreenUtils.paddedCardHeight,
       controller: widget.scrollController,
       durationMS: 300,
       animationCurve: Curves.ease,
       builder: (context, controller, physics) => episodesGrid(series, controller, physics, true),
     );
+  }
+
+  void _measureFirstCard() {
+    if (!(firstCardKey.currentContext?.mounted ?? true)) return;
+
+    final RenderBox? renderBox = firstCardKey.currentContext?.findRenderObject() as RenderBox?;
+    if (renderBox != null && renderBox.hasSize) {
+      final Size actualSize = renderBox.size;
+
+      if (ScreenUtils.cardSize == null || ScreenUtils.cardSize!.width != actualSize.width || ScreenUtils.cardSize!.height != actualSize.height) {
+        log('Actual card size: ${actualSize.width.toStringAsFixed(1)} x ${actualSize.height.toStringAsFixed(1)}');
+        setState(() {
+          ScreenUtils.cardSize = actualSize;
+        });
+      }
+    }
   }
 
   Future<void> _applySortingAsync(List<Series> series, {String? groupName}) async {
@@ -898,7 +929,7 @@ class LibraryScreenState extends State<LibraryScreen> {
 
   Widget _buildGroupedView(
     List<Series> allSeries,
-    BoxConstraints constraints,
+    double maxWidth,
     Widget Function(List<Series>, ScrollController, ScrollPhysics, bool) episodesGrid,
   ) {
     // Create the groupings based on selected grouping type
@@ -957,7 +988,7 @@ class LibraryScreenState extends State<LibraryScreen> {
       child: DynMouseScroll(
         stopScroll: KeyboardState.ctrlPressedNotifier,
         enableSmoothScroll: Manager.animationsEnabled,
-        scrollAmount: ScreenUtils.cardHeight(constraints.maxWidth),
+        scrollAmount: ScreenUtils.paddedCardHeight,
         controller: widget.scrollController,
         durationMS: 300,
         animationCurve: Curves.ease,
@@ -998,7 +1029,7 @@ class LibraryScreenState extends State<LibraryScreen> {
               header: Text(groupName, style: FluentTheme.of(context).typography.subtitle),
               trailing: Text('${seriesInGroup.length} series'),
               content: SizedBox(
-                height: getHeight(seriesInGroup.length, constraints.maxWidth),
+                height: getHeight(seriesInGroup.length, maxWidth),
                 child: episodesGrid(seriesInGroup, ScrollController(), NeverScrollableScrollPhysics(), false),
               ),
             ));
