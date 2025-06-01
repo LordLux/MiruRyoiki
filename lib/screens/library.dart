@@ -9,9 +9,9 @@ import 'package:smooth_scroll_multiplatform/smooth_scroll_multiplatform.dart';
 
 import '../main.dart';
 import '../models/anilist/anime.dart';
-import '../models/library.dart';
+import '../services/library/library_provider.dart';
 import '../models/series.dart';
-import '../services/anilist/provider.dart';
+import '../services/anilist/provider/anilist_provider.dart';
 import '../services/navigation/shortcuts.dart';
 import '../utils/color_utils.dart';
 import '../utils/logging.dart';

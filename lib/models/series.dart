@@ -10,7 +10,7 @@ import 'package:collection/collection.dart';
 import 'package:provider/provider.dart';
 
 import '../manager.dart';
-import '../services/anilist/provider.dart';
+import '../services/anilist/provider/anilist_provider.dart';
 import '../services/cache.dart';
 import '../utils/logging.dart';
 import 'anilist/anime.dart';

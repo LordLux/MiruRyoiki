@@ -7,7 +7,7 @@ import '../../enums.dart';
 import '../../main.dart';
 import '../../manager.dart';
 import '../../models/series.dart';
-import '../../models/library.dart';
+import '../../services/library/library_provider.dart';
 import '../../screens/series.dart';
 import '../../services/navigation/dialogs.dart';
 import '../../services/navigation/show_info.dart';

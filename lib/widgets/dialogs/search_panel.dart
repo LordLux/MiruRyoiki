@@ -4,7 +4,7 @@ import 'package:provider/provider.dart';
 import '../../models/series.dart';
 import '../../models/anilist/anime.dart';
 import '../../services/anilist/linking.dart';
-import '../../services/anilist/provider.dart';
+import '../../services/anilist/provider/anilist_provider.dart';
 import '../../services/cache.dart';
 import '../../services/navigation/dialogs.dart';
 import '../../services/navigation/shortcuts.dart';
