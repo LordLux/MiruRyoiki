@@ -1,7 +1,6 @@
 import 'package:fluent_ui/fluent_ui.dart';
 
 import '../manager.dart';
-import 'logging.dart';
 
 class ScreenUtils {
   static const int _kcrossAxisCountMax = 10;

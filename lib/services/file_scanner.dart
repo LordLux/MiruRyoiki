@@ -4,7 +4,6 @@ import 'package:collection/collection.dart';
 import 'package:fluent_ui/fluent_ui.dart' show decodeImageFromList;
 import 'package:path/path.dart' as p;
 
-import '../main.dart';
 import '../models/series.dart';
 import '../models/episode.dart';
 import '../utils/logging.dart';

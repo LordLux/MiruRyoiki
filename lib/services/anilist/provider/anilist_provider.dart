@@ -9,7 +9,6 @@ import '../../../models/anilist/mutation.dart';
 import '../../../utils/time_utils.dart';
 import '../../../utils/path_utils.dart';
 import '../../../utils/logging.dart';
-import '../../../enums.dart';
 import '../queries.dart';
 
 // Include all the parts

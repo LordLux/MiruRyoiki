@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:math' as math;
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/material.dart' as mat;
-import 'package:open_app_file/open_app_file.dart';
 import 'package:provider/provider.dart';
 import 'package:smooth_scroll_multiplatform/smooth_scroll_multiplatform.dart';
 import 'package:defer_pointer/defer_pointer.dart';
@@ -28,7 +27,6 @@ import '../utils/screen_utils.dart';
 import '../utils/time_utils.dart';
 import '../widgets/episode_grid.dart';
 import '../widgets/gradient_mask.dart';
-import '../widgets/buttons/loading_button.dart';
 import '../widgets/transparency_shadow_image.dart';
 import 'anilist_settings.dart';
 

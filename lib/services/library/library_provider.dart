@@ -6,7 +6,6 @@ import 'package:collection/collection.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:open_app_file/open_app_file.dart';
 import 'package:path/path.dart';
-import 'package:path_provider/path_provider.dart';
 
 import '../../enums.dart';
 import '../../manager.dart';

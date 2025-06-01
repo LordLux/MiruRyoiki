@@ -16,7 +16,6 @@ import '../../services/navigation/dialogs.dart';
 import '../../services/navigation/shortcuts.dart';
 import '../../services/navigation/show_info.dart';
 import '../../utils/color_utils.dart';
-import '../buttons/loading_button.dart';
 import '../buttons/wrapper.dart';
 import 'search_panel.dart';
 
