@@ -1,7 +1,6 @@
 // import 'package:flutter/material.dart';
 // ignore_for_file: use_build_context_synchronously
 
-import 'dart:math' show min;
 
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/foundation.dart';

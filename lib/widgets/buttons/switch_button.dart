@@ -3,7 +3,6 @@ import 'package:miruryoiki/utils/time_utils.dart';
 
 import '../../manager.dart';
 import '../../utils/color_utils.dart';
-import 'loading_button.dart';
 import 'wrapper.dart';
 
 class SwitchButton extends StatelessWidget {

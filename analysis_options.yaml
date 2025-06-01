@@ -12,6 +12,8 @@ analyzer:
     deprecated_member_use: ignore
     curly_braces_in_flow_control_structures: ignore
     non_constant_identifier_names: ignore
+    invalid_use_of_visible_for_testing_member: ignore
+    invalid_use_of_protected_member: ignore
 include: package:flutter_lints/flutter.yaml
 
 linter:

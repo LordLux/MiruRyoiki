@@ -7,7 +7,6 @@ import '../utils/logging.dart';
 import '../utils/screen_utils.dart';
 import '../widgets/buttons/button.dart';
 import '../widgets/buttons/loading_button.dart';
-import '../widgets/buttons/wrapper.dart';
 import 'accounts.dart';
 
 class AnilistSettingsScreen extends StatelessWidget {

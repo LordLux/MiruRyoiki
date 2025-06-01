@@ -9,7 +9,6 @@ import 'package:provider/provider.dart';
 import '../../main.dart';
 import '../../manager.dart';
 import '../library/library_provider.dart';
-import '../../settings.dart';
 import '../../utils/logging.dart';
 import '../../utils/screen_utils.dart';
 

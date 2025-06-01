@@ -3,7 +3,6 @@ import 'package:flutter/material.dart' show Icons;
 import 'package:flutter_custom_cursor/flutter_custom_cursor.dart';
 
 import '../manager.dart';
-import '../utils/logging.dart';
 import '../utils/time_utils.dart';
 import 'cursors.dart';
 

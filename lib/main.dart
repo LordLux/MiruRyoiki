@@ -1,10 +1,9 @@
 // ignore_for_file: use_build_context_synchronously
 
 import 'dart:io';
-import 'dart:math';
 import 'package:fluent_ui2/fluent_ui.dart' as flyout;
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart' show Icons, Material, MaterialPageRoute, ScaffoldMessenger;
+import 'package:flutter/material.dart' show Material, MaterialPageRoute, ScaffoldMessenger;
 import 'package:fluent_ui/fluent_ui.dart' hide ColorExtension;
 import 'package:flutter/services.dart';
 import 'package:flutter_acrylic/flutter_acrylic.dart';
@@ -14,7 +13,6 @@ import 'package:jovial_svg/jovial_svg.dart';
 import 'package:miruryoiki/screens/home.dart';
 import 'package:provider/provider.dart';
 import 'package:app_links/app_links.dart';
-import 'package:recase/recase.dart';
 import 'package:system_theme/system_theme.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:bitsdojo_window/bitsdojo_window.dart';

@@ -22,7 +22,6 @@ import '../widgets/buttons/button.dart';
 import '../widgets/buttons/switch_button.dart';
 import '../widgets/buttons/wrapper.dart';
 import '../widgets/gradient_mask.dart';
-import '../widgets/buttons/loading_button.dart';
 import '../widgets/simple_flyout.dart' hide ToggleableFlyoutContent;
 import '../widgets/series_card.dart';
 
