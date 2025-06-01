@@ -48,7 +48,7 @@ class Manager {
 
   static DominantColorSource get dominantColorSource => settings.dominantColorSource;
   
-  static double get fontSizeMultiplier => ScreenUtils.textScaleFactor * ((homeKey.currentContext != null ? appTheme.fontSize : 14) / kDefaultFontSize);
+  static double get fontSizeMultiplier => ScreenUtils.textScaleFactor * ((homeKey.currentContext != null ? appTheme.fontSize : kDefaultFontSize) / kDefaultFontSize);
 
   /// Checks if the current platform is MacOS
   static bool get isMacOS => Platform.isMacOS;
