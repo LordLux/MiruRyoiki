@@ -1,5 +1,7 @@
 // ignore_for_file: constant_identifier_names
 
+import 'package:miruryoiki/enums.dart';
+
 import 'anime.dart';
 
 enum AnilistListStatus {
@@ -74,6 +76,24 @@ class AnilistMediaListEntry {
       updatedAt: json['updatedAt'],
     );
   }
+  
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'mediaId': mediaId,
+      'media': media.toJson(),
+      'status': status.name_,
+      'progress': progress,
+      'score': score,
+      'customLists': customLists,
+      'hiddenFromStatusLists': hiddenFromStatusLists,
+      'priority': priority,
+      'startedAt': startedAt?.toJson(),
+      'completedAt': completedAt?.toJson(),
+      'createdAt': createdAt,
+      'updatedAt': updatedAt,
+    };
+  }
 }
 
 class AnilistUserList {
@@ -130,5 +150,14 @@ class AnilistUser {
       avatar: json['avatar']?['large'],
       bannerImage: json['bannerImage'],
     );
+  }
+  
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'name': name,
+      'avatar': avatar,
+      'bannerImage': bannerImage,
+    };
   }
 }

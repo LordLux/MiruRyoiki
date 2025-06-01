@@ -3,6 +3,8 @@ import 'package:flutter_acrylic/window_effect.dart';
 import 'package:recase/recase.dart';
 import 'package:intl/intl.dart';
 
+import 'models/anilist/user_list.dart';
+
 // ENUMS
 enum Dim { dimmed, normal, brightened }
 
@@ -100,6 +102,11 @@ extension DominantColorSourceX on DominantColorSource {
   }
 }
 
+extension AnilistListStatusX on AnilistListStatus? {
+  String get name_ => enumToString(this, false);
+}
+
+
 String enumToString<T>(T enumValue, [bool pretty = true]) {
   if (!pretty) {
     // logTrace(' [Enum to String: ${enumValue.toString().split('.').last.replaceAll(" ", "").toLowerCase()}]');
@@ -189,3 +196,4 @@ extension DateTimeX on DateTime? {
     return DateFormat('dd MMM yy', 'en').format(this!);
   }
 }
+

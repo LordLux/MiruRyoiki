@@ -13,7 +13,6 @@ import 'utils/screen_utils.dart';
 
 
 class Manager {
-  static const double titleBarHeight = 40.0;
   static const int dynMouseScrollDuration = 150;
   static const double dynMouseScrollScrollSpeed = 2;
   static const String appTitle = "MiruRyoiki";

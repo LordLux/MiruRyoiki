@@ -8,6 +8,7 @@ import '../main.dart';
 import '../models/series.dart';
 import '../models/episode.dart';
 import '../utils/logging.dart';
+import '../utils/path_utils.dart';
 
 class FileScanner {
   static const List<String> _videoExtensions = ['.mkv', '.mp4', '.avi', '.mov', '.wmv', '.m4v', '.flv'];

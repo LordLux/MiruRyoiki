@@ -14,6 +14,8 @@ class ScreenUtils {
   static const double kMinHeaderHeight = 150.0;
   static const double kInfoBarWidth = 300.0;
   static const double kMaxContentWidth = 1400.0;
+  static const double kTitleBarHeight = 40.0;
+  static const double kOfflineBarMaxHeight = 20.0;
 
   static MediaQueryData get _mediaQuery => MediaQueryData.fromWindow(WidgetsBinding.instance.window);
   static double get width => _mediaQuery.size.width;
