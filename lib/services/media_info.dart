@@ -1,4 +1,9 @@
+import 'package:path_provider/path_provider.dart';
+import 'package:video_thumbnail_exporter/video_thumbnail_exporter.dart';
+
 import '../utils/logging.dart';
+import 'dart:io';
+import 'package:path/path.dart' as path;
 
 class MediaInfo {
   // Get video duration in milliseconds
@@ -19,18 +24,55 @@ class MediaInfo {
     }
   }
 
-  // Extract a thumbnail from a video file
-  static Future<String?> extractThumbnail(String videoPath, String outputPath) async {
+  /// Extract a thumbnail from a video file
+  static Future<String?> extractThumbnail(String videoPath, {String? outputPath}) async {
     try {
-      // This would use ffmpeg to extract a thumbnail in a real implementation
-      // For now, we just return null to indicate no thumbnail
+      if (!await File(videoPath).exists()) {
+        logErr('Video file does not exist: $videoPath');
+        return null;
+      }
 
-      // TODO: Implement proper thumbnail extraction
+      final String thumbnailPath = outputPath ?? await _generateThumbnailPath(videoPath);
 
-      return null;
-    } catch (e) {
-      logErr('Error extracting thumbnail', e);
+      final bool success = await VideoThumbnailExporter.getThumbnail(
+        videoPath: videoPath,
+        outputPath: thumbnailPath,
+        size: 512, // TODO make configurable
+      );
+
+      if (!success) {
+        logErr('Failed to generate thumbnail for $videoPath');
+        return null;
+      }
+
+      if (!await File(thumbnailPath).exists()) {
+        logErr('Thumbnail file was not created at $thumbnailPath');
+        return null;
+      }
+
+      return thumbnailPath;
+    } catch (e, stackTrace) {
+      logErr('Error extracting thumbnail from $videoPath', e, stackTrace);
       return null;
     }
+  }
+
+  static Future<String> _generateThumbnailPath(String videoPath) async {
+    final tempDir = await getTemporaryDirectory();
+    final String filename = path.basenameWithoutExtension(videoPath);
+
+    final String pathHash = path.dirname(videoPath).hashCode.toString().replaceAll('-', '_');
+    final String thumbnailPath = path.join(
+      tempDir.path,
+      'miruryoiki_thumbnails',
+      '${pathHash}_$filename.png',
+    );
+
+    final directory = Directory(path.dirname(thumbnailPath));
+    if (!await directory.exists()) {
+      await directory.create(recursive: true);
+    }
+
+    return thumbnailPath;
   }
 }
