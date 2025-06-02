@@ -686,20 +686,20 @@ class LibraryScreenState extends State<LibraryScreen> {
   }
 
   Widget _buildSeriesGrid(List<Series> series, double maxWidth) {
-    Widget episodesGrid(List<Series> list, ScrollController controller, ScrollPhysics physics, bool includePadding) {
+    Widget episodesGrid(List<Series> list, ScrollController controller, ScrollPhysics physics, bool includePadding, {bool allowMeasurement = false}) {
       return ValueListenableBuilder(
         valueListenable: previousGridColumnCount,
         builder: (context, columns, __) {
           final List<Widget> children = List.generate(list.length, (index) {
             final Series series_ = list[index % list.length];
             return SeriesCard(
-              key: index == 0 ? firstCardKey : ValueKey('${series_.path}:${series_.effectivePosterPath ?? 'none'}'),
+              key: (index == 0 && allowMeasurement) ? firstCardKey : ValueKey('${series_.path}:${series_.effectivePosterPath ?? 'none'}'),
               series: series_,
               onTap: () => _navigateToSeries(series_),
             );
           });
 
-          if (list.isNotEmpty) {
+          if (list.isNotEmpty && allowMeasurement) {
             WidgetsBinding.instance.addPostFrameCallback((_) {
               _measureFirstCard();
             });
@@ -732,7 +732,7 @@ class LibraryScreenState extends State<LibraryScreen> {
       controller: widget.scrollController,
       durationMS: 300,
       animationCurve: Curves.ease,
-      builder: (context, controller, physics) => episodesGrid(series, controller, physics, true),
+      builder: (context, controller, physics) => episodesGrid(series, controller, physics, true, allowMeasurement: true),
     );
   }
 
@@ -929,7 +929,7 @@ class LibraryScreenState extends State<LibraryScreen> {
   Widget _buildGroupedView(
     List<Series> allSeries,
     double maxWidth,
-    Widget Function(List<Series>, ScrollController, ScrollPhysics, bool) episodesGrid,
+    Widget Function(List<Series>, ScrollController, ScrollPhysics, bool, {bool allowMeasurement}) episodesGrid,
   ) {
     // Create the groupings based on selected grouping type
     Map<String, List<Series>> groups = {};
@@ -1029,7 +1029,13 @@ class LibraryScreenState extends State<LibraryScreen> {
               trailing: Text('${seriesInGroup.length} series'),
               content: SizedBox(
                 height: getHeight(seriesInGroup.length, maxWidth),
-                child: episodesGrid(seriesInGroup, ScrollController(), NeverScrollableScrollPhysics(), false),
+                child: episodesGrid(
+                  seriesInGroup,
+                  ScrollController(),
+                  NeverScrollableScrollPhysics(),
+                  false,
+                  allowMeasurement: groupName == displayOrder.first, // Only measure the first group for card size
+                ),
               ),
             ));
           }
