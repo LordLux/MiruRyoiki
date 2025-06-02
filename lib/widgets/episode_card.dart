@@ -4,6 +4,7 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/material.dart' show InkWell, Material;
 
 import '../functions.dart';
+import '../manager.dart';
 import '../models/episode.dart';
 import '../models/series.dart';
 import '../utils/logging.dart';
@@ -61,8 +62,8 @@ class _HoverableEpisodeTileState extends State<HoverableEpisodeTile> {
                   children: [
                     // Thumbnail or icon
                     ClipRRect(
-                        borderRadius: BorderRadius.circular(8.0),
-                        child: _buildEpisodeThumbnail(widget.episode),
+                      borderRadius: BorderRadius.circular(8.0),
+                      child: _buildEpisodeThumbnail(widget.episode),
                     ),
 
                     // Bottom text overlay
@@ -147,39 +148,46 @@ class _HoverableEpisodeTileState extends State<HoverableEpisodeTile> {
       ),
     );
   }
+
   Widget _buildEpisodeThumbnail(Episode episode) {
-  return FutureBuilder<String?>(
-    future: episode.getThumbnail(),
-    builder: (context, snapshot) {
-      if (snapshot.connectionState == ConnectionState.waiting) {
-        return const Center(child: ProgressRing(strokeWidth: 2));
-      }
-      
-      final String? thumbnailPath = snapshot.data;
-      
-      if (thumbnailPath == null || !File(thumbnailPath).existsSync()) {
-        // Fallback icon if no thumbnail
-        return Icon(
-          FluentIcons.video, 
-          size: 32, 
-          color: FluentTheme.of(context).resources.textFillColorSecondary
-        );
-      }
-      
-      // Display the thumbnail
+    if (episode.thumbnailPath != null) {
       return Image.file(
-        File(thumbnailPath),
+        File(episode.thumbnailPath!),
         fit: BoxFit.cover,
         errorBuilder: (context, error, stackTrace) {
-          logErr('Error loading thumbnail', error, stackTrace);
-          return Icon(
-            FluentIcons.error, 
-            size: 32, 
-            color: FluentTheme.of(context).resources.textFillColorSecondary
-          );
+          // If direct access fails, fall back to getThumbnail()
+          return _buildThumbnailWithFuture(episode);
         },
       );
-    },
-  );
-}
+    }
+    return _buildThumbnailWithFuture(episode);
+  }
+
+  Widget _buildThumbnailWithFuture(Episode episode) {
+    return FutureBuilder<String?>(
+      future: episode.getThumbnail(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Center(child: ProgressRing(strokeWidth: 2, activeColor: Manager.accentColor));
+        }
+
+        final String? thumbnailPath = snapshot.data;
+
+        if (thumbnailPath == null || !File(thumbnailPath).existsSync()) {
+          // Fallback icon if no thumbnail
+          return Icon(FluentIcons.video, size: 32, color: FluentTheme.of(context).resources.textFillColorSecondary);
+        }
+
+        // Display the thumbnail
+        return Image.file(
+          File(thumbnailPath),
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) {
+            logErr('Error loading thumbnail', error, stackTrace);
+            return Icon(FluentIcons.error, size: 32, color: FluentTheme.of(context).resources.textFillColorSecondary);
+          },
+        );
+      },
+    );
+  }
 }

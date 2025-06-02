@@ -8,7 +8,7 @@ import '../services/media_info.dart';
 class Episode {
   final String path;
   final String name;
-  final String? thumbnailPath;
+  String? thumbnailPath;
   bool watched;
   double watchedPercentage;
 
@@ -41,17 +41,27 @@ class Episode {
       watchedPercentage: json['watchedPercentage'] ?? 0.0,
     );
   }
+
   Future<String?> getThumbnail() async {
+    if (thumbnailPath != null) {
+      // Check if the file exists
+      final file = File(thumbnailPath!);
+      if (await file.exists()) return thumbnailPath;
+    }
+
     // Check if we already have a cached thumbnail
     final String cachePath = await _getCachedThumbnailPath();
 
     // If thumbnail exists, return it
     if (await File(cachePath).exists()) {
+      thumbnailPath = cachePath;
       return cachePath;
     }
 
-    // Otherwise generate a new thumbnail
-    return await MediaInfo.extractThumbnail(path, outputPath: cachePath);
+    final newThumbnailPath = await MediaInfo.extractThumbnail(path, outputPath: cachePath);
+    if (newThumbnailPath != null) thumbnailPath = newThumbnailPath;
+
+    return newThumbnailPath;
   }
 
   Future<String> _getCachedThumbnailPath() async {
