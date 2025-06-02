@@ -77,7 +77,7 @@ class _EpisodeGridState extends State<EpisodeGrid> {
               physics: const NeverScrollableScrollPhysics(),
               gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: (constraints.maxWidth ~/ 200).clamp(1, 10),
-                childAspectRatio: 16 / 12,
+                childAspectRatio: 1.78, // 16:9 aspect ratio
                 crossAxisSpacing: 8,
                 mainAxisSpacing: 8,
               ),

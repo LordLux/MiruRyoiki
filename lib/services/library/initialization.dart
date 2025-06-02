@@ -91,9 +91,9 @@ extension LibraryInitialization on Library {
     if (!_cacheValidated) await cacheValidation();
   }
 
-  void _updateWatchedStatus() {
+  void _updateWatchedStatusAndResetThumbnailFetchFailedAttemptsCount() {
     if (!_mpcTracker.isInitialized) return;
-    logTrace('1/3 Getting watched status for all series');
+    logTrace('1/3 Getting watched status for all series and resetting thumbnail fetch attempts');
 
     for (final series in _series) {
       // Update seasons/episodes
@@ -101,6 +101,7 @@ extension LibraryInitialization on Library {
         for (final episode in season.episodes) {
           episode.watchedPercentage = _mpcTracker.getWatchPercentage(episode.path);
           episode.watched = _mpcTracker.isWatched(episode.path);
+          episode.resetThumbnailStatus();
         }
       }
 
@@ -108,7 +109,10 @@ extension LibraryInitialization on Library {
       for (final episode in series.relatedMedia) {
         episode.watchedPercentage = _mpcTracker.getWatchPercentage(episode.path);
         episode.watched = _mpcTracker.isWatched(episode.path);
+        episode.resetThumbnailStatus();
       }
     }
+
+    Episode.resetAllFailedAttempts();
   }
 }

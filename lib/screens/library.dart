@@ -744,7 +744,6 @@ class LibraryScreenState extends State<LibraryScreen> {
       final Size actualSize = renderBox.size;
 
       if (ScreenUtils.cardSize == null || ScreenUtils.cardSize!.width != actualSize.width || ScreenUtils.cardSize!.height != actualSize.height) {
-        log('Actual card size: ${actualSize.width.toStringAsFixed(1)} x ${actualSize.height.toStringAsFixed(1)}');
         setState(() {
           ScreenUtils.cardSize = actualSize;
         });
