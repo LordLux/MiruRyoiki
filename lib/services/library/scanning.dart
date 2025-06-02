@@ -34,7 +34,7 @@ extension LibraryScanning on Library {
       final newSeries = _series.where((s) => !previousSeriesPaths.contains(s.path)).toList();
 
       // Update watched status from tracker
-      _updateWatchedStatus();
+      _updateWatchedStatusAndResetThumbnailFetchFailedAttemptsCount();
 
       if (newSeries.isNotEmpty) {
         logDebug('3 Calculating dominant colors for ${newSeries.length} new series');

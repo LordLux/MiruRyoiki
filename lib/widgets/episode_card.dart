@@ -55,73 +55,77 @@ class _HoverableEpisodeTileState extends State<HoverableEpisodeTile> {
             // Episode card content
             Card(
               padding: EdgeInsets.zero,
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(4.0),
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    // Thumbnail or icon
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(8.0),
-                      child: _buildEpisodeThumbnail(widget.episode),
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  // Thumbnail or icon
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(4.0),
+                    child: _buildEpisodeThumbnail(widget.episode),
+                  ),
+              
+                  // Bottom text overlay
+                  Positioned(
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    child: Transform.scale(
+                      scale: 1.01,
+                      child: Container(
+                        padding: const EdgeInsets.all(8.0),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(4.0),
+                          gradient: LinearGradient(
+                            begin: Alignment.bottomCenter,
+                            end: Alignment.topCenter,
+                            colors: [
+                              Colors.black.withOpacity(0.85),
+                              Colors.black.withOpacity(0.7),
+                              Colors.black.withOpacity(0),
+                            ],
+                          ),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.only(top: 8.0),
+                          child: Text(
+                            widget.episode.name,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 12,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ),
                     ),
-
-                    // Bottom text overlay
+                  ),
+              
+                  // Watched indicator
+                  if (widget.episode.watched)
+                    const Positioned(
+                      top: 8,
+                      right: 8,
+                      child: WatchedBadge(isWatched: true),
+                    ),
+              
+                  // Progress indicator
+                  if (widget.episode.watchedPercentage > 0 && widget.episode.watchedPercentage < 0.8)
                     Positioned(
                       left: 0,
                       right: 0,
                       bottom: 0,
                       child: Container(
-                        padding: const EdgeInsets.all(8.0),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(7.0),
-                          gradient: LinearGradient(
-                            begin: Alignment.bottomCenter,
-                            end: Alignment.topCenter,
-                            colors: [
-                              Colors.black.withOpacity(0.5),
-                              Colors.transparent,
-                            ],
-                          ),
-                        ),
-                        child: Text(
-                          widget.episode.name,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 12,
-                          ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
+                        color: Colors.red.withOpacity(0.7),
+                        child: ProgressBar(
+                          value: (widget.episode.watchedPercentage > 0.8 ? 1 : widget.episode.watchedPercentage) * 100,
+                          backgroundColor: Colors.grey.withOpacity(0.3),
+                          activeColor: widget.series.dominantColor,
                         ),
                       ),
                     ),
-
-                    // Watched indicator
-                    if (widget.episode.watched)
-                      const Positioned(
-                        top: 8,
-                        right: 8,
-                        child: WatchedBadge(isWatched: true),
-                      ),
-
-                    // Progress indicator
-                    if (widget.episode.watchedPercentage > 0 && widget.episode.watchedPercentage < 0.8)
-                      Positioned(
-                        left: 0,
-                        right: 0,
-                        bottom: 0,
-                        child: Container(
-                          color: Colors.red.withOpacity(0.7),
-                          child: ProgressBar(
-                            value: (widget.episode.watchedPercentage > 0.8 ? 1 : widget.episode.watchedPercentage) * 100,
-                            backgroundColor: Colors.grey.withOpacity(0.3),
-                            activeColor: widget.series.dominantColor,
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
+                ],
               ),
             ),
             // Hover and splash overlay

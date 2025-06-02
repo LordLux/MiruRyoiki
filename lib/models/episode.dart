@@ -1,9 +1,15 @@
 import 'dart:io';
+import 'dart:ui';
 
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
 
 import '../services/media_info.dart';
+import '../services/thumbnail_manager.dart';
+import '../utils/logging.dart';
 
 class Episode {
   final String path;
@@ -11,6 +17,10 @@ class Episode {
   String? thumbnailPath;
   bool watched;
   double watchedPercentage;
+  bool thumbnailUnavailable;
+
+  static final Map<String, int> _failedAttempts = {};
+  static const int _maxAttempts = 3;
 
   Episode({
     required this.path,
@@ -18,6 +28,7 @@ class Episode {
     this.thumbnailPath,
     this.watched = false,
     this.watchedPercentage = 0.0,
+    this.thumbnailUnavailable = false,
   });
 
   // For JSON serialization
@@ -28,6 +39,7 @@ class Episode {
       'thumbnailPath': thumbnailPath,
       'watched': watched,
       'watchedPercentage': watchedPercentage,
+      'thumbnailUnavailable': thumbnailUnavailable,
     };
   }
 
@@ -39,43 +51,37 @@ class Episode {
       thumbnailPath: json['thumbnailPath'],
       watched: json['watched'] ?? false,
       watchedPercentage: json['watchedPercentage'] ?? 0.0,
+      thumbnailUnavailable: json['thumbnailUnavailable'] ?? false,
     );
   }
 
   Future<String?> getThumbnail() async {
+    if (thumbnailUnavailable) return null;
+
+    // Check if cached thumbnail already exists
     if (thumbnailPath != null) {
-      // Check if the file exists
       final file = File(thumbnailPath!);
       if (await file.exists()) return thumbnailPath;
     }
 
-    // Check if we already have a cached thumbnail
-    final String cachePath = await _getCachedThumbnailPath();
+    // Use the thumbnail manager to get or generate thumbnail
+    final thumbnailManager = ThumbnailManager();
+    final String? newThumbnailPath = await thumbnailManager.getThumbnail(path);
 
-    // If thumbnail exists, return it
-    if (await File(cachePath).exists()) {
-      thumbnailPath = cachePath;
-      return cachePath;
+    if (newThumbnailPath != null) {
+      thumbnailPath = newThumbnailPath;
+      return newThumbnailPath;
+    } else {
+      thumbnailUnavailable = true;
+      return null;
     }
-
-    final newThumbnailPath = await MediaInfo.extractThumbnail(path, outputPath: cachePath);
-    if (newThumbnailPath != null) thumbnailPath = newThumbnailPath;
-
-    return newThumbnailPath;
   }
 
-  Future<String> _getCachedThumbnailPath() async {
-    final tempDir = await getTemporaryDirectory();
-    final String filename = basenameWithoutExtension(path);
-    final String seriesName = basename(dirname(path));
-    final String thumbnailPath = join(tempDir.path, 'miruryoiki_thumbnails', seriesName, '$filename.png');
-
-    // Ensure directory exists
-    final directory = Directory(dirname(thumbnailPath));
-    if (!await directory.exists()) {
-      await directory.create(recursive: true);
-    }
-
-    return thumbnailPath;
+  void resetThumbnailStatus() {
+    thumbnailUnavailable = false;
+    ThumbnailManager().resetFailedAttemptsForPath(path);
   }
+
+  static void resetAllFailedAttempts() => //
+      ThumbnailManager().resetAllFailedAttempts();
 }

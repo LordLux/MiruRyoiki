@@ -5,6 +5,8 @@ import '../utils/logging.dart';
 import 'dart:io';
 import 'package:path/path.dart' as path;
 
+import 'thumbnail_manager.dart';
+
 class MediaInfo {
   // Get video duration in milliseconds
   static Future<int?> getVideoDuration(String path) async {
@@ -32,12 +34,12 @@ class MediaInfo {
         return null;
       }
 
-      final String thumbnailPath = outputPath ?? await _generateThumbnailPath(videoPath);
+      final String thumbnailPath = outputPath ?? await ThumbnailManager.generateThumbnailPath(videoPath);
 
       final bool success = await VideoThumbnailExporter.getThumbnail(
         videoPath: videoPath,
         outputPath: thumbnailPath,
-        size: 512, // TODO make configurable
+        size: 256, // TODO make configurable
       );
 
       if (!success) {
@@ -55,24 +57,5 @@ class MediaInfo {
       logErr('Error extracting thumbnail from $videoPath', e, stackTrace);
       return null;
     }
-  }
-
-  static Future<String> _generateThumbnailPath(String videoPath) async {
-    final tempDir = await getTemporaryDirectory();
-    final String filename = path.basenameWithoutExtension(videoPath);
-
-    final String pathHash = path.dirname(videoPath).hashCode.toString().replaceAll('-', '_');
-    final String thumbnailPath = path.join(
-      tempDir.path,
-      'miruryoiki_thumbnails',
-      '${pathHash}_$filename.png',
-    );
-
-    final directory = Directory(path.dirname(thumbnailPath));
-    if (!await directory.exists()) {
-      await directory.create(recursive: true);
-    }
-
-    return thumbnailPath;
   }
 }

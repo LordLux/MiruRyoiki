@@ -81,7 +81,7 @@ extension LibraryPersistence on Library {
       }
 
       // Update watched status
-      _updateWatchedStatus();
+      _updateWatchedStatusAndResetThumbnailFetchFailedAttemptsCount();
     } catch (e) {
       logDebug('1 Error loading library: $e');
     }
