@@ -1,10 +1,17 @@
+import 'dart:io';
+
+import 'package:path/path.dart';
+import 'package:path_provider/path_provider.dart';
+
+import '../services/media_info.dart';
+
 class Episode {
   final String path;
   final String name;
   final String? thumbnailPath;
   bool watched;
   double watchedPercentage;
-  
+
   Episode({
     required this.path,
     required this.name,
@@ -12,7 +19,7 @@ class Episode {
     this.watched = false,
     this.watchedPercentage = 0.0,
   });
-  
+
   // For JSON serialization
   Map<String, dynamic> toJson() {
     return {
@@ -23,7 +30,7 @@ class Episode {
       'watchedPercentage': watchedPercentage,
     };
   }
-  
+
   // For JSON deserialization
   factory Episode.fromJson(Map<String, dynamic> json) {
     return Episode(
@@ -33,5 +40,32 @@ class Episode {
       watched: json['watched'] ?? false,
       watchedPercentage: json['watchedPercentage'] ?? 0.0,
     );
+  }
+  Future<String?> getThumbnail() async {
+    // Check if we already have a cached thumbnail
+    final String cachePath = await _getCachedThumbnailPath();
+
+    // If thumbnail exists, return it
+    if (await File(cachePath).exists()) {
+      return cachePath;
+    }
+
+    // Otherwise generate a new thumbnail
+    return await MediaInfo.extractThumbnail(path, outputPath: cachePath);
+  }
+
+  Future<String> _getCachedThumbnailPath() async {
+    final tempDir = await getTemporaryDirectory();
+    final String filename = basenameWithoutExtension(path);
+    final String seriesName = basename(dirname(path));
+    final String thumbnailPath = join(tempDir.path, 'miruryoiki_thumbnails', seriesName, '$filename.png');
+
+    // Ensure directory exists
+    final directory = Directory(dirname(thumbnailPath));
+    if (!await directory.exists()) {
+      await directory.create(recursive: true);
+    }
+
+    return thumbnailPath;
   }
 }

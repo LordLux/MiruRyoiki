@@ -6,6 +6,7 @@ import 'package:flutter/material.dart' show InkWell, Material;
 import '../functions.dart';
 import '../models/episode.dart';
 import '../models/series.dart';
+import '../utils/logging.dart';
 import '../utils/time_utils.dart';
 import 'watched_badge.dart';
 
@@ -61,15 +62,8 @@ class _HoverableEpisodeTileState extends State<HoverableEpisodeTile> {
                     // Thumbnail or icon
                     ClipRRect(
                         borderRadius: BorderRadius.circular(8.0),
-                        child: widget.episode.thumbnailPath != null
-                            ? Image.file(
-                                File(widget.episode.thumbnailPath!),
-                                fit: BoxFit.cover,
-                                errorBuilder: (context, error, stackTrace) => NoImage(
-                                  const Center(child: Icon(FluentIcons.video, size: 40)),
-                                ),
-                              )
-                            : NoImage(const Center(child: Icon(FluentIcons.video, size: 40)))),
+                        child: _buildEpisodeThumbnail(widget.episode),
+                    ),
 
                     // Bottom text overlay
                     Positioned(
@@ -153,4 +147,39 @@ class _HoverableEpisodeTileState extends State<HoverableEpisodeTile> {
       ),
     );
   }
+  Widget _buildEpisodeThumbnail(Episode episode) {
+  return FutureBuilder<String?>(
+    future: episode.getThumbnail(),
+    builder: (context, snapshot) {
+      if (snapshot.connectionState == ConnectionState.waiting) {
+        return const Center(child: ProgressRing(strokeWidth: 2));
+      }
+      
+      final String? thumbnailPath = snapshot.data;
+      
+      if (thumbnailPath == null || !File(thumbnailPath).existsSync()) {
+        // Fallback icon if no thumbnail
+        return Icon(
+          FluentIcons.video, 
+          size: 32, 
+          color: FluentTheme.of(context).resources.textFillColorSecondary
+        );
+      }
+      
+      // Display the thumbnail
+      return Image.file(
+        File(thumbnailPath),
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) {
+          logErr('Error loading thumbnail', error, stackTrace);
+          return Icon(
+            FluentIcons.error, 
+            size: 32, 
+            color: FluentTheme.of(context).resources.textFillColorSecondary
+          );
+        },
+      );
+    },
+  );
+}
 }
