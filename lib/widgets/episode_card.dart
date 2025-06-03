@@ -9,6 +9,8 @@ import '../models/episode.dart';
 import '../models/series.dart';
 import '../utils/logging.dart';
 import '../utils/time_utils.dart';
+import 'context_menu/episode.dart';
+import 'context_menu/series.dart';
 import 'watched_badge.dart';
 
 class HoverableEpisodeTile extends StatefulWidget {
@@ -32,122 +34,127 @@ class _HoverableEpisodeTileState extends State<HoverableEpisodeTile> {
 
   @override
   Widget build(BuildContext context) {
-    return MouseRegion(
-      onEnter: (_) => setState(() => _isHovering = true),
-      onExit: (_) => setState(() => _isHovering = false),
-      cursor: SystemMouseCursors.click,
-      child: AnimatedContainer(
-        duration: getDuration(const Duration(milliseconds: 150)),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(4.0),
-          boxShadow: _isHovering
-              ? [
-                  BoxShadow(
-                    color: widget.series.dominantColor?.withOpacity(0.05) ?? Colors.black.withOpacity(0.1),
-                    blurRadius: 8,
-                    spreadRadius: 1,
-                  )
-                ]
-              : null,
-        ),
-        child: Stack(
-          children: [
-            // Episode card content
-            Card(
-              padding: EdgeInsets.zero,
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  // Thumbnail or icon
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(4.0),
-                    child: _buildEpisodeThumbnail(widget.episode),
-                  ),
-              
-                  // Bottom text overlay
-                  Positioned(
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    child: Transform.scale(
-                      scale: 1.01,
-                      child: Container(
-                        padding: const EdgeInsets.all(8.0),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(4.0),
-                          gradient: LinearGradient(
-                            begin: Alignment.bottomCenter,
-                            end: Alignment.topCenter,
-                            colors: [
-                              Colors.black.withOpacity(0.85),
-                              Colors.black.withOpacity(0.7),
-                              Colors.black.withOpacity(0),
-                            ],
-                          ),
-                        ),
-                        child: Padding(
-                          padding: const EdgeInsets.only(top: 8.0),
-                          child: Text(
-                            widget.episode.name,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w600,
-                              fontSize: 12,
-                            ),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ),
+    return EpisodeContextMenu(
+      series: widget.series,
+      episode: widget.episode,
+      onTap: widget.onTap,
+      child: MouseRegion(
+        onEnter: (_) => setState(() => _isHovering = true),
+        onExit: (_) => setState(() => _isHovering = false),
+        cursor: SystemMouseCursors.click,
+        child: AnimatedContainer(
+          duration: getDuration(const Duration(milliseconds: 150)),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(4.0),
+            boxShadow: _isHovering
+                ? [
+                    BoxShadow(
+                      color: widget.series.dominantColor?.withOpacity(0.05) ?? Colors.black.withOpacity(0.1),
+                      blurRadius: 8,
+                      spreadRadius: 1,
+                    )
+                  ]
+                : null,
+          ),
+          child: Stack(
+            children: [
+              // Episode card content
+              Card(
+                padding: EdgeInsets.zero,
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    // Thumbnail or icon
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(4.0),
+                      child: _buildEpisodeThumbnail(widget.episode),
                     ),
-                  ),
-              
-                  // Watched indicator
-                  if (widget.episode.watched)
-                    const Positioned(
-                      top: 8,
-                      right: 8,
-                      child: WatchedBadge(isWatched: true),
-                    ),
-              
-                  // Progress indicator
-                  if (widget.episode.watchedPercentage > 0 && widget.episode.watchedPercentage < 0.8)
+
+                    // Bottom text overlay
                     Positioned(
                       left: 0,
                       right: 0,
                       bottom: 0,
-                      child: Container(
-                        color: Colors.red.withOpacity(0.7),
-                        child: ProgressBar(
-                          value: (widget.episode.watchedPercentage > 0.8 ? 1 : widget.episode.watchedPercentage) * 100,
-                          backgroundColor: Colors.grey.withOpacity(0.3),
-                          activeColor: widget.series.dominantColor,
+                      child: Transform.scale(
+                        scale: 1.01,
+                        child: Container(
+                          padding: const EdgeInsets.all(8.0),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(4.0),
+                            gradient: LinearGradient(
+                              begin: Alignment.bottomCenter,
+                              end: Alignment.topCenter,
+                              colors: [
+                                Colors.black.withOpacity(0.85),
+                                Colors.black.withOpacity(0.7),
+                                Colors.black.withOpacity(0),
+                              ],
+                            ),
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.only(top: 8.0),
+                            child: Text(
+                              widget.episode.name,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 12,
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
                         ),
                       ),
                     ),
-                ],
+
+                    // Watched indicator
+                    if (widget.episode.watched)
+                      const Positioned(
+                        top: 8,
+                        right: 8,
+                        child: WatchedBadge(isWatched: true),
+                      ),
+
+                    // Progress indicator
+                    if (widget.episode.watchedPercentage > 0 && widget.episode.watchedPercentage < 0.8)
+                      Positioned(
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        child: Container(
+                          color: Colors.red.withOpacity(0.7),
+                          child: ProgressBar(
+                            value: (widget.episode.watchedPercentage > 0.8 ? 1 : widget.episode.watchedPercentage) * 100,
+                            backgroundColor: Colors.grey.withOpacity(0.3),
+                            activeColor: widget.series.dominantColor,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
               ),
-            ),
-            // Hover and splash overlay
-            Positioned.fill(
-              child: Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  onTap: widget.onTap,
-                  splashColor: widget.series.dominantColor?.withOpacity(0.3),
-                  highlightColor: Colors.white.withOpacity(0.05),
-                  borderRadius: BorderRadius.circular(4.0),
-                  child: AnimatedContainer(
-                    duration: getDuration(const Duration(milliseconds: 150)),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(4.0),
-                      color: _isHovering ? Colors.white.withOpacity(0.03) : Colors.transparent,
+              // Hover and splash overlay
+              Positioned.fill(
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: widget.onTap,
+                    splashColor: widget.series.dominantColor?.withOpacity(0.3),
+                    highlightColor: Colors.white.withOpacity(0.05),
+                    borderRadius: BorderRadius.circular(4.0),
+                    child: AnimatedContainer(
+                      duration: getDuration(const Duration(milliseconds: 150)),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(4.0),
+                        color: _isHovering ? Colors.white.withOpacity(0.03) : Colors.transparent,
+                      ),
                     ),
                   ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
