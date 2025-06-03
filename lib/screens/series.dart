@@ -84,7 +84,7 @@ class SeriesScreenState extends State<SeriesScreen> {
         0, 0, 0, 1, 0,
       ]);
 
-  void _selectImage(BuildContext context, bool isBanner) {
+  void selectImage(BuildContext context, bool isBanner) {
     showManagedDialog<ImageSource?>(
       context: context,
       id: isBanner ? 'bannerSelection:${series!.path}' : 'posterSelection:${series!.path}',
@@ -96,7 +96,7 @@ class SeriesScreenState extends State<SeriesScreen> {
         isBanner: isBanner,
       ),
     ).then((source) {
-      if (source != null && mounted) setState(() {});
+      if (source != null && mounted) Manager.setState();
     });
   }
 
@@ -231,7 +231,7 @@ class SeriesScreenState extends State<SeriesScreen> {
               ShiftClickableHover(
                 series: series,
                 enabled: _isBannerHovering,
-                onTap: (context) => _selectImage(context, true),
+                onTap: (context) => selectImage(context, true),
                 onEnter: () => setState(() => _isBannerHovering = true),
                 onExit: () => setState(() => _isBannerHovering = false),
                 final_child: (BuildContext context, bool enabled) => LayoutBuilder(builder: (context, constraints) {
@@ -648,7 +648,7 @@ class SeriesScreenState extends State<SeriesScreen> {
                                         child: ShiftClickableHover(
                                           series: series,
                                           enabled: _isPosterHovering,
-                                          onTap: (context) => _selectImage(context, false), // Poster
+                                          onTap: (context) => selectImage(context, false), // Poster
                                           onEnter: () => setState(() => _isPosterHovering = true),
                                           onExit: () => setState(() => _isPosterHovering = false),
                                           final_child: (BuildContext context, bool enabled) => Stack(
