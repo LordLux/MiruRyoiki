@@ -43,11 +43,13 @@ import 'utils/color_utils.dart';
 import 'utils/path_utils.dart';
 import 'utils/screen_utils.dart';
 import 'utils/time_utils.dart';
+import 'widgets/animated_indicator.dart';
 import 'widgets/buttons/wrapper.dart';
 import 'widgets/cursors.dart';
 import 'widgets/dialogs/link_anilist_multi.dart';
 import 'widgets/reverse_animation_flyout.dart';
 import 'widgets/window_buttons.dart';
+import 'package:flutter_desktop_context_menu/flutter_desktop_context_menu.dart';
 
 final _appTheme = AppTheme();
 final _navigationManager = NavigationManager();
@@ -80,6 +82,8 @@ void main(List<String> args) async {
   await initSystemMouseCursor();
 
   await initializeMiruRyoiokiSaveDirectory();
+
+  await setContextMenuDarkMode(true);
 
   // Load environment variables
   await dotenv.load(fileName: '.env');
@@ -149,10 +153,8 @@ class _MyAppState extends State<MyApp> {
       _handleIncomingLinks();
 
       // Get Providers
-      final libraryProvider = Provider.of<Library>(context, listen: false);
-      final anilistProvider = Provider.of<AnilistProvider>(context, listen: false);
       final settings = Provider.of<SettingsManager>(context, listen: false);
-      final appTheme = Provider.of<AppTheme>(context, listen: false);
+      final libraryProvider = Provider.of<Library>(context, listen: false);
 
       // Apply settings to app components
       settings.applySettings(context);
@@ -161,31 +163,6 @@ class _MyAppState extends State<MyApp> {
 
       // 1 Initialize library
       await libraryProvider.initialize();
-      appTheme.setEffect(appTheme.windowEffect, rootNavigatorKey.currentContext!);
-
-      // 2 Initialize Anilist API
-      await anilistProvider.initialize();
-
-      // if (!anilistProvider.isOffline && anilistProvider.isLoggedIn) {
-      //   // This will load the latest data and update the cache
-      //   await anilistProvider.refreshUserLists();
-      // }
-
-      // 3 Scan Library
-      await libraryProvider.scanLibrary();
-
-      // 4 Validate Cache
-      await libraryProvider.ensureCacheValidated();
-
-      await Future.delayed(const Duration(milliseconds: kDebugMode ? 1200 : 50));
-
-      // 5 Load posters for library
-      await libraryProvider.loadAnilistPostersForLibrary(onProgress: (loaded, total) {
-        if (loaded % 2 == 0 || loaded == total) {
-          // Force UI refresh every 5 items or on completion
-          Manager.setState();
-        }
-      });
     });
   }
 
@@ -209,8 +186,8 @@ class _MyAppState extends State<MyApp> {
         if (initialUri != null) {
           _handleDeepLink(initialUri);
         }
-      } catch (e) {
-        logDebug('Error handling initial uri: $e');
+      } catch (e, st) {
+        logErr('Error handling initial uri', e, st);
       }
     }
   }
@@ -221,7 +198,7 @@ class _MyAppState extends State<MyApp> {
         _handleDeepLink(uri);
       }
     }, onError: (err) {
-      logDebug('Error handling incoming links: $err');
+      logErr('Error handling incoming links', err);
     });
   }
 
@@ -308,37 +285,17 @@ class _MyAppState extends State<MyApp> {
                   ),
                   child: Navigator(
                     onGenerateRoute: (_) => MaterialPageRoute(
-                      builder: (context) => Overlay(
-                        initialEntries: [
-                          OverlayEntry(
-                            builder: (context) => ValueListenableBuilder(
-                              valueListenable: overlayEntry,
-                              builder: (context, overlay, _) {
-                                return Container(
-                                  color: Colors.black.withOpacity(0.5),
-                                  child: GestureDetector(
-                                    behavior: overlay != null ? HitTestBehavior.opaque : HitTestBehavior.translucent,
-                                    onTap: () {
-                                      removeOverlay();
-                                    },
-                                    child: Directionality(
-                                      textDirection: appTheme.textDirection,
-                                      child: NavigationPaneTheme(
-                                        data: NavigationPaneThemeData(
-                                          backgroundColor: appTheme.windowEffect != WindowEffect.disabled ? Colors.transparent : null,
-                                        ),
-                                        child: Material(
-                                          color: Colors.transparent,
-                                          child: child ?? const SizedBox.shrink(),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
+                      builder: (context) => Directionality(
+                        textDirection: appTheme.textDirection,
+                        child: NavigationPaneTheme(
+                          data: NavigationPaneThemeData(
+                            backgroundColor: appTheme.windowEffect != WindowEffect.disabled ? Colors.transparent : null,
                           ),
-                        ],
+                          child: Material(
+                            color: Colors.transparent,
+                            child: child ?? const SizedBox.shrink(),
+                          ),
+                        ),
                       ),
                     ),
                   ),
@@ -527,10 +484,14 @@ class _AppRootState extends State<AppRoot> {
                         navManager.pushPane(item['id'], item['title']);
                       }),
                       displayMode: _isSeriesView ? PaneDisplayMode.compact : PaneDisplayMode.auto,
+                      indicator: AnimatedNavigationIndicator(
+                        targetColor: Manager.currentDominantColor,
+                        indicatorBuilder: (color) => StickyNavigationIndicator(color: color),
+                      ),
                       items: [
                         buildPaneItem(
                           homeIndex,
-                          icon: const Icon(FluentIcons.home),
+                          icon: movedPaneItemIcon(const Icon(FluentIcons.home)),
                           body: Stack(
                             children: [
                               // Always keep LibraryScreen in the tree with Offstage
@@ -557,10 +518,7 @@ class _AppRootState extends State<AppRoot> {
                                   duration: getDuration(const Duration(milliseconds: 300)),
                                   opacity: _isSeriesView ? 1.0 : 0.0,
                                   curve: Curves.easeInOut,
-                                  onEnd: () => setState(() {
-                                    if (_isSeriesView) _isFinishedTransitioning = true;
-                                    finishExitSeriesView();
-                                  }),
+                                  onEnd: onEndTransitionToLibrary,
                                   child: AbsorbPointer(
                                     absorbing: !_isSeriesView,
                                     child: SeriesScreen(
@@ -576,7 +534,7 @@ class _AppRootState extends State<AppRoot> {
                         buildPaneItem(
                           libraryIndex,
                           mouseCursorClick: _selectedIndex != libraryIndex || _isSeriesView,
-                          icon: Icon(Symbols.newsstand),
+                          icon: movedPaneItemIcon(const Icon(Symbols.newsstand)),
                           body: Stack(
                             children: [
                               // Always keep LibraryScreen in the tree with Offstage
@@ -599,10 +557,7 @@ class _AppRootState extends State<AppRoot> {
                                   duration: getDuration(const Duration(milliseconds: 300)),
                                   opacity: _isSeriesView ? 1.0 : 0.0,
                                   curve: Curves.easeInOut,
-                                  onEnd: () => setState(() {
-                                    if (_isSeriesView) _isFinishedTransitioning = true;
-                                    finishExitSeriesView();
-                                  }),
+                                  onEnd: onEndTransitionToLibrary,
                                   child: AbsorbPointer(
                                     absorbing: !_isSeriesView,
                                     child: SeriesScreen(
@@ -701,14 +656,7 @@ class _AppRootState extends State<AppRoot> {
                         ),
                         buildPaneItem(
                           settingsIndex,
-                          icon: Padding(
-                            padding: const EdgeInsets.only(left: 2.5),
-                            child: AnimatedRotation(
-                              duration: getDuration(const Duration(milliseconds: 300)),
-                              turns: _selectedIndex == settingsIndex ? 0.5 : 0.0,
-                              child: const Icon(FluentIcons.settings),
-                            ),
-                          ),
+                          icon: movedPaneItemIcon(const Icon(FluentIcons.settings)),
                           body: SettingsScreen(
                             scrollController: _settingsMap['controller'] as ScrollController,
                           ),
@@ -746,6 +694,13 @@ class _AppRootState extends State<AppRoot> {
           // ),
         ],
       ),
+    );
+  }
+
+  Widget movedPaneItemIcon(Widget icon) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 2),
+      child: icon,
     );
   }
 
@@ -810,7 +765,7 @@ class _AppRootState extends State<AppRoot> {
                               child: SizedBox(
                                 width: 30,
                                 child: Transform.translate(
-                                  offset: const Offset(4, 2),
+                                  offset: const Offset(2.5, 2),
                                   child: Image.file(
                                     File(iconPath),
                                     width: 19,
@@ -835,7 +790,7 @@ class _AppRootState extends State<AppRoot> {
                       children: [
                         // Menu bar
                         Transform.translate(
-                          offset: const Offset(-17, 1.75),
+                          offset: const Offset(-19, 1.75),
                           child: SizedBox(
                             width: winButtonsWidth + 71 + 13,
                             child: Text(
@@ -865,11 +820,9 @@ class _AppRootState extends State<AppRoot> {
     );
   }
 
-  // Update navigateToSeries method:
+  /// Called immediately when a series is selected from the library or home screen
   void navigateToSeries(String seriesPath) {
     previousGridColumnCount.value = ScreenUtils.crossAxisCount();
-    // logDebug('Previous grid column count: ${previousGridColumnCount.value}');
-    // previousGridRowCount.value = libraryScreenKey.currentState!.getGridRowCount();
 
     final series = Provider.of<Library>(context, listen: false).getSeriesByPath(seriesPath);
     final seriesName = series?.name ?? 'Series';
@@ -877,13 +830,13 @@ class _AppRootState extends State<AppRoot> {
     // Update navigation stack
     Provider.of<NavigationManager>(context, listen: false).pushPage('series:$seriesPath', seriesName, data: seriesPath);
 
-    setState(() {
-      _selectedSeriesPath = seriesPath;
-      _isSeriesView = true;
-    });
+    _selectedSeriesPath = seriesPath;
+    Manager.currentDominantColor = series?.dominantColor;
+    _isSeriesView = true;
+    Manager.setState();
   }
 
-  // Update exitSeriesView method:
+  /// Called immediately when exiting the series view
   void exitSeriesView() {
     previousGridColumnCount.value = ScreenUtils.crossAxisCount();
 
@@ -896,16 +849,16 @@ class _AppRootState extends State<AppRoot> {
       lastSelectedSeriesPath = _selectedSeriesPath ?? lastSelectedSeriesPath;
       _isSeriesView = false;
       _isFinishedTransitioning = false;
-      Manager.currentDominantColor = null;
     });
-
-    // nextFrame(delay: 300, () => finishExitSeriesView());
   }
-
-  void finishExitSeriesView() {
+  
+  /// Called when the transition to the library view ends
+  void onEndTransitionToLibrary() {
     setState(() {
+      if (_isSeriesView) _isFinishedTransitioning = true;
       _selectedSeriesPath = null;
       previousGridColumnCount.value = null;
+      Manager.currentDominantColor = null;
     });
   }
 

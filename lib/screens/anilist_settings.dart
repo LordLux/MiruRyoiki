@@ -225,7 +225,7 @@ Widget Chip({
   return Container(
     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
     decoration: BoxDecoration(
-      color: Manager.accentColor.light,
+      color: Manager.currentDominantColor,
       borderRadius: BorderRadius.circular(16),
     ),
     child: Row(

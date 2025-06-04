@@ -11,7 +11,8 @@ class MediaInfo {
   // Get video duration in milliseconds
   static Future<int?> getVideoDuration(String path) async {
     try {
-      final metadata = await getVideoMetadata(path);
+      final Metadata? metadata = await getVideoMetadata(path);
+      log(metadata);
     } catch (e) {
       logErr('Error getting video duration', e);
       return null;

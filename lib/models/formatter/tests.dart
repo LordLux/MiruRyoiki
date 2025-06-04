@@ -136,13 +136,13 @@ bool _validateTestCase(FormatterTestCase testCase, SeriesFormatPreview preview) 
   final countValid = actionCountDiff <= 1; // Allow 1 off (minor tolerance)
   
   if (!countValid) {
-    logDebug('Action count mismatch: ${preview.actions.length} vs ${testCase.expectedActions}');
+    logWarn('Action count mismatch: ${preview.actions.length} vs ${testCase.expectedActions}');
     return false;
   }
   
   // Check if issues match expectations
   if (testCase.shouldHaveIssues != preview.hasIssues) {
-    logDebug('Issue state mismatch: ${preview.hasIssues} vs ${testCase.shouldHaveIssues}');
+    logWarn('Issue state mismatch: ${preview.hasIssues} vs ${testCase.shouldHaveIssues}');
     return false;
   }
   
@@ -160,7 +160,7 @@ bool _validateTestCase(FormatterTestCase testCase, SeriesFormatPreview preview) 
       }
       
       if (actualCount != expectedCount) {
-        logDebug('Action type count mismatch for $type: $actualCount vs $expectedCount');
+        logWarn('Action type count mismatch for $type: $actualCount vs $expectedCount');
         return false;
       }
     }

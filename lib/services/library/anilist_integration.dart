@@ -5,31 +5,37 @@ extension LibraryAnilistIntegration on Library {
   Future<void> loadAnilistPostersForLibrary({void Function(int loaded, int total)? onProgress}) async {
     final linkService = SeriesLinkService();
     final imageCache = ImageCacheService();
-    await imageCache.init(); // Ensure the cache is initialized
+    await imageCache.init();
 
     final needPosters = <Series>[];
     final alreadyCached = <Series>[];
     final recalculateColor = <Series>[];
+    int linked = 0;
 
-    logDebug('5 Loading Anilist posters for library...');
+    logDebug('\n5 | Loading Anilist posters for library...', splitLines: true);
     // Find series that need Anilist posters
-    for (final series in _series) {
+    for (final Series series in _series) {
       // For all linked series, check if they need to use Anilist posters based on preferences
       if (series.isLinked) {
+        linked++;
         final effectiveSource = series.preferredPosterSource ?? Manager.defaultPosterSource;
         final shouldUseAnilist = effectiveSource == ImageSource.anilist || effectiveSource == ImageSource.autoAnilist;
 
         // First check if the series itself has poster data
         if (series.anilistPosterUrl != null) {
-          final String? cached = await imageCache.getCachedImagePath(series.anilistPosterUrl!);
-          if (cached != null) {
-            logTrace('5 Poster for ${series.name} is already cached in series: ${basename(series.anilistPosterUrl!)}');
+          final String? cachedUrl = await imageCache.getCachedImagePath(series.anilistPosterUrl!);
+          if (cachedUrl != null) {
+            // WE KNOW THE POSTER URL ALREADY
+            logTrace('   5 | Poster URL for ${substringSafe(series.name, 0, 20, '"').padRight(22, " ")} is saved in LOCAL: ${substringSafe(series.anilistPosterUrl!, series.anilistPosterUrl!.length - 31, series.anilistPosterUrl!.length)}');
+
             alreadyCached.add(series);
             recalculateColor.add(series);
+
             continue; // Skip checking mappings if series already has data
           }
         }
 
+        // WE DON'T KNOW THE POSTER URL YET
         // Check if we can find the poster URL without fetching
         final AnilistMapping mapping = series.anilistMappings.firstWhere(
           (m) => m.anilistId == (series.primaryAnilistId ?? series.anilistMappings.first.anilistId),
@@ -41,7 +47,7 @@ extension LibraryAnilistIntegration on Library {
         if (series.anilistPosterUrl != null) {
           final String? cached = await imageCache.getCachedImagePath(series.anilistPosterUrl!);
           if (cached != null) {
-            logTrace('5 Poster for ${series.name} is already cached: ${series.anilistPosterUrl!}');
+            logTrace('5 | Poster for ${substringSafe(series.name, 0, 20, '"')} is already cached in ANILIST: ${series.anilistPosterUrl!}');
             // Already cached -> make sure series data is properly updated
             alreadyCached.add(series);
 
@@ -52,27 +58,31 @@ extension LibraryAnilistIntegration on Library {
               recalculateColor.add(series);
             }
           } else if (shouldUseAnilist || series.folderPosterPath == null) {
-            logTrace('5 Poster for ${series.name} is not cached, needs fetching: ${series.anilistPosterUrl}');
+            logTrace('5 | Poster for ${substringSafe(series.name, 0, 20, '"')} is not cached, needs fetching: ${series.anilistPosterUrl}');
             // Not cached -> need to fetch if we should use Anilist or have no local poster
             needPosters.add(series);
           }
         } else if (shouldUseAnilist || series.folderPosterPath == null) {
-          logTrace('5 No poster image for ${series.name}, needs fetching from Anilist\npath: "${series.folderPosterPath}", shouldUseAnilist: $shouldUseAnilist');
+          logTrace('5 | No poster image for ${substringSafe(series.name, 0, 20, '"')}, needs fetching from Anilist\npath: "${series.folderPosterPath}", shouldUseAnilist: $shouldUseAnilist');
           // No anilistData or no posterImage -> need to fetch
           needPosters.add(series);
-        } else
-          logTrace('5 Skipping ${series.name}, no Anilist poster needed based on preferences');
+        } else {
+          logTrace('5 | Skipping ${substringSafe(series.name, 0, 20, '"')}, no Anilist poster needed based on preferences');
+        }
       }
+      // else
+      //     series not linked series, skip
     }
+    logDebug('5 | Found $linked linked series, ${needPosters.length} need posters, ${alreadyCached.length} already cached', splitLines: true);
 
-    // Calculate dominant colors for already cached series
-    if (recalculateColor.isNotEmpty) {
-      logTrace('5 Calculating dominant colors for ${recalculateColor.length} already cached series');
-      for (final series in recalculateColor) {
-        // logTrace("${series.name}, ${series.dominantColor?.toHex()}");
-        await series.calculateDominantColor();
-      }
-    }
+    // Recalculate dominant colors for already cached series, in case their poster was updated
+    // if (recalculateColor.isNotEmpty) {
+    //   logTrace('\n5 | OPTIONAL RECALCULATE: Recalculating dominant colors for ${recalculateColor.length} already cached url posters', splitLines: true);
+    //   for (final series in recalculateColor) {
+    //     await series.calculateDominantColor();
+    //   }
+    //   logTrace('5 | OPTIONAL RECALCULATE ----------------------------------------------------------');
+    // }
 
     if (alreadyCached.isNotEmpty) {
       notifyListeners();
@@ -81,7 +91,7 @@ extension LibraryAnilistIntegration on Library {
 
     if (needPosters.isEmpty) return;
 
-    logDebug('5 Loading Anilist posters for ${needPosters.length} series');
+    logDebug('\n5 | FETCHING Anilist posters for ${needPosters.length} series', splitLines: true);
 
     // Fetch posters in batches
     int loaded = alreadyCached.length;
@@ -266,8 +276,8 @@ extension LibraryAnilistIntegration on Library {
         await file.copy(backupFile.path);
         logDebug('Created backup after updating mappings');
       }
-    } catch (e) {
-      logDebug('Error creating mapping backup: $e');
+    } catch (e, st) {
+      logErr('Error creating mapping backup', e, st);
     }
     return true;
   }

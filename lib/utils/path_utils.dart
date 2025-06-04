@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:math' show min;
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
@@ -39,7 +40,7 @@ class PathString {
 
   set path(String newPath) => _path = PathUtils.normalizePath(newPath);
   String get path => PathUtils.normalizePath(_path);
-  
+
   String get original => _path;
   String get fileName => PathUtils.getFileName(_path);
   String get fileExtension => PathUtils.getFileExtension(_path);
@@ -79,3 +80,6 @@ Directory get miruRyoiokiSaveDirectory {
 
   return Directory(_miruRyoiokiSaveDirectoryPath!);
 }
+
+String substringSafe(String text, int start, [int? end, String wrap = '']) => //
+    wrap + text.substring(min(start, text.length - 1), end != null ? min(end, text.length) : text.length) + wrap;

@@ -18,51 +18,80 @@ bool doLogComplexError = false; // Set to true to enable complex error logging
 /// The `msg` parameter is the message to be logged.
 /// The `color` parameter is the text color of the message (default is [Colors.purpleAccent] to make it more noticeable).
 /// The `bgColor` parameter is the background color of the message (default is [Colors.transparent]).
-void log(final dynamic msg, [final Color color = Colors.purpleAccent, final Color bgColor = Colors.transparent, Object? error, StackTrace? stackTrace]) {
+void log(
+  final dynamic msg, {
+  final Color color = Colors.purpleAccent,
+  final Color bgColor = Colors.transparent,
+  Object? error,
+  StackTrace? stackTrace,
+  bool? splitLines = false,
+}) {
   if (!doLogRelease && !kDebugMode) return;
   String escapeCode = getColorEscapeCode(color);
   String bgEscapeCode = getColorEscapeCodeBg(bgColor);
 
   String formattedMsg = msg.toString();
+
+  if (splitLines == true && formattedMsg.contains('\n')) {
+    final lines = formattedMsg.split('\n');
+    for (var line in lines) {
+      String lineMsg = '$escapeCode$bgEscapeCode$line';
+      if (line.trim().isNotEmpty) {
+        lineMsg = '$nowFormatted | $lineMsg\x1B[0m';
+      } else {
+        lineMsg = '$escapeCode$bgEscapeCode$line\x1B[0m';
+      }
+      developer.log(lineMsg, error: error, stackTrace: stackTrace, time: now);
+      if (!kDebugMode) print(line);
+    }
+    return;
+  }
+
   // Handle newlines by applying escape codes to each line
   if (formattedMsg.contains('\n'))
-    formattedMsg = formattedMsg.split('\n').map((line) => '$escapeCode$bgEscapeCode$line').join('\n');
+    formattedMsg = formattedMsg.split('\n').map((line) {
+      if (line.trim().isNotEmpty) {
+        return '$escapeCode$bgEscapeCode$nowFormatted | $line\x1B[0m';
+      } else {
+        return '$escapeCode$bgEscapeCode$line\x1B[0m';
+      }
+    }).join('\n');
+  else if (formattedMsg.trim().isNotEmpty)
+    formattedMsg = '$escapeCode$bgEscapeCode$nowFormatted | $formattedMsg\x1B[0m';
   else
-    formattedMsg = '$escapeCode$bgEscapeCode$formattedMsg';
-    
-    formattedMsg = '$nowFormatted | $formattedMsg\x1B[0m'; // Reset color at the end
+    formattedMsg = '$escapeCode$bgEscapeCode$formattedMsg\x1B[0m';
 
   developer.log(formattedMsg, error: error, stackTrace: stackTrace, time: now);
   if (!kDebugMode) print(msg);
 }
 
 /// Logs a trace message with the specified [msg] and sets the text color to Teal.
-void logTrace(final dynamic msg) {
+void logTrace(final dynamic msg, {bool? splitLines}) {
   if (!doLogTrace) return;
-  log(msg, Colors.tealAccent);
+  log(msg, color: Colors.tealAccent, splitLines: splitLines);
 }
 
 /// Logs a debug message with the specified [msg]
-void logDebug(final dynamic msg) {
+void logDebug(final dynamic msg, {bool? splitLines}) {
   if (!doLogRelease && !kDebugMode) return;
-  log(msg, Colors.amber, Colors.transparent);
+  log(msg, color: Colors.amber, bgColor: Colors.transparent, splitLines: splitLines);
 }
 
 /// Logs an error message with the specified [msg] and sets the text color to Red.
 void logErr(final dynamic msg, [Object? error, StackTrace? stackTrace]) {
   logger.e(msg, error: error, stackTrace: StackTrace.current, time: now);
   if (!kDebugMode) print(msg); // print error to terminal in release mode
-  if (doLogComplexError) log(msg, Colors.red, Colors.transparent, error, stackTrace);
+  if (doLogComplexError) log(msg, color: Colors.red, bgColor: Colors.transparent, error: error, stackTrace: stackTrace);
 }
 
 /// Logs an info message with the specified [msg] and sets the text color to Very Light Blue.
-void logInfo(final dynamic msg) => log(msg, Colors.white);
+void logInfo(final dynamic msg, {bool? splitLines}) => log(msg, color: Colors.white, splitLines: splitLines);
 
 /// Logs a warning message with the specified [msg] and sets the text color to Orange.
-void logWarn(final dynamic msg) => log(msg, Colors.amber);
+void logWarn(final dynamic msg, {bool? splitLines}) => log(msg, color: Colors.amber, splitLines: splitLines);
 
 /// Logs a success message with the specified [msg] and sets the text color to Green.
-void logSuccess(final dynamic msg) => log(msg, Colors.green);
+void logSuccess(final dynamic msg, {bool? splitLines}) => log(msg, color: Colors.green, splitLines: splitLines);
 
 /// Returns the escape code for the specified text color.
 ///
@@ -94,7 +123,7 @@ Logger logger = Logger();
 /// The `messages` parameter is a list of lists, where each inner list contains the String `message`,
 /// the Color `text color` (optional, defaults to [Colors.white]),
 /// and the Color `background color` (optional, defaults to [Colors.transparent]).
-/// 
+///
 /// example:
 /// ```dart
 /// logMulti([
