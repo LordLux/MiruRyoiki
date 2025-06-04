@@ -71,8 +71,6 @@ class SeriesScreenState extends State<SeriesScreen> {
     _headerHeight = ScreenUtils.kMaxHeaderHeight;
     nextFrame(() {
       _loadAnilistDataForCurrentSeries();
-      Manager.currentDominantColor = dominantColor;
-      nextFrame(() => setState(() {}));
     });
   }
 
@@ -104,10 +102,9 @@ class SeriesScreenState extends State<SeriesScreen> {
     if (series == null) return;
 
     if (!series!.isLinked) {
-      setState(() {
-        // Clear any Anilist data references to ensure UI updates
-        series!.anilistData = null;
-      });
+      // Clear any Anilist data references to ensure UI updates
+      series!.anilistData = null;
+      Manager.setState();
       return;
     }
 
@@ -121,8 +118,7 @@ class SeriesScreenState extends State<SeriesScreen> {
   Future<void> _loadAnilistData(int anilistId) async {
     if (series == null) return;
 
-    final linkService = SeriesLinkService();
-    final anime = await linkService.fetchAnimeDetails(anilistId);
+    final anime = await SeriesLinkService().fetchAnimeDetails(anilistId);
 
     if (anime != null) {
       setState(() {
@@ -147,7 +143,7 @@ class SeriesScreenState extends State<SeriesScreen> {
         }
       });
     } else {
-      logDebug('Failed to load Anilist data for ID: $anilistId'); // Use logDebug instead of print
+      logErr('Failed to load Anilist data for ID: $anilistId');
     }
   }
 
@@ -159,7 +155,7 @@ class SeriesScreenState extends State<SeriesScreen> {
         expanderKey.currentState!.isExpanded = !isOpen;
       });
     } else {
-      logDebug('No expander key found for season $seasonNumber');
+      logWarn('No expander key found for season $seasonNumber');
     }
   }
 
@@ -953,7 +949,7 @@ void linkWithAnilist(BuildContext context, Series? series, Future<void> Function
 
         // if the dialog was closed with a result, check if it was successful
         if (!success) {
-          logDebug('Linking failed');
+          logErr('Linking failed');
           snackBar('Failed to link with Anilist', severity: InfoBarSeverity.error);
           return;
         }

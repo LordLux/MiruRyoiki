@@ -88,8 +88,8 @@ extension AnilistProviderAnimeCache on AnilistProvider {
       }
 
       logDebug('Loaded ${_animeCache.length} anime from cache');
-    } catch (e) {
-      logErr('Error loading anime cache', e);
+    } catch (e, st) {
+      logErr('Error loading anime cache', e, st);
     }
   }
 }

@@ -29,8 +29,8 @@ class FileScanner {
           final existingSeries_ = existingSeries[entity.path];
           final seriesItem = await _processSeries(entity, existingSeries: existingSeries_);
           series.add(seriesItem);
-        } catch (e) {
-          logDebug('3 Error processing series ${entity.path}: $e');
+        } catch (e, st) {
+          logErr('3 | Error processing series ${entity.path}', e, st);
         }
       }
     }

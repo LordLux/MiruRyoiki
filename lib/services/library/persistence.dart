@@ -11,10 +11,10 @@ extension LibraryPersistence on Library {
         final content = await file.readAsString();
         final data = jsonDecode(content);
         _libraryPath = data['libraryPath'];
-        logInfo('0 Loaded settings: $_libraryPath');
+        logDebug('0 | Loaded settings: $_libraryPath');
       }
-    } catch (e) {
-      logDebug('0 Error loading settings: $e');
+    } catch (e, st) {
+      logErr('0 | Error loading settings', e, st);
     }
   }
 
@@ -29,8 +29,8 @@ extension LibraryPersistence on Library {
       };
 
       await file.writeAsString(jsonEncode(data));
-    } catch (e) {
-      logDebug('Error saving settings: $e');
+    } catch (e, st) {
+      logErr('Error saving settings', e, st);
     }
   }
 
@@ -58,32 +58,29 @@ extension LibraryPersistence on Library {
           if (_series.isNotEmpty) {
             // Success - create a backup
             await file.copy(backupFile.path);
-            logDebug('1 Library loaded successfully (${_series.length} series)');
+            logDebug('\n1 | Library loaded successfully (${_series.length} series)', splitLines: true);
           } else {
             throw Exception('Loaded library contains no series');
           }
-        } catch (e) {
-          logDebug('1 Error loading library file, trying backup: $e');
+        } catch (e, st) {
+          logWarn('1 | Error loading library file, trying with backup...', splitLines: true);
           // If main file load fails, try the backup
           if (await backupFile.exists()) {
             final backupContent = await backupFile.readAsString();
             final backupData = jsonDecode(backupContent) as List;
             _series = backupData.map((s) => Series.fromJson(s)).toList();
-            logDebug('1 Loaded library from backup (${_series.length} series)');
+            logDebug('1 | Loaded library from backup (${_series.length} series)');
 
             // Restore from backup
             await backupFile.copy(file.path);
           } else {
-            logDebug('1 No backup file found, starting with an empty library');
+            logErr('1 | No backup file found, starting with an empty library', e, st);
             _series = [];
           }
         }
       }
-
-      // Update watched status
-      _updateWatchedStatusAndResetThumbnailFetchFailedAttemptsCount();
-    } catch (e) {
-      logDebug('1 Error loading library: $e');
+    } catch (e, st) {
+      logErr('1 | Error loading library', e, st);
     }
     notifyListeners();
   }
@@ -99,27 +96,27 @@ extension LibraryPersistence on Library {
       final dir = miruRyoiokiSaveDirectory;
       final file = File('${dir.path}/${Library.miruryoikiLibrary}.json');
       final backupFile = File('${dir.path}/${Library.miruryoikiLibrary}.backup.json');
+      final tempFile = File('${dir.path}/${Library.miruryoikiLibrary}.temp.json');
 
       // Write to temporary file first
       final data = _series.map((s) => s.toJson()).toList();
-      await backupFile.writeAsString(jsonEncode(data));
+
+      await tempFile.writeAsString(jsonEncode(data));
 
       // If successful, rename temp file to replace the actual file (atomic operation)
-      if (await backupFile.exists()) {
+      if (await tempFile.exists()) {
         // Create backup of existing file if it exists
-        if (await file.exists()) {
-          final backupFile = File('${dir.path}/${Library.miruryoikiLibrary}.backup.json');
+        if (await file.exists()) //
           await file.copy(backupFile.path);
-        }
-
+        
         // Replace original with new file
-        await backupFile.rename(file.path);
+        await tempFile.rename(file.path);
         logDebug('Library saved successfully (${_series.length} series)');
         _isDirty = false;
         return;
       }
-    } catch (e) {
-      logDebug('Error saving library: $e');
+    } catch (e, st) {
+      logErr('Error saving library', e, st);
     }
   }
 
@@ -149,8 +146,8 @@ extension LibraryPersistence on Library {
         await file.copy(backupFile.path);
         logDebug('Created backup after updating mappings');
       }
-    } catch (e) {
-      logDebug('Error creating mapping backup: $e');
+    } catch (e, st) {
+      logErr('Error creating mapping backup', e, st);
     }
     return true;
   }

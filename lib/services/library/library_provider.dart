@@ -4,16 +4,22 @@ import 'dart:io';
 
 import 'package:collection/collection.dart';
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/gestures.dart';
 import 'package:open_app_file/open_app_file.dart';
 import 'package:path/path.dart';
+import 'package:provider/provider.dart';
 
 import '../../enums.dart';
+import '../../main.dart';
 import '../../manager.dart';
 import '../../models/anilist/anime.dart';
 import '../../models/anilist/mapping.dart';
 import '../../models/episode.dart';
 import '../../models/series.dart';
 import '../../services/anilist/linking.dart';
+import '../../theme.dart';
+import '../anilist/provider/anilist_provider.dart';
 import '../file_system/cache.dart';
 import '../file_system/file_scanner.dart';
 import '../../services/player_trackers/mpchc.dart';

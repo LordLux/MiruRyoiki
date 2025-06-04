@@ -3,7 +3,7 @@ part of 'anilist_provider.dart';
 extension AnilistProviderInitialization on AnilistProvider {
   /// Initialize the provider
   Future<void> initialize() async {
-    logDebug('2 Initializing AnilistService...');
+    logDebug('\n2 | Initializing AnilistService...', splitLines: true);
     _isLoading = true;
     notifyListeners();
 
@@ -23,13 +23,13 @@ extension AnilistProviderInitialization on AnilistProvider {
         await _saveListsToCache();
       }
     } else {
-      logInfo('Offline mode, using cached data');
+      logInfo('   2 | Offline mode, using cached data');
 
       if (_isInitialized && isLoggedIn) {
         // Try to load user and lists from cache
         await _loadCurrentUserFromCache();
         if (!await _loadListsFromCache()) //
-          logWarn('Failed to load Anilist lists from cache while offline');
+          logWarn('   2 | Failed to load Anilist lists from cache while offline');
       }
     }
 
@@ -39,7 +39,7 @@ extension AnilistProviderInitialization on AnilistProvider {
     _isReady = true;
     _isLoading = false;
     notifyListeners();
-    logTrace('2 AnilistProvider initialized: $_isInitialized${isOnline ? '' : ' (Offline)'}');
+    logTrace('2 | AnilistProvider initialized: $_isInitialized${isOnline ? '' : ' (Offline)'}');
   }
   
   // DISPOSE IS IN MAIN FILE

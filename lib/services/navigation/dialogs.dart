@@ -223,7 +223,7 @@ void closeDialog<T>(BuildContext popContext, {T? result}) {
     // Pop the actual dialog
     Navigator.of(popContext).pop(result);
   } else {
-    logDebug('No dialog to pop in Flutter Navigator');
+    logWarn('No dialog to pop in Flutter Navigator');
   }
 }
 

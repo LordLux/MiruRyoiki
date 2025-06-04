@@ -10,12 +10,12 @@ extension LibraryScanning on Library {
   /// Scan the library for new series
   Future<void> scanLibrary({bool showSnack = false}) async {
     if (_libraryPath == null) {
-      logDebug('3 Skipping scan, library path is null');
+      logDebug('\n3 | Skipping scan, library path is null', splitLines: true);
       return;
     }
-    
+
     if (_isLoading) return;
-    logDebug('3 Scanning library at $_libraryPath');
+    logDebug('\n3 | Scanning library at $_libraryPath', splitLines: true);
 
     _isLoading = true;
     notifyListeners();
@@ -37,23 +37,18 @@ extension LibraryScanning on Library {
       _updateWatchedStatusAndResetThumbnailFetchFailedAttemptsCount();
 
       if (newSeries.isNotEmpty) {
-        logDebug('3 Calculating dominant colors for ${newSeries.length} new series');
-        for (final series in newSeries) {
-          await series.calculateDominantColor();
-        }
+        logDebug('3 | Found ${newSeries.length} new series');
       }
 
       _isDirty = true;
-      _saveLibrary().then((_) {
-        if (showSnack) {
-          final newCount = _series.length - previousSeriesCount;
-          if (newCount > 0) {
-            snackBar('Found $newCount new serie(s)', severity: InfoBarSeverity.success);
-          } else {
-            snackBar('Library scan complete', severity: InfoBarSeverity.info);
-          }
+      if (showSnack) {
+        final newCount = _series.length - previousSeriesCount;
+        if (newCount > 0) {
+          snackBar('Found $newCount new serie(s)', severity: InfoBarSeverity.success);
+        } else {
+          snackBar('Library scan complete', severity: InfoBarSeverity.info);
         }
-      });
+      }
     } catch (e) {
       logErr('Error scanning library', e);
       if (showSnack) snackBar('Error scanning library: $e', severity: InfoBarSeverity.error);
@@ -97,10 +92,10 @@ extension LibraryScanning on Library {
           notifyListeners();
 
           // Save more frequently to preserve progress
-          if (processed % 10 == 0) {
-            logTrace('Saving library after processing $processed series');
-            await _saveLibrary();
-          }
+          // if (processed % 10 == 0) {
+          //   logTrace('Saving library after processing $processed series');
+          //   await _saveLibrary();
+          // }
         }
       } catch (e) {
         logErr('Error calculating dominant color for ${series.name}', e);
@@ -113,7 +108,7 @@ extension LibraryScanning on Library {
     // Save and notify when done
     if (anyChanged || forceRecalculate) {
       _isDirty = true;
-      await _saveLibrary();
+      await forceImmediateSave();
       notifyListeners();
       logTrace('Finished calculating dominant colors for $processed series');
       snackBar(

@@ -6,6 +6,7 @@ extension LibraryInitialization on Library {
       await _loadLibrary();
       _initialized = true;
     }
+    await loadLibraryFirstTime();
   }
 
   void _initAutoSave() {
@@ -20,12 +21,42 @@ extension LibraryInitialization on Library {
 
   // DISPOSE IN MAIN
 
+  Future<void> loadLibraryFirstTime() async {
+    final anilistProvider = Provider.of<AnilistProvider>(rootNavigatorKey.currentContext!, listen: false);
+    final appTheme = Provider.of<AppTheme>(rootNavigatorKey.currentContext!, listen: false);
+
+    appTheme.setEffect(appTheme.windowEffect, rootNavigatorKey.currentContext!);
+
+    // 2 Initialize Anilist API
+    await anilistProvider.initialize();
+
+    // if (!anilistProvider.isOffline && anilistProvider.isLoggedIn) {
+    //   // This will load the latest data and update the cache
+    //   await anilistProvider.refreshUserLists();
+    // }
+
+    // 3 Scan Library
+    await scanLibrary();
+
+    // 4 Validate Cache
+    await ensureCacheValidated();
+
+    // 5 Load posters for library
+    await loadAnilistPostersForLibrary(onProgress: (loaded, total) {
+      if (loaded % 2 == 0 || loaded == total) {
+        // Force UI refresh every 5 items or on completion
+        Manager.setState();
+      }
+    });
+    await forceImmediateSave();
+  }
+
   Future<void> reloadLibrary() async {
     if (_libraryPath == null || _isLoading) return;
     logDebug('Reloading library...');
     // snackBar('Reloading Library...', severity: InfoBarSeverity.info);
     await scanLibrary();
-    await cacheValidation();
+    await ensureCacheValidated();
     await loadAnilistPostersForLibrary(onProgress: (loaded, total) {
       if (loaded % 2 == 0 || loaded == total) {
         // Force UI refresh every 2 items or on completion
@@ -33,12 +64,13 @@ extension LibraryInitialization on Library {
       }
     });
     logDebug('Finished Reloading Library');
+    await _saveLibrary();
     // snackBar('Library Reloaded', severity: InfoBarSeverity.success);
   }
 
   Future<void> cacheValidation() async {
     if (!_cacheValidated) {
-      logDebug('4 Ensuring cache validation...');
+      logDebug('\n4 | Ensuring cache validation...', splitLines: true);
       final imageCache = ImageCacheService();
       await imageCache.init();
 
@@ -49,7 +81,7 @@ extension LibraryInitialization on Library {
           final cachedPosterPath = await imageCache.getCachedImagePath(series.anilistData!.posterImage!);
           if (cachedPosterPath == null) {
             imageCache.cacheImage(series.anilistData!.posterImage!);
-            logTrace('4 Re-caching poster for: ${series.name}');
+            logTrace('4 | Re-caching poster for: ${series.name}');
           }
         }
 
@@ -57,7 +89,7 @@ extension LibraryInitialization on Library {
           final cachedBannerPath = await imageCache.getCachedImagePath(series.anilistData!.bannerImage!);
           if (cachedBannerPath == null) {
             imageCache.cacheImage(series.anilistData!.bannerImage!);
-            logTrace('4 Re-caching banner for: ${series.name}');
+            logTrace('4 | Re-caching banner for: ${series.name}');
           }
         }
 
@@ -67,7 +99,7 @@ extension LibraryInitialization on Library {
             final cachedPath = await imageCache.getCachedImagePath(mapping.anilistData!.posterImage!);
             if (cachedPath == null) {
               imageCache.cacheImage(mapping.anilistData!.posterImage!);
-              logTrace('4 Re-caching mapping poster for: ${series.name}');
+              logTrace('4 | Re-caching mapping poster for: ${series.name}');
             }
           }
 
@@ -75,14 +107,14 @@ extension LibraryInitialization on Library {
             final cachedPath = await imageCache.getCachedImagePath(mapping.anilistData!.bannerImage!);
             if (cachedPath == null) {
               imageCache.cacheImage(mapping.anilistData!.bannerImage!);
-              logTrace('4 Re-caching mapping banner for: ${series.name}');
+              logTrace('4 | Re-caching mapping banner for: ${series.name}');
             }
           }
         }
       }
 
       _cacheValidated = true;
-      logDebug('4 Cache validation complete');
+      logDebug('4 | Cache validation complete');
       notifyListeners();
     }
   }
@@ -93,7 +125,7 @@ extension LibraryInitialization on Library {
 
   void _updateWatchedStatusAndResetThumbnailFetchFailedAttemptsCount() {
     if (!_mpcTracker.isInitialized) return;
-    logTrace('1/3 Getting watched status for all series and resetting thumbnail fetch attempts');
+    logTrace('3 | Getting watched status for all series and resetting thumbnail fetch attempts');
 
     for (final series in _series) {
       // Update seasons/episodes
