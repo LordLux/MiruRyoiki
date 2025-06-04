@@ -7,8 +7,9 @@ list(APPEND FLUTTER_PLUGIN_LIST
   bitsdojo_window_windows
   flutter_acrylic
   flutter_custom_cursor
+  flutter_desktop_context_menu
+  flutter_media_metadata
   flutter_secure_storage_windows
-  open_dir_windows
   screen_retriever_windows
   system_theme
   url_launcher_windows

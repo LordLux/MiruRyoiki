@@ -10,8 +10,9 @@
 #include <bitsdojo_window_windows/bitsdojo_window_plugin.h>
 #include <flutter_acrylic/flutter_acrylic_plugin.h>
 #include <flutter_custom_cursor/flutter_custom_cursor_plugin.h>
+#include <flutter_desktop_context_menu/flutter_desktop_context_menu_plugin.h>
+#include <flutter_media_metadata/flutter_media_metadata_plugin.h>
 #include <flutter_secure_storage_windows/flutter_secure_storage_windows_plugin.h>
-#include <open_dir_windows/open_dir_windows_plugin_c_api.h>
 #include <screen_retriever_windows/screen_retriever_windows_plugin_c_api.h>
 #include <system_theme/system_theme_plugin.h>
 #include <url_launcher_windows/url_launcher_windows.h>
@@ -29,10 +30,12 @@ void RegisterPlugins(flutter::PluginRegistry* registry) {
       registry->GetRegistrarForPlugin("FlutterAcrylicPlugin"));
   FlutterCustomCursorPluginRegisterWithRegistrar(
       registry->GetRegistrarForPlugin("FlutterCustomCursorPlugin"));
+  FlutterDesktopContextMenuPluginRegisterWithRegistrar(
+      registry->GetRegistrarForPlugin("FlutterDesktopContextMenuPlugin"));
+  FlutterMediaMetadataPluginRegisterWithRegistrar(
+      registry->GetRegistrarForPlugin("FlutterMediaMetadataPlugin"));
   FlutterSecureStorageWindowsPluginRegisterWithRegistrar(
       registry->GetRegistrarForPlugin("FlutterSecureStorageWindowsPlugin"));
-  OpenDirWindowsPluginCApiRegisterWithRegistrar(
-      registry->GetRegistrarForPlugin("OpenDirWindowsPluginCApi"));
   ScreenRetrieverWindowsPluginCApiRegisterWithRegistrar(
       registry->GetRegistrarForPlugin("ScreenRetrieverWindowsPluginCApi"));
   SystemThemePluginRegisterWithRegistrar(

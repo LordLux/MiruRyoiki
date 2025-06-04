@@ -1,13 +1,12 @@
 import 'dart:async';
 import 'dart:io';
-import 'dart:ui';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
 
-import 'media_info.dart';
+import 'file_system/media_info.dart';
 import '../utils/logging.dart';
 
 class ThumbnailManager {

@@ -1,6 +1,5 @@
 // ignore_for_file: sort_child_properties_last
 
-import 'dart:io';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:provider/provider.dart';
 import '../../manager.dart';

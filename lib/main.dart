@@ -32,9 +32,9 @@ import 'screens/library.dart';
 import 'screens/series.dart';
 import 'screens/settings.dart';
 import 'services/anilist/auth.dart';
-import 'services/cache.dart';
+import 'services/file_system/cache.dart';
 import 'services/navigation/navigation.dart';
-import 'services/registry.dart' as registry;
+import 'services/file_system/registry.dart' as registry;
 import 'services/navigation/shortcuts.dart';
 import 'services/navigation/show_info.dart';
 import 'services/window.dart';
@@ -78,6 +78,8 @@ void main(List<String> args) async {
   await initSystemMouseCursor();
   await disposeSystemMouseCursor();
   await initSystemMouseCursor();
+
+  await initializeMiruRyoiokiSaveDirectory();
 
   // Load environment variables
   await dotenv.load(fileName: '.env');
@@ -808,7 +810,7 @@ class _AppRootState extends State<AppRoot> {
                               child: SizedBox(
                                 width: 30,
                                 child: Transform.translate(
-                                  offset: const Offset(4, 5),
+                                  offset: const Offset(4, 2),
                                   child: Image.file(
                                     File(iconPath),
                                     width: 19,
@@ -833,7 +835,7 @@ class _AppRootState extends State<AppRoot> {
                       children: [
                         // Menu bar
                         Transform.translate(
-                          offset: const Offset(-17, 4.75),
+                          offset: const Offset(-17, 1.75),
                           child: SizedBox(
                             width: winButtonsWidth + 71 + 13,
                             child: Text(
