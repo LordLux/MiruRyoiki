@@ -18,6 +18,7 @@ class ScreenUtils {
   static const double kMaxContentWidth = 1400.0;
   static const double kTitleBarHeight = 40.0;
   static const double kOfflineBarMaxHeight = 20.0;
+  static const double kEpisodeCardBorderRadius = 4.0;
 
   static Size? cardSize;
 
