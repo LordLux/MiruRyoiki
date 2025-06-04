@@ -61,7 +61,8 @@ dependencies:
   image: any
   video_thumbnail_exporter:
     path: M:/Projects/video_thumbnail_exporter/
-  flutter_desktop_context_menu: ^0.2.0
+  flutter_desktop_context_menu:
+    path: M:/Projects/flutter_desktop_context_menu/
   flutter_media_metadata: ^1.0.0
 
 dev_dependencies:

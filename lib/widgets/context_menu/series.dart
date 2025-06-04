@@ -1,6 +1,9 @@
 // ignore_for_file: sort_child_properties_last
 
+import 'dart:io';
+
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:flutter_desktop_context_menu/flutter_desktop_context_menu.dart';
 import 'package:provider/provider.dart';
 import '../../manager.dart';
 import '../../models/series.dart';
@@ -8,70 +11,93 @@ import '../../services/library/library_provider.dart';
 import '../../services/navigation/dialogs.dart';
 import '../../services/navigation/show_info.dart';
 import '../../screens/series.dart';
+import '../../utils/shell_utils.dart';
 import '../dialogs/poster_select.dart';
 import 'context_menu.dart';
 import '../../utils/logging.dart';
 
-class SeriesContextMenu extends StatelessWidget {
+class SeriesContextMenu extends StatefulWidget {
   final Series series;
   final Widget child;
-  final VoidCallback? onTap;
+  final BuildContext context;
 
   const SeriesContextMenu({
     super.key,
     required this.series,
     required this.child,
-    this.onTap,
+    required this.context,
   });
 
   @override
-  Widget build(BuildContext context) {
-    return ContextMenuOverlay(
-      onTap: onTap,
-      child: child,
+  State<SeriesContextMenu> createState() => SeriesContextMenuState();
+}
+
+class SeriesContextMenuState extends State<SeriesContextMenu> {
+  late final Menu menu;
+
+  @override
+  void initState() {
+    super.initState();
+    menu = seriesMenu(
+      context: widget.context,
+      series: widget.series,
+    );
+  }
+
+  void openMenu() {
+    popUpContextMenu(
+      menu,
+      placement: Placement.bottomRight,
+    );
+  }
+
+  Menu seriesMenu({
+    required final BuildContext context,
+    required final Series series,
+  }) {
+    return Menu(
       items: [
-        ContextMenuItemData(
+        MenuItem(
           label: 'Open in File Explorer',
-          icon: FluentIcons.folder_open,
-          onPressed: () => _openInExplorer(context),
+          shortcutKey: 'e',
+          shortcutModifiers: ShortcutModifiers(control: Platform.isWindows, meta: Platform.isMacOS),
+          onClick: (_) => _openFolderLocation(context),
         ),
-        ContextMenuItemData(
+        MenuItem(
           label: 'Change Poster Image',
-          icon: FluentIcons.picture_fill,
-          onPressed: () => _changePosterImage(context),
+          shortcutKey: 'p',
+          shortcutModifiers: ShortcutModifiers(control: Platform.isWindows, meta: Platform.isMacOS),
+          onClick: (_) => _changePosterImage(context),
         ),
-        ContextMenuItemData(
+        MenuItem(
           label: 'Change Banner Image',
-          icon: FluentIcons.photo2,
-          onPressed: () => _changeBannerImage(context),
+          shortcutKey: 'b',
+          shortcutModifiers: ShortcutModifiers(control: Platform.isWindows, meta: Platform.isMacOS),
+          onClick: (_) => _changeBannerImage(context),
         ),
-        ContextMenuItemData.divider(),
-        ContextMenuItemData(
+        MenuItem(
           label: 'Update from Anilist',
-          icon: FluentIcons.refresh,
-          onPressed: () => _updateFromAnilist(context),
+          shortcutKey: 'a',
+          shortcutModifiers: ShortcutModifiers(control: Platform.isWindows, meta: Platform.isMacOS),
+          onClick: (_) => _updateFromAnilist(context),
         ),
-        ContextMenuItemData.divider(),
-        ContextMenuItemData(
-          label: series.watchedPercentage == 1.0 ? 'Already Watched All' : 'Mark All as Watched',
-          icon: FluentIcons.check_mark,
-          onPressed: series.watchedPercentage == 1.0 ? null : () => _markAllAsWatched(context),
-        ),
-        ContextMenuItemData(
-          label: series.watchedPercentage == 0.0 ? 'Already Unwatched' : 'Mark All as Unwatched',
-          icon: FluentIcons.clear,
-          onPressed: series.watchedPercentage == 0.0 ? null : () => _markAllAsUnwatched(context),
+        MenuItem.separator(),
+        MenuItem(
+          key: 'watched',
+          label: widget.series.watchedPercentage == 1.0 ? 'Already Watched All' : 'Mark All as Watched',
+          toolTip: widget.series.watchedPercentage == 1.0 ? 'Unmark as watched' : 'Mark as watched',
+          disabled: widget.series.watchedPercentage == 1.0,
+          onClick: (menuItem) => _markAllAsWatched(context),
         ),
       ],
     );
   }
 
-  void _openInExplorer(BuildContext context) async {
+  void _openFolderLocation(BuildContext context) async {
     try {
-      final library = Provider.of<Library>(context, listen: false);
-      library.openFolder(series.path);
+      ShellUtils.openFileExplorerAndSelect(widget.series.path);
     } catch (e) {
-      logErr('Error opening folder', e);
+      logErr('Error opening folder location', e);
       snackBar('Could not open folder: $e', severity: InfoBarSeverity.error);
     }
   }
@@ -87,11 +113,11 @@ class SeriesContextMenu extends StatelessWidget {
       // Otherwise show a standalone dialog
       showManagedDialog(
         context: context,
-        id: 'posterSelection:${series.path}',
+        id: 'posterSelection:${widget.series.path}',
         title: 'Select Poster',
         dialogDoPopCheck: () => true,
         builder: (context) => ImageSelectionDialog(
-          series: series,
+          series: widget.series,
           popContext: context,
           isBanner: false,
         ),
@@ -109,11 +135,11 @@ class SeriesContextMenu extends StatelessWidget {
     } else {
       showManagedDialog(
         context: context,
-        id: 'bannerSelection:${series.path}',
+        id: 'bannerSelection:${widget.series.path}',
         title: 'Select Banner',
         dialogDoPopCheck: () => true,
         builder: (context) => ImageSelectionDialog(
-          series: series,
+          series: widget.series,
           popContext: context,
           isBanner: true,
         ),
@@ -129,13 +155,16 @@ class SeriesContextMenu extends StatelessWidget {
 
   void _markAllAsWatched(BuildContext context) {
     final library = Provider.of<Library>(context, listen: false);
-    library.markSeriesWatched(series, watched: true);
+    library.markSeriesWatched(widget.series, watched: true);
     snackBar('Marked all episodes as watched', severity: InfoBarSeverity.success);
   }
 
   void _markAllAsUnwatched(BuildContext context) {
     final library = Provider.of<Library>(context, listen: false);
-    library.markSeriesWatched(series, watched: false);
+    library.markSeriesWatched(widget.series, watched: false);
     snackBar('Marked all episodes as unwatched', severity: InfoBarSeverity.success);
   }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
 }

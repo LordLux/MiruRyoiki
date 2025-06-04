@@ -9,6 +9,7 @@ import '../manager.dart';
 import '../models/episode.dart';
 import '../models/series.dart';
 import '../utils/logging.dart';
+import '../utils/screen_utils.dart';
 import '../utils/time_utils.dart';
 import 'context_menu/episode.dart';
 import 'context_menu/series.dart';
@@ -48,7 +49,7 @@ class _HoverableEpisodeTileState extends State<HoverableEpisodeTile> {
         child: AnimatedContainer(
           duration: getDuration(const Duration(milliseconds: 150)),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(4.0),
+            borderRadius: BorderRadius.circular(ScreenUtils.kEpisodeCardBorderRadius),
             boxShadow: _isHovering
                 ? [
                     BoxShadow(
@@ -60,7 +61,7 @@ class _HoverableEpisodeTileState extends State<HoverableEpisodeTile> {
                 : null,
           ),
           child: ClipRRect(
-            borderRadius: BorderRadius.circular(4.0),
+            borderRadius: BorderRadius.circular(ScreenUtils.kEpisodeCardBorderRadius),
             child: Stack(
               children: [
                 // Episode card content
@@ -72,7 +73,7 @@ class _HoverableEpisodeTileState extends State<HoverableEpisodeTile> {
                     children: [
                       // Thumbnail or icon
                       ClipRRect(
-                        borderRadius: BorderRadius.circular(4.0),
+                        borderRadius: BorderRadius.circular(ScreenUtils.kEpisodeCardBorderRadius),
                         child: ImageFiltered(
                           imageFilter: ImageFilter.blur(
                             sigmaX: 15,
@@ -89,11 +90,11 @@ class _HoverableEpisodeTileState extends State<HoverableEpisodeTile> {
                         right: 0,
                         bottom: 0,
                         child: ClipRRect(
-                          borderRadius: BorderRadius.circular(3.0),
+                          borderRadius: BorderRadius.circular(ScreenUtils.kEpisodeCardBorderRadius),
                           child: Container(
                             padding: const EdgeInsets.all(8.0),
                             decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(4.0),
+                              borderRadius: BorderRadius.circular(ScreenUtils.kEpisodeCardBorderRadius),
                               gradient: LinearGradient(
                                 begin: Alignment.bottomCenter,
                                 end: Alignment.topCenter,
@@ -135,23 +136,26 @@ class _HoverableEpisodeTileState extends State<HoverableEpisodeTile> {
                           left: 0,
                           right: 0,
                           bottom: 0,
-                          child: LayoutBuilder(
-                            builder: (context, constraints) {
-                              return Container(
+                          child: LayoutBuilder(builder: (context, constraints) {
+                            return Container(
+                              decoration: BoxDecoration(
                                 color: Colors.grey.withOpacity(0.3),
-                                height: 4,
-                                child: Align(
-                                  alignment: Alignment.centerLeft,
-                                  child: Container(
+                                borderRadius: BorderRadius.only(bottomLeft: Radius.circular(ScreenUtils.kEpisodeCardBorderRadius), bottomRight: Radius.circular(ScreenUtils.kEpisodeCardBorderRadius)),
+                              ),
+                              height: 3.5,
+                              child: Align(
+                                alignment: Alignment.centerLeft,
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.only(bottomLeft: Radius.circular(ScreenUtils.kEpisodeCardBorderRadius), bottomRight: Radius.circular(ScreenUtils.kEpisodeCardBorderRadius)),
                                     color: widget.series.dominantColor,
-                                    height: 4,
-                                    width: (widget.episode.watchedPercentage > 0.8 ? 1 : widget.episode.watchedPercentage) * constraints.maxWidth,
                                   ),
+                                  height: 3.5,
+                                  width: (widget.episode.watchedPercentage > 0.8 ? 1 : widget.episode.watchedPercentage) * constraints.maxWidth,
                                 ),
-                                
-                              );
-                            }
-                          ),
+                              ),
+                            );
+                          }),
                         ),
                     ],
                   ),
@@ -160,17 +164,19 @@ class _HoverableEpisodeTileState extends State<HoverableEpisodeTile> {
                 Positioned.fill(
                   child: Material(
                     color: Colors.transparent,
-                    child: InkWell(
-                      onTap: widget.onTap,
-                      onSecondaryTap: () => _contextMenuKey.currentState?.openMenu(),
-                      splashColor: widget.series.dominantColor?.withOpacity(0.3),
-                      highlightColor: Colors.white.withOpacity(0.05),
-                      borderRadius: BorderRadius.circular(4.0),
-                      child: AnimatedContainer(
-                        duration: getDuration(const Duration(milliseconds: 150)),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(4.0),
-                          color: _isHovering ? Colors.white.withOpacity(0.03) : Colors.transparent,
+                    child: GestureDetector(
+                      onSecondaryTapDown: (_) => _contextMenuKey.currentState?.openMenu(),
+                      child: InkWell(
+                        onTap: widget.onTap,
+                        splashColor: widget.series.dominantColor?.withOpacity(0.3),
+                        highlightColor: Colors.white.withOpacity(0.05),
+                        borderRadius: BorderRadius.circular(ScreenUtils.kEpisodeCardBorderRadius),
+                        child: AnimatedContainer(
+                          duration: getDuration(const Duration(milliseconds: 150)),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(ScreenUtils.kEpisodeCardBorderRadius),
+                            color: _isHovering ? Colors.white.withOpacity(0.03) : Colors.transparent,
+                          ),
                         ),
                       ),
                     ),
