@@ -14,7 +14,6 @@ import '../../utils/logging.dart';
 import '../../utils/path_utils.dart';
 import '../../utils/shell_utils.dart';
 import '../../utils/time_utils.dart';
-import 'context_menu.dart';
 import 'package:flutter_desktop_context_menu/flutter_desktop_context_menu.dart';
 
 class EpisodeContextMenu extends StatefulWidget {

@@ -13,7 +13,6 @@ import '../../services/navigation/show_info.dart';
 import '../../screens/series.dart';
 import '../../utils/shell_utils.dart';
 import '../dialogs/poster_select.dart';
-import 'context_menu.dart';
 import '../../utils/logging.dart';
 
 class SeriesContextMenu extends StatefulWidget {
