@@ -11,7 +11,7 @@ import 'package:provider/provider.dart';
 
 import '../manager.dart';
 import '../services/anilist/provider/anilist_provider.dart';
-import '../services/cache.dart';
+import '../services/file_system/cache.dart';
 import '../utils/logging.dart';
 import 'anilist/anime.dart';
 import 'anilist/mapping.dart';

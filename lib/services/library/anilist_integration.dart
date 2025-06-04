@@ -259,7 +259,7 @@ extension LibraryAnilistIntegration on Library {
     notifyListeners();
 
     try {
-      final dir = await miruRyoiokiSaveDirectory;
+      final dir = miruRyoiokiSaveDirectory;
       final file = File('${dir.path}/${Library.miruryoikiLibrary}.json');
       final backupFile = File('${dir.path}/${Library.miruryoikiLibrary}.mappings.json');
       if (await file.exists()) {

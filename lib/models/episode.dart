@@ -1,18 +1,10 @@
 import 'dart:io';
-import 'dart:ui';
 
-import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:path/path.dart';
-import 'package:path_provider/path_provider.dart';
 
-import '../services/media_info.dart';
 import '../services/thumbnail_manager.dart';
-import '../utils/logging.dart';
 
 class Episode {
-  final String path;
+  final String path; /// TODO use PathString
   final String name;
   String? thumbnailPath;
   bool watched;

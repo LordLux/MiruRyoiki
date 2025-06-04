@@ -9,7 +9,13 @@ import '../../main.dart';
 import '../../utils/logging.dart';
 import '../../utils/time_utils.dart';
 
-void snackBar(String message, {fluent.Color color = const mat.Color(0xFF333333), fluent.InfoBarSeverity severity = fluent.InfoBarSeverity.info, bool hasError = false, BuildContext? context}) {
+void snackBar(
+  String message, {
+  fluent.Color color = const mat.Color(0xFF333333),
+  fluent.InfoBarSeverity severity = fluent.InfoBarSeverity.info,
+  bool hasError = false,
+  BuildContext? context,
+}) {
   if (severity == fluent.InfoBarSeverity.error && kDebugMode) log("Error: $message");
 
   fluent.displayInfoBar(

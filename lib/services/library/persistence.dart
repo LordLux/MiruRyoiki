@@ -4,7 +4,7 @@ extension LibraryPersistence on Library {
   /// Load settings from saved JSON file
   Future<void> _loadSettings() async {
     try {
-      final dir = await miruRyoiokiSaveDirectory;
+      final dir = miruRyoiokiSaveDirectory;
       final file = File('${dir.path}/${Library.settingsFileName}.json');
 
       if (await file.exists()) {
@@ -21,7 +21,7 @@ extension LibraryPersistence on Library {
   /// Save settings to JSON file
   Future<void> _saveSettings() async {
     try {
-      final dir = await miruRyoiokiSaveDirectory;
+      final dir = miruRyoiokiSaveDirectory;
       final file = File('${dir.path}/${Library.settingsFileName}.json');
 
       final data = {
@@ -39,7 +39,7 @@ extension LibraryPersistence on Library {
     try {
       await _loadSettings();
 
-      final dir = await miruRyoiokiSaveDirectory;
+      final dir = miruRyoiokiSaveDirectory;
       final file = File('${dir.path}/${Library.miruryoikiLibrary}.json');
       final backupFile = File('${dir.path}/${Library.miruryoikiLibrary}.backup.json');
 
@@ -96,7 +96,7 @@ extension LibraryPersistence on Library {
     logDebug('Saving library...');
 
     try {
-      final dir = await miruRyoiokiSaveDirectory;
+      final dir = miruRyoiokiSaveDirectory;
       final file = File('${dir.path}/${Library.miruryoikiLibrary}.json');
       final backupFile = File('${dir.path}/${Library.miruryoikiLibrary}.backup.json');
 
@@ -142,7 +142,7 @@ extension LibraryPersistence on Library {
   /// Create a backup of the mappings
   Future<bool> _backupMappings() async {
     try {
-      final dir = await miruRyoiokiSaveDirectory;
+      final dir = miruRyoiokiSaveDirectory;
       final file = File('${dir.path}/${Library.miruryoikiLibrary}.json');
       final backupFile = File('${dir.path}/${Library.miruryoikiLibrary}.mappings.json');
       if (await file.exists()) {

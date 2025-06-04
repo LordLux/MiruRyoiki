@@ -42,10 +42,10 @@ class ShellUtils {
       return false;
     }
     final program = 'explorer.exe';
-    final command = fileName != null
+    final command = fileName != null //
         ? '/select,"${p.join(directory, fileName)}"'
         : '"$directory"';
-    
+
     final success = ShellExecute(
       NULL,
       TEXT('open'),
@@ -85,4 +85,7 @@ class ShellUtils {
       return false;
     }
   }
+
+  static Future<ProcessResult> runFFmpeg(List<String> args) async => //
+      await Process.run('ffmpeg', args);
 }

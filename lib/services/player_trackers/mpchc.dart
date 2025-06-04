@@ -82,7 +82,7 @@ class MPCHCTracker with ChangeNotifier {
                 _fileToKeyMap[filename] = subKey;
                 _keyToPositionMap[subKey] = percentage;
                 
-                //logDebug('Indexed: $filename -> $subKey (${(percentage * 100).toStringAsFixed(1)}%)');
+                if (percentage != 0) log('Indexed: $filename -> $subKey (${(percentage * 100).toStringAsFixed(1)}%)');
               }
             } finally {
               RegistryUtils.closeKey(hFileKey);

@@ -2,7 +2,6 @@
 
 import 'dart:io';
 import 'package:fluent_ui/fluent_ui.dart';
-import 'package:flutter/services.dart';
 import 'package:miruryoiki/functions.dart';
 import 'package:provider/provider.dart';
 import 'package:path/path.dart' as p;
@@ -11,61 +10,90 @@ import '../../models/series.dart';
 import '../../services/library/library_provider.dart';
 import '../../services/navigation/show_info.dart';
 import '../../utils/logging.dart';
+import '../../utils/path_utils.dart';
 import '../../utils/shell_utils.dart';
 import 'context_menu.dart';
-import 'package:open_dir/open_dir.dart';
+import 'package:flutter_desktop_context_menu/flutter_desktop_context_menu.dart';
 
-class EpisodeContextMenu extends StatelessWidget {
+class EpisodeContextMenu extends StatefulWidget {
   final Episode episode;
   final Series series;
   final Widget child;
-  final VoidCallback? onTap;
+  final BuildContext context;
 
   const EpisodeContextMenu({
     super.key,
+    required this.context,
     required this.episode,
     required this.series,
     required this.child,
-    this.onTap,
   });
 
   @override
-  Widget build(BuildContext context) {
-    return ContextMenuOverlay(
-      onTap: onTap,
-      child: child,
+  State<EpisodeContextMenu> createState() => EpisodeContextMenuState();
+}
+
+class EpisodeContextMenuState extends State<EpisodeContextMenu> {
+  late final Menu menu;
+
+  @override
+  void initState() {
+    super.initState();
+    menu = episodeMenu(
+      context: widget.context,
+      episode: widget.episode,
+    );
+  }
+
+  void openMenu() {
+    popUpContextMenu(
+      menu,
+      placement: Placement.bottomRight,
+    );
+  }
+
+  Menu episodeMenu({
+    required final BuildContext context,
+    required final Episode episode,
+  }) {
+    return Menu(
       items: [
-        ContextMenuItemData(
+        MenuItem(
           label: 'Play',
-          icon: FluentIcons.play,
-          onPressed: () => _playEpisode(context),
+          icon: r"C:\Users\LordLux\Pictures\Icons\Win11VideoScriptss.ico".replaceAll("\\", ps),
+          shortcutKey: 'p',
+          shortcutModifiers: ShortcutModifiers(control: Platform.isWindows, meta: Platform.isMacOS),
+          onClick: (_) => _playEpisode(context),
         ),
-        ContextMenuItemData(
+        MenuItem(
           label: 'Open With...',
-          icon: FluentIcons.open_with,
-          onPressed: () => _openWith(context),
+          shortcutKey: 'o',
+          shortcutModifiers: ShortcutModifiers(control: Platform.isWindows, meta: Platform.isMacOS),
+          onClick: (_) => _openWith(context),
         ),
-        ContextMenuItemData.divider(),
-        ContextMenuItemData(
+        MenuItem(
           label: 'Open Folder Location',
-          icon: FluentIcons.folder_open,
-          onPressed: () => _openFolderLocation(context),
+          shortcutKey: 'f',
+          shortcutModifiers: ShortcutModifiers(control: Platform.isWindows, meta: Platform.isMacOS),
+          onClick: (_) => _openFolderLocation(context),
         ),
-        ContextMenuItemData(
+        MenuItem(
           label: 'Copy Filename',
-          icon: FluentIcons.copy,
-          onPressed: () => _copyFilename(context),
+          shortcutKey: 'c',
+          shortcutModifiers: ShortcutModifiers(control: Platform.isWindows, meta: Platform.isMacOS),
+          onClick: (_) => _copyFilename(context),
         ),
-        ContextMenuItemData.divider(),
-        ContextMenuItemData(
-          label: episode.watched ? 'Mark as Unwatched' : 'Mark as Watched',
-          icon: episode.watched ? FluentIcons.clear : FluentIcons.check_mark,
-          onPressed: () => _toggleWatched(context),
-        ),
-        ContextMenuItemData(
-          label: 'Blur Thumbnail (Not Implemented)',
-          icon: FluentIcons.blur,
-          onPressed: () => _blurThumbnail(context),
+        MenuItem.separator(),
+        MenuItem.checkbox(
+          key: 'watched',
+          label: episode.watched ? 'Unmark as Watched' : 'Mark as Watched',
+          toolTip: episode.watched ? 'Unmark as watched' : 'Mark as watched',
+          checked: widget.episode.watched,
+          onClick: (menuItem) {
+            print('Clicked Watched');
+            menuItem.checked = !(menuItem.checked == true);
+            _toggleWatched(context);
+          },
         ),
       ],
     );
@@ -73,12 +101,12 @@ class EpisodeContextMenu extends StatelessWidget {
 
   void _playEpisode(BuildContext context) {
     final library = Provider.of<Library>(context, listen: false);
-    library.playEpisode(episode);
+    library.playEpisode(widget.episode);
   }
 
   void _openWith(BuildContext context) {
     try {
-      ShellUtils.openWithDialog(episode.path);
+      ShellUtils.openWithDialog(widget.episode.path);
     } catch (e) {
       logErr('Error opening with dialog', e);
       snackBar('Could not open with dialog: $e', severity: InfoBarSeverity.error);
@@ -87,7 +115,7 @@ class EpisodeContextMenu extends StatelessWidget {
 
   void _openFolderLocation(BuildContext context) async {
     try {
-      ShellUtils.openFileExplorerAndSelect(episode.path);
+      ShellUtils.openFileExplorerAndSelect(widget.episode.path);
     } catch (e) {
       logErr('Error opening folder location', e);
       snackBar('Could not open folder: $e', severity: InfoBarSeverity.error);
@@ -95,22 +123,22 @@ class EpisodeContextMenu extends StatelessWidget {
   }
 
   void _copyFilename(BuildContext context) {
-    final filename = p.basename(episode.path);
+    final filename = p.basename(widget.episode.path);
     copyToClipboard(filename);
     snackBar('Filename copied to clipboard', severity: InfoBarSeverity.success);
   }
 
   void _toggleWatched(BuildContext context) {
     final library = Provider.of<Library>(context, listen: false);
-    final newState = !episode.watched;
+    final newState = !widget.episode.watched;
 
-    library.markEpisodeWatched(episode, watched: newState);
+    library.markEpisodeWatched(widget.episode, watched: newState);
 
     snackBar(newState ? 'Marked as watched' : 'Marked as unwatched', severity: InfoBarSeverity.success);
   }
 
-  void _blurThumbnail(BuildContext context) {
-    // TODO: Implement thumbnail blurring with ffmpeg
-    snackBar('Thumbnail blurring not yet implemented', severity: InfoBarSeverity.warning);
+  @override
+  Widget build(BuildContext context) {
+    return widget.child;
   }
 }

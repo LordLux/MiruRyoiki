@@ -11,7 +11,7 @@ import '../../manager.dart';
 import '../../models/anilist/mapping.dart';
 import '../../models/series.dart';
 import '../../services/anilist/linking.dart';
-import '../../services/cache.dart';
+import '../../services/file_system/cache.dart';
 import '../../services/navigation/dialogs.dart';
 import '../../services/navigation/shortcuts.dart';
 import '../../services/navigation/show_info.dart';

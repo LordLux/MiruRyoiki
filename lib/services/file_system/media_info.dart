@@ -1,27 +1,34 @@
-import 'package:path_provider/path_provider.dart';
 import 'package:video_thumbnail_exporter/video_thumbnail_exporter.dart';
+import 'package:flutter_media_metadata/flutter_media_metadata.dart';
 
-import '../utils/logging.dart';
+import 'dart:typed_data';
+import '../../utils/logging.dart';
 import 'dart:io';
-import 'package:path/path.dart' as path;
 
-import 'thumbnail_manager.dart';
+import '../thumbnail_manager.dart';
 
 class MediaInfo {
   // Get video duration in milliseconds
   static Future<int?> getVideoDuration(String path) async {
     try {
-      // This is a simplified version; in a real implementation you would use
-      // a media info library like ffprobe through process.run() or a plugin
-      // For this implementation, we'll return a placeholder value
-
-      // TODO: Implement proper duration extraction
-      await Future.delayed(const Duration(milliseconds: 100));
-
-      // Return fake duration for testing (2 hours)
-      return 7200000;
+      final metadata = await getVideoMetadata(path);
     } catch (e) {
       logErr('Error getting video duration', e);
+      return null;
+    }
+  }
+
+  static Future<Metadata?> getVideoMetadata(String videoPath) async {
+    try {
+      if (!await File(videoPath).exists()) {
+        logWarn('Video file does not exist: $videoPath');
+        return null;
+      }
+
+      final Metadata metadata = await MetadataRetriever.fromFile(File(videoPath));
+      return metadata;
+    } catch (e, stackTrace) {
+      logErr('Error retrieving metadata for $videoPath', e, stackTrace);
       return null;
     }
   }
