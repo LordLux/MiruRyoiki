@@ -5,6 +5,7 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:miruryoiki/functions.dart';
 import 'package:provider/provider.dart';
 import 'package:path/path.dart' as p;
+import '../../manager.dart';
 import '../../models/episode.dart';
 import '../../models/series.dart';
 import '../../services/library/library_provider.dart';
@@ -12,6 +13,7 @@ import '../../services/navigation/show_info.dart';
 import '../../utils/logging.dart';
 import '../../utils/path_utils.dart';
 import '../../utils/shell_utils.dart';
+import '../../utils/time_utils.dart';
 import 'context_menu.dart';
 import 'package:flutter_desktop_context_menu/flutter_desktop_context_menu.dart';
 
@@ -60,7 +62,7 @@ class EpisodeContextMenuState extends State<EpisodeContextMenu> {
       items: [
         MenuItem(
           label: 'Play',
-          icon: r"C:\Users\LordLux\Pictures\Icons\Win11VideoScriptss.ico".replaceAll("\\", ps),
+          // icon: r"C:\Users\LordLux\Pictures\Icons\Win11VideoScriptss.ico".replaceAll("\\", ps),
           shortcutKey: 'p',
           shortcutModifiers: ShortcutModifiers(control: Platform.isWindows, meta: Platform.isMacOS),
           onClick: (_) => _playEpisode(context),
@@ -90,9 +92,8 @@ class EpisodeContextMenuState extends State<EpisodeContextMenu> {
           toolTip: episode.watched ? 'Unmark as watched' : 'Mark as watched',
           checked: widget.episode.watched,
           onClick: (menuItem) {
-            print('Clicked Watched');
-            menuItem.checked = !(menuItem.checked == true);
             _toggleWatched(context);
+            nextFrame(() => menuItem.checked = !(menuItem.checked == true));
           },
         ),
       ],
@@ -135,10 +136,9 @@ class EpisodeContextMenuState extends State<EpisodeContextMenu> {
     library.markEpisodeWatched(widget.episode, watched: newState);
 
     snackBar(newState ? 'Marked as watched' : 'Marked as unwatched', severity: InfoBarSeverity.success);
+    Manager.setState();
   }
 
   @override
-  Widget build(BuildContext context) {
-    return widget.child;
-  }
+  Widget build(BuildContext context) => widget.child;
 }

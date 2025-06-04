@@ -10,6 +10,8 @@ extension LibraryWatchTracking on Library {
         for (final season in series.seasons) {
           for (final episode in season.episodes) {
             if (episode.path == filePath && !episode.watched) {
+              // Check if the episode is already watched
+              // Mark the episode as watched
               episode.watched = true;
               episode.watchedPercentage = 1.0;
               updated = true;
@@ -40,16 +42,7 @@ extension LibraryWatchTracking on Library {
       await OpenAppFile.open(episode.path);
     } catch (e) {
       logErr('Error playing episode: ${episode.path}', e);
-      // Show an error notification or dialog here
-    }
-  }
-
-  Future<void> openFolder(String path) async {
-    try {
-      await Process.run('explorer.exe', [path]);
-    } catch (e) {
-      logErr('Error opening folder: $path', e);
-      // Show an error notification or dialog here
+      snackBar('Could not play episode: ${episode.path}', severity: InfoBarSeverity.error);
     }
   }
 }
