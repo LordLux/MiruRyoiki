@@ -30,6 +30,7 @@ class _SeriesCardState extends State<SeriesCard> {
   bool _hasError = false;
   ImageProvider? _posterImageProvider;
   ImageSource? _lastKnownDefaultSource;
+  final GlobalKey<SeriesContextMenuState> _contextMenuKey = GlobalKey<SeriesContextMenuState>();
 
   @override
   void initState() {
@@ -151,7 +152,9 @@ class _SeriesCardState extends State<SeriesCard> {
     return KeyedSubtree(
       key: ValueKey('${widget.series.path}-${widget.series.dominantColor?.value ?? 0}'),
       child: SeriesContextMenu(
+        key: _contextMenuKey,
         series: widget.series,
+        context: context,
         child: MouseRegion(
           onEnter: (_) => setState(() => _isHovering = true),
           onExit: (_) => setState(() => _isHovering = false),
@@ -267,16 +270,19 @@ class _SeriesCardState extends State<SeriesCard> {
                   Positioned.fill(
                     child: Material(
                       color: Colors.transparent,
-                      child: InkWell(
-                        onTap: widget.onTap,
-                        splashColor: mainColor.withOpacity(0.1),
-                        highlightColor: mainColor.withOpacity(0.05),
-                        borderRadius: BorderRadius.circular(8.0),
-                        child: AnimatedContainer(
-                          duration: getDuration(const Duration(milliseconds: 150)),
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(8.0),
-                            color: _isHovering ? mainColor.withOpacity(0.1) : Colors.transparent,
+                      child: GestureDetector(
+                        onSecondaryTapDown: (_) => _contextMenuKey.currentState?.openMenu(),
+                        child: InkWell(
+                          onTap: widget.onTap,
+                          splashColor: mainColor.withOpacity(0.1),
+                          highlightColor: mainColor.withOpacity(0.05),
+                          borderRadius: BorderRadius.circular(8.0),
+                          child: AnimatedContainer(
+                            duration: getDuration(const Duration(milliseconds: 150)),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(8.0),
+                              color: _isHovering ? mainColor.withOpacity(0.1) : Colors.transparent,
+                            ),
                           ),
                         ),
                       ),
