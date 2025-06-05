@@ -76,8 +76,8 @@ class _HoverableEpisodeTileState extends State<HoverableEpisodeTile> {
                         borderRadius: BorderRadius.circular(ScreenUtils.kEpisodeCardBorderRadius),
                         child: ImageFiltered(
                           imageFilter: ImageFilter.blur(
-                            sigmaX: 15,
-                            sigmaY: 15,
+                            sigmaX: widget.episode.watched ? 0 : 15,
+                            sigmaY: widget.episode.watched ? 0 : 15,
                             tileMode: TileMode.mirror,
                           ),
                           child: _buildEpisodeThumbnail(widget.episode),
@@ -123,7 +123,6 @@ class _HoverableEpisodeTileState extends State<HoverableEpisodeTile> {
                       ),
 
                       // Watched indicator
-
                       Positioned(
                         top: 8,
                         right: 8,

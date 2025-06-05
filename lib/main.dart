@@ -83,8 +83,6 @@ void main(List<String> args) async {
 
   await initializeMiruRyoiokiSaveDirectory();
 
-  await setContextMenuDarkMode(true);
-
   // Load environment variables
   await dotenv.load(fileName: '.env');
 
