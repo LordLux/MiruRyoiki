@@ -11,6 +11,7 @@ import 'package:flutter_acrylic/window.dart' as flutter_acrylic;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:jovial_svg/jovial_svg.dart';
 import 'package:miruryoiki/screens/home.dart';
+import 'package:miruryoiki/widgets/svg.dart';
 import 'package:provider/provider.dart';
 import 'package:app_links/app_links.dart';
 import 'package:system_theme/system_theme.dart';
@@ -99,9 +100,7 @@ void main(List<String> args) async {
   final imageCache = ImageCacheService();
   await imageCache.init();
 
-  anilistLogo = ScalableImageSource.fromSI(rootBundle, 'assets/anilist/logo.si');
-  offlineIcon = ScalableImageSource.fromSI(rootBundle, 'assets/anilist/offline.si');
-  offlineLogo = ScalableImageSource.fromSI(rootBundle, 'assets/anilist/offline_logo.si');
+  await initializeSVGs();
 
   // Initialize settings
   await _settings.init();
@@ -351,8 +350,8 @@ class _AppRootState extends State<AppRoot> {
             scale: 1.45,
             child: Stack(
               children: [
-                if (!offline) AnilistLogo(),
-                if (offline) Svg(offlineLogo, switcher: (p0, p1) => p1),
+                if (!offline) anilistLogo,
+                if (offline) offlineLogo,
               ],
             ),
           ),
@@ -849,7 +848,7 @@ class _AppRootState extends State<AppRoot> {
       _isFinishedTransitioning = false;
     });
   }
-  
+
   /// Called when the transition to the library view ends
   void onEndTransitionToLibrary() {
     setState(() {
