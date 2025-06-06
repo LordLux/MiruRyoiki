@@ -5,6 +5,8 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:miruryoiki/functions.dart';
 import 'package:provider/provider.dart';
 import 'package:path/path.dart' as p;
+import 'package:flutter_desktop_context_menu/flutter_desktop_context_menu.dart';
+
 import '../../manager.dart';
 import '../../models/episode.dart';
 import '../../models/series.dart';
@@ -14,7 +16,7 @@ import '../../utils/logging.dart';
 import '../../utils/path_utils.dart';
 import '../../utils/shell_utils.dart';
 import '../../utils/time_utils.dart';
-import 'package:flutter_desktop_context_menu/flutter_desktop_context_menu.dart';
+import 'icons.dart' as icons;
 
 class EpisodeContextMenu extends StatefulWidget {
   final Episode episode;
@@ -35,20 +37,12 @@ class EpisodeContextMenu extends StatefulWidget {
 }
 
 class EpisodeContextMenuState extends State<EpisodeContextMenu> {
-  late final Menu menu;
-
-  @override
-  void initState() {
-    super.initState();
-    menu = episodeMenu(
-      context: widget.context,
-      episode: widget.episode,
-    );
-  }
-
   void openMenu() {
     popUpContextMenu(
-      menu,
+      episodeMenu(
+        context: widget.context,
+        episode: widget.episode,
+      ),
       placement: Placement.bottomRight,
     );
   }
@@ -75,25 +69,23 @@ class EpisodeContextMenuState extends State<EpisodeContextMenu> {
         MenuItem(
           label: 'Open Folder Location',
           shortcutKey: 'f',
+          icon: icons.openFolder,
           shortcutModifiers: ShortcutModifiers(control: Platform.isWindows, meta: Platform.isMacOS),
           onClick: (_) => _openFolderLocation(context),
         ),
         MenuItem(
           label: 'Copy Filename',
           shortcutKey: 'c',
+          icon: icons.copy,
           shortcutModifiers: ShortcutModifiers(control: Platform.isWindows, meta: Platform.isMacOS),
           onClick: (_) => _copyFilename(context),
         ),
         MenuItem.separator(),
-        MenuItem.checkbox(
-          key: 'watched',
+        MenuItem(
           label: episode.watched ? 'Unmark as Watched' : 'Mark as Watched',
-          toolTip: episode.watched ? 'Unmark as watched' : 'Mark as watched',
-          checked: widget.episode.watched,
-          onClick: (menuItem) {
-            _toggleWatched(context);
-            nextFrame(() => menuItem.checked = !(menuItem.checked == true));
-          },
+          shortcutKey: 'w',
+          icon: episode.watched ? icons.unwatch : icons.watch,
+          onClick: (_) => _toggleWatched(context),
         ),
       ],
     );
