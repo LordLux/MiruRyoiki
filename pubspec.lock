@@ -286,7 +286,7 @@ packages:
       path: "M:\\Projects\\flutter_desktop_context_menu"
       relative: false
     source: path
-    version: "0.2.1"
+    version: "0.2.5"
   flutter_dotenv:
     dependency: "direct main"
     description:

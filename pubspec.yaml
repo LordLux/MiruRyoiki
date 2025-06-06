@@ -63,6 +63,8 @@ dependencies:
     path: M:/Projects/video_thumbnail_exporter/
   flutter_desktop_context_menu:
     path: M:/Projects/flutter_desktop_context_menu/
+    # git:
+    #   url: https://github.com/LordLux/flutter_desktop_context_menu.git
   flutter_media_metadata: ^1.0.0
 
 dev_dependencies:
@@ -78,17 +80,25 @@ flutter:
   assets:
     - .env
     - assets/
+  # anilist:
     - assets/anilist/
     - assets/anilist/logo.png
     - assets/anilist/logo.si
     - assets/anilist/offline.si
     - assets/anilist/offline_logo.si
+    
+  # system icons:
     - assets/system/
     - assets/system/icon.ico
     - assets/system/icon.png
+    # cursors:
     - assets/system/grab.png
     - assets/system/grabbing.png
     
+  # context menu icons: TODO
+    - assets/icons/
+
+
   # fonts:
   #   - family: 
   #     fonts:

@@ -14,6 +14,7 @@ import '../../screens/series.dart';
 import '../../utils/shell_utils.dart';
 import '../dialogs/poster_select.dart';
 import '../../utils/logging.dart';
+import 'icons.dart' as icons;
 
 class SeriesContextMenu extends StatefulWidget {
   final Series series;
@@ -32,20 +33,12 @@ class SeriesContextMenu extends StatefulWidget {
 }
 
 class SeriesContextMenuState extends State<SeriesContextMenu> {
-  late final Menu menu;
-
-  @override
-  void initState() {
-    super.initState();
-    menu = seriesMenu(
-      context: widget.context,
-      series: widget.series,
-    );
-  }
-
   void openMenu() {
     popUpContextMenu(
-      menu,
+      seriesMenu(
+        context: widget.context,
+        series: widget.series,
+      ),
       placement: Placement.bottomRight,
     );
   }
@@ -59,6 +52,7 @@ class SeriesContextMenuState extends State<SeriesContextMenu> {
         MenuItem(
           label: 'Open in File Explorer',
           shortcutKey: 'e',
+          icon: icons.openFolder,
           shortcutModifiers: ShortcutModifiers(control: Platform.isWindows, meta: Platform.isMacOS),
           onClick: (_) => _openFolderLocation(context),
         ),
@@ -77,16 +71,17 @@ class SeriesContextMenuState extends State<SeriesContextMenu> {
         MenuItem(
           label: 'Update from Anilist',
           shortcutKey: 'a',
+          icon: icons.anilist,
           shortcutModifiers: ShortcutModifiers(control: Platform.isWindows, meta: Platform.isMacOS),
           onClick: (_) => _updateFromAnilist(context),
         ),
         MenuItem.separator(),
         MenuItem(
-          key: 'watched',
           label: widget.series.watchedPercentage == 1.0 ? 'Already Watched All' : 'Mark All as Watched',
           toolTip: widget.series.watchedPercentage == 1.0 ? 'Unmark as watched' : 'Mark as watched',
           disabled: widget.series.watchedPercentage == 1.0,
-          onClick: (menuItem) => _markAllAsWatched(context),
+          icon: widget.series.watchedPercentage == 1.0 ? null : icons.watchAll,
+          onClick: (_) => _markAllAsWatched(context),
         ),
       ],
     );
