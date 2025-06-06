@@ -1,4 +1,3 @@
-
 import 'package:fluent_ui/fluent_ui.dart';
 // import 'package:flutter/material.dart';
 import 'package:jovial_svg/jovial_svg.dart';
@@ -9,6 +8,7 @@ import 'package:provider/provider.dart';
 import '../utils/logging.dart';
 import '../utils/screen_utils.dart';
 import '../widgets/buttons/loading_button.dart';
+import '../widgets/svg.dart';
 import 'anilist_settings.dart';
 import 'settings.dart';
 
@@ -103,7 +103,7 @@ class AnilistCardTitle extends StatelessWidget {
             height: 20,
             child: Transform.scale(
               scale: 3,
-              child: AnilistLogo(),
+              child: anilistLogo,
             ),
           ),
           const SizedBox(width: 12),
@@ -113,57 +113,6 @@ class AnilistCardTitle extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
-}
-
-late final ScalableImageSource anilistLogo;
-late final ScalableImageSource offlineIcon;
-late final ScalableImageSource offlineLogo;
-
-class AnilistLogo extends StatelessWidget {
-  const AnilistLogo({super.key});
-
-  @override
-  Widget build(BuildContext context) => Svg(anilistLogo);
-}
-
-Widget defaultSwitcher(BuildContext context, Widget child) {
-  return AnimatedSwitcher(
-    duration: getDuration(shortStickyHeaderDuration),
-    child: child,
-  );
-}
-
-class Svg extends StatelessWidget {
-  final ScalableImageSource source;
-  final Widget Function(BuildContext)? onError;
-  final Alignment alignment;
-  final BoxFit fit;
-  final bool reload;
-  final Widget Function(BuildContext, Widget)? switcher;
-
-  const Svg(
-    this.source, {
-    super.key,
-    this.onError,
-    this.alignment = Alignment.center,
-    this.fit = BoxFit.contain,
-    this.reload = false,
-    this.switcher = defaultSwitcher,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return ScalableImageWidget.fromSISource(
-      scale: 1,
-      si: source,
-      alignment: alignment,
-      fit: fit,
-      reload: reload,
-      switcher: switcher,
-      cache: ScalableImageCache(),
-      onError: onError,
     );
   }
 }
