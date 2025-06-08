@@ -5,6 +5,7 @@ import '../enums.dart';
 import '../manager.dart';
 
 import '../models/series.dart';
+import '../services/navigation/statusbar.dart';
 import '../utils/logging.dart';
 import '../utils/screen_utils.dart';
 import '../utils/time_utils.dart';
@@ -157,7 +158,11 @@ class _SeriesCardState extends State<SeriesCard> {
         context: context,
         child: MouseRegion(
           onEnter: (_) => setState(() => _isHovering = true),
-          onExit: (_) => setState(() => _isHovering = false),
+          onExit: (_) {
+            StatusBarManager().hide();
+            setState(() => _isHovering = false);
+          },
+          onHover: (_) => StatusBarManager().showDelayed(widget.series.name),
           cursor: SystemMouseCursors.click,
           child: ClipRRect(
             borderRadius: BorderRadius.circular(8.0),
