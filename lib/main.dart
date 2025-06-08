@@ -24,6 +24,7 @@ import 'package:material_symbols_icons/material_symbols_icons.dart';
 
 import 'services/anilist/provider/anilist_provider.dart';
 import 'services/navigation/dialogs.dart';
+import 'services/navigation/statusbar.dart';
 import 'settings.dart';
 import 'utils/logging.dart';
 import 'manager.dart';
@@ -673,6 +674,9 @@ class _AppRootState extends State<AppRoot> {
             height: ScreenUtils.kTitleBarHeight, // Adjust for title bar height
             child: _buildTitleBar(),
           ),
+          () {
+            return const StatusBarWidget();
+          }(),
           //TODO add timer for when we are back online, to hide this after a few seconds
           // AnimatedPositioned(
           //   duration: getDuration(dimDuration),

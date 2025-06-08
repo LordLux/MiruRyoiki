@@ -3,6 +3,7 @@ import 'dart:ui';
 
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/material.dart' show InkWell, Material;
+import 'package:miruryoiki/services/navigation/statusbar.dart';
 
 import '../functions.dart';
 import '../manager.dart';
@@ -44,7 +45,11 @@ class _HoverableEpisodeTileState extends State<HoverableEpisodeTile> {
       context: context,
       child: MouseRegion(
         onEnter: (_) => setState(() => _isHovering = true),
-        onExit: (_) => setState(() => _isHovering = false),
+        onExit: (_) {
+          StatusBarManager().hide();
+          setState(() => _isHovering = false);
+        },
+        onHover: (_) => StatusBarManager().showDelayed(widget.episode.name),
         cursor: SystemMouseCursors.click,
         child: AnimatedContainer(
           duration: getDuration(const Duration(milliseconds: 150)),
