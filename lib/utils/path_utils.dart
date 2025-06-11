@@ -5,12 +5,14 @@ import 'package:path_provider/path_provider.dart';
 
 class PathUtils {
   /// Normalize file paths for consistent comparison
-  static String normalizePath(String path) {
+  static String? normalizePath(String? path) {
+    if (path == null || path.isEmpty) return null;
     return p.normalize(path).replaceAll('/', ps).replaceAll('\\', ps);
   }
 
   /// Get relative path from a base directory
-  static String relativePath(String path, String from) {
+  static String? relativePath(String? path, String from) {
+    if (path == null || path.isEmpty) return null;
     return p.relative(path, from: from);
   }
 
@@ -24,34 +26,59 @@ class PathUtils {
     return await Directory(path).exists();
   }
 
-  static String getFileName(String path) {
+  static String? getFileName(String? path) {
+    if (path == null || path.isEmpty) return null;
     return p.basename(path);
   }
 
-  static String getFileExtension(String path) {
+  static String? getFileExtension(String? path) {
+    if (path == null || path.isEmpty) return null;
     return p.extension(path);
   }
 }
 
 class PathString {
-  String _path;
+  String? _path;
 
   PathString(this._path);
 
-  set path(String newPath) => _path = PathUtils.normalizePath(newPath);
-  String get path => PathUtils.normalizePath(_path);
+  set path(String? newPath) => _path = PathUtils.normalizePath(newPath);
+  String get path => PathUtils.normalizePath(_path)!;
+  String? get pathMaybe => PathUtils.normalizePath(_path);
 
-  String get original => _path;
-  String get fileName => PathUtils.getFileName(_path);
-  String get fileExtension => PathUtils.getFileExtension(_path);
+  String? get original => _path;
+  String? get fileName => PathUtils.getFileName(_path);
+  String? get fileExtension => PathUtils.getFileExtension(_path);
 
-  Future<String> get getRelativeToMiruRyoikiSaveDirectory async {
+  Future<String?> get getRelativeToMiruRyoikiSaveDirectory async {
     final saveDir = miruRyoiokiSaveDirectory;
     return PathUtils.relativePath(path, saveDir.path);
   }
 
   @override
-  String toString() => path;
+  String toString() => "$pathMaybe";
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    if (other is! PathString) return false;
+    return pathMaybe == other.pathMaybe;
+  }
+
+  @override
+  int get hashCode => path.hashCode;
+
+  /// JSON serialization/deserialization
+  /// Accepts String or Map&lt;String, dynamic&gt; for deserialization
+  factory PathString.fromJson(dynamic json) {
+    if (json == null) return PathString(null);
+    if (json is String) return PathString(json);
+    if (json is Map<String, dynamic>) return PathString(json['path'] as String?);
+    throw FormatException('Expected String or Map<String, dynamic>, got ${json.runtimeType}');
+  }
+  factory PathString.fromFile(File file) => PathString(file.path);
+  factory PathString.fromDirectory(Directory dir) => PathString(dir.path);
+  Map<String, dynamic> toJson() => {'path': path};
 }
 
 String get assets => "${(Platform.resolvedExecutable.split(ps)..removeLast()).join(ps)}${ps}data${ps}flutter_assets${ps}assets";

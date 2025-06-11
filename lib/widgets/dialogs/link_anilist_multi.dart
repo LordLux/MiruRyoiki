@@ -16,6 +16,7 @@ import '../../services/navigation/dialogs.dart';
 import '../../services/navigation/shortcuts.dart';
 import '../../services/navigation/show_info.dart';
 import '../../utils/color_utils.dart';
+import '../../utils/path_utils.dart';
 import '../buttons/wrapper.dart';
 import 'search_panel.dart';
 
@@ -84,7 +85,7 @@ class AnilistLinkMultiContentState extends State<_AnilistLinkMultiContent> {
   late List<AnilistMapping> mappings;
   late List<AnilistMapping> oldMappings;
   String mode = 'view';
-  String? selectedLocalPath;
+  PathString? selectedLocalPath;
   int? selectedAnilistId;
   String? selectedTitle;
 
@@ -96,7 +97,7 @@ class AnilistLinkMultiContentState extends State<_AnilistLinkMultiContent> {
 
   // For folder/file browser
   List<FileSystemEntity> folderContents = [];
-  String? currentDirectory;
+  PathString? currentDirectory;
 
   bool get _mappingsChanged {
     if (oldMappings.length != mappings.length) return true;
@@ -128,13 +129,13 @@ class AnilistLinkMultiContentState extends State<_AnilistLinkMultiContent> {
     // Check if this path is already linked to a different Anilist entry
     final pathMapping = mappings.firstWhere(
       (m) => m.localPath == selectedLocalPath && m.anilistId != selectedAnilistId,
-      orElse: () => AnilistMapping(localPath: '', anilistId: -1),
+      orElse: () => AnilistMapping(localPath: PathString(''), anilistId: -1),
     );
 
     // Check if this Anilist ID is already linked to a different path
     final idMapping = mappings.firstWhere(
       (m) => m.anilistId == selectedAnilistId && m.localPath != selectedLocalPath,
-      orElse: () => AnilistMapping(localPath: '', anilistId: -1),
+      orElse: () => AnilistMapping(localPath: PathString(''), anilistId: -1),
     );
 
     final hasPathWarning = pathMapping.anilistId != -1;
@@ -170,7 +171,7 @@ class AnilistLinkMultiContentState extends State<_AnilistLinkMultiContent> {
     if (currentDirectory == null) return;
 
     try {
-      final dir = Directory(currentDirectory!);
+      final dir = Directory(currentDirectory!.path);
       folderContents = dir.listSync()
         ..sort((a, b) {
           // Folders first, then files
@@ -554,13 +555,13 @@ class AnilistLinkMultiContentState extends State<_AnilistLinkMultiContent> {
     );
   }
 
-  String _getDisplayPath(String path) {
+  String _getDisplayPath(PathString path) {
     final seriesPath = widget.series.path;
     if (path == seriesPath) return '(Main Series Folder)';
-    if (path.startsWith(seriesPath)) {
-      return path.substring(seriesPath.length + 1);
+    if (path.path.startsWith(seriesPath.path)) {
+      return path.path.substring(seriesPath.path.length + 1);
     }
-    return path;
+    return path.path;
   }
 
   Widget _buildPathSelector() {
@@ -580,7 +581,7 @@ class AnilistLinkMultiContentState extends State<_AnilistLinkMultiContent> {
                     ? null
                     : () {
                         setState(() {
-                          currentDirectory = Directory(currentDirectory!).parent.path;
+                          currentDirectory = PathString(Directory(currentDirectory!.path).parent.path);
                           _loadFolderContents();
                         });
                       },
@@ -589,7 +590,7 @@ class AnilistLinkMultiContentState extends State<_AnilistLinkMultiContent> {
               SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  _getDisplayPath(currentDirectory ?? ''),
+                  _getDisplayPath(currentDirectory ?? PathString('')),
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
@@ -625,7 +626,7 @@ class AnilistLinkMultiContentState extends State<_AnilistLinkMultiContent> {
                       final entity = folderContents[index - 1];
                       final isDir = entity is Directory;
                       final fileName = entity.path.split(Platform.pathSeparator).last;
-                      final isSelected = selectedLocalPath == entity.path;
+                      final isSelected = selectedLocalPath == PathString(entity.path);
 
                       return SelectableTile(
                         title: Text(fileName, style: isSelected ? TextStyle(fontWeight: FontWeight.bold) : null),
@@ -635,13 +636,13 @@ class AnilistLinkMultiContentState extends State<_AnilistLinkMultiContent> {
                           if (isDir) {
                             setState(() {
                               // Both select and navigate to the folder
-                              selectedLocalPath = entity.path;
-                              currentDirectory = entity.path;
+                              selectedLocalPath = PathString(entity.path);
+                              currentDirectory = PathString(entity.path);
                               _loadFolderContents();
                             });
                           } else {
                             setState(() {
-                              selectedLocalPath = entity.path;
+                              selectedLocalPath = PathString(entity.path);
                             });
                           }
                           _checkForDuplicates();

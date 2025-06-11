@@ -2,11 +2,12 @@ import 'dart:io';
 
 
 import '../services/thumbnail_manager.dart';
+import '../utils/path_utils.dart';
 
 class Episode {
-  final String path; /// TODO use PathString
+  final PathString path;
   final String name;
-  String? thumbnailPath;
+  PathString? thumbnailPath;
   bool watched;
   double watchedPercentage;
   bool thumbnailUnavailable;
@@ -23,9 +24,9 @@ class Episode {
   // For JSON serialization
   Map<String, dynamic> toJson() {
     return {
-      'path': path,
       'name': name,
-      'thumbnailPath': thumbnailPath,
+      'path': path.path,
+      'thumbnailPath': thumbnailPath?.pathMaybe,
       'watched': watched,
       'watchedPercentage': watchedPercentage,
       'thumbnailUnavailable': thumbnailUnavailable,
@@ -35,27 +36,27 @@ class Episode {
   // For JSON deserialization
   factory Episode.fromJson(Map<String, dynamic> json) {
     return Episode(
-      path: json['path'],
       name: json['name'],
-      thumbnailPath: json['thumbnailPath'],
+      path: PathString.fromJson(json['path']),
+      thumbnailPath: PathString.fromJson(json['thumbnailPath']),
       watched: json['watched'] ?? false,
       watchedPercentage: json['watchedPercentage'] ?? 0.0,
       thumbnailUnavailable: json['thumbnailUnavailable'] ?? false,
     );
   }
 
-  Future<String?> getThumbnail() async {
+  Future<PathString?> getThumbnail() async {
     if (thumbnailUnavailable) return null;
 
     // Check if cached thumbnail already exists
     if (thumbnailPath != null) {
-      final file = File(thumbnailPath!);
+      final file = File(thumbnailPath!.path);
       if (await file.exists()) return thumbnailPath;
     }
 
     // Use the thumbnail manager to get or generate thumbnail
     final thumbnailManager = ThumbnailManager();
-    final String? newThumbnailPath = await thumbnailManager.getThumbnail(path);
+    final PathString? newThumbnailPath = await thumbnailManager.getThumbnail(path);
 
     if (newThumbnailPath != null) {
       thumbnailPath = newThumbnailPath;

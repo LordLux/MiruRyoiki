@@ -11,6 +11,7 @@ import '../../manager.dart';
 import '../library/library_provider.dart';
 import '../../utils/logging.dart';
 import '../../utils/screen_utils.dart';
+import 'statusbar.dart';
 
 class KeyboardState {
   static final ValueNotifier<bool> ctrlPressedNotifier = ValueNotifier<bool>(false);
@@ -52,6 +53,11 @@ class _CustomKeyboardListenerState extends State<CustomKeyboardListener> {
       else
         newFontSize = (newFontSize - 2).clamp(ScreenUtils.kMinFontSize, ScreenUtils.kMaxFontSize); // Decrease (limit to min 10)
 
+      // Snap zoom to nearest allowed value
+      final zoomRaw = ScreenUtils.textScaleFactor * (newFontSize / kDefaultFontSize);
+      double zoom = calculateZoom(zoomRaw);
+      StatusBarManager().show("${(zoom*100).toInt().toString()}%", autoHideDuration: const Duration(seconds: 1));
+
       // Only update if changed
       if (newFontSize != appTheme.fontSize) {
         // Update settings
@@ -60,6 +66,32 @@ class _CustomKeyboardListenerState extends State<CustomKeyboardListener> {
         Manager.setState();
       }
     }
+  }
+
+  double calculateZoom(double zoomRaw) {
+    double zoom;
+    if (zoomRaw >= 100 && zoomRaw < 114) {
+      zoom = 100;
+    } else if (zoomRaw >= 114 && zoomRaw < 128) {
+      zoom = 110;
+    } else if (zoomRaw >= 128 && zoomRaw < 142) {
+      zoom = 120;
+    } else if (zoomRaw >= 142 && zoomRaw < 157) {
+      zoom = 130;
+    } else if (zoomRaw >= 157 && zoomRaw < 171) {
+      zoom = 140;
+    } else if (zoomRaw >= 171) {
+      zoom = 150;
+    } else if (zoomRaw >= 85 && zoomRaw < 100) {
+      zoom = 90;
+    } else if (zoomRaw >= 71 && zoomRaw < 85) {
+      zoom = 80;
+    } else if (zoomRaw >= 57 && zoomRaw < 71) {
+      zoom = 70;
+    } else {
+      zoom = zoomRaw;
+    }
+    return zoom;
   }
 
   void _handleKeyPress(RawKeyEvent event) {

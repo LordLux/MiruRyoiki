@@ -65,8 +65,6 @@ dependencies:
     path: M:/Projects/flutter_desktop_context_menu/
     # git:
     #   url: https://github.com/LordLux/flutter_desktop_context_menu.git
-  flutter_media_metadata: ^1.0.0
-  flutter_file_info: ^0.3.0
 
 dev_dependencies:
   flutter_test:
@@ -116,4 +114,4 @@ flutter_launcher_icons:
   windows:
     generate: true
     image_path: "assets/system/icon.png"
-    icon_size: 256 # min:48, max:256, default: 48
+    icon_size: 128 # min:48, max:256, default: 48

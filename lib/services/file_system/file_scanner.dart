@@ -15,7 +15,7 @@ class FileScanner {
   static const List<String> _imageExtensions = ['.ico', '.png', '.jpg', '.jpeg', '.webp'];
 
   /// Scan the library directory and build the series list
-  Future<List<Series>> scanLibrary(String libraryPath, [Map<String, Series>? existingSeries]) async {
+  Future<List<Series>> scanLibrary(String libraryPath, [Map<PathString, Series>? existingSeries]) async {
     final series = <Series>[];
     final dir = Directory(libraryPath);
     existingSeries ??= {};
@@ -26,7 +26,7 @@ class FileScanner {
     await for (final entity in dir.list()) {
       if (entity is Directory) {
         try {
-          final existingSeries_ = existingSeries[entity.path];
+          final existingSeries_ = existingSeries[PathString(entity.path)];
           final seriesItem = await _processSeries(entity, existingSeries: existingSeries_);
           series.add(seriesItem);
         } catch (e, st) {
@@ -42,14 +42,14 @@ class FileScanner {
   Future<Series> _processSeries(Directory seriesDir, {Series? existingSeries}) async {
     final name = p.basename(seriesDir.path);
     // Use existing poster/banner paths if the series already exists
-    String? posterPath = existingSeries?.folderPosterPath;
-    String? bannerPath = existingSeries?.folderBannerPath;
+    PathString? posterPath = existingSeries?.folderPosterPath;
+    PathString? bannerPath = existingSeries?.folderBannerPath;
 
     // Only auto-detect images if this is a new series
     if (existingSeries == null) {
       posterPath = await _findPosterImage(seriesDir);
       bannerPath = await _findBannerImage(seriesDir);
-      logTrace('New series: $name | Auto-detected Poster: ${posterPath?.split(ps).lastOrNull ?? 'None'} | Banner: ${bannerPath?.split(ps).lastOrNull ?? 'None'}');
+      logTrace('New series: $name | Auto-detected Poster: ${posterPath?.pathMaybe?.split(ps).lastOrNull ?? 'None'} | Banner: ${bannerPath?.pathMaybe?.split(ps).lastOrNull ?? 'None'}');
     } else {
       // logTrace('Existing series: $name | Using saved Poster: ${posterPath?.split(ps).lastOrNull ?? 'None'} | Banner: ${bannerPath?.split(ps).lastOrNull ?? 'None'}');
     }
@@ -79,7 +79,7 @@ class FileScanner {
       final episodes = await _processEpisodeFiles(rootVideoFiles);
       seasons.add(Season(
         name: 'Season 01',
-        path: seriesDir.path,
+        path: PathString(seriesDir.path),
         episodes: episodes,
       ));
     } else {
@@ -97,7 +97,7 @@ class FileScanner {
         final episodes = await _processEpisodeFiles(episodeFiles);
         seasons.add(Season(
           name: _formatSeasonName(seasonName),
-          path: seasonDir.path,
+          path: PathString(seasonDir.path),
           episodes: episodes,
         ));
       }
@@ -127,7 +127,7 @@ class FileScanner {
 
     return existingSeries?.copyWith(
           name: name,
-          path: seriesDir.path,
+          path: PathString(seriesDir.path),
           folderPosterPath: posterPath,
           folderBannerPath: bannerPath,
           seasons: seasons,
@@ -135,7 +135,7 @@ class FileScanner {
         ) ??
         Series(
           name: name,
-          path: seriesDir.path,
+          path: PathString(seriesDir.path),
           folderPosterPath: posterPath,
           folderBannerPath: bannerPath,
           seasons: seasons,
@@ -157,7 +157,7 @@ class FileScanner {
     for (final file in files) {
       final name = _cleanEpisodeName(p.basenameWithoutExtension(file.path));
       episodes.add(Episode(
-        path: file.path,
+        path: PathString(file.path),
         name: name,
       ));
     }
@@ -166,18 +166,18 @@ class FileScanner {
   }
 
   /// Find a poster image in the directory
-  Future<String?> _findPosterImage(Directory dir) async {
+  Future<PathString?> _findPosterImage(Directory dir) async {
     // First try to find an .ico file
     await for (final entity in dir.list()) {
       if (entity is File && p.extension(entity.path).toLowerCase() == '.ico') {
-        return entity.path;
+        return PathString(entity.path);
       }
     }
 
     // Then try other image formats
     await for (final entity in dir.list()) {
       if (entity is File && _imageExtensions.contains(p.extension(entity.path).toLowerCase())) {
-        return entity.path;
+        return PathString(entity.path);
       }
     }
 
@@ -186,7 +186,7 @@ class FileScanner {
   }
 
   /// Find a banner image in the series directory
-  Future<String?> _findBannerImage(Directory seriesDir) async {
+  Future<PathString?> _findBannerImage(Directory seriesDir) async {
     try {
       final List<FileSystemEntity> files = await seriesDir.list().toList();
 
@@ -195,7 +195,7 @@ class FileScanner {
       for (final name in bannerNames) {
         for (final extension in _imageExtensions) {
           final bannerFile = files.whereType<File>().firstWhereOrNull((f) => p.basename(f.path).toLowerCase() == '$name$extension');
-          if (bannerFile != null) return bannerFile.path;
+          if (bannerFile != null) return PathString(bannerFile.path);
         }
       }
 
@@ -208,7 +208,7 @@ class FileScanner {
             final imageBytes = await file.readAsBytes();
             final decodedImage = await decodeImageFromList(imageBytes);
             if (decodedImage.width > decodedImage.height * 1.7) {
-              return file.path;
+              return PathString(file.path);
             }
           } catch (e) {
             // Ignore errors reading image files

@@ -14,6 +14,7 @@ import '../models/series.dart';
 import '../services/anilist/provider/anilist_provider.dart';
 import '../services/navigation/shortcuts.dart';
 import '../utils/color_utils.dart';
+import '../utils/path_utils.dart';
 import '../utils/screen_utils.dart';
 import '../utils/time_utils.dart';
 import '../widgets/animated_order_tile.dart';
@@ -43,7 +44,7 @@ enum GroupBy { none, anilistLists }
 
 class LibraryScreen extends StatefulWidget {
   final ScrollController scrollController;
-  final Function(String) onSeriesSelected;
+  final Function(PathString) onSeriesSelected;
 
   const LibraryScreen({
     super.key,

@@ -1,7 +1,7 @@
 part of 'library_provider.dart';
 
 extension LibrarySeriesManagement on Library {
-  Series? getSeriesByPath(String path) {
+  Series? getSeriesByPath(PathString path) {
     return _series.firstWhereOrNull((s) => s.path == path);
   }
 

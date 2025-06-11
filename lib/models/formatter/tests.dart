@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:path/path.dart' as p;
 import '../../utils/logging.dart';
+import '../../utils/path_utils.dart';
 import 'action.dart';
 
 /// Test case definition for formatter testing
@@ -12,7 +13,7 @@ class FormatterTestCase {
   final String description;
 
   /// Function to create test folders and files
-  final Future<String> Function() setupFunction;
+  final Future<PathString> Function() setupFunction;
 
   /// Expected number of actions that should be generated
   final int expectedActions;
@@ -102,14 +103,14 @@ Future<List<TestResult>> runFormatterTests(List<FormatterTestCase> testCases) as
         ));
 
         // Clean up
-        await Directory(seriesPath).delete(recursive: true);
+        await Directory(seriesPath.path).delete(recursive: true);
       } catch (e, stackTrace) {
         logErr('Error running test case: ${testCase.name}', e, stackTrace);
 
         results.add(TestResult(
           testCase: testCase,
           preview: SeriesFormatPreview(
-            seriesPath: '',
+            seriesPath: PathString(''),
             seriesName: '',
             actions: [],
             issues: ['Error: $e'],
@@ -177,7 +178,7 @@ List<FormatterTestCase> get standardTestCases => [
         description: 'Empty folder with no files or subfolders',
         setupFunction: () async {
           final dir = await _createTestDir('empty_series');
-          return dir.path;
+          return PathString(dir.path);
         },
         expectedActions: 0,
       ),
@@ -194,7 +195,7 @@ List<FormatterTestCase> get standardTestCases => [
             await file.create();
           }
 
-          return dir.path;
+          return PathString(dir.path);
         },
         expectedActions: 13, // 1 folder creation + 12 file moves
         expectedActionCounts: {
@@ -215,7 +216,7 @@ List<FormatterTestCase> get standardTestCases => [
             await file.create();
           }
 
-          return dir.path;
+          return PathString(dir.path);
         },
         expectedActions: 25, // 1 folder creation + 24 file moves
         expectedActionCounts: {
@@ -242,7 +243,7 @@ List<FormatterTestCase> get standardTestCases => [
             await file.create();
           }
 
-          return dir.path;
+          return PathString(dir.path);
         },
         expectedActions: 12, // 2 folder creations + 10 file moves
         expectedActionCounts: {
@@ -276,7 +277,7 @@ List<FormatterTestCase> get standardTestCases => [
           final special = File(p.join(dir.path, 'Special Episode.mkv'));
           await special.create();
 
-          return dir.path;
+          return PathString(dir.path);
         },
         expectedActions: 11, // 2 folder creations + 9 file moves
         expectedActionCounts: {
@@ -311,7 +312,7 @@ List<FormatterTestCase> get standardTestCases => [
             await file.create();
           }
 
-          return dir.path;
+          return PathString(dir.path);
         },
         expectedActions: 2, // 2 folder renames (to standardize season naming)
         expectedActionCounts: {
@@ -355,7 +356,7 @@ List<FormatterTestCase> get standardTestCases => [
             await file.create();
           }
 
-          return dir.path;
+          return PathString(dir.path);
         },
         expectedActions: 7, // 1 create folder + 4 file moves + 2 rename folders
         expectedActionCounts: {
@@ -390,7 +391,7 @@ List<FormatterTestCase> get standardTestCases => [
           final special = File(p.join(dir.path, 'SP01 Episode.mkv'));
           await special.create();
 
-          return dir.path;
+          return PathString(dir.path);
         },
         expectedActions: 8, // 2 folder creations + 5 file moves
         expectedActionCounts: {
