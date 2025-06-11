@@ -113,7 +113,7 @@ class EpisodeContextMenuState extends State<EpisodeContextMenu> {
   }
 
   void _copyFilename(BuildContext context) {
-    final filename = p.basename(widget.episode.path);
+    final filename = p.basename(widget.episode.path.path);
     copyToClipboard(filename);
     snackBar('Filename copied to clipboard', severity: InfoBarSeverity.success);
   }

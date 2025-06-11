@@ -8,7 +8,6 @@ list(APPEND FLUTTER_PLUGIN_LIST
   flutter_acrylic
   flutter_custom_cursor
   flutter_desktop_context_menu
-  flutter_media_metadata
   flutter_secure_storage_windows
   screen_retriever_windows
   system_theme

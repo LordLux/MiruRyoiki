@@ -1,9 +1,10 @@
 import 'dart:convert';
 
+import '../../utils/path_utils.dart';
 import 'anime.dart';
 
 class AnilistMapping {
-  String localPath; // Can be folder or file path
+  PathString localPath;
   int anilistId;
   String? title; // Optional: Store Anilist title for easier display
   DateTime? lastSynced;
@@ -18,7 +19,7 @@ class AnilistMapping {
   });
 
   Map<String, dynamic> toJson() => {
-        'localPath': localPath,
+        'localPath': localPath.path,
         'anilistId': anilistId,
         'title': title,
         'lastSynced': lastSynced?.toIso8601String(),
@@ -26,7 +27,7 @@ class AnilistMapping {
       };
 
   factory AnilistMapping.fromJson(Map<String, dynamic> json) => AnilistMapping(
-        localPath: json['localPath'],
+        localPath: PathString.fromJson(json['localPath']),
         anilistId: json['anilistId'],
         title: json['title'],
         lastSynced: json['lastSynced'] != null ? DateTime.parse(json['lastSynced']) : null,

@@ -8,20 +8,22 @@ import 'dart:ffi';
 import 'package:ffi/ffi.dart';
 import 'package:win32/win32.dart';
 
+import 'path_utils.dart';
+
 const int SEE_MASK_INVOKEIDLIST = 0x0000000C;
 const int SEE_MASK_NO_CONSOLE = 0x00008000;
 const int SEE_MASK_FLAG_DDEWAIT = 0x00000100;
 
 class ShellUtils {
   /// Opens the Windows "Open With" dialog for a file
-  static void openWithDialog(String filePath) async {
+  static void openWithDialog(PathString filePath) async {
     final exeInfo = calloc<SHELLEXECUTEINFO>();
     try {
       exeInfo.ref.cbSize = sizeOf<SHELLEXECUTEINFO>();
       exeInfo.ref.fMask = SEE_MASK_FLAG_DDEWAIT | SEE_MASK_INVOKEIDLIST | SEE_MASK_NO_CONSOLE;
       exeInfo.ref.hwnd = NULL;
       exeInfo.ref.lpVerb = TEXT('openas');
-      exeInfo.ref.lpFile = TEXT(filePath);
+      exeInfo.ref.lpFile = TEXT(filePath.path);
       exeInfo.ref.nShow = SW_SHOWNORMAL; // 1
 
       final success = ShellExecuteEx(exeInfo);
@@ -65,10 +67,10 @@ class ShellUtils {
   }
 
   /// Opens the file explorer and selects the specified file
-  static Future<bool> openFileExplorerAndSelect(String filePath) async {
+  static Future<bool> openFileExplorerAndSelect(PathString filePath) async {
     try {
-      final directory = p.dirname(filePath);
-      final fileName = p.basename(filePath);
+      final directory = p.dirname(filePath.path);
+      final fileName = p.basename(filePath.path);
       return await _open(directory, fileName);
     } catch (e) {
       logErr('Error selecting file in explorer', e);

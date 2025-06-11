@@ -106,7 +106,6 @@ extension AnilistListStatusX on AnilistListStatus? {
   String get name_ => enumToString(this, false);
 }
 
-
 String enumToString<T>(T enumValue, [bool pretty = true]) {
   if (!pretty) {
     // logTrace(' [Enum to String: ${enumValue.toString().split('.').last.replaceAll(" ", "").toLowerCase()}]');
@@ -195,5 +194,6 @@ extension DateTimeX on DateTime? {
     if (this == null) return 'null';
     return DateFormat('dd MMM yy', 'en').format(this!);
   }
-}
 
+  static DateTime get epoch => DateTime.fromMillisecondsSinceEpoch(0);
+}

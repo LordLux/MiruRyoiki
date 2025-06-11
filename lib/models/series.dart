@@ -22,7 +22,7 @@ import '../enums.dart';
 
 class Season {
   final String name;
-  final String path;
+  final PathString path;
   final List<Episode> episodes;
 
   Season({
@@ -48,7 +48,7 @@ Season(
   Map<String, dynamic> toJson() {
     return {
       'name': name,
-      'path': path,
+      'path': path.path,
       'episodes': episodes.map((e) => e.toJson()).toList(),
     };
   }
@@ -57,7 +57,7 @@ Season(
   factory Season.fromJson(Map<String, dynamic> json) {
     return Season(
       name: json['name'],
-      path: json['path'],
+      path: PathString.fromJson(json['path']),
       episodes: (json['episodes'] as List).map((e) => Episode.fromJson(e)).toList(),
     );
   }
@@ -68,13 +68,13 @@ class Series {
   final String name;
 
   /// Path for the series from the File System
-  final String path;
+  final PathString path;
 
   /// Poster path for the series from the File System
-  String? folderPosterPath;
+  PathString? folderPosterPath;
 
   /// Poster path for the series from the File System
-  String? folderBannerPath;
+  PathString? folderBannerPath;
 
   /// List of seasons for the series from the File System
   final List<Season> seasons;
@@ -131,9 +131,9 @@ class Series {
 
   Series copyWith({
     String? name,
-    String? path,
-    String? folderPosterPath,
-    String? folderBannerPath,
+    PathString? path,
+    PathString? folderPosterPath,
+    PathString? folderBannerPath,
     List<Season>? seasons,
     List<Episode>? relatedMedia,
     List<AnilistMapping>? anilistMappings,
@@ -223,7 +223,7 @@ class Series {
   }
 
   // Helper to find mapping for a path
-  AnilistMapping? getMappingForPath(String path) {
+  AnilistMapping? getMappingForPath(PathString path) {
     // Exact match
     for (var mapping in anilistMappings) {
       if (mapping.localPath == path) {
@@ -233,7 +233,7 @@ class Series {
 
     // Parent folder match (for nested files)
     for (var mapping in anilistMappings) {
-      if (path.startsWith(mapping.localPath)) {
+      if (path.path.startsWith(mapping.localPath.path)) {
         return mapping;
       }
     }
@@ -608,9 +608,9 @@ class Series {
   Map<String, dynamic> toJson() {
     return {
       'name': name,
-      'path': path,
-      'posterPath': folderPosterPath,
-      'bannerPath': folderBannerPath,
+      'path': path.path,
+      'posterPath': folderPosterPath?.pathMaybe,
+      'bannerPath': folderBannerPath?.pathMaybe,
       'seasons': seasons.map((s) => s.toJson()).toList(),
       'relatedMedia': relatedMedia.map((e) => e.toJson()).toList(),
       'anilistMappings': anilistMappings.map((m) => m.toJson()).toList(),
@@ -638,7 +638,7 @@ class Series {
       return null;
     }
 
-    List<AnilistMapping> extractAnilistMapping(Map<String, dynamic> json, String path) {
+    List<AnilistMapping> extractAnilistMapping(Map<String, dynamic> json, PathString path) {
       final List<AnilistMapping> mappings = [];
       try {
         if (json.containsKey('anilistMappings') && json['anilistMappings'] != null) {
@@ -669,7 +669,7 @@ class Series {
       return mappings;
     }
 
-    List<Season> extractSeasons(Map<String, dynamic> json, String path) {
+    List<Season> extractSeasons(Map<String, dynamic> json, PathString path) {
       List<Season> seasons = [];
       try {
         if (json.containsKey('seasons') && json['seasons'] != null) {
@@ -695,7 +695,7 @@ class Series {
       return seasons;
     }
 
-    List<Episode> extractRelatedMedia(Map<String, dynamic> json, String path) {
+    List<Episode> extractRelatedMedia(Map<String, dynamic> json, PathString path) {
       List<Episode> relatedMedia = [];
       try {
         if (json.containsKey('relatedMedia') && json['relatedMedia'] != null) {
@@ -721,9 +721,9 @@ class Series {
     try {
       // Validate required fields
       final name = json['name'] as String? ?? '';
-      final path = json['path'] as String? ?? '';
+      final path = PathString(json['path'] as String? ?? '');
 
-      if (name.isEmpty || path.isEmpty) //
+      if (name.isEmpty || path.path.isEmpty) //
         logWarn('Series JSON missing required name or path: $json');
 
       // Process dominant color with safe parsing
@@ -742,8 +742,8 @@ class Series {
       final series = Series(
         name: name,
         path: path,
-        folderPosterPath: json['posterPath'] as String?,
-        folderBannerPath: json['bannerPath'] as String?,
+        folderPosterPath: PathString.fromJson(json['posterPath']),
+        folderBannerPath: PathString.fromJson(json['bannerPath']),
         seasons: seasons,
         relatedMedia: relatedMedia,
         anilistMappings: mappings,
@@ -802,7 +802,7 @@ class Series {
       logErr('Critical error parsing Series.fromJson', e, st);
       return Series(
         name: json['name'] as String? ?? 'Unknown Series',
-        path: json['path'] as String? ?? '',
+        path: PathString.fromJson(json['path']),
         seasons: [],
       );
     }
@@ -810,9 +810,9 @@ class Series {
 
   factory Series.fromValues({
     required String name,
-    required String path,
-    String? folderPosterPath,
-    String? folderBannerPath,
+    required PathString path,
+    PathString? folderPosterPath,
+    PathString? folderBannerPath,
     required List<Season> seasons,
     List<Episode> relatedMedia = const [],
     List<AnilistMapping> anilistMappings = const [],
@@ -921,11 +921,11 @@ class Series {
     switch (effectiveSource) {
       case ImageSource.autoLocal:
       case ImageSource.local:
-        return hasLocalPoster ? folderPosterPath : (hasAnilistPoster ? anilistPosterUrl : null);
+        return hasLocalPoster ? folderPosterPath?.pathMaybe : (hasAnilistPoster ? anilistPosterUrl : null);
 
       case ImageSource.autoAnilist:
       case ImageSource.anilist:
-        return hasAnilistPoster ? anilistPosterUrl : (hasLocalPoster ? folderPosterPath : null);
+        return hasAnilistPoster ? anilistPosterUrl : (hasLocalPoster ? folderPosterPath?.pathMaybe : null);
     }
   }
 
@@ -938,7 +938,7 @@ class Series {
   /// Getter to check if the poster actually being used is from a local file
   bool get isLocalPoster {
     if (effectivePosterPath == null) return false;
-    return effectivePosterPath == folderPosterPath;
+    return effectivePosterPath == folderPosterPath?.pathMaybe;
   }
 
   /// Get the effective poster image as an ImageProvider
@@ -968,11 +968,11 @@ class Series {
     switch (effectiveSource) {
       case ImageSource.autoLocal:
       case ImageSource.local:
-        return hasLocalBanner ? folderBannerPath : (hasAnilistBanner ? anilistBannerUrl : null);
+        return hasLocalBanner ? folderBannerPath?.pathMaybe : (hasAnilistBanner ? anilistBannerUrl : null);
 
       case ImageSource.autoAnilist:
       case ImageSource.anilist:
-        return hasAnilistBanner ? anilistBannerUrl : (hasLocalBanner ? folderBannerPath : null);
+        return hasAnilistBanner ? anilistBannerUrl : (hasLocalBanner ? folderBannerPath?.pathMaybe : null);
     }
   }
 
@@ -985,7 +985,7 @@ class Series {
   /// Getter to check if the banner actually being used is from a local file
   bool get isLocalBanner {
     if (effectiveBannerPath == null) return false;
-    return effectiveBannerPath == folderBannerPath;
+    return effectiveBannerPath == folderBannerPath?.pathMaybe;
   }
 
   /// Get the effective banner image as an ImageProvider

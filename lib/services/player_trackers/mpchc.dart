@@ -1,27 +1,29 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:miruryoiki/services/file_system/media_info.dart';
 import 'package:miruryoiki/utils/logging.dart';
 import 'package:win32/win32.dart';
 
+import '../../utils/path_utils.dart';
 import '../../utils/registry_utils.dart';
 
 class MPCHCTracker with ChangeNotifier {
   static const String _mpcHcRegPath = r'SOFTWARE\MPC-HC\MPC-HC\MediaHistory';
-  
+
   // Maps file paths to their registry keys
   final Map<String, String> _fileToKeyMap = {};
-  
+
   // Maps registry keys to their FilePosition value (percentage watched)
   final Map<String, double> _keyToPositionMap = {};
-  
+
   // Timer for periodic checking
   Timer? _checkTimer;
-  
+
   // Flag to indicate if tracker is initialized
   bool _isInitialized = false;
   bool get isInitialized => _isInitialized;
-  
+
   // Threshold for watched status (85%)
   static const double watchedThreshold = 0.85;
 
@@ -29,13 +31,13 @@ class MPCHCTracker with ChangeNotifier {
   MPCHCTracker() {
     // Initial scan of registry
     indexRegistry();
-    
+
     // Set up periodic checking every 2 minutes
     _checkTimer = Timer.periodic(const Duration(minutes: 2), (_) {
       checkForUpdates();
     });
   }
-  
+
   @override
   void dispose() {
     _checkTimer?.cancel();
@@ -47,10 +49,10 @@ class MPCHCTracker with ChangeNotifier {
     try {
       _fileToKeyMap.clear();
       _keyToPositionMap.clear();
-      
+
       // Open the MPC-HC MediaHistory key
       final hMediaHistory = RegistryUtils.openKey(HKEY_CURRENT_USER, _mpcHcRegPath);
-      
+
       if (hMediaHistory == 0) {
         logWarn('Failed to open MPC-HC MediaHistory registry key');
         return;
@@ -59,29 +61,27 @@ class MPCHCTracker with ChangeNotifier {
       try {
         // Get all subkeys (these are the random keys for each file)
         final subKeys = RegistryUtils.enumSubKeys(hMediaHistory);
-        
+
         for (final subKey in subKeys) {
           final hFileKey = RegistryUtils.openKey(hMediaHistory, subKey);
-          
+
           if (hFileKey != 0) {
             try {
               // Get the filename this key is associated with
               final filename = RegistryUtils.getStringValue(hFileKey, 'Filename');
-              
+
               if (filename != null && filename.isNotEmpty) {
                 // Get the file position (as percentage of total)
                 final position = RegistryUtils.getDwordValue(hFileKey, 'FilePosition') ?? 0;
                 final durationValue = RegistryUtils.getDwordValue(hFileKey, 'FileDuration') ?? 1;
-                
+
                 // Avoid division by zero
-                final percentage = durationValue > 0 
-                    ? (position / durationValue).clamp(0.0, 1.0)
-                    : 0.0;
-                
+                final percentage = durationValue > 0 ? (position / durationValue).clamp(0.0, 1.0) : 0.0;
+
                 // Map the file to its registry key and track position
                 _fileToKeyMap[filename] = subKey;
                 _keyToPositionMap[subKey] = percentage;
-                
+
                 // if (percentage != 0) log('Indexed: $filename -> $subKey (${(percentage * 100).toStringAsFixed(1)}%)');
               }
             } finally {
@@ -89,7 +89,7 @@ class MPCHCTracker with ChangeNotifier {
             }
           }
         }
-        
+
         _isInitialized = true;
         notifyListeners();
       } finally {
@@ -101,16 +101,16 @@ class MPCHCTracker with ChangeNotifier {
   }
 
   /// Check for updates in the registry and identify completed videos
-  Future<List<String>> checkForUpdates() async {
+  Future<List<PathString>> checkForUpdates() async {
     if (!_isInitialized) {
       await indexRegistry();
     }
-    
-    final watchedFiles = <String>[];
-    
+
+    final watchedFiles = <PathString>[];
+
     try {
       final hMediaHistory = RegistryUtils.openKey(HKEY_CURRENT_USER, _mpcHcRegPath);
-      
+
       if (hMediaHistory == 0) {
         return watchedFiles;
       }
@@ -118,31 +118,28 @@ class MPCHCTracker with ChangeNotifier {
       try {
         // Get updated subkeys
         final subKeys = RegistryUtils.enumSubKeys(hMediaHistory);
-        
+
         // Check for new entries
         for (final subKey in subKeys) {
           // If this is a key we haven't seen before
           if (!_keyToPositionMap.containsKey(subKey)) {
             final hFileKey = RegistryUtils.openKey(hMediaHistory, subKey);
-            
+
             if (hFileKey != 0) {
               try {
-                final filename = RegistryUtils.getStringValue(hFileKey, 'Filename');
-                
-                if (filename != null && filename.isNotEmpty) {
+                final filename = PathString(RegistryUtils.getStringValue(hFileKey, 'Filename'));
+
+                if (filename.pathMaybe != null && filename.path.isNotEmpty) {
                   // Add to our maps
-                  _fileToKeyMap[filename] = subKey;
-                  
+                  _fileToKeyMap[filename.path] = subKey;
+
                   // Get the current position
-                  final position = RegistryUtils.getDwordValue(hFileKey, 'FilePosition') ?? 0;
-                  final durationValue = RegistryUtils.getDwordValue(hFileKey, 'FileDuration') ?? 1;
-                  
-                  final percentage = durationValue > 0 
-                      ? (position / durationValue).clamp(0.0, 1.0)
-                      : 0.0;
-                  
+                  final position = RegistryUtils.getDwordValue(hFileKey, 'FilePosition') ?? 0; // in milliseconds
+                  final durationValue = (await MediaInfo.getVideoDuration(filename)).inMilliseconds;
+                  final percentage = durationValue > 0 ? (position / durationValue).clamp(0.0, 1.0) : 0.0;
+
                   _keyToPositionMap[subKey] = percentage;
-                  
+
                   // If the file is watched more than threshold
                   if (percentage >= watchedThreshold) {
                     watchedFiles.add(filename);
@@ -155,30 +152,25 @@ class MPCHCTracker with ChangeNotifier {
           } else {
             // Check if an existing key has been updated
             final hFileKey = RegistryUtils.openKey(hMediaHistory, subKey);
-            
+
             if (hFileKey != 0) {
               try {
-                final position = RegistryUtils.getDwordValue(hFileKey, 'FilePosition') ?? 0;
-                final durationValue = RegistryUtils.getDwordValue(hFileKey, 'FileDuration') ?? 1;
-                
-                final percentage = durationValue > 0 
-                    ? (position / durationValue).clamp(0.0, 1.0)
-                    : 0.0;
-                
+                // Find the filename for this key
+                final filename = PathString(_fileToKeyMap.entries.firstWhere((entry) => entry.value == subKey, orElse: () => const MapEntry('', '')).key);
+
+                final position = RegistryUtils.getDwordValue(hFileKey, 'FilePosition') ?? 0; // in milliseconds
+                final durationValue = (await MediaInfo.getVideoDuration(filename)).inMilliseconds;
+
+                final percentage = durationValue > 0 ? (position / durationValue).clamp(0.0, 1.0) : 0.0;
+
                 final previousPercentage = _keyToPositionMap[subKey] ?? 0.0;
-                
+
                 // Update the stored percentage
                 _keyToPositionMap[subKey] = percentage;
-                
+
                 // If it crossed the watched threshold
                 if (percentage >= watchedThreshold && previousPercentage < watchedThreshold) {
-                  // Find the filename for this key
-                  final filename = _fileToKeyMap.entries
-                      .firstWhere((entry) => entry.value == subKey, 
-                          orElse: () => const MapEntry('', ''))
-                      .key;
-                  
-                  if (filename.isNotEmpty) {
+                  if (filename.pathMaybe != null && filename.path.isNotEmpty) {
                     watchedFiles.add(filename);
                   }
                 }
@@ -194,32 +186,32 @@ class MPCHCTracker with ChangeNotifier {
     } catch (e) {
       logDebug('Error checking MPC-HC registry updates: $e');
     }
-    
+
     if (watchedFiles.isNotEmpty) {
       notifyListeners();
     }
-    
+
     return watchedFiles;
   }
 
   /// Check if a specific file has been watched
-  bool isWatched(String filePath) {
-    final normalizedPath = filePath.replaceAll('/', '\\');
+  bool isWatched(PathString filePath) {
+    final normalizedPath = filePath.path.replaceAll('/', '\\');
     final key = _fileToKeyMap[normalizedPath];
-    
+
     if (key == null) return false;
-    
+
     final percentage = _keyToPositionMap[key] ?? 0.0;
     return percentage >= watchedThreshold;
   }
 
   /// Get the watch percentage for a file
-  double getWatchPercentage(String filePath) {
-    final normalizedPath = filePath.replaceAll('/', '\\');
+  double getWatchPercentage(PathString filePath) {
+    final normalizedPath = filePath.path.replaceAll('/', '\\');
     final key = _fileToKeyMap[normalizedPath];
-    
+
     if (key == null) return 0.0;
-    
+
     return _keyToPositionMap[key] ?? 0.0;
   }
 }

@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:collection/collection.dart';
 import 'package:path/path.dart' as p;
 import '../../utils/logging.dart';
+import '../../utils/path_utils.dart';
 
 /// Type of formatting action to perform
 enum ActionType {
@@ -54,7 +55,7 @@ class FormatAction {
 /// Preview of all formatting actions for a series
 class SeriesFormatPreview {
   /// Path to the series folder
-  final String seriesPath;
+  final PathString seriesPath;
 
   /// Name of the series
   final String seriesName;
@@ -136,11 +137,11 @@ class MediaInfo {
 
 /// Format the series folder structure (preview mode)
 Future<SeriesFormatPreview> formatSeriesFolders({
-  required String seriesPath,
+  required PathString seriesPath,
   FormatterConfig config = const FormatterConfig(),
 }) async {
-  final seriesDir = Directory(seriesPath);
-  final seriesName = p.basename(seriesPath);
+  final seriesDir = Directory(seriesPath.path);
+  final seriesName = p.basename(seriesPath.path);
 
   if (!await seriesDir.exists()) {
     return SeriesFormatPreview(
@@ -184,7 +185,7 @@ Future<SeriesFormatPreview> formatSeriesFolders({
         // This is a season folder that may need standardization
         final seasonNum = seasonInfo.seasonNumber!;
         final standardName = 'Season ${seasonNum.toString().padLeft(2, '0')}';
-        final standardPath = p.join(seriesPath, standardName);
+        final standardPath = p.join(seriesPath.path, standardName);
 
         if (dirName != standardName) {
           actions.add(FormatAction(
@@ -202,7 +203,7 @@ Future<SeriesFormatPreview> formatSeriesFolders({
 
         // Standardize name if needed
         if (dirName != 'Related Media') {
-          final standardPath = p.join(seriesPath, 'Related Media');
+          final standardPath = p.join(seriesPath.path, 'Related Media');
           actions.add(FormatAction(
             type: ActionType.renameFolder,
             sourcePath: dir.path,
@@ -224,7 +225,7 @@ Future<SeriesFormatPreview> formatSeriesFolders({
       // First check if we already have a standard "Related Media" folder
       Directory? existingRelatedMedia = relatedMediaFolders.firstWhereOrNull((dir) => p.basename(dir.path) == 'Related Media');
 
-      final targetPath = p.join(seriesPath, 'Related Media');
+      final targetPath = p.join(seriesPath.path, 'Related Media');
 
       // If no standard "Related Media" folder exists, create one
       if (existingRelatedMedia == null) {
@@ -311,7 +312,7 @@ Future<SeriesFormatPreview> formatSeriesFolders({
       for (final seasonNum in seasonGroups.keys) {
         if (!seasonFolders.containsKey(seasonNum)) {
           final seasonName = 'Season ${seasonNum.toString().padLeft(2, '0')}';
-          final seasonPath = p.join(seriesPath, seasonName);
+          final seasonPath = p.join(seriesPath.path, seasonName);
 
           actions.add(FormatAction(
             type: ActionType.createFolder,
@@ -327,7 +328,7 @@ Future<SeriesFormatPreview> formatSeriesFolders({
         final seasonNum = entry.key;
         final episodes = entry.value;
         final seasonName = 'Season ${seasonNum.toString().padLeft(2, '0')}';
-        final seasonPath = p.join(seriesPath, seasonName);
+        final seasonPath = p.join(seriesPath.path, seasonName);
 
         for (final episodeInfo in episodes) {
           final file = episodeInfo.file;
@@ -355,7 +356,7 @@ Future<SeriesFormatPreview> formatSeriesFolders({
 
       // Handle special files if any exist
       if (specialFiles.isNotEmpty && relatedMediaFolder == null) {
-        final relatedMediaPath = p.join(seriesPath, 'Related Media');
+        final relatedMediaPath = p.join(seriesPath.path, 'Related Media');
 
         actions.add(FormatAction(
           type: ActionType.createFolder,
@@ -383,7 +384,7 @@ Future<SeriesFormatPreview> formatSeriesFolders({
 
       if (seasonInfo.seasonNumber != null) {
         final seasonNum = seasonInfo.seasonNumber!;
-        final seasonPath = p.join(seriesPath, 'Season ${seasonNum.toString().padLeft(2, '0')}');
+        final seasonPath = p.join(seriesPath.path, 'Season ${seasonNum.toString().padLeft(2, '0')}');
 
         // Get files in this season folder
         final files = await _getVideoFilesInDir(dir, config.videoExtensions);
@@ -599,12 +600,12 @@ Future<bool> applySeriesFormatting(SeriesFormatPreview preview, {bool skipIssues
 }
 
 /// Format all series in the library
-Future<Map<String, SeriesFormatPreview>> formatLibrary({
-  required List<String> seriesPaths,
+Future<Map<PathString, SeriesFormatPreview>> formatLibrary({
+  required List<PathString> seriesPaths,
   FormatterConfig config = const FormatterConfig(),
   void Function(int processed, int total)? progressCallback,
 }) async {
-  final Map<String, SeriesFormatPreview> results = {};
+  final Map<PathString, SeriesFormatPreview> results = {};
   int processed = 0;
 
   for (final seriesPath in seriesPaths) {
@@ -624,7 +625,7 @@ Future<Map<String, SeriesFormatPreview>> formatLibrary({
       logErr('Error formatting series: $seriesPath', e, stackTrace);
       results[seriesPath] = SeriesFormatPreview(
         seriesPath: seriesPath,
-        seriesName: p.basename(seriesPath),
+        seriesName: p.basename(seriesPath.path),
         actions: [],
         issues: ['Error analyzing series: $e'],
       );

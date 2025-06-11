@@ -208,7 +208,7 @@ extension LibraryAnilistIntegration on Library {
   }
 
   /// Link a series with an Anilist anime
-  Future<void> linkSeriesWithAnilist(Series series, int anilistId, {String? localPath, String? title}) async {
+  Future<void> linkSeriesWithAnilist(Series series, int anilistId, {PathString? localPath, String? title}) async {
     final path = localPath ?? series.path;
     bool isNewLink = true;
 

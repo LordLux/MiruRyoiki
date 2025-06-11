@@ -28,6 +28,7 @@ import '../utils/color_utils.dart';
 import '../utils/logging.dart';
 import '../services/library/library_provider.dart';
 import '../theme.dart';
+import '../utils/path_utils.dart';
 import '../utils/screen_utils.dart';
 import '../utils/time_utils.dart';
 import '../widgets/buttons/button.dart';
@@ -245,7 +246,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           final seriesPaths = library.series.map((s) => s.path).toList();
 
           // Run the formatter preview
-          final Map<String, SeriesFormatPreview> results = await formatLibrary(
+          final Map<PathString, SeriesFormatPreview> results = await formatLibrary(
             seriesPaths: seriesPaths,
             progressCallback: (processed, total) {
               // You could update progress here if desired
@@ -269,7 +270,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   // Show results dialog
-  void _showFormatterResults(BuildContext context, Map<String, SeriesFormatPreview> results) {
+  void _showFormatterResults(BuildContext context, Map<PathString, SeriesFormatPreview> results) {
     // Count total actions and issues
     int totalActions = 0;
     int seriesWithIssues = 0;
@@ -425,7 +426,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   // Apply the formatting changes
-  Future<void> _applyFormatting(BuildContext context, Map<String, SeriesFormatPreview> results, {required bool skipIssues}) async {
+  Future<void> _applyFormatting(BuildContext context, Map<PathString, SeriesFormatPreview> results, {required bool skipIssues}) async {
     // Show loading dialog
     showManagedDialog(
       context: context,
@@ -505,7 +506,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
 // Helper method to count actions of a specific type
-  int _countActionType(Map<String, SeriesFormatPreview> results, ActionType type) {
+  int _countActionType(Map<PathString, SeriesFormatPreview> results, ActionType type) {
     int count = 0;
     for (final preview in results.values) {
       count += preview.actions.where((a) => a.type == type).length;
@@ -608,7 +609,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   // Navigate to a series
-  void _navigateToSeries(BuildContext context, String seriesPath) {
+  void _navigateToSeries(BuildContext context, PathString seriesPath) {
     // Get the AppRoot state via the global key
     final appState = homeKey.currentState;
     if (appState != null) {

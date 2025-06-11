@@ -9,6 +9,7 @@ import '../manager.dart';
 import '../models/episode.dart';
 import '../models/series.dart';
 import '../utils/logging.dart';
+import '../utils/path_utils.dart';
 import '../utils/screen_utils.dart';
 import '../utils/time_utils.dart';
 import 'context_menu/episode.dart';
@@ -197,10 +198,10 @@ class _HoverableEpisodeTileState extends State<HoverableEpisodeTile> {
       if (episode.thumbnailPath != null) {
         return Container(
           decoration: BoxDecoration(
-            image: episode.thumbnailPath!.isEmpty
+            image: episode.thumbnailPath!.path.isEmpty
                 ? null
                 : DecorationImage(
-                    image: FileImage(File(episode.thumbnailPath!)),
+                    image: FileImage(File(episode.thumbnailPath!.path)),
                     fit: BoxFit.cover,
                   ),
           ),
@@ -222,16 +223,16 @@ class _HoverableEpisodeTileState extends State<HoverableEpisodeTile> {
   }
 
   Widget _buildThumbnailWithFuture(Episode episode, [Widget? child]) {
-    return FutureBuilder<String?>(
+    return FutureBuilder<PathString?>(
       future: episode.getThumbnail(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return Center(child: ProgressRing(strokeWidth: 2, activeColor: Manager.accentColor));
         }
 
-        final String? thumbnailPath = snapshot.data;
+        final PathString? thumbnailPath = snapshot.data;
 
-        if (thumbnailPath == null || !File(thumbnailPath).existsSync()) {
+        if (thumbnailPath == null || !File(thumbnailPath.path).existsSync()) {
           // Fallback icon if no thumbnail
           return Icon(FluentIcons.video, size: 32, color: FluentTheme.of(context).resources.textFillColorSecondary);
         }
@@ -240,7 +241,7 @@ class _HoverableEpisodeTileState extends State<HoverableEpisodeTile> {
           return Container(
             decoration: BoxDecoration(
               image: DecorationImage(
-                image: FileImage(File(thumbnailPath)),
+                image: FileImage(File(thumbnailPath.path)),
                 fit: BoxFit.cover,
               ),
             ),

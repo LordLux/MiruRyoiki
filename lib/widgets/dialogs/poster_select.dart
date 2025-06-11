@@ -39,20 +39,35 @@ class ImageSelectionDialog extends ManagedDialog {
               final library = Provider.of<Library>(popContext, listen: false);
 
               final Series updatedSeries = series.copyWith(
-                folderPosterPath: isBanner ? series.folderPosterPath : (source == ImageSource.local ? path : series.folderPosterPath),
-                folderBannerPath: isBanner ? (source == ImageSource.local ? path : series.folderBannerPath) : series.folderBannerPath,
+                folderPosterPath: isBanner ? series.folderPosterPath : (source == ImageSource.local ? PathString(path) : series.folderPosterPath),
+                folderBannerPath: isBanner ? (source == ImageSource.local ? PathString(path) : series.folderBannerPath) : series.folderBannerPath,
                 preferredPosterSource: isBanner ? series.preferredPosterSource : source,
                 preferredBannerSource: isBanner ? source : series.preferredBannerSource,
               );
 
+              final seriesScreenState = seriesScreenKey.currentState;
+              if (seriesScreenState != null) {
+                log('Disabling poster/banner change buttons');
+                seriesScreenState.posterChangeDisabled = !isBanner;
+                seriesScreenState.bannerChangeDisabled = isBanner;
+              }
               logTrace('Saving ${isBanner ? 'banner' : 'poster'} preference: $source, path: ${PathUtils.getFileName(path)}');
-
+              snackBar(
+                'Saving preference...',
+                severity: InfoBarSeverity.info,
+              );
               // Explicitly save the entire series and show confirmation
               library.updateSeries(updatedSeries).then((_) {
                 snackBar(
                   isBanner ? 'Banner preference saved' : 'Poster preference saved',
                   severity: InfoBarSeverity.success,
                 );
+                final seriesScreenState = seriesScreenKey.currentState;
+                if (seriesScreenState != null) {
+                  log('Enabling poster/banner change buttons');
+                  seriesScreenState.posterChangeDisabled = false;
+                  seriesScreenState.bannerChangeDisabled = false;
+                }
                 Manager.setState();
               });
             },
@@ -128,7 +143,7 @@ class _ImageSelectionContentState extends State<_ImageSelectionContent> {
   }
 
   Future<void> _findLocalImages() async {
-    final directory = Directory(widget.series.path);
+    final directory = Directory(widget.series.path.path);
 
     final List<FileSystemEntity> entities = await directory.list().toList();
 
@@ -140,11 +155,11 @@ class _ImageSelectionContentState extends State<_ImageSelectionContent> {
 
     // Set selected index to current poster if it exists
     if (_selectedSource == ImageSource.local && widget.isBanner && widget.series.folderBannerPath != null) {
-      final index = _localImageFiles.indexWhere((f) => f.path == widget.series.folderBannerPath);
+      final index = _localImageFiles.indexWhere((f) => PathString(f.path) == widget.series.folderBannerPath);
       if (index >= 0) _selectedLocalImageIndex = index;
       // Set selected index to current bannerif it exists
     } else if (_selectedSource == ImageSource.local && !widget.isBanner && widget.series.folderPosterPath != null) {
-      final index = _localImageFiles.indexWhere((f) => f.path == widget.series.folderPosterPath);
+      final index = _localImageFiles.indexWhere((f) => PathString(f.path) == widget.series.folderPosterPath);
       if (index >= 0) _selectedLocalImageIndex = index;
     }
 
@@ -291,6 +306,16 @@ class _ImageSelectionContentState extends State<_ImageSelectionContent> {
                   popContext: context,
                   onPressed: () {
                     _deselectEverything();
+                    widget.onSave(
+                      _selectedSource,
+                      widget.isBanner
+                          ? Manager.defaultBannerSource == ImageSource.local || Manager.defaultPosterSource == ImageSource.autoLocal
+                              ? _localImageFiles[_selectedLocalImageIndex!].path
+                              : widget.series.anilistData?.bannerImage ?? ''
+                          : Manager.defaultPosterSource == ImageSource.local || Manager.defaultPosterSource == ImageSource.autoLocal
+                              ? _localImageFiles[_selectedLocalImageIndex!].path
+                              : widget.series.anilistData?.posterImage ?? '',
+                    );
                     Manager.setState();
                   },
                   text: 'Reset to Auto',

@@ -9,6 +9,7 @@ import 'package:defer_pointer/defer_pointer.dart';
 import '../services/library/library_provider.dart';
 import '../services/navigation/show_info.dart';
 import '../services/navigation/statusbar.dart';
+import '../utils/path_utils.dart';
 import '../widgets/buttons/button.dart';
 import '../services/anilist/provider/anilist_provider.dart';
 import '../widgets/buttons/wrapper.dart';
@@ -32,7 +33,7 @@ import '../widgets/transparency_shadow_image.dart';
 import 'anilist_settings.dart';
 
 class SeriesScreen extends StatefulWidget {
-  final String seriesPath;
+  final PathString seriesPath;
   final VoidCallback onBack;
 
   const SeriesScreen({
@@ -48,6 +49,8 @@ class SeriesScreen extends StatefulWidget {
 class SeriesScreenState extends State<SeriesScreen> {
   // final ScrollController _scrollController = ScrollController();
   late double _headerHeight;
+  bool posterChangeDisabled = false;
+  bool bannerChangeDisabled = false;
 
   final Map<int, GlobalKey<ExpanderState>> _seasonExpanderKeys = {};
 
@@ -210,12 +213,12 @@ class SeriesScreenState extends State<SeriesScreen> {
     );
   }
 
-  String _getDisplayPath(String path, String seriesPath) {
+  String _getDisplayPath(PathString path, PathString seriesPath) {
     if (path == seriesPath) return 'Main Series Folder';
-    if (path.startsWith(seriesPath)) {
-      return path.substring(seriesPath.length + 1);
+    if (path.path.startsWith(seriesPath.path)) {
+      return path.path.substring(seriesPath.path.length + 1);
     }
-    return path;
+    return path.path;
   }
 
   Widget _buildSeriesHeader(BuildContext context, Series series) {
@@ -227,14 +230,14 @@ class SeriesScreenState extends State<SeriesScreen> {
               // Banner
               ShiftClickableHover(
                 series: series,
-                enabled: _isBannerHovering,
+                enabled: _isBannerHovering && !bannerChangeDisabled,
                 onTap: (context) => selectImage(context, true),
-                onEnter: () => setState(() => _isBannerHovering = true),
+                onEnter: bannerChangeDisabled ? () {} : () => setState(() => _isBannerHovering = true),
                 onExit: () {
                   StatusBarManager().hide();
                   setState(() => _isBannerHovering = false);
                 },
-                onHover: () => StatusBarManager().show('Shift-click to change banner', autoHideDuration: Duration.zero),
+                onHover: bannerChangeDisabled ? null : () => StatusBarManager().show('Shift-click to change banner', autoHideDuration: Duration.zero),
                 final_child: (BuildContext context, bool enabled) => LayoutBuilder(builder: (context, constraints) {
                   return Stack(
                     children: [
@@ -282,6 +285,35 @@ class SeriesScreenState extends State<SeriesScreen> {
                           }),
                         ),
                       ),
+                      ...[
+                        AnimatedOpacity(
+                          duration: shortStickyHeaderDuration,
+                          opacity: enabled && snapshot.data != null ? 1 : 0,
+                          child: Container(
+                            decoration: BoxDecoration(
+                              gradient: RadialGradient(
+                                colors: [
+                                  Colors.black.withOpacity(.95),
+                                  Colors.black.withOpacity(0),
+                                ],
+                                radius: 0.5,
+                                center: Alignment.center,
+                                focal: Alignment.center,
+                              ),
+                            ),
+                            child: Center(
+                              child: Icon(FluentIcons.edit, size: 35, color: Colors.white),
+                            ),
+                          ),
+                        ),
+                        AnimatedOpacity(
+                          duration: shortStickyHeaderDuration,
+                          opacity: enabled && snapshot.data != null ? 1 : 0,
+                          child: Center(
+                            child: Icon(FluentIcons.edit, size: 35, color: Colors.white),
+                          ),
+                        ),
+                      ],
                       // Title and watched percentage
                       Positioned(
                         bottom: 0,
@@ -648,18 +680,19 @@ class SeriesScreenState extends State<SeriesScreen> {
                                         // Poster
                                         child: ShiftClickableHover(
                                           series: series,
-                                          enabled: _isPosterHovering,
+                                          enabled: _isPosterHovering && !posterChangeDisabled,
                                           onTap: (context) => selectImage(context, false), // Poster
-                                          onEnter: () => setState(() => _isPosterHovering = true),
+                                          onEnter: posterChangeDisabled ? () {} : () => setState(() => _isPosterHovering = true),
                                           onExit: () {
                                             setState(() => _isPosterHovering = false);
                                             StatusBarManager().hide();
                                           },
-                                          onHover: () => StatusBarManager().show('Shift-click to change poster', autoHideDuration: Duration.zero),
+                                          onHover: posterChangeDisabled ? null : () => StatusBarManager().show('Shift-click to change poster', autoHideDuration: Duration.zero),
                                           final_child: (BuildContext context, bool enabled) => Stack(
                                             alignment: Alignment.center,
                                             children: [
-                                              SizedBox(
+                                              AnimatedContainer(
+                                                duration: shortStickyHeaderDuration,
                                                 width: posterWidth,
                                                 height: posterHeight,
                                                 child: Builder(builder: (context) {
@@ -698,14 +731,15 @@ class SeriesScreenState extends State<SeriesScreen> {
                                                   duration: shortStickyHeaderDuration,
                                                   opacity: enabled && imageProvider != null ? 1 : 0,
                                                   child: AnimatedContainer(
-                                                    width: posterWidth / 2,
-                                                    height: posterHeight / 2,
+                                                    width: posterWidth,
+                                                    height: posterHeight,
                                                     duration: shortStickyHeaderDuration,
                                                     decoration: BoxDecoration(
+                                                      borderRadius: BorderRadius.circular(8.0),
                                                       gradient: RadialGradient(
                                                         colors: [
                                                           Colors.black.withOpacity(.95),
-                                                          Colors.black.withOpacity(0),
+                                                          dominantColor.withOpacity(.2),
                                                         ],
                                                         radius: 0.5,
                                                         center: Alignment.center,
@@ -808,12 +842,13 @@ class SeriesScreenState extends State<SeriesScreen> {
                 // hoverColor: (series.dominantColor ?? Manager.accentColor).withOpacity(.1),
                 borderRadius: BorderRadius.circular(8.0),
                 child: AnimatedContainer(
-                    duration: shortStickyHeaderDuration,
-                    decoration: BoxDecoration(
-                      color: (series.dominantColor ?? Manager.accentColor).withOpacity(isShiftPressed && enabled ? .35 : 0),
-                      borderRadius: BorderRadius.circular(8.0),
-                    ),
-                    child: final_child(context, isShiftPressed && enabled)),
+                  duration: shortStickyHeaderDuration,
+                  decoration: BoxDecoration(
+                    color: (series.dominantColor ?? Manager.accentColor).withOpacity(isShiftPressed && enabled ? .15 : 0),
+                    borderRadius: BorderRadius.circular(8.0),
+                  ),
+                  child: ClipRRect(borderRadius: BorderRadius.circular(3.0), child: final_child(context, isShiftPressed && enabled)),
+                ),
               ),
             ));
   }

@@ -1,7 +1,7 @@
+import 'package:miruryoiki/models/metadata.dart';
 import 'package:video_thumbnail_exporter/video_thumbnail_exporter.dart';
-import 'package:flutter_media_metadata/flutter_media_metadata.dart';
-import 'package:flutter_file_info/flutter_file_info.dart';
 
+import '../../models/mkv_metadata.dart';
 import '../../utils/logging.dart';
 import 'dart:io';
 
@@ -10,67 +10,49 @@ import '../thumbnail_manager.dart';
 
 class MediaInfo {
   // Get video duration in milliseconds
-  static Future<FileMetadata?> _getMetadata(PathString filepath) async {
+  static Future<MkvMetadata?> getMkvMetadata(PathString filepath) async {
     try {
-      FileMetadata? fileMetadata = await FileInfo.instance.getFileInfo(filepath.path);
-      return fileMetadata!;
+      final MkvMetadata fileMetadata = MkvMetadata.fromJson(await VideoDataExtractor.getMkvMetadata(mkvPath: filepath.path));
+      return fileMetadata;
     } catch (e) {
       logErr('Error getting video duration', e);
       return null;
     }
   }
 
-  static Future<dynamic> _get(PathString filepath, [String attribute = ""]) async {
-    final FileMetadata? metadata = await _getMetadata(filepath);
-    return switch (attribute) {
-      'accessedTime' => metadata?.accessedTime,
-      'creationTime' => metadata?.creationTime,
-      'fileSize' => metadata?.fileSize,
-      'modifiedTime' => metadata?.modifiedTime,
-      _ => metadata,
-    };
+  static Future<Duration> getVideoDuration(PathString filepath) async {
+    try {
+      final double duration = await VideoDataExtractor.getVideoDuration(videoPath: filepath.path);
+      return Duration(milliseconds: duration.toInt());
+    } catch (e) {
+      logErr('Error getting video duration', e);
+      return Duration.zero;
+    }
   }
 
-  static Future<DateTime?> getVideoLastAccess(PathString filepath) async => //
-      await _get(filepath, 'accessedTime');
-
-  static Future<DateTime?> getVideoCreationTime(PathString filepath) async => //
-      await _get(filepath, 'creationTime');
-
-  static Future<int?> getVideoFileSize(PathString filepath) async => //
-      await _get(filepath, 'fileSize');
-      
-  static Future<DateTime?> getVideoLastModified(PathString filepath) async => //
-      await _get(filepath, 'modifiedTime');
-
-  static Future<Metadata?> getVideoMetadata(String videoPath) async {
+  /// Get metadata for a video file
+  static Future<Metadata?> getMetadata(PathString filepath) async {
     try {
-      if (!await File(videoPath).exists()) {
-        logWarn('Video file does not exist: $videoPath');
-        return null;
-      }
-
-      final Metadata metadata = await MetadataRetriever.fromFile(File(videoPath));
-      return metadata;
-    } catch (e, stackTrace) {
-      logErr('Error retrieving metadata for $videoPath', e, stackTrace);
+      return Metadata.fromJson(await VideoDataExtractor.getFileMetadata(filePath: filepath.path));
+    } catch (e) {
+      logErr('Error getting video metadata', e);
       return null;
     }
   }
 
-  /// Extract a thumbnail from a video file
-  static Future<String?> extractThumbnail(String videoPath, {String? outputPath}) async {
+  /// Extract a thumbnail from a video file to a specified path.
+  static Future<PathString?> extractThumbnail(PathString videoPath, {PathString? outputPath}) async {
     try {
-      if (!await File(videoPath).exists()) {
+      if (!await File(videoPath.path).exists()) {
         logErr('Video file does not exist: $videoPath');
         return null;
       }
 
-      final String thumbnailPath = outputPath ?? await ThumbnailManager.generateThumbnailPath(videoPath);
+      final PathString thumbnailPath = outputPath ?? await ThumbnailManager.generateThumbnailPath(videoPath);
 
-      final bool success = await VideoThumbnailExporter.getThumbnail(
-        videoPath: videoPath,
-        outputPath: thumbnailPath,
+      final bool success = await VideoDataExtractor.extractCachedThumbnail(
+        videoPath: videoPath.path,
+        outputPath: thumbnailPath.path,
         size: 256, // TODO make configurable
       );
 
@@ -79,7 +61,7 @@ class MediaInfo {
         return null;
       }
 
-      if (!await File(thumbnailPath).exists()) {
+      if (!await File(thumbnailPath.path).exists()) {
         logErr('Thumbnail file was not created at $thumbnailPath');
         return null;
       }

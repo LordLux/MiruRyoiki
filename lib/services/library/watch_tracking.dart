@@ -39,7 +39,7 @@ extension LibraryWatchTracking on Library {
 
   Future<void> playEpisode(Episode episode) async {
     try {
-      await OpenAppFile.open(episode.path);
+      await OpenAppFile.open(episode.path.path);
     } catch (e) {
       logErr('Error playing episode: ${episode.path}', e);
       snackBar('Could not play episode: ${episode.path}', severity: InfoBarSeverity.error);

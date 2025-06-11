@@ -295,14 +295,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "5.2.1"
-  flutter_file_info:
-    dependency: "direct main"
-    description:
-      name: flutter_file_info
-      sha256: "2d5d879d67f76bbd123fa6c6107f75b27846d27aaceb4e60c209458e11180f5b"
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.3.0"
   flutter_launcher_icons:
     dependency: "direct dev"
     description:
@@ -324,14 +316,6 @@ packages:
     description: flutter
     source: sdk
     version: "0.0.0"
-  flutter_media_metadata:
-    dependency: "direct main"
-    description:
-      name: flutter_media_metadata
-      sha256: "69cfc76ffd6cd5d546dcc4880584b3844c5e879e435aa54f57f1096c15bd04db"
-      url: "https://pub.dev"
-    source: hosted
-    version: "1.0.0+1"
   flutter_plugin_android_lifecycle:
     dependency: transitive
     description:
@@ -1160,7 +1144,7 @@ packages:
       path: "M:\\Projects\\video_thumbnail_exporter"
       relative: false
     source: path
-    version: "0.0.1"
+    version: "1.0.0"
   vm_service:
     dependency: transitive
     description:

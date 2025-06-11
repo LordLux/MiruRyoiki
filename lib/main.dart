@@ -316,9 +316,9 @@ ValueNotifier<int?> previousGridColumnCount = ValueNotifier<int?>(null);
 
 class _AppRootState extends State<AppRoot> {
   int _selectedIndex = 0;
-  String? _selectedSeriesPath;
+  PathString? _selectedSeriesPath;
+  PathString? lastSelectedSeriesPath;
   bool _isSeriesView = false;
-  String? lastSelectedSeriesPath;
   bool _showAnilistRedirectToProfile = false;
 
   final ScrollController libraryController = ScrollController();
@@ -818,7 +818,7 @@ class _AppRootState extends State<AppRoot> {
   }
 
   /// Called immediately when a series is selected from the library or home screen
-  void navigateToSeries(String seriesPath) {
+  void navigateToSeries(PathString seriesPath) {
     previousGridColumnCount.value = ScreenUtils.crossAxisCount();
 
     final series = Provider.of<Library>(context, listen: false).getSeriesByPath(seriesPath);
@@ -905,7 +905,7 @@ class _AppRootState extends State<AppRoot> {
           // Check if it's a series page
           if (currentItem.id.startsWith('series:') && currentItem.data is String) {
             setState(() {
-              _selectedSeriesPath = currentItem.data as String;
+              _selectedSeriesPath = currentItem.data as PathString;
               _isSeriesView = true;
             });
           }
