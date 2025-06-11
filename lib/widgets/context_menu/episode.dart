@@ -13,9 +13,7 @@ import '../../models/series.dart';
 import '../../services/library/library_provider.dart';
 import '../../services/navigation/show_info.dart';
 import '../../utils/logging.dart';
-import '../../utils/path_utils.dart';
 import '../../utils/shell_utils.dart';
-import '../../utils/time_utils.dart';
 import 'icons.dart' as icons;
 
 class EpisodeContextMenu extends StatefulWidget {

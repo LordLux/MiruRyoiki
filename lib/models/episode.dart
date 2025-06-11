@@ -11,9 +11,6 @@ class Episode {
   double watchedPercentage;
   bool thumbnailUnavailable;
 
-  static final Map<String, int> _failedAttempts = {};
-  static const int _maxAttempts = 3;
-
   Episode({
     required this.path,
     required this.name,

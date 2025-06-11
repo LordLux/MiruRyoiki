@@ -5,11 +5,9 @@ import 'package:fluent_ui2/fluent_ui.dart' as flyout;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart' show Material, MaterialPageRoute, ScaffoldMessenger;
 import 'package:fluent_ui/fluent_ui.dart' hide ColorExtension;
-import 'package:flutter/services.dart';
 import 'package:flutter_acrylic/flutter_acrylic.dart';
 import 'package:flutter_acrylic/window.dart' as flutter_acrylic;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:jovial_svg/jovial_svg.dart';
 import 'package:miruryoiki/screens/home.dart';
 import 'package:miruryoiki/widgets/svg.dart';
 import 'package:provider/provider.dart';
@@ -38,7 +36,6 @@ import 'services/file_system/cache.dart';
 import 'services/navigation/navigation.dart';
 import 'services/file_system/registry.dart' as registry;
 import 'services/navigation/shortcuts.dart';
-import 'services/navigation/show_info.dart';
 import 'services/window.dart';
 import 'theme.dart';
 import 'utils/color_utils.dart';
@@ -51,7 +48,6 @@ import 'widgets/cursors.dart';
 import 'widgets/dialogs/link_anilist_multi.dart';
 import 'widgets/reverse_animation_flyout.dart';
 import 'widgets/window_buttons.dart';
-import 'package:flutter_desktop_context_menu/flutter_desktop_context_menu.dart';
 
 final _appTheme = AppTheme();
 final _navigationManager = NavigationManager();
@@ -980,6 +976,7 @@ void setIcon() async {
   }
 }
 
+// TODO holding shift reveals different entries in context menu
 // TODO add global status bar at bottom right corner for Anilist sync status and internet connection status
 // TODO edit view options for library to separate sort and view (grid, list etc) from filters
 // TODO homepage title inside header like in library + view options to choose what to show on homepage

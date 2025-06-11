@@ -66,6 +66,7 @@ dependencies:
     # git:
     #   url: https://github.com/LordLux/flutter_desktop_context_menu.git
   flutter_media_metadata: ^1.0.0
+  flutter_file_info: ^0.3.0
 
 dev_dependencies:
   flutter_test:
