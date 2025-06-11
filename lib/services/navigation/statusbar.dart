@@ -4,7 +4,6 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:miruryoiki/utils/time_utils.dart';
 
 import '../../manager.dart';
-import '../../utils/color_utils.dart'; // assume this contains getDuration()
 
 /// Defines the visual style of the status bar
 class StatusBarStyle {

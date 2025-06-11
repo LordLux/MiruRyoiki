@@ -8,6 +8,7 @@ import 'package:defer_pointer/defer_pointer.dart';
 
 import '../services/library/library_provider.dart';
 import '../services/navigation/show_info.dart';
+import '../services/navigation/statusbar.dart';
 import '../widgets/buttons/button.dart';
 import '../services/anilist/provider/anilist_provider.dart';
 import '../widgets/buttons/wrapper.dart';
@@ -229,7 +230,11 @@ class SeriesScreenState extends State<SeriesScreen> {
                 enabled: _isBannerHovering,
                 onTap: (context) => selectImage(context, true),
                 onEnter: () => setState(() => _isBannerHovering = true),
-                onExit: () => setState(() => _isBannerHovering = false),
+                onExit: () {
+                  StatusBarManager().hide();
+                  setState(() => _isBannerHovering = false);
+                },
+                onHover: () => StatusBarManager().show('Shift-click to change banner', autoHideDuration: Duration.zero),
                 final_child: (BuildContext context, bool enabled) => LayoutBuilder(builder: (context, constraints) {
                   return Stack(
                     children: [
@@ -646,7 +651,11 @@ class SeriesScreenState extends State<SeriesScreen> {
                                           enabled: _isPosterHovering,
                                           onTap: (context) => selectImage(context, false), // Poster
                                           onEnter: () => setState(() => _isPosterHovering = true),
-                                          onExit: () => setState(() => _isPosterHovering = false),
+                                          onExit: () {
+                                            setState(() => _isPosterHovering = false);
+                                            StatusBarManager().hide();
+                                          },
+                                          onHover: () => StatusBarManager().show('Shift-click to change poster', autoHideDuration: Duration.zero),
                                           final_child: (BuildContext context, bool enabled) => Stack(
                                             alignment: Alignment.center,
                                             children: [
@@ -780,6 +789,7 @@ class SeriesScreenState extends State<SeriesScreen> {
     required Series series,
     required bool enabled,
     required VoidCallback onEnter,
+    VoidCallback? onHover,
     required VoidCallback onExit,
     required void Function(BuildContext) onTap,
     required Widget Function(BuildContext, bool) final_child,
@@ -790,6 +800,7 @@ class SeriesScreenState extends State<SeriesScreen> {
               cursor: isShiftPressed && enabled ? SystemMouseCursors.click : MouseCursor.defer,
               onEnter: (_) => onEnter.call(),
               onExit: (_) => onExit.call(),
+              onHover: (_) => onHover?.call(),
               hitTestBehavior: HitTestBehavior.translucent,
               child: mat.InkWell(
                 onTap: isShiftPressed && enabled ? () => onTap(context) : null,

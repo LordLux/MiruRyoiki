@@ -5,7 +5,6 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/material.dart' show InkWell, Material;
 import 'package:miruryoiki/services/navigation/statusbar.dart';
 
-import '../functions.dart';
 import '../manager.dart';
 import '../models/episode.dart';
 import '../models/series.dart';
@@ -13,7 +12,6 @@ import '../utils/logging.dart';
 import '../utils/screen_utils.dart';
 import '../utils/time_utils.dart';
 import 'context_menu/episode.dart';
-import 'context_menu/series.dart';
 import 'watched_badge.dart';
 
 class HoverableEpisodeTile extends StatefulWidget {

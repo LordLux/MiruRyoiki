@@ -1,23 +1,47 @@
 import 'package:video_thumbnail_exporter/video_thumbnail_exporter.dart';
 import 'package:flutter_media_metadata/flutter_media_metadata.dart';
+import 'package:flutter_file_info/flutter_file_info.dart';
 
-import 'dart:typed_data';
 import '../../utils/logging.dart';
 import 'dart:io';
 
+import '../../utils/path_utils.dart';
 import '../thumbnail_manager.dart';
 
 class MediaInfo {
   // Get video duration in milliseconds
-  static Future<int?> getVideoDuration(String path) async {
+  static Future<FileMetadata?> _getMetadata(PathString filepath) async {
     try {
-      final Metadata? metadata = await getVideoMetadata(path);
-      log(metadata);
+      FileMetadata? fileMetadata = await FileInfo.instance.getFileInfo(filepath.path);
+      return fileMetadata!;
     } catch (e) {
       logErr('Error getting video duration', e);
       return null;
     }
   }
+
+  static Future<dynamic> _get(PathString filepath, [String attribute = ""]) async {
+    final FileMetadata? metadata = await _getMetadata(filepath);
+    return switch (attribute) {
+      'accessedTime' => metadata?.accessedTime,
+      'creationTime' => metadata?.creationTime,
+      'fileSize' => metadata?.fileSize,
+      'modifiedTime' => metadata?.modifiedTime,
+      _ => metadata,
+    };
+  }
+
+  static Future<DateTime?> getVideoLastAccess(PathString filepath) async => //
+      await _get(filepath, 'accessedTime');
+
+  static Future<DateTime?> getVideoCreationTime(PathString filepath) async => //
+      await _get(filepath, 'creationTime');
+
+  static Future<int?> getVideoFileSize(PathString filepath) async => //
+      await _get(filepath, 'fileSize');
+      
+  static Future<DateTime?> getVideoLastModified(PathString filepath) async => //
+      await _get(filepath, 'modifiedTime');
 
   static Future<Metadata?> getVideoMetadata(String videoPath) async {
     try {

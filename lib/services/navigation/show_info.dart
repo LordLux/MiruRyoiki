@@ -1,4 +1,3 @@
-import 'dart:math' as math;
 
 import 'package:fluent_ui/fluent_ui.dart' as fluent;
 import 'package:fluent_ui/fluent_ui.dart';
@@ -7,7 +6,6 @@ import 'package:flutter/material.dart' as mat;
 
 import '../../main.dart';
 import '../../utils/logging.dart';
-import '../../utils/time_utils.dart';
 
 void snackBar(
   String message, {
