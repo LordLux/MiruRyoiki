@@ -129,11 +129,11 @@ Logger logger = Logger();
 /// logMulti([
 ///   ['Message 1', Colors.red],
 ///   ['Message 2', Colors.green, Colors.black],
-///  ['Message 3', Colors.blue, Colors.yellow],
+///   ['Message 3', Colors.blue, Colors.yellow],
 /// ]);
 /// ```
 /// This will log three messages with different text and background colors.
-void logMulti(List<List<dynamic>> messages) {
+void logMulti(List<List<dynamic>> messages, {bool showTime = true}) {
   if (!doLogRelease && !kDebugMode) return;
   String logMessage = '';
   for (var innerList in messages) {
@@ -143,7 +143,9 @@ void logMulti(List<List<dynamic>> messages) {
 
     String escapeCode = getColorEscapeCode(color);
     String bgEscapeCode = getColorEscapeCodeBg(bgColor);
+
     logMessage += '$escapeCode$bgEscapeCode$msg';
   }
+  if (showTime) logMessage = '$nowFormatted | $logMessage';
   developer.log(logMessage);
 }

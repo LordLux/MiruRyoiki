@@ -527,10 +527,13 @@ class SeriesScreenState extends State<SeriesScreen> {
 
           // Progress bar
           VDiv(16),
-          ProgressBar(
-            value: series.watchedPercentage * 100,
-            activeColor: dominantColor,
-            backgroundColor: Colors.white.withOpacity(.3),
+          SizedBox(
+            width: 300,
+            child: ProgressBar(
+              value: series.watchedPercentage * 100,
+              activeColor: dominantColor,
+              backgroundColor: Colors.white.withOpacity(.3),
+            ),
           ),
           ...[
             for (int i = 0; i < 30; i++)

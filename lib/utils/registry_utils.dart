@@ -1,7 +1,9 @@
+import 'dart:async';
 import 'dart:ffi';
 
 import 'package:ffi/ffi.dart';
 import 'package:win32/win32.dart';
+import 'package:win32_registry/win32_registry.dart';
 
 class RegistryUtils {
   /// Opens a registry key with the specified path
@@ -10,9 +12,7 @@ class RegistryUtils {
     final phkResult = calloc<HKEY>();
 
     try {
-      final result = readOnly
-          ? RegOpenKeyEx(hKey, keyPath, 0, KEY_READ, phkResult)
-          : RegOpenKeyEx(hKey, keyPath, 0, KEY_READ | KEY_WRITE, phkResult);
+      final result = readOnly ? RegOpenKeyEx(hKey, keyPath, 0, KEY_READ, phkResult) : RegOpenKeyEx(hKey, keyPath, 0, KEY_READ | KEY_WRITE, phkResult);
 
       if (result != ERROR_SUCCESS) {
         throw WindowsException(result);
@@ -22,6 +22,18 @@ class RegistryUtils {
       free(keyPath);
       free(phkResult);
     }
+  }
+
+  static StreamSubscription<void> onChanged(int hKey, String subKey, {Function(void)? onChanged, Function(dynamic)? onError}) {
+    final key = Registry.openPath(_registryKeys[hKey]!, path: subKey);
+    return key.onChanged(includeSubkeys: true).listen(
+      (event) {
+        onChanged?.call(event);
+      },
+      onError: (error) {
+        onError?.call(error);
+      },
+    );
   }
 
   /// Enumerates subkeys of the given registry key
@@ -34,8 +46,7 @@ class RegistryUtils {
     try {
       while (true) {
         nameLength.value = 256;
-        final result =
-            RegEnumKeyEx(hKey, index, nameBuffer, nameLength, nullptr, nullptr, nullptr, nullptr);
+        final result = RegEnumKeyEx(hKey, index, nameBuffer, nameLength, nullptr, nullptr, nullptr, nullptr);
 
         if (result == ERROR_NO_MORE_ITEMS) break;
         if (result != ERROR_SUCCESS) {
@@ -56,11 +67,10 @@ class RegistryUtils {
   static String? getStringValue(int hKey, String valueName) {
     final nameBuffer = valueName.toNativeUtf16();
     final dataSize = calloc<DWORD>();
-    
+
     try {
       // First get the size of the data
-      var result = RegQueryValueEx(
-          hKey, nameBuffer, nullptr, nullptr, nullptr, dataSize);
+      var result = RegQueryValueEx(hKey, nameBuffer, nullptr, nullptr, nullptr, dataSize);
 
       if (result == ERROR_FILE_NOT_FOUND) return null;
 
@@ -73,8 +83,7 @@ class RegistryUtils {
       try {
         final valueType = calloc<DWORD>();
         try {
-          result = RegQueryValueEx(
-              hKey, nameBuffer, nullptr, valueType, dataBuffer.cast(), dataSize);
+          result = RegQueryValueEx(hKey, nameBuffer, nullptr, valueType, dataBuffer.cast(), dataSize);
 
           if (result != ERROR_SUCCESS) {
             throw WindowsException(result);
@@ -102,13 +111,12 @@ class RegistryUtils {
     final nameBuffer = valueName.toNativeUtf16();
     final dataSize = calloc<DWORD>();
     dataSize.value = sizeOf<DWORD>();
-    
+
     final data = calloc<DWORD>();
     final valueType = calloc<DWORD>();
-    
+
     try {
-      final result = RegQueryValueEx(
-          hKey, nameBuffer, nullptr, valueType, data.cast(), dataSize);
+      final result = RegQueryValueEx(hKey, nameBuffer, nullptr, valueType, data.cast(), dataSize);
 
       if (result == ERROR_FILE_NOT_FOUND) return null;
 
@@ -128,9 +136,16 @@ class RegistryUtils {
       free(valueType);
     }
   }
-  
+
   /// Close a registry key handle
   static void closeKey(int hKey) {
     RegCloseKey(hKey);
   }
+
+  static final Map<int, RegistryHive> _registryKeys = {
+    HKEY_CLASSES_ROOT: RegistryHive.classesRoot,
+    HKEY_CURRENT_USER: RegistryHive.currentUser,
+    HKEY_LOCAL_MACHINE: RegistryHive.localMachine,
+    HKEY_CURRENT_CONFIG: RegistryHive.currentConfig,
+  };
 }
