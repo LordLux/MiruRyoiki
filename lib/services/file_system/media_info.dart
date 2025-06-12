@@ -15,7 +15,7 @@ class MediaInfo {
       final MkvMetadata fileMetadata = MkvMetadata.fromJson(await VideoDataExtractor.getMkvMetadata(mkvPath: filepath.path));
       return fileMetadata;
     } catch (e) {
-      logErr('Error getting video duration', e);
+      logErr('Error getting MKV metadata', e);
       return null;
     }
   }

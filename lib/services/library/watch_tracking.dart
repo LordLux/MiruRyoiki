@@ -51,9 +51,11 @@ extension LibraryWatchTracking on Library {
     if (episode.watchedPercentage != newPct) {
       episode.watchedPercentage = newPct;
 
-      if (newPct >= MPCHCTracker.watchedThreshold && !wasWatched) {
+      if (newPct >= MPCHCTracker.watchedThreshold && !wasWatched)
         episode.watched = true;
-      }
+      else if (newPct < MPCHCTracker.watchedThreshold && wasWatched) //
+        episode.watched = false;
+
       return true;
     }
     return false;

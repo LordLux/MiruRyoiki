@@ -108,12 +108,13 @@ extension LibraryPersistence on Library {
         // Create backup of existing file if it exists
         if (await file.exists()) //
           await file.copy(backupFile.path);
-        
+
         // Replace original with new file
         await tempFile.rename(file.path);
         logDebug('Library saved successfully (${_series.length} series)');
         _isDirty = false;
-        return;
+        notifyListeners();
+        Manager.setState();
       }
     } catch (e, st) {
       logErr('Error saving library', e, st);
