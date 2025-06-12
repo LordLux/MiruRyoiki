@@ -8,7 +8,7 @@ extension LibraryScanning on Library {
   }
 
   /// Scan the library for new series
-  Future<void> scanLibrary({bool showSnack = false}) async {
+  Future<void> scanLocalLibrary({bool showSnack = false}) async {
     if (_libraryPath == null) {
       logDebug('\n3 | Skipping scan, library path is null', splitLines: true);
       return;
@@ -28,16 +28,17 @@ extension LibraryScanning on Library {
       final previousSeriesCount = _series.length;
       final previousSeriesPaths = _series.map((s) => s.path).toSet();
 
-      _series = await _fileScanner.scanLibrary(_libraryPath!, existingSeriesMap);
+      final scannedSeries = await _fileScanner.scanLibrary(_libraryPath!, existingSeriesMap);
 
       // Identify new series
-      final newSeries = _series.where((s) => !previousSeriesPaths.contains(s.path)).toList();
+      final newSeries = scannedSeries.where((s) => !previousSeriesPaths.contains(s.path)).toList();
 
       // Update watched status from tracker
       _updateWatchedStatusAndResetThumbnailFetchFailedAttemptsCount();
 
       if (newSeries.isNotEmpty) {
         logDebug('3 | Found ${newSeries.length} new series');
+        _series.addAll(newSeries);
       }
 
       _isDirty = true;

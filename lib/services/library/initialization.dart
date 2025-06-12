@@ -34,9 +34,11 @@ extension LibraryInitialization on Library {
     //   // This will load the latest data and update the cache
     //   await anilistProvider.refreshUserLists();
     // }
+    // log('2 | test: ${series.map((s) => "${s.name}: ${(s.watchedPercentage * 100).toInt()}%").join(',\n')}');
 
     // 3 Scan Library
-    await scanLibrary();
+    await scanLocalLibrary();
+    // log('3 | test: ${series.map((s) => "${s.name}: ${(s.watchedPercentage * 100).toInt()}%").join(',\n')}');
 
     // 4 Validate Cache
     await ensureCacheValidated();
@@ -51,7 +53,6 @@ extension LibraryInitialization on Library {
         Manager.setState();
       }
     });
-    await forceImmediateSave();
   }
 
   Future<void> reloadLibrary() async {
@@ -59,7 +60,7 @@ extension LibraryInitialization on Library {
     logDebug('Reloading Library...');
 
     snackBar('Reloading Library...', severity: InfoBarSeverity.info);
-    await scanLibrary();
+    await scanLocalLibrary();
     await ensureCacheValidated();
 
     await _updateWatchedStatusAndForceRefresh();
@@ -136,7 +137,7 @@ extension LibraryInitialization on Library {
     _updateWatchedStatusAndResetThumbnailFetchFailedAttemptsCount();
     // Force immediate save and UI refresh
     _isDirty = true;
-    await forceImmediateSave();
+    // TODO await forceImmediateSave();
     notifyListeners();
   }
 
@@ -145,21 +146,14 @@ extension LibraryInitialization on Library {
     logTrace('3 | Getting watched status for all series and resetting thumbnail fetch attempts');
 
     for (final series in _series) {
-      // Update seasons/episodes
       for (final season in series.seasons) {
-        for (final episode in season.episodes) {
-          episode.watchedPercentage = _mpcTracker.getWatchPercentage(episode.path);
-          episode.watched = _mpcTracker.isWatched(episode.path);
+        for (final episode in season.episodes) //
           episode.resetThumbnailStatus();
-        }
       }
 
       // Update related media
-      for (final episode in series.relatedMedia) {
-        episode.watchedPercentage = _mpcTracker.getWatchPercentage(episode.path);
-        episode.watched = _mpcTracker.isWatched(episode.path);
+      for (final episode in series.relatedMedia) //
         episode.resetThumbnailStatus();
-      }
     }
 
     Episode.resetAllFailedAttempts();

@@ -49,6 +49,7 @@ extension LibraryPersistence on Library {
           final data = jsonDecode(content) as List;
           _series = data.map((s) => Series.fromJson(s)).toList();
 
+          // log('1 | Loaded library from file (${_series.length} series, ${_series.map((s) => "${s.name}: ${(s.watchedPercentage*100).toInt()}%").join(',\n')})', splitLines: true);
           // Log loaded dominant colors for debugging
           // for (final series in _series) {
           //   logTrace('Loaded series: ${series.name}, AnilistPoster: ${series.anilistPosterUrl}, AnilistBanner: ${series.anilistBannerUrl}');
