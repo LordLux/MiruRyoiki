@@ -57,18 +57,14 @@ class Library with ChangeNotifier {
 
   Library() {
     _fileScanner = FileScanner();
-    _mpcTracker = MPCHCTracker()..addListener(_onMpcTrackerUpdate);
+    _mpcTracker = MPCHCTracker();
+    _mpcTracker.addListener(_onMpcHistoryChanged);
     _initAutoSave();
-  }
-
-  void _onMpcTrackerUpdate() {
-    logTrace('MPC tracker updated, processing...');
-    _processWatchedFiles();
   }
   
   @override
   void dispose() {
-    _mpcTracker.removeListener(_onMpcTrackerUpdate);
+    _mpcTracker.removeListener(_onMpcHistoryChanged);
     _mpcTracker.dispose();
     _autoSaveTimer?.cancel();
     _saveDebouncer?.cancel();

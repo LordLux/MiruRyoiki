@@ -1,38 +1,35 @@
 part of 'library_provider.dart';
 
 extension LibraryWatchTracking on Library {
-  Future<void> _processWatchedFiles() async {
-    final watchedFiles = await _mpcTracker.checkForUpdates();
-    bool updated = false;
+  /// Called on every registry change event.
+  Future<void> _onMpcHistoryChanged() async {
+    bool anyEpisodeUpdated = false;
+    int updatedCount = 0;
 
-    for (final filePath in watchedFiles) {
-      for (final series in _series) {
-        for (final season in series.seasons) {
-          for (final episode in season.episodes) {
-            if (episode.path == filePath && !episode.watched) {
-              // Check if the episode is already watched
-              // Mark the episode as watched
-              episode.watched = true;
-              episode.watchedPercentage = 1.0;
-              updated = true;
-            }
+    // Loop through all your series/episodes… adjust to your data structure
+    for (final series in _series) {
+      for (final season in series.seasons) {
+        for (final episode in season.episodes) {
+          final wasUpdated = _updateEpisodeWatchStatus(episode);
+          if (wasUpdated) {
+            anyEpisodeUpdated = true;
+            updatedCount++;
           }
         }
-
-        // Check in related media
-        for (final episode in series.relatedMedia) {
-          if (episode.path == filePath && !episode.watched) {
-            episode.watched = true;
-            episode.watchedPercentage = 1.0;
-            updated = true;
-          }
+      }
+      for (final episode in series.relatedMedia) {
+        final wasUpdated = _updateEpisodeWatchStatus(episode);
+        if (wasUpdated) {
+          anyEpisodeUpdated = true;
+          updatedCount++;
         }
       }
     }
 
-    if (updated) {
+    if (anyEpisodeUpdated) {
+      // mark dirty, persist immediately, then notify listeners/UI
       _isDirty = true;
-      _saveLibrary();
+      await forceImmediateSave();
       notifyListeners();
     }
   }
@@ -44,5 +41,21 @@ extension LibraryWatchTracking on Library {
       logErr('Error playing episode: ${episode.path}', e);
       snackBar('Could not play episode: ${episode.path}', severity: InfoBarSeverity.error);
     }
+  }
+
+  /// Updates an episode's watch status and returns true if it was changed
+  bool _updateEpisodeWatchStatus(Episode episode) {
+    final newPct = _mpcTracker.getWatchPercentage(episode.path);
+    final wasWatched = episode.watched;
+
+    if (episode.watchedPercentage != newPct) {
+      episode.watchedPercentage = newPct;
+
+      if (newPct >= MPCHCTracker.watchedThreshold && !wasWatched) {
+        episode.watched = true;
+      }
+      return true;
+    }
+    return false;
   }
 }
