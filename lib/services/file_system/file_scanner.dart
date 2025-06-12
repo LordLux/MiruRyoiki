@@ -76,7 +76,9 @@ class FileScanner {
 
     // If no season directories, create a single default season from root videos
     if (seasonDirs.isEmpty && rootVideoFiles.isNotEmpty) {
-      final episodes = await _processEpisodeFiles(rootVideoFiles);
+      final existingEpisodes = existingSeries?.seasons.firstWhereOrNull((s) => s.path == PathString(seriesDir.path))?.episodes;
+      log('episode percentages different than 0: ${existingEpisodes?.where((e) => e.watchedPercentage > 0).length ?? -1}');
+      final episodes = await _processEpisodeFiles(rootVideoFiles, existingEpisodes: existingEpisodes);
       seasons.add(Season(
         name: 'Season 01',
         path: PathString(seriesDir.path),
@@ -94,7 +96,9 @@ class FileScanner {
           }
         }
 
-        final episodes = await _processEpisodeFiles(episodeFiles);
+        final existingEpisodes = existingSeries?.seasons.firstWhereOrNull((s) => s.path == PathString(seasonDir.path))?.episodes;
+        log('episode percentages different than 0: ${existingEpisodes?.where((e) => e.watchedPercentage > 0).length ?? -1}');
+        final episodes = await _processEpisodeFiles(episodeFiles, existingEpisodes: existingEpisodes);
         seasons.add(Season(
           name: _formatSeasonName(seasonName),
           path: PathString(seasonDir.path),
@@ -114,8 +118,9 @@ class FileScanner {
           episodeFiles.add(entity);
         }
       }
-
-      final episodes = await _processEpisodeFiles(episodeFiles);
+      final existingRelatedMedia = existingSeries?.relatedMedia;
+      log('episode percentages different than 0: ${existingRelatedMedia?.where((e) => e.watchedPercentage > 0).length ?? -1}');
+      final episodes = await _processEpisodeFiles(episodeFiles, existingEpisodes: existingRelatedMedia);
       relatedMedia.addAll(episodes);
     }
 
@@ -151,15 +156,31 @@ class FileScanner {
   }
 
   /// Process video files into Episode objects
-  Future<List<Episode>> _processEpisodeFiles(List<File> files) async {
+  Future<List<Episode>> _processEpisodeFiles(List<File> files, {List<Episode>? existingEpisodes}) async {
     final episodes = <Episode>[];
 
     for (final file in files) {
       final name = _cleanEpisodeName(p.basenameWithoutExtension(file.path));
-      episodes.add(Episode(
-        path: PathString(file.path),
-        name: name,
-      ));
+      // Check if this episode already exists in the library
+      final existingEpisode = existingEpisodes?.firstWhereOrNull((e) => e.path == PathString(file.path));
+      if (existingEpisode != null) {
+        // Preserve watch data from existing episode
+        // log('Found existing episode: ${existingEpisode.name}: ${(existingEpisode.watchedPercentage*100).toInt()}%');
+        episodes.add(Episode(
+          path: PathString(file.path),
+          name: name,
+          thumbnailPath: existingEpisode.thumbnailPath,
+          // thumbnailUnavailable: existingEpisode.thumbnailUnavailable, we want to let it try again on startup
+          watched: existingEpisode.watched,
+          watchedPercentage: existingEpisode.watchedPercentage,
+        ));
+      } else {
+        // New episode
+        episodes.add(Episode(
+          path: PathString(file.path),
+          name: name,
+        ));
+      }
     }
 
     return episodes;
