@@ -31,13 +31,15 @@ class MPCHCTracker with ChangeNotifier {
   StreamSubscription<void>? _registrySubscription;
   RegistryKey? _registryKey;
 
+  Future<void> Function(Map<String, double> changedFiles)? onWatchStatusChanged;
+
   // Debounce timer to avoid excessive updates
   Timer? _debounceTimer;
-  final Duration _debounceTime = const Duration(seconds: 5);
+  final Duration _debounceTime = const Duration(seconds: 1);
   bool _hasPendingChanges = false;
 
-  /// Threshold for watched status (85%)
-  static const double watchedThreshold = 0.85;
+  /// Threshold for watched status (90%)
+  static const double watchedThreshold = 0.90;
 
   /// Threshold to set videos to be fully watched to override registry missing value (95%)
   static const double fullyWatchedThreshold = 0.95;
@@ -69,8 +71,8 @@ class MPCHCTracker with ChangeNotifier {
 
   /// Scans registry entries and updates internal maps
   /// Returns true if any percentage values were changed
-  Future<bool> _scanRegistryEntries({
-    List<PathString>? watchedFiles,
+  Future<Map<String, double>> _scanRegistryEntries({
+    List<PathString>? thresholdCrossedFiles,
     required bool clearExisting,
   }) async {
     if (clearExisting) {
@@ -78,11 +80,11 @@ class MPCHCTracker with ChangeNotifier {
       _keyToPositionMap.clear();
     }
 
-    bool anyPercentageChanged = false;
+    final changedFiles = <String, double>{};
 
     try {
       final hMediaHistory = RegistryUtils.openKey(HKEY_CURRENT_USER, _mpcHcRegPath);
-      if (hMediaHistory == 0) return anyPercentageChanged;
+      if (hMediaHistory == 0) return {};
 
       try {
         final subKeys = RegistryUtils.enumSubKeys(hMediaHistory);
@@ -111,10 +113,13 @@ class MPCHCTracker with ChangeNotifier {
 
                 if (previousPercentage != percentage) {
                   _keyToPositionMap[subKey] = percentage;
-                  anyPercentageChanged = true;
 
-                  if (watchedFiles != null && percentage >= watchedThreshold) {
-                    watchedFiles.add(pathString);
+                  changedFiles[pathString.path] = percentage;
+
+                  if (thresholdCrossedFiles != null && //
+                      ((percentage >= watchedThreshold && previousPercentage < watchedThreshold) || //
+                          (percentage < watchedThreshold && previousPercentage >= watchedThreshold))) {
+                    thresholdCrossedFiles.add(pathString);
                   }
                 }
               }
@@ -133,18 +138,19 @@ class MPCHCTracker with ChangeNotifier {
 
                 if (previousPercentage != percentage) {
                   _keyToPositionMap[subKey] = percentage;
-                  anyPercentageChanged = true;
+
+                  changedFiles[filename.path] = percentage;
+
                   logMulti([
                     ['Updated entry: ', Colors.white],
                     [basename(filename.path), Colors.tealAccent],
                     [' (${(percentage * 100).toStringAsFixed(1)}%)', Colors.amber]
                   ]);
 
-                  // Check for threshold crossing (in either direction)
-                  if (watchedFiles != null && //
+                  if (thresholdCrossedFiles != null && //
                       ((percentage >= watchedThreshold && previousPercentage < watchedThreshold) || //
                           (percentage < watchedThreshold && previousPercentage >= watchedThreshold))) {
-                    watchedFiles.add(filename);
+                    thresholdCrossedFiles.add(filename);
                   }
                 }
               }
@@ -160,7 +166,7 @@ class MPCHCTracker with ChangeNotifier {
       logDebug('Error scanning MPC-HC registry: $e');
     }
 
-    return anyPercentageChanged;
+    return changedFiles;
   }
 
   void _startRegistryWatcher() async {
@@ -197,23 +203,27 @@ class MPCHCTracker with ChangeNotifier {
     // Cancel any existing timer
     _debounceTimer?.cancel();
 
-    // Mark that we have pending changes
-    _hasPendingChanges = true;
-
     // Start a new timer
     _debounceTimer = Timer(_debounceTime, () async {
       if (_hasPendingChanges) {
         try {
           log('Processing registry changes after debounce');
 
-          // Process changes directly using the original checkForUpdates method
-          final updatedFiles = await checkForUpdates();
-
           // Handle completed videos that might have been removed from registry
-          _checkForRemovedButCompleteVideos();
+          final completedVideos = _checkForRemovedButCompleteVideos();
 
-          if (updatedFiles.isNotEmpty) {
-            log('Updated watch status for ${updatedFiles.length} episodes');
+          final changedFiles = await checkForUpdates(fullReindex: false);
+
+          final allChanges = Map<String, double>.from(changedFiles);
+          allChanges.addAll(completedVideos);
+
+          if (allChanges.isNotEmpty) {
+            log('Updated watch status for ${allChanges.length} episodes');
+            if (onWatchStatusChanged != null) {
+              await onWatchStatusChanged!(allChanges);
+            } else {
+              notifyListeners();
+            }
           }
         } catch (e, stack) {
           logErr('Error processing registry changes', e, stack);
@@ -221,13 +231,16 @@ class MPCHCTracker with ChangeNotifier {
         _hasPendingChanges = false;
       }
     });
+    _hasPendingChanges = true;
   }
 
   /// Check for videos that were almost complete but were removed from registry
-  void _checkForRemovedButCompleteVideos() {
+  Map<String, double> _checkForRemovedButCompleteVideos() {
     try {
+      final completedVideos = <String, double>{};
+
       final hMediaHistory = RegistryUtils.openKey(HKEY_CURRENT_USER, _mpcHcRegPath);
-      if (hMediaHistory == 0) return;
+      if (hMediaHistory == 0) return {};
 
       try {
         // Get current registry keys
@@ -247,6 +260,7 @@ class MPCHCTracker with ChangeNotifier {
             if (lastPercentage > fullyWatchedThreshold) {
               log('Video was complete before removal: $filePath ($lastPercentage)');
               _manuallyCompletedVideos[filePath] = 1.0; // Mark as 100% complete
+              completedVideos[filePath] = 1.0; // Add to completed videos
             }
 
             // Clean up maps
@@ -254,27 +268,35 @@ class MPCHCTracker with ChangeNotifier {
             _keyToPositionMap.remove(key);
           }
         }
+        return completedVideos;
       } finally {
         RegistryUtils.closeKey(hMediaHistory);
       }
     } catch (e) {
       logErr('Error checking for removed but complete videos', e);
+      return {};
     }
   }
 
   /// Check for updates in the registry and identify completed videos
-  Future<List<PathString>> checkForUpdates({bool fullReindex = false}) async {
+  Future<Map<String, double>> checkForUpdates({bool fullReindex = false}) async {
     if (!_isInitialized || fullReindex) {
       await indexRegistry();
+      return {};
     }
 
     final watchedFiles = <PathString>[];
-    await _scanRegistryEntries(watchedFiles: watchedFiles, clearExisting: false);
+    final changedPathsToPercentages = await _scanRegistryEntries(
+      thresholdCrossedFiles: watchedFiles,
+      clearExisting: false,
+    );
+    
+    if (onWatchStatusChanged == null) {
+      notifyListeners();
+      Manager.setState();
+    }
 
-    notifyListeners();
-    Manager.setState();
-
-    return watchedFiles;
+    return changedPathsToPercentages;
   }
 
   /// Check if a specific file has been watched
