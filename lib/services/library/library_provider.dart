@@ -58,13 +58,12 @@ class Library with ChangeNotifier {
   Library() {
     _fileScanner = FileScanner();
     _mpcTracker = MPCHCTracker();
-    _mpcTracker.addListener(_onMpcHistoryChanged);
+    _mpcTracker.onWatchStatusChanged = _updateSpecificEpisodes;
     _initAutoSave();
   }
-  
+
   @override
   void dispose() {
-    _mpcTracker.removeListener(_onMpcHistoryChanged);
     _mpcTracker.dispose();
     _autoSaveTimer?.cancel();
     _saveDebouncer?.cancel();
