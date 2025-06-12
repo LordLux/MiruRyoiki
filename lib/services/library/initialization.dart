@@ -41,7 +41,10 @@ extension LibraryInitialization on Library {
     // 4 Validate Cache
     await ensureCacheValidated();
 
-    // 5 Load posters for library
+    // 5. Update watched status and force refresh
+    await _updateWatchedStatusAndForceRefresh();
+
+    // 6 Load posters for library
     await loadAnilistPostersForLibrary(onProgress: (loaded, total) {
       if (loaded % 2 == 0 || loaded == total) {
         // Force UI refresh every 5 items or on completion
@@ -53,19 +56,25 @@ extension LibraryInitialization on Library {
 
   Future<void> reloadLibrary() async {
     if (_libraryPath == null || _isLoading) return;
-    logDebug('Reloading library...');
-    // snackBar('Reloading Library...', severity: InfoBarSeverity.info);
+    logDebug('Reloading Library...');
+
+    snackBar('Reloading Library...', severity: InfoBarSeverity.info);
     await scanLibrary();
     await ensureCacheValidated();
+
+    await _updateWatchedStatusAndForceRefresh();
+
     await loadAnilistPostersForLibrary(onProgress: (loaded, total) {
       if (loaded % 2 == 0 || loaded == total) {
         // Force UI refresh every 2 items or on completion
         Manager.setState();
       }
     });
-    logDebug('Finished Reloading Library');
     await _saveLibrary();
-    // snackBar('Library Reloaded', severity: InfoBarSeverity.success);
+
+    logDebug('Finished Reloading Library');
+    snackBar('Library Reloaded', severity: InfoBarSeverity.success);
+    notifyListeners();
   }
 
   Future<void> cacheValidation() async {
@@ -121,6 +130,14 @@ extension LibraryInitialization on Library {
 
   Future<void> ensureCacheValidated() async {
     if (!_cacheValidated) await cacheValidation();
+  }
+
+  Future<void> _updateWatchedStatusAndForceRefresh() async {
+    _updateWatchedStatusAndResetThumbnailFetchFailedAttemptsCount();
+    // Force immediate save and UI refresh
+    _isDirty = true;
+    await forceImmediateSave();
+    notifyListeners();
   }
 
   void _updateWatchedStatusAndResetThumbnailFetchFailedAttemptsCount() {
