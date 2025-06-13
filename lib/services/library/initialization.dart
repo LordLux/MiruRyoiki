@@ -27,26 +27,30 @@ extension LibraryInitialization on Library {
 
     appTheme.setEffect(appTheme.windowEffect, rootNavigatorKey.currentContext!);
 
-    // 2 Initialize Anilist API
+    // 2. Initialize Anilist API
     await anilistProvider.initialize();
 
     // if (!anilistProvider.isOffline && anilistProvider.isLoggedIn) {
     //   // This will load the latest data and update the cache
     //   await anilistProvider.refreshUserLists();
     // }
-    // log('2 | test: ${series.map((s) => "${s.name}: ${(s.watchedPercentage * 100).toInt()}%").join(',\n')}');
 
-    // 3 Scan Library
+    // 3. Scan Library
     await scanLocalLibrary();
-    // log('3 | test: ${series.map((s) => "${s.name}: ${(s.watchedPercentage * 100).toInt()}%").join(',\n')}');
 
-    // 4 Validate Cache
-    await ensureCacheValidated();
+    // 4. Initialize MPC Tracker
+    await _mpcTracker.ensureInitialized();
 
     // 5. Update watched status and force refresh
     await _updateWatchedStatusAndForceRefresh();
 
-    // 6 Load posters for library
+    // 6. Save library
+    await _saveLibrary();
+
+    // 7. Validate Cache
+    await ensureCacheValidated();
+
+    // 8. Load posters for library
     await loadAnilistPostersForLibrary(onProgress: (loaded, total) {
       if (loaded % 2 == 0 || loaded == total) {
         // Force UI refresh every 5 items or on completion
@@ -61,9 +65,14 @@ extension LibraryInitialization on Library {
 
     snackBar('Reloading Library...', severity: InfoBarSeverity.info);
     await scanLocalLibrary();
-    await ensureCacheValidated();
+
+    await _mpcTracker.ensureInitialized();
 
     await _updateWatchedStatusAndForceRefresh();
+
+    await _saveLibrary();
+
+    await ensureCacheValidated();
 
     await loadAnilistPostersForLibrary(onProgress: (loaded, total) {
       if (loaded % 2 == 0 || loaded == total) {
@@ -71,7 +80,6 @@ extension LibraryInitialization on Library {
         Manager.setState();
       }
     });
-    await _saveLibrary();
 
     logDebug('Finished Reloading Library');
     snackBar('Library Reloaded', severity: InfoBarSeverity.success);
@@ -136,7 +144,7 @@ extension LibraryInitialization on Library {
   Future<void> _updateWatchedStatusAndForceRefresh() async {
     _updateWatchedStatusAndResetThumbnailFetchFailedAttemptsCount();
     // Force immediate save and UI refresh
-    _isDirty = true;
+    // _isDirty = true;
     // TODO await forceImmediateSave();
     notifyListeners();
   }
@@ -146,14 +154,28 @@ extension LibraryInitialization on Library {
     logTrace('3 | Getting watched status for all series and resetting thumbnail fetch attempts');
 
     for (final series in _series) {
+      // Update seasons/episodes
       for (final season in series.seasons) {
-        for (final episode in season.episodes) //
+        for (final episode in season.episodes) {
+          // Update watch percentages from tracker
+          final trackerPercentage = _mpcTracker.getWatchPercentage(episode.path);
+          if (trackerPercentage > 0.0) {
+            episode.watchedPercentage = trackerPercentage;
+            episode.watched = _mpcTracker.isWatched(episode.path);
+          }
           episode.resetThumbnailStatus();
+        }
       }
 
       // Update related media
-      for (final episode in series.relatedMedia) //
+      for (final episode in series.relatedMedia) {
+        final trackerPercentage = _mpcTracker.getWatchPercentage(episode.path);
+        if (trackerPercentage > 0.0) {
+          episode.watchedPercentage = trackerPercentage;
+          episode.watched = _mpcTracker.isWatched(episode.path);
+        }
         episode.resetThumbnailStatus();
+      }
     }
 
     Episode.resetAllFailedAttempts();

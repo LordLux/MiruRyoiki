@@ -77,7 +77,7 @@ class FileScanner {
     // If no season directories, create a single default season from root videos
     if (seasonDirs.isEmpty && rootVideoFiles.isNotEmpty) {
       final existingEpisodes = existingSeries?.seasons.firstWhereOrNull((s) => s.path == PathString(seriesDir.path))?.episodes;
-      log('episode percentages different than 0: ${existingEpisodes?.where((e) => e.watchedPercentage > 0).length ?? -1}');
+      // log('episode percentages different than 0: ${existingEpisodes?.where((e) => e.watchedPercentage > 0).length ?? -1}');
       final episodes = await _processEpisodeFiles(rootVideoFiles, existingEpisodes: existingEpisodes);
       seasons.add(Season(
         name: 'Season 01',
@@ -97,7 +97,7 @@ class FileScanner {
         }
 
         final existingEpisodes = existingSeries?.seasons.firstWhereOrNull((s) => s.path == PathString(seasonDir.path))?.episodes;
-        log('episode percentages different than 0: ${existingEpisodes?.where((e) => e.watchedPercentage > 0).length ?? -1}');
+        // log('episode percentages different than 0: ${existingEpisodes?.where((e) => e.watchedPercentage > 0).length ?? -1}');
         final episodes = await _processEpisodeFiles(episodeFiles, existingEpisodes: existingEpisodes);
         seasons.add(Season(
           name: _formatSeasonName(seasonName),
@@ -119,7 +119,7 @@ class FileScanner {
         }
       }
       final existingRelatedMedia = existingSeries?.relatedMedia;
-      log('episode percentages different than 0: ${existingRelatedMedia?.where((e) => e.watchedPercentage > 0).length ?? -1}');
+      // log('episode percentages different than 0: ${existingRelatedMedia?.where((e) => e.watchedPercentage > 0).length ?? -1}');
       final episodes = await _processEpisodeFiles(episodeFiles, existingEpisodes: existingRelatedMedia);
       relatedMedia.addAll(episodes);
     }

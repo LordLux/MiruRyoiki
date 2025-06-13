@@ -49,7 +49,7 @@ class Episode {
     if (thumbnailUnavailable) return null;
 
     // Check if cached thumbnail already exists
-    if (thumbnailPath != null) {
+    if (thumbnailPath != null && thumbnailPath!.pathMaybe != null) {
       final file = File(thumbnailPath!.path);
       if (await file.exists()) return thumbnailPath;
     }

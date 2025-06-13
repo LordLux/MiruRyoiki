@@ -50,6 +50,10 @@ class MPCHCTracker with ChangeNotifier {
     _startRegistryWatcher();
   }
 
+  Future<void> ensureInitialized() async {
+    if (!_isInitialized) await indexRegistry();
+  }
+
   @override
   void dispose() {
     _debounceTimer?.cancel();
@@ -290,7 +294,7 @@ class MPCHCTracker with ChangeNotifier {
       thresholdCrossedFiles: watchedFiles,
       clearExisting: false,
     );
-    
+
     if (onWatchStatusChanged == null) {
       notifyListeners();
       Manager.setState();
