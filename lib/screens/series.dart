@@ -29,6 +29,7 @@ import '../utils/screen_utils.dart';
 import '../utils/time_utils.dart';
 import '../widgets/episode_grid.dart';
 import '../widgets/gradient_mask.dart';
+import '../widgets/shift_clickable_hover.dart';
 import '../widgets/transparency_shadow_image.dart';
 import 'anilist_settings.dart';
 
@@ -229,129 +230,128 @@ class SeriesScreenState extends State<SeriesScreen> {
             children: [
               // Banner
               ShiftClickableHover(
-                series: series,
-                enabled: _isBannerHovering && !bannerChangeDisabled,
-                onTap: (context) => selectImage(context, true),
-                onEnter: bannerChangeDisabled ? () {} : () => setState(() => _isBannerHovering = true),
-                onExit: () {
-                  StatusBarManager().hide();
-                  setState(() => _isBannerHovering = false);
-                },
-                onHover: bannerChangeDisabled ? null : () => StatusBarManager().show('Shift-click to change banner', autoHideDuration: Duration.zero),
-                final_child: (BuildContext context, bool enabled) => LayoutBuilder(builder: (context, constraints) {
-                  return Stack(
-                    children: [
-                      AnimatedOpacity(
-                        duration: shortStickyHeaderDuration,
-                        opacity: enabled ? 0.75 : 1,
-                        child: AnimatedContainer(
-                          duration: shortStickyHeaderDuration,
-                          height: ScreenUtils.kMaxHeaderHeight,
-                          width: double.infinity,
-                          // Background image
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: Alignment.topCenter,
-                              end: Alignment.bottomCenter,
-                              colors: [
-                                dominantColor.withOpacity(0.27),
-                                Colors.transparent,
-                              ],
-                            ),
-                            color: enabled ? (series.dominantColor ?? Manager.accentColor).withOpacity(0.75) : Colors.transparent,
-                            image: _getBannerDecoration(snapshot.data),
-                          ),
-                          padding: const EdgeInsets.only(bottom: 16.0),
-                          alignment: Alignment.bottomLeft,
-                          child: Builder(builder: (context) {
-                            if (snapshot.data != null) return SizedBox.shrink();
-
-                            return Center(
-                              child: Stack(
-                                children: [
-                                  AnimatedOpacity(
-                                    duration: shortStickyHeaderDuration,
-                                    opacity: enabled ? 0 : 1,
-                                    child: Icon(FluentIcons.picture, size: 48, color: Colors.white),
-                                  ),
-                                  AnimatedOpacity(
-                                    duration: shortStickyHeaderDuration,
-                                    opacity: enabled ? 1 : 0,
-                                    child: Icon(FluentIcons.add, size: 48, color: Colors.white),
-                                  ),
-                                ],
-                              ),
-                            );
-                          }),
-                        ),
-                      ),
-                      ...[
-                        AnimatedOpacity(
-                          duration: shortStickyHeaderDuration,
-                          opacity: enabled && snapshot.data != null ? 1 : 0,
-                          child: Container(
-                            decoration: BoxDecoration(
-                              gradient: RadialGradient(
-                                colors: [
-                                  Colors.black.withOpacity(.95),
-                                  Colors.black.withOpacity(0),
-                                ],
-                                radius: 0.5,
-                                center: Alignment.center,
-                                focal: Alignment.center,
-                              ),
-                            ),
-                            child: Center(
-                              child: Icon(FluentIcons.edit, size: 35, color: Colors.white),
-                            ),
-                          ),
-                        ),
-                        AnimatedOpacity(
-                          duration: shortStickyHeaderDuration,
-                          opacity: enabled && snapshot.data != null ? 1 : 0,
-                          child: Center(
-                            child: Icon(FluentIcons.edit, size: 35, color: Colors.white),
-                          ),
-                        ),
-                      ],
-                      // Title and watched percentage
-                      Positioned(
-                        bottom: 0,
-                        left: math.max(constraints.maxWidth / 2 - 380 + 10, ScreenUtils.kInfoBarWidth - (6 * 2) + 42),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisAlignment: MainAxisAlignment.start,
+                  series: series,
+                  enabled: _isBannerHovering && !bannerChangeDisabled,
+                  onTap: (context) => selectImage(context, true),
+                  onEnter: bannerChangeDisabled ? () {} : () => setState(() => _isBannerHovering = true),
+                  onExit: () {
+                    StatusBarManager().hide();
+                    setState(() => _isBannerHovering = false);
+                  },
+                  onHover: bannerChangeDisabled ? null : () => StatusBarManager().show(KeyboardState.shiftPressedNotifier.value ? 'Click to change Banner' : 'Shift-click to change Banner', autoHideDuration: Duration.zero),
+                  finalChild: (BuildContext context, bool enabled) => LayoutBuilder(builder: (context, constraints) {
+                        return Stack(
                           children: [
-                            // Series title
-                            SizedBox(
-                              width: ScreenUtils.kMaxContentWidth - ScreenUtils.kInfoBarWidth - 32,
-                              child: Text(
-                                series.displayTitle,
-                                style: const TextStyle(
-                                  fontSize: 32,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
+                            AnimatedOpacity(
+                              duration: shortStickyHeaderDuration,
+                              opacity: enabled ? 0.75 : 1,
+                              child: AnimatedContainer(
+                                duration: shortStickyHeaderDuration,
+                                height: ScreenUtils.kMaxHeaderHeight,
+                                width: double.infinity,
+                                // Background image
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    begin: Alignment.topCenter,
+                                    end: Alignment.bottomCenter,
+                                    colors: [
+                                      dominantColor.withOpacity(0.27),
+                                      Colors.transparent,
+                                    ],
+                                  ),
+                                  color: enabled ? (series.dominantColor ?? Manager.accentColor).withOpacity(0.75) : Colors.transparent,
+                                  image: _getBannerDecoration(snapshot.data),
+                                ),
+                                padding: const EdgeInsets.only(bottom: 16.0),
+                                alignment: Alignment.bottomLeft,
+                                child: Builder(builder: (context) {
+                                  if (snapshot.data != null) return SizedBox.shrink();
+
+                                  return Center(
+                                    child: Stack(
+                                      children: [
+                                        AnimatedOpacity(
+                                          duration: shortStickyHeaderDuration,
+                                          opacity: enabled ? 0 : 1,
+                                          child: Icon(FluentIcons.picture, size: 48, color: Colors.white),
+                                        ),
+                                        AnimatedOpacity(
+                                          duration: shortStickyHeaderDuration,
+                                          opacity: enabled ? 1 : 0,
+                                          child: Icon(FluentIcons.add, size: 48, color: Colors.white),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                }),
+                              ),
+                            ),
+                            ...[
+                              AnimatedOpacity(
+                                duration: shortStickyHeaderDuration,
+                                opacity: enabled && snapshot.data != null ? 1 : 0,
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    gradient: RadialGradient(
+                                      colors: [
+                                        Colors.black.withOpacity(.95),
+                                        Colors.black.withOpacity(0),
+                                      ],
+                                      radius: 0.5,
+                                      center: Alignment.center,
+                                      focal: Alignment.center,
+                                    ),
+                                  ),
+                                  child: Center(
+                                    child: Icon(FluentIcons.edit, size: 35, color: Colors.white),
+                                  ),
                                 ),
                               ),
-                            ),
-                            VDiv(8),
-                            // Watched percentage
-                            Text(
-                              'Episodes: ${series.totalEpisodes} | Watched: ${series.watchedEpisodes} (${(series.watchedPercentage * 100).round()}%)',
-                              style: const TextStyle(
-                                fontSize: 16,
-                                color: Colors.white,
+                              AnimatedOpacity(
+                                duration: shortStickyHeaderDuration,
+                                opacity: enabled && snapshot.data != null ? 1 : 0,
+                                child: Center(
+                                  child: Icon(FluentIcons.edit, size: 35, color: Colors.white),
+                                ),
+                              ),
+                            ],
+                            // Title and watched percentage
+                            Positioned(
+                              bottom: 0,
+                              left: math.max(constraints.maxWidth / 2 - 380 + 10, ScreenUtils.kInfoBarWidth - (6 * 2) + 42),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisAlignment: MainAxisAlignment.start,
+                                children: [
+                                  // Series title
+                                  SizedBox(
+                                    width: ScreenUtils.kMaxContentWidth - ScreenUtils.kInfoBarWidth - 32,
+                                    child: Text(
+                                      series.displayTitle,
+                                      style: const TextStyle(
+                                        fontSize: 32,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ),
+                                  VDiv(8),
+                                  // Watched percentage
+                                  Text(
+                                    'Episodes: ${series.totalEpisodes} | Watched: ${series.watchedEpisodes} (${(series.watchedPercentage * 100).round()}%)',
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                  VDiv(12),
+                                ],
                               ),
                             ),
-                            VDiv(12),
                           ],
-                        ),
-                      ),
-                    ],
-                  );
-                }),
-              ),
+                        );
+                      })),
               // temp buttons
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -682,89 +682,88 @@ class SeriesScreenState extends State<SeriesScreen> {
                                         paintOnTop: true,
                                         // Poster
                                         child: ShiftClickableHover(
-                                          series: series,
-                                          enabled: _isPosterHovering && !posterChangeDisabled,
-                                          onTap: (context) => selectImage(context, false), // Poster
-                                          onEnter: posterChangeDisabled ? () {} : () => setState(() => _isPosterHovering = true),
-                                          onExit: () {
-                                            setState(() => _isPosterHovering = false);
-                                            StatusBarManager().hide();
-                                          },
-                                          onHover: posterChangeDisabled ? null : () => StatusBarManager().show('Shift-click to change poster', autoHideDuration: Duration.zero),
-                                          final_child: (BuildContext context, bool enabled) => Stack(
-                                            alignment: Alignment.center,
-                                            children: [
-                                              AnimatedContainer(
-                                                duration: shortStickyHeaderDuration,
-                                                width: posterWidth,
-                                                height: posterHeight,
-                                                child: Builder(builder: (context) {
-                                                  if (imageProvider != null)
-                                                    // Image available -> show it
-                                                    return ShadowedImage(
-                                                      imageProvider: imageProvider,
-                                                      fit: BoxFit.cover,
-                                                      colorFilter: series.posterImage != null ? ColorFilter.mode(Colors.black.withOpacity(0), BlendMode.darken) : null,
-                                                      blurSigma: 10,
-                                                      shadowColorOpacity: .5,
-                                                    );
+                                            series: series,
+                                            enabled: _isPosterHovering && !posterChangeDisabled,
+                                            onTap: (context) => selectImage(context, false),
+                                            onEnter: posterChangeDisabled ? () {} : () => setState(() => _isPosterHovering = true),
+                                            onExit: () {
+                                              setState(() => _isPosterHovering = false);
+                                              StatusBarManager().hide();
+                                            },
+                                            onHover: posterChangeDisabled ? null : () => StatusBarManager().show(KeyboardState.shiftPressedNotifier.value ? 'Click to change Poster' : 'Shift-click to change Poster', autoHideDuration: Duration.zero),
+                                            finalChild: (BuildContext context, bool enabled) => Stack(
+                                                  alignment: Alignment.center,
+                                                  children: [
+                                                    AnimatedContainer(
+                                                      duration: shortStickyHeaderDuration,
+                                                      width: posterWidth,
+                                                      height: posterHeight,
+                                                      child: Builder(builder: (context) {
+                                                        if (imageProvider != null)
+                                                          // Image available -> show it
+                                                          return ShadowedImage(
+                                                            imageProvider: imageProvider,
+                                                            fit: BoxFit.cover,
+                                                            colorFilter: series.posterImage != null ? ColorFilter.mode(Colors.black.withOpacity(0), BlendMode.darken) : null,
+                                                            blurSigma: 10,
+                                                            shadowColorOpacity: .5,
+                                                          );
 
-                                                  // No image -> image + plus to add first
-                                                  return Center(
-                                                    child: Stack(
-                                                      children: [
-                                                        AnimatedOpacity(
-                                                          duration: shortStickyHeaderDuration,
-                                                          opacity: enabled ? 0 : 1,
-                                                          child: Icon(FluentIcons.picture, size: 48, color: Colors.white),
-                                                        ),
-                                                        AnimatedOpacity(
-                                                          duration: shortStickyHeaderDuration,
-                                                          opacity: enabled ? 1 : 0,
-                                                          child: Icon(FluentIcons.add, size: 48, color: Colors.white),
-                                                        ),
-                                                      ],
+                                                        // No image -> image + plus to add first
+                                                        return Center(
+                                                          child: Stack(
+                                                            children: [
+                                                              AnimatedOpacity(
+                                                                duration: shortStickyHeaderDuration,
+                                                                opacity: enabled ? 0 : 1,
+                                                                child: Icon(FluentIcons.picture, size: 48, color: Colors.white),
+                                                              ),
+                                                              AnimatedOpacity(
+                                                                duration: shortStickyHeaderDuration,
+                                                                opacity: enabled ? 1 : 0,
+                                                                child: Icon(FluentIcons.add, size: 48, color: Colors.white),
+                                                              ),
+                                                            ],
+                                                          ),
+                                                        );
+                                                      }),
                                                     ),
-                                                  );
-                                                }),
-                                              ),
-                                              // Edit poster
-                                              ...[
-                                                AnimatedOpacity(
-                                                  duration: shortStickyHeaderDuration,
-                                                  opacity: enabled && imageProvider != null ? 1 : 0,
-                                                  child: AnimatedContainer(
-                                                    width: posterWidth,
-                                                    height: posterHeight,
-                                                    duration: shortStickyHeaderDuration,
-                                                    decoration: BoxDecoration(
-                                                      borderRadius: BorderRadius.circular(8.0),
-                                                      gradient: RadialGradient(
-                                                        colors: [
-                                                          Colors.black.withOpacity(.95),
-                                                          dominantColor.withOpacity(.2),
-                                                        ],
-                                                        radius: 0.5,
-                                                        center: Alignment.center,
-                                                        focal: Alignment.center,
+                                                    // Edit poster
+                                                    ...[
+                                                      AnimatedOpacity(
+                                                        duration: shortStickyHeaderDuration,
+                                                        opacity: enabled && imageProvider != null ? 1 : 0,
+                                                        child: AnimatedContainer(
+                                                          width: posterWidth,
+                                                          height: posterHeight,
+                                                          duration: shortStickyHeaderDuration,
+                                                          decoration: BoxDecoration(
+                                                            borderRadius: BorderRadius.circular(8.0),
+                                                            gradient: RadialGradient(
+                                                              colors: [
+                                                                Colors.black.withOpacity(.95),
+                                                                dominantColor.withOpacity(.2),
+                                                              ],
+                                                              radius: 0.5,
+                                                              center: Alignment.center,
+                                                              focal: Alignment.center,
+                                                            ),
+                                                          ),
+                                                          child: Center(
+                                                            child: Icon(FluentIcons.edit, size: 35, color: Colors.white),
+                                                          ),
+                                                        ),
                                                       ),
-                                                    ),
-                                                    child: Center(
-                                                      child: Icon(FluentIcons.edit, size: 35, color: Colors.white),
-                                                    ),
-                                                  ),
-                                                ),
-                                                AnimatedOpacity(
-                                                  duration: shortStickyHeaderDuration,
-                                                  opacity: enabled && imageProvider != null ? 1 : 0,
-                                                  child: Center(
-                                                    child: Icon(FluentIcons.edit, size: 35, color: Colors.white),
-                                                  ),
-                                                ),
-                                              ],
-                                            ],
-                                          ),
-                                        ),
+                                                      AnimatedOpacity(
+                                                        duration: shortStickyHeaderDuration,
+                                                        opacity: enabled && imageProvider != null ? 1 : 0,
+                                                        child: Center(
+                                                          child: Icon(FluentIcons.edit, size: 35, color: Colors.white),
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ],
+                                                )),
                                       ),
                                     ),
                                   ],
@@ -820,40 +819,6 @@ class SeriesScreenState extends State<SeriesScreen> {
         ],
       ),
     );
-  }
-
-  Widget ShiftClickableHover({
-    required Series series,
-    required bool enabled,
-    required VoidCallback onEnter,
-    VoidCallback? onHover,
-    required VoidCallback onExit,
-    required void Function(BuildContext) onTap,
-    required Widget Function(BuildContext, bool) final_child,
-  }) {
-    return ValueListenableBuilder(
-        valueListenable: KeyboardState.shiftPressedNotifier,
-        builder: (context, isShiftPressed, child) => MouseRegion(
-              cursor: isShiftPressed && enabled ? SystemMouseCursors.click : MouseCursor.defer,
-              onEnter: (_) => onEnter.call(),
-              onExit: (_) => onExit.call(),
-              onHover: (_) => onHover?.call(),
-              hitTestBehavior: HitTestBehavior.translucent,
-              child: mat.InkWell(
-                onTap: isShiftPressed && enabled ? () => onTap(context) : null,
-                splashColor: (series.dominantColor ?? Manager.accentColor).withOpacity(1),
-                // hoverColor: (series.dominantColor ?? Manager.accentColor).withOpacity(.1),
-                borderRadius: BorderRadius.circular(8.0),
-                child: AnimatedContainer(
-                  duration: shortStickyHeaderDuration,
-                  decoration: BoxDecoration(
-                    color: (series.dominantColor ?? Manager.accentColor).withOpacity(isShiftPressed && enabled ? .15 : 0),
-                    borderRadius: BorderRadius.circular(8.0),
-                  ),
-                  child: ClipRRect(borderRadius: BorderRadius.circular(3.0), child: final_child(context, isShiftPressed && enabled)),
-                ),
-              ),
-            ));
   }
 
   Widget _buildButton(void Function()? onTap, Widget child, String label) {

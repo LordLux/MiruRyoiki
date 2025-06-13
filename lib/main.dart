@@ -976,8 +976,7 @@ void setIcon() async {
   }
 }
 
-// TODO holding shift reveals different entries in context menu
-// TODO add global status bar at bottom right corner for Anilist sync status and internet connection status
+// TODO add Anilist sync status and internet connection status to the status bar
 // TODO edit view options for library to separate sort and view (grid, list etc) from filters
 // TODO homepage title inside header like in library + view options to choose what to show on homepage
 // TODO understand what makes 'scan library' button smooth on rescale
@@ -988,7 +987,5 @@ void setIcon() async {
 // TODO add folder/file metadata to series
 // TODO create autolinker
 // TODO change FORMATTER format for specials (allow specials inside season, OVA/ONAs in separate folder if not alone)
-// TODO context menu for series
-// TODO context menu for episodes
 // TODO fix back mouse button navigation
 // TODO add group traversal policies to app
