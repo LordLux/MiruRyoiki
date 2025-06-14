@@ -18,7 +18,7 @@ extension LibraryAnilistIntegration on Library {
       // For all linked series, check if they need to use Anilist posters based on preferences
       if (series.isLinked) {
         linked++;
-        final effectiveSource = series.preferredPosterSource ?? Manager.defaultPosterSource;
+        final effectiveSource = series.preferredPosterSource ?? _settings.defaultPosterSource;
         final shouldUseAnilist = effectiveSource == ImageSource.anilist || effectiveSource == ImageSource.autoAnilist;
 
         // First check if the series itself has poster data

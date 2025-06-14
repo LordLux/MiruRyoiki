@@ -1,12 +1,12 @@
 part of 'library_provider.dart';
 
 extension LibraryInitialization on Library {
-  Future<void> initialize() async {
+  Future<void> initialize(BuildContext context) async {
     if (!_initialized) {
       await _loadLibrary();
       _initialized = true;
     }
-    await loadLibraryFirstTime();
+    await loadLibraryFirstTime(context);
   }
 
   void _initAutoSave() {
@@ -21,11 +21,8 @@ extension LibraryInitialization on Library {
 
   // DISPOSE IN MAIN
 
-  Future<void> loadLibraryFirstTime() async {
-    final anilistProvider = Provider.of<AnilistProvider>(rootNavigatorKey.currentContext!, listen: false);
-    final appTheme = Provider.of<AppTheme>(rootNavigatorKey.currentContext!, listen: false);
-
-    appTheme.setEffect(appTheme.windowEffect, rootNavigatorKey.currentContext!);
+  Future<void> loadLibraryFirstTime(BuildContext context) async {
+    final anilistProvider = Provider.of<AnilistProvider>(context, listen: false);
 
     // 2. Initialize Anilist API
     await anilistProvider.initialize();
@@ -38,25 +35,26 @@ extension LibraryInitialization on Library {
     // 3. Scan Library
     await scanLocalLibrary();
 
-    // 4. Initialize MPC Tracker
+    // Initialize MPC Tracker
     await _mpcTracker.ensureInitialized();
 
-    // 5. Update watched status and force refresh
+    // Update watched status and force refresh
     await _updateWatchedStatusAndForceRefresh();
 
-    // 6. Save library
+    // Save library
     await _saveLibrary();
 
-    // 7. Validate Cache
+    // 4. Validate Cache
     await ensureCacheValidated();
 
-    // 8. Load posters for library
+    // 5. Load posters for library
     await loadAnilistPostersForLibrary(onProgress: (loaded, total) {
       if (loaded % 2 == 0 || loaded == total) {
         // Force UI refresh every 5 items or on completion
-        Manager.setState();
+        // if (context.mounted) Manager.setState();
       }
     });
+    logTrace('Library initialized successfully');
   }
 
   Future<void> reloadLibrary() async {

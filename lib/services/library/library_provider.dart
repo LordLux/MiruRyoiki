@@ -8,14 +8,13 @@ import 'package:open_app_file/open_app_file.dart';
 import 'package:provider/provider.dart';
 
 import '../../enums.dart';
-import '../../main.dart';
 import '../../manager.dart';
 import '../../models/anilist/anime.dart';
 import '../../models/anilist/mapping.dart';
 import '../../models/episode.dart';
 import '../../models/series.dart';
 import '../../services/anilist/linking.dart';
-import '../../theme.dart';
+import '../../settings.dart';
 import '../anilist/provider/anilist_provider.dart';
 import '../file_system/cache.dart';
 import '../file_system/file_scanner.dart';
@@ -38,8 +37,9 @@ class Library with ChangeNotifier {
   String? _libraryPath;
   bool _isLoading = false;
   bool _isDirty = false;
-  late FileScanner _fileScanner;
-  late MPCHCTracker _mpcTracker;
+  late final FileScanner _fileScanner;
+  late final MPCHCTracker _mpcTracker;
+  final SettingsManager _settings;
 
   bool _initialized = false;
   bool get initialized => _initialized;
@@ -55,7 +55,7 @@ class Library with ChangeNotifier {
   static const String settingsFileName = 'settings';
   static const String miruryoikiLibrary = 'library';
 
-  Library() {
+  Library(this._settings) {
     _fileScanner = FileScanner();
     _mpcTracker = MPCHCTracker();
     _mpcTracker.onWatchStatusChanged = _updateSpecificEpisodes;

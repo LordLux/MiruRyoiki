@@ -1,4 +1,4 @@
-import 'package:fluent_ui3/fluent_ui.dart';
+import 'package:fluent_ui/fluent_ui.dart';
 import 'package:miruryoiki/theme.dart';
 import 'package:provider/provider.dart';
 import 'package:window_manager/window_manager.dart';
