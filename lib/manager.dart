@@ -23,9 +23,10 @@ class Manager {
 
   static List<String> accounts = [];
 
+  static Uri? initialDeepLink;
+
   static void setState() {
-    // ignore: invalid_use_of_protected_member
-    if (homeKey.currentState != null) homeKey.currentState!.setState(() {});
+    homeKey.currentState?.setState(() {});
   }
   
   static BuildContext get context => homeKey.currentContext!;

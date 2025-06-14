@@ -1,11 +1,13 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter_acrylic/window_effect.dart';
+import 'package:miruryoiki/main.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'enums.dart';
 import 'manager.dart';
 import 'theme.dart';
+import 'utils/time_utils.dart';
 
 class SettingsManager extends ChangeNotifier {
   static final SettingsManager _instance = SettingsManager._internal();
@@ -20,9 +22,9 @@ class SettingsManager extends ChangeNotifier {
 
   // // Typed getters/setters for settings
   // Appearance
-  double get fontSize => Manager.appTheme.fontSize;
+  double get fontSize => (rootNavigatorKey.currentContext != null) ? Manager.appTheme.fontSize : kDefaultFontSize;
   set fontSize(double value) {
-    Manager.appTheme.fontSize = value;
+    if (rootNavigatorKey.currentContext != null) Manager.appTheme.fontSize = value;
     _setDouble('fontSize', value);
   }
 
@@ -199,6 +201,6 @@ class SettingsManager extends ChangeNotifier {
     appTheme.mode = themeMode; // set to dark mode
     appTheme.dim = dim;
     appTheme.color = accentColor.toAccentColor();
-    appTheme.fontSize = fontSize;
+    nextFrame(() => appTheme.fontSize = fontSize);
   }
 }

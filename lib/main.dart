@@ -1,7 +1,6 @@
 // ignore_for_file: use_build_context_synchronously
 
 import 'dart:io';
-import 'package:fluent_ui2/fluent_ui.dart' as flyout;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart' show Material, MaterialPageRoute, ScaffoldMessenger;
 import 'package:fluent_ui/fluent_ui.dart' hide ColorExtension;
@@ -24,6 +23,7 @@ import 'services/anilist/provider/anilist_provider.dart';
 import 'services/navigation/dialogs.dart';
 import 'services/navigation/statusbar.dart';
 import 'settings.dart';
+import 'splash_screen.dart';
 import 'utils/logging.dart';
 import 'manager.dart';
 import 'services/library/library_provider.dart';
@@ -46,7 +46,6 @@ import 'widgets/animated_indicator.dart';
 import 'widgets/buttons/wrapper.dart';
 import 'widgets/cursors.dart';
 import 'widgets/dialogs/link_anilist_multi.dart';
-import 'widgets/reverse_animation_flyout.dart';
 import 'widgets/window_buttons.dart';
 
 final _appTheme = AppTheme();
@@ -60,7 +59,6 @@ final GlobalKey<LibraryScreenState> libraryScreenKey = GlobalKey<LibraryScreenSt
 final GlobalKey<AccountsScreenState> accountsKey = GlobalKey<AccountsScreenState>();
 
 final GlobalKey<State<StatefulWidget>> paletteOverlayKey = GlobalKey<State<StatefulWidget>>();
-final GlobalKey<ToggleableFlyoutContentState> reverseAnimationPaletteKey = GlobalKey<ToggleableFlyoutContentState>();
 
 void main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -106,15 +104,46 @@ void main(List<String> args) async {
   runApp(
     MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => Library(), lazy: false),
+        ChangeNotifierProvider(create: (_) => Library(_settings), lazy: false),
         ChangeNotifierProvider(create: (_) => AnilistProvider()),
         ChangeNotifierProvider.value(value: _appTheme),
         ChangeNotifierProvider.value(value: _settings),
         ChangeNotifierProvider.value(value: _navigationManager),
       ],
-      child: const MyApp(),
+      child: const SplashApp(),
     ),
   );
+}
+
+class SplashApp extends StatelessWidget {
+  const SplashApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final appTheme = context.watch<AppTheme>();
+
+    return FluentApp(
+      title: Manager.appTitle,
+      theme: FluentThemeData(
+        accentColor: appTheme.color,
+        brightness: Brightness.light,
+        cardColor: Colors.white.withOpacity(0.25),
+        scaffoldBackgroundColor: Colors.white.withOpacity(0.25),
+        acrylicBackgroundColor: Colors.white,
+      ),
+      darkTheme: FluentThemeData(
+        accentColor: appTheme.color,
+        brightness: Brightness.dark,
+        acrylicBackgroundColor: Colors.transparent,
+        micaBackgroundColor: Colors.transparent,
+        scaffoldBackgroundColor: getDimmableWhite(context),
+      ),
+      color: appTheme.color,
+      themeMode: appTheme.mode,
+      debugShowCheckedModeBanner: false,
+      home: const SplashScreen(),
+    );
+  }
 }
 
 class MyApp extends StatefulWidget {
@@ -129,35 +158,23 @@ final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
 class _MyAppState extends State<MyApp> {
   // Create an instance of AppLinks
   late final AppLinks _appLinks;
-  bool _initialUriHandled = false;
 
   @override
   void initState() {
     super.initState();
 
-    // Initialize providers
-    nextFrame(() async {
-      // Initialize AppLinks
-      _appLinks = AppLinks();
+    // Handle the stored deep link if it exists
+    if (Manager.initialDeepLink != null) {
+      _handleDeepLink(Manager.initialDeepLink!);
+      Manager.initialDeepLink = null;
+    }
 
-      // Handle initial deep link (if app was started from a link)
-      _handleInitialUri();
+    final appTheme = Provider.of<AppTheme>(rootNavigatorKey.currentContext!, listen: false);
+    appTheme.setEffect(appTheme.windowEffect, rootNavigatorKey.currentContext!);
 
-      // Listen for deep links while app is running
-      _handleIncomingLinks();
-
-      // Get Providers
-      final settings = Provider.of<SettingsManager>(context, listen: false);
-      final libraryProvider = Provider.of<Library>(context, listen: false);
-
-      // Apply settings to app components
-      settings.applySettings(context);
-
-      setState(() {}); // Force UI refresh
-
-      // 1 Initialize library
-      await libraryProvider.initialize();
-    });
+    // Listen for future deep links
+    _appLinks = AppLinks();
+    _handleIncomingLinks();
   }
 
   @override
@@ -169,21 +186,6 @@ class _MyAppState extends State<MyApp> {
     anilistProvider.dispose();
     disposeSystemMouseCursor();
     super.dispose();
-  }
-
-  Future<void> _handleInitialUri() async {
-    if (!_initialUriHandled) {
-      _initialUriHandled = true;
-      try {
-        // Get the initial uri that opened the app
-        final initialUri = await _appLinks.getInitialLink();
-        if (initialUri != null) {
-          _handleDeepLink(initialUri);
-        }
-      } catch (e, st) {
-        logErr('Error handling initial uri', e, st);
-      }
-    }
   }
 
   void _handleIncomingLinks() {
@@ -210,6 +212,7 @@ class _MyAppState extends State<MyApp> {
     return CustomKeyboardListener(
       child: ScaffoldMessenger(
         child: FluentApp(
+          navigatorKey: rootNavigatorKey,
           title: Manager.appTitle,
           theme: FluentThemeData(
             accentColor: appTheme.color,
@@ -230,7 +233,7 @@ class _MyAppState extends State<MyApp> {
           home: AppRoot(key: homeKey),
           builder: (context, child) {
             TextStyle scaleTextStyle(TextStyle style, double scaleFactor) {
-              return style.copyWith(fontSize: (style.fontSize ?? 14) * scaleFactor);
+              return style.copyWith(fontSize: (style.fontSize ?? kDefaultFontSize) * scaleFactor);
             }
 
             Typography scaleTypography(Typography typography, double scaleFactor) {
@@ -243,7 +246,6 @@ class _MyAppState extends State<MyApp> {
                 title: scaleTextStyle(typography.title!, scaleFactor),
                 body: scaleTextStyle(typography.body!, scaleFactor),
                 caption: scaleTextStyle(typography.caption!, scaleFactor),
-                // aggiungi altri se fluent_ui li definisce
               );
             }
 
@@ -263,41 +265,24 @@ class _MyAppState extends State<MyApp> {
                   ),
                 ),
               ),
-              child: flyout.Builder(builder: (context) {
-                // Get theme data from context
-                final themeData = FluentTheme.of(context);
-                final settings = Provider.of<SettingsManager>(context, listen: false);
-
-                return flyout.FluentTheme(
-                  data: flyout.FluentThemeData(
-                    brightness: themeData.brightness,
-                    accentColor: settings.accentColor.toAccentColor(),
-                    visualDensity: themeData.visualDensity,
-                    focusTheme: flyout.FocusThemeData(
-                      glowFactor: themeData.focusTheme.glowFactor,
-                    ),
-                  ),
-                  child: Navigator(
-                    onGenerateRoute: (_) => MaterialPageRoute(
-                      builder: (context) => Directionality(
-                        textDirection: appTheme.textDirection,
-                        child: NavigationPaneTheme(
-                          data: NavigationPaneThemeData(
-                            backgroundColor: appTheme.windowEffect != WindowEffect.disabled ? Colors.transparent : null,
-                          ),
-                          child: Material(
-                            color: Colors.transparent,
-                            child: child ?? const SizedBox.shrink(),
-                          ),
-                        ),
+              child: Navigator(
+                onGenerateRoute: (_) => MaterialPageRoute(
+                  builder: (context) => Directionality(
+                    textDirection: appTheme.textDirection,
+                    child: NavigationPaneTheme(
+                      data: NavigationPaneThemeData(
+                        backgroundColor: appTheme.windowEffect != WindowEffect.disabled ? Colors.transparent : null,
+                      ),
+                      child: Material(
+                        color: Colors.transparent,
+                        child: child ?? const SizedBox.shrink(),
                       ),
                     ),
                   ),
-                );
-              }),
+                ),
+              ),
             );
           },
-          navigatorKey: rootNavigatorKey,
           debugShowCheckedModeBanner: false,
         ),
       ),

@@ -32,7 +32,7 @@ Future<T?> showManagedDialog<T>({
   bool canUserPopDialog = true,
   bool Function() dialogDoPopCheck = kReturnFalseCallback,
 }) async {
-  final navManager = Provider.of<NavigationManager>(rootNavigatorKey.currentContext!, listen: false);
+  final navManager = Manager.navigation;
 
   // Register in navigation stack
   navManager.pushDialog(id, title, data: data);

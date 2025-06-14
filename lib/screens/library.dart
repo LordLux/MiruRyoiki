@@ -22,7 +22,6 @@ import '../widgets/buttons/button.dart';
 import '../widgets/buttons/switch_button.dart';
 import '../widgets/buttons/wrapper.dart';
 import '../widgets/gradient_mask.dart';
-import '../widgets/simple_flyout.dart' hide ToggleableFlyoutContent;
 import '../widgets/series_card.dart';
 
 enum LibraryView { all, linked }
@@ -60,7 +59,6 @@ class LibraryScreenState extends State<LibraryScreen> {
   LibraryView _currentView = LibraryView.all;
   SortOrder _sortOrder = SortOrder.alphabetical;
   GroupBy _groupBy = GroupBy.anilistLists;
-  final SimpleFlyoutController filterFlyoutController = SimpleFlyoutController();
 
   List<String> _customListOrder = [];
   // ignore: prefer_final_fields
@@ -223,12 +221,6 @@ class LibraryScreenState extends State<LibraryScreen> {
     _loadUserPreferences();
     _lastAppliedSortOrder = _sortOrder;
     _lastAppliedSortDescending = _sortDescending;
-  }
-
-  @override
-  void dispose() {
-    filterFlyoutController.dispose();
-    super.dispose();
   }
 
   double getHeight(int itemCount, double maxWidth) {
