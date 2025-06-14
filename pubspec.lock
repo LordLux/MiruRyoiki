@@ -241,24 +241,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "4.11.5"
-  fluent_ui2:
-    dependency: "direct main"
-    description:
-      path: "."
-      ref: HEAD
-      resolved-ref: "4e0fa29d81730b5070b8e9c92d16e64df7037d38"
-      url: "https://github.com/LordLux/fluent_ui.git"
-    source: git
-    version: "4.11.2"
-  fluent_ui3:
-    dependency: "direct main"
-    description:
-      path: "."
-      ref: "refs/heads/menuflyout"
-      resolved-ref: "3d3030ca99705a6c71f47b40bb57657a36224a8e"
-      url: "https://github.com/LordLux/fluent_ui.git"
-    source: git
-    version: "4.11.2"
   flutter:
     dependency: "direct main"
     description: flutter

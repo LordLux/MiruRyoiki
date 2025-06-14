@@ -18,18 +18,24 @@ class EasySplashScreen extends StatefulWidget {
   /// Actual Content of the splash
   final Widget content;
 
+  /// Duration to wait before executing the future navigator
   final Duration waitBeforeFutureNavigator;
 
-  /// A function that returns a Future<Widget>
-  /// When this future completes, it will navigate to the returned widget
-  final Future<Widget> Function() futureNavigator;
+  /// A function that returns a Future<String>
+  /// When this future completes, it will navigate to the returned route
+  final Future<String?> Function() futureNavigator;
 
-  final Function? onNavigate;
+  /// A function that is called after the navigation is completed
+  final void Function()? onNavigate;
+
+  /// A function that is called before the future navigator is executed
+  final Future<void> Function()? beforeNavigate;
 
   const EasySplashScreen({
     super.key,
     required this.futureNavigator,
     required this.content,
+    this.beforeNavigate,
     this.waitBeforeFutureNavigator = const Duration(seconds: 0),
     this.onNavigate,
   });
@@ -43,9 +49,11 @@ class _EasySplashScreenState extends State<EasySplashScreen> {
   void initState() {
     super.initState();
     Future.delayed(widget.waitBeforeFutureNavigator).then((_) {
-      widget.futureNavigator().then((route) {
+      widget.futureNavigator().then((route) async {
+        if (widget.beforeNavigate != null) await widget.beforeNavigate!();
+        
         if (mounted) {
-          Navigator.of(context).pushReplacement(FluentPageRoute(builder: (context) => route));
+          if (route != null && route.isNotEmpty) Navigator.of(context).pushReplacementNamed(route);
           if (widget.onNavigate != null) widget.onNavigate!();
         }
       });
@@ -57,7 +65,8 @@ class _EasySplashScreenState extends State<EasySplashScreen> {
 }
 
 class SplashScreen extends StatefulWidget {
-  const SplashScreen({super.key});
+  final VoidCallback? onInitComplete;
+  const SplashScreen({super.key, this.onInitComplete});
 
   @override
   State<SplashScreen> createState() => _SplashScreenState();
@@ -90,7 +99,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
     _splashOpacityController.forward();
   }
 
-  Future<Widget> _initializeApp() async {
+  Future<String?> _initializeApp() async {
     try {
       // Initialize AppLinks
       _appLinks = AppLinks();
@@ -110,11 +119,14 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
       logTrace('Initializing library provider');
       await libraryProvider.initialize(context);
       //
+
+      _splashOpacityController.reverse();
+      await Future.delayed(animationDuration);
     } catch (e, st) {
       logErr('Error during app initialization', e, st);
     }
     // Navigate to main app
-    return AppRoot();
+    // return '/MiruRyoiki';
   }
 
   Future<void> _handleInitialUri() async {
@@ -144,6 +156,8 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
     return EasySplashScreen(
       waitBeforeFutureNavigator: animationDuration,
       futureNavigator: _initializeApp,
+      beforeNavigate: () async {},
+      onNavigate: widget.onInitComplete,
       content: AnimatedBuilder(
         animation: _splashOpacityController,
         builder: (context, child) {
