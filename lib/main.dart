@@ -53,7 +53,8 @@ final _navigationManager = NavigationManager();
 final _settings = SettingsManager();
 
 // ignore: library_private_types_in_public_api
-final GlobalKey<_AppRootState> homeKey = GlobalKey<_AppRootState>();
+final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
+final GlobalKey<_MiruRyoikiState> homeKey = GlobalKey<_MiruRyoikiState>();
 final GlobalKey<SeriesScreenState> seriesScreenKey = GlobalKey<SeriesScreenState>();
 final GlobalKey<LibraryScreenState> libraryScreenKey = GlobalKey<LibraryScreenState>();
 final GlobalKey<AccountsScreenState> accountsKey = GlobalKey<AccountsScreenState>();
@@ -110,52 +111,157 @@ void main(List<String> args) async {
         ChangeNotifierProvider.value(value: _settings),
         ChangeNotifierProvider.value(value: _navigationManager),
       ],
-      child: const SplashApp(),
+      child: const MyApp(),
     ),
   );
 }
 
-class SplashApp extends StatelessWidget {
-  const SplashApp({super.key});
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     final appTheme = context.watch<AppTheme>();
+    return CustomKeyboardListener(
+      child: ScaffoldMessenger(
+        child: FluentApp(
+          navigatorKey: rootNavigatorKey,
+          title: Manager.appTitle,
+          theme: FluentThemeData(accentColor: appTheme.color, brightness: Brightness.light),
+          darkTheme: FluentThemeData(accentColor: appTheme.color, brightness: Brightness.dark),
+          color: appTheme.color,
+          themeMode: appTheme.mode,
+          home: AppContainer(),
+          builder: (context, child) => _rootBuilder(context, child, appTheme),
+          debugShowCheckedModeBanner: false,
+        ),
+      ),
+    );
+  }
 
-    return FluentApp(
-      title: Manager.appTitle,
-      theme: FluentThemeData(
-        accentColor: appTheme.color,
-        brightness: Brightness.light,
-        cardColor: Colors.white.withOpacity(0.25),
-        scaffoldBackgroundColor: Colors.white.withOpacity(0.25),
-        acrylicBackgroundColor: Colors.white,
+  Widget _rootBuilder(BuildContext ctx, Widget? child, AppTheme appTheme) {
+    TextStyle scaleTextStyle(TextStyle style, double scaleFactor) {
+      return style.copyWith(fontSize: (style.fontSize ?? kDefaultFontSize) * scaleFactor);
+    }
+
+    Typography scaleTypography(Typography typography, double scaleFactor) {
+      return Typography.raw(
+        display: scaleTextStyle(typography.display!, scaleFactor),
+        bodyLarge: scaleTextStyle(typography.bodyLarge!, scaleFactor),
+        bodyStrong: scaleTextStyle(typography.bodyStrong!, scaleFactor),
+        subtitle: scaleTextStyle(typography.subtitle!, scaleFactor),
+        titleLarge: scaleTextStyle(typography.titleLarge!, scaleFactor),
+        title: scaleTextStyle(typography.title!, scaleFactor),
+        body: scaleTextStyle(typography.body!, scaleFactor),
+        caption: scaleTextStyle(typography.caption!, scaleFactor),
+      );
+    }
+
+    return FluentTheme(
+      data: FluentTheme.of(ctx).copyWith(
+        cursorOpacityAnimates: true,
+        typography: scaleTypography(
+          FluentTheme.of(ctx).typography,
+          Manager.fontSizeMultiplier,
+        ),
+        buttonTheme: ButtonThemeData(
+          defaultButtonStyle: ButtonStyle(
+            padding: ButtonState.all(const EdgeInsets.symmetric(horizontal: 20, vertical: 8)),
+          ),
+          filledButtonStyle: ButtonStyle(
+            padding: ButtonState.all(const EdgeInsets.symmetric(horizontal: 20, vertical: 8)),
+          ),
+        ),
       ),
-      darkTheme: FluentThemeData(
-        accentColor: appTheme.color,
-        brightness: Brightness.dark,
-        acrylicBackgroundColor: Colors.transparent,
-        micaBackgroundColor: Colors.transparent,
-        scaffoldBackgroundColor: getDimmableWhite(context),
+      child: Navigator(
+        onGenerateRoute: (_) => MaterialPageRoute(
+          builder: (context) => Directionality(
+            textDirection: appTheme.textDirection,
+            child: NavigationPaneTheme(
+              data: NavigationPaneThemeData(
+                backgroundColor: appTheme.windowEffect != WindowEffect.disabled ? Colors.transparent : null,
+              ),
+              child: Material(
+                color: Colors.transparent,
+                child: child!,
+              ),
+            ),
+          ),
+        ),
       ),
-      color: appTheme.color,
-      themeMode: appTheme.mode,
-      debugShowCheckedModeBanner: false,
-      home: const SplashScreen(),
     );
   }
 }
 
-class MyApp extends StatefulWidget {
-  const MyApp({super.key});
+class AppContainer extends StatefulWidget {
+  const AppContainer({super.key});
 
   @override
-  State<MyApp> createState() => _MyAppState();
+  State<AppContainer> createState() => _AppContainerState();
 }
 
-final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
+class _AppContainerState extends State<AppContainer> {
+  bool _initialized = false;
 
-class _MyAppState extends State<MyApp> {
+  @override
+  void initState() {
+    super.initState();
+    _initializeApp();
+  }
+
+  Future<void> _initializeApp() async {
+    // Initialize everything that used to be in the splash screen's initialization
+    try {
+      // Initialize AppLinks
+      final appLinks = AppLinks();
+
+      // Handle initial deep link
+      final initialUri = await appLinks.getInitialLink();
+      if (initialUri != null) {
+        Manager.initialDeepLink = initialUri;
+      }
+
+      // Get providers
+      final settings = Provider.of<SettingsManager>(context, listen: false);
+      final libraryProvider = Provider.of<Library>(context, listen: false);
+
+      // Initialize settings
+      settings.applySettings(context);
+
+      // Initialize library
+      await libraryProvider.initialize(context);
+    } catch (e, st) {
+      logErr('Error during app initialization', e, st);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // If initialization is complete, show the main app, otherwise show splash
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 500),
+      child: _initialized
+          ? MiruRyoikiRoot()
+          : SplashScreen(
+              key: ValueKey('splash'),
+              onInitComplete: () {
+                setState(() {
+                  _initialized = true;
+                });
+              },
+            ),
+    );
+  }
+}
+
+class MiruRyoikiRoot extends StatefulWidget {
+  const MiruRyoikiRoot({super.key});
+
+  @override
+  State<MiruRyoikiRoot> createState() => _MiruRyoikiRootState();
+}
+
+class _MiruRyoikiRootState extends State<MiruRyoikiRoot> {
   // Create an instance of AppLinks
   late final AppLinks _appLinks;
 
@@ -169,23 +275,14 @@ class _MyAppState extends State<MyApp> {
       Manager.initialDeepLink = null;
     }
 
-    final appTheme = Provider.of<AppTheme>(rootNavigatorKey.currentContext!, listen: false);
-    appTheme.setEffect(appTheme.windowEffect, rootNavigatorKey.currentContext!);
+    nextFrame(() {
+      final appTheme = Provider.of<AppTheme>(context, listen: false);
+      appTheme.setEffect(appTheme.windowEffect, context);
+    });
 
     // Listen for future deep links
     _appLinks = AppLinks();
     _handleIncomingLinks();
-  }
-
-  @override
-  void dispose() {
-    // Dispose of providers
-    final libraryProvider = Provider.of<Library>(context, listen: false);
-    final anilistProvider = Provider.of<AnilistProvider>(context, listen: false);
-    libraryProvider.dispose();
-    anilistProvider.dispose();
-    disposeSystemMouseCursor();
-    super.dispose();
   }
 
   void _handleIncomingLinks() {
@@ -207,99 +304,25 @@ class _MyAppState extends State<MyApp> {
   }
 
   @override
-  Widget build(BuildContext context) {
-    final appTheme = context.watch<AppTheme>();
-    return CustomKeyboardListener(
-      child: ScaffoldMessenger(
-        child: FluentApp(
-          navigatorKey: rootNavigatorKey,
-          title: Manager.appTitle,
-          theme: FluentThemeData(
-            accentColor: appTheme.color,
-            brightness: Brightness.light,
-            cardColor: Colors.white.withOpacity(0.25),
-            scaffoldBackgroundColor: Colors.white.withOpacity(0.25), // default background
-            acrylicBackgroundColor: Colors.white,
-          ),
-          darkTheme: FluentThemeData(
-            accentColor: appTheme.color,
-            brightness: Brightness.dark,
-            acrylicBackgroundColor: Colors.transparent,
-            micaBackgroundColor: Colors.transparent,
-            scaffoldBackgroundColor: getDimmableWhite(context), // default background
-          ),
-          color: appTheme.color,
-          themeMode: appTheme.mode,
-          home: AppRoot(key: homeKey),
-          builder: (context, child) {
-            TextStyle scaleTextStyle(TextStyle style, double scaleFactor) {
-              return style.copyWith(fontSize: (style.fontSize ?? kDefaultFontSize) * scaleFactor);
-            }
-
-            Typography scaleTypography(Typography typography, double scaleFactor) {
-              return Typography.raw(
-                display: scaleTextStyle(typography.display!, scaleFactor),
-                bodyLarge: scaleTextStyle(typography.bodyLarge!, scaleFactor),
-                bodyStrong: scaleTextStyle(typography.bodyStrong!, scaleFactor),
-                subtitle: scaleTextStyle(typography.subtitle!, scaleFactor),
-                titleLarge: scaleTextStyle(typography.titleLarge!, scaleFactor),
-                title: scaleTextStyle(typography.title!, scaleFactor),
-                body: scaleTextStyle(typography.body!, scaleFactor),
-                caption: scaleTextStyle(typography.caption!, scaleFactor),
-              );
-            }
-
-            return FluentTheme(
-              data: FluentTheme.of(context).copyWith(
-                cursorOpacityAnimates: true,
-                typography: scaleTypography(
-                  FluentTheme.of(context).typography,
-                  Manager.fontSizeMultiplier,
-                ),
-                buttonTheme: ButtonThemeData(
-                  defaultButtonStyle: ButtonStyle(
-                    padding: ButtonState.all(const EdgeInsets.symmetric(horizontal: 20, vertical: 8)),
-                  ),
-                  filledButtonStyle: ButtonStyle(
-                    padding: ButtonState.all(const EdgeInsets.symmetric(horizontal: 20, vertical: 8)),
-                  ),
-                ),
-              ),
-              child: Navigator(
-                onGenerateRoute: (_) => MaterialPageRoute(
-                  builder: (context) => Directionality(
-                    textDirection: appTheme.textDirection,
-                    child: NavigationPaneTheme(
-                      data: NavigationPaneThemeData(
-                        backgroundColor: appTheme.windowEffect != WindowEffect.disabled ? Colors.transparent : null,
-                      ),
-                      child: Material(
-                        color: Colors.transparent,
-                        child: child ?? const SizedBox.shrink(),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            );
-          },
-          debugShowCheckedModeBanner: false,
-        ),
-      ),
-    );
+  void dispose() {
+    disposeSystemMouseCursor();
+    super.dispose();
   }
-}
-
-class AppRoot extends StatefulWidget {
-  const AppRoot({super.key});
 
   @override
-  State<AppRoot> createState() => _AppRootState();
+  Widget build(BuildContext context) => MiruRyoiki(key: homeKey);
+}
+
+class MiruRyoiki extends StatefulWidget {
+  const MiruRyoiki({super.key});
+
+  @override
+  State<MiruRyoiki> createState() => _MiruRyoikiState();
 }
 
 ValueNotifier<int?> previousGridColumnCount = ValueNotifier<int?>(null);
 
-class _AppRootState extends State<AppRoot> {
+class _MiruRyoikiState extends State<MiruRyoiki> {
   int _selectedIndex = 0;
   PathString? _selectedSeriesPath;
   PathString? lastSelectedSeriesPath;

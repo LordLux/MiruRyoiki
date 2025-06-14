@@ -1,4 +1,4 @@
-import 'package:fluent_ui2/fluent_ui.dart';
+import 'package:fluent_ui/fluent_ui.dart';
 
 class MouseButtonWrapper extends StatefulWidget {
   final Widget Function(bool isHovering) child;

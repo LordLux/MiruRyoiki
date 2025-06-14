@@ -25,21 +25,36 @@ class Manager {
 
   static Uri? initialDeepLink;
 
-  static void setState() {
-    homeKey.currentState?.setState(() {});
+  static void setState() => rootNavigatorKey.currentState?.setState(() {});
+  
+  static BuildContext get context => rootNavigatorKey.currentContext!;
+
+  static NavigationManager get navigation => Provider.of<NavigationManager>(context, listen: false);
+
+  static SettingsManager get settings => Provider.of<SettingsManager>(context, listen: false);
+
+  static AppTheme? _cachedAppTheme;
+  static AppTheme get appTheme {
+    if (rootNavigatorKey.currentContext != null) {
+      try {
+        return Provider.of<AppTheme>(rootNavigatorKey.currentContext!, listen: false);
+      } catch (e) {
+        // If we have a cached instance, return it
+        if (_cachedAppTheme != null) return _cachedAppTheme!;
+        
+        // Otherwise create a new default instance
+        _cachedAppTheme = AppTheme();
+        return _cachedAppTheme!;
+      }
+    }
+    
+    // If context is null, use cached or create new
+    return _cachedAppTheme ?? (_cachedAppTheme = AppTheme());
   }
-  
-  static BuildContext get context => homeKey.currentContext!;
-
-  static NavigationManager get navigation => Provider.of<NavigationManager>(homeKey.currentContext!, listen: false);
-
-  static SettingsManager get settings => Provider.of<SettingsManager>(homeKey.currentContext!, listen: false);
-  
-  static AppTheme get appTheme => Provider.of<AppTheme>(homeKey.currentContext!, listen: false);
 
   static AccentColor get accentColor => settings.accentColor.toAccentColor();
 
-  static Color get genericGray => FluentTheme.of(homeKey.currentContext!).acrylicBackgroundColor.lerpWith(const Color.fromARGB(255, 21, 35, 35), 0.5);
+  static Color get genericGray => FluentTheme.of(context).acrylicBackgroundColor.lerpWith(const Color.fromARGB(255, 21, 35, 35), 0.5);
 
   static ImageSource get defaultPosterSource => settings.defaultPosterSource;
 
@@ -49,7 +64,7 @@ class Manager {
 
   static DominantColorSource get dominantColorSource => settings.dominantColorSource;
   
-  static double get fontSizeMultiplier => ScreenUtils.textScaleFactor * ((homeKey.currentContext != null ? appTheme.fontSize : kDefaultFontSize) / kDefaultFontSize);
+  static double get fontSizeMultiplier => ScreenUtils.textScaleFactor * ((rootNavigatorKey.currentContext != null ? appTheme.fontSize : kDefaultFontSize) / kDefaultFontSize);
 
   /// Checks if the current platform is MacOS
   static bool get isMacOS => Platform.isMacOS;

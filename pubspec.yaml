@@ -11,15 +11,6 @@ dependencies:
   flutter:
     sdk: flutter
   fluent_ui: ^4.11.3
-  fluent_ui2:
-    # path: M:/Projects/FluentUI/fluent_ui/
-    git:
-      url: https://github.com/LordLux/fluent_ui.git
-  fluent_ui3:
-    # path: M:/Projects/FluentUI/menu_fluent/
-    git:
-      url: https://github.com/LordLux/fluent_ui.git
-      ref: refs/heads/menuflyout
   provider: ^6.0.3
   win32: ^5.12.0
   path: ^1.8.2
