@@ -2,14 +2,16 @@ import 'dart:io';
 
 import 'package:window_manager/window_manager.dart';
 
-import '../manager.dart';
-import '../utils/time_utils.dart';
+import '../../manager.dart';
+import '../../utils/time_utils.dart';
+import 'service.dart';
 
 class MyWindowListener extends WindowListener {
   void update() => nextFrame(() => Manager.setState());
 
   @override
   void onWindowClose() async {
+    await WindowStateService.saveWindowState();
     windowManager.setPreventClose(false);
     windowManager.close();
     exit(0);
@@ -26,12 +28,14 @@ class MyWindowListener extends WindowListener {
   @override
   void onWindowMaximize() {
     update();
+    WindowStateService.saveWindowState();
     super.onWindowMaximize();
   }
 
   @override
   void onWindowUnmaximize() {
     update();
+    WindowStateService.saveWindowState();
     super.onWindowUnmaximize();
   }
 
@@ -56,6 +60,7 @@ class MyWindowListener extends WindowListener {
   @override
   void onWindowResized() {
     update();
+    WindowStateService.saveWindowState();
     super.onWindowResized();
   }
 

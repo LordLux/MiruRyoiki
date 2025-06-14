@@ -3,16 +3,21 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:bitsdojo_window/bitsdojo_window.dart';
 import 'package:fluent_ui/fluent_ui.dart';
-import 'package:miruryoiki/main.dart';
+import 'package:flutter_acrylic/window.dart' as flutter_acrylic;
 import 'package:miruryoiki/manager.dart';
 import 'package:miruryoiki/services/library/library_provider.dart';
 import 'package:miruryoiki/settings.dart';
 import 'package:miruryoiki/utils/logging.dart';
 import 'package:provider/provider.dart';
 import 'package:app_links/app_links.dart';
+import 'package:window_manager/window_manager.dart';
 
+import 'services/window/listener.dart';
+import 'services/window/service.dart';
 import 'utils/path_utils.dart';
+import 'utils/time_utils.dart';
 
 class EasySplashScreen extends StatefulWidget {
   /// Actual Content of the splash
@@ -51,7 +56,7 @@ class _EasySplashScreenState extends State<EasySplashScreen> {
     Future.delayed(widget.waitBeforeFutureNavigator).then((_) {
       widget.futureNavigator().then((route) async {
         if (widget.beforeNavigate != null) await widget.beforeNavigate!();
-        
+
         if (mounted) {
           if (route != null && route.isNotEmpty) Navigator.of(context).pushReplacementNamed(route);
           if (widget.onNavigate != null) widget.onNavigate!();
@@ -75,7 +80,6 @@ class SplashScreen extends StatefulWidget {
 class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderStateMixin {
   late AnimationController _splashOpacityController;
   late Animation<double> _opacityAnimation;
-  final Duration animationDuration = const Duration(milliseconds: 800);
 
   // AppLinks for deep linking
   late final AppLinks _appLinks;
@@ -86,7 +90,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
     super.initState();
 
     _splashOpacityController = AnimationController(
-      duration: animationDuration,
+      duration: splashScreenFadeAnimation,
       vsync: this,
     );
 
@@ -121,7 +125,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
       //
 
       _splashOpacityController.reverse();
-      await Future.delayed(animationDuration);
+      await Future.delayed(splashScreenFadeAnimation);
     } catch (e, st) {
       logErr('Error during app initialization', e, st);
     }
@@ -154,9 +158,9 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
   @override
   Widget build(BuildContext context) {
     return EasySplashScreen(
-      waitBeforeFutureNavigator: animationDuration,
+      waitBeforeFutureNavigator: splashScreenFadeAnimation,
       futureNavigator: _initializeApp,
-      beforeNavigate: () async {},
+      beforeNavigate: () async => await initializeAndMorphWindow(),
       onNavigate: widget.onInitComplete,
       content: AnimatedBuilder(
         animation: _splashOpacityController,
@@ -182,5 +186,63 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
         },
       ),
     );
+  }
+}
+
+Future<void> initializeAndMorphWindow() async {
+  // First set the basic window properties
+  await windowManager.setIgnoreMouseEvents(false);
+  await windowManager.setAlwaysOnTop(false);
+  await windowManager.setResizable(true);
+
+  // Then morph to the saved state
+  await morphToSavedWindowState();
+
+  // Finally, ensure window is visible and focused
+  await windowManager.show();
+  await windowManager.focus();
+}
+
+Future<void> morphToSavedWindowState() async {
+  final savedState = await WindowStateService.loadWindowState();
+  if (savedState != null) {
+    // Get current window position and size for animation start point
+    final currentSize = await windowManager.getSize();
+    final currentPosition = await windowManager.getPosition();
+    final currentRect = Rect.fromLTWH(currentPosition.dx, currentPosition.dy, currentSize.width, currentSize.height);
+
+    if (savedState['maximized'] == true) {
+      // For maximized windows, don't animate - just maximize
+      await windowManager.maximize();
+    } else {
+      final width = savedState['width'] ?? 800.0;
+      final height = savedState['height'] ?? 600.0;
+      final x = savedState['x'] ?? 100.0;
+      final y = savedState['y'] ?? 100.0;
+
+      // Fix 2: Use different from/to and await the animation
+      await animateWindowToState(
+        currentRect, // Start from current state
+        Rect.fromLTWH(x, y, width, height), // End at saved state
+        Duration(milliseconds: 200),
+      );
+    }
+  }
+}
+
+Future<void> animateWindowToState(Rect from, Rect to, Duration duration, {int fps = 60}) async {
+  final int frames = (duration.inMilliseconds / (1000 / fps)).round();
+  for (int i = 1; i <= frames; i++) {
+    final t = i / frames;
+
+    double lerp(double a, double b) => a + (b - a) * t;
+
+    final width = lerp(from.width, to.width);
+    final height = lerp(from.height, to.height);
+    final x = lerp(from.left, to.left);
+    final y = lerp(from.top, to.top);
+    await windowManager.setSize(Size(width, height));
+    await windowManager.setPosition(Offset(x, y));
+    await Future.delayed(Duration(milliseconds: 1000 ~/ fps));
   }
 }

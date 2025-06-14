@@ -23,6 +23,8 @@ Duration get shortStickyHeaderDuration => Duration(milliseconds: stickyHeaderDur
 
 Duration get dimDuration => getDuration(const Duration(milliseconds: 200));
 
+final Duration splashScreenFadeAnimation = const Duration(milliseconds: 800); // hardcoded
+
 /// Runs a function after the current frame is rendered.
 ///
 /// This is useful for ensuring that the UI is fully built before executing

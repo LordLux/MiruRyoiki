@@ -36,7 +36,7 @@ import 'services/file_system/cache.dart';
 import 'services/navigation/navigation.dart';
 import 'services/file_system/registry.dart' as registry;
 import 'services/navigation/shortcuts.dart';
-import 'services/window.dart';
+import 'services/window/listener.dart';
 import 'theme.dart';
 import 'utils/color_utils.dart';
 import 'utils/path_utils.dart';
@@ -66,7 +66,7 @@ void main(List<String> args) async {
 
   await WindowsSingleInstance.ensureSingleInstance(
     args,
-    "custom_identifier",
+    "miruryoioki",
     onSecondWindow: (args) => log(args),
   );
 
@@ -90,7 +90,7 @@ void main(List<String> args) async {
   if (!kIsWeb && defaultTargetPlatform == TargetPlatform.windows) SystemTheme.accentColor.load();
 
   // Initialize Window Manager
-  _initializeWindowManager();
+  _initializeSplashScreenWindow();
 
   // Initialize image cache
   final imageCache = ImageCacheService();
@@ -209,8 +209,13 @@ class _AppContainerState extends State<AppContainer> {
     _initializeApp();
   }
 
+  @override
+  void dispose() {
+    disposeSystemMouseCursor();
+    super.dispose();
+  }
+
   Future<void> _initializeApp() async {
-    // Initialize everything that used to be in the splash screen's initialization
     try {
       // Initialize AppLinks
       final appLinks = AppLinks();
@@ -220,6 +225,11 @@ class _AppContainerState extends State<AppContainer> {
       if (initialUri != null) {
         Manager.initialDeepLink = initialUri;
       }
+
+      nextFrame(() {
+        final appTheme = Provider.of<AppTheme>(context, listen: false);
+        appTheme.setEffect(appTheme.windowEffect, context);
+      });
 
       // Get providers
       final settings = Provider.of<SettingsManager>(context, listen: false);
@@ -237,7 +247,6 @@ class _AppContainerState extends State<AppContainer> {
 
   @override
   Widget build(BuildContext context) {
-    // If initialization is complete, show the main app, otherwise show splash
     return AnimatedSwitcher(
       duration: const Duration(milliseconds: 500),
       child: _initialized
@@ -269,17 +278,6 @@ class _MiruRyoikiRootState extends State<MiruRyoikiRoot> {
   void initState() {
     super.initState();
 
-    // Handle the stored deep link if it exists
-    if (Manager.initialDeepLink != null) {
-      _handleDeepLink(Manager.initialDeepLink!);
-      Manager.initialDeepLink = null;
-    }
-
-    nextFrame(() {
-      final appTheme = Provider.of<AppTheme>(context, listen: false);
-      appTheme.setEffect(appTheme.windowEffect, context);
-    });
-
     // Listen for future deep links
     _appLinks = AppLinks();
     _handleIncomingLinks();
@@ -301,12 +299,6 @@ class _MiruRyoikiRootState extends State<MiruRyoikiRoot> {
       final anilistProvider = Provider.of<AnilistProvider>(context, listen: false);
       await anilistProvider.handleAuthCallback(uri);
     }
-  }
-
-  @override
-  void dispose() {
-    disposeSystemMouseCursor();
-    super.dispose();
   }
 
   @override
@@ -935,43 +927,46 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
   }
 }
 
-Future<void> _initializeWindowManager() async {
+Future<void> _initializeSplashScreenWindow() async {
   await flutter_acrylic.Window.initialize();
   await flutter_acrylic.Window.hideWindowControls();
   await WindowManager.instance.ensureInitialized();
 
-  final Size initialSize = Size(1116.5, 700);
-  final Size minSize = Size(900, 400);
+  final Size initialSize = Size(500, 300);
 
+  // only for UI
   doWhenWindowReady(() {
     final win = appWindow;
-    win.size = initialSize;
-    win.minSize = minSize;
-    win.size = initialSize;
     win.alignment = Alignment.center;
     win.title = Manager.appTitle;
     win.show();
   });
+
   WindowOptions windowOptions = WindowOptions(
     size: initialSize,
-    minimumSize: minSize,
+    minimumSize: initialSize,
+    maximumSize: initialSize,
     center: true,
     skipTaskbar: false,
     titleBarStyle: TitleBarStyle.hidden,
     title: Manager.appTitle,
+    alwaysOnTop: true,
   );
 
   windowManager.waitUntilReadyToShow(windowOptions, () async {
+    windowManager.addListener(MyWindowListener());
+    await windowManager.setPreventClose(true);
+    await windowManager.setSkipTaskbar(false);
+    await windowManager.setTitleBarStyle(TitleBarStyle.hidden, windowButtonVisibility: false);
+    await windowManager.setMinimumSize(initialSize);
+    await windowManager.setMaximumSize(initialSize);
+    await windowManager.setSize(initialSize);
+    await windowManager.setResizable(false);
+    await windowManager.setAlwaysOnTop(true);
+    await windowManager.setTitle(Manager.appTitle);
+    await windowManager.setIgnoreMouseEvents(true);
     await windowManager.show();
     await windowManager.focus();
-    await windowManager.setPreventClose(true);
-    windowManager.addListener(MyWindowListener());
-    await windowManager.setSkipTaskbar(false);
-    await windowManager.setTitleBarStyle(
-      TitleBarStyle.hidden,
-      windowButtonVisibility: false,
-    );
-
     setIcon();
   });
 }

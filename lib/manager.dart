@@ -25,7 +25,7 @@ class Manager {
 
   static Uri? initialDeepLink;
 
-  static void setState() => rootNavigatorKey.currentState?.setState(() {});
+  static void setState() => homeKey.currentState?.setState(() {});
   
   static BuildContext get context => rootNavigatorKey.currentContext!;
 
