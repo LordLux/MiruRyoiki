@@ -27,7 +27,8 @@ extension LibrarySeriesManagement on Library {
       bool posterChanged = oldSeries.folderPosterPath != series.folderPosterPath;
       bool bannerChanged = oldSeries.folderBannerPath != series.folderBannerPath;
       bool anilistChanged = oldSeries.primaryAnilistId != series.primaryAnilistId;
-      bool preferenceChanged = oldSeries.preferredPosterSource != series.preferredPosterSource || oldSeries.preferredBannerSource != series.preferredBannerSource;
+      bool preferenceChanged = oldSeries.preferredPosterSource != series.preferredPosterSource || //
+          oldSeries.preferredBannerSource != series.preferredBannerSource;
 
       // Recalculate dominant color if relevant changes occurred
       if (posterChanged || bannerChanged || anilistChanged || preferenceChanged) {
@@ -37,6 +38,10 @@ extension LibrarySeriesManagement on Library {
 
       // Update the series
       _series[index] = series;
+
+      if (homeKey.currentState != null) {
+        homeKey.currentState!.seriesWasModified = true;
+      }
 
       logTrace('Series updated: ${series.name}, ${PathUtils.getFileName(series.effectivePosterPath ?? '')}, ${PathUtils.getFileName(series.effectiveBannerPath ?? '')}');
       _isDirty = true;
@@ -58,6 +63,12 @@ extension LibrarySeriesManagement on Library {
 
     if (save) {
       _isDirty = true;
+
+      // Set the flag indicating a series was modified
+      if (homeKey.currentState != null) {
+        homeKey.currentState!.seriesWasModified = true;
+      }
+      
       _saveLibrary();
       notifyListeners();
     }
@@ -80,6 +91,11 @@ extension LibrarySeriesManagement on Library {
 
     for (final episode in series.relatedMedia) {
       markEpisodeWatched(episode, watched: watched, save: false);
+    }
+    
+    // Set the flag indicating a series was modified
+    if (homeKey.currentState != null) {
+      homeKey.currentState!.seriesWasModified = true;
     }
 
     _isDirty = true;

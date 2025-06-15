@@ -263,6 +263,11 @@ extension LibraryAnilistIntegration on Library {
       series.primaryAnilistId = mappings.first.anilistId;
     }
 
+    // Set the flag indicating a series was modified
+    if (homeKey.currentState != null) {
+      homeKey.currentState!.seriesWasModified = true;
+    }
+
     await _backupMappings();
 
     await _saveLibrary();

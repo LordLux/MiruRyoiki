@@ -14,6 +14,7 @@ import '../models/series.dart';
 import '../services/anilist/provider/anilist_provider.dart';
 import '../services/navigation/shortcuts.dart';
 import '../utils/color_utils.dart';
+import '../utils/logging.dart';
 import '../utils/path_utils.dart';
 import '../utils/screen_utils.dart';
 import '../utils/time_utils.dart';
@@ -107,7 +108,18 @@ class LibraryScreenState extends State<LibraryScreen> {
     });
   }
 
-  // Save preferences
+  /// Invalidate the sort cache, forcing a re-evaluation of the sorting.
+  void invalidateSortCache() {
+    setState(() {
+      _lastAppliedSortOrder = null;
+      _lastAppliedSortDescending = null;
+      _hasAppliedSorting = false;
+      _sortedGroupedSeries.clear();
+      _sortedUngroupedSeries.clear();
+    });
+  }
+
+  /// Save preferences
   void _saveUserPreferences() {
     final manager = Manager.settings;
     manager.set('library_view', _currentView.toString());
@@ -118,7 +130,7 @@ class LibraryScreenState extends State<LibraryScreen> {
     manager.set('library_list_order', json.encode(_customListOrder));
   }
 
-  // Load preferences
+  /// Load preferences
   void _loadUserPreferences() {
     final manager = Manager.settings;
     setState(() {
@@ -936,6 +948,34 @@ class LibraryScreenState extends State<LibraryScreen> {
     // Sort series into groups
     for (final series in allSeries) {
       if (series.isLinked) {
+        log('Processing series: ${series.name}');
+        if (series.anilistMappings.isNotEmpty) {
+          bool allCompleted = true;
+          final completedList = anilistProvider.userLists['COMPLETED'];
+
+          if (completedList != null) {
+            for (final mapping in series.anilistMappings) {
+              log('  Checking mapping: ${mapping.title}');
+              final isCompleted = completedList.entries.any((entry) => entry.mediaId == mapping.anilistId);
+              if (!isCompleted) {
+                log('  ${mapping.title} is not completed');
+                allCompleted = false;
+                break;
+              } else {
+                log('  ${mapping.title} is completed');
+              }
+            }
+
+            if (allCompleted) {
+              log('  Adding ${series.name} to completed group');
+              final completedKey = _fromApiListName('COMPLETED');
+              if (groups.containsKey(completedKey)) {
+                groups[completedKey]?.add(series);
+                continue; // Skip to next series
+              }
+            }
+          }
+        }
         bool foundInList = false;
 
         // Check each Anilist mapping against each list

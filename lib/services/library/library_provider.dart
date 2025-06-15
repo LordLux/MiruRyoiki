@@ -9,6 +9,7 @@ import 'package:open_app_file/open_app_file.dart';
 import 'package:provider/provider.dart';
 
 import '../../enums.dart';
+import '../../main.dart';
 import '../../manager.dart';
 import '../../models/anilist/anime.dart';
 import '../../models/anilist/mapping.dart';
