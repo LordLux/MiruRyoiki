@@ -51,6 +51,8 @@ class ImageSelectionDialog extends ManagedDialog {
                 seriesScreenState.posterChangeDisabled = !isBanner;
                 seriesScreenState.bannerChangeDisabled = isBanner;
               }
+
+              if (homeKey.currentState != null) homeKey.currentState!.seriesWasModified = true;
               logTrace('Saving ${isBanner ? 'banner' : 'poster'} preference: $source, path: ${PathUtils.getFileName(path)}');
               snackBar(
                 'Saving preference...',
