@@ -159,7 +159,11 @@ class SeriesScreenState extends State<SeriesScreen> {
       if (originalDominantColor?.value != series!.dominantColor?.value) {
         // Save the updated series to the library
         final library = Provider.of<Library>(context, listen: false);
-        await library.updateSeries(series!);
+        await library.updateSeries(series!, invalidateCache: false);
+        
+        if (libraryScreenKey.currentState != null) {
+          libraryScreenKey.currentState!.updateSeriesInSortCache(series!);
+        }
         logTrace('Dominant color changed, saving series');
       }
     } else {
@@ -476,7 +480,7 @@ class SeriesScreenState extends State<SeriesScreen> {
                       series.primaryAnilistId = value;
                     });
 
-                    if (homeKey.currentState != null) homeKey.currentState!.seriesWasModified = true;
+                    if (libraryScreenKey.currentState != null) libraryScreenKey.currentState!.updateSeriesInSortCache(series);
                     // Fetch and load Anilist data
                     await _loadAnilistData(value);
                   }
