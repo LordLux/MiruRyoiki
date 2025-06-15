@@ -127,6 +127,9 @@ class SeriesScreenState extends State<SeriesScreen> {
     final anime = await SeriesLinkService().fetchAnimeDetails(anilistId);
 
     if (anime != null) {
+      // Store the original dominant color to check if it changes
+      final Color? originalDominantColor = series!.dominantColor;
+
       setState(() {
         // Find the mapping with this ID
         for (var i = 0; i < series!.anilistMappings.length; i++) {
@@ -148,6 +151,17 @@ class SeriesScreenState extends State<SeriesScreen> {
           }
         }
       });
+
+      // Calculate dominant color (this will update it if needed)
+      await series!.calculateDominantColor(forceRecalculate: true);
+
+      // Only save if dominant color changed or was newly set
+      if (originalDominantColor?.value != series!.dominantColor?.value) {
+        // Save the updated series to the library
+        final library = Provider.of<Library>(context, listen: false);
+        await library.updateSeries(series!);
+        logTrace('Dominant color changed, saving series');
+      }
     } else {
       logErr('Failed to load Anilist data for ID: $anilistId');
     }
