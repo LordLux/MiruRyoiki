@@ -172,6 +172,11 @@ class AnilistUserList {
       status: isCustomList ? AnilistListStatus.CUSTOM : json['status']?.toString().toListStatus(),
     );
   }
+  
+  @override
+  String toString() {
+    return 'AUL($name)';
+  }
 }
 
 class AnilistUser {
