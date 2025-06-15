@@ -322,6 +322,11 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
   PathString? lastSelectedSeriesPath;
   bool _isSeriesView = false;
   bool _showAnilistRedirectToProfile = false;
+  bool _isFinishedTransitioning = false;
+  bool _isSecondaryTitleBarVisible = false;
+  bool seriesWasModified = false;
+  // ignore: unused_field
+  bool _isNavigationPaneCollapsed = false;
 
   final ScrollController libraryController = ScrollController();
   final ScrollController homeController = ScrollController();
@@ -330,14 +335,8 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
 
   late final LibraryScreen _libraryScreen;
 
-  bool _isFinishedTransitioning = false;
-  bool _isSecondaryTitleBarVisible = false;
-
   // bool get _isLibraryView => !(_isSeriesView && _selectedSeriesPath != null);
   bool get isSeriesView => _isSeriesView;
-
-  // ignore: unused_field
-  bool _isNavigationPaneCollapsed = false;
 
   final GlobalKey<NavigationViewState> _paneKey = GlobalKey<NavigationViewState>();
 
@@ -887,6 +886,12 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
       _isSeriesView = false;
       _isFinishedTransitioning = false;
     });
+    
+    if (seriesWasModified) {
+      // Use the key to access the library screen state
+      libraryScreenKey.currentState?.invalidateSortCache();
+      seriesWasModified = false;
+    }
   }
 
   /// Called when the transition to the library view ends

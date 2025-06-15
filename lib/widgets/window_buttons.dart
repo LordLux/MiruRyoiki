@@ -52,6 +52,8 @@ class WindowCaption extends StatefulWidget {
 }
 
 class _WindowCaptionState extends State<WindowCaption> with WindowListener {
+  bool _isHoveringOnMaximize = false;
+
   @override
   void initState() {
     windowManager.addListener(this);
@@ -73,7 +75,7 @@ class _WindowCaptionState extends State<WindowCaption> with WindowListener {
       child: TooltipTheme(
         data: TooltipThemeData(
           decoration: BoxDecoration(
-            color: Color.lerp(FluentTheme.of(context).micaBackgroundColor,Colors.white, 0.1),
+            color: Color.lerp(FluentTheme.of(context).micaBackgroundColor, Colors.white, 0.1),
             borderRadius: BorderRadius.circular(4),
           ),
           textStyle: TextStyle(
@@ -84,114 +86,118 @@ class _WindowCaptionState extends State<WindowCaption> with WindowListener {
           preferBelow: true,
         ),
         child: ValueListenableBuilder(
-          valueListenable: KeyboardState.shiftPressedNotifier,
-          builder: (context, shiftPressed, child) {
-            return Row(
-              children: [
-                Expanded(
-                  child: DragToMoveArea(
-                    child: SizedBox(
-                      height: double.infinity,
-                      child: Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.only(left: 16),
-                            child: DefaultTextStyle(
-                              style: TextStyle(
-                                color: widget.brightness == Brightness.light ? Colors.black.withOpacity(0.8956) : Colors.white,
-                                fontSize: 14,
+            valueListenable: KeyboardState.shiftPressedNotifier,
+            builder: (context, shiftPressed, child) {
+              return Row(
+                children: [
+                  Expanded(
+                    child: DragToMoveArea(
+                      child: SizedBox(
+                        height: double.infinity,
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.only(left: 16),
+                              child: DefaultTextStyle(
+                                style: TextStyle(
+                                  color: widget.brightness == Brightness.light ? Colors.black.withOpacity(0.8956) : Colors.white,
+                                  fontSize: 14,
+                                ),
+                                child: widget.title ?? Container(),
                               ),
-                              child: widget.title ?? Container(),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
                   ),
-                ),
-                if (!widget.isSecondary)
+                  if (!widget.isSecondary)
+                    Tooltip(
+                      message: 'Minimize',
+                      child: WindowCaptionButton.minimize(
+                        brightness: widget.brightness,
+                        onPressed: () async {
+                          bool isMinimized = await windowManager.isMinimized();
+                          if (isMinimized) {
+                            windowManager.restore();
+                          } else {
+                            windowManager.minimize();
+                          }
+                        },
+                      ),
+                    ),
+                  MouseRegion(
+                    onEnter: (_) => setState(() => _isHoveringOnMaximize = true),
+                    onExit: (_) => setState(() => _isHoveringOnMaximize = false),
+                    child: Builder(builder: (context) {
+                      if (widget.isSecondary || (shiftPressed && _isHoveringOnMaximize))
+                        return FutureBuilder<bool>(
+                          future: windowManager.isFullScreen(),
+                          builder: (BuildContext context, AsyncSnapshot<bool> snapshot) {
+                            if (snapshot.data == true) {
+                              return Tooltip(
+                                message: 'Exit Fullscreen',
+                                child: WindowCaptionButtonFullScreen(
+                                  brightness: widget.brightness,
+                                  icon: (Color iconColor) => Icon(Symbols.close_fullscreen, color: iconColor, size: 16),
+                                  onPressed: () {
+                                    WindowStateService.toggleFullScreen();
+                                  },
+                                ),
+                              );
+                            }
+                            return Tooltip(
+                              message: 'Enter Fullscreen',
+                              child: WindowCaptionButtonFullScreen(
+                                brightness: widget.brightness,
+                                icon: (Color iconColor) => Icon(Symbols.open_in_full, color: iconColor, size: 16),
+                                onPressed: () {
+                                  WindowStateService.toggleFullScreen();
+                                  widget.onFullScreenOpen?.call();
+                                },
+                              ),
+                            );
+                          },
+                        );
+                      return FutureBuilder<bool>(
+                        future: windowManager.isMaximized(),
+                        builder: (BuildContext context, AsyncSnapshot<bool> snapshot) {
+                          if (snapshot.data == true) {
+                            return Tooltip(
+                              message: 'Unmaximize',
+                              child: WindowCaptionButton.unmaximize(
+                                brightness: widget.brightness,
+                                onPressed: () {
+                                  windowManager.unmaximize();
+                                },
+                              ),
+                            );
+                          }
+                          return Tooltip(
+                            message: 'Maximize',
+                            child: WindowCaptionButton.maximize(
+                              brightness: widget.brightness,
+                              onPressed: () {
+                                windowManager.maximize();
+                              },
+                            ),
+                          );
+                        },
+                      );
+                    }),
+                  ),
                   Tooltip(
-                    message: 'Minimize',
-                    child: WindowCaptionButton.minimize(
+                    message: 'Close',
+                    child: WindowCaptionButton.close(
                       brightness: widget.brightness,
-                      onPressed: () async {
-                        bool isMinimized = await windowManager.isMinimized();
-                        if (isMinimized) {
-                          windowManager.restore();
-                        } else {
-                          windowManager.minimize();
-                        }
+                      onPressed: () {
+                        windowManager.close();
                       },
                     ),
                   ),
-                if (!widget.isSecondary && !shiftPressed)
-                  FutureBuilder<bool>(
-                    future: windowManager.isMaximized(),
-                    builder: (BuildContext context, AsyncSnapshot<bool> snapshot) {
-                      if (snapshot.data == true) {
-                        return Tooltip(
-                          message: 'Unmaximize',
-                          child: WindowCaptionButton.unmaximize(
-                            brightness: widget.brightness,
-                            onPressed: () {
-                              windowManager.unmaximize();
-                            },
-                          ),
-                        );
-                      }
-                      return Tooltip(
-                        message: 'Maximize',
-                        child: WindowCaptionButton.maximize(
-                          brightness: widget.brightness,
-                          onPressed: () {
-                            windowManager.maximize();
-                          },
-                        ),
-                      );
-                    },
-                  ),
-                if (widget.isSecondary || shiftPressed)
-                  FutureBuilder<bool>(
-                    future: windowManager.isFullScreen(),
-                    builder: (BuildContext context, AsyncSnapshot<bool> snapshot) {
-                      if (snapshot.data == true) {
-                        return Tooltip(
-                          message: 'Exit Fullscreen',
-                          child: WindowCaptionButtonFullScreen(
-                            brightness: widget.brightness,
-                            icon: (Color iconColor) => Icon(Symbols.close_fullscreen, color: iconColor, size: 16),
-                            onPressed: () {
-                              WindowStateService.toggleFullScreen();
-                            },
-                          ),
-                        );
-                      }
-                      return Tooltip(
-                        message: 'Enter Fullscreen',
-                        child: WindowCaptionButtonFullScreen(
-                          brightness: widget.brightness,
-                          icon: (Color iconColor) => Icon(Symbols.open_in_full, color: iconColor, size: 16),
-                          onPressed: () {
-                            WindowStateService.toggleFullScreen();
-                            widget.onFullScreenOpen?.call();
-                          },
-                        ),
-                      );
-                    },
-                  ),
-                Tooltip(
-                  message: 'Close',
-                  child: WindowCaptionButton.close(
-                    brightness: widget.brightness,
-                    onPressed: () {
-                      windowManager.close();
-                    },
-                  ),
-                ),
-              ],
-            );
-          }
-        ),
+                ],
+              );
+            }),
       ),
     );
   }
