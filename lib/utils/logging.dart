@@ -9,7 +9,7 @@ import 'package:logger/logger.dart';
 import 'time_utils.dart';
 
 bool doLogRelease = false; // Set to true to enable logging in release mode
-bool doLogTrace = true; // Set to true to enable trace logging
+bool doLogTrace = false; // Set to true to enable trace logging
 bool doLogComplexError = false; // Set to true to enable complex error logging
 
 /// Logs a message with an optional text color and background color.
