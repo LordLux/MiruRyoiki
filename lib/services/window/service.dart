@@ -37,8 +37,8 @@ class WindowStateService {
   }
 
   static void toggleFullScreen() async {
-    // windowManager.setFullScreen(!isFullscreenNotifier.value);
-    // isFullscreenNotifier.value = await windowManager.isFullScreen(); // update state after toggling
-    isFullscreenNotifier.value = !isFullscreenNotifier.value; // update state after toggling
+    windowManager.setFullScreen(!isFullscreenNotifier.value);
+    isFullscreenNotifier.value = await windowManager.isFullScreen(); // update state after toggling
+    // isFullscreenNotifier.value = !isFullscreenNotifier.value; // update state after toggling
   }
 }
