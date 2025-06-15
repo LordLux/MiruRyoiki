@@ -1,3 +1,9 @@
+<a title="Made with Fluent Design" href="https://github.com/bdlukaa/fluent_ui">
+  <img
+    src="https://img.shields.io/badge/fluent-design-blue?style=flat-square&color=gray&labelColor=0078D7"
+  >
+</a>
+
 # MiruRyoiki
 MiruRyoiki is a Flutter-based desktop application designed to help you seamlessly track and manage your local media library, primarily focusing on anime episodes. With MiruRyoiki, you can easily sync your progress with AniList, keeping your watched status up to date without hassle.
 
