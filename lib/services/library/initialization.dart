@@ -36,7 +36,7 @@ extension LibraryInitialization on Library {
     await scanLocalLibrary();
 
     // Initialize MPC Tracker
-    // TODO await _mpcTracker.ensureInitialized();
+    if (!kDebugMode) await _mpcTracker.ensureInitialized();
 
     // Update watched status and force refresh
     await _updateWatchedStatusAndForceRefresh();

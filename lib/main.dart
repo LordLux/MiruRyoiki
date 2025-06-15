@@ -680,7 +680,7 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
                     child: AnimatedOpacity(
                       duration: shortDuration,
                       opacity: isFullscreen ? 0 : 1,
-                      child: _buildTitleBar(),
+                      child: _buildTitleBar(), //TODO maybe try to make it into a single widget with isSecondary parameter
                     ),
                   ),
                 ),
@@ -703,17 +703,11 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
                   top: 0,
                   left: 0,
                   right: 0,
-                  child: AnimatedContainer(
-                    duration: shortDuration,
+                  child: SizedBox(
                     height: _isSecondaryTitleBarVisible ? ScreenUtils.kTitleBarHeight - getTitleBarHeight(isFullscreen) : 5,
                     child: MouseRegion(
                       hitTestBehavior: HitTestBehavior.translucent,
-                      onEnter: (_) {
-                        setState(() => _isSecondaryTitleBarVisible = true);
-                        nextFrame(delay: 100, () {
-                          Manager.setState();
-                        });
-                      },
+                      onEnter: (_) => setState(() => _isSecondaryTitleBarVisible = true),
                       onExit: (_) => setState(() => _isSecondaryTitleBarVisible = false),
                     ),
                   ),
@@ -852,7 +846,7 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
                       ),
                       SizedBox(
                         height: ScreenUtils.kTitleBarHeight,
-                        child: WindowButtons(isSecondary: isSecondary),
+                        child: WindowButtons(isSecondary: isSecondary, onFullScreenOpen: () => setState(() => _isSecondaryTitleBarVisible = true)),
                       ),
                     ],
                   ),
@@ -1028,6 +1022,7 @@ void setIcon() async {
   }
 }
 
+// TODO fix the fact that library does not find new series/episodes nor deletes removed ones, not at startup nor on manual library reload
 // TODO add Anilist sync status and internet connection status to the status bar
 // TODO edit view options for library to separate sort and view (grid, list etc) from filters
 // TODO homepage title inside header like in library + view options to choose what to show on homepage
