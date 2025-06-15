@@ -18,7 +18,7 @@ extension LibrarySeriesManagement on Library {
   }
 
   /// Save a single series with updated properties
-  Future<void> updateSeries(Series series) async {
+  Future<void> updateSeries(Series series, {bool invalidateCache = true}) async {
     final index = _series.indexWhere((s) => s.path == series.path);
     if (index >= 0) {
       final oldSeries = _series[index];
@@ -39,7 +39,7 @@ extension LibrarySeriesManagement on Library {
       // Update the series
       _series[index] = series;
 
-      if (homeKey.currentState != null) {
+      if (invalidateCache && homeKey.currentState != null) {
         homeKey.currentState!.seriesWasModified = true;
       }
 

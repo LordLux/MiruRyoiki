@@ -52,14 +52,14 @@ class ImageSelectionDialog extends ManagedDialog {
                 seriesScreenState.bannerChangeDisabled = isBanner;
               }
 
-              if (homeKey.currentState != null) homeKey.currentState!.seriesWasModified = true;
+              if (libraryScreenKey.currentState != null) libraryScreenKey.currentState!.updateSeriesInSortCache(updatedSeries);
               logTrace('Saving ${isBanner ? 'banner' : 'poster'} preference: $source, path: ${PathUtils.getFileName(path)}');
               snackBar(
                 'Saving preference...',
                 severity: InfoBarSeverity.info,
               );
               // Explicitly save the entire series and show confirmation
-              library.updateSeries(updatedSeries).then((_) {
+              library.updateSeries(updatedSeries, invalidateCache: false).then((_) {
                 snackBar(
                   isBanner ? 'Banner preference saved' : 'Poster preference saved',
                   severity: InfoBarSeverity.success,

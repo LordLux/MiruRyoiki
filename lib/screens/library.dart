@@ -108,6 +108,31 @@ class LibraryScreenState extends State<LibraryScreen> {
       _filterHintShowing = false;
     });
   }
+  
+  /// Update a dominantColor of a series in the cache when the series' dominantColor is changed
+  void updateSeriesInSortCache(Series updatedSeries) {
+    // Update in ungrouped series cache
+    for (int i = 0; i < _sortedUngroupedSeries.length; i++) {
+      if (_sortedUngroupedSeries[i].path == updatedSeries.path) {
+        _sortedUngroupedSeries[i] = updatedSeries;
+        break;
+      }
+    }
+
+    // Update in grouped series cache
+    for (final groupName in _sortedGroupedSeries.keys) {
+      final groupList = _sortedGroupedSeries[groupName]!;
+      for (int i = 0; i < groupList.length; i++) {
+        if (groupList[i].path == updatedSeries.path) {
+          groupList[i] = updatedSeries;
+          break;
+        }
+      }
+    }
+
+    // Notify widgets to rebuild
+    setState(() {});
+  }
 
   /// Invalidate the sort cache, forcing a re-evaluation of the sorting.
   void invalidateSortCache() {
