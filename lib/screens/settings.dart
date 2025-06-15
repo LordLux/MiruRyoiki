@@ -1107,7 +1107,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                                 child: toggle.ToggleSwitch(
                                                   animate: true,
                                                   multiLineText: true,
-                                                  animationDuration: getDuration(dimDuration).inMilliseconds,
+                                                  animationDuration: dimDuration.inMilliseconds,
                                                   initialLabelIndex: initialIndex,
                                                   totalSwitches: 3,
                                                   customTextStyles: [

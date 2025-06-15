@@ -282,7 +282,7 @@ class LibraryScreenState extends State<LibraryScreen> {
 
               // Library filters sidebar
               AnimatedPositioned(
-                duration: getDuration(shortStickyHeaderDuration),
+                duration: shortStickyHeaderDuration,
                 top: headerHeight + 16,
                 right: _showFilters
                     ? -0
@@ -290,7 +290,7 @@ class LibraryScreenState extends State<LibraryScreen> {
                         ? -(width - 50)
                         : -width,
                 child: AnimatedRotation(
-                  duration: getDuration(shortStickyHeaderDuration),
+                  duration: shortStickyHeaderDuration,
                   turns: _filterHintShowing ? filterAngle : 0,
                   child: GestureDetector(
                     onTapDown: (_) => _filterHintShowing ? toggleFiltersSidebar() : null,
@@ -312,10 +312,10 @@ class LibraryScreenState extends State<LibraryScreen> {
               // Mouse detection
               if (!_showFilters)
                 AnimatedPositioned(
-                  duration: getDuration(shortStickyHeaderDuration),
+                  duration: shortStickyHeaderDuration,
                   right: _filterHintShowing ? -84 : -95,
                   child: AnimatedRotation(
-                    duration: getDuration(shortStickyHeaderDuration),
+                    duration: shortStickyHeaderDuration,
                     turns: _filterHintShowing ? filterAngle : 0,
                     child: SizedBox(
                       width: 100,
@@ -345,7 +345,7 @@ class LibraryScreenState extends State<LibraryScreen> {
             absorbing: _filterHintShowing,
             child: AnimatedOpacity(
               opacity: _filterHintShowing || !_showFilters ? 0.0 : 1.0,
-              duration: getDuration(shortStickyHeaderDuration),
+              duration: shortStickyHeaderDuration,
               child: Padding(
                 padding: const EdgeInsets.only(left: 32.0, right: 16.0, top: 32.0, bottom: 16.0),
                 child: SingleChildScrollView(
@@ -416,7 +416,7 @@ class LibraryScreenState extends State<LibraryScreen> {
                               isLoading: _currentSortOperation != null,
                               child: (_) => IconButton(
                                 icon: AnimatedRotation(
-                                  duration: getDuration(shortStickyHeaderDuration),
+                                  duration: shortStickyHeaderDuration,
                                   turns: _sortDescending ? 0 : 1,
                                   child: Icon(_sortDescending ? FluentIcons.sort_lines : FluentIcons.sort_lines_ascending),
                                 ),
@@ -446,7 +446,7 @@ class LibraryScreenState extends State<LibraryScreen> {
           ),
           AnimatedOpacity(
             opacity: _filterHintShowing ? 1.0 : 0.0,
-            duration: getDuration(shortStickyHeaderDuration),
+            duration: shortStickyHeaderDuration,
             child: RotatedBox(
               quarterTurns: 1,
               child: Padding(

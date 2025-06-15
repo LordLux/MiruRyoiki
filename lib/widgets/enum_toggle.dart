@@ -31,7 +31,7 @@ class _EnumToggleState<T> extends State<EnumToggle<T>> {
     
     return toggle.ToggleSwitch(
       animate: true,
-      animationDuration: getDuration(dimDuration).inMilliseconds,
+      animationDuration: dimDuration.inMilliseconds,
       initialLabelIndex: currentIndex,
       customTextStyles: [ for (var i = 0; i < widget.enumValues.length; i++)
         Manager.bodyStyle.copyWith(color: currentIndex == i ? getPrimaryColorBasedOnAccent() : null),

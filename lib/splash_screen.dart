@@ -17,6 +17,7 @@ import 'package:window_manager/window_manager.dart';
 import 'services/window/listener.dart';
 import 'services/window/service.dart';
 import 'utils/path_utils.dart';
+import 'utils/screen_utils.dart';
 import 'utils/time_utils.dart';
 
 class EasySplashScreen extends StatefulWidget {
@@ -194,6 +195,12 @@ Future<void> initializeAndMorphWindow() async {
   await windowManager.setIgnoreMouseEvents(false);
   await windowManager.setAlwaysOnTop(false);
   await windowManager.setResizable(true);
+  await windowManager.setMinimumSize(Size(ScreenUtils.kDefaultMinWindowWidth, ScreenUtils.kDefaultMinWindowHeight));
+  await windowManager.setMaximumSize(Size(ScreenUtils.kDefaultMaxWindowWidth, ScreenUtils.kDefaultMaxWindowHeight));
+
+  final win = appWindow;
+  win.minSize = Size(ScreenUtils.kDefaultMinWindowWidth, ScreenUtils.kDefaultMinWindowHeight);
+  win.maxSize = Size(ScreenUtils.kDefaultMaxWindowWidth, ScreenUtils.kDefaultMaxWindowHeight);
 
   // Then morph to the saved state
   await morphToSavedWindowState();
@@ -224,7 +231,7 @@ Future<void> morphToSavedWindowState() async {
       await animateWindowToState(
         currentRect, // Start from current state
         Rect.fromLTWH(x, y, width, height), // End at saved state
-        Duration(milliseconds: 200),
+        Duration(milliseconds: 150),
       );
     }
   }
