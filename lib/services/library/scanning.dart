@@ -33,12 +33,32 @@ extension LibraryScanning on Library {
       // Identify new series
       final newSeries = scannedSeries.where((s) => !previousSeriesPaths.contains(s.path)).toList();
 
+      // Identify removed series (exist in memory but not on disk anymore)
+      final scannedPaths = scannedSeries.map((s) => s.path).toSet();
+      final removedSeries = _series.where((s) => !scannedPaths.contains(s.path)).toList();
+
+      // Update existing series (maintain same instance but update content)
+      for (final scannedSeries in scannedSeries) {
+        final existingIndex = _series.indexWhere((s) => s.path == scannedSeries.path);
+        if (existingIndex >= 0) {
+          // Replace with updated version while preserving metadata
+          _series[existingIndex] = _mergeSeriesMetadata(_series[existingIndex], scannedSeries);
+        }
+      }
+
       // Update watched status from tracker
       _updateWatchedStatusAndResetThumbnailFetchFailedAttemptsCount();
 
+      // Add new series
       if (newSeries.isNotEmpty) {
         logDebug('3 | Found ${newSeries.length} new series');
         _series.addAll(newSeries);
+      }
+
+      // Remove deleted series
+      if (removedSeries.isNotEmpty) {
+        logDebug('3 | Removing ${removedSeries.length} deleted series');
+        _series.removeWhere((s) => removedSeries.any((removed) => removed.path == s.path));
       }
 
       _isDirty = true;
@@ -118,4 +138,72 @@ extension LibraryScanning on Library {
       );
     }
   }
+}
+
+/// Merges metadata from existing series with updated content from scanned series
+Series _mergeSeriesMetadata(Series existing, Series scanned) {
+  return existing.copyWith(
+    // Update basic properties
+    name: scanned.name,
+    folderPosterPath: scanned.folderPosterPath,
+    folderBannerPath: scanned.folderBannerPath,
+
+    // Merge seasons while preserving watched status
+    seasons: _mergeSeasonsWithMetadata(existing.seasons, scanned.seasons),
+
+    // Merge related media while preserving watched status
+    relatedMedia: _mergeEpisodesWithMetadata(existing.relatedMedia, scanned.relatedMedia),
+  );
+}
+
+/// Merges seasons from existing and scanned series, preserving watch metadata
+List<Season> _mergeSeasonsWithMetadata(List<Season> existing, List<Season> scanned) {
+  final result = <Season>[];
+
+  // For each scanned season, find matching existing season (if any)
+  for (final scannedSeason in scanned) {
+    final existingSeason = existing.firstWhereOrNull((s) => s.path == scannedSeason.path);
+
+    if (existingSeason != null) {
+      // Merge episodes while preserving watched status
+      final mergedEpisodes = _mergeEpisodesWithMetadata(existingSeason.episodes, scannedSeason.episodes);
+      result.add(Season(
+        name: scannedSeason.name,
+        path: scannedSeason.path,
+        episodes: mergedEpisodes,
+      ));
+    } else {
+      // This is a new season
+      result.add(scannedSeason);
+    }
+  }
+
+  return result;
+}
+
+/// Merges episodes while preserving watch status
+List<Episode> _mergeEpisodesWithMetadata(List<Episode> existing, List<Episode> scanned) {
+  final result = <Episode>[];
+
+  // For each scanned episode, find matching existing episode (if any)
+  for (final scannedEpisode in scanned) {
+    final existingEpisode = existing.firstWhereOrNull((e) => e.path == scannedEpisode.path);
+
+    if (existingEpisode != null) {
+      // Preserve watched status and percentage
+      result.add(Episode(
+        path: scannedEpisode.path,
+        name: scannedEpisode.name,
+        thumbnailPath: existingEpisode.thumbnailPath,
+        thumbnailUnavailable: existingEpisode.thumbnailUnavailable,
+        watched: existingEpisode.watched,
+        watchedPercentage: existingEpisode.watchedPercentage,
+      ));
+    } else {
+      // This is a new episode
+      result.add(scannedEpisode);
+    }
+  }
+
+  return result;
 }
