@@ -39,7 +39,7 @@ class _AnimatedReorderableTileState extends State<AnimatedReorderableTile> with 
     // Create the animation controller
     _animationController = AnimationController(
       vsync: this,
-      duration: getDuration(dimDuration),
+      duration: dimDuration,
     );
 
     // Create the color tween

@@ -10,7 +10,7 @@ late final ScalableImageWidget offlineLogo;
 
 Widget defaultSwitcher(BuildContext context, Widget child) {
   return AnimatedSwitcher(
-    duration: getDuration(shortStickyHeaderDuration),
+    duration: shortStickyHeaderDuration,
     child: child,
   );
 }

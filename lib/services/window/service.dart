@@ -1,3 +1,5 @@
+import 'package:bitsdojo_window/bitsdojo_window.dart';
+import 'package:fluent_ui/fluent_ui.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:window_manager/window_manager.dart';
 
@@ -7,6 +9,7 @@ class WindowStateService {
   static const _keyWidth = 'window_width';
   static const _keyHeight = 'window_height';
   static const _keyMaximized = 'window_maximized';
+  static final ValueNotifier<bool> isFullscreenNotifier = ValueNotifier<bool>(false);
 
   static Future<void> saveWindowState() async {
     final prefs = await SharedPreferences.getInstance();
@@ -31,5 +34,11 @@ class WindowStateService {
       'height': prefs.getDouble(_keyHeight),
       'maximized': prefs.getBool(_keyMaximized) ?? false,
     };
+  }
+
+  static void toggleFullScreen() async {
+    // windowManager.setFullScreen(!isFullscreenNotifier.value);
+    // isFullscreenNotifier.value = await windowManager.isFullScreen(); // update state after toggling
+    isFullscreenNotifier.value = !isFullscreenNotifier.value; // update state after toggling
   }
 }
