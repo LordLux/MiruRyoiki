@@ -1022,7 +1022,7 @@ void setIcon() async {
   }
 }
 
-// TODO fix the fact that library does not find new series/episodes nor deletes removed ones, not at startup nor on manual library reload
+// TODO add setting to choose whether user prefers to manually rescan registry with library or if automatic (current)
 // TODO add Anilist sync status and internet connection status to the status bar
 // TODO edit view options for library to separate sort and view (grid, list etc) from filters
 // TODO homepage title inside header like in library + view options to choose what to show on homepage
