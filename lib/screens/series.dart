@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import 'package:smooth_scroll_multiplatform/smooth_scroll_multiplatform.dart';
 import 'package:defer_pointer/defer_pointer.dart';
 
+import '../main.dart';
 import '../services/library/library_provider.dart';
 import '../services/navigation/show_info.dart';
 import '../services/navigation/statusbar.dart';
@@ -460,6 +461,8 @@ class SeriesScreenState extends State<SeriesScreen> {
                     setState(() {
                       series.primaryAnilistId = value;
                     });
+
+                    if (homeKey.currentState != null) homeKey.currentState!.seriesWasModified = true;
                     // Fetch and load Anilist data
                     await _loadAnilistData(value);
                   }
