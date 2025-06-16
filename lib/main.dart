@@ -47,14 +47,12 @@ import 'widgets/animated_indicator.dart';
 import 'widgets/buttons/wrapper.dart';
 import 'widgets/cursors.dart';
 import 'widgets/dialogs/link_anilist_multi.dart';
-import 'widgets/inverted_border_radius_clipper.dart';
 import 'widgets/window_buttons.dart';
 
 final _appTheme = AppTheme();
 final _navigationManager = NavigationManager();
 final _settings = SettingsManager();
 
-// ignore: library_private_types_in_public_api
 final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
 final GlobalKey<_MiruRyoikiState> homeKey = GlobalKey<_MiruRyoikiState>();
 final GlobalKey<SeriesScreenState> seriesScreenKey = GlobalKey<SeriesScreenState>();

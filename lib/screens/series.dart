@@ -158,9 +158,17 @@ class SeriesScreenState extends State<SeriesScreen> {
       // Only save if dominant color changed or was newly set
       if (originalDominantColor?.value != series!.dominantColor?.value) {
         // Save the updated series to the library
-        final library = Provider.of<Library>(context, listen: false);
+
+        final BuildContext ctx;
+        if (mounted)
+          ctx = context;
+        else
+          ctx = Manager.context;
+          
+        // ignore: use_build_context_synchronously
+        final library = Provider.of<Library>(ctx, listen: false);
         await library.updateSeries(series!, invalidateCache: false);
-        
+
         if (libraryScreenKey.currentState != null) {
           libraryScreenKey.currentState!.updateSeriesInSortCache(series!);
         }

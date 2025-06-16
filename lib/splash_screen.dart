@@ -5,7 +5,6 @@ import 'dart:io';
 
 import 'package:bitsdojo_window/bitsdojo_window.dart';
 import 'package:fluent_ui/fluent_ui.dart';
-import 'package:flutter_acrylic/window.dart' as flutter_acrylic;
 import 'package:miruryoiki/manager.dart';
 import 'package:miruryoiki/services/library/library_provider.dart';
 import 'package:miruryoiki/settings.dart';
@@ -14,7 +13,6 @@ import 'package:provider/provider.dart';
 import 'package:app_links/app_links.dart';
 import 'package:window_manager/window_manager.dart';
 
-import 'services/window/listener.dart';
 import 'services/window/service.dart';
 import 'utils/path_utils.dart';
 import 'utils/screen_utils.dart';
@@ -27,7 +25,8 @@ class EasySplashScreen extends StatefulWidget {
   /// Duration to wait before executing the future navigator
   final Duration waitBeforeFutureNavigator;
 
-  /// A function that returns a Future<String>
+  /// A function that returns a Future&lt;String&gt;
+  /// 
   /// When this future completes, it will navigate to the returned route
   final Future<String?> Function() futureNavigator;
 
@@ -130,6 +129,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
     } catch (e, st) {
       logErr('Error during app initialization', e, st);
     }
+    return null;
     // Navigate to main app
     // return '/MiruRyoiki';
   }

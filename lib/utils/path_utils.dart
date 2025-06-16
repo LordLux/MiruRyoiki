@@ -70,12 +70,13 @@ class PathString {
 
   /// JSON serialization/deserialization
   /// Accepts String or Map&lt;String, dynamic&gt; for deserialization
-  factory PathString.fromJson(dynamic json) {
-    if (json == null) return PathString(null);
+  static PathString? fromJson(dynamic json) {
+    if (json == null) return null;
     if (json is String) return PathString(json);
     if (json is Map<String, dynamic>) return PathString(json['path'] as String?);
     throw FormatException('Expected String or Map<String, dynamic>, got ${json.runtimeType}');
   }
+
   factory PathString.fromFile(File file) => PathString(file.path);
   factory PathString.fromDirectory(Directory dir) => PathString(dir.path);
   Map<String, dynamic> toJson() => {'path': path};

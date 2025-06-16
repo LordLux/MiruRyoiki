@@ -26,7 +26,7 @@ class Episode {
     return {
       'name': name,
       'path': path.path,
-      'thumbnailPath': thumbnailPath?.pathMaybe,
+      'thumbnailPath': thumbnailPath?.path,
       'watched': watched,
       'watchedPercentage': watchedPercentage,
       'thumbnailUnavailable': thumbnailUnavailable,
@@ -37,7 +37,7 @@ class Episode {
   factory Episode.fromJson(Map<String, dynamic> json) {
     return Episode(
       name: json['name'],
-      path: PathString.fromJson(json['path']),
+      path: PathString.fromJson(json['path'])!,
       thumbnailPath: PathString.fromJson(json['thumbnailPath']),
       watched: json['watched'] ?? false,
       watchedPercentage: json['watchedPercentage'] ?? 0.0,
@@ -49,7 +49,7 @@ class Episode {
     if (thumbnailUnavailable) return null;
 
     // Check if cached thumbnail already exists
-    if (thumbnailPath != null && thumbnailPath!.pathMaybe != null) {
+    if (thumbnailPath != null) {
       final file = File(thumbnailPath!.path);
       if (await file.exists()) return thumbnailPath;
     }
