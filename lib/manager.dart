@@ -9,8 +9,8 @@ import 'enums.dart';
 import 'services/navigation/shortcuts.dart';
 import 'settings.dart';
 import 'theme.dart';
+import 'utils/logging.dart';
 import 'utils/screen_utils.dart';
-
 
 class Manager {
   static const int dynMouseScrollDuration = 150;
@@ -24,9 +24,20 @@ class Manager {
   static List<String> accounts = [];
 
   static Uri? initialDeepLink;
+  static bool skipRegistryIndexing = false;
+
+  static void parseArgs(List<String> args) {
+    if (args.isEmpty) return;
+
+    for (var arg in args) {
+      if (arg == '--skip-registry-indexing') {
+        skipRegistryIndexing = true;
+      }
+    }
+  }
 
   static void setState() => homeKey.currentState?.setState(() {});
-  
+
   static BuildContext get context => rootNavigatorKey.currentContext!;
 
   static NavigationManager get navigation => Provider.of<NavigationManager>(context, listen: false);
@@ -41,13 +52,13 @@ class Manager {
       } catch (e) {
         // If we have a cached instance, return it
         if (_cachedAppTheme != null) return _cachedAppTheme!;
-        
+
         // Otherwise create a new default instance
         _cachedAppTheme = AppTheme();
         return _cachedAppTheme!;
       }
     }
-    
+
     // If context is null, use cached or create new
     return _cachedAppTheme ?? (_cachedAppTheme = AppTheme());
   }
@@ -63,7 +74,7 @@ class Manager {
   static bool get animationsEnabled => !settings.disableAnimations;
 
   static DominantColorSource get dominantColorSource => settings.dominantColorSource;
-  
+
   static double get fontSizeMultiplier => ScreenUtils.textScaleFactor * ((rootNavigatorKey.currentContext != null ? appTheme.fontSize : kDefaultFontSize) / kDefaultFontSize);
 
   /// Checks if the current platform is MacOS
@@ -74,8 +85,7 @@ class Manager {
 
   static bool get isCtrlPressed => KeyboardState.ctrlPressedNotifier.value;
   static bool get isShiftPressed => KeyboardState.shiftPressedNotifier.value;
-  
-  
+
   static TextStyle get bodyStyle => FluentTheme.of(context).typography.body!;
   static TextStyle get bodyLargeStyle => FluentTheme.of(context).typography.bodyLarge!;
   static TextStyle get bodyStrongStyle => FluentTheme.of(context).typography.bodyStrong!;

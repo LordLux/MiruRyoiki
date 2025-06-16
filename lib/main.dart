@@ -69,6 +69,7 @@ void main(List<String> args) async {
     "miruryoioki",
     onSecondWindow: (args) => log(args),
   );
+  Manager.parseArgs(args);
 
   // Only run on Windows
   if (!Platform.isWindows) throw UnimplementedError('This app is only supported on Windows (for now).');
