@@ -61,7 +61,13 @@ class SeriesScreenState extends State<SeriesScreen> {
   bool _isBannerHovering = false;
 
   Series? get series {
-    final library = Provider.of<Library>(context, listen: false);
+    final Library library;
+    try {
+      library = Provider.of<Library>(context, listen: false);
+    } catch (e) {
+      logErr('Failed to get library provider: $e');
+      return null;
+    }
     return library.getSeriesByPath(widget.seriesPath);
   }
 
@@ -164,7 +170,7 @@ class SeriesScreenState extends State<SeriesScreen> {
           ctx = context;
         else
           ctx = Manager.context;
-          
+
         // ignore: use_build_context_synchronously
         final library = Provider.of<Library>(ctx, listen: false);
         await library.updateSeries(series!, invalidateCache: false);

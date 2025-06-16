@@ -233,7 +233,7 @@ class _HoverableEpisodeTileState extends State<HoverableEpisodeTile> {
 
         final PathString? thumbnailPath = snapshot.data;
 
-        if (thumbnailPath == null || !File(thumbnailPath.path).existsSync()) {
+        if (thumbnailPath == null || thumbnailPath.pathMaybe == null || !File(thumbnailPath.path).existsSync()) {
           // Fallback icon if no thumbnail
           return Icon(FluentIcons.video, size: 32, color: FluentTheme.of(context).resources.textFillColorSecondary);
         }
