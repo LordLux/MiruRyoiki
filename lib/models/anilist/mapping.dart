@@ -27,7 +27,7 @@ class AnilistMapping {
       };
 
   factory AnilistMapping.fromJson(Map<String, dynamic> json) => AnilistMapping(
-        localPath: PathString.fromJson(json['localPath']),
+        localPath: PathString.fromJson(json['localPath'])!,
         anilistId: json['anilistId'],
         title: json['title'],
         lastSynced: json['lastSynced'] != null ? DateTime.parse(json['lastSynced']) : null,

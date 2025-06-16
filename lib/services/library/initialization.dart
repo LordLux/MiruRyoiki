@@ -6,7 +6,13 @@ extension LibraryInitialization on Library {
       await _loadLibrary();
       _initialized = true;
     }
-    await loadLibraryFirstTime(context);
+    final BuildContext ctx;
+    if (context.mounted)
+      ctx = context;
+    else
+      ctx = Manager.context;
+    // ignore: use_build_context_synchronously
+    await loadLibraryFirstTime(ctx);
   }
 
   void _initAutoSave() {

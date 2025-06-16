@@ -14,6 +14,7 @@ analyzer:
     non_constant_identifier_names: ignore
     invalid_use_of_visible_for_testing_member: ignore
     invalid_use_of_protected_member: ignore
+    library_private_types_in_public_api: ignore
 include: package:flutter_lints/flutter.yaml
 
 linter:

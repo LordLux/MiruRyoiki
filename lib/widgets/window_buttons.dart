@@ -1,5 +1,4 @@
 import 'package:fluent_ui/fluent_ui.dart';
-import 'package:flutter_acrylic/window.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:miruryoiki/services/window/service.dart';
 import 'package:miruryoiki/theme.dart';

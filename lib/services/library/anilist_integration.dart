@@ -268,22 +268,9 @@ extension LibraryAnilistIntegration on Library {
       homeKey.currentState!.seriesWasModified = true;
     }
 
-    await _backupMappings();
-
     await _saveLibrary();
     notifyListeners();
 
-    try {
-      final dir = miruRyoiokiSaveDirectory;
-      final file = File('${dir.path}/${Library.miruryoikiLibrary}.json');
-      final backupFile = File('${dir.path}/${Library.miruryoikiLibrary}.mappings.json');
-      if (await file.exists()) {
-        await file.copy(backupFile.path);
-        logDebug('Created backup after updating mappings');
-      }
-    } catch (e, st) {
-      logErr('Error creating mapping backup', e, st);
-    }
     return true;
   }
 

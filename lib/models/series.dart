@@ -57,7 +57,7 @@ Season(
   factory Season.fromJson(Map<String, dynamic> json) {
     return Season(
       name: json['name'],
-      path: PathString.fromJson(json['path']),
+      path: PathString.fromJson(json['path'])!,
       episodes: (json['episodes'] as List).map((e) => Episode.fromJson(e)).toList(),
     );
   }
@@ -802,7 +802,7 @@ class Series {
       logErr('Critical error parsing Series.fromJson', e, st);
       return Series(
         name: json['name'] as String? ?? 'Unknown Series',
-        path: PathString.fromJson(json['path']),
+        path: PathString.fromJson(json['path'])!,
         seasons: [],
       );
     }
