@@ -13,6 +13,7 @@ class LoadingButton extends StatefulWidget {
   final bool isFilled;
   final String? tooltip;
   final Widget? tooltipWidget;
+  final Color? filledColor;
 
   const LoadingButton({
     super.key,
@@ -25,6 +26,7 @@ class LoadingButton extends StatefulWidget {
     this.isFilled = false,
     this.tooltip,
     this.tooltipWidget,
+    this.filledColor,
   });
 
   @override
@@ -50,43 +52,54 @@ class LoadingButtonState extends State<LoadingButton> {
       tooltip: widget.tooltip,
       tooltipWidget: widget.tooltipWidget,
       child: (_) {
-        return Button(
-          onPressed: widget.isButtonDisabled ? null : widget.onPressed,
-          style: (widget.isFilled ? FluentTheme.of(context).buttonTheme.filledButtonStyle! : FluentTheme.of(context).buttonTheme.defaultButtonStyle!).copyWith(
-            padding: WidgetStatePropertyAll(EdgeInsets.zero),
-          ),
-          child: SizedBox(
-            height: widget.isSmall ? 32 : 48,
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                AnimatedSlide(
-                  offset: widget.isLoading ? const Offset(-0.125, 0) : Offset.zero,
-                  duration: shortStickyHeaderDuration,
-                  curve: Curves.easeInOut,
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(horizontal: horizPadding),
-                    child: Text(widget.label),
+        Widget btn(Widget child) => Button(
+              onPressed: widget.isButtonDisabled ? null : widget.onPressed,
+              style: FluentTheme.of(context).buttonTheme.defaultButtonStyle!.copyWith(padding: WidgetStatePropertyAll(EdgeInsets.zero)),
+              child: child,
+            );
+        Widget filled_btn(Widget child) => FilledButton(
+              onPressed: widget.isButtonDisabled ? null : widget.onPressed,
+              style: FluentTheme.of(context).buttonTheme.filledButtonStyle!.copyWith(
+                    padding: WidgetStatePropertyAll(EdgeInsets.zero),
+                    backgroundColor: WidgetStateProperty.resolveWith<Color?>(
+                      (states) => widget.filledColor ?? FluentTheme.of(context).accentColor,
+                    ),
                   ),
+              child: child,
+            );
+        Widget child = SizedBox(
+          height: widget.isSmall ? 32 : 48,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              AnimatedSlide(
+                offset: widget.isLoading ? const Offset(-0.125, 0) : Offset.zero,
+                duration: shortStickyHeaderDuration,
+                curve: Curves.easeInOut,
+                child: Padding(
+                  padding: EdgeInsets.symmetric(horizontal: horizPadding),
+                  child: Text(widget.label),
                 ),
-                Positioned(
-                  right: 15,
-                  child: AnimatedOpacity(
-                    opacity: widget.isLoading ? 1.0 : 0.0,
-                    duration: shortStickyHeaderDuration,
-                    child: SizedBox(
-                      width: widget.isSmall ? 20 : 25,
-                      height: widget.isSmall ? 20 : 25,
-                      child: ProgressRing(
-                        strokeWidth: widget.isSmall ? 3.5 : 4,
-                      ),
+              ),
+              Positioned(
+                right: 15,
+                child: AnimatedOpacity(
+                  opacity: widget.isLoading ? 1.0 : 0.0,
+                  duration: shortStickyHeaderDuration,
+                  child: SizedBox(
+                    width: widget.isSmall ? 20 : 25,
+                    height: widget.isSmall ? 20 : 25,
+                    child: ProgressRing(
+                      strokeWidth: widget.isSmall ? 3.5 : 4,
                     ),
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         );
+        if (widget.isFilled) return filled_btn(child);
+        return btn(child);
       },
     );
   }

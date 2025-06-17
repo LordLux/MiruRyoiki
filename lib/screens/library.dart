@@ -85,6 +85,12 @@ class LibraryScreenState extends State<LibraryScreen> {
 
   bool _isSelectingFolder = false;
 
+  Map<String, List<Series>> _cachedGroups = {};
+  bool _hasAppliedGrouping = false;
+  LibraryView? _lastAppliedGroupingView;
+  List<String>? _lastAppliedListOrder;
+  bool? _lastAppliedShowGrouped;
+
   Widget get filterIcon {
     IconData icon;
     if (_showFilters)
@@ -108,7 +114,7 @@ class LibraryScreenState extends State<LibraryScreen> {
       _filterHintShowing = false;
     });
   }
-  
+
   /// Update a dominantColor of a series in the cache when the series' dominantColor is changed
   void updateSeriesInSortCache(Series updatedSeries) {
     // Update in ungrouped series cache
@@ -142,6 +148,17 @@ class LibraryScreenState extends State<LibraryScreen> {
       _hasAppliedSorting = false;
       _sortedGroupedSeries.clear();
       _sortedUngroupedSeries.clear();
+      invalidateGroupingCache();
+    });
+  }
+
+  void invalidateGroupingCache() {
+    setState(() {
+      _hasAppliedGrouping = false;
+      _lastAppliedGroupingView = null;
+      _lastAppliedListOrder = null;
+      _lastAppliedShowGrouped = null;
+      _cachedGroups.clear();
     });
   }
 
@@ -216,6 +233,19 @@ class LibraryScreenState extends State<LibraryScreen> {
     return false;
   }
 
+  bool _groupingNeeded(List<Series> series) {
+    if (!_hasAppliedGrouping || _lastAppliedGroupingView != _currentView || _lastAppliedShowGrouped != _showGrouped || _cachedGroups.isEmpty) {
+      return true;
+    }
+
+    // Check if list order has changed
+    if (_lastAppliedListOrder == null || !_areListsEqual(_lastAppliedListOrder!, _customListOrder)) {
+      return true;
+    }
+
+    return false;
+  }
+
   void _onViewChanged(LibraryView? value) {
     if (value != null && value != _currentView) {
       setState(() {
@@ -224,6 +254,9 @@ class LibraryScreenState extends State<LibraryScreen> {
         _hasAppliedSorting = false;
         _sortedGroupedSeries.clear();
         _sortedUngroupedSeries.clear();
+
+        _hasAppliedGrouping = false;
+        _cachedGroups.clear();
       });
       _saveUserPreferences();
     }
@@ -961,143 +994,155 @@ class LibraryScreenState extends State<LibraryScreen> {
     Widget Function(List<Series>, ScrollController, ScrollPhysics, bool, {bool allowMeasurement}) episodesGrid,
   ) {
     // Create the groupings based on selected grouping type
-    Map<String, List<Series>> groups = {};
+    Map<String, List<Series>> groups = _cachedGroups;
 
-    // Get all Anilist lists
-    final anilistProvider = Provider.of<AnilistProvider>(context, listen: false);
+    if (_groupingNeeded(allSeries)) {
+      // Create the groupings based on selected grouping type
+      groups = {};
 
-    // sort them to have CURRENT, PLAN TO WATCH, ON HOLD, COMPLETED, DROPPED
-    for (final listName in _customListOrder) {
-      groups[listName == '__unlinked' ? 'Unlinked' : _fromApiListName(listName)] = [];
-    }
+      // Get all Anilist lists
+      final anilistProvider = Provider.of<AnilistProvider>(context, listen: false);
 
-    // Sort series into groups
-    for (final series in allSeries) {
-      if (series.isLinked) {
-        logTrace('----\nProcessing series: ${series.name}', splitLines: true);
-        if (series.anilistMappings.isNotEmpty) {
-          bool allCompleted = true;
-          final completedList = anilistProvider.userLists['COMPLETED'];
+      // sort them to have CURRENT, PLAN TO WATCH, ON HOLD, COMPLETED, DROPPED
+      for (final listName in _customListOrder) {
+        groups[listName == '__unlinked' ? 'Unlinked' : _fromApiListName(listName)] = [];
+      }
 
-          if (completedList != null) {
+      // Sort series into groups
+      for (final series in allSeries) {
+        if (series.isLinked) {
+          logTrace('----\nProcessing series: ${series.name}', splitLines: true);
+          if (series.anilistMappings.isNotEmpty) {
+            bool allCompleted = true;
+            final completedList = anilistProvider.userLists['COMPLETED'];
+
+            if (completedList != null) {
+              for (final mapping in series.anilistMappings) {
+                final isCompleted = completedList.entries.any((entry) => entry.media.id == mapping.anilistId);
+                if (!isCompleted) {
+                  allCompleted = false;
+                  break;
+                }
+              }
+
+              if (allCompleted) {
+                logTrace('  ADDING TO ALL COMPLETED GROUP');
+                final completedKey = _fromApiListName('COMPLETED');
+                if (groups.containsKey(completedKey)) {
+                  groups[completedKey]?.add(series);
+                  continue; // Skip to next series
+                }
+              }
+            }
+
+            // For series that aren't all completed, check all mappings and prioritize lists
+            // Define list priority order (highest to lowest)
+            final listPriority = [
+              AnilistListStatus.CURRENT.name_,
+              AnilistListStatus.REPEATING.name_,
+              AnilistListStatus.PAUSED.name_,
+              AnilistListStatus.PLANNING.name_,
+              AnilistListStatus.DROPPED.name_,
+              AnilistListStatus.COMPLETED.name_,
+            ];
+
+            // Collect all lists this series appears in
+            final seriesLists = <String>{};
+
             for (final mapping in series.anilistMappings) {
-              final isCompleted = completedList.entries.any((entry) => entry.media.id == mapping.anilistId);
-              if (!isCompleted) {
-                allCompleted = false;
+              logTrace('  Checking lists for mapping: ${mapping.title} (ID: ${mapping.anilistId})');
+
+              // Check if mapping is completed
+              final bool isCompleted = completedList?.entries.any((entry) => entry.media.id == mapping.anilistId) ?? false;
+              if (isCompleted) {
+                logTrace('  --${mapping.title} is COMPLETED');
+              } else {
+                logTrace('  --${mapping.title} is NOT COMPLETED');
+              }
+
+              // Check all standard lists
+              bool foundInAnyList = false;
+              for (final entry in anilistProvider.userLists.entries) {
+                final listName = entry.key;
+                if (listName.startsWith('custom_')) continue; // Handle custom lists separately
+
+                final list = entry.value;
+                final isInList = list.entries.any((listEntry) => listEntry.media.id == mapping.anilistId);
+
+                if (isInList) {
+                  logTrace('  ---${mapping.title} found in list: $listName');
+                  seriesLists.add(listName);
+                  foundInAnyList = true;
+                  break; // Stop checking other standard lists for this mapping
+                }
+              }
+
+              if (!foundInAnyList) {
+                logWarn('  ---${mapping.title} not found in any standard list!\nCheck if you have added it to Anilist, dummy!');
+              }
+            }
+
+            String? highestPriorityList;
+            for (final listName in listPriority) {
+              if (seriesLists.contains(listName)) {
+                highestPriorityList = listName;
+                logTrace('  Highest priority list: $highestPriorityList');
                 break;
               }
             }
 
-            if (allCompleted) {
-              logTrace('  ADDING TO ALL COMPLETED GROUP');
-              final completedKey = _fromApiListName('COMPLETED');
-              if (groups.containsKey(completedKey)) {
-                groups[completedKey]?.add(series);
+            // Add to the highest priority list if found
+            if (highestPriorityList != null) {
+              final displayName = _fromApiListName(highestPriorityList);
+              logTrace('  ADDING TO GROUP: $displayName');
+              if (groups.containsKey(displayName)) {
+                groups[displayName]?.add(series);
                 continue; // Skip to next series
               }
             }
-          }
 
-          // For series that aren't all completed, check all mappings and prioritize lists
-          // Define list priority order (highest to lowest)
-          final listPriority = [
-            AnilistListStatus.CURRENT.name_,
-            AnilistListStatus.REPEATING.name_,
-            AnilistListStatus.PAUSED.name_,
-            AnilistListStatus.PLANNING.name_,
-            AnilistListStatus.DROPPED.name_,
-            AnilistListStatus.COMPLETED.name_,
-          ];
+            // Check custom lists
+            bool foundInCustomList = false;
+            for (final mapping in series.anilistMappings) {
+              for (final entry in anilistProvider.userLists.entries) {
+                final listName = entry.key;
+                if (!listName.startsWith('custom_')) continue; // Only check custom lists
 
-          // Collect all lists this series appears in
-          final seriesLists = <String>{};
-
-          for (final mapping in series.anilistMappings) {
-            logTrace('  Checking lists for mapping: ${mapping.title} (ID: ${mapping.anilistId})');
-
-            // Check if mapping is completed
-            final bool isCompleted = completedList?.entries.any((entry) => entry.media.id == mapping.anilistId) ?? false;
-            if (isCompleted) {
-              logTrace('  --${mapping.title} is COMPLETED');
-            } else {
-              logTrace('  --${mapping.title} is NOT COMPLETED');
-            }
-
-            // Check all standard lists
-            bool foundInAnyList = false;
-            for (final entry in anilistProvider.userLists.entries) {
-              final listName = entry.key;
-              if (listName.startsWith('custom_')) continue; // Handle custom lists separately
-
-              final list = entry.value;
-              final isInList = list.entries.any((listEntry) => listEntry.media.id == mapping.anilistId);
-
-              if (isInList) {
-                logTrace('  ---${mapping.title} found in list: $listName');
-                seriesLists.add(listName);
-                foundInAnyList = true;
-                break; // Stop checking other standard lists for this mapping
+                final list = entry.value;
+                if (list.entries.any((listEntry) => listEntry.media.id == mapping.anilistId)) {
+                  groups[_fromApiListName(listName)]?.add(series);
+                  foundInCustomList = true;
+                  break;
+                }
               }
+              if (foundInCustomList) break;
             }
 
-            if (!foundInAnyList) {
-              logWarn('  ---${mapping.title} not found in any standard list!\nCheck if you have added it to Anilist, dummy!');
-            }
+            if (foundInCustomList) continue; // Skip to next series
+
+            // If not found in any list, add to "Unlinked"
+            final unlinkedKey = groups.keys.firstWhere(
+              (k) => k == 'Unlinked',
+              orElse: () => groups.keys.first,
+            );
+            groups[unlinkedKey]?.add(series);
           }
-
-          String? highestPriorityList;
-          for (final listName in listPriority) {
-            if (seriesLists.contains(listName)) {
-              highestPriorityList = listName;
-              logTrace('  Highest priority list: $highestPriorityList');
-              break;
-            }
-          }
-
-// Add to the highest priority list if found
-          if (highestPriorityList != null) {
-            final displayName = _fromApiListName(highestPriorityList);
-            logTrace('  ADDING TO GROUP: $displayName');
-            if (groups.containsKey(displayName)) {
-              groups[displayName]?.add(series);
-              continue; // Skip to next series
-            }
-          }
-
-          // Check custom lists
-          bool foundInCustomList = false;
-          for (final mapping in series.anilistMappings) {
-            for (final entry in anilistProvider.userLists.entries) {
-              final listName = entry.key;
-              if (!listName.startsWith('custom_')) continue; // Only check custom lists
-
-              final list = entry.value;
-              if (list.entries.any((listEntry) => listEntry.media.id == mapping.anilistId)) {
-                groups[_fromApiListName(listName)]?.add(series);
-                foundInCustomList = true;
-                break;
-              }
-            }
-            if (foundInCustomList) break;
-          }
-
-          if (foundInCustomList) continue; // Skip to next series
-
-          // If not found in any list, add to "Unlinked"
-          final unlinkedKey = groups.keys.firstWhere(
-            (k) => k == 'Unlinked',
-            orElse: () => groups.keys.first,
-          );
-          groups[unlinkedKey]?.add(series);
+        } else {
+          // Unlinked series go to "Unlinked" group
+          groups['Unlinked']?.add(series);
         }
-      } else {
-        // Unlinked series go to "Unlinked" group
-        groups['Unlinked']?.add(series);
       }
-    }
 
-    // Remove empty groups
-    groups.removeWhere((_, series) => series.isEmpty);
+      // Remove empty groups
+      groups.removeWhere((_, series) => series.isEmpty);
+
+      // Cache the groups
+      _cachedGroups = Map.from(groups);
+      _hasAppliedGrouping = true;
+      _lastAppliedGroupingView = _currentView;
+      _lastAppliedListOrder = List.from(_customListOrder);
+      _lastAppliedShowGrouped = _showGrouped;
+    }
 
     // Build the grouped ListView
     return Padding(

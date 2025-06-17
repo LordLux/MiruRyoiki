@@ -56,6 +56,7 @@ dependencies:
     path: M:/Projects/flutter_desktop_context_menu/
     # git:
     #   url: https://github.com/LordLux/flutter_desktop_context_menu.git
+  cached_network_image: ^3.3.1
 
 dev_dependencies:
   flutter_test:

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:crypto/crypto.dart';
 import 'dart:convert';
+import 'package:cached_network_image/cached_network_image.dart';
 
 import '../../utils/logging.dart';
 import '../../utils/path_utils.dart';
@@ -103,7 +104,7 @@ class ImageCacheService {
 
     // Start caching in background but return network image for immediate display
     cacheImage(url);
-    return NetworkImage(url);
+    return CachedNetworkImageProvider(url, errorListener: (error) => logWarn('Failed to load image from network: $error'));
   }
 
   // Clear cache

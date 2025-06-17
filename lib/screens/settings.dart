@@ -1276,6 +1276,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 /// Card with vertically distributed children
 Widget SettingsCard({required List<Widget> children}) {
   return Card(
+    borderRadius: BorderRadius.circular(8.0),
     child: Padding(
       padding: const EdgeInsets.all(24.0),
       child: Column(
