@@ -26,7 +26,7 @@ class EasySplashScreen extends StatefulWidget {
   final Duration waitBeforeFutureNavigator;
 
   /// A function that returns a Future&lt;String&gt;
-  /// 
+  ///
   /// When this future completes, it will navigate to the returned route
   final Future<String?> Function() futureNavigator;
 
@@ -192,9 +192,6 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
 
 Future<void> initializeAndMorphWindow() async {
   // First set the basic window properties
-  await windowManager.setIgnoreMouseEvents(false);
-  await windowManager.setAlwaysOnTop(false);
-  await windowManager.setResizable(true);
   await windowManager.setMinimumSize(Size(ScreenUtils.kDefaultMinWindowWidth, ScreenUtils.kDefaultMinWindowHeight));
   await windowManager.setMaximumSize(Size(ScreenUtils.kDefaultMaxWindowWidth, ScreenUtils.kDefaultMaxWindowHeight));
 
@@ -208,6 +205,10 @@ Future<void> initializeAndMorphWindow() async {
   // Finally, ensure window is visible and focused
   await windowManager.show();
   await windowManager.focus();
+
+  await windowManager.setIgnoreMouseEvents(false);
+  await windowManager.setAlwaysOnTop(false);
+  await windowManager.setResizable(true);
 }
 
 Future<void> morphToSavedWindowState() async {

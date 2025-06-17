@@ -18,6 +18,7 @@ import 'package:url_launcher/url_launcher_string.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:windows_single_instance/windows_single_instance.dart';
 import 'package:material_symbols_icons/material_symbols_icons.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 import 'services/anilist/provider/anilist_provider.dart';
 import 'services/navigation/dialogs.dart';
@@ -320,7 +321,6 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
   PathString? _selectedSeriesPath;
   PathString? lastSelectedSeriesPath;
   bool _isSeriesView = false;
-  bool _showAnilistRedirectToProfile = false;
   bool _isFinishedTransitioning = false;
   bool _isSecondaryTitleBarVisible = false;
   bool seriesWasModified = false;
@@ -333,6 +333,7 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
   final ScrollController settingsController = ScrollController();
 
   late final LibraryScreen _libraryScreen;
+  late final AccountsScreen _accountsScreen;
 
   // bool get _isLibraryView => !(_isSeriesView && _selectedSeriesPath != null);
   bool get isSeriesView => _isSeriesView;
@@ -406,6 +407,11 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
       key: libraryScreenKey,
       onSeriesSelected: navigateToSeries,
       scrollController: _libraryMap['controller'] as ScrollController,
+    );
+    
+    _accountsScreen = AccountsScreen(
+      key: accountsKey,
+      scrollController: _accountsMap['controller'] as ScrollController,
     );
 
     nextFrame(() {
@@ -575,10 +581,7 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
                             buildPaneItem(
                               accountsIndex,
                               icon: anilistIcon(anilistProvider.isOffline),
-                              body: AccountsScreen(
-                                key: accountsKey,
-                                scrollController: _accountsMap['controller'] as ScrollController,
-                              ),
+                              body: _accountsScreen,
                               extra: (isHovered) {
                                 final anilistProvider = Provider.of<AnilistProvider>(context, listen: false);
                                 final user = anilistProvider.currentUser;
@@ -588,66 +591,26 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
                                 return Flexible(
                                   child: Align(
                                     alignment: Alignment.centerRight,
-                                    child: Stack(
-                                      alignment: Alignment.centerRight,
-                                      children: [
-                                        // PFP
-                                        if (user.avatar != null)
-                                          SizedBox(
-                                            height: 50,
-                                            width: 50,
-                                            child: Padding(
-                                              padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 8.0),
-                                              child: CircleAvatar(
-                                                backgroundImage: NetworkImage(user.avatar!),
-                                                backgroundColor: Manager.accentColor.withOpacity(0.25),
-                                                radius: 17,
-                                              ),
+                                    child: SizedBox(
+                                      height: 50,
+                                      width: 50,
+                                      child: Padding(
+                                        padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 8.0),
+                                        child: Builder(builder: (context) {
+                                          if (user.avatar == null) return CircleAvatar(backgroundColor: Manager.accentColor.withOpacity(0.25));
+
+                                          return CircleAvatar(
+                                            backgroundImage: CachedNetworkImageProvider(
+                                              user.avatar!,
+                                              errorListener: (error) {
+                                                logWarn('Failed to load Anilist avatar image: $error');
+                                              },
                                             ),
-                                          ),
-                                        // USERNAME
-                                        Padding(
-                                          padding: const EdgeInsets.only(right: 4.0),
-                                          child: SizedBox(
-                                            width: 40,
-                                            height: 40,
-                                            child: AnimatedOpacity(
-                                              duration: getDuration(const Duration(milliseconds: 200)),
-                                              opacity: _showAnilistRedirectToProfile ? 1 : 0,
-                                              child: ClipRRect(
-                                                borderRadius: BorderRadius.circular(200),
-                                                child: MouseButtonWrapper(
-                                                  tooltip: 'Open Anilist Profile',
-                                                  child: (_) => SizedBox(
-                                                    height: 22,
-                                                    child: MouseRegion(
-                                                      onEnter: (_) {
-                                                        if (!_showAnilistRedirectToProfile) setState(() => _showAnilistRedirectToProfile = true);
-                                                      },
-                                                      onExit: (_) {
-                                                        if (_showAnilistRedirectToProfile) setState(() => _showAnilistRedirectToProfile = false);
-                                                      },
-                                                      child: IconButton(
-                                                        icon: Icon(
-                                                          Symbols.open_in_new,
-                                                          size: 18,
-                                                          color: FluentTheme.of(context).resources.textFillColorPrimary,
-                                                        ),
-                                                        onPressed: !_showAnilistRedirectToProfile //
-                                                            ? null
-                                                            : () {
-                                                                // open profile page on anilist
-                                                                launchUrlString('https://anilist.co/user/${user.name}');
-                                                              },
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ),
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                      ],
+                                            backgroundColor: Manager.accentColor.withOpacity(0.25),
+                                            radius: 17,
+                                          );
+                                        }),
+                                      ),
                                     ),
                                   ),
                                 );
@@ -885,7 +848,7 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
       _isSeriesView = false;
       _isFinishedTransitioning = false;
     });
-    
+
     if (seriesWasModified) {
       // Use the key to access the library screen state
       libraryScreenKey.currentState?.invalidateSortCache();
@@ -1026,6 +989,7 @@ void setIcon() async {
   }
 }
 
+// TODO cache anime info
 // TODO add setting to choose whether user prefers to manually rescan registry with library or if automatic (current)
 // TODO add Anilist sync status and internet connection status to the status bar
 // TODO edit view options for library to separate sort and view (grid, list etc) from filters
