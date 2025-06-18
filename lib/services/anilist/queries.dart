@@ -4,6 +4,7 @@ import '../../../models/anilist/anime.dart';
 import '../../../models/anilist/user_list.dart';
 import '../../main.dart';
 import '../../manager.dart';
+import '../../models/anilist/user_data.dart';
 import '../../utils/logging.dart';
 import 'auth.dart';
 
@@ -247,6 +248,99 @@ class AnilistService {
     }
   }
 
+  /// Get detailed anime information by ID
+  Future<Map<int, AnilistAnime>> getMultipleAnimesDetails(List<int> ids, {int perPage = 50}) async {
+    if (_client == null) return {};
+
+    logTrace('Fetching Anilist details for IDs: $ids');
+
+    final String batchQuery = '''
+      query GetMultipleAnimesDetails(\$ids: [Int]) {
+        Page(perPage: $perPage) {
+          media(id_in: \$ids, type: ANIME) {
+            id
+            title {
+              romaji
+              english
+              native
+              userPreferred
+            }
+            bannerImage
+            coverImage {
+              extraLarge
+              color
+            }
+            description
+            meanScore
+            popularity
+            favourites
+            status
+            format
+            episodes
+            seasonYear
+            season
+            genres
+            averageScore
+            trending
+            rankings {
+              rank
+              type
+              context
+            }
+            
+            startDate {
+              year
+              month
+              day
+            }
+            endDate {
+              year
+              month
+              day
+            }
+            updatedAt
+            nextAiringEpisode {
+              airingAt
+              episode
+              timeUntilAiring
+            }
+            isFavourite
+            siteUrl
+          }
+        }
+      }
+    ''';
+
+    try {
+      final result = await _client!.query(
+        QueryOptions(
+          document: gql(batchQuery),
+          variables: {
+            'ids': ids,
+          },
+        ),
+      );
+
+      if (result.hasException) {
+        logErr('Error getting anime details', result.exception);
+        return {};
+      }
+
+      final mediaList = result.data?['Page']['media'] as List<dynamic>? ?? [];
+      final Map<int, AnilistAnime> animeMap = {};
+
+      for (final item in mediaList) {
+        final anime = AnilistAnime.fromJson(item);
+        animeMap[anime.id] = anime;
+      }
+
+      return animeMap;
+    } catch (e) {
+      logErr('Error querying Anilist', e);
+      return {};
+    }
+  }
+
   /// Get current user information
   Future<AnilistUser?> getCurrentUser() async {
     if (_client == null) return null;
@@ -280,6 +374,208 @@ class AnilistService {
 
       final userData = result.data?['Viewer'];
       return userData != null ? AnilistUser.fromJson(userData) : null;
+    } catch (e) {
+      logErr('Error querying Anilist', e);
+      return null;
+    }
+  }
+
+  Future<AnilistUserData?> getCurrentUserData() async {
+    if (_client == null) return null;
+
+    logTrace('Fetching current user data from Anilist...');
+
+    final userQuery = '''query {
+    Viewer {
+      about
+      siteUrl
+      options {
+        titleLanguage
+        displayAdultContent
+        airingNotifications
+        profileColor
+        timezone
+        activityMergeTime
+        restrictMessagesToFollowing
+        staffNameLanguage
+      }
+      mediaStatistics {
+        anime {
+          count
+          meanScore
+          standardDeviation
+          minutesWatched
+          episodesWatched
+          genres {
+            genre
+            count
+            meanScore
+            timeWatched
+          }
+          tags {
+            tag {
+              id
+              name
+            }
+            count
+            meanScore
+            timeWatched
+          }
+        }
+      }
+      favourites {
+        anime {
+          nodes {
+            id
+            title {
+              romaji
+              english
+              native
+              userPreferred
+            }
+            coverImage {
+              extraLarge
+              color
+            }
+          }
+        }
+        characters {
+          nodes {
+            id
+            name {
+              full
+              native
+            }
+            image {
+              large
+            }
+          }
+        }
+        staff {
+          nodes {
+            id
+            name {
+              full
+              native
+            }
+            image {
+              large
+            }
+          }
+        }
+        studios {
+          nodes {
+            id
+            name
+          }
+        }
+      }
+      statistics {
+        anime {
+          count
+          meanScore
+          standardDeviation
+          minutesWatched
+          episodesWatched
+          genres {
+            genre
+            count
+            meanScore
+            timeWatched
+          }
+          tags {
+            tag {
+              id
+              name
+            }
+            count
+            meanScore
+            timeWatched
+          }
+          formats {
+            format
+            count
+            meanScore
+            timeWatched
+          }
+          statuses {
+            status
+            count
+            meanScore
+            timeWatched
+          }
+          releaseYears {
+            releaseYear
+            count
+            meanScore
+            timeWatched
+          }
+          startYears {
+            startYear
+            count
+            meanScore
+            timeWatched
+          }
+          countries {
+            country
+            count
+            meanScore
+            timeWatched
+          }
+          voiceActors {
+            voiceActor {
+              id
+              name {
+                full
+              }
+            }
+            count
+            meanScore
+            timeWatched
+          }
+          staff {
+            staff {
+              id
+              name {
+                full
+              }
+            }
+            count
+            meanScore
+            timeWatched
+          }
+          studios {
+            studio {
+              id
+              name
+            }
+            count
+            meanScore
+            timeWatched
+          }
+        }
+      }
+      donatorTier
+      donatorBadge
+      createdAt
+      updatedAt
+    }
+  }
+  ''';
+    try {
+      final result = await _client!.query(
+        QueryOptions(
+          document: gql(userQuery),
+        ),
+      );
+
+      if (result.hasException) {
+        logErr('Error getting user info', result.exception);
+        return null;
+      }
+
+      final userData = result.data?['Viewer'];
+      return userData != null ? AnilistUserData.fromJson(userData) : null;
     } catch (e) {
       logErr('Error querying Anilist', e);
       return null;

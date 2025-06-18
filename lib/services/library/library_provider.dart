@@ -5,6 +5,7 @@ import 'dart:io';
 import 'package:collection/collection.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:open_app_file/open_app_file.dart';
 import 'package:provider/provider.dart';
 
@@ -18,6 +19,7 @@ import '../../models/series.dart';
 import '../../services/anilist/linking.dart';
 import '../../settings.dart';
 import '../anilist/provider/anilist_provider.dart';
+import '../anilist/queries.dart';
 import '../file_system/cache.dart';
 import '../file_system/file_scanner.dart';
 import '../../services/player_trackers/mpchc.dart';
