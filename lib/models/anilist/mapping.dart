@@ -19,7 +19,7 @@ class AnilistMapping {
   });
 
   Map<String, dynamic> toJson() => {
-        'localPath': localPath.path,
+        'localPath': localPath.path, // not nullable
         'anilistId': anilistId,
         'title': title,
         'lastSynced': lastSynced?.toIso8601String(),
