@@ -48,7 +48,7 @@ Season(
   Map<String, dynamic> toJson() {
     return {
       'name': name,
-      'path': path.path,
+      'path': path.path, // not nullable
       'episodes': episodes.map((e) => e.toJson()).toList(),
     };
   }
@@ -608,19 +608,19 @@ class Series {
   Map<String, dynamic> toJson() {
     return {
       'name': name,
-      'path': path.path,
-      'posterPath': folderPosterPath?.pathMaybe,
-      'bannerPath': folderBannerPath?.pathMaybe,
+      'path': path.path, //not nullable
+      'posterPath': folderPosterPath?.pathMaybe, // nullable
+      'bannerPath': folderBannerPath?.pathMaybe, // nullable
       'seasons': seasons.map((s) => s.toJson()).toList(),
       'relatedMedia': relatedMedia.map((e) => e.toJson()).toList(),
       'anilistMappings': anilistMappings.map((m) => m.toJson()).toList(),
-      if (_dominantColor != null) 'dominantColor': _dominantColor!.value,
+      'dominantColor': _dominantColor?.value, // nullable
       'dataVersion': _dataVersion,
       'primaryAnilistId': _primaryAnilistId,
-      'anilistPosterUrl': _anilistPosterUrl ?? _anilistData?.posterImage,
-      'anilistBannerUrl': _anilistBannerUrl ?? _anilistData?.bannerImage,
-      if (preferredPosterSource != null) 'preferredPosterSource': preferredPosterSource!.name_,
-      if (preferredBannerSource != null) 'preferredBannerSource': preferredBannerSource!.name_,
+      'anilistPosterUrl': _anilistPosterUrl ?? _anilistData?.posterImage, // nullable
+      'anilistBannerUrl': _anilistBannerUrl ?? _anilistData?.bannerImage, // nullable
+      'preferredPosterSource': preferredPosterSource?.name_, // nullable
+      'preferredBannerSource': preferredBannerSource?.name_, // nullable
     };
   }
 

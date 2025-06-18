@@ -25,8 +25,8 @@ class Episode {
   Map<String, dynamic> toJson() {
     return {
       'name': name,
-      'path': path.path,
-      'thumbnailPath': thumbnailPath?.path,
+      'path': path.path, // not nullable
+      'thumbnailPath': thumbnailPath?.pathMaybe, // nullable
       'watched': watched,
       'watchedPercentage': watchedPercentage,
       'thumbnailUnavailable': thumbnailUnavailable,

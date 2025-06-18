@@ -196,7 +196,7 @@ class _HoverableEpisodeTileState extends State<HoverableEpisodeTile> {
 
   Widget _buildEpisodeThumbnail(Episode episode, {Widget? child}) {
     try {
-      if (episode.thumbnailPath != null) {
+      if (episode.thumbnailPath != null && episode.thumbnailPath!.pathMaybe != null && File(episode.thumbnailPath!.path).existsSync()) {
         return Container(
           decoration: BoxDecoration(
             image: episode.thumbnailPath!.path.isEmpty
