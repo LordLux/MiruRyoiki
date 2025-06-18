@@ -15,6 +15,7 @@ class NormalButton extends StatelessWidget {
   final bool isFilled;
   final String? tooltip;
   final Widget? tooltipWidget;
+  final bool expand;
 
   const NormalButton({
     super.key,
@@ -27,11 +28,12 @@ class NormalButton extends StatelessWidget {
     this.isLoading = false,
     this.tooltip,
     this.tooltipWidget,
+    this.expand = false,
   });
 
   @override
   Widget build(BuildContext context) {
-    return MouseButtonWrapper(
+    Widget buttonWidget = MouseButtonWrapper(
       isButtonDisabled: isButtonDisabled,
       isLoading: isLoading,
       tooltip: tooltip,
@@ -71,5 +73,12 @@ class NormalButton extends StatelessWidget {
         ),
       ),
     );
+    if (expand) {
+      return SizedBox(
+        width: double.infinity,
+        child: buttonWidget,
+      );
+    }
+    return buttonWidget;
   }
 }

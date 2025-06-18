@@ -11,10 +11,10 @@ import '../widgets/buttons/button.dart';
 import '../widgets/buttons/loading_button.dart';
 import 'accounts.dart';
 
-class AnilistSettingsScreen extends StatelessWidget {
+class AnilistAccountScreen extends StatelessWidget {
   final Future<void> Function() onLogout;
 
-  const AnilistSettingsScreen({super.key, required this.onLogout});
+  const AnilistAccountScreen({super.key, required this.onLogout});
 
   @override
   Widget build(BuildContext context) {

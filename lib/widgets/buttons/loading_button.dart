@@ -1,6 +1,7 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:miruryoiki/utils/time_utils.dart';
 
+import '../../manager.dart';
 import 'wrapper.dart';
 
 class LoadingButton extends StatefulWidget {
@@ -14,6 +15,8 @@ class LoadingButton extends StatefulWidget {
   final String? tooltip;
   final Widget? tooltipWidget;
   final Color? filledColor;
+  final Color? hoverFillColor;
+  final bool expand;
 
   const LoadingButton({
     super.key,
@@ -27,6 +30,8 @@ class LoadingButton extends StatefulWidget {
     this.tooltip,
     this.tooltipWidget,
     this.filledColor,
+    this.hoverFillColor,
+    this.expand = false,
   });
 
   @override
@@ -52,19 +57,20 @@ class LoadingButtonState extends State<LoadingButton> {
       tooltip: widget.tooltip,
       tooltipWidget: widget.tooltipWidget,
       child: (_) {
+        ButtonStyle copy = ButtonStyle(
+          padding: WidgetStatePropertyAll(EdgeInsets.zero),
+          backgroundColor: WidgetStateProperty.resolveWith<Color?>(
+            (states) => states.contains(WidgetState.hovered) ? widget.hoverFillColor : widget.filledColor,
+          ),
+        );
         Widget btn(Widget child) => Button(
               onPressed: widget.isButtonDisabled ? null : widget.onPressed,
-              style: FluentTheme.of(context).buttonTheme.defaultButtonStyle!.copyWith(padding: WidgetStatePropertyAll(EdgeInsets.zero)),
+              style: FluentTheme.of(context).buttonTheme.defaultButtonStyle!.copyWith(padding: copy.padding, backgroundColor: copy.backgroundColor),
               child: child,
             );
         Widget filled_btn(Widget child) => FilledButton(
               onPressed: widget.isButtonDisabled ? null : widget.onPressed,
-              style: FluentTheme.of(context).buttonTheme.filledButtonStyle!.copyWith(
-                    padding: WidgetStatePropertyAll(EdgeInsets.zero),
-                    backgroundColor: WidgetStateProperty.resolveWith<Color?>(
-                      (states) => widget.filledColor ?? FluentTheme.of(context).accentColor,
-                    ),
-                  ),
+              style: FluentTheme.of(context).buttonTheme.filledButtonStyle!.copyWith(padding: copy.padding, backgroundColor: copy.backgroundColor),
               child: child,
             );
         Widget child = SizedBox(
@@ -98,8 +104,14 @@ class LoadingButtonState extends State<LoadingButton> {
             ],
           ),
         );
-        if (widget.isFilled) return filled_btn(child);
-        return btn(child);
+        Widget buttonWidget = widget.isFilled ? filled_btn(child) : btn(child);
+        if (widget.expand) {
+          return SizedBox(
+            width: double.infinity,
+            child: buttonWidget,
+          );
+        }
+        return buttonWidget;
       },
     );
   }

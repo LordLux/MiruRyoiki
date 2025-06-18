@@ -275,14 +275,50 @@ extension LibraryAnilistIntegration on Library {
   }
 
   /// Refresh metadata for all series
+  /// Refresh metadata for all series
   Future<void> refreshAllMetadata() async {
-    final seriesLinkService = SeriesLinkService();
+    snackBar(
+      'Refreshing all Anilist metadata, this may take a while...',
+      severity: InfoBarSeverity.info,
+    );
+    final startTime = DateTime.now().millisecondsSinceEpoch;
+    
+    final anilistService = AnilistService();
+    final linkedSeries = _series.where((s) => s.anilistId != null).toList();
 
-    for (final series in _series) {
-      if (series.anilistId != null) {
-        await seriesLinkService.refreshMetadata(series);
+    final int perPage = 50;
+    // Process in batches
+    for (int i = 0; i < linkedSeries.length; i += perPage) {
+      final batchEnd = i + perPage < linkedSeries.length ? i + perPage : linkedSeries.length;
+      final batch = linkedSeries.sublist(i, batchEnd);
+
+      // Extract IDs for this batch
+      final ids = batch.map((s) => s.anilistId!).toList();
+
+      // Fetch details for all anime in this batch with a single API call
+      final animeMap = await anilistService.getMultipleAnimesDetails(ids);
+
+      // Update series with fetched data
+      for (final series in batch) {
+        final anime = animeMap[series.anilistId];
+        if (anime != null) {
+          series.anilistData = anime;
+        }
+      }
+
+      // Add delay between batches to respect rate limits
+      if (batchEnd < linkedSeries.length) {
+        await Future.delayed(Duration(seconds: 1));
       }
     }
+    
+    final endTime = DateTime.now().millisecondsSinceEpoch;
+    if (endTime - startTime < 1000) await Future.delayed(Duration(milliseconds: 1000 - (endTime - startTime)));
+    
+    snackBar(
+      'All Anilist metadata refreshed successfully!',
+      severity: InfoBarSeverity.success,
+    );
 
     await _saveLibrary();
     notifyListeners();

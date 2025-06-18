@@ -2,6 +2,7 @@
 
 
 import 'anime.dart';
+import 'user_data.dart';
 
 enum AnilistListStatus {
   CURRENT,
@@ -184,12 +185,15 @@ class AnilistUser {
   final String name;
   final String? avatar;
   final String? bannerImage;
+  final AnilistUserData? userData;
+
 
   AnilistUser({
     required this.id,
     required this.name,
     this.avatar,
     this.bannerImage,
+    this.userData,
   });
 
   factory AnilistUser.fromJson(Map<String, dynamic> json) {
@@ -198,6 +202,7 @@ class AnilistUser {
       name: json['name'],
       avatar: json['avatar']?['large'],
       bannerImage: json['bannerImage'],
+      userData: json['userData'] != null ? AnilistUserData.fromJson(json['userData']) : null,
     );
   }
   
@@ -207,6 +212,7 @@ class AnilistUser {
       'name': name,
       'avatar': avatar,
       'bannerImage': bannerImage,
+      'userData': userData?.toJson(),
     };
   }
 }

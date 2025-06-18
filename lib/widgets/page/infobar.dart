@@ -19,6 +19,7 @@ class MiruRyoikiInfobar extends StatefulWidget {
     required double squareness,
     required double offset,
   }) poster;
+  final EdgeInsets contentPadding;
 
   final bool isProfilePicture;
 
@@ -28,6 +29,7 @@ class MiruRyoikiInfobar extends StatefulWidget {
     required this.getPosterImage,
     required this.poster,
     this.isProfilePicture = false,
+    this.contentPadding = const EdgeInsets.all(32.0),
   });
 
   @override
@@ -47,125 +49,134 @@ class _MiruRyoikiInfobarState extends State<MiruRyoikiInfobar> {
   Widget build(BuildContext context) {
     if (_disposed) return const SizedBox();
 
-    return FutureBuilder(
-        future: widget.getPosterImage,
-        builder: (context, snapshot) {
-          if (_disposed) return const SizedBox();
-
-          ImageProvider? imageProvider = snapshot.data;
-
-          Widget fb(Widget Function(double squareness, double posterWidth, double posterHeight, ImageProvider<Object>? imageProvider, double getInfoBarOffset) child) => FutureBuilder(
-                future: getImageDimensions(imageProvider),
-                builder: (BuildContext context, AsyncSnapshot<Size> snapshot) {
-                  double posterWidth = 230.0; // Default width
-                  double posterHeight = 326.0; // Default height
-                  final double squareSize = 253.0;
-                  double getInfoBarOffset = 0;
-
-                  if (snapshot.hasData && snapshot.data != null) {
-                    final Size originalSize = snapshot.data!;
-
-                    // Avoid division by zero when image is empty
-                    if (originalSize.width > 0 && originalSize.height > 0) {
-                      final double aspectRatio = originalSize.height / originalSize.width;
-
-                      double maxWidth = 326.0;
-                      double maxHeight = 300.0;
-
-                      // Constrain aspect ratio between ScreenUtils.kDefaultAspectRatio and 1.41
-                      double effectiveAspectRatio = aspectRatio;
-                      if (aspectRatio < ScreenUtils.kDefaultAspectRatio) effectiveAspectRatio = ScreenUtils.kDefaultAspectRatio;
-                      if (aspectRatio > 1.41) effectiveAspectRatio = 1.41;
-
-                      // For square images (aspect ratio around 1), fit to the green box
-                      if (effectiveAspectRatio < 1) {
-                        // Wider than tall: linearly interpolate width based on distance from square
-                        // As AR approaches ScreenUtils.kDefaultAspectRatio, width approaches maxWidth (326)
-                        double ratioFactor = (1 - effectiveAspectRatio) / (1 - ScreenUtils.kDefaultAspectRatio); // 0 when AR=1, 1 when AR=ScreenUtils.kDefaultAspectRatio
-                        posterWidth = squareSize + (maxWidth - squareSize) * ratioFactor;
-                        posterHeight = posterWidth * effectiveAspectRatio;
-
-                        // Ensure we don't exceed height bound
-                        if (posterHeight > maxHeight) {
-                          posterHeight = maxHeight;
-                          posterWidth = posterHeight / effectiveAspectRatio;
-                        }
-                      } else {
-                        double ratioFactor = (effectiveAspectRatio - 1) / (1.41 - 1); // 0 when AR=1, 1 when AR=1.41
-                        posterHeight = squareSize + (maxHeight - squareSize) * ratioFactor;
-                        posterWidth = posterHeight / effectiveAspectRatio;
-
-                        // Ensure we don't exceed width bound
-                        if (posterWidth > maxWidth) {
-                          posterWidth = maxWidth;
+    return Padding(
+      padding: widget.contentPadding,
+      child: FutureBuilder(
+          future: widget.getPosterImage,
+          builder: (context, snapshot) {
+            if (_disposed) return const SizedBox();
+      
+            ImageProvider? imageProvider = snapshot.data;
+      
+            Widget fb(Widget Function(double squareness, double posterWidth, double posterHeight, ImageProvider<Object>? imageProvider, double getInfoBarOffset) child) => FutureBuilder(
+                  future: getImageDimensions(imageProvider),
+                  builder: (BuildContext context, AsyncSnapshot<Size> snapshot) {
+                    double posterWidth = 230.0; // Default width
+                    double posterHeight = 326.0; // Default height
+                    final double squareSize = 253.0;
+                    double getInfoBarOffset = 0;
+      
+                    if (snapshot.hasData && snapshot.data != null) {
+                      final Size originalSize = snapshot.data!;
+      
+                      // Avoid division by zero when image is empty
+                      if (originalSize.width > 0 && originalSize.height > 0) {
+                        final double aspectRatio = originalSize.height / originalSize.width;
+      
+                        double maxWidth = 326.0;
+                        double maxHeight = 300.0;
+      
+                        // Constrain aspect ratio between ScreenUtils.kDefaultAspectRatio and 1.41
+                        double effectiveAspectRatio = aspectRatio;
+                        if (aspectRatio < ScreenUtils.kDefaultAspectRatio) effectiveAspectRatio = ScreenUtils.kDefaultAspectRatio;
+                        if (aspectRatio > 1.41) effectiveAspectRatio = 1.41;
+      
+                        // For square images (aspect ratio around 1), fit to the green box
+                        if (effectiveAspectRatio < 1) {
+                          // Wider than tall: linearly interpolate width based on distance from square
+                          // As AR approaches ScreenUtils.kDefaultAspectRatio, width approaches maxWidth (326)
+                          double ratioFactor = (1 - effectiveAspectRatio) / (1 - ScreenUtils.kDefaultAspectRatio); // 0 when AR=1, 1 when AR=ScreenUtils.kDefaultAspectRatio
+                          posterWidth = squareSize + (maxWidth - squareSize) * ratioFactor;
                           posterHeight = posterWidth * effectiveAspectRatio;
+      
+                          // Ensure we don't exceed height bound
+                          if (posterHeight > maxHeight) {
+                            posterHeight = maxHeight;
+                            posterWidth = posterHeight / effectiveAspectRatio;
+                          }
+                        } else {
+                          double ratioFactor = (effectiveAspectRatio - 1) / (1.41 - 1); // 0 when AR=1, 1 when AR=1.41
+                          posterHeight = squareSize + (maxHeight - squareSize) * ratioFactor;
+                          posterWidth = posterHeight / effectiveAspectRatio;
+      
+                          // Ensure we don't exceed width bound
+                          if (posterWidth > maxWidth) {
+                            posterWidth = maxWidth;
+                            posterHeight = posterWidth * effectiveAspectRatio;
+                          }
                         }
+                        getInfoBarOffset = math.max(posterHeight - squareSize - 16, 0);
                       }
-                      getInfoBarOffset = math.max(posterHeight - squareSize - 16, 0);
                     }
-                  }
-
-                  final double squareness = (getInfoBarOffset / 31);
-                  return child(squareness, posterWidth, posterHeight, imageProvider, getInfoBarOffset);
-                },
-              );
-
-          Widget child({required double squareness, required double posterWidth, required double posterHeight, required ImageProvider<Object>? imageProvider, required double getInfoBarOffset}) => Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  Positioned.fill(
-                    child: ScrollConfiguration(
-                      behavior: ScrollConfiguration.of(context).copyWith(overscroll: true, platform: TargetPlatform.windows, scrollbars: false),
-                      child: DynMouseScroll(
-                        stopScroll: KeyboardState.ctrlPressedNotifier,
-                        scrollSpeed: 1.0,
-                        enableSmoothScroll: Manager.animationsEnabled,
-                        durationMS: 350,
-                        animationCurve: Curves.easeOutQuint,
-                        builder: (context, controller, physics) {
-                          return SingleChildScrollView(
-                            controller: controller,
-                            physics: physics,
-                            child: widget.content,
-                          );
-                        },
+      
+                    final double squareness = (getInfoBarOffset / 31);
+                    return child(squareness, posterWidth, posterHeight, imageProvider, getInfoBarOffset);
+                  },
+                );
+      
+            Widget child({required double squareness, required double posterWidth, required double posterHeight, required ImageProvider<Object>? imageProvider, required double getInfoBarOffset}) => Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    Positioned.fill(
+                      child: ScrollConfiguration(
+                        behavior: ScrollConfiguration.of(context).copyWith(overscroll: true, platform: TargetPlatform.windows, scrollbars: false),
+                        child: DynMouseScroll(
+                          stopScroll: KeyboardState.ctrlPressedNotifier,
+                          scrollSpeed: 1.0,
+                          enableSmoothScroll: Manager.animationsEnabled,
+                          durationMS: 350,
+                          animationCurve: Curves.easeOutQuint,
+                          builder: (context, controller, physics) {
+                            return SingleChildScrollView(
+                              controller: controller,
+                              physics: physics,
+                              child: ConstrainedBox(
+                                constraints: BoxConstraints(
+                                  minWidth: 0,
+                                  maxWidth: ScreenUtils.kInfoBarWidth,
+                                ),
+                                child: widget.content,
+                              ),
+                            );
+                          },
+                        ),
                       ),
                     ),
-                  ),
-                  // Poster image that overflows the info bar from above to appear 'in' the header
-                  AnimatedPositioned(
-                    duration: stickyHeaderDuration,
-                    left: (ScreenUtils.kInfoBarWidth) / 2 - posterWidth / 2,
-                    top: widget.isProfilePicture ? -30 - posterHeight : -(ScreenUtils.kMaxHeaderHeight) + 32,
-                    child: widget.poster(
-                      imageProvider: imageProvider,
-                      width: posterWidth,
-                      height: posterHeight,
-                      squareness: squareness,
-                      offset: getInfoBarOffset,
+                    // Poster image that overflows the info bar from above to appear 'in' the header
+                    AnimatedPositioned(
+                      duration: stickyHeaderDuration,
+                      left: (ScreenUtils.kInfoBarWidth) / 2 - posterWidth / 2,
+                      top: widget.isProfilePicture ? -30 - posterHeight : -(ScreenUtils.kMaxHeaderHeight) + 32,
+                      child: widget.poster(
+                        imageProvider: imageProvider,
+                        width: posterWidth,
+                        height: posterHeight,
+                        squareness: squareness,
+                        offset: getInfoBarOffset,
+                      ),
                     ),
-                  ),
-                ],
-              );
-          if (widget.isProfilePicture) {
-            return child(
-              squareness: 0,
-              posterWidth: ScreenUtils.kProfilePictureSize,
-              posterHeight: ScreenUtils.kProfilePictureSize,
-              imageProvider: imageProvider,
-              getInfoBarOffset: 0,
-            );
-          } else {
-            return fb((squareness, posterWidth, posterHeight, imageProvider, getInfoBarOffset) {
+                  ],
+                );
+            if (widget.isProfilePicture) {
               return child(
-                squareness: squareness,
-                posterWidth: posterWidth,
-                posterHeight: posterHeight + getInfoBarOffset,
+                squareness: 0,
+                posterWidth: ScreenUtils.kProfilePictureSize,
+                posterHeight: ScreenUtils.kProfilePictureSize,
                 imageProvider: imageProvider,
-                getInfoBarOffset: getInfoBarOffset,
+                getInfoBarOffset: 0,
               );
-            });
-          }
-        });
+            } else {
+              return fb((squareness, posterWidth, posterHeight, imageProvider, getInfoBarOffset) {
+                return child(
+                  squareness: squareness,
+                  posterWidth: posterWidth,
+                  posterHeight: posterHeight + getInfoBarOffset,
+                  imageProvider: imageProvider,
+                  getInfoBarOffset: getInfoBarOffset,
+                );
+              });
+            }
+          }),
+    );
   }
 }

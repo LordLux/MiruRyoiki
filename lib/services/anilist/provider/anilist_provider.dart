@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/material.dart';
 
 import '../../../../models/anilist/user_list.dart';
@@ -9,6 +10,7 @@ import '../../../models/anilist/mutation.dart';
 import '../../../utils/time_utils.dart';
 import '../../../utils/path_utils.dart';
 import '../../../utils/logging.dart';
+import '../../navigation/show_info.dart';
 import '../queries.dart';
 
 // Include all the parts

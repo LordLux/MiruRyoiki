@@ -5,6 +5,13 @@ extension AnilistProviderListsManagement on AnilistProvider {
   Future<void> refreshUserLists() async {
     if (!isLoggedIn) return;
 
+    final startTime = DateTime.now().millisecondsSinceEpoch;
+    
+    snackBar(
+      'Refreshing user lists...',
+      severity: InfoBarSeverity.info,
+    );
+    
     _isLoading = true;
     notifyListeners();
 
@@ -19,7 +26,13 @@ extension AnilistProviderListsManagement on AnilistProvider {
       if (!await _loadListsFromCache()) //
         logWarn('Failed to refresh lists: Offline and no cache available');
     }
-
+    final endTime = DateTime.now().millisecondsSinceEpoch;
+    if (endTime - startTime < 1000) await Future.delayed(Duration(milliseconds: 1000 - (endTime - startTime))); // Ensure at least 1 second delay
+    snackBar(
+      'User lists refreshed successfully',
+      severity: InfoBarSeverity.success,
+    );
+    
     _isLoading = false;
     notifyListeners();
   }
