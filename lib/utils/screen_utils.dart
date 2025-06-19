@@ -19,6 +19,7 @@ class ScreenUtils {
   static const double kTitleBarHeight = 40.0;
   static const double kOfflineBarMaxHeight = 20.0;
   static const double kEpisodeCardBorderRadius = 4.0;
+  static const double kStatCardBorderRadius = 8.0;
   static const double kProfilePictureSize = 150.0;
 
   static const double kDefaultSplashScreenWidth = 500.0;

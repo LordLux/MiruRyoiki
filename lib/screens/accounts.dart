@@ -1,9 +1,11 @@
 import 'dart:math' as math;
 
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:collection/collection.dart';
 import 'package:defer_pointer/defer_pointer.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/material.dart' as mat;
+import 'package:miruryoiki/models/anilist/user_data.dart';
 import 'package:miruryoiki/widgets/buttons/switch.dart';
 import 'package:recase/recase.dart';
 import '../manager.dart';
@@ -229,6 +231,7 @@ class AccountsScreenState extends State<AccountsScreen> {
     return Padding(
       padding: const EdgeInsets.all(16),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Not logged in
           if (!anilistProvider.isLoggedIn) ...[
@@ -266,6 +269,9 @@ class AccountsScreenState extends State<AccountsScreen> {
               children: _buildStatistics(anilistProvider),
             ),
             VDiv(16),
+            // Genres overview section
+            ..._buildGenresOverview(anilistProvider),
+            VDiv(16),
             // Favorites section
             SettingsCard(
               children: _buildFavorites(anilistProvider),
@@ -275,8 +281,6 @@ class AccountsScreenState extends State<AccountsScreen> {
       ),
     );
   }
-
-  // Add these methods to AccountsScreen class
 
   List<Widget> _buildUserProfile(AnilistProvider anilistProvider) {
     final userData = anilistProvider.currentUser?.userData;
@@ -384,25 +388,6 @@ class AccountsScreenState extends State<AccountsScreen> {
           );
         },
       ),
-      VDiv(16),
-      if (animeStats.genres != null && animeStats.genres!.isNotEmpty) ...[
-        Text(
-          'Genres Overview',
-          style: Manager.bodyStrongStyle,
-        ),
-        VDiv(8),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: animeStats.genres!
-              .take(5)
-              .map((genre) => Chip(
-                    text: Text(genre.genre ?? 'Unknown'),
-                    trailing: Text('${genre.count}'),
-                  ))
-              .toList(),
-        ),
-      ],
       if (animeStats.formats != null && animeStats.formats!.isNotEmpty) ...[
         VDiv(16),
         Text(
@@ -426,11 +411,124 @@ class AccountsScreenState extends State<AccountsScreen> {
     ];
   }
 
+  List<Widget> _buildGenresOverview(AnilistProvider anilistProvider) {
+    final userData = anilistProvider.currentUser?.userData;
+    final genres = userData?.statistics?.anime?.genres;
+
+    if (genres == null || genres.isEmpty) return [const Text('No genres available')];
+
+    return [
+      SizedBox(
+        height: 170 * math.max(Manager.fontSizeMultiplier, .9),
+        width: double.infinity,
+        child: LayoutBuilder(builder: (context, constraints) {
+          final topGenres = genres.take(math.min(constraints.maxWidth ~/ 150, 6)).toList();
+          final int totalCount = topGenres.fold<int>(0, (sum, genre) => sum + (genre.count ?? 0));
+
+          final List<Color> colors = [
+            Color(0xFF68d639),
+            Color(0xFF02a9ff),
+            Color(0xFF9256f3),
+            Color(0xFFf779a4),
+            Color(0xFFe85d75),
+            Color(0xFFf79a63),
+          ];
+          return TooltipTheme(
+            data: TooltipThemeData(waitDuration: const Duration(milliseconds: 100)),
+            child: Card(
+                borderRadius: BorderRadius.circular(ScreenUtils.kStatCardBorderRadius),
+                padding: EdgeInsets.zero,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.only(left: 36.0, top: 36.0),
+                      child: Text(
+                        'Genres Overview',
+                        style: Manager.subtitleStyle,
+                      ),
+                    ),
+                    Expanded(
+                      child: Padding(
+                          padding: const EdgeInsets.all(8.0),
+                          child: Row(
+                            children: topGenres.map((genre) {
+                              return Expanded(
+                                child: Tooltip(
+                                  message: '${genre.genre!.titleCase} (${(genre.count! / totalCount * 100).toStringAsFixed(1)}%)',
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4.0),
+                                        decoration: BoxDecoration(
+                                          color: colors[topGenres.indexOf(genre) % colors.length],
+                                          borderRadius: BorderRadius.circular(ScreenUtils.kStatCardBorderRadius),
+                                        ),
+                                        child: Text(
+                                          genre.genre!.titleCase,
+                                          style: Manager.bodyStyle,
+                                          textAlign: TextAlign.center,
+                                        ),
+                                      ),
+                                      VDiv(4),
+                                      RichText(
+                                        text: TextSpan(
+                                          children: [
+                                            TextSpan(text: genre.count?.toString() ?? '0', style: Manager.bodyStrongStyle.copyWith(color: colors[topGenres.indexOf(genre) % colors.length])),
+                                            TextSpan(text: ' Entries', style: Manager.bodyStyle),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            }).toList(),
+                          )),
+                    ),
+                    ClipRRect(
+                      borderRadius: BorderRadius.only(bottomRight: Radius.circular(ScreenUtils.kStatCardBorderRadius), bottomLeft: Radius.circular(ScreenUtils.kStatCardBorderRadius)),
+                      child: SizedBox(
+                        height: 12,
+                        child: Builder(builder: (context) {
+                          final List<Widget> genreWidgets = [];
+                          topGenres.forEachIndexed((index, genre) {
+                            genreWidgets.add(
+                              Expanded(
+                                flex: (genre.count ?? 1),
+                                child: Tooltip(
+                                  message: '${genre.genre} (${(genre.count! / totalCount * 100).toStringAsFixed(1)}%)',
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      color: colors[index % colors.length],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            );
+                          });
+                          return Row(children: genreWidgets);
+                        }),
+                      ),
+                    ),
+                  ],
+                )),
+          );
+        }),
+      ),
+    ];
+  }
+
   List<Widget> _buildFavorites(AnilistProvider anilistProvider) {
     final userData = anilistProvider.currentUser?.userData;
     final favorites = userData?.favourites;
 
-    if (favorites == null || (favorites.anime?.nodes == null || favorites.anime!.nodes!.isEmpty) && (favorites.characters?.nodes == null || favorites.characters!.nodes!.isEmpty) && (favorites.staff?.nodes == null || favorites.staff!.nodes!.isEmpty) && (favorites.studios?.nodes == null || favorites.studios!.nodes!.isEmpty)) //
+    if (favorites == null ||
+        (favorites.anime?.nodes == null || favorites.anime!.nodes!.isEmpty) && //
+            (favorites.characters?.nodes == null || favorites.characters!.nodes!.isEmpty) && //
+            (favorites.staff?.nodes == null || favorites.staff!.nodes!.isEmpty) && //
+            (favorites.studios?.nodes == null || favorites.studios!.nodes!.isEmpty)) //
       return [const Text('No favorites found')];
 
     return [
@@ -460,12 +558,9 @@ class AccountsScreenState extends State<AccountsScreen> {
                     Container(
                       height: 120,
                       decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(8),
-                        image: anime.posterImage != null
-                            ? DecorationImage(
-                                image: CachedNetworkImageProvider(anime.posterImage!),
-                                fit: BoxFit.cover,
-                              )
+                        borderRadius: BorderRadius.circular(ScreenUtils.kEpisodeCardBorderRadius),
+                        image: anime.posterImage != null //
+                            ? DecorationImage(image: CachedNetworkImageProvider(anime.posterImage!), fit: BoxFit.cover)
                             : null,
                       ),
                     ),
@@ -506,12 +601,9 @@ class AccountsScreenState extends State<AccountsScreen> {
                     Container(
                       height: 120,
                       decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(8),
-                        image: character.image?.large != null
-                            ? DecorationImage(
-                                image: CachedNetworkImageProvider(character.image!.large!),
-                                fit: BoxFit.cover,
-                              )
+                        borderRadius: BorderRadius.circular(ScreenUtils.kEpisodeCardBorderRadius),
+                        image: character.image?.large != null //
+                            ? DecorationImage(image: CachedNetworkImageProvider(character.image!.large!), fit: BoxFit.cover)
                             : null,
                       ),
                     ),
@@ -537,11 +629,11 @@ class AccountsScreenState extends State<AccountsScreen> {
 
   Widget _statCard(String title, String value, {Widget? icon}) {
     return ClipRRect(
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: BorderRadius.circular(ScreenUtils.kStatCardBorderRadius),
       child: Container(
         decoration: BoxDecoration(
           color: FluentTheme.of(context).cardColor,
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(ScreenUtils.kStatCardBorderRadius),
           border: Border.all(color: Manager.accentColor.lighter),
         ),
         width: ScreenUtils.kDefaultStatCardWidth,
