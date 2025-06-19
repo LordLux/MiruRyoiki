@@ -1277,8 +1277,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
 Widget SettingsCard({required List<Widget> children}) {
   return Card(
     borderRadius: BorderRadius.circular(8.0),
+    padding: EdgeInsets.zero,
     child: Padding(
-      padding: const EdgeInsets.all(24.0),
+      padding: const EdgeInsets.all(32.0),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

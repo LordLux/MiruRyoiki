@@ -30,7 +30,10 @@ class ScreenUtils {
   static const double kDefaultMaxWindowWidth = 100000.0;
   static const double kDefaultMaxWindowHeight = 100000.0;
   
-  static const double kDefaultStatCardWidth = 160.0;
+  static const double kMinStatCardWidth = 130.0;
+  static const double kMaxStatCardWidth = 200.0;
+  static const double kMinDistrCardWidth = 430.0;
+  static const double kMaxDistrCardWidth = 900.0;
 
   static Size? cardSize;
 

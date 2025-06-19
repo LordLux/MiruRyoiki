@@ -34,48 +34,9 @@ class MiruRyoikiHeaderInfoBarPage extends StatefulWidget {
 
 class _MiruRyoikiHeaderInfoBarPageState extends State<MiruRyoikiHeaderInfoBarPage> {
   double _headerHeight = ScreenUtils.kMaxHeaderHeight;
-  ImageProvider? _cachedImage;
-  Future<ImageProvider?>? _imageFuture;
-
-  @override
-  void initState() {
-    super.initState();
-    // Start loading the image immediately and cache it
-    _loadPosterImage();
-  }
-
-  Future<void> _loadPosterImage() async {
-    try {
-      // Use the infobar's getPosterImage method but only once
-      final infobarCreator = widget.infobar;
-      // Create a temporary infobar just to access its getPosterImage
-      final tempInfobar = infobarCreator;
-
-      _imageFuture = tempInfobar.getPosterImage;
-      _cachedImage = await _imageFuture;
-    } catch (e) {
-      // Handle any errors during image loading
-      print('Error loading poster image: $e');
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
-    // Create a modified infobar function that uses the cached image
-    MiruRyoikiInfobar cachedInfobar() {
-      final originalInfobar = widget.infobar;
-
-      // Create a new infobar that uses the cached image
-      return MiruRyoikiInfobar(
-        key: originalInfobar.key,
-        content: originalInfobar.content,
-        poster: originalInfobar.poster,
-        isProfilePicture: originalInfobar.isProfilePicture,
-        // Replace the getPosterImage with a function that returns the cached image
-        getPosterImage: Future.value(_cachedImage),
-      );
-    }
-
     return AnimatedContainer(
       duration: gradientChangeDuration,
       decoration: BoxDecoration(
@@ -117,7 +78,7 @@ class _MiruRyoikiHeaderInfoBarPageState extends State<MiruRyoikiHeaderInfoBarPag
                           ),
                           height: double.infinity,
                           width: ScreenUtils.kInfoBarWidth,
-                          child: cachedInfobar(),
+                          child: widget.infobar,
                         ),
                       ),
                     // Content area on the right

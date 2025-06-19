@@ -5,24 +5,28 @@ import 'package:collection/collection.dart';
 import 'package:defer_pointer/defer_pointer.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/material.dart' as mat;
+import 'package:miruryoiki/enums.dart';
 import 'package:miruryoiki/models/anilist/user_data.dart';
+import 'package:flexible_wrap/flexible_wrap.dart';
 import 'package:miruryoiki/widgets/buttons/switch.dart';
+import 'package:pie_chart/pie_chart.dart';
 import 'package:recase/recase.dart';
+import 'package:smooth_scroll_multiplatform/smooth_scroll_multiplatform.dart';
 import '../manager.dart';
+import '../models/anilist/anime.dart';
 import '../services/anilist/provider/anilist_provider.dart';
 import 'package:provider/provider.dart';
 
 import '../services/library/library_provider.dart';
+import '../services/navigation/shortcuts.dart';
 import '../utils/logging.dart';
 import '../utils/screen_utils.dart';
-import '../utils/time_utils.dart';
-import '../widgets/buttons/button.dart';
+import '../widgets/animated_stats_counter.dart';
 import '../widgets/buttons/loading_button.dart';
 import '../widgets/page/header_widget.dart';
 import '../widgets/page/infobar.dart';
 import '../widgets/page/page.dart';
 import '../widgets/svg.dart';
-import 'anilist_settings.dart';
 import 'settings.dart';
 
 class AccountsScreen extends StatefulWidget {
@@ -54,11 +58,10 @@ class AccountsScreenState extends State<AccountsScreen> {
       });
 
       await anilistProvider.refreshUserData();
-
-      setState(() {
-        isLocalLoading = false;
-      });
     }
+    setState(() {
+      isLocalLoading = false;
+    });
   }
 
   HeaderWidget header({required AnilistProvider anilistProvider, required bool isLoggedIn}) {
@@ -90,6 +93,7 @@ class AccountsScreenState extends State<AccountsScreen> {
   MiruRyoikiInfobar infoBar({required AnilistProvider anilistProvider}) {
     return MiruRyoikiInfobar(
       isProfilePicture: true,
+      setStateCallback: () => setState(() {}),
       content: anilistProvider.isLoggedIn ? _buildSyncSettings(context, anilistProvider) : const Text('Sign in to access Anilist features'),
       poster: ({ImageProvider<Object>? imageProvider, required double width, required double height, required double squareness, required double offset}) {
         return DeferPointer(
@@ -116,12 +120,15 @@ class AccountsScreenState extends State<AccountsScreen> {
     final anilistProvider = Provider.of<AnilistProvider>(context, listen: true);
     final isLoggedIn = anilistProvider.isLoggedIn;
 
-    return DeferredPointerHandler(
-      child: MiruRyoikiHeaderInfoBarPage(
-        headerWidget: header(anilistProvider: anilistProvider, isLoggedIn: isLoggedIn),
-        infobar: infoBar(anilistProvider: anilistProvider),
-        content: buildMainContent(anilistProvider),
-        hideInfoBar: !isLoggedIn,
+    return TooltipTheme(
+      data: TooltipThemeData(waitDuration: const Duration(milliseconds: 100)),
+      child: DeferredPointerHandler(
+        child: MiruRyoikiHeaderInfoBarPage(
+          headerWidget: header(anilistProvider: anilistProvider, isLoggedIn: isLoggedIn),
+          infobar: infoBar(anilistProvider: anilistProvider),
+          content: buildMainContent(anilistProvider),
+          hideInfoBar: !isLoggedIn,
+        ),
       ),
     );
   }
@@ -269,6 +276,10 @@ class AccountsScreenState extends State<AccountsScreen> {
               children: _buildStatistics(anilistProvider),
             ),
             VDiv(16),
+            // Distributions section
+            _buildDistribution(anilistProvider),
+
+            VDiv(16),
             // Genres overview section
             ..._buildGenresOverview(anilistProvider),
             VDiv(16),
@@ -361,54 +372,291 @@ class AccountsScreenState extends State<AccountsScreen> {
       VDiv(16),
       LayoutBuilder(
         builder: (context, constraints) {
-          // Calculate the minimum width needed for all 4 stat cards with spacing
           const cardNumber = 5;
           const spacing = 16.0;
-          final totalWidth = (ScreenUtils.kDefaultStatCardWidth * cardNumber) + (spacing * (cardNumber - 1));
+          final totalSpacing = spacing * (cardNumber - 1);
+          final availableWidth = constraints.maxWidth - totalSpacing;
+          final cardWidth = availableWidth / cardNumber;
+          final clampedCardWidth = cardWidth.clamp(ScreenUtils.kMinStatCardWidth, ScreenUtils.kMaxStatCardWidth);
 
-          List<Widget> _statCards = [
-            _statCard('Anime Watched', '${animeStats.count ?? 0}', icon: const Icon(mat.Icons.subscriptions)),
-            _statCard('Episodes Watched', '${animeStats.episodesWatched ?? 0}', icon: const Icon(mat.Icons.visibility)),
-            _statCard("${_formatMinutes(animeStats.minutesWatched ?? 0).$1} Watched", _formatMinutes(animeStats.minutesWatched ?? 0).$2, icon: const Icon(FluentIcons.clock)),
-            _statCard('Mean Score', animeStats.meanScore?.toStringAsFixed(1) ?? "N/A", icon: Icon(FluentIcons.favorite_star_fill)),
-            _statCard('Mean Score', animeStats.meanScore?.toStringAsFixed(1) ?? "N/A", icon: Icon(FluentIcons.favorite_star_fill)),
+          List<Widget> statCards = [
+            SizedBox(
+              width: clampedCardWidth,
+              child: _statCard('Anime Watched', animeStats.count ?? 0, icon: const Icon(mat.Icons.subscriptions)),
+            ),
+            SizedBox(
+              width: clampedCardWidth,
+              child: _statCard('Episodes Watched', animeStats.episodesWatched ?? 0, icon: const Icon(mat.Icons.visibility)),
+            ),
+            SizedBox(
+              width: clampedCardWidth,
+              child: _statCard(
+                "${_formatMinutes(animeStats.minutesWatched ?? 0).$1} Watched",
+                _formatMinutes(animeStats.minutesWatched ?? 0).$2,
+                icon: const Icon(FluentIcons.clock),
+                suffix: _formatMinutes(animeStats.minutesWatched ?? 0).$1,
+              ),
+            ),
+            SizedBox(
+              width: clampedCardWidth,
+              child: _statCard('Mean Score', (animeStats.meanScore ?? 0.0) / 10, icon: Icon(FluentIcons.favorite_star_fill)),
+            ),
+            SizedBox(
+              width: clampedCardWidth,
+              child: _statCard(
+                "Standard Deviation",
+                animeStats.standardDeviation ?? 0.0,
+                icon: const Icon(FluentIcons.offline_one_drive_parachute_disabled),
+              ),
+            ),
           ];
 
-          // If enough space, use a Row with spaceBetween, else fall back to Wrap
-          if (constraints.maxWidth >= totalWidth)
+          final totalWidth = (clampedCardWidth * cardNumber) + totalSpacing;
+
+          if (constraints.maxWidth >= totalWidth) {
             return Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: _statCards,
+              children: statCards,
             );
+          }
           return Wrap(
             spacing: spacing,
             runSpacing: spacing,
             alignment: WrapAlignment.spaceBetween,
-            children: _statCards,
+            children: statCards,
           );
         },
       ),
-      if (animeStats.formats != null && animeStats.formats!.isNotEmpty) ...[
-        VDiv(16),
-        Text(
-          'Format Distribution',
-          style: Manager.bodyStrongStyle,
+    ];
+  }
+
+  Widget _buildDistribution(AnilistProvider anilistProvider) {
+    final userData = anilistProvider.currentUser?.userData;
+    final animeStats = userData?.statistics?.anime;
+
+    int statusTotal = 0;
+    int formatTotal = 0;
+
+    if (animeStats == null || animeStats.formats == null || animeStats.formats!.isEmpty) //
+      return Text('No distributions available', style: Manager.bodyStyle);
+
+    // Format the data for the pie charts
+    Map<String, double> formatDistribution = {};
+    if (animeStats.formats != null) {
+      for (FormatStatistic format in animeStats.formats!) {
+        formatDistribution[format.format?.titleCase ?? 'Unknown'] = (format.count ?? 0).toDouble();
+        formatTotal += format.count ?? 0;
+      }
+    }
+
+    // For status distribution
+    Map<String, double> statusDistribution = {};
+    if (animeStats.statuses != null) {
+      for (StatusStatistic status in animeStats.statuses!) {
+        statusDistribution[status.status?.titleCase ?? 'Unknown'] = (status.count ?? 0).toDouble();
+        statusTotal += status.count ?? 0;
+      }
+    }
+
+    Widget statusDistributionWidget = Row(
+      children: [
+        Expanded(
+          child: PieChart(
+            dataMap: statusDistribution,
+            animationDuration: const Duration(milliseconds: 800),
+            chartRadius: math.min(MediaQuery.of(context).size.width / 3.5, 150),
+            initialAngleInDegree: 0,
+            chartType: ChartType.disc,
+            ringStrokeWidth: 40,
+            colorList: List.generate(
+              statusDistribution.length,
+              (i) => Manager.accentColor.lightest.shiftHue(i / statusDistribution.length / 2).darken(.125).saturate(-.35),
+            ),
+            legendOptions: const LegendOptions(showLegends: false),
+            chartValuesOptions: const ChartValuesOptions(
+              showChartValueBackground: false,
+              showChartValues: false,
+            ),
+          ),
         ),
-        VDiv(8),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: animeStats.formats!
-              .take(5)
-              .map((format) => Chip(
-                    backgroundColor: Manager.accentColor.lighter,
-                    text: Text(_formatValue(format.format)),
-                    trailing: Text('${format.count}'),
-                  ))
-              .toList(),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              for (final entry in statusDistribution.entries)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8.0),
+                  child: Container(
+                    height: 30,
+                    decoration: BoxDecoration(
+                      color: Manager.accentColor.lightest.shiftHue(statusDistribution.keys.toList().indexOf(entry.key) / statusDistribution.length / 2).darken(.125).saturate(-.35),
+                      borderRadius: BorderRadius.circular(ScreenUtils.kStatCardBorderRadius),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 12.0),
+                          child: Text(
+                            entry.key.titleCase,
+                            style: Manager.bodyStyle,
+                          ),
+                        ),
+                        Container(
+                          width: 50,
+                          decoration: BoxDecoration(
+                            color: Manager.accentColor.lightest.shiftHue(statusDistribution.keys.toList().indexOf(entry.key) / statusDistribution.length / 2),
+                            borderRadius: BorderRadius.circular(ScreenUtils.kStatCardBorderRadius),
+                          ),
+                          child: Center(
+                            child: Text(
+                              '${((entry.value / statusTotal) * 100).round()}%',
+                              style: Manager.bodyStrongStyle.copyWith(color: Colors.white),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+            ],
+          ),
         ),
       ],
-    ];
+    );
+
+    Widget formatDistributionWidget = Row(
+      children: [
+        Expanded(
+          child: PieChart(
+            dataMap: formatDistribution,
+            animationDuration: const Duration(milliseconds: 800),
+            chartRadius: math.min(MediaQuery.of(context).size.width / 3.5, 150),
+            initialAngleInDegree: 0,
+            chartType: ChartType.disc,
+            ringStrokeWidth: 40,
+            colorList: List.generate(
+              formatDistribution.length,
+              (i) => Manager.accentColor.lightest.shiftHue(i / formatDistribution.length / 2).darken(.125).saturate(-.35),
+            ),
+            legendOptions: const LegendOptions(showLegends: false),
+            chartValuesOptions: const ChartValuesOptions(
+              showChartValueBackground: false,
+              showChartValues: false,
+            ),
+          ),
+        ),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              for (final entry in formatDistribution.entries.take(5))
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8.0),
+                  child: Container(
+                    height: 30,
+                    decoration: BoxDecoration(
+                      color: Manager.accentColor.lightest.shiftHue(formatDistribution.keys.toList().indexOf(entry.key) / formatDistribution.length / 2).darken(.125).saturate(-.35),
+                      borderRadius: BorderRadius.circular(ScreenUtils.kStatCardBorderRadius),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 12.0),
+                          child: Text(
+                            entry.key.titleCase,
+                            style: Manager.bodyStyle,
+                          ),
+                        ),
+                        Container(
+                          width: 50,
+                          decoration: BoxDecoration(
+                            color: Manager.accentColor.lightest.shiftHue(formatDistribution.keys.toList().indexOf(entry.key) / formatDistribution.length / 2),
+                            borderRadius: BorderRadius.circular(ScreenUtils.kStatCardBorderRadius),
+                          ),
+                          child: Center(
+                            child: Text(
+                              '${((entry.value / formatTotal) * 100).round()}%',
+                              style: Manager.bodyStrongStyle.copyWith(color: Colors.white),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+            ],
+          ),
+        ),
+      ],
+    );
+
+    return LayoutBuilder(builder: (context, constraints) {
+      final minCardWidth = ScreenUtils.kMinDistrCardWidth;
+      final spacing = 16.0;
+      final canFitRow = (constraints.maxWidth.isInfinite ? 10000 : constraints.maxWidth) >= (minCardWidth * 2 + spacing);
+
+      final statusCard = SizedBox(
+        height: 293,
+        child: SettingsCard(
+          children: [
+            Text(
+              'Status Distribution',
+              style: Manager.subtitleStyle,
+            ),
+            VDiv(8),
+            statusDistributionWidget,
+          ],
+        ),
+      );
+      final formatCard = SizedBox(
+        height: 293,
+        child: SettingsCard(
+          children: [
+            Text(
+              'Format Distribution',
+              style: Manager.subtitleStyle,
+            ),
+            VDiv(8),
+            formatDistributionWidget,
+          ],
+        ),
+      );
+
+      if (canFitRow) {
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: statusCard,
+            ),
+            SizedBox(width: spacing),
+            Expanded(
+              child: formatCard,
+            ),
+          ],
+        );
+      } else {
+        // Use Wrap to display vertically
+        return FlexibleWrap(
+          spacing: spacing,
+          children: [
+            SizedBox(
+              width: double.infinity,
+              child: statusCard,
+            ),
+            VDiv(16),
+            SizedBox(
+              width: double.infinity,
+              child: formatCard,
+            ),
+          ],
+        );
+      }
+    });
   }
 
   List<Widget> _buildGenresOverview(AnilistProvider anilistProvider) {
@@ -419,7 +667,7 @@ class AccountsScreenState extends State<AccountsScreen> {
 
     return [
       SizedBox(
-        height: 170 * math.max(Manager.fontSizeMultiplier, .9),
+        height: 170 * math.max(Manager.fontSizeMultiplier, .9) + 16,
         width: double.infinity,
         child: LayoutBuilder(builder: (context, constraints) {
           final topGenres = genres.take(math.min(constraints.maxWidth ~/ 150, 6)).toList();
@@ -433,88 +681,87 @@ class AccountsScreenState extends State<AccountsScreen> {
             Color(0xFFe85d75),
             Color(0xFFf79a63),
           ];
-          return TooltipTheme(
-            data: TooltipThemeData(waitDuration: const Duration(milliseconds: 100)),
-            child: Card(
-                borderRadius: BorderRadius.circular(ScreenUtils.kStatCardBorderRadius),
-                padding: EdgeInsets.zero,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.only(left: 36.0, top: 36.0),
-                      child: Text(
-                        'Genres Overview',
-                        style: Manager.subtitleStyle,
-                      ),
+          return Card(
+              borderRadius: BorderRadius.circular(ScreenUtils.kStatCardBorderRadius),
+              padding: EdgeInsets.zero,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.only(left: 36.0, top: 36.0),
+                    child: Text(
+                      'Genres Overview',
+                      style: Manager.subtitleStyle,
                     ),
-                    Expanded(
-                      child: Padding(
-                          padding: const EdgeInsets.all(8.0),
-                          child: Row(
-                            children: topGenres.map((genre) {
-                              return Expanded(
-                                child: Tooltip(
-                                  message: '${genre.genre!.titleCase} (${(genre.count! / totalCount * 100).toStringAsFixed(1)}%)',
-                                  child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4.0),
-                                        decoration: BoxDecoration(
-                                          color: colors[topGenres.indexOf(genre) % colors.length],
-                                          borderRadius: BorderRadius.circular(ScreenUtils.kStatCardBorderRadius),
-                                        ),
-                                        child: Text(
-                                          genre.genre!.titleCase,
-                                          style: Manager.bodyStyle,
-                                          textAlign: TextAlign.center,
-                                        ),
+                  ),
+                  VDiv(8),
+                  Expanded(
+                    child: Padding(
+                        padding: const EdgeInsets.all(8.0),
+                        child: Row(
+                          children: topGenres.map((genre) {
+                            return Expanded(
+                              child: Tooltip(
+                                message: '${genre.genre!.titleCase} (${(genre.count! / totalCount * 100).toStringAsFixed(1)}%)',
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4.0),
+                                      decoration: BoxDecoration(
+                                        color: colors[topGenres.indexOf(genre) % colors.length],
+                                        borderRadius: BorderRadius.circular(ScreenUtils.kStatCardBorderRadius),
                                       ),
-                                      VDiv(4),
-                                      RichText(
-                                        text: TextSpan(
-                                          children: [
-                                            TextSpan(text: genre.count?.toString() ?? '0', style: Manager.bodyStrongStyle.copyWith(color: colors[topGenres.indexOf(genre) % colors.length])),
-                                            TextSpan(text: ' Entries', style: Manager.bodyStyle),
-                                          ],
-                                        ),
+                                      child: Text(
+                                        genre.genre!.titleCase,
+                                        style: Manager.bodyStyle,
+                                        textAlign: TextAlign.center,
                                       ),
-                                    ],
-                                  ),
-                                ),
-                              );
-                            }).toList(),
-                          )),
-                    ),
-                    ClipRRect(
-                      borderRadius: BorderRadius.only(bottomRight: Radius.circular(ScreenUtils.kStatCardBorderRadius), bottomLeft: Radius.circular(ScreenUtils.kStatCardBorderRadius)),
-                      child: SizedBox(
-                        height: 12,
-                        child: Builder(builder: (context) {
-                          final List<Widget> genreWidgets = [];
-                          topGenres.forEachIndexed((index, genre) {
-                            genreWidgets.add(
-                              Expanded(
-                                flex: (genre.count ?? 1),
-                                child: Tooltip(
-                                  message: '${genre.genre} (${(genre.count! / totalCount * 100).toStringAsFixed(1)}%)',
-                                  child: Container(
-                                    decoration: BoxDecoration(
-                                      color: colors[index % colors.length],
                                     ),
-                                  ),
+                                    VDiv(4),
+                                    RichText(
+                                      text: TextSpan(
+                                        children: [
+                                          TextSpan(text: genre.count?.toString() ?? '0', style: Manager.bodyStrongStyle.copyWith(color: colors[topGenres.indexOf(genre) % colors.length])),
+                                          TextSpan(text: ' Entries', style: Manager.bodyStyle),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
                             );
-                          });
-                          return Row(children: genreWidgets);
-                        }),
-                      ),
+                          }).toList(),
+                        )),
+                  ),
+                  VDiv(8),
+                  ClipRRect(
+                    borderRadius: BorderRadius.only(bottomRight: Radius.circular(ScreenUtils.kStatCardBorderRadius), bottomLeft: Radius.circular(ScreenUtils.kStatCardBorderRadius)),
+                    child: SizedBox(
+                      height: 12,
+                      child: Builder(builder: (context) {
+                        final List<Widget> genreWidgets = [];
+                        topGenres.forEachIndexed((index, genre) {
+                          genreWidgets.add(
+                            Expanded(
+                              flex: (genre.count ?? 1),
+                              child: Tooltip(
+                                message: '${genre.genre} (${(genre.count! / totalCount * 100).toStringAsFixed(1)}%)',
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    color: colors[index % colors.length],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          );
+                        });
+                        return Row(children: genreWidgets);
+                      }),
                     ),
-                  ],
-                )),
-          );
+                  ),
+                ],
+              ));
         }),
       ),
     ];
@@ -531,103 +778,106 @@ class AccountsScreenState extends State<AccountsScreen> {
             (favorites.studios?.nodes == null || favorites.studios!.nodes!.isEmpty)) //
       return [const Text('No favorites found')];
 
+    Widget buildList(FavouriteCollection list) {
+      return SizedBox(
+        height: 150,
+        child: ScrollConfiguration(
+          behavior: ScrollConfiguration.of(context).copyWith(overscroll: true, platform: TargetPlatform.windows, scrollbars: false),
+          child: DynMouseScroll(
+              stopScroll: KeyboardState.ctrlPressedNotifier,
+              scrollSpeed: 1.0,
+              enableSmoothScroll: Manager.animationsEnabled,
+              durationMS: 350,
+              animationCurve: Curves.easeOutQuint,
+              builder: (context, controller, physics) {
+                return ValueListenableBuilder(
+                    valueListenable: KeyboardState.ctrlPressedNotifier,
+                    builder: (context, isCtrlPressed, _) {
+                      return ListView.builder(
+                        physics: isCtrlPressed ? const NeverScrollableScrollPhysics() : null,
+                        controller: controller,
+                        scrollDirection: Axis.horizontal,
+                        itemCount: list.nodes!.length,
+                        itemBuilder: (context, index) {
+                          final node = list.nodes![index];
+                          final isAnime = node is AnilistAnime;
+                          final imageUrl = isAnime ? node.posterImage : node.image?.large;
+                          final name = isAnime ? node.title.userPreferred : node.name?.full;
+                          return Tooltip(
+                            message: !isAnime ? name ?? 'Unknown' : '${name ?? 'Unknown'}\n${node.seasonYear ?? ''} ${node.format?.titleCase ?? ''}',
+                            child: Container(
+                              width: 100,
+                              margin: const EdgeInsets.only(right: 8),
+                              child: Column(
+                                children: [
+                                  Container(
+                                    height: 120,
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(ScreenUtils.kEpisodeCardBorderRadius),
+                                      image: imageUrl != null ? DecorationImage(image: CachedNetworkImageProvider(imageUrl), fit: BoxFit.cover) : null,
+                                    ),
+                                  ),
+                                  VDiv(4),
+                                  Text(
+                                    name ?? 'Unknown',
+                                    style: Manager.captionStyle,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      );
+                    });
+              }),
+        ),
+      );
+    }
+
     return [
       Text(
         'Favorites',
         style: Manager.subtitleStyle,
       ),
-      VDiv(16),
+      //
+      // Favorite Anime section
       if (favorites.anime?.nodes != null && favorites.anime!.nodes!.isNotEmpty) ...[
+        VDiv(16),
         Text(
           'Favorite Anime',
           style: Manager.bodyStrongStyle,
         ),
         VDiv(8),
-        SizedBox(
-          height: 150,
-          child: ListView.builder(
-            scrollDirection: Axis.horizontal,
-            itemCount: favorites.anime!.nodes!.length,
-            itemBuilder: (context, index) {
-              final anime = favorites.anime!.nodes![index];
-              return Container(
-                width: 100,
-                margin: const EdgeInsets.only(right: 8),
-                child: Column(
-                  children: [
-                    Container(
-                      height: 120,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(ScreenUtils.kEpisodeCardBorderRadius),
-                        image: anime.posterImage != null //
-                            ? DecorationImage(image: CachedNetworkImageProvider(anime.posterImage!), fit: BoxFit.cover)
-                            : null,
-                      ),
-                    ),
-                    VDiv(4),
-                    Text(
-                      anime.title.userPreferred ?? anime.title.english ?? anime.title.romaji ?? 'Unknown',
-                      style: Manager.captionStyle,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
-                ),
-              );
-            },
-          ),
-        ),
+        buildList(favorites.anime!),
       ],
+      //
+      // Favorite Staff section
       if (favorites.characters?.nodes != null && favorites.characters!.nodes!.isNotEmpty) ...[
-        VDiv(16),
         Text(
           'Favorite Characters',
           style: Manager.bodyStrongStyle,
         ),
         VDiv(8),
-        SizedBox(
-          height: 150,
-          child: ListView.builder(
-            scrollDirection: Axis.horizontal,
-            itemCount: favorites.characters!.nodes!.length,
-            itemBuilder: (context, index) {
-              final character = favorites.characters!.nodes![index];
-              return Container(
-                width: 100,
-                margin: const EdgeInsets.only(right: 8),
-                child: Column(
-                  children: [
-                    Container(
-                      height: 120,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(ScreenUtils.kEpisodeCardBorderRadius),
-                        image: character.image?.large != null //
-                            ? DecorationImage(image: CachedNetworkImageProvider(character.image!.large!), fit: BoxFit.cover)
-                            : null,
-                      ),
-                    ),
-                    VDiv(4),
-                    Text(
-                      character.name?.full ?? 'Unknown',
-                      style: Manager.captionStyle,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
-                ),
-              );
-            },
-          ),
+        buildList(favorites.characters!),
+      ],
+      if (favorites.staff?.nodes != null && favorites.staff!.nodes!.isNotEmpty) ...[
+        VDiv(16),
+        Text(
+          'Favorite Staff',
+          style: Manager.bodyStrongStyle,
         ),
+        VDiv(8),
+        buildList(favorites.staff!),
       ],
     ];
   }
 
   //
 
-  Widget _statCard(String title, String value, {Widget? icon}) {
+  Widget _statCard(String title, num value, {Widget? icon, String suffix = ''}) {
     return ClipRRect(
       borderRadius: BorderRadius.circular(ScreenUtils.kStatCardBorderRadius),
       child: Container(
@@ -636,7 +886,7 @@ class AccountsScreenState extends State<AccountsScreen> {
           borderRadius: BorderRadius.circular(ScreenUtils.kStatCardBorderRadius),
           border: Border.all(color: Manager.accentColor.lighter),
         ),
-        width: ScreenUtils.kDefaultStatCardWidth,
+        width: ScreenUtils.kMinStatCardWidth,
         child: Stack(
           children: [
             if (icon != null) ...[
@@ -670,10 +920,14 @@ class AccountsScreenState extends State<AccountsScreen> {
                     title,
                     style: Manager.captionStyle,
                   ),
-                  Text(
-                    value,
-                    style: Manager.bodyLargeStyle,
-                  ),
+                  Builder(builder: (context) {
+                    return AnimatedStatCounter<num>(
+                      targetValue: value,
+                      isDouble: value is double,
+                      suffix: suffix.startsWith(" ") ? suffix : ' $suffix',
+                      textStyle: Manager.bodyLargeStyle,
+                    );
+                  }),
                 ],
               ),
             ),
@@ -685,18 +939,13 @@ class AccountsScreenState extends State<AccountsScreen> {
 
   //
 
-  (String, String) _formatMinutes(int minutes) {
+  (String, int) _formatMinutes(int minutes) {
     final hours = minutes ~/ 60;
     final days = hours ~/ 24;
 
-    if (days > 0) return ('Days', '$days days');
-    if (hours > 0) return ('Hours', '$hours hours');
-    return ('Minutes', '$minutes minutes');
-  }
-
-  String _formatValue(dynamic value) {
-    if (value == null) return 'Unknown';
-    return value.toString().replaceAll('_', ' ');
+    if (days > 0) return (' Days', days);
+    if (hours > 0) return (' Hours', hours);
+    return (' Minutes', minutes);
   }
 
   Color _parseProfileColor(String color) {

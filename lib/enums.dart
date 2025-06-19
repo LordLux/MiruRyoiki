@@ -147,6 +147,26 @@ extension HexColor on Color {
       '${blue.toRadixString(16).padLeft(2, '0')}';
 
   int toHexInt() => int.parse(toHex().replaceAll('#', ''), radix: 16);
+  
+  Color shiftHue(double amount) {
+    final hsl = HSLColor.fromColor(this);
+    final shiftedHsl = hsl.withHue((hsl.hue + amount * 360) % 360);
+    return shiftedHsl.toColor();
+  }
+  
+  Color lighten(double amount) {
+    final hsl = HSLColor.fromColor(this);
+    final lightenedHsl = hsl.withLightness((hsl.lightness + amount).clamp(0.0, 1.0));
+    return lightenedHsl.toColor();
+  }
+  
+  Color darken(double amount) => lighten(-amount);
+  
+  Color saturate(double amount) {
+    final hsl = HSLColor.fromColor(this);
+    final saturatedHsl = hsl.withSaturation((hsl.saturation + amount).clamp(0.0, 1.0));
+    return saturatedHsl.toColor();
+  }
 }
 
 extension HexString on String {

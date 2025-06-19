@@ -6,6 +6,7 @@ import 'package:smooth_scroll_multiplatform/smooth_scroll_multiplatform.dart';
 import '../../manager.dart';
 import '../../services/navigation/shortcuts.dart';
 import '../../utils/image_utils.dart';
+import '../../utils/logging.dart';
 import '../../utils/screen_utils.dart';
 import '../../utils/time_utils.dart';
 
@@ -21,6 +22,7 @@ class MiruRyoikiInfobar extends StatefulWidget {
   })? poster;
   final EdgeInsets contentPadding;
   final bool isProfilePicture;
+  final VoidCallback? setStateCallback;
 
   const MiruRyoikiInfobar({
     super.key,
@@ -29,6 +31,7 @@ class MiruRyoikiInfobar extends StatefulWidget {
     this.getPosterImage,
     this.isProfilePicture = false,
     this.contentPadding = const EdgeInsets.all(32.0),
+    this.setStateCallback,
   });
 
   @override
@@ -37,16 +40,13 @@ class MiruRyoikiInfobar extends StatefulWidget {
 
 class _MiruRyoikiInfobarState extends State<MiruRyoikiInfobar> {
   @override
-  void dispose() {
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
     return FutureBuilder(
-        future: widget.getPosterImage ?? Future.value(null),
+        future: widget.getPosterImage,
         builder: (context, snapshot) {
           ImageProvider? imageProvider = snapshot.data;
+          if (imageProvider == null) //
+            nextFrame(() => (mounted) ? widget.setStateCallback?.call() : null);
 
           Widget fb(Widget Function(double squareness, double posterWidth, double posterHeight, ImageProvider<Object>? imageProvider, double getInfoBarOffset) child) {
             return FutureBuilder(
