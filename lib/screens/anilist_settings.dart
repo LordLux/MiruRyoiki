@@ -212,11 +212,12 @@ class AnilistAccountScreen extends StatelessWidget {
 Widget Chip({
   required Widget text,
   Widget? trailing,
+  Color? backgroundColor,
 }) {
   return Container(
     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
     decoration: BoxDecoration(
-      color: Manager.currentDominantColor,
+      color: backgroundColor ?? Manager.currentDominantColor,
       borderRadius: BorderRadius.circular(16),
     ),
     child: Row(

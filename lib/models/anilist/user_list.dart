@@ -195,6 +195,22 @@ class AnilistUser {
     this.bannerImage,
     this.userData,
   });
+  
+  AnilistUser copyWith({
+    int? id,
+    String? name,
+    String? avatar,
+    String? bannerImage,
+    AnilistUserData? userData,
+  }) {
+    return AnilistUser(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      avatar: avatar ?? this.avatar,
+      bannerImage: bannerImage ?? this.bannerImage,
+      userData: userData ?? this.userData,
+    );
+  }
 
   factory AnilistUser.fromJson(Map<String, dynamic> json) {
     return AnilistUser(
