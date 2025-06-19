@@ -288,43 +288,35 @@ class Favourites {
   }
 }
 
-class FavouriteAnime {
-  final List<AnilistAnime>? nodes;
+abstract class FavouriteCollection<T> {
+  final List<T>? nodes;
 
-  FavouriteAnime({
-    this.nodes,
-  });
+  FavouriteCollection({this.nodes});
+
+  Map<String, dynamic> toJson() {
+    return {
+      'nodes': nodes?.map((x) => (x as dynamic).toJson()).toList(),
+    };
+  }
+}
+
+class FavouriteAnime extends FavouriteCollection<AnilistAnime> {
+  FavouriteAnime({super.nodes});
 
   factory FavouriteAnime.fromJson(Map<String, dynamic> json) {
     return FavouriteAnime(
       nodes: json['nodes'] != null ? List<AnilistAnime>.from(json['nodes'].map((x) => AnilistAnime.fromJson(x))) : null,
     );
   }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'nodes': nodes?.map((x) => x.toJson()).toList(),
-    };
-  }
 }
 
-class FavouriteCharacters {
-  final List<Character>? nodes;
-
-  FavouriteCharacters({
-    this.nodes,
-  });
+class FavouriteCharacters extends FavouriteCollection<Character> {
+  FavouriteCharacters({super.nodes});
 
   factory FavouriteCharacters.fromJson(Map<String, dynamic> json) {
     return FavouriteCharacters(
       nodes: json['nodes'] != null ? List<Character>.from(json['nodes'].map((x) => Character.fromJson(x))) : null,
     );
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'nodes': nodes?.map((x) => x.toJson()).toList(),
-    };
   }
 }
 
@@ -400,23 +392,13 @@ class CharacterImage {
   }
 }
 
-class FavouriteStaff {
-  final List<Staff>? nodes;
-
-  FavouriteStaff({
-    this.nodes,
-  });
+class FavouriteStaff extends FavouriteCollection<Staff> {
+  FavouriteStaff({super.nodes});
 
   factory FavouriteStaff.fromJson(Map<String, dynamic> json) {
     return FavouriteStaff(
       nodes: json['nodes'] != null ? List<Staff>.from(json['nodes'].map((x) => Staff.fromJson(x))) : null,
     );
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'nodes': nodes?.map((x) => x.toJson()).toList(),
-    };
   }
 }
 
@@ -448,23 +430,13 @@ class Staff {
   }
 }
 
-class FavouriteStudios {
-  final List<Studio>? nodes;
-
-  FavouriteStudios({
-    this.nodes,
-  });
+class FavouriteStudios extends FavouriteCollection<Studio> {
+  FavouriteStudios({super.nodes});
 
   factory FavouriteStudios.fromJson(Map<String, dynamic> json) {
     return FavouriteStudios(
       nodes: json['nodes'] != null ? List<Studio>.from(json['nodes'].map((x) => Studio.fromJson(x))) : null,
     );
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'nodes': nodes?.map((x) => x.toJson()).toList(),
-    };
   }
 }
 

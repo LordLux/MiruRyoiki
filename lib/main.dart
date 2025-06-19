@@ -336,7 +336,6 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
   final ScrollController settingsController = ScrollController();
 
   late final LibraryScreen _libraryScreen;
-  late final AccountsScreen _accountsScreen;
 
   // bool get _isLibraryView => !(_isSeriesView && _selectedSeriesPath != null);
   bool get isSeriesView => _isSeriesView;
@@ -410,11 +409,6 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
       key: libraryScreenKey,
       onSeriesSelected: navigateToSeries,
       scrollController: _libraryMap['controller'] as ScrollController,
-    );
-    
-    _accountsScreen = AccountsScreen(
-      key: accountsKey,
-      scrollController: _accountsMap['controller'] as ScrollController,
     );
 
     nextFrame(() {
@@ -584,7 +578,10 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
                             buildPaneItem(
                               accountsIndex,
                               icon: anilistIcon(anilistProvider.isOffline),
-                              body: _accountsScreen,
+                              body: AccountsScreen(
+                                key: accountsKey,
+                                scrollController: _accountsMap['controller'] as ScrollController,
+                              ),
                               extra: (isHovered) {
                                 final anilistProvider = Provider.of<AnilistProvider>(context, listen: false);
                                 final user = anilistProvider.currentUser;

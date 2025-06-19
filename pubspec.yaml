@@ -57,6 +57,9 @@ dependencies:
     # git:
     #   url: https://github.com/LordLux/flutter_desktop_context_menu.git
   cached_network_image: ^3.3.1
+  animated_flip_counter: ^0.3.4
+  pie_chart: ^5.4.0
+  flexible_wrap: ^1.0.6
 
 dev_dependencies:
   flutter_test:
