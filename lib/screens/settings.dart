@@ -1279,10 +1279,17 @@ Widget SettingsCard({required List<Widget> children}) {
     borderRadius: BorderRadius.circular(8.0),
     child: Padding(
       padding: const EdgeInsets.all(24.0),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: children,
+        children: [
+          Expanded(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: children,
+            ),
+          ),
+        ],
       ),
     ),
   );

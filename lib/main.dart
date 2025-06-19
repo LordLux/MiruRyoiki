@@ -175,17 +175,20 @@ class MyApp extends StatelessWidget {
           ),
         ),
       ),
-      child: Navigator(
-        onGenerateRoute: (_) => MaterialPageRoute(
-          builder: (context) => Directionality(
-            textDirection: appTheme.textDirection,
-            child: NavigationPaneTheme(
-              data: NavigationPaneThemeData(
-                backgroundColor: appTheme.windowEffect != WindowEffect.disabled ? Colors.transparent : null,
-              ),
-              child: Material(
-                color: Colors.transparent,
-                child: child!,
+      child: DefaultTextStyle(
+        style: FluentTheme.of(ctx).typography.body!,
+        child: Navigator(
+          onGenerateRoute: (_) => MaterialPageRoute(
+            builder: (context) => Directionality(
+              textDirection: appTheme.textDirection,
+              child: NavigationPaneTheme(
+                data: NavigationPaneThemeData(
+                  backgroundColor: appTheme.windowEffect != WindowEffect.disabled ? Colors.transparent : null,
+                ),
+                child: Material(
+                  color: Colors.transparent,
+                  child: child!,
+                ),
               ),
             ),
           ),

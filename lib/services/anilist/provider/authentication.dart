@@ -29,13 +29,64 @@ extension AnilistProviderAuthentication on AnilistProvider {
   Future<void> _loadUserData() async {
     _currentUser = await _anilistService.getCurrentUser();
 
-    if (_currentUser != null) await _saveCurrentUserToCache();
+    // Also load detailed user data
+    if (_currentUser != null) {
+      final userData = await _anilistService.getCurrentUserData();
+      // Update the current user with the detailed data
+      if (userData != null) {
+        _currentUser = AnilistUser(
+          id: _currentUser!.id,
+          name: _currentUser!.name,
+          avatar: _currentUser!.avatar,
+          bannerImage: _currentUser!.bannerImage,
+          userData: userData,
+        );
+      }
+
+      await _saveCurrentUserToCache();
+    }
 
     await _loadUserLists();
   }
 
   Future<void> _loadUserLists() async {
     _userLists = await _anilistService.getUserAnimeLists(userId: _currentUser?.id);
+  }
+
+  Future<void> refreshUserData() async {
+    if (!isLoggedIn) return;
+
+    _isLoading = true;
+    notifyListeners();
+
+    final isOnline = await _checkConnectivity();
+
+    if (isOnline) {
+      // Get basic user info
+      final basicUser = await _anilistService.getCurrentUser();
+
+      if (basicUser != null) {
+        // Get detailed user data
+        final userData = await _anilistService.getCurrentUserData();
+
+        // Update the current user with the detailed data
+        _currentUser = AnilistUser(
+          id: basicUser.id,
+          name: basicUser.name,
+          avatar: basicUser.avatar,
+          bannerImage: basicUser.bannerImage,
+          userData: userData,
+        );
+
+        await _saveCurrentUserToCache();
+      }
+    } else {
+      // If offline, try to load from cache
+      await _loadCurrentUserFromCache();
+    }
+
+    _isLoading = false;
+    notifyListeners();
   }
 
   /// Logout from Anilist

@@ -1,5 +1,9 @@
+import 'dart:math' as math;
+
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:defer_pointer/defer_pointer.dart';
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:flutter/material.dart' as mat;
 import 'package:miruryoiki/widgets/buttons/switch.dart';
 import 'package:recase/recase.dart';
 import '../manager.dart';
@@ -9,6 +13,7 @@ import 'package:provider/provider.dart';
 import '../services/library/library_provider.dart';
 import '../utils/logging.dart';
 import '../utils/screen_utils.dart';
+import '../utils/time_utils.dart';
 import '../widgets/buttons/button.dart';
 import '../widgets/buttons/loading_button.dart';
 import '../widgets/page/header_widget.dart';
@@ -29,41 +34,65 @@ class AccountsScreen extends StatefulWidget {
 
 class AccountsScreenState extends State<AccountsScreen> {
   bool isLocalLoading = false;
+  bool _seriesLoading = false;
+  bool _userLoading = false;
 
   @override
-  Widget build(BuildContext context) {
-    final anilistProvider = Provider.of<AnilistProvider>(context, listen: true);
-    final isLoggedIn = anilistProvider.isLoggedIn;
+  void initState() {
+    super.initState();
+    _loadUserData();
+  }
 
-    return MiruRyoikiHeaderInfoBarPage(
-      headerWidget: HeaderWidget(
-        title: (style) => Row(
-          children: [
-            Text(
-              !isLoggedIn ? 'Account' : anilistProvider.currentUser?.name.titleCase ?? 'Anilist',
-              style: style,
+  Future<void> _loadUserData() async {
+    final anilistProvider = Provider.of<AnilistProvider>(context, listen: false);
+    if (anilistProvider.isLoggedIn && anilistProvider.currentUser?.userData == null) {
+      // Only load if we're logged in but don't have the detailed data yet
+      setState(() {
+        isLocalLoading = true;
+      });
+
+      await anilistProvider.refreshUserData();
+
+      setState(() {
+        isLocalLoading = false;
+      });
+    }
+  }
+
+  HeaderWidget header({required AnilistProvider anilistProvider, required bool isLoggedIn}) {
+    return HeaderWidget(
+      title: (style) => Row(
+        children: [
+          Text(
+            !isLoggedIn ? 'Account' : anilistProvider.currentUser?.name.titleCase ?? 'Anilist',
+            style: style,
+          ),
+          Text(
+            anilistProvider.currentUser?.id.toString() ?? '',
+            key: ValueKey(anilistProvider.currentUser?.id),
+            style: style.copyWith(
+              fontSize: 12,
             ),
-            Text(
-              anilistProvider.currentUser?.id.toString() ?? '',
-              key: ValueKey(anilistProvider.currentUser?.id),
-              style: style.copyWith(
-                fontSize: 12,
-              ),
-            ),
-          ],
-        ),
-        image: anilistProvider.currentUser?.bannerImage != null //
-            ? CachedNetworkImageProvider(anilistProvider.currentUser!.bannerImage!)
-            : null,
-        colorFilter: anilistProvider.currentUser?.bannerImage != null //
-            ? ColorFilter.mode(Colors.black.withOpacity(0.5), BlendMode.darken)
-            : null,
+          ),
+        ],
       ),
-      infobar: (deferredPointerLink) => MiruRyoikiInfobar(
-        isProfilePicture: true,
-        content: anilistProvider.isLoggedIn ? _buildSyncSettings(context, anilistProvider) : const Text('Sign in to access Anilist features'),
-        poster: ({ImageProvider<Object>? imageProvider, required double width, required double height, required double squareness, required double offset}) {
-          return Container(
+      image: anilistProvider.currentUser?.bannerImage != null //
+          ? CachedNetworkImageProvider(anilistProvider.currentUser!.bannerImage!)
+          : null,
+      colorFilter: anilistProvider.currentUser?.bannerImage != null //
+          ? ColorFilter.mode(Colors.black.withOpacity(0.5), BlendMode.darken)
+          : null,
+    );
+  }
+
+  MiruRyoikiInfobar infoBar({required AnilistProvider anilistProvider}) {
+    return MiruRyoikiInfobar(
+      isProfilePicture: true,
+      content: anilistProvider.isLoggedIn ? _buildSyncSettings(context, anilistProvider) : const Text('Sign in to access Anilist features'),
+      poster: ({ImageProvider<Object>? imageProvider, required double width, required double height, required double squareness, required double offset}) {
+        return DeferPointer(
+          paintOnTop: true,
+          child: Container(
             width: width,
             height: height,
             decoration: BoxDecoration(
@@ -71,14 +100,27 @@ class AccountsScreenState extends State<AccountsScreen> {
                   ? DecorationImage(image: imageProvider, fit: BoxFit.cover)
                   : null,
             ),
-          );
-        },
-        getPosterImage: (anilistProvider.currentUser?.avatar != null) //
-            ? Future.value(CachedNetworkImageProvider(anilistProvider.currentUser!.avatar!))
-            : Future.value(null),
+          ),
+        );
+      },
+      getPosterImage: (anilistProvider.currentUser?.avatar != null) //
+          ? Future.value(CachedNetworkImageProvider(anilistProvider.currentUser!.avatar!))
+          : Future.value(null),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final anilistProvider = Provider.of<AnilistProvider>(context, listen: true);
+    final isLoggedIn = anilistProvider.isLoggedIn;
+
+    return DeferredPointerHandler(
+      child: MiruRyoikiHeaderInfoBarPage(
+        headerWidget: header(anilistProvider: anilistProvider, isLoggedIn: isLoggedIn),
+        infobar: infoBar(anilistProvider: anilistProvider),
+        content: buildMainContent(anilistProvider),
+        hideInfoBar: !isLoggedIn,
       ),
-      hideInfoBar: !isLoggedIn,
-      content: buildMainContent(anilistProvider),
     );
   }
 
@@ -94,7 +136,7 @@ class AccountsScreenState extends State<AccountsScreen> {
         VDiv(16),
         ToggleSwitch(
           checked: true,
-          content: Flexible(child: const Text('Update automatically watch progress on Anilist')),
+          content: Flexible(child: Text('Update automatically watch progress on Anilist', style: Manager.bodyStyle)),
           onChanged: (value) {
             // TODO: Implement setting
           },
@@ -103,7 +145,7 @@ class AccountsScreenState extends State<AccountsScreen> {
         NormalSwitch(
           toggleSwitch: ToggleSwitch(
             checked: true,
-            content: Flexible(child: const Text('Warn when linking the same File/Folder to an Anilist entry')),
+            content: Flexible(child: Text('Warn when linking the same File/Folder to an Anilist entry', style: Manager.bodyStyle)),
             onChanged: (value) {
               // TODO: Implement setting
             },
@@ -113,31 +155,51 @@ class AccountsScreenState extends State<AccountsScreen> {
         NormalSwitch(
           toggleSwitch: ToggleSwitch(
             checked: true,
-            content: Flexible(child: const Text('Warn when linking the same Anilist entry to a File/Folder')),
+            content: Flexible(child: Text('Warn when linking the same Anilist entry to a File/Folder', style: Manager.bodyStyle)),
             onChanged: (value) {
               // TODO: Implement setting
             },
           ),
         ),
         VDiv(16),
-        NormalButton(
+        LoadingButton(
           expand: true,
+          isSmall: true,
+          isLoading: _seriesLoading,
           tooltip: 'Refresh all Anilist metadata',
           label: 'Refresh All Metadata',
-          onPressed: () {
+          onPressed: () async {
+            if (_seriesLoading || anilistProvider.isLoading) return;
+            setState(() {
+              _seriesLoading = true;
+            });
+
             final library = Provider.of<Library>(context, listen: false);
-            library.refreshAllMetadata();
-            logInfo('Refreshing all Anilist metadata');
+            await library.refreshAllMetadata();
+
+            setState(() {
+              _seriesLoading = false;
+            });
           },
         ),
         VDiv(8),
-        NormalButton(
+        LoadingButton(
           expand: true,
+          isSmall: true,
+          isLoading: _userLoading && anilistProvider.isLoading,
           tooltip: 'Refresh User Metadata',
           label: 'Refresh User Metadata',
-          onPressed: () {
-            anilistProvider.refreshUserLists();
-            logInfo('Refreshing user metadata');
+          onPressed: () async {
+            if (_userLoading || anilistProvider.isLoading) return;
+            setState(() {
+              _userLoading = true;
+            });
+
+            await anilistProvider.refreshUserLists();
+
+            setState(() {
+              _userLoading = false;
+            });
           },
         ),
         VDiv(8),
@@ -175,7 +237,7 @@ class AccountsScreenState extends State<AccountsScreen> {
               VDiv(12),
               Text(
                 'Connect your Anilist account to sync your media library.',
-                style: FluentTheme.of(context).typography.body,
+                style: Manager.bodyStyle,
               ),
               Align(
                 alignment: Alignment.topRight,
@@ -195,19 +257,19 @@ class AccountsScreenState extends State<AccountsScreen> {
             ])
           ] else ...[
             // User profile section
-            SettingsCard(children: [
-              _buildUserProfile(anilistProvider),
-            ]),
+            SettingsCard(
+              children: _buildUserProfile(anilistProvider),
+            ),
             VDiv(16),
             // Statistics section
-            SettingsCard(children: [
-              _buildStatistics(anilistProvider),
-            ]),
+            SettingsCard(
+              children: _buildStatistics(anilistProvider),
+            ),
             VDiv(16),
             // Favorites section
-            SettingsCard(children: [
-              _buildFavorites(anilistProvider),
-            ]),
+            SettingsCard(
+              children: _buildFavorites(anilistProvider),
+            ),
           ]
         ],
       ),
@@ -216,317 +278,355 @@ class AccountsScreenState extends State<AccountsScreen> {
 
   // Add these methods to AccountsScreen class
 
-  Widget _buildUserProfile(AnilistProvider anilistProvider) {
-    final user = anilistProvider.currentUser;
+  List<Widget> _buildUserProfile(AnilistProvider anilistProvider) {
     final userData = anilistProvider.currentUser?.userData;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
+    return [
+      Text(
+        'Profile',
+        style: Manager.subtitleStyle,
+      ),
+      VDiv(16),
+      Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (userData?.about != null && userData!.about!.isNotEmpty) ...[
+                  VDiv(8),
+                  Text(
+                    'About',
+                    style: Manager.bodyStrongStyle,
+                  ),
+                  Text(
+                    userData.about!,
+                    style: Manager.bodyStyle,
+                    maxLines: 4,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+                VDiv(8),
+                if (userData?.siteUrl != null) ...[
+                  Row(
+                    children: [
+                      Text('Profile: ', style: Manager.bodyStrongStyle),
+                      HyperlinkButton(
+                        child: Text(userData!.siteUrl!, style: Manager.bodyStyle),
+                        onPressed: () {
+                          // Open URL
+                        },
+                      ),
+                    ],
+                  ),
+                ],
+                if (userData?.options?.profileColor != null) ...[
+                  Row(
+                    children: [
+                      Text('Profile Color: ', style: Manager.bodyStrongStyle),
+                      Container(
+                        width: 16,
+                        height: 16,
+                        color: _parseProfileColor(userData!.options!.profileColor!),
+                        margin: const EdgeInsets.only(right: 8),
+                      ),
+                      Text(userData.options!.profileColor!, style: Manager.bodyStyle),
+                    ],
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    ];
+  }
+
+  List<Widget> _buildStatistics(AnilistProvider anilistProvider) {
+    final userData = anilistProvider.currentUser?.userData;
+    final animeStats = userData?.statistics?.anime;
+
+    if (animeStats == null) return [const Text('No statistics available')];
+
+    return [
+      Text(
+        'Anime Statistics',
+        style: Manager.subtitleStyle,
+      ),
+      VDiv(16),
+      LayoutBuilder(
+        builder: (context, constraints) {
+          // Calculate the minimum width needed for all 4 stat cards with spacing
+          const cardNumber = 5;
+          const spacing = 16.0;
+          final totalWidth = (ScreenUtils.kDefaultStatCardWidth * cardNumber) + (spacing * (cardNumber - 1));
+
+          List<Widget> _statCards = [
+            _statCard('Anime Watched', '${animeStats.count ?? 0}', icon: const Icon(mat.Icons.subscriptions)),
+            _statCard('Episodes Watched', '${animeStats.episodesWatched ?? 0}', icon: const Icon(mat.Icons.visibility)),
+            _statCard("${_formatMinutes(animeStats.minutesWatched ?? 0).$1} Watched", _formatMinutes(animeStats.minutesWatched ?? 0).$2, icon: const Icon(FluentIcons.clock)),
+            _statCard('Mean Score', animeStats.meanScore?.toStringAsFixed(1) ?? "N/A", icon: Icon(FluentIcons.favorite_star_fill)),
+            _statCard('Mean Score', animeStats.meanScore?.toStringAsFixed(1) ?? "N/A", icon: Icon(FluentIcons.favorite_star_fill)),
+          ];
+
+          // If enough space, use a Row with spaceBetween, else fall back to Wrap
+          if (constraints.maxWidth >= totalWidth)
+            return Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: _statCards,
+            );
+          return Wrap(
+            spacing: spacing,
+            runSpacing: spacing,
+            alignment: WrapAlignment.spaceBetween,
+            children: _statCards,
+          );
+        },
+      ),
+      VDiv(16),
+      if (animeStats.genres != null && animeStats.genres!.isNotEmpty) ...[
         Text(
-          'Profile',
-          style: FluentTheme.of(context).typography.subtitle,
+          'Genres Overview',
+          style: Manager.bodyStrongStyle,
         ),
+        VDiv(8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: animeStats.genres!
+              .take(5)
+              .map((genre) => Chip(
+                    text: Text(genre.genre ?? 'Unknown'),
+                    trailing: Text('${genre.count}'),
+                  ))
+              .toList(),
+        ),
+      ],
+      if (animeStats.formats != null && animeStats.formats!.isNotEmpty) ...[
         VDiv(16),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        Text(
+          'Format Distribution',
+          style: Manager.bodyStrongStyle,
+        ),
+        VDiv(8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: animeStats.formats!
+              .take(5)
+              .map((format) => Chip(
+                    backgroundColor: Manager.accentColor.lighter,
+                    text: Text(_formatValue(format.format)),
+                    trailing: Text('${format.count}'),
+                  ))
+              .toList(),
+        ),
+      ],
+    ];
+  }
+
+  List<Widget> _buildFavorites(AnilistProvider anilistProvider) {
+    final userData = anilistProvider.currentUser?.userData;
+    final favorites = userData?.favourites;
+
+    if (favorites == null || (favorites.anime?.nodes == null || favorites.anime!.nodes!.isEmpty) && (favorites.characters?.nodes == null || favorites.characters!.nodes!.isEmpty) && (favorites.staff?.nodes == null || favorites.staff!.nodes!.isEmpty) && (favorites.studios?.nodes == null || favorites.studios!.nodes!.isEmpty)) //
+      return [const Text('No favorites found')];
+
+    return [
+      Text(
+        'Favorites',
+        style: Manager.subtitleStyle,
+      ),
+      VDiv(16),
+      if (favorites.anime?.nodes != null && favorites.anime!.nodes!.isNotEmpty) ...[
+        Text(
+          'Favorite Anime',
+          style: Manager.bodyStrongStyle,
+        ),
+        VDiv(8),
+        SizedBox(
+          height: 150,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            itemCount: favorites.anime!.nodes!.length,
+            itemBuilder: (context, index) {
+              final anime = favorites.anime!.nodes![index];
+              return Container(
+                width: 100,
+                margin: const EdgeInsets.only(right: 8),
+                child: Column(
+                  children: [
+                    Container(
+                      height: 120,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(8),
+                        image: anime.posterImage != null
+                            ? DecorationImage(
+                                image: CachedNetworkImageProvider(anime.posterImage!),
+                                fit: BoxFit.cover,
+                              )
+                            : null,
+                      ),
+                    ),
+                    VDiv(4),
+                    Text(
+                      anime.title.userPreferred ?? anime.title.english ?? anime.title.romaji ?? 'Unknown',
+                      style: Manager.captionStyle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+      if (favorites.characters?.nodes != null && favorites.characters!.nodes!.isNotEmpty) ...[
+        VDiv(16),
+        Text(
+          'Favorite Characters',
+          style: Manager.bodyStrongStyle,
+        ),
+        VDiv(8),
+        SizedBox(
+          height: 150,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            itemCount: favorites.characters!.nodes!.length,
+            itemBuilder: (context, index) {
+              final character = favorites.characters!.nodes![index];
+              return Container(
+                width: 100,
+                margin: const EdgeInsets.only(right: 8),
+                child: Column(
+                  children: [
+                    Container(
+                      height: 120,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(8),
+                        image: character.image?.large != null
+                            ? DecorationImage(
+                                image: CachedNetworkImageProvider(character.image!.large!),
+                                fit: BoxFit.cover,
+                              )
+                            : null,
+                      ),
+                    ),
+                    VDiv(4),
+                    Text(
+                      character.name?.full ?? 'Unknown',
+                      style: Manager.captionStyle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    ];
+  }
+
+  //
+
+  Widget _statCard(String title, String value, {Widget? icon}) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        decoration: BoxDecoration(
+          color: FluentTheme.of(context).cardColor,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Manager.accentColor.lighter),
+        ),
+        width: ScreenUtils.kDefaultStatCardWidth,
+        child: Stack(
           children: [
-            if (user?.avatar != null)
-              Container(
-                width: 80,
-                height: 80,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  image: DecorationImage(
-                    image: CachedNetworkImageProvider(user!.avatar!),
-                    fit: BoxFit.cover,
+            if (icon != null) ...[
+              Positioned(
+                bottom: 6,
+                right: 6,
+                child: Transform.rotate(
+                  angle: -math.pi / 15,
+                  child: ColorFiltered(
+                    colorFilter: ColorFilter.mode(
+                      Manager.accentColor.lightest,
+                      BlendMode.srcATop,
+                    ),
+                    child: Transform.scale(
+                      scale: 3.5,
+                      child: Opacity(
+                        opacity: 0.25,
+                        child: icon,
+                      ),
+                    ),
                   ),
                 ),
-              )
-            else
-              Container(
-                width: 80,
-                height: 80,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: FluentTheme.of(context).accentColor,
-                ),
-                child: const Center(child: Icon(FluentIcons.contact, size: 40, color: Colors.white)),
               ),
-            const SizedBox(width: 20),
-            Expanded(
+            ],
+            Padding(
+              padding: const EdgeInsets.all(12),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    user?.name ?? 'Unknown User',
-                    style: FluentTheme.of(context).typography.title,
+                    title,
+                    style: Manager.captionStyle,
                   ),
-                  if (userData?.about != null && userData!.about!.isNotEmpty) ...[
-                    VDiv(8),
-                    Text(
-                      'About',
-                      style: FluentTheme.of(context).typography.bodyStrong,
-                    ),
-                    Text(
-                      userData.about!,
-                      style: FluentTheme.of(context).typography.body,
-                      maxLines: 4,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                  VDiv(8),
-                  if (userData?.siteUrl != null) ...[
-                    Row(
-                      children: [
-                        Text('Profile: ', style: FluentTheme.of(context).typography.bodyStrong),
-                        HyperlinkButton(
-                          child: Text(userData!.siteUrl!),
-                          onPressed: () {
-                            // Open URL
-                          },
-                        ),
-                      ],
-                    ),
-                  ],
-                  if (userData?.options?.profileColor != null) ...[
-                    Row(
-                      children: [
-                        Text('Profile Color: ', style: FluentTheme.of(context).typography.bodyStrong),
-                        Container(
-                          width: 16,
-                          height: 16,
-                          color: Color(int.parse('FF${userData!.options!.profileColor!.replaceAll("#", "")}', radix: 16)),
-                          margin: const EdgeInsets.only(right: 8),
-                        ),
-                        Text(userData.options!.profileColor!),
-                      ],
-                    ),
-                  ],
+                  Text(
+                    value,
+                    style: Manager.bodyLargeStyle,
+                  ),
                 ],
               ),
             ),
           ],
         ),
-      ],
-    );
-  }
-
-  Widget _buildStatistics(AnilistProvider anilistProvider) {
-    final userData = anilistProvider.currentUser?.userData;
-    final animeStats = userData?.statistics?.anime;
-
-    if (animeStats == null) {
-      return const Text('No statistics available');
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Anime Statistics',
-          style: FluentTheme.of(context).typography.subtitle,
-        ),
-        VDiv(16),
-        Wrap(
-          spacing: 16,
-          runSpacing: 16,
-          children: [
-            _statCard('Anime Watched', '${animeStats.count ?? 0}'),
-            _statCard('Episodes Watched', '${animeStats.episodesWatched ?? 0}'),
-            _statCard('Minutes Watched', _formatMinutes(animeStats.minutesWatched ?? 0)),
-            _statCard('Mean Score', animeStats.meanScore?.toStringAsFixed(1) ?? "N/A"),
-          ],
-        ),
-        VDiv(16),
-        if (animeStats.genres != null && animeStats.genres!.isNotEmpty) ...[
-          Text(
-            'Top Genres',
-            style: FluentTheme.of(context).typography.bodyStrong,
-          ),
-          VDiv(8),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: animeStats.genres!
-                .take(5)
-                .map((genre) => Chip(
-                      text: Text(genre.genre ?? 'Unknown'),
-                      trailing: Text('${genre.count}'),
-                    ))
-                .toList(),
-          ),
-        ],
-        if (animeStats.formats != null && animeStats.formats!.isNotEmpty) ...[
-          VDiv(16),
-          Text(
-            'Format Distribution',
-            style: FluentTheme.of(context).typography.bodyStrong,
-          ),
-          VDiv(8),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: animeStats.formats!
-                .take(5)
-                .map((format) => Chip(
-                      text: Text(_formatValue(format.format)),
-                      trailing: Text('${format.count}'),
-                    ))
-                .toList(),
-          ),
-        ],
-      ],
-    );
-  }
-
-  Widget _buildFavorites(AnilistProvider anilistProvider) {
-    final userData = anilistProvider.currentUser?.userData;
-    final favorites = userData?.favourites;
-
-    if (favorites == null || (favorites.anime?.nodes == null || favorites.anime!.nodes!.isEmpty) && (favorites.characters?.nodes == null || favorites.characters!.nodes!.isEmpty) && (favorites.staff?.nodes == null || favorites.staff!.nodes!.isEmpty) && (favorites.studios?.nodes == null || favorites.studios!.nodes!.isEmpty)) {
-      return const Text('No favorites found');
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Favorites',
-          style: FluentTheme.of(context).typography.subtitle,
-        ),
-        VDiv(16),
-        if (favorites.anime?.nodes != null && favorites.anime!.nodes!.isNotEmpty) ...[
-          Text(
-            'Favorite Anime',
-            style: FluentTheme.of(context).typography.bodyStrong,
-          ),
-          VDiv(8),
-          SizedBox(
-            height: 150,
-            child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              itemCount: favorites.anime!.nodes!.length,
-              itemBuilder: (context, index) {
-                final anime = favorites.anime!.nodes![index];
-                return Container(
-                  width: 100,
-                  margin: const EdgeInsets.only(right: 8),
-                  child: Column(
-                    children: [
-                      Container(
-                        height: 120,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(8),
-                          image: anime.posterImage != null
-                              ? DecorationImage(
-                                  image: CachedNetworkImageProvider(anime.posterImage!),
-                                  fit: BoxFit.cover,
-                                )
-                              : null,
-                        ),
-                      ),
-                      VDiv(4),
-                      Text(
-                        anime.title.userPreferred ?? anime.title.english ?? anime.title.romaji ?? 'Unknown',
-                        style: FluentTheme.of(context).typography.caption,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        textAlign: TextAlign.center,
-                      ),
-                    ],
-                  ),
-                );
-              },
-            ),
-          ),
-        ],
-        if (favorites.characters?.nodes != null && favorites.characters!.nodes!.isNotEmpty) ...[
-          VDiv(16),
-          Text(
-            'Favorite Characters',
-            style: FluentTheme.of(context).typography.bodyStrong,
-          ),
-          VDiv(8),
-          SizedBox(
-            height: 150,
-            child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              itemCount: favorites.characters!.nodes!.length,
-              itemBuilder: (context, index) {
-                final character = favorites.characters!.nodes![index];
-                return Container(
-                  width: 100,
-                  margin: const EdgeInsets.only(right: 8),
-                  child: Column(
-                    children: [
-                      Container(
-                        height: 120,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(8),
-                          image: character.image?.large != null
-                              ? DecorationImage(
-                                  image: CachedNetworkImageProvider(character.image!.large!),
-                                  fit: BoxFit.cover,
-                                )
-                              : null,
-                        ),
-                      ),
-                      VDiv(4),
-                      Text(
-                        character.name?.full ?? 'Unknown',
-                        style: FluentTheme.of(context).typography.caption,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        textAlign: TextAlign.center,
-                      ),
-                    ],
-                  ),
-                );
-              },
-            ),
-          ),
-        ],
-      ],
-    );
-  }
-
-  Widget _statCard(String title, String value) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: FluentTheme.of(context).cardColor,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Manager.accentColor),
-      ),
-      width: 150,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: Manager.captionStyle,
-          ),
-          Text(
-            value,
-            style: Manager.bodyLargeStyle,
-          ),
-        ],
       ),
     );
   }
 
-  String _formatMinutes(int minutes) {
+  //
+
+  (String, String) _formatMinutes(int minutes) {
     final hours = minutes ~/ 60;
     final days = hours ~/ 24;
 
-    if (days > 0) return '$days days';
-    return '$hours hours';
+    if (days > 0) return ('Days', '$days days');
+    if (hours > 0) return ('Hours', '$hours hours');
+    return ('Minutes', '$minutes minutes');
   }
 
   String _formatValue(dynamic value) {
     if (value == null) return 'Unknown';
     return value.toString().replaceAll('_', ' ');
+  }
+
+  Color _parseProfileColor(String color) {
+    switch (color.toLowerCase()) {
+      case 'blue':
+        return mat.Colors.blue;
+      case 'purple':
+        return mat.Colors.purple;
+      case 'pink':
+        return mat.Colors.pink;
+      case 'orange':
+        return mat.Colors.orange;
+      case 'red':
+        return mat.Colors.red;
+      case 'green':
+        return mat.Colors.green;
+      case 'gray':
+      case 'grey':
+        return mat.Colors.grey;
+      default:
+        return Manager.accentColor.lighter; // Fallback to accent color if unknown
+    }
   }
 }
 
@@ -553,7 +653,7 @@ class AnilistCardTitle extends StatelessWidget {
           const SizedBox(width: 12),
           Text(
             'Anilist',
-            style: FluentTheme.of(context).typography.subtitle,
+            style: Manager.subtitleStyle,
           ),
         ],
       ),

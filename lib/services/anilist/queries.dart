@@ -399,7 +399,7 @@ class AnilistService {
         restrictMessagesToFollowing
         staffNameLanguage
       }
-      mediaStatistics {
+      statistics {
         anime {
           count
           meanScore
@@ -410,7 +410,7 @@ class AnilistService {
             genre
             count
             meanScore
-            timeWatched
+            minutesWatched
           }
           tags {
             tag {
@@ -419,7 +419,7 @@ class AnilistService {
             }
             count
             meanScore
-            timeWatched
+            minutesWatched
           }
         }
       }
@@ -481,7 +481,7 @@ class AnilistService {
             genre
             count
             meanScore
-            timeWatched
+            minutesWatched
           }
           tags {
             tag {
@@ -490,37 +490,37 @@ class AnilistService {
             }
             count
             meanScore
-            timeWatched
+            minutesWatched
           }
           formats {
             format
             count
             meanScore
-            timeWatched
+            minutesWatched
           }
           statuses {
             status
             count
             meanScore
-            timeWatched
+            minutesWatched
           }
           releaseYears {
             releaseYear
             count
             meanScore
-            timeWatched
+            minutesWatched
           }
           startYears {
             startYear
             count
             meanScore
-            timeWatched
+            minutesWatched
           }
           countries {
             country
             count
             meanScore
-            timeWatched
+            minutesWatched
           }
           voiceActors {
             voiceActor {
@@ -531,7 +531,7 @@ class AnilistService {
             }
             count
             meanScore
-            timeWatched
+            minutesWatched
           }
           staff {
             staff {
@@ -542,7 +542,7 @@ class AnilistService {
             }
             count
             meanScore
-            timeWatched
+            minutesWatched
           }
           studios {
             studio {
@@ -551,7 +551,7 @@ class AnilistService {
             }
             count
             meanScore
-            timeWatched
+            minutesWatched
           }
         }
       }
@@ -566,6 +566,7 @@ class AnilistService {
       final result = await _client!.query(
         QueryOptions(
           document: gql(userQuery),
+          fetchPolicy: FetchPolicy.noCache,
         ),
       );
 
