@@ -55,10 +55,12 @@ class WindowsIframeWidget extends StatefulWidget {
 class _WindowsIframeWidgetState extends State<WindowsIframeWidget> with AutomaticKeepAliveClientMixin {
   late WebviewController _controller;
   bool _isWebViewReady = false;
-  bool _isInitialized = false;
+  bool _isLoading = true;
+  bool _hasError = false;
+  String _errorMessage = '';
 
   @override
-  bool get wantKeepAlive => true; // Keep this widget alive when scrolled off screen
+  bool get wantKeepAlive => true;
 
   @override
   void initState() {
@@ -68,19 +70,60 @@ class _WindowsIframeWidgetState extends State<WindowsIframeWidget> with Automati
   }
 
   Future<void> _initWebView() async {
-    if (_isInitialized) return;
+    if (!mounted) return;
+
+    setState(() {
+      _isLoading = true;
+      _isWebViewReady = false;
+      _hasError = false;
+      _errorMessage = '';
+    });
 
     try {
-      if (!_controller.value.isInitialized) {
-        await _controller.initialize();
-        await _controller.setBackgroundColor(Colors.transparent);
-        await _controller.loadUrl(widget.src);
+      // Add a timeout to prevent hanging indefinitely
+      final cache = WebViewControllerCache();
+
+      await cache.ensureInitialized(widget.src, _controller).timeout(const Duration(seconds: 10), onTimeout: () {
+        throw TimeoutException('WebView initialization timed out');
+      });
+
+      debugPrint('WebView initialized for ${widget.src}');
+
+      // Load URL after initialization
+      try {
+        await _controller.loadUrl(widget.src).timeout(const Duration(seconds: 10), onTimeout: () {
+          throw TimeoutException('URL loading timed out');
+        });
+        debugPrint('URL loaded successfully: ${widget.src}');
+      } catch (urlError) {
+        debugPrint('Error loading URL ${widget.src}: $urlError');
+        // Still mark as ready but with an error state
+        if (mounted) {
+          setState(() {
+            _isWebViewReady = true; // We'll show the webview even if URL failed
+            _isLoading = false;
+            _hasError = true;
+            _errorMessage = 'Failed to load content: $urlError';
+          });
+        }
+        return;
       }
 
-      _isInitialized = true;
-      if (mounted) setState(() => _isWebViewReady = true);
+      if (mounted) {
+        setState(() {
+          _isWebViewReady = true;
+          _isLoading = false;
+        });
+      }
     } catch (e) {
-      debugPrint('Error initializing WebView: $e');
+      debugPrint('Error initializing WebView for ${widget.src}: $e');
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _hasError = true;
+          _errorMessage = 'Failed to initialize: $e';
+        });
+      }
     }
   }
 
@@ -90,8 +133,6 @@ class _WindowsIframeWidgetState extends State<WindowsIframeWidget> with Automati
     // Only reload if the source URL changed
     if (oldWidget.src != widget.src) {
       _controller = WebViewControllerCache().getController(widget.src);
-      _isInitialized = false;
-      _isWebViewReady = false;
       _initWebView();
     }
   }
@@ -117,14 +158,32 @@ class _WindowsIframeWidgetState extends State<WindowsIframeWidget> with Automati
                 _controller,
                 width: widget.width,
                 height: widget.height,
-              )
-            else
+              ),
+            if (_isLoading)
               Center(
                 child: SizedBox(
                   width: 24,
                   height: 24,
                   child: ProgressRing(
                     strokeWidth: 2,
+                  ),
+                ),
+              ),
+            if (_hasError)
+              Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(FluentIcons.error, color: Colors.warningPrimaryColor),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Failed to load iframe content',
+                        style: FluentTheme.of(context).typography.caption,
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
                   ),
                 ),
               ),
