@@ -248,61 +248,58 @@ class AccountsScreenState extends State<AccountsScreen> {
   Widget buildMainContent(AnilistProvider anilistProvider) {
     final bool isButtonDisabled = isLocalLoading || anilistProvider.isLoading || anilistProvider.isLoggedIn;
 
-    return Padding(
-      padding: const EdgeInsets.only(top: 16, left: 16, right: 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Not logged in
-          if (!anilistProvider.isLoggedIn) ...[
-            SettingsCard(children: [
-              AnilistCardTitle(),
-              VDiv(12),
-              Text(
-                'Connect your Anilist account to sync your media library.',
-                style: Manager.bodyStyle,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Not logged in
+        if (!anilistProvider.isLoggedIn) ...[
+          SettingsCard(children: [
+            AnilistCardTitle(),
+            VDiv(12),
+            Text(
+              'Connect your Anilist account to sync your media library.',
+              style: Manager.bodyStyle,
+            ),
+            Align(
+              alignment: Alignment.topRight,
+              child: LoadingButton(
+                isLoading: isButtonDisabled || isLocalLoading || anilistProvider.isLoading,
+                label: 'Connect Anilist',
+                isAlreadyBig: true,
+                isFilled: true,
+                onPressed: () async {
+                  if (isLocalLoading) return;
+                  isLocalLoading = true;
+                  await anilistProvider.login();
+                  logInfo('Logging in to Anilist...');
+                },
               ),
-              Align(
-                alignment: Alignment.topRight,
-                child: LoadingButton(
-                  isLoading: isButtonDisabled || isLocalLoading || anilistProvider.isLoading,
-                  label: 'Connect Anilist',
-                  isAlreadyBig: true,
-                  isFilled: true,
-                  onPressed: () async {
-                    if (isLocalLoading) return;
-                    isLocalLoading = true;
-                    await anilistProvider.login();
-                    logInfo('Logging in to Anilist...');
-                  },
-                ),
-              ),
-            ])
-          ] else ...[
-            // User profile section
-            SettingsCard(
-              children: _buildUserProfile(anilistProvider),
             ),
-            VDiv(16),
-            // Statistics section
-            SettingsCard(
-              children: _buildStatistics(anilistProvider),
-            ),
-            VDiv(16),
-            // Distributions section
-            _buildDistribution(anilistProvider),
-
-            VDiv(16),
-            // Genres overview section
-            ..._buildGenresOverview(anilistProvider),
-            VDiv(16),
-            // Favorites section
-            SettingsCard(
-              children: _buildFavorites(anilistProvider),
-            ),
-          ]
-        ],
-      ),
+          ])
+        ] else ...[
+          // User profile section
+          SettingsCard(
+            children: _buildUserProfile(anilistProvider),
+          ),
+          VDiv(16),
+          // Statistics section
+          SettingsCard(
+            children: _buildStatistics(anilistProvider),
+          ),
+          VDiv(16),
+          // Distributions section
+          _buildDistribution(anilistProvider),
+    
+          VDiv(16),
+          // Genres overview section
+          ..._buildGenresOverview(anilistProvider),
+          VDiv(16),
+          // Favorites section
+          SettingsCard(
+            children: _buildFavorites(anilistProvider),
+          ),
+        ]
+      ],
     );
   }
 
@@ -311,10 +308,10 @@ class AccountsScreenState extends State<AccountsScreen> {
 
     return [
       Text(
-        'Profile',
+        'About',
         style: Manager.subtitleStyle,
       ),
-      VDiv(16),
+      VDiv(8),
       Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -323,60 +320,57 @@ class AccountsScreenState extends State<AccountsScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 if (userData?.about != null && userData!.about!.isNotEmpty) ...[
-                  VDiv(8),
-                  Text(
-                    'About',
-                    style: Manager.bodyStrongStyle,
+                  Card(
+                    child: LayoutBuilder(builder: (context, constraints) {
+                      return SelectionArea(
+                        child: Html(
+                          data: _convertMarkupToHtml(userData.about!, constraints.maxWidth),
+                          style: {
+                            "body": Style(
+                              fontSize: FontSize(Manager.bodyStyle.fontSize!),
+                              fontFamily: Manager.bodyStyle.fontFamily,
+                              color: Manager.bodyStyle.color,
+                              margin: Margins.zero,
+                              padding: HtmlPaddings.zero,
+                            ),
+                            "a": Style(
+                              color: Manager.accentColor,
+                              textDecoration: TextDecoration.none,
+                            ),
+                            "blockquote": Style(
+                              border: Border(left: BorderSide(color: Manager.accentColor.darker, width: 3)),
+                              padding: HtmlPaddings.only(left: 8),
+                              fontStyle: FontStyle.italic,
+                              color: Manager.bodyStyle.color?.withOpacity(0.8),
+                            ),
+                            "img": Style(
+                              margin: Margins.only(top: 4, bottom: 4),
+                            ),
+                            "ul, ol": Style(
+                              margin: Margins.only(left: 16, top: 4, bottom: 4),
+                            ),
+                            "li": Style(
+                              margin: Margins.only(bottom: 2),
+                            ),
+                            "iframe": Style(
+                              width: Width(250),
+                              height: Height(150),
+                            ),
+                          },
+                          onLinkTap: (url, _, __) {
+                            if (url != null) launchUrl(Uri.parse(url));
+                          },
+                          extensions: [
+                            WindowsIframeHtmlExtension(),
+                            SpoilerTagExtension(),
+                            CodeBlockExtension(),
+                            VideoHtmlExtension(),
+                            UnsupportedBlockExtension(),
+                          ],
+                        ),
+                      );
+                    }),
                   ),
-                  LayoutBuilder(builder: (context, constraints) {
-                    return SelectionArea(
-                      child: Html(
-                        data: _convertMarkupToHtml(userData.about!, constraints.maxWidth),
-                        style: {
-                          "body": Style(
-                            fontSize: FontSize(Manager.bodyStyle.fontSize!),
-                            fontFamily: Manager.bodyStyle.fontFamily,
-                            color: Manager.bodyStyle.color,
-                            margin: Margins.zero,
-                            padding: HtmlPaddings.zero,
-                          ),
-                          "a": Style(
-                            color: Manager.accentColor,
-                            textDecoration: TextDecoration.none,
-                          ),
-                          "blockquote": Style(
-                            border: Border(left: BorderSide(color: Manager.accentColor.darker, width: 3)),
-                            padding: HtmlPaddings.only(left: 8),
-                            fontStyle: FontStyle.italic,
-                            color: Manager.bodyStyle.color?.withOpacity(0.8),
-                          ),
-                          "img": Style(
-                            margin: Margins.only(top: 4, bottom: 4),
-                          ),
-                          "ul, ol": Style(
-                            margin: Margins.only(left: 16, top: 4, bottom: 4),
-                          ),
-                          "li": Style(
-                            margin: Margins.only(bottom: 2),
-                          ),
-                          "iframe": Style(
-                            width: Width(250),
-                            height: Height(150),
-                          ),
-                        },
-                        onLinkTap: (url, _, __) {
-                          if (url != null) launchUrl(Uri.parse(url));
-                        },
-                        extensions: [
-                          WindowsIframeHtmlExtension(),
-                          SpoilerTagExtension(),
-                          CodeBlockExtension(),
-                          VideoHtmlExtension(),
-                          UnsupportedBlockExtension(),
-                        ],
-                      ),
-                    );
-                  }),
                 ],
                 VDiv(8),
                 if (userData?.siteUrl != null) ...[
@@ -1093,7 +1087,6 @@ class AccountsScreenState extends State<AccountsScreen> {
     final codeBlockPattern = RegExp(r'(^> .+$\n?)+', multiLine: true);
     text = text.replaceAllMapped(codeBlockPattern, (match) {
       final codeContent = match.group(0)!.split('\n').where((line) => line.trim().isNotEmpty).map((line) => line.startsWith('> ') ? line.substring(2) : line).join('<br>'); // Use <br> directly for code block newlines
-      log("'$codeContent'");
       return '<code>$codeContent</code>';
     });
 
