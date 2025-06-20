@@ -2,6 +2,7 @@
 import 'dart:ui';
 
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:flutter/material.dart' as mat;
 
 import '../manager.dart';
 
@@ -20,13 +21,15 @@ class SpoilerBoxState extends State<SpoilerBox> {
   @override
   Widget build(BuildContext context) {
     return IntrinsicWidth(
-      child: ClipRect(
-        child: GestureDetector(
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(6),
+        child: mat.InkWell(
           onTap: () => setState(() => _revealed = !_revealed),
+          borderRadius: BorderRadius.circular(6),
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 200),
             decoration: BoxDecoration(
-              color: Manager.accentColor.lightest.withOpacity(_revealed ? 0.15 : 0.5),
+              color: Manager.accentColor.darkest.withOpacity(_revealed ? 0.15 : 0.5),
               borderRadius: BorderRadius.circular(6),
             ),
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -44,13 +47,15 @@ class SpoilerBoxState extends State<SpoilerBox> {
                             child: widget.child,
                           ),
                         ),
-                        Container(
-                          alignment: Alignment.center,
-                          child: Text(
-                            'Spoiler (tap to reveal)',
-                            style: Manager.bodyStyle.copyWith(
-                              color: Manager.accentColor.darker,
-                              fontStyle: FontStyle.italic,
+                        SelectionContainer.disabled(
+                          child: Container(
+                            alignment: Alignment.center,
+                            child: Text(
+                              'Spoiler (tap to reveal)',
+                              style: Manager.bodyStyle.copyWith(
+                                color: Manager.accentColor.lightest,
+                                fontStyle: FontStyle.italic,
+                              ),
                             ),
                           ),
                         ),

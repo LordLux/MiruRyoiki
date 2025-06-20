@@ -6,7 +6,7 @@ import 'package:collection/collection.dart';
 import 'package:defer_pointer/defer_pointer.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/material.dart' as mat;
-import 'package:flutter_html_iframe/flutter_html_iframe.dart';
+import 'package:flutter_html_video/flutter_html_video.dart';
 import 'package:miruryoiki/enums.dart';
 import 'package:flutter_html/flutter_html.dart';
 import 'package:miruryoiki/models/anilist/user_data.dart';
@@ -27,6 +27,7 @@ import '../services/library/library_provider.dart';
 import '../services/navigation/shortcuts.dart';
 import '../utils/html/extensions/code.dart';
 import '../utils/html/extensions/iframe.dart';
+import '../utils/html/extensions/unsupported.dart';
 import '../utils/html/html_utils.dart';
 import '../utils/logging.dart';
 import '../utils/screen_utils.dart';
@@ -370,6 +371,8 @@ class AccountsScreenState extends State<AccountsScreen> {
                           WindowsIframeHtmlExtension(),
                           SpoilerTagExtension(),
                           CodeBlockExtension(),
+                          VideoHtmlExtension(),
+                          UnsupportedBlockExtension(),
                         ],
                       ),
                     );
@@ -1052,7 +1055,7 @@ class AccountsScreenState extends State<AccountsScreen> {
           (t, match) => t.replaceRange(
             match.start,
             match.end,
-            '<video controls src="${match.group(1)}" style="max-width:100%;" />',
+            '<unsupported>Unfortunately, webm videos are not supported on Flutter Windows</unsupported>',
           ),
         );
 
