@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'dart:ui';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:collection/collection.dart';
@@ -10,6 +11,7 @@ import 'package:miruryoiki/enums.dart';
 import 'package:flutter_html/flutter_html.dart';
 import 'package:miruryoiki/models/anilist/user_data.dart';
 import 'package:flexible_wrap/flexible_wrap.dart';
+import 'package:miruryoiki/utils/html/extensions/spoiler.dart';
 import 'package:miruryoiki/widgets/buttons/switch.dart';
 import 'package:miruryoiki/widgets/buttons/wrapper.dart';
 import 'package:pie_chart/pie_chart.dart';
@@ -23,7 +25,9 @@ import 'package:provider/provider.dart';
 
 import '../services/library/library_provider.dart';
 import '../services/navigation/shortcuts.dart';
-import '../utils/html_utils.dart';
+import '../utils/html/extensions/code.dart';
+import '../utils/html/extensions/iframe.dart';
+import '../utils/html/html_utils.dart';
 import '../utils/logging.dart';
 import '../utils/screen_utils.dart';
 import '../widgets/animated_stats_counter.dart';
@@ -32,6 +36,7 @@ import '../widgets/codeblock.dart';
 import '../widgets/page/header_widget.dart';
 import '../widgets/page/infobar.dart';
 import '../widgets/page/page.dart';
+import '../widgets/spoilerbox.dart';
 import '../widgets/svg.dart';
 import 'settings.dart';
 
@@ -322,81 +327,53 @@ class AccountsScreenState extends State<AccountsScreen> {
                     'About',
                     style: Manager.bodyStrongStyle,
                   ),
-                  if (userData.about != null && userData.about!.isNotEmpty) ...[
-                    VDiv(8),
-                    Text(
-                      'About',
-                      style: Manager.bodyStrongStyle,
-                    ),
-                    LayoutBuilder(
-                      builder: (context, constraints) {
-                        return Html(
-                          data: _convertMarkupToHtml(userData.about!, constraints.maxWidth),
-                          style: {
-                            "body": Style(
-                              fontSize: FontSize(Manager.bodyStyle.fontSize!),
-                              fontFamily: Manager.bodyStyle.fontFamily,
-                              color: Manager.bodyStyle.color,
-                              margin: Margins.zero,
-                              padding: HtmlPaddings.zero,
-                            ),
-                            "a": Style(
-                              color: Manager.accentColor,
-                              textDecoration: TextDecoration.none,
-                            ),
-                            "blockquote": Style(
-                              border: Border(left: BorderSide(color: Manager.accentColor.darker, width: 3)),
-                              padding: HtmlPaddings.only(left: 8),
-                              fontStyle: FontStyle.italic,
-                              color: Manager.bodyStyle.color?.withOpacity(0.8),
-                            ),
-                            "img": Style(
-                              margin: Margins.only(top: 4, bottom: 4),
-                            ),
-                            "ul, ol": Style(
-                              margin: Margins.only(left: 16, top: 4, bottom: 4),
-                            ),
-                            "li": Style(
-                              margin: Margins.only(bottom: 2),
-                            ),
-                            "iframe": Style(
-                              width: Width(250),
-                              height: Height(150),
-                            ),
-                          },
-                          onLinkTap: (url, _, __) {
-                            if (url != null) launchUrl(Uri.parse(url));
-                          },
-                          extensions: [
-                            WindowsIframeHtmlExtension(),
-                            TagExtension(
-                              tagsToExtend: {"spoiler"},
-                              builder: (extensionContext) {
-                                return FlutterLogo(
-                                  style: extensionContext.attributes['horizontal'] != null ? FlutterLogoStyle.horizontal : FlutterLogoStyle.markOnly,
-                                  textColor: extensionContext.styledElement!.style.color!,
-                                  size: extensionContext.styledElement!.style.fontSize!.value,
-                                );
-                              },
-                            ),
-                            TagExtension(
-                              tagsToExtend: {"code"},
-                              builder: (extensionContext) {
-                                final String html = extensionContext.element!.innerHtml;
-                                final String text = html.replaceAll("<br>", "\n");
-                                return LayoutBuilder(builder: (context, c) {
-                                  return CodeBlock(
-                                    padding: const EdgeInsets.all(4),
-                                    code: text,
-                                  );
-                                });
-                              },
-                            ),
-                          ],
-                        );
-                      }
-                    ),
-                  ],
+                  LayoutBuilder(builder: (context, constraints) {
+                    return SelectionArea(
+                      child: Html(
+                        data: _convertMarkupToHtml(userData.about!, constraints.maxWidth),
+                        style: {
+                          "body": Style(
+                            fontSize: FontSize(Manager.bodyStyle.fontSize!),
+                            fontFamily: Manager.bodyStyle.fontFamily,
+                            color: Manager.bodyStyle.color,
+                            margin: Margins.zero,
+                            padding: HtmlPaddings.zero,
+                          ),
+                          "a": Style(
+                            color: Manager.accentColor,
+                            textDecoration: TextDecoration.none,
+                          ),
+                          "blockquote": Style(
+                            border: Border(left: BorderSide(color: Manager.accentColor.darker, width: 3)),
+                            padding: HtmlPaddings.only(left: 8),
+                            fontStyle: FontStyle.italic,
+                            color: Manager.bodyStyle.color?.withOpacity(0.8),
+                          ),
+                          "img": Style(
+                            margin: Margins.only(top: 4, bottom: 4),
+                          ),
+                          "ul, ol": Style(
+                            margin: Margins.only(left: 16, top: 4, bottom: 4),
+                          ),
+                          "li": Style(
+                            margin: Margins.only(bottom: 2),
+                          ),
+                          "iframe": Style(
+                            width: Width(250),
+                            height: Height(150),
+                          ),
+                        },
+                        onLinkTap: (url, _, __) {
+                          if (url != null) launchUrl(Uri.parse(url));
+                        },
+                        extensions: [
+                          WindowsIframeHtmlExtension(),
+                          SpoilerTagExtension(),
+                          CodeBlockExtension(),
+                        ],
+                      ),
+                    );
+                  }),
                 ],
                 VDiv(8),
                 if (userData?.siteUrl != null) ...[
