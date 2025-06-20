@@ -144,12 +144,15 @@ class _MiruRyoikiInfobarState extends State<MiruRyoikiInfobar> {
                     duration: stickyHeaderDuration,
                     left: (ScreenUtils.kInfoBarWidth) / 2 - posterWidth / 2,
                     top: widget.isProfilePicture ? -30 - posterHeight : -(ScreenUtils.kMaxHeaderHeight) + 32,
-                    child: widget.poster!(
-                      imageProvider: imageProvider,
-                      width: posterWidth,
-                      height: posterHeight,
-                      squareness: squareness,
-                      offset: getInfoBarOffset,
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(ScreenUtils.kProfilePictureBorderRadius),
+                      child: widget.poster!(
+                        imageProvider: imageProvider,
+                        width: posterWidth,
+                        height: posterHeight,
+                        squareness: squareness,
+                        offset: getInfoBarOffset,
+                      ),
                     ),
                   ),
               ],

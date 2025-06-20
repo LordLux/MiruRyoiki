@@ -10,16 +10,26 @@ class WrappedHyperlinkButton extends StatelessWidget {
   final String? text;
   final Widget? title;
   final Widget? icon;
-  final String url;
+  final String? url;
   final VoidCallback? onPressed;
+  final TextStyle? style;
+  final Color? iconColor;
+  final String? tooltip;
+  final Widget? tooltipWidget;
+  final Duration tooltipWaitDuration;
 
   const WrappedHyperlinkButton({
     super.key,
-    required this.url,
+    this.url,
     this.text,
     this.title,
     this.icon,
     this.onPressed,
+    this.style,
+    this.iconColor,
+    this.tooltip,
+    this.tooltipWidget,
+    this.tooltipWaitDuration = const Duration(milliseconds: 350),
   });
 
   @override
@@ -27,6 +37,9 @@ class WrappedHyperlinkButton extends StatelessWidget {
     return Transform.translate(
       offset: Offset(-12, 0),
       child: MouseButtonWrapper(
+        tooltipWaitDuration: tooltipWaitDuration,
+        tooltip: tooltip,
+        tooltipWidget: tooltipWidget,
         child: (isHovering) => HyperlinkButton(
           style: ButtonStyle(
             backgroundColor: WidgetStateProperty.resolveWith((states) {
@@ -44,7 +57,7 @@ class WrappedHyperlinkButton extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              if (text != null) Text(text!, style: Manager.subtitleStyle),
+              if (text != null) Text(text!, style: style ?? Manager.subtitleStyle),
               if (title != null) ...[
                 if (text != null) HDiv(4),
                 title!,
@@ -56,7 +69,7 @@ class WrappedHyperlinkButton extends StatelessWidget {
                   duration: shortDuration,
                   child: ColorFiltered(
                     colorFilter: ColorFilter.mode(
-                      Manager.accentColor.lightest,
+                      iconColor ?? Manager.accentColor.lightest,
                       BlendMode.srcIn,
                     ),
                     child: icon!,
@@ -65,7 +78,8 @@ class WrappedHyperlinkButton extends StatelessWidget {
             ],
           ),
           onPressed: () {
-            launchUrl(Uri.parse(url));
+            if (url != null && url!.isNotEmpty) launchUrl(Uri.parse(url!));
+
             onPressed?.call();
           },
         ),

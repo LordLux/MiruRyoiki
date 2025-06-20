@@ -21,6 +21,7 @@ class ScreenUtils {
   static const double kEpisodeCardBorderRadius = 4.0;
   static const double kStatCardBorderRadius = 8.0;
   static const double kProfilePictureSize = 150.0;
+  static const double kProfilePictureBorderRadius = 6.0;
 
   static const double kDefaultSplashScreenWidth = 500.0;
   static const double kDefaultSplashScreenHeight = 300.0;

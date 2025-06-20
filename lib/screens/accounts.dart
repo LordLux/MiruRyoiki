@@ -9,6 +9,7 @@ import 'package:flutter/material.dart' as mat;
 import 'package:flutter_html_video/flutter_html_video.dart';
 import 'package:miruryoiki/enums.dart';
 import 'package:flutter_html/flutter_html.dart';
+import 'package:miruryoiki/functions.dart';
 import 'package:miruryoiki/models/anilist/user_data.dart';
 import 'package:flexible_wrap/flexible_wrap.dart';
 import 'package:miruryoiki/utils/html/extensions/spoiler.dart';
@@ -26,6 +27,8 @@ import 'package:provider/provider.dart';
 
 import '../services/library/library_provider.dart';
 import '../services/navigation/shortcuts.dart';
+import '../services/navigation/show_info.dart';
+import '../utils/color_utils.dart';
 import '../utils/html/extensions/code.dart';
 import '../utils/html/extensions/iframe.dart';
 import '../utils/html/extensions/unsupported.dart';
@@ -81,20 +84,32 @@ class AccountsScreenState extends State<AccountsScreen> {
 
   HeaderWidget header({required AnilistProvider anilistProvider, required bool isLoggedIn}) {
     return HeaderWidget(
-      title: (style) => Row(
-        children: [
-          Text(
-            !isLoggedIn ? 'Account' : anilistProvider.currentUser?.name.titleCase ?? 'Anilist',
-            style: style,
+      title: (style) => Align(
+        alignment: Alignment.centerLeft,
+        child: WrappedHyperlinkButton(
+          tooltipWaitDuration: const Duration(milliseconds: 600),
+          tooltip: 'Copy your Anilist Profile ID',
+          onPressed: () {
+            copyToClipboard(anilistProvider.currentUser!.id.toString());
+            snackBar(
+              'Copied Anilist Profile ID: ${anilistProvider.currentUser!.id}',
+              severity: InfoBarSeverity.info,
+            );
+          },
+          text: anilistProvider.currentUser?.name.titleCase ?? 'Anilist',
+          style: style,
+          iconColor: Manager.accentColor.darkest.lerpWith(Colors.white, 0.8),
+          icon: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(anilistProvider.currentUser!.id.toString()),
+              HDiv(8),
+              Icon(
+                mat.Icons.copy,
+              ),
+            ],
           ),
-          Text(
-            anilistProvider.currentUser?.id.toString() ?? '',
-            key: ValueKey(anilistProvider.currentUser?.id),
-            style: style.copyWith(
-              fontSize: 12,
-            ),
-          ),
-        ],
+        ),
       ),
       titleLeftAligned: !isLoggedIn,
       image: anilistProvider.currentUser?.bannerImage != null //
@@ -114,13 +129,43 @@ class AccountsScreenState extends State<AccountsScreen> {
       poster: ({ImageProvider<Object>? imageProvider, required double width, required double height, required double squareness, required double offset}) {
         return DeferPointer(
           paintOnTop: true,
-          child: Container(
-            width: width,
-            height: height,
-            decoration: BoxDecoration(
-              image: imageProvider != null //
-                  ? DecorationImage(image: imageProvider, fit: BoxFit.cover)
-                  : null,
+          child: MouseButtonWrapper(
+            tooltip: 'Open your Anilist Profile page',
+            tooltipWaitDuration: const Duration(milliseconds: 500),
+            child: (isHovering) => Stack(
+              children: [
+                Container(
+                  width: width,
+                  height: height,
+                  decoration: BoxDecoration(
+                    image: imageProvider != null //
+                        ? DecorationImage(image: imageProvider, fit: BoxFit.cover)
+                        : null,
+                  ),
+                ),
+                Positioned.fill(
+                  child: mat.Material(
+                    color: Colors.transparent,
+                    child: mat.InkWell(
+                      borderRadius: BorderRadius.circular(ScreenUtils.kProfilePictureBorderRadius),
+                      hoverColor: Manager.accentColor.lightest.withOpacity(0.2),
+                      focusColor: Manager.accentColor.lightest.withOpacity(0.2),
+                      onTap: () {
+                        launchUrl(Uri.parse('https://anilist.co/user/${anilistProvider.currentUser!.id}'));
+                      },
+                      child: AnimatedOpacity(
+                        opacity: isHovering ? 1.0 : 0.0,
+                        duration: shortDuration,
+                        child: Icon(
+                          mat.Icons.open_in_new,
+                          size: 64,
+                          color: Manager.accentColor.lightest,
+                        ),
+                      ),
+                    ),
+                  ),
+                )
+              ],
             ),
           ),
         );
@@ -488,6 +533,7 @@ class AccountsScreenState extends State<AccountsScreen> {
 
     return [
       WrappedHyperlinkButton(
+        tooltip: 'Open your Anime Statistics Overview page on Anilist',
         url: 'https://anilist.co/user/${anilistProvider.currentUser?.id}/stats/anime/overview',
         text: 'Anime Statistics',
         icon: Icon(
@@ -562,6 +608,8 @@ class AccountsScreenState extends State<AccountsScreen> {
 
     int statusTotal = 0;
     int formatTotal = 0;
+    final double preferWhiteThreshold = 0.05;
+    final double preferBlackThreshold = 0.5;
 
     if (animeStats == null || animeStats.formats == null || animeStats.formats!.isEmpty) //
       return Text('No distributions available', style: Manager.bodyStyle);
@@ -611,41 +659,44 @@ class AccountsScreenState extends State<AccountsScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               for (final entry in statusDistribution.entries)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 8.0),
-                  child: Container(
-                    height: 30,
-                    decoration: BoxDecoration(
-                      color: Manager.accentColor.lightest.shiftHue(statusDistribution.keys.toList().indexOf(entry.key) / statusDistribution.length / 2).darken(.125).saturate(-.35),
-                      borderRadius: BorderRadius.circular(ScreenUtils.kStatCardBorderRadius),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 12.0),
-                          child: Text(
-                            entry.key.titleCase,
-                            style: Manager.bodyStyle,
-                          ),
-                        ),
-                        Container(
-                          width: 50,
-                          decoration: BoxDecoration(
-                            color: Manager.accentColor.lightest.shiftHue(statusDistribution.keys.toList().indexOf(entry.key) / statusDistribution.length / 2),
-                            borderRadius: BorderRadius.circular(ScreenUtils.kStatCardBorderRadius),
-                          ),
-                          child: Center(
+                Builder(builder: (context) {
+                  final Color main = Manager.accentColor.lightest.shiftHue(statusDistribution.keys.toList().indexOf(entry.key) / statusDistribution.length / 2);
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 8.0),
+                    child: Container(
+                      height: 30,
+                      decoration: BoxDecoration(
+                        color: main.darken(.125).saturate(-.35),
+                        borderRadius: BorderRadius.circular(ScreenUtils.kStatCardBorderRadius),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 12.0),
                             child: Text(
-                              '${((entry.value / statusTotal) * 100).round()}%',
-                              style: Manager.bodyStrongStyle.copyWith(color: Colors.white),
+                              entry.key.titleCase,
+                              style: Manager.bodyStyle.copyWith(color: determineTextColor(main, preferWhite: preferWhiteThreshold, preferBlack: preferBlackThreshold)),
                             ),
                           ),
-                        ),
-                      ],
+                          Container(
+                            width: 50,
+                            decoration: BoxDecoration(
+                              color: main,
+                              borderRadius: BorderRadius.circular(ScreenUtils.kStatCardBorderRadius),
+                            ),
+                            child: Center(
+                              child: Text(
+                                '${((entry.value / statusTotal) * 100).round()}%',
+                                style: Manager.bodyStrongStyle.copyWith(color: determineTextColor(main, preferWhite: preferWhiteThreshold, preferBlack: preferBlackThreshold)),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                )
+                  );
+                })
             ],
           ),
         ),
@@ -679,41 +730,44 @@ class AccountsScreenState extends State<AccountsScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               for (final entry in formatDistribution.entries.take(5))
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 8.0),
-                  child: Container(
-                    height: 30,
-                    decoration: BoxDecoration(
-                      color: Manager.accentColor.lightest.shiftHue(formatDistribution.keys.toList().indexOf(entry.key) / formatDistribution.length / 2).darken(.125).saturate(-.35),
-                      borderRadius: BorderRadius.circular(ScreenUtils.kStatCardBorderRadius),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 12.0),
-                          child: Text(
-                            entry.key.titleCase,
-                            style: Manager.bodyStyle,
-                          ),
-                        ),
-                        Container(
-                          width: 50,
-                          decoration: BoxDecoration(
-                            color: Manager.accentColor.lightest.shiftHue(formatDistribution.keys.toList().indexOf(entry.key) / formatDistribution.length / 2),
-                            borderRadius: BorderRadius.circular(ScreenUtils.kStatCardBorderRadius),
-                          ),
-                          child: Center(
+                Builder(builder: (context) {
+                  final Color main = Manager.accentColor.lightest.shiftHue(formatDistribution.keys.toList().indexOf(entry.key) / formatDistribution.length / 2);
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 8.0),
+                    child: Container(
+                      height: 30,
+                      decoration: BoxDecoration(
+                        color: main.darken(.125).saturate(-.35),
+                        borderRadius: BorderRadius.circular(ScreenUtils.kStatCardBorderRadius),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 12.0),
                             child: Text(
-                              '${((entry.value / formatTotal) * 100).round()}%',
-                              style: Manager.bodyStrongStyle.copyWith(color: Colors.white),
+                              entry.key.titleCase,
+                              style: Manager.bodyStyle.copyWith(color: determineTextColor(main, preferWhite: preferWhiteThreshold, preferBlack: preferBlackThreshold)),
                             ),
                           ),
-                        ),
-                      ],
+                          Container(
+                            width: 50,
+                            decoration: BoxDecoration(
+                              color: main,
+                              borderRadius: BorderRadius.circular(ScreenUtils.kStatCardBorderRadius),
+                            ),
+                            child: Center(
+                              child: Text(
+                                '${((entry.value / formatTotal) * 100).round()}%',
+                                style: Manager.bodyStrongStyle.copyWith(color: determineTextColor(main, preferWhite: preferWhiteThreshold, preferBlack: preferBlackThreshold)),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                )
+                  );
+                })
             ],
           ),
         ),
@@ -816,6 +870,7 @@ class AccountsScreenState extends State<AccountsScreen> {
                   Padding(
                     padding: const EdgeInsets.only(left: 36.0, top: 36.0),
                     child: WrappedHyperlinkButton(
+                      tooltip: 'Open your Genres Statistics page on Anilist',
                       url: 'https://anilist.co/user/${anilistProvider.currentUser?.id}/stats/anime/genres',
                       text: 'Genres Overview',
                       icon: Icon(
@@ -935,7 +990,7 @@ class AccountsScreenState extends State<AccountsScreen> {
                           final name = isAnime ? node.title.userPreferred : node.name?.full;
                           return MouseButtonWrapper(
                             isButtonDisabled: node.siteUrl == null || node.siteUrl!.isEmpty,
-                            tooltip: !isAnime ? name ?? 'Unknown' : '${name ?? 'Unknown'}\n${node.seasonYear ?? ''} ${node.format?.titleCase ?? ''}',
+                            tooltip: !isAnime ? name ?? 'Unknown' : '${name ?? 'Unknown'}\n${node.seasonYear ?? ''} ${node.format?.toLowerCase() == "tv" ? "TV" : node.format?.titleCase ?? ''}',
                             child: (_) => Container(
                               width: 100,
                               margin: const EdgeInsets.only(right: 8),
@@ -992,6 +1047,7 @@ class AccountsScreenState extends State<AccountsScreen> {
 
     return [
       WrappedHyperlinkButton(
+        tooltip: 'Open your Favourites page on Anilist',
         url: 'https://anilist.co/user/${anilistProvider.currentUser?.id}/favorites',
         text: 'Favourites',
         icon: Icon(

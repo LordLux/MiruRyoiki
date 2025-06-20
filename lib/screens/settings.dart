@@ -936,7 +936,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                                   width: 34,
                                                   height: 34,
                                                   decoration: BoxDecoration(
-                                                    color: settings.accentColor,
+                                                    color: settings.accentColor.toAccentColor().light,
                                                     border: Border.all(
                                                       color: settings.accentColor.lerpWith(Colors.black, .25),
                                                       width: 1.25,
@@ -969,18 +969,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                                             tempColor = color;
                                                           },
                                                           minValue: 100,
-                                                          isAlphaSliderVisible: true,
-                                                          colorSpectrumShape: ColorSpectrumShape.box,
+                                                          isAlphaSliderVisible: false,
+                                                          colorSpectrumShape: ColorSpectrumShape.ring,
                                                           isMoreButtonVisible: false,
                                                           isColorSliderVisible: false,
                                                           isColorChannelTextInputVisible: false,
                                                           isHexInputVisible: false,
+                                                          minSaturation: 80,
+                                                          maxSaturation: 80,
                                                           isAlphaEnabled: false,
                                                         ),
                                                       );
                                                     },
                                                   )..then((_) {
-                                                      settings.accentColor = tempColor;
+                                                      settings.accentColor = tempColor.saturate(300);
                                                       appTheme.color = settings.accentColor.toAccentColor();
                                                       settings.set('accentColor', settings.accentColor.toHex(leadingHashSign: true));
                                                     });

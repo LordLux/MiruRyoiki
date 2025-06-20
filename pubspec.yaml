@@ -10,7 +10,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  fluent_ui: ^4.11.3
+  fluent_ui: ^4.11.5
   provider: ^6.0.3
   win32: ^5.12.0
   path: ^1.8.2
