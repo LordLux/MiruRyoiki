@@ -191,8 +191,8 @@ class AccountsScreenState extends State<AccountsScreen> {
           expand: true,
           isSmall: true,
           isLoading: _seriesLoading,
-          tooltip: 'Refresh all Anilist metadata',
-          label: 'Refresh All Metadata',
+          tooltip: 'Refresh Series Metadata',
+          label: 'Refresh Series Metadata',
           onPressed: () async {
             if (_seriesLoading || anilistProvider.isLoading) return;
             setState(() {
@@ -212,8 +212,8 @@ class AccountsScreenState extends State<AccountsScreen> {
           expand: true,
           isSmall: true,
           isLoading: _userLoading && anilistProvider.isLoading,
-          tooltip: 'Refresh User Metadata',
-          label: 'Refresh User Metadata',
+          tooltip: 'Refresh User Data',
+          label: 'Refresh User Data',
           onPressed: () async {
             if (_userLoading || anilistProvider.isLoading) return;
             setState(() {
