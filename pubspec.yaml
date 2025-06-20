@@ -60,6 +60,9 @@ dependencies:
   animated_flip_counter: ^0.3.4
   pie_chart: ^5.4.0
   flexible_wrap: ^1.0.6
+  flutter_html: ^3.0.0
+  flutter_html_iframe: ^3.0.0
+  webview_windows: ^0.4.0
 
 dev_dependencies:
   flutter_test:
