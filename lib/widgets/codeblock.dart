@@ -1,5 +1,7 @@
 import 'package:fluent_ui/fluent_ui.dart';
 
+import '../manager.dart';
+
 /// A little code-style block with a left “gutter” line
 /// and horizontal scrolling on long lines.
 class CodeBlock extends StatelessWidget {
@@ -7,7 +9,7 @@ class CodeBlock extends StatelessWidget {
   final String code;
 
   /// Color of the left gutter bar.
-  final Color gutterColor;
+  final Color? gutterColor;
 
   /// Padding inside the card.
   final EdgeInsetsGeometry padding;
@@ -20,15 +22,19 @@ class CodeBlock extends StatelessWidget {
 
   /// Border color of the card.
   final Color? borderColor;
+  
+  /// Border radius of the card.
+  final BorderRadius? borderRadius;
 
   const CodeBlock({
     super.key,
     required this.code,
-    this.gutterColor = Colors.grey,
+    this.gutterColor,
     this.padding = const EdgeInsets.all(12.0),
     this.margin,
     this.backgroundColor,
     this.borderColor,
+    this.borderRadius,
   });
 
   @override
@@ -38,6 +44,7 @@ class CodeBlock extends StatelessWidget {
       padding: padding,
       backgroundColor: backgroundColor,
       borderColor: borderColor,
+      borderRadius: borderRadius ?? BorderRadius.circular(6),
       child: IntrinsicHeight(
         // ensures children match height
         child: Row(
@@ -45,7 +52,10 @@ class CodeBlock extends StatelessWidget {
           children: [
             Container(
               width: 4,
-              color: gutterColor,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.only(topLeft: Radius.circular(3), bottomLeft: Radius.circular(3)),
+                color: gutterColor ?? Manager.accentColor.lightest,
+              ),
             ),
 
             const SizedBox(width: 8),

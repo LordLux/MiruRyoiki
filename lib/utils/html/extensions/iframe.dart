@@ -3,27 +3,7 @@ import 'package:flutter_html/flutter_html.dart';
 import 'package:webview_windows/webview_windows.dart';
 import 'dart:async';
 
-class WebViewControllerCache {
-  static final WebViewControllerCache _instance = WebViewControllerCache._internal();
-  factory WebViewControllerCache() => _instance;
-  WebViewControllerCache._internal();
-  
-  final Map<String, WebviewController> _controllers = {};
-  
-  WebviewController getController(String url) {
-    if (!_controllers.containsKey(url)) {
-      _controllers[url] = WebviewController();
-      // Initialize controller will be done by the widget
-    }
-    return _controllers[url]!;
-  }
-  
-  bool hasController(String url) => _controllers.containsKey(url);
-  
-  void disposeUnused() {
-    // Optional: Implement logic to dispose controllers that haven't been used recently
-  }
-}
+import '../html_utils.dart';
 
 class WindowsIframeHtmlExtension extends HtmlExtension {
   const WindowsIframeHtmlExtension();
@@ -44,7 +24,7 @@ class WindowsIframeHtmlExtension extends HtmlExtension {
 
     // Use a unique key based on the URL to maintain widget identity
     final key = ValueKey(src);
-    
+
     return WidgetSpan(
       child: WindowsIframeWidget(
         key: key,
@@ -89,14 +69,14 @@ class _WindowsIframeWidgetState extends State<WindowsIframeWidget> with Automati
 
   Future<void> _initWebView() async {
     if (_isInitialized) return;
-    
+
     try {
       if (!_controller.value.isInitialized) {
         await _controller.initialize();
         await _controller.setBackgroundColor(Colors.transparent);
         await _controller.loadUrl(widget.src);
       }
-      
+
       _isInitialized = true;
       if (mounted) setState(() => _isWebViewReady = true);
     } catch (e) {
@@ -121,7 +101,7 @@ class _WindowsIframeWidgetState extends State<WindowsIframeWidget> with Automati
   @override
   Widget build(BuildContext context) {
     super.build(context); // Required for AutomaticKeepAliveClientMixin
-    
+
     return RepaintBoundary(
       child: Container(
         width: widget.width,
