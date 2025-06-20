@@ -6,6 +6,7 @@ class MouseButtonWrapper extends StatefulWidget {
   final bool isLoading;
   final String? tooltip;
   final Widget? tooltipWidget;
+  final Duration? tooltipWaitDuration;
 
   const MouseButtonWrapper({
     super.key,
@@ -14,6 +15,7 @@ class MouseButtonWrapper extends StatefulWidget {
     this.isLoading = false,
     this.tooltip,
     this.tooltipWidget,
+    this.tooltipWaitDuration,
   });
 
   @override
@@ -25,23 +27,28 @@ class _MouseButtonWrapperState extends State<MouseButtonWrapper> {
 
   @override
   Widget build(BuildContext context) {
-    Widget button = MouseRegion(
-      onEnter: (_) => setState(() => _isHovering = true),
-      onExit: (_) => setState(() => _isHovering = false),
-      cursor: widget.isButtonDisabled
-          ? SystemMouseCursors.forbidden
-          : widget.isLoading
-              ? SystemMouseCursors.progress
-              : SystemMouseCursors.click,
-      child: widget.child(_isHovering),
+    return TooltipTheme(
+      data: TooltipThemeData(waitDuration: widget.tooltipWaitDuration),
+      child: Builder(builder: (context) {
+        Widget button = MouseRegion(
+          onEnter: (_) => setState(() => _isHovering = true),
+          onExit: (_) => setState(() => _isHovering = false),
+          cursor: widget.isButtonDisabled
+              ? SystemMouseCursors.forbidden
+              : widget.isLoading
+                  ? SystemMouseCursors.progress
+                  : SystemMouseCursors.click,
+          child: widget.child(_isHovering),
+        );
+        // no tooltip
+        if (widget.tooltip == null && widget.tooltipWidget == null) return button;
+
+        // only string tooltip
+        if (widget.tooltip == null && widget.tooltipWidget != null) return Tooltip(richMessage: WidgetSpan(child: widget.tooltipWidget!), child: button);
+
+        // only widget tooltip
+        return Tooltip(message: widget.tooltip, child: button);
+      }),
     );
-    // no tooltip
-    if (widget.tooltip == null && widget.tooltipWidget == null) return button;
-
-    // only string tooltip
-    if (widget.tooltip == null && widget.tooltipWidget != null) return Tooltip(richMessage: WidgetSpan(child: widget.tooltipWidget!), child: button);
-
-    // only widget tooltip
-    return Tooltip(message: widget.tooltip, child: button);
   }
 }

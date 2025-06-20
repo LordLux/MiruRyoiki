@@ -89,3 +89,37 @@ Color getPrimaryColorBasedOnAccent() {
   final double brightness = hsl.lightness;
   return brightness > 0.5 ? Colors.black : Colors.white;
 }
+
+/// Finds the best color for the text based on the background color
+/// works on contrast, not brightness
+Color determineTextColor(
+  Color backgroundColor, {
+  double preferBlack = 0.5,
+  double preferWhite = 0.5,
+}) {
+  // Ensure preferBlack and preferWhite are between 0 and 1
+  preferBlack = preferBlack.clamp(0.0, 1.0);
+  preferWhite = preferWhite.clamp(0.0, 1.0);
+
+  // Calculate luminance of the background color
+  double luminance = backgroundColor.computeLuminance();
+
+  // Adjust luminance based on preferBlack and preferWhite
+  double adjustedLuminance = luminance;
+
+  // Preference for black - increase threshold to prefer black more
+  if (preferBlack > preferWhite) {
+    adjustedLuminance *= 1.0 + (preferBlack - 0.5); // Enhance black preference
+  }
+  // Preference for white - increase threshold to prefer white more
+  else if (preferWhite > preferBlack) {
+    adjustedLuminance *= 1.0 - (preferWhite - 0.5); // Enhance white preference
+  }
+
+  // Determine the text color based on luminance
+  if (adjustedLuminance < 0.5) {
+    return Colors.white;
+  } else {
+    return Colors.black;
+  }
+}

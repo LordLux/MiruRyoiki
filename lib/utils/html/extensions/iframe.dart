@@ -3,6 +3,7 @@ import 'package:flutter_html/flutter_html.dart';
 import 'package:webview_windows/webview_windows.dart';
 import 'dart:async';
 
+import '../../logging.dart';
 import '../html_utils.dart';
 
 class WindowsIframeHtmlExtension extends HtmlExtension {
@@ -87,16 +88,16 @@ class _WindowsIframeWidgetState extends State<WindowsIframeWidget> with Automati
         throw TimeoutException('WebView initialization timed out');
       });
 
-      debugPrint('WebView initialized for ${widget.src}');
+      logTrace('WebView initialized for ${widget.src}');
 
       // Load URL after initialization
       try {
         await _controller.loadUrl(widget.src).timeout(const Duration(seconds: 10), onTimeout: () {
           throw TimeoutException('URL loading timed out');
         });
-        debugPrint('URL loaded successfully: ${widget.src}');
+        logTrace('URL loaded successfully: ${widget.src}');
       } catch (urlError) {
-        debugPrint('Error loading URL ${widget.src}: $urlError');
+        logErr('Error loading URL ${widget.src}', urlError);
         // Still mark as ready but with an error state
         if (mounted) {
           setState(() {
@@ -116,7 +117,7 @@ class _WindowsIframeWidgetState extends State<WindowsIframeWidget> with Automati
         });
       }
     } catch (e) {
-      debugPrint('Error initializing WebView for ${widget.src}: $e');
+      logErr('Error initializing WebView for ${widget.src}', e);
       if (mounted) {
         setState(() {
           _isLoading = false;
@@ -179,7 +180,7 @@ class _WindowsIframeWidgetState extends State<WindowsIframeWidget> with Automati
                       Icon(FluentIcons.error, color: Colors.warningPrimaryColor),
                       const SizedBox(height: 8),
                       Text(
-                        'Failed to load iframe content',
+                        'Failed to load iframe content:\n$_errorMessage',
                         style: FluentTheme.of(context).typography.caption,
                         textAlign: TextAlign.center,
                       ),
