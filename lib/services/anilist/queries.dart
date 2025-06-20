@@ -399,30 +399,6 @@ class AnilistService {
         restrictMessagesToFollowing
         staffNameLanguage
       }
-      statistics {
-        anime {
-          count
-          meanScore
-          standardDeviation
-          minutesWatched
-          episodesWatched
-          genres {
-            genre
-            count
-            meanScore
-            minutesWatched
-          }
-          tags {
-            tag {
-              id
-              name
-            }
-            count
-            meanScore
-            minutesWatched
-          }
-        }
-      }
       favourites {
         anime {
           nodes {
@@ -437,6 +413,9 @@ class AnilistService {
               extraLarge
               color
             }
+            seasonYear
+            format
+            siteUrl
           }
         }
         characters {
@@ -449,6 +428,7 @@ class AnilistService {
             image {
               large
             }
+            siteUrl
           }
         }
         staff {
@@ -461,12 +441,14 @@ class AnilistService {
             image {
               large
             }
+            siteUrl
           }
         }
         studios {
           nodes {
             id
             name
+            siteUrl
           }
         }
       }
@@ -500,55 +482,6 @@ class AnilistService {
           }
           statuses {
             status
-            count
-            meanScore
-            minutesWatched
-          }
-          releaseYears {
-            releaseYear
-            count
-            meanScore
-            minutesWatched
-          }
-          startYears {
-            startYear
-            count
-            meanScore
-            minutesWatched
-          }
-          countries {
-            country
-            count
-            meanScore
-            minutesWatched
-          }
-          voiceActors {
-            voiceActor {
-              id
-              name {
-                full
-              }
-            }
-            count
-            meanScore
-            minutesWatched
-          }
-          staff {
-            staff {
-              id
-              name {
-                full
-              }
-            }
-            count
-            meanScore
-            minutesWatched
-          }
-          studios {
-            studio {
-              id
-              name
-            }
             count
             meanScore
             minutesWatched

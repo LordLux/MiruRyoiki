@@ -168,8 +168,6 @@ extension LibraryAnilistIntegration on Library {
 
     if (refreshSeries.isEmpty) return;
 
-    // print('Refreshing Anilist posters for ${refreshSeries.length} series');
-
     for (int i = 0; i < refreshSeries.length; i += 5) {
       final batch = refreshSeries.sublist(i, i + 5 > refreshSeries.length ? refreshSeries.length : i + 5);
 

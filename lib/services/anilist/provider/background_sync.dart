@@ -4,9 +4,20 @@ extension AnilistProviderBackgroundSync on AnilistProvider {
   /// Start the background sync service
   void startBackgroundSync() {
     _syncTimer?.cancel();
+    _connectivityTimer?.cancel();
+    _userDataRefreshTimer?.cancel();
+
+    // Sync timer
     _syncTimer = Timer.periodic(_syncInterval, (_) => _performBackgroundSync());
 
-    // Also perform an immediate sync
+    // Connectivity check timer
+    _connectivityTimer = Timer.periodic(const Duration(seconds: 15), (_) => _checkConnectivityAndNotify());
+
+    // Start user data refresh timer with foreground interval
+    _startUserDataRefreshTimer(inForeground: true);
+
+    // Perform immediate connectivity check and sync
+    _checkConnectivityAndNotify();
     _performBackgroundSync();
   }
 
@@ -14,6 +25,12 @@ extension AnilistProviderBackgroundSync on AnilistProvider {
   void stopBackgroundSync() {
     _syncTimer?.cancel();
     _syncTimer = null;
+
+    _connectivityTimer?.cancel();
+    _connectivityTimer = null;
+
+    _userDataRefreshTimer?.cancel();
+    _userDataRefreshTimer = null;
   }
 
   /// Perform a background sync operation
@@ -119,6 +136,73 @@ extension AnilistProviderBackgroundSync on AnilistProvider {
       syncStatusMessage.value = 'Synced $successCount changes';
       await Future.delayed(Duration(seconds: 3));
       syncStatusMessage.value = null;
+    }
+  }
+
+  /// Start or restart the user data refresh timer with appropriate interval
+  void _startUserDataRefreshTimer({required bool inForeground}) {
+    _userDataRefreshTimer?.cancel();
+
+    final duration = inForeground
+        ? const Duration(minutes: 5) // 5 minutes in foreground
+        : const Duration(minutes: 15); // 15 minutes in background
+
+    _userDataRefreshTimer = Timer.periodic(duration, (_) {
+      if (!_isOffline && isLoggedIn) {
+        refreshUserData();
+        logTrace('Auto-refreshing user data (${inForeground ? 'foreground' : 'background'} mode)');
+      }
+    });
+  }
+
+  /// Check connectivity and notify if status changed
+  Future<void> _checkConnectivityAndNotify() async {
+    final wasOffline = _isOffline;
+    final isOnline = await _checkConnectivity();
+
+    // If connectivity status changed from offline to online
+    if (wasOffline && isOnline) {
+      logInfo('Connectivity restored');
+
+      // Immediate data refresh when connection is restored
+      if (isLoggedIn) {
+        refreshUserData();
+        _loadUserLists();
+      }
+
+      notifyListeners();
+    }
+    // If connectivity status changed from online to offline
+    else if (!wasOffline && !isOnline) {
+      logInfo('Connectivity lost');
+      notifyListeners();
+    }
+  }
+
+  /// Handle app lifecycle state changes
+  void handleAppLifecycleStateChange(AppLifecycleState state) {
+    switch (state) {
+      case AppLifecycleState.resumed:
+        logTrace('App resumed - refreshing data and switching to foreground refresh rate');
+        // App came to foreground, switch to shorter refresh interval
+        _startUserDataRefreshTimer(inForeground: true);
+
+        // Immediate refresh when app comes to foreground
+        if (isLoggedIn && !_isOffline) {
+          refreshUserData();
+          _checkConnectivityAndNotify();
+        }
+        break;
+
+      case AppLifecycleState.paused:
+        logTrace('App paused - switching to background refresh rate');
+        // App went to background, switch to longer refresh interval
+        _startUserDataRefreshTimer(inForeground: false);
+        break;
+
+      default:
+        // No action needed for other states
+        break;
     }
   }
 }

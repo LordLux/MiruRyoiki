@@ -909,6 +909,9 @@ class Series {
   /// Genres from Anilist
   List<String> get genres => currentAnilistData?.genres ?? [];
 
+  /// The season year from Anilist
+  int? get seasonYear => currentAnilistData?.seasonYear;
+
   /// Getter to check if the poster is from Anilist
   String? get effectivePosterPath {
     final ImageSource effectiveSource = preferredPosterSource ?? Manager.defaultPosterSource;

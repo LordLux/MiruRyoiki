@@ -50,6 +50,7 @@ class SeriesScreen extends StatefulWidget {
 
 class SeriesScreenState extends State<SeriesScreen> {
   // final ScrollController _scrollController = ScrollController();
+  Series? _series;
   late double _headerHeight;
   bool posterChangeDisabled = false;
   bool bannerChangeDisabled = false;
@@ -60,16 +61,7 @@ class SeriesScreenState extends State<SeriesScreen> {
   DeferredPointerHandlerLink deferredPointerLink = DeferredPointerHandlerLink();
   bool _isBannerHovering = false;
 
-  Series? get series {
-    final Library library;
-    try {
-      library = Provider.of<Library>(context, listen: false);
-    } catch (e) {
-      logErr('Failed to get library provider: $e');
-      return null;
-    }
-    return library.getSeriesByPath(widget.seriesPath);
-  }
+  Series? get series => _series;
 
   Color get dominantColor =>
       series?.dominantColor ?? //
@@ -81,9 +73,21 @@ class SeriesScreenState extends State<SeriesScreen> {
   void initState() {
     super.initState();
     _headerHeight = ScreenUtils.kMaxHeaderHeight;
+    _loadSeries();
     nextFrame(() {
       _loadAnilistDataForCurrentSeries();
     });
+  }
+
+  void _loadSeries() {
+    if (!mounted) return;
+
+    try {
+      final library = Provider.of<Library>(context, listen: false);
+      _series = library.getSeriesByPath(widget.seriesPath);
+    } catch (e) {
+      logErr('Failed to get library provider: $e');
+    }
   }
 
   ColorFilter get colorFilter => ColorFilter.matrix([
@@ -111,12 +115,12 @@ class SeriesScreenState extends State<SeriesScreen> {
   }
 
   Future<void> _loadAnilistDataForCurrentSeries() async {
-    if (series == null) return;
+    if (!mounted || series == null) return;
 
     if (!series!.isLinked) {
       // Clear any Anilist data references to ensure UI updates
       series!.anilistData = null;
-      Manager.setState();
+      if (homeKey.currentContext?.mounted ?? false) Manager.setState();
       return;
     }
 
@@ -136,7 +140,7 @@ class SeriesScreenState extends State<SeriesScreen> {
       // Store the original dominant color to check if it changes
       final Color? originalDominantColor = series!.dominantColor;
 
-      setState(() {
+      Manager.setState(() {
         // Find the mapping with this ID
         for (var i = 0; i < series!.anilistMappings.length; i++) {
           if (series!.anilistMappings[i].anilistId == anilistId) {
@@ -161,24 +165,31 @@ class SeriesScreenState extends State<SeriesScreen> {
       // Calculate dominant color (this will update it if needed)
       await series!.calculateDominantColor(forceRecalculate: true);
 
+      if (!mounted || series == null) return; // in case series was disposed during the async operation
+
       // Only save if dominant color changed or was newly set
       if (originalDominantColor?.value != series!.dominantColor?.value) {
         // Save the updated series to the library
 
-        final BuildContext ctx;
+        final BuildContext? ctx;
         if (mounted)
           ctx = context;
         else
-          ctx = Manager.context;
+          ctx = rootNavigatorKey.currentContext;
 
-        // ignore: use_build_context_synchronously
-        final library = Provider.of<Library>(ctx, listen: false);
-        await library.updateSeries(series!, invalidateCache: false);
+        if (ctx != null) {
+          try {
+            final library = Provider.of<Library>(ctx, listen: false);
+            await library.updateSeries(series!, invalidateCache: false);
 
-        if (libraryScreenKey.currentState != null) {
-          libraryScreenKey.currentState!.updateSeriesInSortCache(series!);
+            if (libraryScreenKey.currentState != null) {
+              libraryScreenKey.currentState!.updateSeriesInSortCache(series!);
+            }
+            logTrace('Dominant color changed, saving series');
+          } catch (e) {
+            logErr('Error updating series: $e');
+          }
         }
-        logTrace('Dominant color changed, saving series');
       }
     } else {
       logErr('Failed to load Anilist data for ID: $anilistId');
@@ -527,6 +538,11 @@ class SeriesScreenState extends State<SeriesScreen> {
                 label: 'Episodes',
                 child: Text('${series.totalEpisodes}'),
               ),
+              if (series.seasonYear != null)
+                InfoLabel(
+                  label: 'Year',
+                  child: Text('${series.seasonYear}'),
+                ),
               if (series.format != null)
                 InfoLabel(
                   label: 'Format',

@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:fluent_ui/fluent_ui.dart';
-import 'package:flutter/material.dart';
 
 import '../../../../models/anilist/user_list.dart';
 import '../../../../models/anilist/anime.dart';
@@ -21,7 +20,7 @@ part 'anime_cache.dart';
 part 'mutations.dart';
 part 'background_sync.dart';
 
-class AnilistProvider extends ChangeNotifier {
+class AnilistProvider extends ChangeNotifier with WidgetsBindingObserver {
   final AnilistService _anilistService;
 
   AnilistUser? _currentUser;
@@ -32,6 +31,14 @@ class AnilistProvider extends ChangeNotifier {
 
   bool _isReady = false;
   bool get isReady => _isReady;
+
+  // Background sync and connectivity
+  Timer? _syncTimer;
+  Timer? _connectivityTimer;
+  Timer? _userDataRefreshTimer;
+  final Duration _syncInterval = const Duration(minutes: 30);
+  bool _isSyncing = false;
+  ValueNotifier<String?> syncStatusMessage = ValueNotifier(null);
 
   /// Cache
   DateTime? _lastListsCacheTime;
@@ -44,13 +51,9 @@ class AnilistProvider extends ChangeNotifier {
   final String anime_cache = 'anilist_anime_cache.json';
   final String mutations_queue = 'anilist_mutations_queue.json';
 
-  // Background sync
-  Timer? _syncTimer;
-  bool _isSyncing = false;
-  final Duration _syncInterval = Duration(minutes: 15);
-  ValueNotifier<String?> syncStatusMessage = ValueNotifier(null);
-
-  AnilistProvider({AnilistService? anilistService}) : _anilistService = anilistService ?? AnilistService();
+  AnilistProvider({AnilistService? anilistService}) : _anilistService = anilistService ?? AnilistService() {
+    WidgetsBinding.instance.addObserver(this);
+  }
 
   /// Whether the provider has been initialized
   bool get isInitialized => _isInitialized;
@@ -78,6 +81,12 @@ class AnilistProvider extends ChangeNotifier {
     _syncTimer?.cancel();
     syncStatusMessage.dispose();
     stopBackgroundSync();
+    WidgetsBinding.instance.removeObserver(this);
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    handleAppLifecycleStateChange(state);
   }
 }

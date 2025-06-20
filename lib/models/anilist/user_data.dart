@@ -324,11 +324,13 @@ class Character {
   final int? id;
   final CharacterName? name;
   final CharacterImage? image;
+  final String? siteUrl;
 
   Character({
     this.id,
     this.name,
     this.image,
+    this.siteUrl,
   });
 
   factory Character.fromJson(Map<String, dynamic> json) {
@@ -336,6 +338,7 @@ class Character {
       id: json['id'],
       name: json['name'] != null ? CharacterName.fromJson(json['name']) : null,
       image: json['image'] != null ? CharacterImage.fromJson(json['image']) : null,
+      siteUrl: json['siteUrl'],
     );
   }
 
@@ -344,6 +347,7 @@ class Character {
       'id': id,
       'name': name?.toJson(),
       'image': image?.toJson(),
+      'siteUrl': siteUrl,
     };
   }
 }
@@ -406,11 +410,13 @@ class Staff {
   final int? id;
   final CharacterName? name;
   final CharacterImage? image;
+  final String? siteUrl;
 
   Staff({
     this.id,
     this.name,
     this.image,
+    this.siteUrl,
   });
 
   factory Staff.fromJson(Map<String, dynamic> json) {
@@ -418,6 +424,7 @@ class Staff {
       id: json['id'],
       name: json['name'] != null ? CharacterName.fromJson(json['name']) : null,
       image: json['image'] != null ? CharacterImage.fromJson(json['image']) : null,
+      siteUrl: json['siteUrl'],
     );
   }
 
@@ -426,6 +433,7 @@ class Staff {
       'id': id,
       'name': name?.toJson(),
       'image': image?.toJson(),
+      'siteUrl': siteUrl,
     };
   }
 }
@@ -443,16 +451,19 @@ class FavouriteStudios extends FavouriteCollection<Studio> {
 class Studio {
   final int? id;
   final String? name;
+  final String? siteUrl;
 
   Studio({
     this.id,
     this.name,
+    this.siteUrl,
   });
 
   factory Studio.fromJson(Map<String, dynamic> json) {
     return Studio(
       id: json['id'],
       name: json['name'],
+      siteUrl: json['siteUrl'],
     );
   }
 
@@ -460,6 +471,7 @@ class Studio {
     return {
       'id': id,
       'name': name,
+      'siteUrl': siteUrl,
     };
   }
 }
