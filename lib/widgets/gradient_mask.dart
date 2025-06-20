@@ -45,10 +45,10 @@ class FadingEdgeScrollView extends StatelessWidget {
             : gradientColors ??
                 [
                   Colors.black.withOpacity(0),
-                  Colors.black.withOpacity(.25),
+                  Colors.black.withOpacity(.5),
                   Colors.black,
                   Colors.black,
-                  Colors.black.withOpacity(.25),
+                  Colors.black.withOpacity(.5),
                   Colors.black.withOpacity(0),
                 ];
         final stops = gradientStops ??

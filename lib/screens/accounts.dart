@@ -9,9 +9,11 @@ import 'package:miruryoiki/enums.dart';
 import 'package:miruryoiki/models/anilist/user_data.dart';
 import 'package:flexible_wrap/flexible_wrap.dart';
 import 'package:miruryoiki/widgets/buttons/switch.dart';
+import 'package:miruryoiki/widgets/buttons/wrapper.dart';
 import 'package:pie_chart/pie_chart.dart';
 import 'package:recase/recase.dart';
 import 'package:smooth_scroll_multiplatform/smooth_scroll_multiplatform.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../manager.dart';
 import '../models/anilist/anime.dart';
 import '../services/anilist/provider/anilist_provider.dart';
@@ -81,6 +83,7 @@ class AccountsScreenState extends State<AccountsScreen> {
           ),
         ],
       ),
+      titleLeftAligned: !isLoggedIn,
       image: anilistProvider.currentUser?.bannerImage != null //
           ? CachedNetworkImageProvider(anilistProvider.currentUser!.bannerImage!)
           : null,
@@ -236,7 +239,7 @@ class AccountsScreenState extends State<AccountsScreen> {
     final bool isButtonDisabled = isLocalLoading || anilistProvider.isLoading || anilistProvider.isLoggedIn;
 
     return Padding(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.only(top:16, left: 16, right: 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -803,27 +806,48 @@ class AccountsScreenState extends State<AccountsScreen> {
                           final isAnime = node is AnilistAnime;
                           final imageUrl = isAnime ? node.posterImage : node.image?.large;
                           final name = isAnime ? node.title.userPreferred : node.name?.full;
-                          return Tooltip(
-                            message: !isAnime ? name ?? 'Unknown' : '${name ?? 'Unknown'}\n${node.seasonYear ?? ''} ${node.format?.titleCase ?? ''}',
-                            child: Container(
+                          return MouseButtonWrapper(
+                            isButtonDisabled: node.siteUrl == null || node.siteUrl!.isEmpty,
+                            tooltip: !isAnime ? name ?? 'Unknown' : '${name ?? 'Unknown'}\n${node.seasonYear ?? ''} ${node.format?.titleCase ?? ''}',
+                            child: (_) => Container(
                               width: 100,
                               margin: const EdgeInsets.only(right: 8),
-                              child: Column(
+                              child: Stack(
                                 children: [
-                                  Container(
-                                    height: 120,
-                                    decoration: BoxDecoration(
-                                      borderRadius: BorderRadius.circular(ScreenUtils.kEpisodeCardBorderRadius),
-                                      image: imageUrl != null ? DecorationImage(image: CachedNetworkImageProvider(imageUrl), fit: BoxFit.cover) : null,
-                                    ),
+                                  Column(
+                                    children: [
+                                      mat.Ink(
+                                        color: Colors.transparent,
+                                        child: Container(
+                                          height: 120,
+                                          decoration: BoxDecoration(
+                                            borderRadius: BorderRadius.circular(ScreenUtils.kEpisodeCardBorderRadius),
+                                            image: imageUrl != null ? DecorationImage(image: CachedNetworkImageProvider(imageUrl), fit: BoxFit.cover) : null,
+                                          ),
+                                        ),
+                                      ),
+                                      VDiv(4),
+                                      Text(
+                                        name ?? 'Unknown',
+                                        style: Manager.captionStyle,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        textAlign: TextAlign.center,
+                                      ),
+                                    ],
                                   ),
-                                  VDiv(4),
-                                  Text(
-                                    name ?? 'Unknown',
-                                    style: Manager.captionStyle,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    textAlign: TextAlign.center,
+                                  Positioned.fill(
+                                    child: mat.Material(
+                                      color: Colors.transparent,
+                                      child: mat.InkWell(
+                                        onTap: () {
+                                          // open link of node.siteUrl if available
+                                          if (node.siteUrl != null && node.siteUrl!.isNotEmpty) //
+                                            launchUrl(Uri.parse(node.siteUrl!));
+                                        },
+                                        borderRadius: BorderRadius.circular(ScreenUtils.kEpisodeCardBorderRadius),
+                                      ),
+                                    ),
                                   ),
                                 ],
                               ),
