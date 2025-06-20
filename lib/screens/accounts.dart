@@ -12,6 +12,7 @@ import 'package:flutter_html/flutter_html.dart';
 import 'package:miruryoiki/models/anilist/user_data.dart';
 import 'package:flexible_wrap/flexible_wrap.dart';
 import 'package:miruryoiki/utils/html/extensions/spoiler.dart';
+import 'package:miruryoiki/utils/time_utils.dart';
 import 'package:miruryoiki/widgets/buttons/switch.dart';
 import 'package:miruryoiki/widgets/buttons/wrapper.dart';
 import 'package:pie_chart/pie_chart.dart';
@@ -32,6 +33,7 @@ import '../utils/html/html_utils.dart';
 import '../utils/logging.dart';
 import '../utils/screen_utils.dart';
 import '../widgets/animated_stats_counter.dart';
+import '../widgets/buttons/hyperlink.dart';
 import '../widgets/buttons/loading_button.dart';
 import '../widgets/codeblock.dart';
 import '../widgets/page/header_widget.dart';
@@ -54,6 +56,7 @@ class AccountsScreenState extends State<AccountsScreen> {
   bool isLocalLoading = false;
   bool _seriesLoading = false;
   bool _userLoading = false;
+  bool _aboutExpanded = false;
 
   @override
   void initState() {
@@ -279,6 +282,7 @@ class AccountsScreenState extends State<AccountsScreen> {
         ] else ...[
           // User profile section
           SettingsCard(
+            padding: EdgeInsets.only(left: 24.0, top: 32.0, right: 32.0, bottom: 32.0),
             children: _buildUserProfile(anilistProvider),
           ),
           VDiv(16),
@@ -289,7 +293,7 @@ class AccountsScreenState extends State<AccountsScreen> {
           VDiv(16),
           // Distributions section
           _buildDistribution(anilistProvider),
-    
+
           VDiv(16),
           // Genres overview section
           ..._buildGenresOverview(anilistProvider),
@@ -306,104 +310,172 @@ class AccountsScreenState extends State<AccountsScreen> {
   List<Widget> _buildUserProfile(AnilistProvider anilistProvider) {
     final userData = anilistProvider.currentUser?.userData;
 
+    if (userData == null) return [Text('Loading user data...')];
+
     return [
-      Text(
-        'About',
-        style: Manager.subtitleStyle,
-      ),
-      VDiv(8),
-      Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (userData?.about != null && userData!.about!.isNotEmpty) ...[
-                  Card(
-                    child: LayoutBuilder(builder: (context, constraints) {
-                      return SelectionArea(
-                        child: Html(
-                          data: _convertMarkupToHtml(userData.about!, constraints.maxWidth),
-                          style: {
-                            "body": Style(
-                              fontSize: FontSize(Manager.bodyStyle.fontSize!),
-                              fontFamily: Manager.bodyStyle.fontFamily,
-                              color: Manager.bodyStyle.color,
-                              margin: Margins.zero,
-                              padding: HtmlPaddings.zero,
-                            ),
-                            "a": Style(
-                              color: Manager.accentColor,
-                              textDecoration: TextDecoration.none,
-                            ),
-                            "blockquote": Style(
-                              border: Border(left: BorderSide(color: Manager.accentColor.darker, width: 3)),
-                              padding: HtmlPaddings.only(left: 8),
-                              fontStyle: FontStyle.italic,
-                              color: Manager.bodyStyle.color?.withOpacity(0.8),
-                            ),
-                            "img": Style(
-                              margin: Margins.only(top: 4, bottom: 4),
-                            ),
-                            "ul, ol": Style(
-                              margin: Margins.only(left: 16, top: 4, bottom: 4),
-                            ),
-                            "li": Style(
-                              margin: Margins.only(bottom: 2),
-                            ),
-                            "iframe": Style(
-                              width: Width(250),
-                              height: Height(150),
-                            ),
-                          },
-                          onLinkTap: (url, _, __) {
-                            if (url != null) launchUrl(Uri.parse(url));
-                          },
-                          extensions: [
-                            WindowsIframeHtmlExtension(),
-                            SpoilerTagExtension(),
-                            CodeBlockExtension(),
-                            VideoHtmlExtension(),
-                            UnsupportedBlockExtension(),
-                          ],
+      if (userData.about != null && userData.about!.isNotEmpty)
+        MouseButtonWrapper(
+          tooltip: !_aboutExpanded ? 'Click to expand the About section' : 'Click to collapse the About section',
+          child: (_) => GestureDetector(
+            onTap: () => setState(() => _aboutExpanded = !_aboutExpanded),
+            child: Padding(
+              padding: EdgeInsets.only(left: 8.0),
+              child: Container(
+                color: Colors.transparent,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('About', style: Manager.subtitleStyle),
+                    mat.InkWell(
+                      borderRadius: BorderRadius.circular(20),
+                      hoverColor: Manager.accentColor.lightest.withOpacity(0.5),
+                      focusColor: Manager.accentColor.lightest.withOpacity(0.5),
+                      onTap: () => setState(() => _aboutExpanded = !_aboutExpanded),
+                      child: AnimatedRotation(
+                        duration: const Duration(milliseconds: 200),
+                        turns: _aboutExpanded ? 0.5 : 0.0,
+                        child: SizedBox.square(
+                          dimension: 25,
+                          child: Icon(mat.Icons.arrow_drop_down),
                         ),
-                      );
-                    }),
-                  ),
-                ],
-                VDiv(8),
-                if (userData?.siteUrl != null) ...[
-                  Row(
-                    children: [
-                      Text('Profile: ', style: Manager.bodyStrongStyle),
-                      HyperlinkButton(
-                        child: Text(userData!.siteUrl!, style: Manager.bodyStyle),
-                        onPressed: () {
-                          // Open URL
-                        },
                       ),
-                    ],
-                  ),
-                ],
-                if (userData?.options?.profileColor != null) ...[
-                  Row(
-                    children: [
-                      Text('Profile Color: ', style: Manager.bodyStrongStyle),
-                      Container(
-                        width: 16,
-                        height: 16,
-                        color: _parseProfileColor(userData!.options!.profileColor!),
-                        margin: const EdgeInsets.only(right: 8),
-                      ),
-                      Text(userData.options!.profileColor!, style: Manager.bodyStyle),
-                    ],
-                  ),
-                ],
-              ],
+                    ),
+                  ],
+                ),
+              ),
             ),
           ),
-        ],
+        )
+      else
+        Text(
+          'About',
+          style: Manager.subtitleStyle,
+        ),
+      VDiv(8),
+      Padding(
+        padding: const EdgeInsets.only(left: 8.0),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (userData.about != null && userData.about!.isNotEmpty)
+                    AnimatedCrossFade(
+                      crossFadeState: _aboutExpanded ? CrossFadeState.showFirst : CrossFadeState.showSecond,
+                      duration: const Duration(milliseconds: 250),
+                      reverseDuration: const Duration(milliseconds: 150),
+                      firstCurve: Curves.easeOut,
+                      secondCurve: Curves.easeIn,
+                      sizeCurve: Curves.easeInOut,
+                      alignment: Alignment.topLeft,
+                      firstChild: AnimatedOpacity(
+                        opacity: _aboutExpanded ? 1.0 : 0.0,
+                        curve: Curves.easeInQuint,
+                        duration: const Duration(milliseconds: 500),
+                        child: Card(
+                          child: LayoutBuilder(builder: (context, constraints) {
+                            return SelectionArea(
+                              child: Html(
+                                data: _convertMarkupToHtml(userData.about!, constraints.maxWidth),
+                                style: {
+                                  "body": Style(
+                                    fontSize: FontSize(Manager.bodyStyle.fontSize!),
+                                    fontFamily: Manager.bodyStyle.fontFamily,
+                                    color: Manager.bodyStyle.color,
+                                    margin: Margins.zero,
+                                    padding: HtmlPaddings.zero,
+                                  ),
+                                  "a": Style(
+                                    color: Manager.accentColor,
+                                    textDecoration: TextDecoration.none,
+                                  ),
+                                  "blockquote": Style(
+                                    border: Border(left: BorderSide(color: Manager.accentColor.darker, width: 3)),
+                                    padding: HtmlPaddings.only(left: 8),
+                                    fontStyle: FontStyle.italic,
+                                    color: Manager.bodyStyle.color?.withOpacity(0.8),
+                                  ),
+                                  "img": Style(
+                                    margin: Margins.only(top: 4, bottom: 4),
+                                  ),
+                                  "ul, ol": Style(
+                                    margin: Margins.only(left: 16, top: 4, bottom: 4),
+                                  ),
+                                  "li": Style(
+                                    margin: Margins.only(bottom: 2),
+                                  ),
+                                  "iframe": Style(
+                                    width: Width(250),
+                                    height: Height(150),
+                                  ),
+                                },
+                                onLinkTap: (url, _, __) {
+                                  if (url != null) launchUrl(Uri.parse(url));
+                                },
+                                extensions: [
+                                  WindowsIframeHtmlExtension(),
+                                  SpoilerTagExtension(),
+                                  CodeBlockExtension(),
+                                  VideoHtmlExtension(),
+                                  UnsupportedBlockExtension(),
+                                ],
+                              ),
+                            );
+                          }),
+                        ),
+                      ),
+                      secondChild: const SizedBox.shrink(),
+                    ),
+                  VDiv(8),
+                  if (userData.siteUrl != null) ...[
+                    Row(
+                      children: [
+                        Text('Profile: ', style: Manager.bodyStrongStyle),
+                        MouseButtonWrapper(
+                          child: (_) => HyperlinkButton(
+                            style: ButtonStyle(
+                              backgroundColor: WidgetStateProperty.resolveWith((states) {
+                                if (states.isDisabled) {
+                                  return Manager.accentColor.darker.withOpacity(.2);
+                                } else if (states.isPressed) {
+                                  return Manager.accentColor.lightest.withOpacity(.2);
+                                } else if (states.isHovered) {
+                                  return Manager.accentColor.light.withOpacity(.2);
+                                } else {
+                                  return null;
+                                }
+                              }),
+                            ),
+                            child: Text(userData.siteUrl!, style: Manager.bodyStyle),
+                            onPressed: () {
+                              launchUrl(Uri.parse(userData.siteUrl!));
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                  if (userData.options?.profileColor != null) ...[
+                    Row(
+                      children: [
+                        Text('Profile Color: ', style: Manager.bodyStrongStyle),
+                        Container(
+                          width: 16,
+                          height: 16,
+                          color: _parseProfileColor(userData.options!.profileColor!),
+                          margin: const EdgeInsets.only(right: 8),
+                        ),
+                        Text(userData.options!.profileColor!, style: Manager.bodyStyle),
+                      ],
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     ];
   }
@@ -415,9 +487,13 @@ class AccountsScreenState extends State<AccountsScreen> {
     if (animeStats == null) return [const Text('No statistics available')];
 
     return [
-      Text(
-        'Anime Statistics',
-        style: Manager.subtitleStyle,
+      WrappedHyperlinkButton(
+        url: 'https://anilist.co/user/${anilistProvider.currentUser?.id}/stats/anime/overview',
+        text: 'Anime Statistics',
+        icon: Icon(
+          mat.Icons.open_in_new,
+          color: Manager.accentColor.lightest,
+        ),
       ),
       VDiv(16),
       LayoutBuilder(
@@ -739,9 +815,13 @@ class AccountsScreenState extends State<AccountsScreen> {
                 children: [
                   Padding(
                     padding: const EdgeInsets.only(left: 36.0, top: 36.0),
-                    child: Text(
-                      'Genres Overview',
-                      style: Manager.subtitleStyle,
+                    child: WrappedHyperlinkButton(
+                      url: 'https://anilist.co/user/${anilistProvider.currentUser?.id}/stats/anime/genres',
+                      text: 'Genres Overview',
+                      icon: Icon(
+                        mat.Icons.open_in_new,
+                        color: Manager.accentColor.lightest,
+                      ),
                     ),
                   ),
                   VDiv(8),
@@ -887,6 +967,8 @@ class AccountsScreenState extends State<AccountsScreen> {
                                     child: mat.Material(
                                       color: Colors.transparent,
                                       child: mat.InkWell(
+                                        hoverColor: Manager.accentColor.lightest.withOpacity(.2),
+                                        splashColor: Manager.accentColor.light.withOpacity(.2),
                                         onTap: () {
                                           // open link of node.siteUrl if available
                                           if (node.siteUrl != null && node.siteUrl!.isNotEmpty) //
@@ -909,9 +991,13 @@ class AccountsScreenState extends State<AccountsScreen> {
     }
 
     return [
-      Text(
-        'Favorites',
-        style: Manager.subtitleStyle,
+      WrappedHyperlinkButton(
+        url: 'https://anilist.co/user/${anilistProvider.currentUser?.id}/favorites',
+        text: 'Favourites',
+        icon: Icon(
+          mat.Icons.open_in_new,
+          color: Manager.accentColor.lightest,
+        ),
       ),
       //
       // Favorite Anime section

@@ -1,7 +1,6 @@
 // import 'package:flutter/material.dart';
 // ignore_for_file: use_build_context_synchronously
 
-
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_acrylic/window_effect.dart';
@@ -70,7 +69,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
   // ignore: unused_field
   bool _isFormatting = false;
   bool _isOpenFolderHovered = false;
-
 
   bool showAccentLibViewCol = false;
 
@@ -1274,12 +1272,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
 }
 
 /// Card with vertically distributed children
-Widget SettingsCard({required List<Widget> children}) {
+Widget SettingsCard({
+  required List<Widget> children,
+  EdgeInsets padding = const EdgeInsets.all(32.0),
+}) {
   return Card(
     borderRadius: BorderRadius.circular(8.0),
     padding: EdgeInsets.zero,
     child: Padding(
-      padding: const EdgeInsets.all(32.0),
+      padding: padding,
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
