@@ -1,4 +1,3 @@
-
 import 'dart:ui';
 
 import 'package:fluent_ui/fluent_ui.dart';
@@ -8,8 +7,17 @@ import '../manager.dart';
 
 class SpoilerBox extends StatefulWidget {
   final Widget child;
+  final String id;
+  final bool initiallyRevealed;
+  final Function(bool)? onRevealChanged;
 
-  const SpoilerBox({super.key, required this.child});
+  const SpoilerBox({
+    super.key,
+    required this.child,
+    required this.id,
+    this.initiallyRevealed = false,
+    this.onRevealChanged,
+  });
 
   @override
   State<SpoilerBox> createState() => SpoilerBoxState();
@@ -19,12 +27,23 @@ class SpoilerBoxState extends State<SpoilerBox> {
   bool _revealed = false;
 
   @override
+  void initState() {
+    super.initState();
+    _revealed = widget.initiallyRevealed;
+  }
+
+  @override
   Widget build(BuildContext context) {
     return IntrinsicWidth(
       child: ClipRRect(
         borderRadius: BorderRadius.circular(6),
         child: mat.InkWell(
-          onTap: () => setState(() => _revealed = !_revealed),
+          onTap: () {
+            setState(() {
+              _revealed = !_revealed;
+              widget.onRevealChanged?.call(_revealed);
+            });
+          },
           borderRadius: BorderRadius.circular(6),
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 200),
