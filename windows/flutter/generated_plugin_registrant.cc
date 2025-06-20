@@ -16,6 +16,7 @@
 #include <system_theme/system_theme_plugin.h>
 #include <url_launcher_windows/url_launcher_windows.h>
 #include <video_thumbnail_exporter/video_thumbnail_exporter_plugin_c_api.h>
+#include <webview_windows/webview_windows_plugin.h>
 #include <window_manager/window_manager_plugin.h>
 #include <window_size/window_size_plugin.h>
 #include <windows_single_instance/windows_single_instance_plugin.h>
@@ -41,6 +42,8 @@ void RegisterPlugins(flutter::PluginRegistry* registry) {
       registry->GetRegistrarForPlugin("UrlLauncherWindows"));
   VideoThumbnailExporterPluginCApiRegisterWithRegistrar(
       registry->GetRegistrarForPlugin("VideoThumbnailExporterPluginCApi"));
+  WebviewWindowsPluginRegisterWithRegistrar(
+      registry->GetRegistrarForPlugin("WebviewWindowsPlugin"));
   WindowManagerPluginRegisterWithRegistrar(
       registry->GetRegistrarForPlugin("WindowManagerPlugin"));
   WindowSizePluginRegisterWithRegistrar(

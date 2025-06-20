@@ -5,7 +5,9 @@ import 'package:collection/collection.dart';
 import 'package:defer_pointer/defer_pointer.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/material.dart' as mat;
+import 'package:flutter_html_iframe/flutter_html_iframe.dart';
 import 'package:miruryoiki/enums.dart';
+import 'package:flutter_html/flutter_html.dart';
 import 'package:miruryoiki/models/anilist/user_data.dart';
 import 'package:flexible_wrap/flexible_wrap.dart';
 import 'package:miruryoiki/widgets/buttons/switch.dart';
@@ -21,10 +23,12 @@ import 'package:provider/provider.dart';
 
 import '../services/library/library_provider.dart';
 import '../services/navigation/shortcuts.dart';
+import '../utils/html_utils.dart';
 import '../utils/logging.dart';
 import '../utils/screen_utils.dart';
 import '../widgets/animated_stats_counter.dart';
 import '../widgets/buttons/loading_button.dart';
+import '../widgets/codeblock.dart';
 import '../widgets/page/header_widget.dart';
 import '../widgets/page/infobar.dart';
 import '../widgets/page/page.dart';
@@ -239,7 +243,7 @@ class AccountsScreenState extends State<AccountsScreen> {
     final bool isButtonDisabled = isLocalLoading || anilistProvider.isLoading || anilistProvider.isLoggedIn;
 
     return Padding(
-      padding: const EdgeInsets.only(top:16, left: 16, right: 16),
+      padding: const EdgeInsets.only(top: 16, left: 16, right: 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -318,12 +322,81 @@ class AccountsScreenState extends State<AccountsScreen> {
                     'About',
                     style: Manager.bodyStrongStyle,
                   ),
-                  Text(
-                    userData.about!,
-                    style: Manager.bodyStyle,
-                    maxLines: 4,
-                    overflow: TextOverflow.ellipsis,
-                  ),
+                  if (userData.about != null && userData.about!.isNotEmpty) ...[
+                    VDiv(8),
+                    Text(
+                      'About',
+                      style: Manager.bodyStrongStyle,
+                    ),
+                    LayoutBuilder(
+                      builder: (context, constraints) {
+                        return Html(
+                          data: _convertMarkupToHtml(userData.about!, constraints.maxWidth),
+                          style: {
+                            "body": Style(
+                              fontSize: FontSize(Manager.bodyStyle.fontSize!),
+                              fontFamily: Manager.bodyStyle.fontFamily,
+                              color: Manager.bodyStyle.color,
+                              margin: Margins.zero,
+                              padding: HtmlPaddings.zero,
+                            ),
+                            "a": Style(
+                              color: Manager.accentColor,
+                              textDecoration: TextDecoration.none,
+                            ),
+                            "blockquote": Style(
+                              border: Border(left: BorderSide(color: Manager.accentColor.darker, width: 3)),
+                              padding: HtmlPaddings.only(left: 8),
+                              fontStyle: FontStyle.italic,
+                              color: Manager.bodyStyle.color?.withOpacity(0.8),
+                            ),
+                            "img": Style(
+                              margin: Margins.only(top: 4, bottom: 4),
+                            ),
+                            "ul, ol": Style(
+                              margin: Margins.only(left: 16, top: 4, bottom: 4),
+                            ),
+                            "li": Style(
+                              margin: Margins.only(bottom: 2),
+                            ),
+                            "iframe": Style(
+                              width: Width(250),
+                              height: Height(150),
+                            ),
+                          },
+                          onLinkTap: (url, _, __) {
+                            if (url != null) launchUrl(Uri.parse(url));
+                          },
+                          extensions: [
+                            WindowsIframeHtmlExtension(),
+                            TagExtension(
+                              tagsToExtend: {"spoiler"},
+                              builder: (extensionContext) {
+                                return FlutterLogo(
+                                  style: extensionContext.attributes['horizontal'] != null ? FlutterLogoStyle.horizontal : FlutterLogoStyle.markOnly,
+                                  textColor: extensionContext.styledElement!.style.color!,
+                                  size: extensionContext.styledElement!.style.fontSize!.value,
+                                );
+                              },
+                            ),
+                            TagExtension(
+                              tagsToExtend: {"code"},
+                              builder: (extensionContext) {
+                                final String html = extensionContext.element!.innerHtml;
+                                final String text = html.replaceAll("<br>", "\n");
+                                return LayoutBuilder(builder: (context, c) {
+                                  return CodeBlock(
+                                    padding: const EdgeInsets.all(4),
+                                    code: text,
+                                  );
+                                });
+                              },
+                            ),
+                          ],
+                        );
+                      }
+                    ),
+                  ],
                 ],
                 VDiv(8),
                 if (userData?.siteUrl != null) ...[
@@ -962,6 +1035,93 @@ class AccountsScreenState extends State<AccountsScreen> {
   }
 
   //
+
+  // Add this method to your AccountsScreenState class
+
+  String _convertMarkupToHtml(String text, double maxwidth) {
+    // Replace YouTube links
+    text = RegExp(r'youtube\(([^)]+)\)').allMatches(text).fold(
+          text,
+          (t, match) => t.replaceRange(
+            match.start,
+            match.end,
+            '<iframe width="$maxwidth" height="${maxwidth * 0.5625}" src="https://www.youtube.com/embed/${match.group(1)?.split("/").last}" frameborder="0" allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>',
+          ),
+        );
+
+    // Replace images
+    text = RegExp(r'img220\(([^)]+)\)').allMatches(text).fold(
+          text,
+          (t, match) => t.replaceRange(
+            match.start,
+            match.end,
+            '<img src="${match.group(1)}" style="max-width:220px;" />',
+          ),
+        );
+
+    // Replace markdown links [text](url)
+    text = RegExp(r'\[([^\]]+)\]\(([^)]+)\)').allMatches(text).fold(
+          text,
+          (t, match) => t.replaceRange(
+            match.start,
+            match.end,
+            '<a href="${match.group(2)}">${match.group(1)}</a>',
+          ),
+        );
+
+    // Replace webm videos
+    text = RegExp(r'webm\(([^)]+)\)').allMatches(text).fold(
+          text,
+          (t, match) => t.replaceRange(
+            match.start,
+            match.end,
+            '<video controls src="${match.group(1)}" style="max-width:100%;" />',
+          ),
+        );
+
+    // Replace code blocks with HTML
+    text = text.replaceAllMapped(
+      RegExp(r'`([\s\S]*?)`', dotAll: true),
+      (match) => match.group(1)!,
+    );
+
+    // Bold text
+    text = text.replaceAllMapped(
+      RegExp(r'__([^_]+)__'),
+      (match) => '<b>${match.group(1)}</b>',
+    );
+
+    // Italic text
+    text = text.replaceAllMapped(
+      RegExp(r'_([^_]+)_'),
+      (match) => '<i>${match.group(1)}</i>',
+    );
+
+    // Strikethrough text
+    text = text.replaceAllMapped(
+      RegExp(r'~~([^~]+)~~'),
+      (match) => '<s>${match.group(1)}</s>',
+    );
+
+    // Spoiler text
+    text = text.replaceAllMapped(
+      RegExp(r'~!([^~]+)!~'),
+      (match) => '<spoiler>${match.group(1)}</spoiler>',
+    );
+
+    // Code blocks
+    final codeBlockPattern = RegExp(r'(^> .+$\n?)+', multiLine: true);
+    text = text.replaceAllMapped(codeBlockPattern, (match) {
+      final codeContent = match.group(0)!.split('\n').where((line) => line.trim().isNotEmpty).map((line) => line.startsWith('> ') ? line.substring(2) : line).join('<br>'); // Use <br> directly for code block newlines
+      log("'$codeContent'");
+      return '<code>$codeContent</code>';
+    });
+
+    // Preserve newlines (convert to HTML line breaks)
+    text = text.replaceAll('\n', '<br>');
+
+    return text;
+  }
 
   (String, int) _formatMinutes(int minutes) {
     final hours = minutes ~/ 60;

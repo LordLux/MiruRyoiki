@@ -13,6 +13,7 @@ list(APPEND FLUTTER_PLUGIN_LIST
   system_theme
   url_launcher_windows
   video_thumbnail_exporter
+  webview_windows
   window_manager
   window_size
   windows_single_instance

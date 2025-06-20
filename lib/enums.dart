@@ -154,15 +154,15 @@ extension HexColor on Color {
     return shiftedHsl.toColor();
   }
   
-  Color lighten(double amount) {
+  Color lighten([double amount = 0.1]) {
     final hsl = HSLColor.fromColor(this);
     final lightenedHsl = hsl.withLightness((hsl.lightness + amount).clamp(0.0, 1.0));
     return lightenedHsl.toColor();
   }
-  
-  Color darken(double amount) => lighten(-amount);
-  
-  Color saturate(double amount) {
+
+  Color darken([double amount = 0.1]) => lighten(-amount);
+
+  Color saturate([double amount = 0.1]) {
     final hsl = HSLColor.fromColor(this);
     final saturatedHsl = hsl.withSaturation((hsl.saturation + amount).clamp(0.0, 1.0));
     return saturatedHsl.toColor();
