@@ -65,24 +65,18 @@ class _MiruRyoikiHeaderInfoBarPageState extends State<MiruRyoikiHeaderInfoBarPag
                   children: [
                     // Info bar on the left
                     if (!widget.hideInfoBar)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 16.0, left: 14.0),
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.05),
-                            borderRadius: BorderRadius.circular(8.0),
-                          ),
-                          height: double.infinity,
-                          width: ScreenUtils.kInfoBarWidth,
-                          child: widget.infobar,
-                        ),
+                      SizedBox(
+                        height: double.infinity,
+                        width: ScreenUtils.kInfoBarWidth,
+                        child: widget.infobar,
                       ),
+
                     // Content area on the right
                     Expanded(
                       child: Align(
                         alignment: Alignment.topCenter,
                         child: Padding(
-                          padding: const EdgeInsets.only(left: 16.0, top: 16.0),
+                          padding: EdgeInsets.only(left: 16.0 * Manager.fontSizeMultiplier, top: 16.0),
                           child: ClipRRect(
                             borderRadius: BorderRadius.circular(ScreenUtils.kStatCardBorderRadius),
                             child: ScrollConfiguration(
@@ -97,11 +91,11 @@ class _MiruRyoikiHeaderInfoBarPageState extends State<MiruRyoikiHeaderInfoBarPag
                                   controller.addListener(() {
                                     final offset = controller.offset;
                                     final double newHeight = offset > 0 ? ScreenUtils.kMinHeaderHeight : ScreenUtils.kMaxHeaderHeight;
-                            
+
                                     if (newHeight != _headerHeight && mounted) //
                                       setState(() => _headerHeight = newHeight);
                                   });
-                            
+
                                   // Then use the controller for your scrollable content
                                   return CustomScrollView(
                                     controller: controller,

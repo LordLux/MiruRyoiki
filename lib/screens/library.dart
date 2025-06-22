@@ -9,6 +9,7 @@ import 'package:smooth_scroll_multiplatform/smooth_scroll_multiplatform.dart';
 
 import '../main.dart';
 import '../models/anilist/anime.dart';
+import '../models/anilist/user_data.dart';
 import '../models/anilist/user_list.dart';
 import '../services/library/library_provider.dart';
 import '../models/series.dart';
@@ -573,7 +574,7 @@ class LibraryScreenState extends State<LibraryScreen> {
               proxyDecorator: (child, index, animation) {
                 _isReordering = true;
                 final listName = _customListOrder[index];
-                final displayName = listName == '__unlinked' ? 'Unlinked' : _fromApiListName(listName);
+                final displayName = listName == '__unlinked' ? 'Unlinked' : StatusStatistic.fromApiListName(listName);
 
                 return AnimatedReorderableTile(
                   key: ValueKey('${listName}_dragging'),
@@ -600,7 +601,7 @@ class LibraryScreenState extends State<LibraryScreen> {
               prototypeItem: SizedBox(height: childHeight),
               itemBuilder: (context, index) {
                 final listName = _customListOrder[index];
-                final displayName = listName == '__unlinked' ? 'Unlinked' : _fromApiListName(listName);
+                final displayName = listName == '__unlinked' ? 'Unlinked' : StatusStatistic.fromApiListName(listName);
 
                 return AnimatedReorderableTile(
                   key: ValueKey(listName),
@@ -1005,7 +1006,7 @@ class LibraryScreenState extends State<LibraryScreen> {
 
       // sort them to have CURRENT, PLAN TO WATCH, ON HOLD, COMPLETED, DROPPED
       for (final listName in _customListOrder) {
-        groups[listName == '__unlinked' ? 'Unlinked' : _fromApiListName(listName)] = [];
+        groups[listName == '__unlinked' ? 'Unlinked' : StatusStatistic.fromApiListName(listName)] = [];
       }
 
       // Sort series into groups
@@ -1027,7 +1028,7 @@ class LibraryScreenState extends State<LibraryScreen> {
 
               if (allCompleted) {
                 logTrace('  ADDING TO ALL COMPLETED GROUP');
-                final completedKey = _fromApiListName('COMPLETED');
+                final completedKey = StatusStatistic.fromApiListName('COMPLETED');
                 if (groups.containsKey(completedKey)) {
                   groups[completedKey]?.add(series);
                   continue; // Skip to next series
@@ -1093,7 +1094,7 @@ class LibraryScreenState extends State<LibraryScreen> {
 
             // Add to the highest priority list if found
             if (highestPriorityList != null) {
-              final displayName = _fromApiListName(highestPriorityList);
+              final displayName = StatusStatistic.fromApiListName(highestPriorityList);
               logTrace('  ADDING TO GROUP: $displayName');
               if (groups.containsKey(displayName)) {
                 groups[displayName]?.add(series);
@@ -1110,7 +1111,7 @@ class LibraryScreenState extends State<LibraryScreen> {
 
                 final list = entry.value;
                 if (list.entries.any((listEntry) => listEntry.media.id == mapping.anilistId)) {
-                  groups[_fromApiListName(listName)]?.add(series);
+                  groups[StatusStatistic.fromApiListName(listName)]?.add(series);
                   foundInCustomList = true;
                   break;
                 }
@@ -1162,8 +1163,8 @@ class LibraryScreenState extends State<LibraryScreen> {
           final displayOrder = groups.keys.toList();
           displayOrder.sort((a, b) {
             // Get the original position in _customListOrder
-            final aIndex = _customListOrder.indexOf(a == 'Unlinked' ? '__unlinked' : _toApiListName(a));
-            final bIndex = _customListOrder.indexOf(b == 'Unlinked' ? '__unlinked' : _toApiListName(b));
+            final aIndex = _customListOrder.indexOf(a == 'Unlinked' ? '__unlinked' : StatusStatistic.toApiListName(a));
+            final bIndex = _customListOrder.indexOf(b == 'Unlinked' ? '__unlinked' : StatusStatistic.toApiListName(b));
 
             // If one is not found, put it at the end
             if (aIndex == -1) return 1;
@@ -1212,59 +1213,6 @@ class LibraryScreenState extends State<LibraryScreen> {
         },
       ),
     );
-  }
-
-  // Helper method to format list names for display
-  String _fromApiListName(String listName) {
-    // Handle the standard Anilist list names which are in uppercase
-    switch (listName) {
-      case 'CURRENT':
-        return 'Watching';
-      case 'COMPLETED':
-        return 'Completed';
-      case 'PLANNING':
-        return 'Plan to Watch';
-      case 'DROPPED':
-        return 'Dropped';
-      case 'PAUSED':
-        return 'On Hold';
-      case 'REPEATING':
-        return 'Rewatching';
-      default:
-        // Custom lists already have proper formatting
-        if (listName.startsWith('custom_')) //
-          return listName.substring(7); // Remove 'custom_' prefix
-        return listName;
-    }
-  }
-
-  String _toApiListName(String displayName) {
-    switch (displayName) {
-      case 'Watching':
-        return 'CURRENT';
-      case 'Completed':
-        return 'COMPLETED';
-      case 'Plan to Watch':
-        return 'PLANNING';
-      case 'Dropped':
-        return 'DROPPED';
-      case 'On Hold':
-        return 'PAUSED';
-      case 'Rewatching':
-        return 'REPEATING';
-      case 'Unlinked':
-        return '__unlinked';
-      default:
-        // Check if it might be a custom list
-        final customLists = Provider.of<AnilistProvider>(context, listen: false).userLists.keys.where((k) => k.startsWith('custom_'));
-
-        for (final customList in customLists) {
-          if (_fromApiListName(customList) == displayName) {
-            return customList;
-          }
-        }
-        return displayName;
-    }
   }
 
   String _getSortText(SortOrder order) {

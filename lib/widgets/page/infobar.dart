@@ -23,6 +23,8 @@ class MiruRyoikiInfobar extends StatefulWidget {
   final EdgeInsets contentPadding;
   final bool isProfilePicture;
   final VoidCallback? setStateCallback;
+  final List<Widget>? footer;
+  final EdgeInsets footerPadding;
 
   const MiruRyoikiInfobar({
     super.key,
@@ -32,6 +34,8 @@ class MiruRyoikiInfobar extends StatefulWidget {
     this.isProfilePicture = false,
     this.contentPadding = const EdgeInsets.all(32.0),
     this.setStateCallback,
+    this.footer,
+    this.footerPadding = const EdgeInsets.all(32.0),
   });
 
   @override
@@ -111,31 +115,68 @@ class _MiruRyoikiInfobarState extends State<MiruRyoikiInfobar> {
               clipBehavior: Clip.none,
               children: [
                 Positioned.fill(
-                  child: ScrollConfiguration(
-                    behavior: ScrollConfiguration.of(context).copyWith(overscroll: true, platform: TargetPlatform.windows, scrollbars: false),
-                    child: DynMouseScroll(
-                      stopScroll: KeyboardState.ctrlPressedNotifier,
-                      scrollSpeed: 1.0,
-                      enableSmoothScroll: Manager.animationsEnabled,
-                      durationMS: 350,
-                      animationCurve: Curves.easeOutQuint,
-                      builder: (context, controller, physics) {
-                        return SingleChildScrollView(
-                          controller: controller,
-                          physics: physics,
-                          child: ConstrainedBox(
-                            constraints: BoxConstraints(
-                              minWidth: 0,
-                              maxWidth: ScreenUtils.kInfoBarWidth,
+                  child: Column(
+                    children: [
+                      Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.only(top: 16.0, left: 14.0),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.05),
+                              borderRadius: BorderRadius.circular(8.0),
                             ),
-                            child: Padding(
-                              padding: widget.contentPadding,
-                              child: widget.content,
+                            child: ScrollConfiguration(
+                              behavior: ScrollConfiguration.of(context).copyWith(
+                                overscroll: true,
+                                platform: TargetPlatform.windows,
+                                scrollbars: false,
+                              ),
+                              child: DynMouseScroll(
+                                stopScroll: KeyboardState.ctrlPressedNotifier,
+                                scrollSpeed: 1.0,
+                                enableSmoothScroll: Manager.animationsEnabled,
+                                durationMS: 350,
+                                animationCurve: Curves.easeOutQuint,
+                                builder: (context, controller, physics) {
+                                  return SingleChildScrollView(
+                                    controller: controller,
+                                    physics: physics,
+                                    child: ConstrainedBox(
+                                      constraints: BoxConstraints(
+                                        minWidth: 0,
+                                        maxWidth: ScreenUtils.kInfoBarWidth,
+                                      ),
+                                      child: Padding(
+                                        padding: widget.contentPadding,
+                                        child: widget.content,
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
                             ),
                           ),
-                        );
-                      },
-                    ),
+                        ),
+                      ),
+                      if (widget.footer != null && widget.footer!.isNotEmpty) VDiv(8),
+                      if (widget.footer != null && widget.footer!.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8.0, left: 14.0),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.05),
+                              borderRadius: BorderRadius.circular(8.0),
+                            ),
+                            child: Padding(
+                              padding: widget.footerPadding,
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: widget.footer!,
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
                 ),
                 // Poster image that overflows the info bar from above to appear 'in' the header
