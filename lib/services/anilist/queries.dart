@@ -452,6 +452,13 @@ class AnilistService {
           }
         }
       }
+      stats {
+        activityHistory {
+          date
+          amount
+          level
+        }
+      }
       statistics {
         anime {
           count
@@ -504,7 +511,7 @@ class AnilistService {
       );
 
       if (result.hasException) {
-        logErr('Error getting user info', result.exception);
+        logErr('Error getting user info data', result.exception);
         return null;
       }
 

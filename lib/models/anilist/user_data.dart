@@ -1,3 +1,10 @@
+import 'package:miruryoiki/enums.dart';
+import 'package:path/path.dart';
+import 'package:provider/provider.dart';
+import 'package:recase/recase.dart';
+
+import '../../manager.dart';
+import '../../services/anilist/provider/anilist_provider.dart';
 import 'anime.dart';
 
 class AnilistUserData {
@@ -11,6 +18,7 @@ class AnilistUserData {
   final String? donatorBadge;
   final int? createdAt;
   final int? updatedAt;
+  final AnilistStats? stats;
 
   AnilistUserData({
     this.about,
@@ -23,6 +31,7 @@ class AnilistUserData {
     this.donatorBadge,
     this.createdAt,
     this.updatedAt,
+    this.stats,
   });
 
   factory AnilistUserData.fromJson(Map<String, dynamic> json) {
@@ -37,6 +46,7 @@ class AnilistUserData {
       donatorBadge: json['donatorBadge'],
       createdAt: json['createdAt'],
       updatedAt: json['updatedAt'],
+      stats: json['stats'] != null ? AnilistStats.fromJson(json['stats']) : null,
     );
   }
 
@@ -52,6 +62,7 @@ class AnilistUserData {
       'donatorBadge': donatorBadge,
       'createdAt': createdAt,
       'updatedAt': updatedAt,
+      'stats': stats?.toJson(),
     };
   }
 }
@@ -567,6 +578,14 @@ class FormatStatistic {
   final double? meanScore;
   final int? timeWatched;
 
+  String? get formatPretty {
+    if (format?.toLowerCase() == 'tv') return 'TV';
+    if (format?.toLowerCase() == 'movie') return 'Movie';
+    if (format?.toLowerCase() == 'ova') return 'OVA';
+    if (format?.toLowerCase() == 'ona') return 'ONA';
+    return format?.titleCase;
+  }
+
   FormatStatistic({
     this.format,
     this.count,
@@ -598,6 +617,62 @@ class StatusStatistic {
   final int? count;
   final double? meanScore;
   final int? timeWatched;
+
+  String? get statusPretty => fromApiListName(status ?? '');
+
+  String? get statusApi => toApiListName(statusPretty ?? '');
+  // Helper method to format list names for display
+  static String fromApiListName(String listName) {
+    // Handle the standard Anilist list names which are in uppercase
+    switch (listName) {
+      case 'CURRENT':
+        return 'Watching';
+      case 'COMPLETED':
+        return 'Completed';
+      case 'PLANNING':
+        return 'Plan to Watch';
+      case 'DROPPED':
+        return 'Dropped';
+      case 'PAUSED':
+        return 'On Hold';
+      case 'REPEATING':
+        return 'Rewatching';
+      default:
+        // Custom lists already have proper formatting
+        if (listName.startsWith('custom_')) //
+          return listName.substring(7); // Remove 'custom_' prefix
+        return listName;
+    }
+  }
+
+  static String toApiListName(String displayName) {
+    switch (displayName) {
+      case 'Watching':
+        return 'CURRENT';
+      case 'Completed':
+        return 'COMPLETED';
+      case 'Plan to Watch':
+        return 'PLANNING';
+      case 'Dropped':
+        return 'DROPPED';
+      case 'On Hold':
+        return 'PAUSED';
+      case 'Rewatching':
+        return 'REPEATING';
+      case 'Unlinked':
+        return '__unlinked';
+      default:
+        // Check if it might be a custom list
+        final customLists = Provider.of<AnilistProvider>(Manager.context, listen: false).userLists.keys.where((k) => k.startsWith('custom_'));
+
+        for (final customList in customLists) {
+          if (fromApiListName(customList) == displayName) {
+            return customList;
+          }
+        }
+        return displayName;
+    }
+  }
 
   StatusStatistic({
     this.status,
@@ -784,6 +859,57 @@ class StudioStatistic {
       'count': count,
       'meanScore': meanScore,
       'timeWatched': timeWatched,
+    };
+  }
+}
+
+class AnilistActivityHistory {
+  final int date;
+  final int amount;
+  final int level;
+
+  AnilistActivityHistory({
+    required this.date,
+    required this.amount,
+    required this.level,
+  });
+  
+  String get datePretty => DateTime.fromMillisecondsSinceEpoch(date * 1000).pretty();
+
+  factory AnilistActivityHistory.fromJson(Map<String, dynamic> json) {
+    return AnilistActivityHistory(
+      date: json['date'] as int,
+      amount: json['amount'] as int,
+      level: json['level'] as int,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'date': date,
+      'amount': amount,
+      'level': level,
+    };
+  }
+}
+
+class AnilistStats {
+  final List<AnilistActivityHistory> activityHistory;
+
+  AnilistStats({
+    required this.activityHistory,
+  });
+
+  factory AnilistStats.fromJson(Map<String, dynamic> json) {
+    final activityHistoryJson = json['activityHistory'] as List<dynamic>;
+    return AnilistStats(
+      activityHistory: activityHistoryJson.map((item) => AnilistActivityHistory.fromJson(item)).toList(),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'activityHistory': activityHistory.map((item) => item.toJson()).toList(),
     };
   }
 }

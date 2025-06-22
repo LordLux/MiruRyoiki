@@ -12,6 +12,7 @@ import 'package:flutter_html/flutter_html.dart';
 import 'package:miruryoiki/functions.dart';
 import 'package:miruryoiki/models/anilist/user_data.dart';
 import 'package:flexible_wrap/flexible_wrap.dart';
+import 'package:miruryoiki/services/navigation/dialogs.dart';
 import 'package:miruryoiki/utils/html/extensions/spoiler.dart';
 import 'package:miruryoiki/utils/time_utils.dart';
 import 'package:miruryoiki/widgets/buttons/switch.dart';
@@ -35,6 +36,7 @@ import '../utils/html/extensions/unsupported.dart';
 import '../utils/html/html_utils.dart';
 import '../utils/logging.dart';
 import '../utils/screen_utils.dart';
+import '../widgets/activity_graph.dart';
 import '../widgets/animated_stats_counter.dart';
 import '../widgets/buttons/hyperlink.dart';
 import '../widgets/buttons/loading_button.dart';
@@ -102,8 +104,10 @@ class AccountsScreenState extends State<AccountsScreen> {
           icon: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(anilistProvider.currentUser!.id.toString()),
-              HDiv(8),
+              if (anilistProvider.currentUser != null) ...[
+                Text(anilistProvider.currentUser!.id.toString()),
+                HDiv(8),
+              ],
               Icon(
                 mat.Icons.copy,
               ),
@@ -125,6 +129,8 @@ class AccountsScreenState extends State<AccountsScreen> {
     return MiruRyoikiInfobar(
       isProfilePicture: true,
       setStateCallback: () => setState(() {}),
+      footer: _buildFooter(anilistProvider: anilistProvider),
+      footerPadding: const EdgeInsets.only(left: 16, right: 16, bottom: 12, top: 12),
       content: anilistProvider.isLoggedIn ? _buildSyncSettings(context, anilistProvider) : const Text('Sign in to access Anilist features'),
       poster: ({ImageProvider<Object>? imageProvider, required double width, required double height, required double squareness, required double offset}) {
         return DeferPointer(
@@ -196,100 +202,118 @@ class AccountsScreenState extends State<AccountsScreen> {
 
   // Add this method to the AccountsScreen class
   Widget _buildSyncSettings(BuildContext context, AnilistProvider anilistProvider) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Link Settings',
-          style: Manager.subtitleStyle,
+    return LayoutBuilder(builder: (context, constraints) {
+      return SizedBox(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Link Settings',
+              style: Manager.subtitleStyle,
+            ),
+            VDiv(16),
+            ToggleSwitch(
+              checked: true,
+              content: Flexible(child: Text('Update automatically watch progress on Anilist', style: Manager.bodyStyle)),
+              onChanged: (value) {
+                // TODO: Implement setting
+              },
+            ),
+            VDiv(8),
+            NormalSwitch(
+              toggleSwitch: ToggleSwitch(
+                checked: true,
+                content: Flexible(child: Text('Warn when linking the same File/Folder to an Anilist entry', style: Manager.bodyStyle)),
+                onChanged: (value) {
+                  // TODO: Implement setting
+                },
+              ),
+            ),
+            VDiv(8),
+            NormalSwitch(
+              toggleSwitch: ToggleSwitch(
+                checked: true,
+                content: Flexible(child: Text('Warn when linking the same Anilist entry to a File/Folder', style: Manager.bodyStyle)),
+                onChanged: (value) {
+                  // TODO: Implement setting
+                },
+              ),
+            ),
+          ],
         ),
-        VDiv(16),
-        ToggleSwitch(
-          checked: true,
-          content: Flexible(child: Text('Update automatically watch progress on Anilist', style: Manager.bodyStyle)),
-          onChanged: (value) {
-            // TODO: Implement setting
-          },
-        ),
-        VDiv(8),
-        NormalSwitch(
-          toggleSwitch: ToggleSwitch(
-            checked: true,
-            content: Flexible(child: Text('Warn when linking the same File/Folder to an Anilist entry', style: Manager.bodyStyle)),
-            onChanged: (value) {
-              // TODO: Implement setting
+      );
+    });
+  }
+
+  List<Widget> _buildFooter({required AnilistProvider anilistProvider}) {
+    return [
+      LoadingButton(
+        expand: true,
+        isSmall: true,
+        isLoading: _seriesLoading,
+        tooltip: 'Refresh Series Metadata',
+        label: 'Refresh Series Metadata',
+        onPressed: () async {
+          if (_seriesLoading || anilistProvider.isLoading) return;
+          setState(() {
+            _seriesLoading = true;
+          });
+
+          final library = Provider.of<Library>(context, listen: false);
+          await library.refreshAllMetadata();
+
+          setState(() {
+            _seriesLoading = false;
+          });
+        },
+      ),
+      VDiv(8),
+      LoadingButton(
+        expand: true,
+        isSmall: true,
+        isLoading: _userLoading && anilistProvider.isLoading,
+        tooltip: 'Refresh User Data',
+        label: 'Refresh User Data',
+        onPressed: () async {
+          if (_userLoading || anilistProvider.isLoading) return;
+          setState(() {
+            _userLoading = true;
+          });
+
+          await anilistProvider.refreshUserLists();
+
+          setState(() {
+            _userLoading = false;
+          });
+        },
+      ),
+      VDiv(8),
+      LoadingButton(
+        expand: true,
+        tooltip: 'Logout from Anilist',
+        hoverFillColor: Colors.red.toAccentColor().darkest,
+        label: 'Logout',
+        isLoading: false,
+        isAlreadyBig: true,
+        onPressed: () async {
+          await showSimpleManagedDialog(
+            context: context,
+            id: 'anilist-logout',
+            title: 'Logout from Anilist',
+            body: 'Are you sure you want to logout from Anilist?',
+            onPositive: () async {
+              await anilistProvider.logout();
+              setState(() {
+                isLocalLoading = false;
+              });
+              logInfo('Logged out of Anilist');
             },
-          ),
-        ),
-        VDiv(8),
-        NormalSwitch(
-          toggleSwitch: ToggleSwitch(
-            checked: true,
-            content: Flexible(child: Text('Warn when linking the same Anilist entry to a File/Folder', style: Manager.bodyStyle)),
-            onChanged: (value) {
-              // TODO: Implement setting
-            },
-          ),
-        ),
-        VDiv(16),
-        LoadingButton(
-          expand: true,
-          isSmall: true,
-          isLoading: _seriesLoading,
-          tooltip: 'Refresh Series Metadata',
-          label: 'Refresh Series Metadata',
-          onPressed: () async {
-            if (_seriesLoading || anilistProvider.isLoading) return;
-            setState(() {
-              _seriesLoading = true;
-            });
-
-            final library = Provider.of<Library>(context, listen: false);
-            await library.refreshAllMetadata();
-
-            setState(() {
-              _seriesLoading = false;
-            });
-          },
-        ),
-        VDiv(8),
-        LoadingButton(
-          expand: true,
-          isSmall: true,
-          isLoading: _userLoading && anilistProvider.isLoading,
-          tooltip: 'Refresh User Data',
-          label: 'Refresh User Data',
-          onPressed: () async {
-            if (_userLoading || anilistProvider.isLoading) return;
-            setState(() {
-              _userLoading = true;
-            });
-
-            await anilistProvider.refreshUserLists();
-
-            setState(() {
-              _userLoading = false;
-            });
-          },
-        ),
-        VDiv(8),
-        LoadingButton(
-          expand: true,
-          tooltip: 'Logout from Anilist',
-          hoverFillColor: Colors.red.toAccentColor().darkest,
-          label: 'Logout',
-          isLoading: false,
-          isAlreadyBig: true,
-          onPressed: () async {
-            await anilistProvider.logout();
-            setState(() {
-              isLocalLoading = false;
-            });
-            logInfo('Logged out of Anilist');
-          },
-        ),
-      ],
-    );
+            onNegative: () => logInfo('Cancelled Anilist logout'),
+          );
+        },
+      ),
+    ];
   }
 
 // Rename AnilistAccount to buildMainContent and update it
@@ -516,6 +540,21 @@ class AccountsScreenState extends State<AccountsScreen> {
                       ],
                     ),
                   ],
+                  if (userData.stats != null && userData.stats!.activityHistory.isNotEmpty) ...[
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: ActivityGraph(
+                        activityHistory: userData.stats!.activityHistory,
+                        colorScale: [
+                          Manager.accentColor.darker.withOpacity(.4), // 0
+                          Manager.accentColor.dark,
+                          Manager.accentColor,
+                          Manager.accentColor.light,
+                          Manager.accentColor.lightest, // 4
+                        ],
+                      ),
+                    ),
+                  ]
                 ],
               ),
             ),
@@ -618,7 +657,7 @@ class AccountsScreenState extends State<AccountsScreen> {
     Map<String, double> formatDistribution = {};
     if (animeStats.formats != null) {
       for (FormatStatistic format in animeStats.formats!) {
-        formatDistribution[format.format?.titleCase ?? 'Unknown'] = (format.count ?? 0).toDouble();
+        formatDistribution[format.formatPretty ?? 'Unknown'] = (format.count ?? 0).toDouble();
         formatTotal += format.count ?? 0;
       }
     }
@@ -627,7 +666,7 @@ class AccountsScreenState extends State<AccountsScreen> {
     Map<String, double> statusDistribution = {};
     if (animeStats.statuses != null) {
       for (StatusStatistic status in animeStats.statuses!) {
-        statusDistribution[status.status?.titleCase ?? 'Unknown'] = (status.count ?? 0).toDouble();
+        statusDistribution[status.statusPretty?.titleCase ?? 'Unknown'] = (status.count ?? 0).toDouble();
         statusTotal += status.count ?? 0;
       }
     }
@@ -658,13 +697,14 @@ class AccountsScreenState extends State<AccountsScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              for (final entry in statusDistribution.entries)
+              for (final entry in statusDistribution.entries.take(4))
                 Builder(builder: (context) {
                   final Color main = Manager.accentColor.lightest.shiftHue(statusDistribution.keys.toList().indexOf(entry.key) / statusDistribution.length / 2);
+                  final index = formatDistribution.keys.toList().indexOf(entry.key);
                   return Padding(
-                    padding: const EdgeInsets.only(bottom: 8.0),
+                    padding: EdgeInsets.only(bottom: index == 5 ? 0 : 8.0),
                     child: Container(
-                      height: 30,
+                      height: 30 * (Manager.fontSizeMultiplier.clamp(0.9, 1.2)),
                       decoration: BoxDecoration(
                         color: main.darken(.125).saturate(-.35),
                         borderRadius: BorderRadius.circular(ScreenUtils.kStatCardBorderRadius),
@@ -732,10 +772,11 @@ class AccountsScreenState extends State<AccountsScreen> {
               for (final entry in formatDistribution.entries.take(5))
                 Builder(builder: (context) {
                   final Color main = Manager.accentColor.lightest.shiftHue(formatDistribution.keys.toList().indexOf(entry.key) / formatDistribution.length / 2);
+                  final index = formatDistribution.keys.toList().indexOf(entry.key);
                   return Padding(
-                    padding: const EdgeInsets.only(bottom: 8.0),
+                    padding: EdgeInsets.only(bottom: index == 4 ? 0 : 8.0),
                     child: Container(
-                      height: 30,
+                      height: 30 * (Manager.fontSizeMultiplier.clamp(0.9, 1.2)),
                       decoration: BoxDecoration(
                         color: main.darken(.125).saturate(-.35),
                         borderRadius: BorderRadius.circular(ScreenUtils.kStatCardBorderRadius),
@@ -746,7 +787,7 @@ class AccountsScreenState extends State<AccountsScreen> {
                           Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 12.0),
                             child: Text(
-                              entry.key.titleCase,
+                              entry.key,
                               style: Manager.bodyStyle.copyWith(color: determineTextColor(main, preferWhite: preferWhiteThreshold, preferBlack: preferBlackThreshold)),
                             ),
                           ),
@@ -776,11 +817,11 @@ class AccountsScreenState extends State<AccountsScreen> {
 
     return LayoutBuilder(builder: (context, constraints) {
       final minCardWidth = ScreenUtils.kMinDistrCardWidth;
-      final spacing = 16.0;
+      final spacing = 16.0 * Manager.fontSizeMultiplier;
       final canFitRow = (constraints.maxWidth.isInfinite ? 10000 : constraints.maxWidth) >= (minCardWidth * 2 + spacing);
 
       final statusCard = SizedBox(
-        height: 293,
+        height: (200 + 100 * Manager.fontSizeMultiplier.clamp(0.7, 1.5)),
         child: SettingsCard(
           children: [
             Text(
@@ -793,7 +834,7 @@ class AccountsScreenState extends State<AccountsScreen> {
         ),
       );
       final formatCard = SizedBox(
-        height: 293,
+        height: (200 + 100 * Manager.fontSizeMultiplier.clamp(0.7, 1.5)),
         child: SettingsCard(
           children: [
             Text(
@@ -965,7 +1006,7 @@ class AccountsScreenState extends State<AccountsScreen> {
 
     Widget buildList(FavouriteCollection list) {
       return SizedBox(
-        height: 150,
+        height: 150 * Manager.fontSizeMultiplier,
         child: ScrollConfiguration(
           behavior: ScrollConfiguration.of(context).copyWith(overscroll: true, platform: TargetPlatform.windows, scrollbars: false),
           child: DynMouseScroll(
@@ -992,7 +1033,7 @@ class AccountsScreenState extends State<AccountsScreen> {
                             isButtonDisabled: node.siteUrl == null || node.siteUrl!.isEmpty,
                             tooltip: !isAnime ? name ?? 'Unknown' : '${name ?? 'Unknown'}\n${node.seasonYear ?? ''} ${node.format?.toLowerCase() == "tv" ? "TV" : node.format?.titleCase ?? ''}',
                             child: (_) => Container(
-                              width: 100,
+                              width: 100 * Manager.fontSizeMultiplier,
                               margin: const EdgeInsets.only(right: 8),
                               child: Stack(
                                 children: [
@@ -1001,7 +1042,7 @@ class AccountsScreenState extends State<AccountsScreen> {
                                       mat.Ink(
                                         color: Colors.transparent,
                                         child: Container(
-                                          height: 120,
+                                          height: 120 * Manager.fontSizeMultiplier,
                                           decoration: BoxDecoration(
                                             borderRadius: BorderRadius.circular(ScreenUtils.kEpisodeCardBorderRadius),
                                             image: imageUrl != null ? DecorationImage(image: CachedNetworkImageProvider(imageUrl), fit: BoxFit.cover) : null,
