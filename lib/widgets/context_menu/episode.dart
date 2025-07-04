@@ -97,18 +97,26 @@ class EpisodeContextMenuState extends State<EpisodeContextMenu> {
   void _openWith(BuildContext context) {
     try {
       ShellUtils.openWithDialog(widget.episode.path);
-    } catch (e) {
-      logErr('Error opening with dialog', e);
-      snackBar('Could not open with dialog: $e', severity: InfoBarSeverity.error);
+    } catch (e, stackTrace) {
+      snackBar(
+        'Could not open with dialog: $e',
+        severity: InfoBarSeverity.error,
+        exception: e,
+        stackTrace: stackTrace,
+      );
     }
   }
 
   void _openFolderLocation(BuildContext context) async {
     try {
       ShellUtils.openFileExplorerAndSelect(widget.episode.path);
-    } catch (e) {
-      logErr('Error opening folder location', e);
-      snackBar('Could not open folder: $e', severity: InfoBarSeverity.error);
+    } catch (e, stackTrace) {
+      snackBar(
+        'Could not open folder: $e',
+        severity: InfoBarSeverity.error,
+        exception: e,
+        stackTrace: stackTrace,
+      );
     }
   }
 

@@ -255,9 +255,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
           // Process results
           _showFormatterResults(context, results);
         } catch (e, stackTrace) {
-          logErr('Error during series formatting', e, stackTrace);
           Navigator.of(context).pop(); // Close loading dialog
-          snackBar('Error scanning library: $e', severity: InfoBarSeverity.error);
+          snackBar(
+            'Error scanning library during series formatting: $e',
+            severity: InfoBarSeverity.error,
+            exception: e,
+            stackTrace: stackTrace,
+          );
         } finally {
           setState(() {
             _isFormatting = false;
@@ -483,9 +487,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
         },
       );
     } catch (e, stackTrace) {
-      logErr('Error applying formatting', e, stackTrace);
       Navigator.of(context).pop(); // Close loading dialog
-      snackBar('Error applying formatting: $e', severity: InfoBarSeverity.error);
+      snackBar(
+        'Error applying formatting: $e',
+        severity: InfoBarSeverity.error,
+        exception: e,
+        stackTrace: stackTrace,
+      );
     }
   }
 
@@ -638,9 +646,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
       } else {
         snackBar('Failed to apply formatting', severity: InfoBarSeverity.error);
       }
-    } catch (e) {
-      logErr('Error applying formatting', e);
-      snackBar('Error: $e', severity: InfoBarSeverity.error);
+    } catch (e, stackTrace) {
+      snackBar(
+        'Error: $e',
+        severity: InfoBarSeverity.error,
+        exception: e,
+        stackTrace: stackTrace,
+      );
     }
   }
 
@@ -754,9 +766,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                                                         // Open path in file explorer
                                                                         try {
                                                                           Process.run('explorer', [library.libraryPath!]);
-                                                                        } catch (e) {
-                                                                          logErr('Failed to open library folder', e);
-                                                                          snackBar('Failed to open library folder: $e', severity: InfoBarSeverity.error);
+                                                                        } catch (e, stackTrace) {
+                                                                          snackBar(
+                                                                            'Failed to open library folder: $e',
+                                                                            severity: InfoBarSeverity.error,
+                                                                            exception: e,
+                                                                            stackTrace: stackTrace,
+                                                                          );
                                                                         }
                                                                       },
                                                               ),

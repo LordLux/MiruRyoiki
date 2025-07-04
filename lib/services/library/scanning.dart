@@ -70,9 +70,11 @@ extension LibraryScanning on Library {
           snackBar('Library scan complete', severity: InfoBarSeverity.info);
         }
       }
-    } catch (e) {
-      logErr('Error scanning library', e);
-      if (showSnack) snackBar('Error scanning library: $e', severity: InfoBarSeverity.error);
+    } catch (e, stackTrace) {
+      if (showSnack)
+        snackBar('Error scanning library: $e', severity: InfoBarSeverity.error, exception: e, stackTrace: stackTrace);
+      else
+        logErr('Error scanning library', e, stackTrace);
     } finally {
       _isLoading = false;
       notifyListeners();

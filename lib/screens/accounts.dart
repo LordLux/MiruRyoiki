@@ -73,15 +73,22 @@ class AccountsScreenState extends State<AccountsScreen> {
     final anilistProvider = Provider.of<AnilistProvider>(context, listen: false);
     if (anilistProvider.isLoggedIn && anilistProvider.currentUser?.userData == null) {
       // Only load if we're logged in but don't have the detailed data yet
-      setState(() {
-        isLocalLoading = true;
-      });
+      setState(() => isLocalLoading = true);
 
-      await anilistProvider.refreshUserData();
+      try {
+        await anilistProvider.refreshUserData();
+        await anilistProvider.refreshUserLists();
+      } catch (e, stackTrace) {
+        // Log the error but don't let it affect the UI
+        logErr('Error refreshing user data', e, stackTrace);
+        // Show a snackbar to inform the user
+        snackBar(
+          'Failed to refresh user data. Please try again later.',
+          severity: InfoBarSeverity.warning,
+        );
+      }
     }
-    setState(() {
-      isLocalLoading = false;
-    });
+    setState(() => isLocalLoading = false);
   }
 
   HeaderWidget header({required AnilistProvider anilistProvider, required bool isLoggedIn}) {
@@ -272,20 +279,16 @@ class AccountsScreenState extends State<AccountsScreen> {
       LoadingButton(
         expand: true,
         isSmall: true,
-        isLoading: _userLoading && anilistProvider.isLoading,
+        isLoading: _userLoading || anilistProvider.isLoading,
         tooltip: 'Refresh User Data',
         label: 'Refresh User Data',
         onPressed: () async {
           if (_userLoading || anilistProvider.isLoading) return;
-          setState(() {
-            _userLoading = true;
-          });
+          setState(() => _userLoading = true);
 
           await anilistProvider.refreshUserLists();
 
-          setState(() {
-            _userLoading = false;
-          });
+          setState(() => _userLoading = false);
         },
       ),
       VDiv(8),
@@ -304,9 +307,7 @@ class AccountsScreenState extends State<AccountsScreen> {
             body: 'Are you sure you want to logout from Anilist?',
             onPositive: () async {
               await anilistProvider.logout();
-              setState(() {
-                isLocalLoading = false;
-              });
+              setState(() => isLocalLoading = false);
               logInfo('Logged out of Anilist');
             },
             onNegative: () => logInfo('Cancelled Anilist logout'),

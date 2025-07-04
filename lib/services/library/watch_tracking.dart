@@ -44,7 +44,7 @@ extension LibraryWatchTracking on Library {
       logDebug('Updated watch status for $updatedCount episodes');
       _isDirty = true;
       await forceImmediateSave();
-      
+
       // Set the flag indicating a series was modified
       if (homeKey.currentState != null) homeKey.currentState!.seriesWasModified = true;
 
@@ -56,9 +56,13 @@ extension LibraryWatchTracking on Library {
   Future<void> playEpisode(Episode episode) async {
     try {
       await OpenAppFile.open(episode.path.path);
-    } catch (e) {
-      logErr('Error playing episode: ${episode.path}', e);
-      snackBar('Could not play episode: ${episode.path}', severity: InfoBarSeverity.error);
+    } catch (e, stackTrace) {
+      snackBar(
+        'Could not play episode: ${episode.path}',
+        severity: InfoBarSeverity.error,
+        exception: e,
+        stackTrace: stackTrace,
+      );
     }
   }
 
