@@ -66,19 +66,27 @@ extension AnilistProviderAuthentication on AnilistProvider {
       final basicUser = await _anilistService.getCurrentUser();
 
       if (basicUser != null) {
-        // Get detailed user data
-        final userData = await _anilistService.getCurrentUserData();
+        try {
+          // Get detailed user data
+          final userData = await _anilistService.getCurrentUserData();
 
-        // Update the current user with the detailed data
-        _currentUser = AnilistUser(
-          id: basicUser.id,
-          name: basicUser.name,
-          avatar: basicUser.avatar,
-          bannerImage: basicUser.bannerImage,
-          userData: userData,
-        );
+          if (userData != null) {
+            // Update the current user with the detailed data
+            _currentUser = AnilistUser(
+              id: basicUser.id,
+              name: basicUser.name,
+              avatar: basicUser.avatar,
+              bannerImage: basicUser.bannerImage,
+              userData: userData,
+            );
+          } else {
+            logWarn('Failed to load detailed user data');
+          }
 
-        await _saveCurrentUserToCache();
+          await _saveCurrentUserToCache();
+        } catch (e, stackTrace) {
+          logErr('Error refreshing user data', e, stackTrace);
+        }
       }
     } else {
       // If offline, try to load from cache

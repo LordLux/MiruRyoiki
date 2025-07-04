@@ -33,24 +33,25 @@ class ActivityGraph extends StatelessWidget {
     final DateTime nowDate = DateTime(now.year, now.month, now.day);
     final DateTime earliest = nowDate.subtract(const Duration(days: 365 ~/ 2));
 
+    DateTime dateCounter = earliest;
     // Add entries for all days in the past year
-    for (int i = 0; i < 365 ~/ 2; i++) {
-      final DateTime date = nowDate.subtract(Duration(days: i));
-
+    while (dateCounter.isBefore(nowDate) || dateCounter.isAtSameMomentAs(nowDate)) {
       // Find activity for this date
       AnilistActivityHistory? activityForDate;
 
       for (final activity in activityHistory) {
         final DateTime activityDate = DateTime.fromMillisecondsSinceEpoch(activity.date * 1000);
 
-        if (activityDate.year == date.year && activityDate.month == date.month && activityDate.day == date.day) {
+        if (activityDate.year == dateCounter.year && activityDate.month == dateCounter.month && activityDate.day == dateCounter.day) {
           activityForDate = activity;
           break;
         }
       }
 
-      activityMap[date] = activityForDate ?? AnilistActivityHistory(date: date.millisecondsSinceEpoch ~/ 1000, level: 0, amount: 0);
+      activityMap[dateCounter] = activityForDate ?? AnilistActivityHistory(date: dateCounter.millisecondsSinceEpoch ~/ 1000, level: 0, amount: 0);
+      dateCounter = dateCounter.add(const Duration(days: 1));
     }
+    log('Activity map created with ${activityMap.length} entries:\n ${activityMap.entries.toList().reversed.map((e) => '${e.key.pretty()}: ${e.value.amount}').join('\n')}');
 
     // log('Start date: ${startDate.pretty()}, End date: ${now.pretty()}');
     // log('rows: $rows, columns: $columns, cellSize: $cellSize, cellSpacing: $cellSpacing');

@@ -89,9 +89,13 @@ class SeriesContextMenuState extends State<SeriesContextMenu> {
   void _openFolderLocation(BuildContext context) async {
     try {
       ShellUtils.openFileExplorerAndSelect(widget.series.path);
-    } catch (e) {
-      logErr('Error opening folder location', e);
-      snackBar('Could not open folder: $e', severity: InfoBarSeverity.error);
+    } catch (e, stackTrace) {
+      snackBar(
+        'Could not open folder: $e',
+        severity: InfoBarSeverity.error,
+        exception: e,
+        stackTrace: stackTrace,
+      );
     }
   }
 

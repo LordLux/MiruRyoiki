@@ -182,8 +182,13 @@ class AnilistLinkMultiContentState extends State<_AnilistLinkMultiContent> {
           return a.path.compareTo(b.path);
         });
       setState(() {});
-    } catch (e) {
-      snackBar('Error loading folder contents: $e', severity: InfoBarSeverity.error);
+    } catch (e, stackTrace) {
+      snackBar(
+        'Error loading folder contents: $e',
+        severity: InfoBarSeverity.error,
+        exception: e,
+        stackTrace: stackTrace,
+      );
     }
   }
 

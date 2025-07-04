@@ -6,33 +6,46 @@ extension AnilistProviderListsManagement on AnilistProvider {
     if (!isLoggedIn) return;
 
     final startTime = DateTime.now().millisecondsSinceEpoch;
-    
+
     snackBar(
       'Refreshing user lists...',
       severity: InfoBarSeverity.info,
     );
-    
+
     _isLoading = true;
     notifyListeners();
 
-    final isOnline = await _checkConnectivity();
+    try {
+      final isOnline = await _checkConnectivity();
 
-    if (isOnline) {
-      await _loadUserLists();
-      // Cache after refresh
-      await _saveListsToCache();
-    } else {
-      // Try loading from cache if offline
-      if (!await _loadListsFromCache()) //
-        logWarn('Failed to refresh lists: Offline and no cache available');
+      if (isOnline) {
+        await _loadUserLists();
+        // Cache after refresh
+        await _saveListsToCache();
+      } else {
+        // Try loading from cache if offline
+        if (!await _loadListsFromCache()) //
+          logWarn('Failed to refresh lists: Offline and no cache available');
+      }
+    } catch (e) {
+      snackBar(
+        'Failed to refresh user lists: ${e.toString()}',
+        severity: InfoBarSeverity.error,
+        exception: e,
+      );
+      _isLoading = false;
+      notifyListeners();
+      return;
     }
+    
     final endTime = DateTime.now().millisecondsSinceEpoch;
     if (endTime - startTime < 1000) await Future.delayed(Duration(milliseconds: 1000 - (endTime - startTime))); // Ensure at least 1 second delay
+    
     snackBar(
       'User lists refreshed successfully',
       severity: InfoBarSeverity.success,
     );
-    
+
     _isLoading = false;
     notifyListeners();
   }

@@ -82,6 +82,9 @@ void main(List<String> args) async {
 
   await initializeMiruRyoiokiSaveDirectory();
 
+  // Initialize session-based error logging
+  await initializeLoggingSession();
+
   // Load environment variables
   await dotenv.load(fileName: '.env');
 
@@ -924,7 +927,7 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
     return false;
   }
 
-// Helper method to determine pane index from ID
+  // Helper method to determine pane index from ID
   int? _getPaneIndexFromId(String id) {
     // check dynamically inside the _navigationMap
     for (final entry in _navigationMap.entries) {
@@ -989,6 +992,7 @@ void setIcon() async {
   }
 }
 
+// TODO remember collapse/expanded state of seasons in series
 // TODO cache anime info
 // TODO add setting to choose whether user prefers to manually rescan registry with library or if automatic (current)
 // TODO add Anilist sync status and internet connection status to the status bar

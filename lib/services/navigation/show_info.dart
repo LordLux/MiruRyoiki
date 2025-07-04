@@ -11,10 +11,11 @@ void snackBar(
   String message, {
   fluent.Color color = const mat.Color(0xFF333333),
   fluent.InfoBarSeverity severity = fluent.InfoBarSeverity.info,
-  bool hasError = false,
   BuildContext? context,
+  Object? exception,
+  StackTrace? stackTrace,
 }) {
-  if (severity == fluent.InfoBarSeverity.error && kDebugMode) log("Error: $message");
+  if (severity == fluent.InfoBarSeverity.error && exception != null) logErr("Error: $message", exception, stackTrace);
 
   fluent.displayInfoBar(
     context ?? rootNavigatorKey.currentContext!,
@@ -28,7 +29,7 @@ void snackBar(
       child: fluent.InfoBar(
         title: fluent.Text(message),
         severity: severity,
-        isLong: hasError,
+        isLong: exception != null,
         style: fluent.InfoBarThemeData(
           icon: (severity) {
             switch (severity) {
