@@ -191,6 +191,11 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
 }
 
 Future<void> initializeAndMorphWindow() async {
+  await windowManager.setFullScreen(false);
+  await windowManager.unmaximize();
+  
+  await Future.delayed(Duration(milliseconds: 50));
+  
   // First set the basic window properties
   await windowManager.setMinimumSize(Size(ScreenUtils.kDefaultMinWindowWidth, ScreenUtils.kDefaultMinWindowHeight));
   await windowManager.setMaximumSize(Size(ScreenUtils.kDefaultMaxWindowWidth, ScreenUtils.kDefaultMaxWindowHeight));
@@ -218,7 +223,7 @@ Future<void> morphToSavedWindowState() async {
     final currentSize = await windowManager.getSize();
     final currentPosition = await windowManager.getPosition();
     final currentRect = Rect.fromLTWH(currentPosition.dx, currentPosition.dy, currentSize.width, currentSize.height);
-
+    
     if (savedState['maximized'] == true) {
       // For maximized windows, don't animate - just maximize
       await windowManager.maximize();
