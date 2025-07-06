@@ -32,7 +32,7 @@ class SettingsManager extends ChangeNotifier {
   set windowEffect(WindowEffect value) => _setString('windowEffect', value.name_);
 
   Dim get dim => DimX.fromString(_getString('dim', defaultValue: Dim.normal.name_));
-  set dim(Dim value) => _setString('dim', value.name_);
+  set dim(Dim value) => _setString('dim', value.name_.toLowerCase());
 
   ThemeMode get themeMode => ThemeX.fromString(_getString('themeMode', defaultValue: ThemeMode.dark.name_));
   set themeMode(ThemeMode value) => _setString('themeMode', value.name_);
@@ -65,6 +65,9 @@ class SettingsManager extends ChangeNotifier {
 
   int get logRetentionDays => _getInt('logRetentionDays', defaultValue: 7);
   set logRetentionDays(int value) => _setInt('logRetentionDays', value);
+  
+  bool get showHiddenSeries => _getBool('showHiddenSeries', defaultValue: false);
+  set showHiddenSeries(bool value) => _setBool('showHiddenSeries', value);
 
   // // Generic getters with type safety
   bool _getBool(String key, {required bool defaultValue}) {

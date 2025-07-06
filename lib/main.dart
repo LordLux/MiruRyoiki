@@ -997,6 +997,7 @@ void setIcon() async {
   }
 }
 
+// TODO fix the fact that there are 2 _inidializeApp functions, one in main.dart and one in splash_screen.dart
 // TODO remember collapse/expanded state of seasons in series
 // TODO cache anime info
 // TODO add setting to choose whether user prefers to manually rescan registry with library or if automatic (current)

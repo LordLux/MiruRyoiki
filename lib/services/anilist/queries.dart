@@ -372,8 +372,8 @@ class AnilistService {
         return null;
       }
 
-      final userData = result.data?['Viewer'];
-      return userData != null ? AnilistUser.fromJson(userData) : null;
+      final user = result.data?['Viewer'];
+      return user != null ? AnilistUser.fromJson(user) : null;
     } catch (e) {
       logErr('Error querying Anilist', e);
       return null;

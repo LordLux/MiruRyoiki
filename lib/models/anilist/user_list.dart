@@ -218,7 +218,7 @@ class AnilistUser {
       name: json['name'],
       avatar: json['avatar']?['large'],
       bannerImage: json['bannerImage'],
-      userData: json['userData'] != null ? AnilistUserData.fromJson(json['userData']) : null,
+      userData: json['userData'] != null ? AnilistUserData.fromJson(json['userData']) : null, //is null when called by getCurrentUser() but is then populated by getCurrentUser()
     );
   }
   

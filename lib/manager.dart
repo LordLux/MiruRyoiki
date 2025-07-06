@@ -60,7 +60,7 @@ class Manager {
 
   static NavigationManager get navigation => Provider.of<NavigationManager>(context, listen: false);
 
-  static SettingsManager get settings => Provider.of<SettingsManager>(context, listen: false);
+  static SettingsManager get settings => rootNavigatorKey.currentContext != null ? SettingsManager() : Provider.of<SettingsManager>(context, listen: false);
 
   static AppTheme? _cachedAppTheme;
   static AppTheme get appTheme {

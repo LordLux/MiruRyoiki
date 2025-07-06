@@ -247,6 +247,25 @@ class LibraryScreenState extends State<LibraryScreen> {
     return false;
   }
 
+  List<Series> _filterSeries(List<Series> series) {
+    // Start with basic filtering (existing code)
+    List<Series> filteredSeries = series;
+
+    // Add filter for hidden series
+    if (!Manager.settings.showHiddenSeries) {
+      filteredSeries = filteredSeries.where((s) => !s.shouldBeHidden).toList();
+    }
+
+    // Add filter for unlinked series if view is set to linked only
+    if (_currentView == LibraryView.linked) {
+      filteredSeries = filteredSeries.where((s) => s.isLinked).toList();
+    }
+
+    log('removed hidden series: ${series.length - filteredSeries.length}');
+
+    return filteredSeries;
+  }
+
   void _onViewChanged(LibraryView? value) {
     if (value != null && value != _currentView) {
       setState(() {
@@ -684,13 +703,11 @@ class LibraryScreenState extends State<LibraryScreen> {
   }
 
   Widget _buildLibraryView(Library library) {
-    List<Series> displayedSeries = _currentView == LibraryView.all //
-        ? library.series.toList()
-        : library.series.where((s) => s.isLinked).toList();
+    List<Series> displayedSeries = _filterSeries(library.series);
 
     if (library.isLoading) return const Center(child: ProgressRing());
 
-    if (library.series.isEmpty)
+    if (displayedSeries.isEmpty)
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -1258,5 +1275,18 @@ class LibraryScreenState extends State<LibraryScreen> {
 
   void _navigateToSeries(Series series) {
     widget.onSeriesSelected(series.path);
+  }
+
+  void removeHiddenSeriesWithoutInvalidatingCache(Series series) {
+    if (Manager.settings.showHiddenSeries) return; // Don't remove if hidden series are shown
+    
+    // Go through all cached lists and remove the series with the same path
+    _cachedGroups.forEach((key, value) {
+      value.removeWhere((s) => s.path == series.path);
+    });
+    _sortedGroupedSeries.removeWhere((key, value) => value.any((s) => s.path == series.path));
+    _sortedUngroupedSeries.removeWhere((s) => s.path == series.path);
+    
+    Manager.setState();
   }
 }

@@ -149,7 +149,7 @@ extension LibraryInitialization on Library {
     _updateWatchedStatusAndResetThumbnailFetchFailedAttemptsCount();
     // Force immediate save and UI refresh
     // _isDirty = true;
-    // TODO await forceImmediateSave();
+    await forceImmediateSave();
     notifyListeners();
   }
 

@@ -5,6 +5,7 @@ import 'dart:io';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter_desktop_context_menu/flutter_desktop_context_menu.dart';
 import 'package:provider/provider.dart';
+import '../../main.dart';
 import '../../manager.dart';
 import '../../models/series.dart';
 import '../../services/library/library_provider.dart';
@@ -75,6 +76,12 @@ class SeriesContextMenuState extends State<SeriesContextMenu> {
           shortcutModifiers: ShortcutModifiers(control: Platform.isWindows, meta: Platform.isMacOS),
           onClick: (_) => _updateFromAnilist(context),
         ),
+        if (!series.isLinked)
+          MenuItem(
+            label: series.isHidden ? 'Stop Hiding Series' : 'Hide Series',
+            icon: series.isHidden ? icons.unhide : icons.hide,
+            onClick: (_) => _toggleHiddenStatus(context),
+          ),
         MenuItem.separator(),
         MenuItem(
           label: widget.series.watchedPercentage == 1.0 ? 'Mark All as Unwatched' : 'Mark All as Watched',
@@ -142,6 +149,30 @@ class SeriesContextMenuState extends State<SeriesContextMenu> {
         ),
       );
     }
+    Manager.setState();
+  }
+
+  void _toggleHiddenStatus(BuildContext context) {
+    final library = Provider.of<Library>(context, listen: false);
+    final series = widget.series;
+
+    // Toggle hidden status
+    series.isHidden = !series.isHidden;
+
+    // Update the series in the library
+    library.updateSeries(series, invalidateCache: true);
+
+    if (libraryScreenKey.currentState != null) {
+      libraryScreenKey.currentState!.removeHiddenSeriesWithoutInvalidatingCache(series);
+      libraryScreenKey.currentState!.setState(() {});
+    }
+
+    // Show confirmation
+    snackBar(
+      series.isHidden ? 'Series is now hidden' : 'Series is now visible',
+      severity: InfoBarSeverity.success,
+    );
+
     Manager.setState();
   }
 

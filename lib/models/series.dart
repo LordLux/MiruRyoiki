@@ -106,6 +106,9 @@ class Series {
   /// Cached URL for Anilist Banner
   String? _anilistBannerUrl;
 
+  /// Whether the series is hidden from the library (only when not linked to Anilist)
+  bool isHidden = false;
+
   // TODO add file info object to store info about the series folder (creation date, last modification date, size, etc)
 
   Series({
@@ -123,6 +126,7 @@ class Series {
     String? anilistPoster,
     String? anilistBanner,
     int? primaryAnilistId,
+    bool isHidden = false,
   })  : _anilistData = anilistData,
         _dominantColor = dominantColor,
         _anilistPosterUrl = anilistPoster,
@@ -144,6 +148,7 @@ class Series {
     int? primaryAnilistId,
     String? anilistPoster,
     String? anilistBanner,
+    bool? isHidden,
   }) {
     return Series(
       name: name ?? this.name,
@@ -160,6 +165,7 @@ class Series {
       primaryAnilistId: primaryAnilistId ?? _primaryAnilistId,
       anilistPoster: anilistPoster ?? _anilistPosterUrl,
       anilistBanner: anilistBanner ?? _anilistBannerUrl,
+      isHidden: isHidden ?? this.isHidden,
     );
   }
 
@@ -177,6 +183,7 @@ class Series {
   Highest User Score:   $highestUserScore,
   Highest Popularity:    $highestPopularity,
   Dominant Color:        ${dominantColor?.toHex()},
+  Hidden:                   $isHidden,
 )''';
   }
 
@@ -606,6 +613,7 @@ class Series {
 
   /// JSON serialization
   Map<String, dynamic> toJson() {
+    if (isHidden) log('name: $name isHidden');
     return {
       'name': name,
       'path': path.path, //not nullable
@@ -621,6 +629,7 @@ class Series {
       'anilistBannerUrl': _anilistBannerUrl ?? _anilistData?.bannerImage, // nullable
       'preferredPosterSource': preferredPosterSource?.name_, // nullable
       'preferredBannerSource': preferredBannerSource?.name_, // nullable
+      'isHidden': isHidden,
     };
   }
 
@@ -750,6 +759,7 @@ class Series {
         dominantColor: dominantColor,
         anilistPoster: json['anilistPosterUrl'] as String?,
         anilistBanner: json['anilistBannerUrl'] as String?,
+        isHidden: json['isHidden'] as bool? ?? false,
         // anilistData is not serialized directly, but retrieved on demand
         // preferredPosterSource and preferredBannerSource
         // are null by default to be set by the settings
@@ -823,6 +833,7 @@ class Series {
     Color? dominantColor,
     String? anilistPoster,
     String? anilistBanner,
+    bool isHidden = false,
   }) {
     final series = Series(
       name: name,
@@ -839,6 +850,7 @@ class Series {
       primaryAnilistId: primaryAnilistId,
       anilistBanner: anilistBanner,
       anilistPoster: anilistPoster,
+      isHidden: isHidden,
     );
 
     return series;
@@ -911,6 +923,15 @@ class Series {
 
   /// The season year from Anilist
   int? get seasonYear => currentAnilistData?.seasonYear;
+
+  /// Checks if any Anilist mapping has the "hide from status lists" flag set
+  bool get shouldBeHidden {
+    if (isLinked && anilistMappings.isNotEmpty) {
+      return mediaListEntries.values.any((entry) => entry?.hiddenFromStatusLists == true);
+    }
+
+    return isHidden; // if not linked, use the local isHidden flag
+  }
 
   /// Getter to check if the poster is from Anilist
   String? get effectivePosterPath {

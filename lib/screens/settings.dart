@@ -892,7 +892,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                         //     onChanged: (ThemeMode? newValue) async {
                                         //       appTheme.mode = newValue!;
                                         //       appTheme.setEffect(appTheme.windowEffect, context);
-                                        //       settings.set('themeMode', newValue.name_);
+                                        //       settings.themeMode = newValue;
 
                                         //       await Future.delayed(const Duration(milliseconds: 300));
                                         //       appTheme.setEffect(appTheme.windowEffect, context);
@@ -921,7 +921,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                                     onChanged: (WindowEffect? newValue) {
                                                       appTheme.windowEffect = newValue!;
                                                       appTheme.setEffect(newValue, context);
-                                                      settings.set('windowEffect', newValue.name);
+                                                      settings.windowEffect = newValue;
                                                     },
                                                   ),
                                                 ],
@@ -1000,7 +1000,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                                   )..then((_) {
                                                       settings.accentColor = tempColor.saturate(300);
                                                       appTheme.color = settings.accentColor.toAccentColor();
-                                                      settings.set('accentColor', settings.accentColor.toHex(leadingHashSign: true));
+                                                      settings.accentColor = settings.accentColor;
                                                     });
                                                 },
                                               ),
@@ -1022,7 +1022,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                               currentValue: appTheme.dim,
                                               onChanged: (value) {
                                                 appTheme.dim = value;
-                                                settings.set('dim', value.name_.toLowerCase());
+                                                settings.dim = value;
                                               },
                                             ),
                                           ],
@@ -1046,7 +1046,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                               }).toList(),
                                               onChanged: (double? newValue) {
                                                 appTheme.fontSize = newValue!;
-                                                settings.set('fontSize', newValue);
+                                                settings.fontSize = newValue;
                                               },
                                             ),
                                           ],
@@ -1067,7 +1067,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                               content: Text(settings.disableAnimations ? 'Animations Disabled' : 'Animations Enabled', style: Manager.bodyStyle),
                                               onChanged: (value) {
                                                 settings.disableAnimations = value;
-                                                settings.set('disableAnimations', value);
                                               },
                                             ),
                                           ],
@@ -1105,7 +1104,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                                     settings.libColView = LibraryColorView.none;
                                                     break;
                                                 }
-                                                settings.set('libColView', settings.libColView.name_);
                                               }),
                                             ),
                                             const SizedBox(width: 12),
@@ -1136,7 +1134,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                                   onToggle: (int? value) {
                                                     if (value != null && value >= 0 && value < options.length) {
                                                       settings.libColView = options[value];
-                                                      settings.set('libColView', settings.libColView.name_);
                                                     }
                                                   },
                                                 ),
@@ -1163,7 +1160,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                                   body: 'Would you like to recalculate all dominant colors using the new source?',
                                                   onPositive: () {
                                                     settings.dominantColorSource = value;
-                                                    settings.set('dominantColorSource', value.name_);
                                                     final library = Provider.of<Library>(context, listen: false);
                                                     library.calculateDominantColors(forceRecalculate: true);
 
@@ -1205,7 +1201,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                               content: Text(Manager.defaultPosterSource == ImageSource.autoAnilist ? 'Prefer Anilist Posters' : 'Prefer Local Posters', style: Manager.bodyStyle),
                                               onChanged: (value) {
                                                 settings.defaultPosterSource = value ? ImageSource.autoAnilist : ImageSource.autoLocal;
-                                                settings.set('defaultPosterSource', settings.defaultPosterSource.name_);
                                               },
                                             ),
                                           ],
@@ -1223,7 +1218,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                               content: Text(Manager.defaultBannerSource == ImageSource.autoAnilist ? 'Prefer Anilist Banners' : 'Prefer Local Banners', style: Manager.bodyStyle),
                                               onChanged: (value) {
                                                 settings.defaultBannerSource = value ? ImageSource.autoAnilist : ImageSource.autoLocal;
-                                                settings.set('defaultBannerSource', settings.defaultBannerSource.name_);
                                               },
                                             ),
                                           ],
@@ -1268,7 +1262,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                                 currentValue: settings.fileLogLevel,
                                                 onChanged: (LogLevel newLevel) {
                                                   settings.fileLogLevel = newLevel;
-                                                  settings.set('fileLogLevel', newLevel.name_);
                                                 },
                                               ),
                                             ],
@@ -1296,10 +1289,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                                     child: NumberBox<int>(
                                                       value: settings.logRetentionDays,
                                                       onChanged: (int? value) {
-                                                        if (value != null && value >= 0) {
-                                                          settings.logRetentionDays = value;
-                                                          settings.set('logRetentionDays', value);
-                                                        }
+                                                        if (value != null && value >= 0) settings.logRetentionDays = value;
                                                       },
                                                       min: 0,
                                                       max: 365,
@@ -1333,18 +1323,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                       severity: InfoBarSeverity.info,
                                     ),
                                     if (Manager.args.isNotEmpty) SizedBox(height: 16),
-                                    if (Manager.args.isNotEmpty) InfoBar(
-                                      title: Text('Command Line Arguments', style: Manager.bodyStrongStyle),
-                                      content: Padding(
-                                        padding: EdgeInsets.only(right: 8.0),
-                                        child: Text(
-                                          'Current session arguments: ${Manager.args.join(', ')}',
-                                          style: Manager.bodyStyle,
+                                    if (Manager.args.isNotEmpty)
+                                      InfoBar(
+                                        title: Text('Command Line Arguments', style: Manager.bodyStrongStyle),
+                                        content: Padding(
+                                          padding: EdgeInsets.only(right: 8.0),
+                                          child: Text(
+                                            'Current session arguments: ${Manager.args.join(', ')}',
+                                            style: Manager.bodyStyle,
+                                          ),
                                         ),
-                                      ),
-                                      severity: InfoBarSeverity.info,
-                                      isLong: Manager.args.isNotEmpty && Manager.args.join(', ').length > 50,
-                                    )
+                                        severity: InfoBarSeverity.info,
+                                        isLong: Manager.args.isNotEmpty && Manager.args.join(', ').length > 50,
+                                      )
                                   ],
                                 ),
                                 SizedBox(height: 24),

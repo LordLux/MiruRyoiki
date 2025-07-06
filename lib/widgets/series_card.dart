@@ -270,7 +270,27 @@ class _SeriesCardState extends State<SeriesCard> {
                         }),
                       ],
                     ),
-                  ),
+                  ), // Add the hidden indicator
+                  if (widget.series.shouldBeHidden)
+                    Positioned(
+                      top: 12,
+                      left: 12,
+                      child: Container(
+                        padding: EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withOpacity(0.7),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Tooltip(
+                          message: 'Hidden from Anilist status lists',
+                          child: Icon(
+                            FluentIcons.hide, // or use FluentIcons.hide2 or FluentIcons.eye_hide
+                            size: 18,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ),
                   // Hover overlay
                   Positioned.fill(
                     child: Material(
