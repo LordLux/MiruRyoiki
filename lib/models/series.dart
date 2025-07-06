@@ -107,14 +107,7 @@ class Series {
   String? _anilistBannerUrl;
 
   /// Whether the series is hidden from the library (only when not linked to Anilist)
-  bool _isHidden = false;
-  bool get isHidden => _isHidden;
-  set isHidden(bool value) {
-    _isHidden = value;
-    if (value == false) {
-      log('Series $name changed to NOT HIDDEN');
-    }
-  }
+  bool isHidden = false;
 
   // TODO add file info object to store info about the series folder (creation date, last modification date, size, etc)
 
@@ -133,13 +126,12 @@ class Series {
     String? anilistPoster,
     String? anilistBanner,
     int? primaryAnilistId,
-    bool isHidden = false,
+    this.isHidden = false,
   })  : _anilistData = anilistData,
         _dominantColor = dominantColor,
         _anilistPosterUrl = anilistPoster,
         _anilistBannerUrl = anilistBanner,
-        _primaryAnilistId = primaryAnilistId ?? anilistMappings.firstOrNull?.anilistId,
-        _isHidden = isHidden;
+        _primaryAnilistId = primaryAnilistId ?? anilistMappings.firstOrNull?.anilistId;
 
   Series copyWith({
     String? name,

@@ -261,8 +261,6 @@ class LibraryScreenState extends State<LibraryScreen> {
       filteredSeries = filteredSeries.where((s) => s.isLinked).toList();
     }
 
-    log('removed hidden series: ${series.length - filteredSeries.length}');
-
     return filteredSeries;
   }
 
