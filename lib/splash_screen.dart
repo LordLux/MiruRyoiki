@@ -166,20 +166,15 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
       content: AnimatedBuilder(
         animation: _splashOpacityController,
         builder: (context, child) {
-          return Container(
-            decoration: BoxDecoration(
-              color: FluentTheme.of(context).micaBackgroundColor,
-            ),
-            child: Opacity(
-              opacity: 1 - _opacityAnimation.value,
-              child: Center(
-                child: SizedBox(
-                  width: 150,
-                  height: 150,
-                  child: Image.file(
-                    File(iconPath),
-                    errorBuilder: (_, __, ___) => const Icon(FluentIcons.picture, size: 100),
-                  ),
+          return Opacity(
+            opacity: 1 - _opacityAnimation.value,
+            child: Center(
+              child: SizedBox(
+                width: 150,
+                height: 150,
+                child: Image.file(
+                  File(iconPath),
+                  errorBuilder: (_, __, ___) => const Icon(FluentIcons.picture, size: 100),
                 ),
               ),
             ),
@@ -223,7 +218,7 @@ Future<void> morphToSavedWindowState() async {
     final currentSize = await windowManager.getSize();
     final currentPosition = await windowManager.getPosition();
     final currentRect = Rect.fromLTWH(currentPosition.dx, currentPosition.dy, currentSize.width, currentSize.height);
-    
+
     if (savedState['maximized'] == true) {
       // For maximized windows, don't animate - just maximize
       await windowManager.maximize();

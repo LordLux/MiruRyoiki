@@ -12,6 +12,10 @@ extension LibraryInitialization on Library {
     else
       ctx = Manager.context;
     // ignore: use_build_context_synchronously
+    nextFrame(() {
+      final appTheme = Provider.of<AppTheme>(ctx, listen: false);
+      appTheme.setEffect(appTheme.windowEffect, rootNavigatorKey.currentContext!);
+    });
     await loadLibraryFirstTime(ctx);
   }
 
@@ -134,7 +138,7 @@ extension LibraryInitialization on Library {
           }
         }
       }
-      
+
       _cacheValidated = true;
       logDebug('4 | Cache validation complete');
       notifyListeners();
