@@ -1262,6 +1262,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                                 currentValue: settings.fileLogLevel,
                                                 onChanged: (LogLevel newLevel) {
                                                   settings.fileLogLevel = newLevel;
+                                                  setState(() {
+                                                    if (newLevel == LogLevel.trace)
+                                                      doLogTrace = true;
+                                                    else
+                                                      doLogTrace = false;
+                                                  });
                                                 },
                                               ),
                                             ],

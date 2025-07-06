@@ -1031,7 +1031,7 @@ void linkWithAnilist(BuildContext context, Series? series, Future<void> Function
           if (isNew) newMappingsCount++;
         }
 
-        // Important: Update the series mappings
+        // Update the series mappings
         series.anilistMappings = mappings;
 
         // Ensure the library gets saved
