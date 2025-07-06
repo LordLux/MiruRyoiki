@@ -19,6 +19,7 @@ import '../../models/episode.dart';
 import '../../models/series.dart';
 import '../../services/anilist/linking.dart';
 import '../../settings.dart';
+import '../../theme.dart';
 import '../anilist/provider/anilist_provider.dart';
 import '../anilist/queries/anilist_service.dart';
 import '../file_system/cache.dart';

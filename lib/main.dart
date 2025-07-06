@@ -64,7 +64,6 @@ final GlobalKey<AccountsScreenState> accountsKey = GlobalKey<AccountsScreenState
 final GlobalKey<State<StatefulWidget>> paletteOverlayKey = GlobalKey<State<StatefulWidget>>();
 
 void main(List<String> args) async {
-
   WidgetsFlutterBinding.ensureInitialized();
 
   await WindowsSingleInstance.ensureSingleInstance(
@@ -87,7 +86,7 @@ void main(List<String> args) async {
 
   // Initialize session-based error logging
   await initializeLoggingSession();
-  
+
   Manager.parseArgs();
 
   // Load environment variables
@@ -909,6 +908,7 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
 Future<void> _initializeSplashScreenWindow() async {
   await flutter_acrylic.Window.initialize();
   await flutter_acrylic.Window.hideWindowControls();
+
   await WindowManager.instance.ensureInitialized();
 
   final Size initialSize = Size(ScreenUtils.kDefaultSplashScreenWidth, ScreenUtils.kDefaultSplashScreenHeight);
@@ -932,7 +932,7 @@ Future<void> _initializeSplashScreenWindow() async {
     skipTaskbar: false,
     titleBarStyle: TitleBarStyle.hidden,
     title: Manager.appTitle,
-    alwaysOnTop: true,
+    // alwaysOnTop: true,
   );
 
   windowManager.waitUntilReadyToShow(windowOptions, () async {
@@ -944,9 +944,9 @@ Future<void> _initializeSplashScreenWindow() async {
     await windowManager.setMaximumSize(initialSize);
     await windowManager.setSize(initialSize);
     await windowManager.setResizable(false);
-    await windowManager.setAlwaysOnTop(true);
+    // await windowManager.setAlwaysOnTop(true); keep commented
     await windowManager.setTitle(Manager.appTitle);
-    await windowManager.setIgnoreMouseEvents(true);
+    // await windowManager.setIgnoreMouseEvents(true);
     await windowManager.show();
     await windowManager.focus();
     setIcon();
@@ -961,8 +961,8 @@ void setIcon() async {
   }
 }
 
+// TODO allow cli flags, before preventing a second instance from running
 // TODO fix the fact that HIDDEN series are not fetched from anilist when loading library (probably query asks for lists instead of full library of user)
-// TODO fix the fact that there are 2 _inidializeApp functions, one in main.dart and one in splash_screen.dart
 // TODO remember collapse/expanded state of seasons in series
 // TODO cache anime info
 // TODO add setting to choose whether user prefers to manually rescan registry with library or if automatic (current)
