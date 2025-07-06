@@ -254,25 +254,37 @@ extension LibraryAnilistIntegration on Library {
 
     if (mappings.isEmpty) {
       series.anilistData = null;
-      series.primaryAnilistId = null; // This will use the setter
+      series.primaryAnilistId = null;
+      series.isHidden = false;
     }
 
     if (series.primaryAnilistId == null && mappings.isNotEmpty) {
       series.primaryAnilistId = mappings.first.anilistId;
+      if (mappings.first.anilistData != null) {
+        // Check if any mapping has hiddenFromStatusLists set
+        series.isHidden = series.shouldBeHidden;
+      }
     }
 
     // Set the flag indicating a series was modified
-    if (homeKey.currentState != null) {
+    if (homeKey.currentState != null) //
       homeKey.currentState!.seriesWasModified = true;
+
+    // Update series hidden status based on Anilist data
+    for (final mapping in mappings) {
+      if (mapping.anilistData != null) {
+        series.isHidden = mapping.anilistData?.isHidden ?? false;
+        break;
+      }
     }
 
     await _saveLibrary();
     notifyListeners();
+    Manager.setState();
 
     return true;
   }
 
-  /// Refresh metadata for all series
   /// Refresh metadata for all series
   Future<void> refreshAllMetadata() async {
     snackBar(
@@ -280,7 +292,7 @@ extension LibraryAnilistIntegration on Library {
       severity: InfoBarSeverity.info,
     );
     final startTime = DateTime.now().millisecondsSinceEpoch;
-    
+
     final anilistService = AnilistService();
     final linkedSeries = _series.where((s) => s.anilistId != null).toList();
 
@@ -309,10 +321,10 @@ extension LibraryAnilistIntegration on Library {
         await Future.delayed(Duration(seconds: 1));
       }
     }
-    
+
     final endTime = DateTime.now().millisecondsSinceEpoch;
     if (endTime - startTime < 1000) await Future.delayed(Duration(milliseconds: 1000 - (endTime - startTime)));
-    
+
     snackBar(
       'All Anilist metadata refreshed successfully!',
       severity: InfoBarSeverity.success,

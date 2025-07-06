@@ -53,7 +53,7 @@ Future<void> initializeLoggingSession() async {
     await _writeToLogFile('Session ID: $_sessionId');
     await _writeToLogFile('Start Time: ${sessionStart.toIso8601String()}');
     await _writeToLogFile('App Version: ${packageInfo.version} (${packageInfo.buildNumber})');
-    await _writeToLogFile('Arguments: ${Manager.args}');
+    await _writeToLogFile('Arguments: ${[...Manager.args,...[if (kDebugMode) '--debug']]}');
     await _writeToLogFile('Platform: ${Platform.operatingSystem} ${Platform.operatingSystemVersion}');
     await _writeToLogFile('File Log Level: ${_getCurrentFileLogLevel().name_}');
     await _writeToLogFile('===========================================\n');
@@ -97,7 +97,7 @@ Future<void> _cleanupOldLogs(Directory logsDir) async {
 LogLevel _getCurrentFileLogLevel() {
   try {
     // Try to get from settings if available
-    return SettingsManager().fileLogLevel;
+    return Manager.settings.fileLogLevel;
   } catch (e) {
     // Fallback to error level if settings not available
     return LogLevel.error;
@@ -107,7 +107,7 @@ LogLevel _getCurrentFileLogLevel() {
 /// Get log retention days from settings, with fallback
 int _getLogRetentionDays() {
   try {
-    return SettingsManager().logRetentionDays;
+    return Manager.settings.logRetentionDays;
   } catch (e) {
     // Fallback to 7 days if settings not available
     return 7;

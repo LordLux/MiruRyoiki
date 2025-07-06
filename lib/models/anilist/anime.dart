@@ -29,6 +29,7 @@ class AnilistAnime {
   final AiringEpisode? nextAiringEpisode;
   final bool? isFavourite;
   final String? siteUrl;
+  final bool? isHidden;
 
   AnilistAnime({
     required this.id,
@@ -58,6 +59,7 @@ class AnilistAnime {
     this.nextAiringEpisode,
     this.isFavourite,
     this.siteUrl,
+    this.isHidden,
   });
   factory AnilistAnime.fromJson(Map<String, dynamic> json) {
     return AnilistAnime(
@@ -88,6 +90,7 @@ class AnilistAnime {
       nextAiringEpisode: json['nextAiringEpisode'] != null ? AiringEpisode.fromJson(json['nextAiringEpisode']) : null,
       isFavourite: json['isFavourite'] as bool?,
       siteUrl: json['siteUrl'] as String?,
+      isHidden: json['hidden'] as bool? ?? false,
     );
   }
 
@@ -119,6 +122,7 @@ class AnilistAnime {
     AiringEpisode? nextAiringEpisode,
     bool? isFavourite,
     String? siteUrl,
+    bool? isHidden,
   }) {
     return AnilistAnime(
       id: id ?? this.id,
@@ -148,6 +152,7 @@ class AnilistAnime {
       nextAiringEpisode: nextAiringEpisode ?? this.nextAiringEpisode,
       isFavourite: isFavourite ?? this.isFavourite,
       siteUrl: siteUrl ?? this.siteUrl,
+      isHidden: isHidden ?? this.isHidden,
     );
   }
 
@@ -180,12 +185,13 @@ class AnilistAnime {
       'nextAiringEpisode': nextAiringEpisode?.toJson(),
       'isFavourite': isFavourite,
       'siteUrl': siteUrl,
+      'hidden': isHidden,
     };
   }
 
   @override
   String toString() {
-    return 'AnilistAnime(id: $id, title: ${title.romaji}, status: $status, episodes: $episodes, bannerImage: ${basename(bannerImage ?? '')}, posterImage: ${basename(posterImage ?? '')})';
+    return 'AnilistAnime(id: $id, title: ${title.romaji}, status: $status, episodes: $episodes, bannerImage: ${basename(bannerImage ?? '')}, posterImage: ${basename(posterImage ?? '')})${isHidden == true ? ' [HIDDEN]' : ''}';
   }
 }
 
