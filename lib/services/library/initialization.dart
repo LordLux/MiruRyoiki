@@ -42,7 +42,7 @@ extension LibraryInitialization on Library {
     await scanLocalLibrary();
 
     // Initialize MPC Tracker
-    if (Manager.skipRegistryIndexing || !kDebugMode) await _mpcTracker.ensureInitialized();
+    if (!Manager.skipRegistryIndexing && !kDebugMode) await _mpcTracker.ensureInitialized();
 
     // Update watched status and force refresh
     await _updateWatchedStatusAndForceRefresh();

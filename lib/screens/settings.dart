@@ -1232,7 +1232,122 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     ),
                                   ],
                                 ),
-                                VDiv(24),
+                                SizedBox(height: 24),
+                                // Logging section
+                                SettingsCard(
+                                  children: [
+                                    Text(
+                                      'Logging & Debugging',
+                                      style: Manager.subtitleStyle,
+                                    ),
+                                    SizedBox(height: 12),
+                                    Text(
+                                      'Configure logging behavior for debugging and troubleshooting.',
+                                      style: Manager.bodyStyle,
+                                    ),
+                                    SizedBox(height: 24),
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                'File log level',
+                                                style: Manager.bodyStrongStyle,
+                                              ),
+                                              SizedBox(height: 8),
+                                              Text(
+                                                'Choose which log messages are written to file. Higher levels include all lower levels.',
+                                                style: Manager.bodyStyle,
+                                              ),
+                                              SizedBox(height: 12),
+                                              EnumToggle<LogLevel>(
+                                                enumValues: LogLevel.values,
+                                                labelExtractor: (level) => level.displayName,
+                                                currentValue: settings.fileLogLevel,
+                                                onChanged: (LogLevel newLevel) {
+                                                  settings.fileLogLevel = newLevel;
+                                                  settings.set('fileLogLevel', newLevel.name_);
+                                                },
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        SizedBox(width: 32),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                'Log retention',
+                                                style: Manager.bodyStrongStyle,
+                                              ),
+                                              SizedBox(height: 8),
+                                              Text(
+                                                'Number of days to keep log files. (0 to disable)\nOlder files are automatically deleted.',
+                                                style: Manager.bodyStyle,
+                                              ),
+                                              SizedBox(height: 12),
+                                              Row(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  Expanded(
+                                                    child: NumberBox<int>(
+                                                      value: settings.logRetentionDays,
+                                                      onChanged: (int? value) {
+                                                        if (value != null && value >= 0) {
+                                                          settings.logRetentionDays = value;
+                                                          settings.set('logRetentionDays', value);
+                                                        }
+                                                      },
+                                                      min: 0,
+                                                      max: 365,
+                                                      mode: SpinButtonPlacementMode.inline,
+                                                    ),
+                                                  ),
+                                                  HDiv(8),
+                                                  Text(
+                                                    'days',
+                                                    style: Manager.bodyStyle.copyWith(
+                                                      color: FluentTheme.of(context).resources.textFillColorSecondary,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    SizedBox(height: 16),
+                                    InfoBar(
+                                      title: Text('Log Files Location', style: Manager.bodyStrongStyle),
+                                      content: Padding(
+                                        padding: EdgeInsets.only(right: 8.0),
+                                        child: Text(
+                                          'Log files are stored in the application data directory. Each session creates a unique log file.',
+                                          style: Manager.bodyStyle,
+                                        ),
+                                      ),
+                                      severity: InfoBarSeverity.info,
+                                    ),
+                                    if (Manager.args.isNotEmpty) SizedBox(height: 16),
+                                    if (Manager.args.isNotEmpty) InfoBar(
+                                      title: Text('Command Line Arguments', style: Manager.bodyStrongStyle),
+                                      content: Padding(
+                                        padding: EdgeInsets.only(right: 8.0),
+                                        child: Text(
+                                          'Current session arguments: ${Manager.args.join(', ')}',
+                                          style: Manager.bodyStyle,
+                                        ),
+                                      ),
+                                      severity: InfoBarSeverity.info,
+                                      isLong: Manager.args.isNotEmpty && Manager.args.join(', ').length > 50,
+                                    )
+                                  ],
+                                ),
+                                SizedBox(height: 24),
                                 // About section
                                 SettingsCard(
                                   children: [

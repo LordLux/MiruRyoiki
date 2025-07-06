@@ -4,6 +4,7 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:miruryoiki/main.dart';
 import 'package:miruryoiki/services/navigation/navigation.dart';
 import 'package:provider/provider.dart';
+import 'package:args/args.dart';
 
 import 'enums.dart';
 import 'services/navigation/shortcuts.dart';
@@ -26,13 +27,30 @@ class Manager {
   static Uri? initialDeepLink;
   static bool skipRegistryIndexing = false;
 
-  static void parseArgs(List<String> args) {
-    if (args.isEmpty) return;
+  static ArgParser parser = ArgParser()
+    ..addFlag('help', abbr: 'h', help: 'Show this help message.', negatable: false)
+    ..addFlag('skip-registry-indexing', defaultsTo: false, help: 'Skip indexing the registry on startup to look for changed keys.', negatable: false);
+  static ArgResults? _args;
+  static ArgResults parsedArgs(List<String> args) {
+    _args = parser.parse(args);
+    return _args!;
+  }
+  
+  static List<String> get args => _args?.arguments ?? [];
 
-    for (var arg in args) {
-      if (arg == '--skip-registry-indexing') {
-        skipRegistryIndexing = true;
-      }
+  static void parseArgs() {
+    if (_args == null) return;
+    final ArgResults args = _args!;
+    if (args.arguments.isEmpty) return;
+
+    if (args.wasParsed('help')) {
+      print(parser.usage);
+      exit(0);
+    }
+
+    if (args.wasParsed('skip-registry-indexing')) {
+      skipRegistryIndexing = true;
+      log('Skipping registry indexing on startup as requested.');
     }
   }
 
