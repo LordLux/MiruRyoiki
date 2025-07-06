@@ -16,7 +16,7 @@ import 'time_utils.dart';
 import 'path_utils.dart';
 
 bool doLogRelease = false; // Set to true to enable logging in release mode
-bool doLogTrace = false; // Set to true to enable trace logging
+bool doLogTrace = false; // Set to true to enable trace logging; dotrace
 bool doLogComplexError = false; // Set to true to enable complex error logging
 
 // Session-based logging variables
@@ -53,7 +53,10 @@ Future<void> initializeLoggingSession() async {
     await _writeToLogFile('Session ID: $_sessionId');
     await _writeToLogFile('Start Time: ${sessionStart.toIso8601String()}');
     await _writeToLogFile('App Version: ${packageInfo.version} (${packageInfo.buildNumber})');
-    await _writeToLogFile('Arguments: ${[...Manager.args,...[if (kDebugMode) '--debug']]}');
+    await _writeToLogFile('Arguments: ${[
+      ...Manager.args,
+      ...[if (kDebugMode) '--debug']
+    ]}');
     await _writeToLogFile('Platform: ${Platform.operatingSystem} ${Platform.operatingSystemVersion}');
     await _writeToLogFile('File Log Level: ${_getCurrentFileLogLevel().name_}');
     await _writeToLogFile('===========================================\n');

@@ -107,7 +107,14 @@ class Series {
   String? _anilistBannerUrl;
 
   /// Whether the series is hidden from the library (only when not linked to Anilist)
-  bool isHidden = false;
+  bool _isHidden = false;
+  bool get isHidden => _isHidden;
+  set isHidden(bool value) {
+    _isHidden = value;
+    if (value == false) {
+      log('Series $name changed to NOT HIDDEN');
+    }
+  }
 
   // TODO add file info object to store info about the series folder (creation date, last modification date, size, etc)
 
@@ -131,7 +138,8 @@ class Series {
         _dominantColor = dominantColor,
         _anilistPosterUrl = anilistPoster,
         _anilistBannerUrl = anilistBanner,
-        _primaryAnilistId = primaryAnilistId ?? anilistMappings.firstOrNull?.anilistId;
+        _primaryAnilistId = primaryAnilistId ?? anilistMappings.firstOrNull?.anilistId,
+        _isHidden = isHidden;
 
   Series copyWith({
     String? name,
@@ -613,7 +621,6 @@ class Series {
 
   /// JSON serialization
   Map<String, dynamic> toJson() {
-    if (isHidden) log('name: $name isHidden');
     return {
       'name': name,
       'path': path.path, //not nullable
@@ -759,11 +766,11 @@ class Series {
         dominantColor: dominantColor,
         anilistPoster: json['anilistPosterUrl'] as String?,
         anilistBanner: json['anilistBannerUrl'] as String?,
-        isHidden: json['isHidden'] as bool? ?? false,
         // anilistData is not serialized directly, but retrieved on demand
         // preferredPosterSource and preferredBannerSource
         // are null by default to be set by the settings
       );
+      series.isHidden = (json['isHidden'] as bool? ?? false) == true;
 
       // Set primary Anilist ID if available
       try {

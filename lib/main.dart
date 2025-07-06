@@ -217,45 +217,9 @@ class _AppContainerState extends State<AppContainer> {
   bool _initialized = false;
 
   @override
-  void initState() {
-    super.initState();
-    _initializeApp();
-  }
-
-  @override
   void dispose() {
     disposeSystemMouseCursor();
     super.dispose();
-  }
-
-  Future<void> _initializeApp() async {
-    try {
-      // Initialize AppLinks
-      final appLinks = AppLinks();
-
-      // Handle initial deep link
-      final initialUri = await appLinks.getInitialLink();
-      if (initialUri != null) {
-        Manager.initialDeepLink = initialUri;
-      }
-
-      nextFrame(() {
-        final appTheme = Provider.of<AppTheme>(context, listen: false);
-        appTheme.setEffect(appTheme.windowEffect, context);
-      });
-
-      // Get providers
-      final settings = Provider.of<SettingsManager>(context, listen: false);
-      final libraryProvider = Provider.of<Library>(context, listen: false);
-
-      // Initialize settings
-      settings.applySettings(context);
-
-      // Initialize library
-      await libraryProvider.initialize(context);
-    } catch (e, st) {
-      logErr('Error during app initialization', e, st);
-    }
   }
 
   @override
@@ -997,6 +961,7 @@ void setIcon() async {
   }
 }
 
+// TODO fix the fact that HIDDEN series are not fetched from anilist when loading library (probably query asks for lists instead of full library of user)
 // TODO fix the fact that there are 2 _inidializeApp functions, one in main.dart and one in splash_screen.dart
 // TODO remember collapse/expanded state of seasons in series
 // TODO cache anime info

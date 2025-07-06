@@ -51,73 +51,72 @@ class ActivityGraph extends StatelessWidget {
       activityMap[dateCounter] = activityForDate ?? AnilistActivityHistory(date: dateCounter.millisecondsSinceEpoch ~/ 1000, level: 0, amount: 0);
       dateCounter = dateCounter.add(const Duration(days: 1));
     }
-    log('Activity map created with ${activityMap.length} entries:\n ${activityMap.entries.toList().reversed.map((e) => '${e.key.pretty()}: ${e.value.amount}').join('\n')}');
+    // log('Activity map created with ${activityMap.length} entries:\n ${activityMap.entries.toList().reversed.map((e) => '${e.key.pretty()}: ${e.value.amount}').join('\n')}');
 
     // log('Start date: ${startDate.pretty()}, End date: ${now.pretty()}');
     // log('rows: $rows, columns: $columns, cellSize: $cellSize, cellSpacing: $cellSpacing');
 
-    return LayoutBuilder(builder: (context, constraints) {
-      return SizedBox(
-        width: constraints.maxWidth,
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Align(
-              alignment: Alignment.centerLeft,
-              child: HeatMap(
-                startDate: earliest,
-                endDate: nowDate,
-                colorsets: {
-                  0: colorScale[0], // Level 0 (empty)
-                  1: colorScale[1], // Level 1 (light)
-                  2: colorScale[2], // Level 2 (medium)
-                  5: colorScale[3], // Level 3 (dark)
-                  10: colorScale[4], // Level 4 (darkest)
-                },
-                datasets: activityMap.map((date, activity) => MapEntry(date, activity.amount)),
-                borderRadius: 2,
-                fontSize: 0,
-                colorMode: ColorMode.color,
-                defaultColor: colorScale[0],
-                size: (constraints.maxWidth - 600) / (51 / 2), // 7 days per week
-                showColorTip: false,
-                onClick: (p0) => log(
-                  'Clicked on date: ${DateFormat('yyyy-MM-dd').format(p0)} with activity: ${activityMap[p0]?.amount ?? 0}',
-                ),
+    return SizedBox(
+      height: 200,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Align(
+            alignment: Alignment.centerLeft,
+            child: HeatMap(
+              startDate: earliest,
+              endDate: nowDate,
+              colorsets: {
+                0: colorScale[0], // Level 0 (empty)
+                1: colorScale[1], // Level 1 (light)
+                2: colorScale[2], // Level 2 (medium)
+                5: colorScale[3], // Level 3 (dark)
+                10: colorScale[4], // Level 4 (darkest)
+              },
+              datasets: activityMap.map((date, activity) => MapEntry(date, activity.amount)),
+              borderRadius: 2,
+              colorTipSize: 15,
+              fontSize: 0,
+              colorMode: ColorMode.color,
+              defaultColor: colorScale[0],
+              size: (ScreenUtils.width - ScreenUtils.kInfoBarWidth - 650) / (51 / 2), // 7 days per week
+              showColorTip: false,
+              onClick: (p0) => log(
+                'Clicked on date: ${DateFormat('yyyy-MM-dd').format(p0)} with activity: ${activityMap[p0]?.amount ?? 0}',
               ),
             ),
-            HDiv(20),
-            Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                for (int i = 0; i < colorScale.length; i++)
-                  Padding(
-                    padding: const EdgeInsets.all(5.0),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          width: 20,
-                          height: 20,
-                          decoration: BoxDecoration(
-                            color: colorScale[i],
-                            borderRadius: BorderRadius.circular(4),
-                          ),
+          ),
+          HDiv(20),
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              for (int i = 0; i < colorScale.length; i++)
+                Padding(
+                  padding: const EdgeInsets.all(5.0),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 20,
+                        height: 20,
+                        decoration: BoxDecoration(
+                          color: colorScale[i],
+                          borderRadius: BorderRadius.circular(4),
                         ),
-                        HDiv(5),
-                        Text(
-                          'Amount ${i + 1}',
-                          style: Manager.bodyStyle,
-                        ),
-                      ],
-                    ),
+                      ),
+                      HDiv(5),
+                      Text(
+                        'Amount ${i + 1}',
+                        style: Manager.bodyStyle,
+                      ),
+                    ],
                   ),
-              ],
-            ),
-          ],
-        ),
-      );
-    });
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
   }
 }
 

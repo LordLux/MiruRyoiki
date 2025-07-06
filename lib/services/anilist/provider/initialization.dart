@@ -35,13 +35,15 @@ extension AnilistProviderInitialization on AnilistProvider {
 
     // Start background sync
     startBackgroundSync();
+    
+    printHiddenSeries('after anilist provider initialization');
 
     _isReady = true;
     _isLoading = false;
     notifyListeners();
     logTrace('2 | AnilistProvider initialized: $_isInitialized${isOnline ? '' : ' (Offline)'}');
   }
-  
+
   // DISPOSE IS IN MAIN FILE
 
   /// Ensure the provider is initialized

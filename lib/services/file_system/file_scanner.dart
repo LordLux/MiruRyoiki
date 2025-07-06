@@ -139,12 +139,12 @@ class FileScanner {
           relatedMedia: relatedMedia,
         ) ??
         Series(
-          name: name,
-          path: PathString(seriesDir.path),
-          folderPosterPath: posterPath,
-          folderBannerPath: bannerPath,
-          seasons: seasons,
-          relatedMedia: relatedMedia,
+          name: name, // replace
+          path: PathString(seriesDir.path), // replace
+          folderPosterPath: posterPath, // replace
+          folderBannerPath: bannerPath, // replace
+          seasons: seasons, // replace
+          relatedMedia: relatedMedia, // replace
           preferredPosterSource: existingSeries?.preferredPosterSource,
           preferredBannerSource: existingSeries?.preferredBannerSource,
           anilistMappings: existingSeries?.anilistMappings ?? [],
@@ -152,6 +152,7 @@ class FileScanner {
           primaryAnilistId: existingSeries?.primaryAnilistId,
           anilistPoster: existingSeries?.anilistPosterUrl,
           anilistBanner: existingSeries?.anilistBannerUrl,
+          isHidden: existingSeries?.isHidden ?? false,
         );
   }
 

@@ -146,7 +146,7 @@ extension LibraryAnilistIntegration on Library {
         await Future.delayed(const Duration(milliseconds: 500));
       }
     }
-
+    printHiddenSeries('after fetching Anilist posters');
     notifyListeners();
   }
 
@@ -249,34 +249,45 @@ extension LibraryAnilistIntegration on Library {
 
   /// Unlink a series from Anilist
   Future<bool> updateSeriesMappings(Series series, List<AnilistMapping> mappings) async {
+    final originalIsHidden = series.isHidden;
     series.anilistMappings = mappings;
     _isDirty = true;
 
     if (mappings.isEmpty) {
       series.anilistData = null;
       series.primaryAnilistId = null;
-      series.isHidden = false;
-    }
+      // Preserve isHidden for unlinked series
+      // isHidden is already preserved since we're not changing it
+    } else {
+      // Set primaryAnilistId if needed
+      series.primaryAnilistId ??= mappings.first.anilistId;
 
-    if (series.primaryAnilistId == null && mappings.isNotEmpty) {
-      series.primaryAnilistId = mappings.first.anilistId;
-      if (mappings.first.anilistData != null) {
-        // Check if any mapping has hiddenFromStatusLists set
-        series.isHidden = series.shouldBeHidden;
+      // Handle isHidden property only once - for all linked series
+      if (series.isLinked) {
+        bool foundExplicitHiddenValue = false;
+
+        // Check all mappings for explicit hidden status
+        for (final mapping in mappings) {
+          if (mapping.anilistData != null && mapping.anilistData?.hiddenFromStatusLists != null) {
+            series.isHidden = mapping.anilistData!.hiddenFromStatusLists!;
+            foundExplicitHiddenValue = true;
+            logDebug('Found explicit hidden value for ${series.name}: ${series.isHidden}');
+            break;
+          }
+        }
+
+        // If no explicit value, keep original setting
+        if (!foundExplicitHiddenValue) {
+          series.isHidden = originalIsHidden;
+          logDebug('No explicit hidden value for ${series.name}, keeping original: ${series.isHidden}');
+        }
       }
     }
+
+    if (series.isHidden || originalIsHidden) log('Series ${series.name} is now: $originalIsHidden -> ${series.isHidden}');
 
     // Set the flag indicating a series was modified
-    if (homeKey.currentState != null) //
-      homeKey.currentState!.seriesWasModified = true;
-
-    // Update series hidden status based on Anilist data
-    for (final mapping in mappings) {
-      if (mapping.anilistData != null) {
-        series.isHidden = mapping.anilistData?.isHidden ?? false;
-        break;
-      }
-    }
+    if (homeKey.currentState != null) homeKey.currentState!.seriesWasModified = true;
 
     await _saveLibrary();
     notifyListeners();

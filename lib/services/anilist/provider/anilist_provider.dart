@@ -5,6 +5,7 @@ import 'package:fluent_ui/fluent_ui.dart';
 
 import '../../../../models/anilist/user_list.dart';
 import '../../../../models/anilist/anime.dart';
+import '../../../functions.dart';
 import '../../../models/anilist/mutation.dart';
 import '../../../utils/time_utils.dart';
 import '../../../utils/path_utils.dart';
