@@ -7,7 +7,11 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:logger/logger.dart';
 import 'package:path/path.dart' as p;
+import 'package:package_info_plus/package_info_plus.dart';
 
+import '../enums.dart';
+import '../manager.dart';
+import '../settings.dart';
 import 'time_utils.dart';
 import 'path_utils.dart';
 
@@ -23,6 +27,7 @@ File? _sessionLogFile;
 /// Call this once at app startup
 Future<void> initializeLoggingSession() async {
   try {
+    PackageInfo packageInfo = await PackageInfo.fromPlatform();
     // Create session ID with timestamp that's safe for filenames
     final sessionStart = DateTime.now();
     _sessionId = '${sessionStart.year}${sessionStart.month.toString().padLeft(2, '0')}${sessionStart.day.toString().padLeft(2, '0')}_${sessionStart.hour.toString().padLeft(2, '0')}${sessionStart.minute.toString().padLeft(2, '0')}${sessionStart.second.toString().padLeft(2, '0')}';
@@ -36,20 +41,76 @@ Future<void> initializeLoggingSession() async {
       await logsDir.create(recursive: true);
     }
 
+    // Clean up old log files before creating new session
+    await _cleanupOldLogs(logsDir);
+
     // Create session log file
     final logFileName = 'log_$_sessionId.txt';
     _sessionLogFile = File(p.join(logsDir.path, logFileName));
 
     // Write session header
-    await _writeToLogFile('=== MiruRyoiki Error Log Session Started ===');
+    await _writeToLogFile('=== MiruRyoiki Log Session Started ===');
     await _writeToLogFile('Session ID: $_sessionId');
     await _writeToLogFile('Start Time: ${sessionStart.toIso8601String()}');
-    await _writeToLogFile('App Version: ${Platform.resolvedExecutable}');
+    await _writeToLogFile('App Version: ${packageInfo.version} (${packageInfo.buildNumber})');
+    await _writeToLogFile('Arguments: ${Manager.args}');
     await _writeToLogFile('Platform: ${Platform.operatingSystem} ${Platform.operatingSystemVersion}');
+    await _writeToLogFile('File Log Level: ${_getCurrentFileLogLevel().name_}');
     await _writeToLogFile('===========================================\n');
   } catch (e) {
     // Fallback logging to console if file operations fail
     developer.log('Failed to initialize logging session: $e');
+  }
+}
+
+/// Clean up old log files based on retention settings
+Future<void> _cleanupOldLogs(Directory logsDir) async {
+  try {
+    final retentionDays = _getLogRetentionDays();
+    if (retentionDays <= 0) {
+      developer.log('Log retention is disabled (0 days), skipping cleanup.');
+      return;
+    }
+
+    final cutoffDate = DateTime.now().subtract(Duration(days: retentionDays));
+
+    await for (final entity in logsDir.list()) {
+      if (entity is File && entity.path.contains('log_') && entity.path.endsWith('.txt')) {
+        try {
+          final stat = await entity.stat();
+          if (stat.modified.isBefore(cutoffDate)) {
+            await entity.delete();
+            developer.log('Deleted old log file: ${p.basename(entity.path)}');
+          }
+        } catch (e) {
+          // Skip files that can't be accessed
+          developer.log('Could not check/delete log file ${entity.path}: $e');
+        }
+      }
+    }
+  } catch (e) {
+    developer.log('Error during log cleanup: $e');
+  }
+}
+
+/// Get current file log level from settings, with fallback
+LogLevel _getCurrentFileLogLevel() {
+  try {
+    // Try to get from settings if available
+    return SettingsManager().fileLogLevel;
+  } catch (e) {
+    // Fallback to error level if settings not available
+    return LogLevel.error;
+  }
+}
+
+/// Get log retention days from settings, with fallback
+int _getLogRetentionDays() {
+  try {
+    return SettingsManager().logRetentionDays;
+  } catch (e) {
+    // Fallback to 7 days if settings not available
+    return 7;
   }
 }
 
@@ -106,22 +167,69 @@ void log(
   if (!kDebugMode) print(msg);
 }
 
+/// Generic logging function that handles all log levels
+void _logWithLevel(
+  LogLevel level,
+  final dynamic msg, {
+  final Color color = Colors.purpleAccent,
+  final Color bgColor = Colors.transparent,
+  Object? error,
+  StackTrace? stackTrace,
+  bool? splitLines = false,
+}) {
+  // Always do console logging with existing logic
+  log(msg, color: color, bgColor: bgColor, error: error, stackTrace: stackTrace, splitLines: splitLines);
+
+  // Check if we should write to file
+  final currentFileLevel = _getCurrentFileLogLevel();
+  if (level.shouldLog(currentFileLevel)) {
+    _writeLogToSessionFile(level, msg, error, stackTrace);
+  }
+}
+
+/// Write log entry to the session log file
+void _writeLogToSessionFile(LogLevel level, dynamic msg, Object? error, StackTrace? stackTrace) {
+  if (_sessionLogFile == null || _sessionId == null) return;
+
+  // Format log entry
+  final timestamp = DateTime.now().toIso8601String();
+  final logContent = StringBuffer();
+  logContent.writeln('[$timestamp] ${level.name_.toUpperCase()}: $msg');
+
+  if (error != null) {
+    logContent.writeln('Exception: $error');
+  }
+
+  if (stackTrace != null && (level == LogLevel.error || level == LogLevel.debug || level == LogLevel.trace)) {
+    logContent.writeln('Stack Trace:');
+    logContent.writeln(stackTrace.toString());
+  }
+
+  logContent.writeln('---');
+
+  // Write asynchronously without blocking the main thread
+  _writeToLogFile(logContent.toString()).catchError((e) {
+    // Silent catch to prevent infinite error loops
+    developer.log('Failed to write ${level.name_} to session log: $e');
+  });
+}
+
 /// Logs a trace message with the specified [msg] and sets the text color to Teal.
 void logTrace(final dynamic msg, {bool? splitLines}) {
   if (!doLogTrace) return;
-  log(msg, color: Colors.tealAccent, splitLines: splitLines);
+  _logWithLevel(LogLevel.trace, msg, color: Colors.tealAccent, splitLines: splitLines);
 }
 
 /// Logs a debug message with the specified [msg]
 void logDebug(final dynamic msg, {bool? splitLines}) {
   if (!doLogRelease && !kDebugMode) return;
-  log(msg, color: Colors.amber, bgColor: Colors.transparent, splitLines: splitLines);
+  _logWithLevel(LogLevel.debug, msg, color: Colors.amber, bgColor: Colors.transparent, splitLines: splitLines);
 }
 
 /// Safely write to the session log file with error handling
 Future<void> _writeToLogFile(String content) async {
   if (_sessionLogFile == null) return;
-  
+
   try {
     // Ensure file exists and append content with newline
     await _sessionLogFile!.writeAsString('$content\n', mode: FileMode.append, flush: true);
@@ -137,43 +245,25 @@ void logErr(final dynamic msg, [Object? error, StackTrace? stackTrace]) {
   logger.e(msg, error: error, stackTrace: actualStackTrace, time: now);
   if (!kDebugMode) print(msg); // print error to terminal in release mode
   if (doLogComplexError) log(msg, color: Colors.red, bgColor: Colors.transparent, error: error, stackTrace: actualStackTrace);
-  
-  // Write to session log file asynchronously
-  _writeErrorToSessionLog(msg, error, actualStackTrace);
+
+  // Use new level-based logging
+  _logWithLevel(LogLevel.error, msg, color: Colors.red, error: error, stackTrace: actualStackTrace);
 }
 
-/// Write error details to the session log file
-void _writeErrorToSessionLog(dynamic msg, Object? error, StackTrace stackTrace) {
-  if (_sessionLogFile == null || _sessionId == null) return;
-  
-  // Format error entry
-  final timestamp = DateTime.now().toIso8601String();
-  final errorContent = StringBuffer();
-  errorContent.writeln('[$timestamp] ERROR: $msg');
-  
-  if (error != null) {
-    errorContent.writeln('Exception: $error');
-  }
-  
-  errorContent.writeln('Stack Trace:');
-  errorContent.writeln(stackTrace.toString());
-  errorContent.writeln('---');
-  
-  // Write asynchronously without blocking the main thread
-  _writeToLogFile(errorContent.toString()).catchError((e) {
-    // Silent catch to prevent infinite error loops
-    developer.log('Failed to write error to session log: $e');
-  });
+/// Logs a warning message with the specified [msg] and sets the text color to Orange.
+void logWarn(final dynamic msg, {bool? splitLines}) {
+  _logWithLevel(LogLevel.warning, msg, color: Colors.orange, splitLines: splitLines);
 }
 
 /// Logs an info message with the specified [msg] and sets the text color to Very Light Blue.
-void logInfo(final dynamic msg, {bool? splitLines}) => log(msg, color: Colors.white, splitLines: splitLines);
-
-/// Logs a warning message with the specified [msg] and sets the text color to Orange.
-void logWarn(final dynamic msg, {bool? splitLines}) => log(msg, color: Colors.amber, splitLines: splitLines);
+void logInfo(final dynamic msg, {bool? splitLines}) {
+  _logWithLevel(LogLevel.info, msg, color: Colors.white, splitLines: splitLines);
+}
 
 /// Logs a success message with the specified [msg] and sets the text color to Green.
-void logSuccess(final dynamic msg, {bool? splitLines}) => log(msg, color: Colors.green, splitLines: splitLines);
+void logSuccess(final dynamic msg, {bool? splitLines}) {
+  _logWithLevel(LogLevel.info, msg, color: Colors.green, splitLines: splitLines);
+}
 
 /// Returns the escape code for the specified text color.
 ///

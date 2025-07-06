@@ -59,6 +59,13 @@ class SettingsManager extends ChangeNotifier {
   DominantColorSource get dominantColorSource => DominantColorSourceX.fromString(_getString('dominantColorSource', defaultValue: DominantColorSource.poster.name_));
   set dominantColorSource(DominantColorSource value) => _setString('dominantColorSource', value.name_);
 
+  // Logging
+  LogLevel get fileLogLevel => LogLevelX.fromString(_getString('fileLogLevel', defaultValue: LogLevel.error.name_));
+  set fileLogLevel(LogLevel value) => _setString('fileLogLevel', value.name_);
+
+  int get logRetentionDays => _getInt('logRetentionDays', defaultValue: 7);
+  set logRetentionDays(int value) => _setInt('logRetentionDays', value);
+
   // // Generic getters with type safety
   bool _getBool(String key, {required bool defaultValue}) {
     if (!_settings.containsKey(key)) {
@@ -83,6 +90,17 @@ class SettingsManager extends ChangeNotifier {
     return defaultValue;
   }
 
+  int _getInt(String key, {required int defaultValue}) {
+    if (!_settings.containsKey(key)) {
+      // logTrace('Key $key not found in settings, returning default value: $defaultValue');
+      return defaultValue;
+    }
+    final value = _settings[key];
+    if (value is int) return value;
+    if (value is String) return int.tryParse(value) ?? defaultValue;
+    return defaultValue;
+  }
+
   String _getString(String key, {required String defaultValue}) {
     if (!_settings.containsKey(key)) {
       // logTrace('Key $key not found in settings, returning default value: $defaultValue');
@@ -101,6 +119,13 @@ class SettingsManager extends ChangeNotifier {
   }
 
   void _setDouble(String key, double value) {
+    if (_settings[key] == value) return; // No change
+    _settings[key] = value;
+    _saveToPrefs(key, value.toString());
+    notifyListeners();
+  }
+
+  void _setInt(String key, int value) {
     if (_settings[key] == value) return; // No change
     _settings[key] = value;
     _saveToPrefs(key, value.toString());

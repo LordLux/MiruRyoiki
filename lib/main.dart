@@ -19,6 +19,7 @@ import 'package:window_manager/window_manager.dart';
 import 'package:windows_single_instance/windows_single_instance.dart';
 import 'package:material_symbols_icons/material_symbols_icons.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:args/args.dart';
 
 import 'services/anilist/provider/anilist_provider.dart';
 import 'services/navigation/dialogs.dart';
@@ -63,14 +64,16 @@ final GlobalKey<AccountsScreenState> accountsKey = GlobalKey<AccountsScreenState
 final GlobalKey<State<StatefulWidget>> paletteOverlayKey = GlobalKey<State<StatefulWidget>>();
 
 void main(List<String> args) async {
+
   WidgetsFlutterBinding.ensureInitialized();
 
   await WindowsSingleInstance.ensureSingleInstance(
-    args,
-    "miruryoioki",
-    onSecondWindow: (args) => log(args),
+    Manager.parsedArgs(args).arguments,
+    "miruryoiki",
+    onSecondWindow: (secondInstanceArgs) {
+      log("Second instance args: $secondInstanceArgs");
+    },
   );
-  Manager.parseArgs(args);
 
   // Only run on Windows
   if (!Platform.isWindows) throw UnimplementedError('This app is only supported on Windows (for now).');
@@ -84,6 +87,8 @@ void main(List<String> args) async {
 
   // Initialize session-based error logging
   await initializeLoggingSession();
+  
+  Manager.parseArgs();
 
   // Load environment variables
   await dotenv.load(fileName: '.env');

@@ -14,6 +14,8 @@ enum DominantColorSource { poster, banner }
 
 enum LibraryColorView { alwaysDominant, alwaysAccent, hoverDominant, hoverAccent, none }
 
+enum LogLevel { none, error, warning, info, debug, trace }
+
 // EXTENSIONS
 extension ThemeX on ThemeMode {
   String get name_ => enumToString(this);
@@ -73,6 +75,52 @@ extension PosterSourceX on ImageSource {
         value,
         ImageSource.values,
         defaultValue,
+      );
+}
+
+extension LogLevelX on LogLevel {
+  String get name_ => enumToString(this);
+
+  String get displayName {
+    switch (this) {
+      case LogLevel.none:
+        return 'None';
+      case LogLevel.error:
+        return 'Error';
+      case LogLevel.warning:
+        return 'Warning';
+      case LogLevel.info:
+        return 'Info';
+      case LogLevel.debug:
+        return 'Debug';
+      case LogLevel.trace:
+        return 'Trace';
+    }
+  }
+
+  int get priority {
+    switch (this) {
+      case LogLevel.none:
+        return 0;
+      case LogLevel.error:
+        return 1;
+      case LogLevel.warning:
+        return 2;
+      case LogLevel.info:
+        return 3;
+      case LogLevel.debug:
+        return 4;
+      case LogLevel.trace:
+        return 5;
+    }
+  }
+
+  bool shouldLog(LogLevel currentLevel) => priority <= currentLevel.priority;
+
+  static LogLevel fromString(String value, {LogLevel? defaultValue}) => fromStringX<LogLevel>(
+        value,
+        LogLevel.values,
+        defaultValue ?? LogLevel.error,
       );
 }
 
