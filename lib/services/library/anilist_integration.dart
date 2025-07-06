@@ -146,7 +146,7 @@ extension LibraryAnilistIntegration on Library {
         await Future.delayed(const Duration(milliseconds: 500));
       }
     }
-    printHiddenSeries('after fetching Anilist posters');
+    
     notifyListeners();
   }
 
@@ -283,8 +283,6 @@ extension LibraryAnilistIntegration on Library {
         }
       }
     }
-
-    if (series.isHidden || originalIsHidden) log('Series ${series.name} is now: $originalIsHidden -> ${series.isHidden}');
 
     // Set the flag indicating a series was modified
     if (homeKey.currentState != null) homeKey.currentState!.seriesWasModified = true;

@@ -51,7 +51,6 @@ extension LibraryPersistence on Library {
 
           // log('1 | Loaded library from file (${_series.length} series, ${_series.map((s) => "${s.name}: ${(s.watchedPercentage*100).toInt()}%").join(',\n')})', splitLines: true);
           // Log loaded dominant colors for debugging
-          printHiddenSeries('after loading library');
 
           // Validate that we loaded series properly
           if (_series.isNotEmpty) {

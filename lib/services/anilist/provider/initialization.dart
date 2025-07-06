@@ -35,8 +35,6 @@ extension AnilistProviderInitialization on AnilistProvider {
 
     // Start background sync
     startBackgroundSync();
-    
-    printHiddenSeries('after anilist provider initialization');
 
     _isReady = true;
     _isLoading = false;

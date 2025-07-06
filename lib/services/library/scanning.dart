@@ -24,45 +24,33 @@ extension LibraryScanning on Library {
       // Create a map of existing series for quick lookup
       final existingSeriesMap = {for (var s in _series) s.path: s};
 
-      printHiddenSeries('A');
       // Track current series count to identify new ones
       final previousSeriesCount = _series.length;
       final previousSeriesPaths = _series.map((s) => s.path).toSet();
 
-      printHiddenSeries('B');
       final scannedSeries = await _fileScanner.scanLibrary(_libraryPath!, existingSeriesMap);
       
-      
-
-      printHiddenSeries('C');
       // Identify new series
       final newSeries = scannedSeries.where((s) => !previousSeriesPaths.contains(s.path)).toList();
 
-      printHiddenSeries('D');
       // Identify removed series (exist in memory but not on disk anymore)
       final scannedPaths = scannedSeries.map((s) => s.path).toSet();
       final removedSeries = _series.where((s) => !scannedPaths.contains(s.path)).toList();
       
-      printHiddenSeries('E');
 
       // Update existing series (maintain same instance but update content)
       for (final scannedSeries in scannedSeries) {
         final existingIndex = _series.indexWhere((s) => s.path == scannedSeries.path);
         if (existingIndex >= 0) {
-          if (_series[existingIndex].isHidden) log('existing series ${_series[existingIndex].name} is Hidden');
-          if (scannedSeries.isHidden) log('scanned series ${scannedSeries.name} is Hidden');
           // Replace with updated version while preserving metadata
           final mergedSeries = _mergeSeriesMetadata(_series[existingIndex], scannedSeries);
-          if (mergedSeries.isHidden) log('merged series ${mergedSeries.name} is still Hidden');
           _series[existingIndex] = mergedSeries;
         }
       }
-      printHiddenSeries('F');
 
       // Update watched status from tracker
       _updateWatchedStatusAndResetThumbnailFetchFailedAttemptsCount();
 
-      printHiddenSeries('G');
       // Add new series
       if (newSeries.isNotEmpty) {
         logDebug('3 | Found ${newSeries.length} new series');
@@ -90,7 +78,6 @@ extension LibraryScanning on Library {
       else
         logErr('Error scanning library', e, stackTrace);
     } finally {
-      printHiddenSeries('after scanning library');
       _isLoading = false;
       notifyListeners();
     }
@@ -159,7 +146,6 @@ extension LibraryScanning on Library {
 
 /// Merges metadata from existing series with updated content from scanned series
 Series _mergeSeriesMetadata(Series existing, Series scanned) {
-  if (existing.isHidden || scanned.isHidden) log('${existing.name} ${existing.isHidden && scanned.isHidden ? 'both are hidden' : existing.isHidden ? 'existing is hidden' : 'scanned is hidden'}');
   return existing.copyWith(
     // Update basic properties
     name: scanned.name,

@@ -134,7 +134,7 @@ extension LibraryInitialization on Library {
           }
         }
       }
-      printHiddenSeries('after cache validation');
+      
       _cacheValidated = true;
       logDebug('4 | Cache validation complete');
       notifyListeners();
