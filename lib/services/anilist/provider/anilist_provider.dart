@@ -11,7 +11,7 @@ import '../../../utils/time_utils.dart';
 import '../../../utils/path_utils.dart';
 import '../../../utils/logging.dart';
 import '../../navigation/show_info.dart';
-import '../queries.dart';
+import '../queries/anilist_service.dart';
 
 // Include all the parts
 part 'initialization.dart';

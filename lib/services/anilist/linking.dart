@@ -1,7 +1,7 @@
 import '../../models/series.dart';
 import '../../models/anilist/anime.dart';
 import '../../utils/logging.dart';
-import 'queries.dart';
+import 'queries/anilist_service.dart';
 
 class SeriesLinkService {
   final AnilistService _anilistService;
