@@ -946,7 +946,7 @@ Future<void> _initializeSplashScreenWindow() async {
     await windowManager.setResizable(false);
     // await windowManager.setAlwaysOnTop(true); keep commented
     await windowManager.setTitle(Manager.appTitle);
-    // await windowManager.setIgnoreMouseEvents(true);
+    await windowManager.setIgnoreMouseEvents(true);
     await windowManager.show();
     await windowManager.focus();
     setIcon();
