@@ -166,18 +166,29 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
       content: AnimatedBuilder(
         animation: _splashOpacityController,
         builder: (context, child) {
-          return Opacity(
-            opacity: 1 - _opacityAnimation.value,
-            child: Center(
-              child: SizedBox(
-                width: 150,
-                height: 150,
-                child: Image.file(
-                  File(iconPath),
-                  errorBuilder: (_, __, ___) => const Icon(FluentIcons.picture, size: 100),
+          return Stack(
+            alignment: Alignment.center,
+            children: [
+              Container(
+                // TODO make this fade from completely opaque to transparent as soon as it starts for 1s, so the time when the acrylic background loads from black to acrylic isn't visible and it just looks like a smooth transition
+                decoration: BoxDecoration(
+                  color: FluentTheme.of(context).micaBackgroundColor.withOpacity(0.15),
                 ),
               ),
-            ),
+              Positioned.fill(
+                child: Opacity(
+                  opacity: 1 - _opacityAnimation.value,
+                  child: SizedBox(
+                    width: 150,
+                    height: 150,
+                    child: Image.file(
+                      File(iconPath),
+                      errorBuilder: (_, __, ___) => const Icon(FluentIcons.picture, size: 100),
+                    ),
+                  ),
+                ),
+              ),
+            ],
           );
         },
       ),
@@ -187,10 +198,10 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
 
 Future<void> initializeAndMorphWindow() async {
   await windowManager.setFullScreen(false);
+  await Future.delayed(Duration(milliseconds: 20));
   await windowManager.unmaximize();
-  
-  await Future.delayed(Duration(milliseconds: 50));
-  
+  await Future.delayed(Duration(milliseconds: 20));
+
   // First set the basic window properties
   await windowManager.setMinimumSize(Size(ScreenUtils.kDefaultMinWindowWidth, ScreenUtils.kDefaultMinWindowHeight));
   await windowManager.setMaximumSize(Size(ScreenUtils.kDefaultMaxWindowWidth, ScreenUtils.kDefaultMaxWindowHeight));
