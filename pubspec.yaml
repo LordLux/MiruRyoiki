@@ -29,7 +29,7 @@ dependencies:
   app_links: ^6.4.0
   flutter_acrylic: ^1.1.4
   system_theme: ^3.1.2
-  window_manager: ^0.4.3
+  window_manager: ^0.5.1
   open_file: ^3.5.10
   shared_preferences: ^2.5.3
   recase: ^4.1.0

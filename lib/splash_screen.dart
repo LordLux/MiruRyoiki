@@ -77,9 +77,13 @@ class SplashScreen extends StatefulWidget {
   State<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderStateMixin {
+class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMixin {
   late AnimationController _splashOpacityController;
   late Animation<double> _opacityAnimation;
+
+  // Add a separate controller and animation for the background fade
+  late AnimationController _backdropFadeController;
+  late Animation<double> _backdropOpacityAnimation;
 
   // AppLinks for deep linking
   late final AppLinks _appLinks;
@@ -99,8 +103,23 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
       end: 0.0,
     ).animate(_splashOpacityController);
 
+    // New background fade animation setup - 1 second duration
+    _backdropFadeController = AnimationController(
+      duration: const Duration(seconds: 1),
+      vsync: this,
+    );
+
+    _backdropOpacityAnimation = Tween<double>(
+      begin: 1.0, // Start fully opaque
+      end: 0.0, // End fully transparent
+    ).animate(CurvedAnimation(
+      parent: _backdropFadeController,
+      curve: Curves.easeOut, // Smooth fade out
+    ));
+
     // Animate opacity out
     _splashOpacityController.forward();
+    Future.delayed(Duration(milliseconds: 1000), () => _backdropFadeController.forward());
   }
 
   Future<String?> _initializeApp() async {
@@ -153,6 +172,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
   @override
   void dispose() {
     _splashOpacityController.dispose();
+    _backdropFadeController.dispose();
     super.dispose();
   }
 
@@ -164,15 +184,14 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
       beforeNavigate: () async => await initializeAndMorphWindow(),
       onNavigate: widget.onInitComplete,
       content: AnimatedBuilder(
-        animation: _splashOpacityController,
+        animation: Listenable.merge([_splashOpacityController, _backdropFadeController]),
         builder: (context, child) {
           return Stack(
             alignment: Alignment.center,
             children: [
               Container(
-                // TODO make this fade from completely opaque to transparent as soon as it starts for 1s, so the time when the acrylic background loads from black to acrylic isn't visible and it just looks like a smooth transition
                 decoration: BoxDecoration(
-                  color: FluentTheme.of(context).micaBackgroundColor.withOpacity(0.15),
+                  color: FluentTheme.of(context).micaBackgroundColor.withOpacity(_backdropOpacityAnimation.value),
                 ),
               ),
               Positioned.fill(
@@ -211,7 +230,8 @@ Future<void> initializeAndMorphWindow() async {
   win.maxSize = Size(ScreenUtils.kDefaultMaxWindowWidth, ScreenUtils.kDefaultMaxWindowHeight);
 
   // Then morph to the saved state
-  await morphToSavedWindowState();
+  // await morphToSavedWindowState();
+  setToSavedWindowStateWithoutAnimation();
 
   // Finally, ensure window is visible and focused
   await windowManager.show();
@@ -222,8 +242,18 @@ Future<void> initializeAndMorphWindow() async {
   await windowManager.setResizable(true);
 }
 
+Future<void> setToSavedWindowStateWithoutAnimation() async {
+  final savedState = await WindowStateService.loadWindowState();
+  await Future.delayed(Duration(milliseconds: 500));
+  if (savedState != null) {
+    await windowManager.setSize(Size(savedState['width'] ?? 800.0, savedState['height'] ?? 600.0));
+    await windowManager.setPosition(Offset(savedState['x'] ?? 100.0, savedState['y'] ?? 100.0));
+  }
+}
+
 Future<void> morphToSavedWindowState() async {
   final savedState = await WindowStateService.loadWindowState();
+  await Future.delayed(Duration(milliseconds: 1000));
   if (savedState != null) {
     // Get current window position and size for animation start point
     final currentSize = await windowManager.getSize();
