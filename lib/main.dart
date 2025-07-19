@@ -382,7 +382,7 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
       scrollController: _libraryMap['controller'] as ScrollController,
     );
 
-    nextFrame(() {
+    nextFrame(() async {
       final navManager = Provider.of<NavigationManager>(context, listen: false);
       final pane = _navigationMap[homeIndex]!;
       navManager.pushPane(pane['id'], pane['title']);
