@@ -186,23 +186,30 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
       content: AnimatedBuilder(
         animation: Listenable.merge([_splashOpacityController, _backdropFadeController]),
         builder: (context, child) {
+          final double size = 160;
           return Stack(
             alignment: Alignment.center,
             children: [
               Container(
-                decoration: BoxDecoration(
-                  color: FluentTheme.of(context).micaBackgroundColor.withOpacity(_backdropOpacityAnimation.value),
-                ),
+                width: ScreenUtils.kDefaultMinWindowWidth,
+                height: ScreenUtils.kDefaultMinWindowHeight,
+                decoration: BoxDecoration(color: FluentTheme.of(context).micaBackgroundColor.withOpacity(_backdropOpacityAnimation.value)),
               ),
               Positioned.fill(
                 child: Opacity(
                   opacity: 1 - _opacityAnimation.value,
-                  child: SizedBox(
-                    width: 150,
-                    height: 150,
-                    child: Image.file(
-                      File(iconPath),
-                      errorBuilder: (_, __, ___) => const Icon(FluentIcons.picture, size: 100),
+                  child: SizedBox.expand(
+                    child: Container(
+                      alignment: Alignment.center,
+                      width: size,
+                      height: size,
+                      child: Image.file(
+                        File(iconPath),
+                        fit: BoxFit.cover,
+                        width: size,
+                        height: size,
+                        errorBuilder: (_, __, ___) => Icon(FluentIcons.picture, size: size),
+                      ),
                     ),
                   ),
                 ),
@@ -246,8 +253,13 @@ Future<void> setToSavedWindowStateWithoutAnimation() async {
   final savedState = await WindowStateService.loadWindowState();
   await Future.delayed(Duration(milliseconds: 500));
   if (savedState != null) {
-    await windowManager.setSize(Size(savedState['width'] ?? 800.0, savedState['height'] ?? 600.0));
-    await windowManager.setPosition(Offset(savedState['x'] ?? 100.0, savedState['y'] ?? 100.0));
+    if (savedState['maximized'] == true) {
+      // For maximized windows, don't animate - just maximize
+      await windowManager.maximize();
+    } else {
+      await windowManager.setSize(Size(savedState['width'] ?? 800.0, savedState['height'] ?? 600.0));
+      await windowManager.setPosition(Offset(savedState['x'] ?? 100.0, savedState['y'] ?? 100.0));
+    }
   }
 }
 
