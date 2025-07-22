@@ -656,7 +656,7 @@ class LibraryScreenState extends State<LibraryScreen> {
               NormalButton(
                 tooltip: 'Refresh the library',
                 label: 'Refresh',
-                onPressed: () => library.reloadLibrary(),
+                onPressed: () => library.reloadLibrary(force: true),
               ),
               SizedBox(width: 8),
               SwitchButton(

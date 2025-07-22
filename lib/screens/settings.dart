@@ -483,7 +483,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         onPositive: () {
           // Refresh the library to show updated structure
           final library = Provider.of<Library>(context, listen: false);
-          library.reloadLibrary();
+          library.reloadLibrary(force: true);
         },
       );
     } catch (e, stackTrace) {
@@ -788,7 +788,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                         const SizedBox(width: 6),
                                         LoadingButton(
                                           label: 'Scan Library',
-                                          onPressed: () => library.reloadLibrary(),
+                                          onPressed: () => library.reloadLibrary(force: true),
                                           isLoading: library.isLoading,
                                           isSmall: true,
                                           isAlreadyBig: true,

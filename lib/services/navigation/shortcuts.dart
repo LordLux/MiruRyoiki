@@ -121,7 +121,7 @@ class _CustomKeyboardListenerState extends State<CustomKeyboardListener> {
         // Reload
         if (isCtrlPressed && event.logicalKey == LogicalKeyboardKey.keyR) {
           final library = Provider.of<Library>(context, listen: false);
-          library.reloadLibrary();
+          library.reloadLibrary(force: true);
         } else
         //
         // Esc
