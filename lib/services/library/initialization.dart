@@ -67,8 +67,9 @@ extension LibraryInitialization on Library {
     logTrace('Library initialized successfully');
   }
 
-  Future<void> reloadLibrary() async {
-    if (_libraryPath == null || _isLoading) return;
+  Future<void> reloadLibrary({bool force = false}) async {
+    if (_libraryPath == null) return;
+    if (!force && _isLoading) return;
     logDebug('Reloading Library...');
 
     snackBar('Reloading Library...', severity: InfoBarSeverity.info);
@@ -92,6 +93,7 @@ extension LibraryInitialization on Library {
     logDebug('Finished Reloading Library');
     snackBar('Library Reloaded', severity: InfoBarSeverity.success);
     notifyListeners();
+    Manager.setState();
   }
 
   Future<void> cacheValidation() async {
