@@ -50,7 +50,6 @@ class SeriesScreen extends StatefulWidget {
 
 class SeriesScreenState extends State<SeriesScreen> {
   // final ScrollController _scrollController = ScrollController();
-  Series? _series;
   late double _headerHeight;
   bool posterChangeDisabled = false;
   bool bannerChangeDisabled = false;
@@ -61,7 +60,7 @@ class SeriesScreenState extends State<SeriesScreen> {
   DeferredPointerHandlerLink deferredPointerLink = DeferredPointerHandlerLink();
   bool _isBannerHovering = false;
 
-  Series? get series => _series;
+  Series? get series => Provider.of<Library>(context).getSeriesByPath(widget.seriesPath);
 
   Color get dominantColor =>
       series?.dominantColor ?? //
@@ -73,21 +72,9 @@ class SeriesScreenState extends State<SeriesScreen> {
   void initState() {
     super.initState();
     _headerHeight = ScreenUtils.kMaxHeaderHeight;
-    _loadSeries();
     nextFrame(() {
       _loadAnilistDataForCurrentSeries();
     });
-  }
-
-  void _loadSeries() {
-    if (!mounted) return;
-
-    try {
-      final library = Provider.of<Library>(context, listen: false);
-      _series = library.getSeriesByPath(widget.seriesPath);
-    } catch (e) {
-      logErr('Failed to get library provider: $e');
-    }
   }
 
   ColorFilter get colorFilter => ColorFilter.matrix([
@@ -221,40 +208,46 @@ class SeriesScreenState extends State<SeriesScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (series == null) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text('Series not found', style: Manager.subtitleStyle),
-            VDiv(16),
-            NormalButton(
-              onPressed: widget.onBack,
-              tooltip: 'Go back to the library',
-              label: 'Back to Library',
+    return Selector<Library, Series?>(
+      selector: (_, library) => library.getSeriesByPath(widget.seriesPath),
+      shouldRebuild: (prev, next) => prev != next,
+      builder: (context, series, child) {
+        if (series == null) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text('Series not found', style: Manager.subtitleStyle),
+                VDiv(16),
+                NormalButton(
+                  onPressed: widget.onBack,
+                  tooltip: 'Go back to the library',
+                  label: 'Back to Library',
+                ),
+              ],
             ),
-          ],
-        ),
-      );
-    }
+          );
+        }
 
-    return DeferredPointerHandler(
-      key: ValueKey(series!.path),
-      link: deferredPointerLink,
-      child: AnimatedContainer(
-        duration: gradientChangeDuration,
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              dominantColor.withOpacity(series!.isLinked ? 0.5 : 0.15),
-              Colors.transparent,
-            ],
+        return DeferredPointerHandler(
+          key: ValueKey(series!.path),
+          link: deferredPointerLink,
+          child: AnimatedContainer(
+            duration: gradientChangeDuration,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  dominantColor.withOpacity(series!.isLinked ? 0.5 : 0.15),
+                  Colors.transparent,
+                ],
+              ),
+            ),
+            child: _buildSeriesContent(context, series!),
           ),
-        ),
-        child: _buildSeriesContent(context, series!),
-      ),
+        );
+      },
     );
   }
 
