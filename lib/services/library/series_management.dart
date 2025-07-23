@@ -20,34 +20,33 @@ extension LibrarySeriesManagement on Library {
   /// Save a single series with updated properties
   Future<void> updateSeries(Series series, {bool invalidateCache = true}) async {
     final index = _series.indexWhere((s) => s.path == series.path);
-    if (index >= 0) {
-      final oldSeries = _series[index];
+    if (index < 0) return;
 
-      // Check if images changed
-      bool posterChanged = oldSeries.folderPosterPath != series.folderPosterPath;
-      bool bannerChanged = oldSeries.folderBannerPath != series.folderBannerPath;
-      bool anilistChanged = oldSeries.primaryAnilistId != series.primaryAnilistId;
-      bool preferenceChanged = oldSeries.preferredPosterSource != series.preferredPosterSource || //
-          oldSeries.preferredBannerSource != series.preferredBannerSource;
+    final oldSeries = _series[index];
 
-      // Recalculate dominant color if relevant changes occurred
-      if (posterChanged || bannerChanged || anilistChanged || preferenceChanged) {
-        logDebug('Image source changed for ${series.name} - updating dominant color');
-        await series.calculateDominantColor(forceRecalculate: true);
-      }
+    // Check if images changed
+    bool posterChanged = oldSeries.folderPosterPath != series.folderPosterPath;
+    bool bannerChanged = oldSeries.folderBannerPath != series.folderBannerPath;
+    bool anilistChanged = oldSeries.primaryAnilistId != series.primaryAnilistId;
+    bool preferenceChanged = oldSeries.preferredPosterSource != series.preferredPosterSource || //
+        oldSeries.preferredBannerSource != series.preferredBannerSource;
 
-      // Update the series
-      _series[index] = series;
-
-      if (invalidateCache && homeKey.currentState != null) {
-        homeKey.currentState!.seriesWasModified = true;
-      }
-
-      logTrace('Series updated: ${series.name}, ${PathUtils.getFileName(series.effectivePosterPath ?? '')}, ${PathUtils.getFileName(series.effectiveBannerPath ?? '')}');
-      _isDirty = true;
-      await _saveLibrary();
-      notifyListeners();
+    // Recalculate dominant color if relevant changes occurred
+    if (posterChanged || bannerChanged || anilistChanged || preferenceChanged) {
+      logDebug('Image source changed for ${series.name} - updating dominant color');
+      await series.calculateDominantColor(forceRecalculate: true);
     }
+
+    // Update the series
+    _series[index] = series;
+
+    if (invalidateCache && homeKey.currentState != null) {
+      homeKey.currentState!.seriesWasModified = true;
+    }
+
+    logTrace('Series updated: ${series.name}, ${PathUtils.getFileName(series.effectivePosterPath ?? '')}, ${PathUtils.getFileName(series.effectiveBannerPath ?? '')}');
+    await _saveLibrary();
+    notifyListeners();
   }
 
   Future<void> refreshEpisode(Episode episode) async {
@@ -62,13 +61,11 @@ extension LibrarySeriesManagement on Library {
     episode.watchedPercentage = watched ? 1.0 : 0.0;
 
     if (save) {
-      _isDirty = true;
-
       // Set the flag indicating a series was modified
       if (homeKey.currentState != null) {
         homeKey.currentState!.seriesWasModified = true;
       }
-      
+
       _saveLibrary();
       notifyListeners();
     }
@@ -79,7 +76,6 @@ extension LibrarySeriesManagement on Library {
       markEpisodeWatched(episode, watched: watched, save: false);
 
     if (save) {
-      _isDirty = true;
       _saveLibrary();
       notifyListeners();
     }
@@ -92,13 +88,12 @@ extension LibrarySeriesManagement on Library {
     for (final episode in series.relatedMedia) {
       markEpisodeWatched(episode, watched: watched, save: false);
     }
-    
+
     // Set the flag indicating a series was modified
     if (homeKey.currentState != null) {
       homeKey.currentState!.seriesWasModified = true;
     }
 
-    _isDirty = true;
     _saveLibrary();
     notifyListeners();
   }

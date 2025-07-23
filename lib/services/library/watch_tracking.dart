@@ -42,7 +42,6 @@ extension LibraryWatchTracking on Library {
 
     if (anyEpisodeUpdated) {
       logDebug('Updated watch status for $updatedCount episodes');
-      _isDirty = true;
       await forceImmediateSave();
 
       // Set the flag indicating a series was modified

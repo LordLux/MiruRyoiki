@@ -9,6 +9,8 @@ import 'package:flutter/material.dart';
 import 'package:open_app_file/open_app_file.dart';
 import 'package:provider/provider.dart';
 
+import '../../database/daos/series_dao.dart';
+import '../../database/database.dart';
 import '../../enums.dart';
 import '../../functions.dart';
 import '../../main.dart';
@@ -42,10 +44,11 @@ class Library with ChangeNotifier {
   List<Series> _series = [];
   String? _libraryPath;
   bool _isLoading = false;
-  bool _isDirty = false;
   late final FileScanner _fileScanner;
   late final MPCHCTracker _mpcTracker;
   final SettingsManager _settings;
+  late final AppDatabase _db = AppDatabase();
+  late final SeriesDao seriesDao = SeriesDao(_db);
 
   bool _initialized = false;
   bool get initialized => _initialized;
@@ -65,7 +68,6 @@ class Library with ChangeNotifier {
     _fileScanner = FileScanner();
     _mpcTracker = MPCHCTracker();
     _mpcTracker.onWatchStatusChanged = _updateSpecificEpisodes;
-    _initAutoSave();
   }
 
   @override

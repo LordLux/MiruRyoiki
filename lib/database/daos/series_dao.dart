@@ -26,13 +26,18 @@ class SeriesDao extends DatabaseAccessor<AppDatabase> with _$SeriesDaoMixin {
   // ---------- BASIC CRUD ----------
   Future<List<SeriesTableData>> getAllSeriesRows() => select(seriesTable).get();
 
-  Future<SeriesTableData?> getSeriesRowById(int id) => (select(seriesTable)..where((tbl) => tbl.id.equals(id))).getSingleOrNull();
+  Future<SeriesTableData?> getSeriesRowById(int id) => //
+      (select(seriesTable)..where((tbl) => tbl.id.equals(id))) //
+          .getSingleOrNull();
 
-  Future<SeriesTableData?> getSeriesRowByPath(PathString path) => (select(seriesTable)..where((t) => t.path.equals(path.path))).getSingleOrNull();
+  Future<SeriesTableData?> getSeriesRowByPath(PathString path) => //
+      (select(seriesTable)..where((t) => t.path.equals(path.path))) //
+          .getSingleOrNull();
 
   Future<int> insertSeriesRow(SeriesTableCompanion comp) => into(seriesTable).insert(comp);
 
-  Future<bool> updateSeriesRow(int id, SeriesTableCompanion comp) async => (await (update(seriesTable)..where((t) => t.id.equals(id))).write(comp)) > 0;
+  Future<bool> updateSeriesRow(int id, SeriesTableCompanion comp) async => //
+      (await (update(seriesTable)..where((t) => t.id.equals(id))).write(comp)) > 0;
 
   Future<int> deleteSeriesRow(int id) => (delete(seriesTable)..where((t) => t.id.equals(id))).go();
 
@@ -61,12 +66,11 @@ class SeriesDao extends DatabaseAccessor<AppDatabase> with _$SeriesDaoMixin {
           .get();
 
       // Map by name to detect inserts/updates
-      final Map<String, SeasonsTableData> dbSeasonsByName = {
-        for (var s in dbSeasons) s.name: s //
-      };
+      final Map<String, SeasonsTableData> dbSeasonsByKey = {for (var s in dbSeasons) '${s.name}|${s.path.path}': s};
 
       for (final season in series.seasons) {
-        final existingSeason = dbSeasonsByName[season.name];
+        final key = '${season.name}|${season.path.path}';
+        final existingSeason = dbSeasonsByKey[key];
         int seasonId;
         final seasonComp = SeasonsTableCompanion(
           seriesId: Value(seriesId),
@@ -151,6 +155,7 @@ class SeriesDao extends DatabaseAccessor<AppDatabase> with _$SeriesDaoMixin {
     final current = await (select(anilistMappingsTable) //
           ..where((t) => t.seriesId.equals(seriesId))) //
         .get();
+
     final Map<int, AnilistMappingsTableData> byAniId = {
       for (var m in current) m.anilistId: m //
     };
