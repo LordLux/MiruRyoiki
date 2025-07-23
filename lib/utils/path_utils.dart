@@ -50,7 +50,7 @@ class PathString {
   String? get fileName => PathUtils.getFileName(_path);
   String? get fileExtension => PathUtils.getFileExtension(_path);
 
-  Future<String?> get getRelativeToMiruRyoikiSaveDirectory async {
+  String? get getRelativeToMiruRyoikiSaveDirectory {
     final saveDir = miruRyoiokiSaveDirectory;
     return PathUtils.relativePath(path, saveDir.path);
   }

@@ -13,6 +13,7 @@
 #include <flutter_desktop_context_menu/flutter_desktop_context_menu_plugin.h>
 #include <flutter_secure_storage_windows/flutter_secure_storage_windows_plugin.h>
 #include <screen_retriever_windows/screen_retriever_windows_plugin_c_api.h>
+#include <sqlite3_flutter_libs/sqlite3_flutter_libs_plugin.h>
 #include <system_theme/system_theme_plugin.h>
 #include <url_launcher_windows/url_launcher_windows.h>
 #include <video_thumbnail_exporter/video_thumbnail_exporter_plugin_c_api.h>
@@ -36,6 +37,8 @@ void RegisterPlugins(flutter::PluginRegistry* registry) {
       registry->GetRegistrarForPlugin("FlutterSecureStorageWindowsPlugin"));
   ScreenRetrieverWindowsPluginCApiRegisterWithRegistrar(
       registry->GetRegistrarForPlugin("ScreenRetrieverWindowsPluginCApi"));
+  Sqlite3FlutterLibsPluginRegisterWithRegistrar(
+      registry->GetRegistrarForPlugin("Sqlite3FlutterLibsPlugin"));
   SystemThemePluginRegisterWithRegistrar(
       registry->GetRegistrarForPlugin("SystemThemePlugin"));
   UrlLauncherWindowsRegisterWithRegistrar(
