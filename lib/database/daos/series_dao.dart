@@ -11,6 +11,7 @@ import '../../models/anilist/anime.dart';
 import '../../utils/path_utils.dart';
 import '../../enums.dart';
 import '../converters.dart';
+import '../../utils/series_hash.dart';
 
 part 'series_dao.g.dart';
 
@@ -45,18 +46,21 @@ class SeriesDao extends DatabaseAccessor<AppDatabase> with _$SeriesDaoMixin {
   /// Save (insert or update) a whole Series (with seasons, episodes, mappings) in a transaction.
   Future<int> saveSeries(Series series) async {
     return transaction(() async {
-      // upsert Series
-      final existing = await getSeriesRowByPath(series.path);
-      final seriesComp = _modelToSeriesCompanion(series, isInsert: existing == null);
+      final newHash = computeSeriesHash(series);
 
-      late int seriesId;
-      if (existing == null) {
+      final existingRow = await getSeriesRowByPath(series.path);
+      if (existingRow != null && existingRow.metadataHash == newHash) {
+        // nothing changed → skip the heavy season/episode writes
+        return existingRow.id;
+      }
+
+      final seriesComp = _modelToSeriesCompanion(series, isInsert: existingRow == null).copyWith(metadataHash: Value(newHash));
+      late final int seriesId;
+      if (existingRow == null) {
         seriesId = await into(seriesTable).insert(seriesComp);
       } else {
-        seriesId = existing.id;
-        await (update(seriesTable)..where((t) => t.id.equals(seriesId))) //
-            .write(seriesComp);
-        // cleanup old seasons/episodes/mappings? depends – I'll overwrite smartly
+        seriesId = existingRow.id;
+        await (update(seriesTable)..where((t) => t.id.equals(seriesId))).write(seriesComp);
       }
 
       // Save seasons
@@ -280,6 +284,7 @@ class SeriesDao extends DatabaseAccessor<AppDatabase> with _$SeriesDaoMixin {
       watchedPercentage: Value(s.watchedPercentage),
       addedAt: isInsert ? Value(DateTime.now()) : const Value.absent(),
       updatedAt: Value(DateTime.now()),
+      metadataHash: Value.absent(), // will be set later
     );
   }
 

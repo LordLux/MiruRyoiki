@@ -29,11 +29,18 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? db]) : super(db ?? _openConnection());
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
-        onCreate: (m) => m.createAll(),
+        onCreate: (m) async {
+          await m.createAll();
+          // indexes
+          await m.issueCustomQuery('CREATE INDEX idx_series_path       ON series_table(path);');
+          await m.issueCustomQuery('CREATE INDEX idx_seasons_series_id ON seasons_table(series_id);');
+          await m.issueCustomQuery('CREATE INDEX idx_episodes_season_id ON episodes_table(season_id);');
+          await m.issueCustomQuery('CREATE INDEX idx_episodes_path      ON episodes_table(path);');
+        },
         onUpgrade: (m, from, to) async {
           if (from < 2) {
             // Droppa e ricrea le tabelle affette
@@ -42,6 +49,13 @@ class AppDatabase extends _$AppDatabase {
             await m.drop(anilistMappingsTable);
             // Ricrea tutto da zero
             await m.createAll();
+          }
+          if (from < 3) {
+            // add our new column
+            await m.addColumn(seriesTable, seriesTable.metadataHash);
+            // recreate the indexes in case we skipped onCreate
+            await m.issueCustomQuery('CREATE INDEX IF NOT EXISTS idx_series_path ON series_table(path);');
+            // …and the others, same pattern…
           }
         },
         beforeOpen: (details) async {
