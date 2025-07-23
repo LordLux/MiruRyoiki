@@ -79,14 +79,7 @@ class _HoverableEpisodeTileState extends State<HoverableEpisodeTile> {
                       // Thumbnail or icon
                       ClipRRect(
                         borderRadius: BorderRadius.circular(ScreenUtils.kEpisodeCardBorderRadius),
-                        child: ImageFiltered(
-                          imageFilter: ImageFilter.blur(
-                            sigmaX: widget.episode.watched ? 0 : 15,
-                            sigmaY: widget.episode.watched ? 0 : 15,
-                            tileMode: TileMode.mirror,
-                          ),
-                          child: _buildEpisodeThumbnail(widget.episode),
-                        ),
+                        child: _buildEpisodeThumbnail(widget.episode),
                       ),
 
                       // Bottom text overlay
@@ -194,32 +187,32 @@ class _HoverableEpisodeTileState extends State<HoverableEpisodeTile> {
     );
   }
 
+  bool thumbnailExists(PathString? thumbnailPath) => //
+      thumbnailPath != null && thumbnailPath.pathMaybe != null && File(thumbnailPath.path).existsSync();
+
   Widget _buildEpisodeThumbnail(Episode episode, {Widget? child}) {
-    try {
-      if (episode.thumbnailPath != null && episode.thumbnailPath!.pathMaybe != null && File(episode.thumbnailPath!.path).existsSync()) {
-        return Container(
-          decoration: BoxDecoration(
-            image: episode.thumbnailPath!.path.isEmpty
-                ? null
-                : DecorationImage(
-                    image: FileImage(File(episode.thumbnailPath!.path)),
-                    fit: BoxFit.cover,
-                  ),
+    // Prefer cached thumbnail if available
+    if (thumbnailExists(episode.thumbnailPath)) {
+      final thumbnailWidget = Container(
+        decoration: BoxDecoration(
+          image: DecorationImage(
+            image: FileImage(File(episode.thumbnailPath!.path)),
+            fit: BoxFit.cover,
           ),
-          child: child,
-          // child: Image.file(
-          //   File(episode.thumbnailPath!),
-          //   fit: BoxFit.cover,
-          //   errorBuilder: (context, error, stackTrace) {
-          //     // If direct access fails, fall back to getThumbnail()
-          //     return _buildThumbnailWithFuture(episode);
-          //   },
-          // ),
-        );
-      }
-    } catch (e, stackTrace) {
-      logErr('Error loading episode thumbnail', e, stackTrace);
+        ),
+        child: child,
+      );
+      // Always blur when thumbnail exists
+      return ImageFiltered(
+        imageFilter: ImageFilter.blur(
+          sigmaX: 15,
+          sigmaY: 15,
+          tileMode: TileMode.mirror,
+        ),
+        child: thumbnailWidget,
+      );
     }
+    // Otherwise, try to load asynchronously
     return _buildThumbnailWithFuture(episode, child);
   }
 
@@ -228,18 +221,29 @@ class _HoverableEpisodeTileState extends State<HoverableEpisodeTile> {
       future: episode.getThumbnail(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return Center(child: ProgressRing(strokeWidth: 2, activeColor: Manager.accentColor));
+          // Loading: show spinner, no blur
+          return Center(
+            child: ProgressRing(
+              strokeWidth: 2,
+              activeColor: Manager.accentColor,
+            ),
+          );
         }
 
         final PathString? thumbnailPath = snapshot.data;
 
         if (thumbnailPath == null || thumbnailPath.pathMaybe == null || !File(thumbnailPath.path).existsSync()) {
-          // Fallback icon if no thumbnail
-          return Icon(FluentIcons.video, size: 32, color: FluentTheme.of(context).resources.textFillColorSecondary);
+          // No thumbnail: show fallback icon, no blur
+          return Icon(
+            FluentIcons.video,
+            size: 32,
+            color: FluentTheme.of(context).resources.textFillColorSecondary,
+          );
         }
+
         try {
-          // Display the thumbnail
-          return Container(
+          // Thumbnail loaded: always blur
+          final thumbnailWidget = Container(
             decoration: BoxDecoration(
               image: DecorationImage(
                 image: FileImage(File(thumbnailPath.path)),
@@ -248,9 +252,21 @@ class _HoverableEpisodeTileState extends State<HoverableEpisodeTile> {
             ),
             child: child,
           );
+          return ImageFiltered(
+            imageFilter: ImageFilter.blur(
+              sigmaX: 15,
+              sigmaY: 15,
+              tileMode: TileMode.mirror,
+            ),
+            child: thumbnailWidget,
+          );
         } catch (e, stackTrace) {
           logErr('Error displaying episode thumbnail', e, stackTrace);
-          return Icon(FluentIcons.error, size: 32, color: FluentTheme.of(context).resources.textFillColorSecondary);
+          return Icon(
+            FluentIcons.error,
+            size: 32,
+            color: FluentTheme.of(context).resources.textFillColorSecondary,
+          );
         }
       },
     );

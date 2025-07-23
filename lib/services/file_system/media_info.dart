@@ -62,7 +62,7 @@ class MediaInfo {
       }
 
       if (!await File(thumbnailPath.path).exists()) {
-        logErr('Thumbnail file was not created at $thumbnailPath');
+        logErr('Thumbnail file was not created at: $thumbnailPath');
         return null;
       }
 

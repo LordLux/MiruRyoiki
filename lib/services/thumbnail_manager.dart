@@ -52,7 +52,7 @@ class ThumbnailManager {
     return completer.future;
   }
 
-  void _processQueue() {
+  Future<void> _processQueue() async {
     if (_activeExtractions >= _maxConcurrentExtractions || _extractionQueue.isEmpty) //
       return;
 
