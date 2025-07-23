@@ -269,7 +269,7 @@ extension LibraryAnilistIntegration on Library {
           if (mapping.anilistData != null && mapping.anilistData?.hiddenFromStatusLists != null) {
             series.isHidden = mapping.anilistData!.hiddenFromStatusLists!;
             foundExplicitHiddenValue = true;
-            logDebug('Found explicit hidden value for ${series.name}: ${series.isHidden}');
+            if (series.isHidden) logDebug('Found explicit hidden value of TRUE for ${series.name}!');
             break;
           }
         }

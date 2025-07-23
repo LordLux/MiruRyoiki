@@ -61,6 +61,7 @@ class AnilistAnime {
     this.siteUrl,
     this.hiddenFromStatusLists,
   });
+
   factory AnilistAnime.fromJson(Map<String, dynamic> json) {
     return AnilistAnime(
       id: json['id'] as int,
@@ -80,7 +81,7 @@ class AnilistAnime {
       genres: (json['genres'] as List<dynamic>?)?.map((e) => e as String).toList() ?? [],
       averageScore: json['averageScore'] as int?,
       trending: json['trending'] as int?,
-      rankings: json['rankings'] != null && (json['rankings'] as List).isNotEmpty ? (json['rankings'] as List).first['rank'] : null,
+      rankings: getRankings(json),
       startDate: json['startDate'] != null ? DateValue.fromJson(json['startDate']) : null,
       endDate: json['endDate'] != null ? DateValue.fromJson(json['endDate']) : null,
       updatedAt: json['updatedAt'] as int?,
@@ -187,6 +188,18 @@ class AnilistAnime {
       'siteUrl': siteUrl,
       'hiddenFromStatusLists': hiddenFromStatusLists,
     };
+  }
+
+  static int? getRankings(Map<String, dynamic> json) {
+    final rawRankings = json['rankings'];
+    
+    if (rawRankings is List && rawRankings.isNotEmpty)
+      return (rawRankings.first['rank'] as int?);
+    //
+    else if (rawRankings is int) //
+      return rawRankings;
+      
+    return null;
   }
 
   @override
