@@ -63,7 +63,6 @@ extension LibraryScanning on Library {
         _series.removeWhere((s) => removedSeries.any((removed) => removed.path == s.path));
       }
 
-      _isDirty = true;
       if (showSnack) {
         final newCount = _series.length - previousSeriesCount;
         if (newCount > 0) {
@@ -113,7 +112,6 @@ extension LibraryScanning on Library {
 
         // Update UI periodically
         if (processed % 3 == 0 || processed == seriesToProcess.length) {
-          _isDirty = true;
           notifyListeners();
 
           // Save more frequently to preserve progress
@@ -132,7 +130,6 @@ extension LibraryScanning on Library {
 
     // Save and notify when done
     if (anyChanged || forceRecalculate) {
-      _isDirty = true;
       await forceImmediateSave();
       notifyListeners();
       logTrace('Finished calculating dominant colors for $processed series');

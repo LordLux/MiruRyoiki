@@ -29,13 +29,20 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
         onCreate: (m) => m.createAll(),
         onUpgrade: (m, from, to) async {
-          // future migrations here
+          if (from < 2) {
+            // Droppa e ricrea le tabelle affette
+            await m.drop(seasonsTable);
+            await m.drop(episodesTable);
+            await m.drop(anilistMappingsTable);
+            // Ricrea tutto da zero
+            await m.createAll();
+          }
         },
         beforeOpen: (details) async {
           if (details.wasCreated) {

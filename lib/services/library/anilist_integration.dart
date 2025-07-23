@@ -242,8 +242,7 @@ extension LibraryAnilistIntegration on Library {
       await series.calculateDominantColor(forceRecalculate: true);
     }
 
-    _isDirty = true;
-    await _saveLibrary();
+    await seriesDao.saveSeries(series);
     notifyListeners();
   }
 
@@ -251,7 +250,6 @@ extension LibraryAnilistIntegration on Library {
   Future<bool> updateSeriesMappings(Series series, List<AnilistMapping> mappings) async {
     final originalIsHidden = series.isHidden;
     series.anilistMappings = mappings;
-    _isDirty = true;
 
     if (mappings.isEmpty) {
       series.anilistData = null;
@@ -287,7 +285,7 @@ extension LibraryAnilistIntegration on Library {
     // Set the flag indicating a series was modified
     if (homeKey.currentState != null) homeKey.currentState!.seriesWasModified = true;
 
-    await _saveLibrary();
+    await seriesDao.saveSeries(series);
     notifyListeners();
     Manager.setState();
 

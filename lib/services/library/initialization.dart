@@ -19,16 +19,6 @@ extension LibraryInitialization on Library {
     await loadLibraryFirstTime(ctx);
   }
 
-  void _initAutoSave() {
-    _autoSaveTimer?.cancel();
-    _autoSaveTimer = Timer.periodic(const Duration(minutes: 5), (timer) {
-      if (_isDirty) {
-        logDebug('Auto-saving library...');
-        _saveLibrary();
-      }
-    });
-  }
-
   // DISPOSE IN MAIN
 
   Future<void> loadLibraryFirstTime(BuildContext context) async {

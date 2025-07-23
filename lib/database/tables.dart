@@ -44,7 +44,7 @@ class SeasonsTable extends Table {
 
   @override
   List<String> get customConstraints => [
-        'UNIQUE (seriesId, name)' // evita duplicati "Season 1"
+        'UNIQUE (series_id, name, path)' // evita duplicati "Season 1"
       ];
 }
 
@@ -64,7 +64,7 @@ class EpisodesTable extends Table {
 
   @override
   List<String> get customConstraints => [
-        'UNIQUE (seasonId, path)' // path è unico comunque, ma per sicurezza
+        'UNIQUE (season_id, path)' // path è unico comunque, ma per sicurezza
       ];
 }
 
@@ -86,7 +86,7 @@ class AnilistMappingsTable extends Table {
   TextColumn get anilistData => text().nullable()();
 
   @override
-  List<String> get customConstraints => ['UNIQUE (seriesId, anilistId)'];
+  List<String> get customConstraints => ['UNIQUE (series_id, anilist_id)'];
 }
 
 // ------------------ WATCH RECORDS ------------------
