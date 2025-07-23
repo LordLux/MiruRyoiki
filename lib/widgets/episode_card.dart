@@ -205,8 +205,8 @@ class _HoverableEpisodeTileState extends State<HoverableEpisodeTile> {
       // Always blur when thumbnail exists
       return ImageFiltered(
         imageFilter: ImageFilter.blur(
-          sigmaX: 15,
-          sigmaY: 15,
+          sigmaX: widget.episode.watched ? 0 : 15,
+          sigmaY: widget.episode.watched ? 0 : 15,
           tileMode: TileMode.mirror,
         ),
         child: thumbnailWidget,
@@ -254,8 +254,8 @@ class _HoverableEpisodeTileState extends State<HoverableEpisodeTile> {
           );
           return ImageFiltered(
             imageFilter: ImageFilter.blur(
-              sigmaX: 15,
-              sigmaY: 15,
+              sigmaX: widget.episode.watched ? 0 : 15,
+              sigmaY: widget.episode.watched ? 0 : 15,
               tileMode: TileMode.mirror,
             ),
             child: thumbnailWidget,
