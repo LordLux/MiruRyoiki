@@ -60,7 +60,7 @@ class SeriesScreenState extends State<SeriesScreen> {
   DeferredPointerHandlerLink deferredPointerLink = DeferredPointerHandlerLink();
   bool _isBannerHovering = false;
 
-  Series? get series => Provider.of<Library>(context).getSeriesByPath(widget.seriesPath);
+  Series? get series => Provider.of<Library>(context, listen: false).getSeriesByPath(widget.seriesPath);
 
   Color get dominantColor =>
       series?.dominantColor ?? //
