@@ -64,6 +64,9 @@ class EpisodesTable extends Table {
   BoolColumn get watched => boolean().withDefault(const Constant(false))();
   RealColumn get watchedPercentage => real().withDefault(const Constant(0.0))();
   BoolColumn get thumbnailUnavailable => boolean().withDefault(const Constant(false))();
+  
+  TextColumn get metadata => text().map(const MetadataConverter()).nullable()();
+  TextColumn get mkvMetadata => text().map(const MkvMetadataConverter()).nullable()();
 
   @override
   List<String> get customConstraints => [
