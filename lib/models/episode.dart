@@ -1,8 +1,10 @@
 import 'dart:io';
-
+import 'dart:convert';
 
 import '../services/thumbnail_manager.dart';
 import '../utils/path_utils.dart';
+import 'metadata.dart';
+import 'mkv_metadata.dart';
 
 class Episode {
   final PathString path;
@@ -11,6 +13,8 @@ class Episode {
   bool watched;
   double watchedPercentage;
   bool thumbnailUnavailable;
+  Metadata? metadata;
+  MkvMetadata? mkvMetadata;
 
   Episode({
     required this.path,
@@ -19,6 +23,8 @@ class Episode {
     this.watched = false,
     this.watchedPercentage = 0.0,
     this.thumbnailUnavailable = false,
+    this.metadata,
+    this.mkvMetadata,
   });
 
   // For JSON serialization
@@ -30,6 +36,8 @@ class Episode {
       'watched': watched,
       'watchedPercentage': watchedPercentage,
       'thumbnailUnavailable': thumbnailUnavailable,
+      'metadata': metadata?.toJson(),
+      'mkvMetadata': mkvMetadata?.toJson(),
     };
   }
 
@@ -42,6 +50,8 @@ class Episode {
       watched: json['watched'] ?? false,
       watchedPercentage: json['watchedPercentage'] ?? 0.0,
       thumbnailUnavailable: json['thumbnailUnavailable'] ?? false,
+      metadata: json['metadata'] != null ? Metadata.fromJson(json['metadata']) : null,
+      mkvMetadata: json['mkvMetadata'] != null ? MkvMetadata.fromJson(json['mkvMetadata']) : null,
     );
   }
 

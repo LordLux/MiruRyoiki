@@ -4,13 +4,13 @@ import '../enums.dart';
 class Metadata {
   /// Size in bytes.
   final int size;
-  
+
   /// Creation time of the file.
   late final DateTime creationTime;
-  
+
   /// Last modified time of the file.
   late final DateTime lastModified;
-  
+
   /// Last accessed time of the file.
   late final DateTime lastAccessed;
 
@@ -32,6 +32,15 @@ class Metadata {
       lastModified: DateTime.tryParse(json['lastModified'] as String) ?? DateTimeX.epoch,
       lastAccessed: DateTime.tryParse(json['lastAccessed'] as String) ?? DateTimeX.epoch,
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'size': size,
+      'creationTime': creationTime.toIso8601String(),
+      'lastModified': lastModified.toIso8601String(),
+      'lastAccessed': lastAccessed.toIso8601String(),
+    };
   }
 }
 
