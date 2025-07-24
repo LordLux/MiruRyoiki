@@ -3,6 +3,8 @@ import 'dart:io';
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
 import 'package:miruryoiki/database/converters.dart';
+import '../models/metadata.dart';
+import '../models/mkv_metadata.dart';
 import '../utils/path_utils.dart';
 import 'tables.dart';
 import 'daos/series_dao.dart';

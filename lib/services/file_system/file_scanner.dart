@@ -26,8 +26,8 @@ class FileScanner {
     await for (final entity in dir.list()) {
       if (entity is Directory) {
         try {
-          final existingSeries_ = existingSeries[PathString(entity.path)];
-          final seriesItem = await _processSeries(entity, existingSeries: existingSeries_);
+          final Series? existingSeries_ = existingSeries[PathString(entity.path)];
+          final Series seriesItem = await _processSeries(entity, existingSeries: existingSeries_);
           series.add(seriesItem);
         } catch (e, st) {
           logErr('3 | Error processing series ${entity.path}', e, st);
@@ -174,6 +174,8 @@ class FileScanner {
           // thumbnailUnavailable: existingEpisode.thumbnailUnavailable, we want to let it try again on startup
           watched: existingEpisode.watched,
           watchedPercentage: existingEpisode.watchedPercentage,
+          metadata: existingEpisode.metadata,
+          mkvMetadata: existingEpisode.mkvMetadata,
         ));
       } else {
         // New episode

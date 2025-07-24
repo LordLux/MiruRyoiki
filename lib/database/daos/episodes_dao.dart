@@ -24,6 +24,14 @@ class EpisodesDao extends DatabaseAccessor<AppDatabase> with _$EpisodesDaoMixin 
   Future<bool> updateEpisode(int id, EpisodesTableCompanion comp) async => //
       (await (update(episodesTable)..where((t) => t.id.equals(id))).write(comp)) > 0;
 
+  Future<bool> updateEpisodeMetadata(Episode episode, int id) async {
+    final comp = EpisodesTableCompanion(
+      metadata: episode.metadata == null ? const Value.absent() : Value(episode.metadata),
+      mkvMetadata: episode.mkvMetadata == null ? const Value.absent() : Value(episode.mkvMetadata),
+    );
+    return updateEpisode(id, comp);
+  }
+
   Future<int> deleteEpisode(int id) => (delete(episodesTable)..where((t) => t.id.equals(id))).go();
 
   EpisodesTableCompanion toCompanion(Episode e, int seasonId) => EpisodesTableCompanion(
@@ -34,6 +42,8 @@ class EpisodesDao extends DatabaseAccessor<AppDatabase> with _$EpisodesDaoMixin 
         watched: Value(e.watched),
         watchedPercentage: Value(e.watchedPercentage),
         thumbnailUnavailable: Value(e.thumbnailUnavailable),
+        metadata: e.metadata == null ? const Value.absent() : Value(e.metadata),
+        mkvMetadata: e.mkvMetadata == null ? const Value.absent() : Value(e.mkvMetadata),
       );
 
   Episode fromRow(EpisodesTableData d) => Episode(
@@ -43,5 +53,7 @@ class EpisodesDao extends DatabaseAccessor<AppDatabase> with _$EpisodesDaoMixin 
         watched: d.watched,
         watchedPercentage: d.watchedPercentage,
         thumbnailUnavailable: d.thumbnailUnavailable,
+        metadata: d.metadata,
+        mkvMetadata: d.mkvMetadata,
       );
 }

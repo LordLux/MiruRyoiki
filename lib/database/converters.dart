@@ -2,6 +2,8 @@
 import 'dart:convert';
 import 'package:drift/drift.dart';
 import 'package:flutter/material.dart';
+import '../models/metadata.dart';
+import '../models/mkv_metadata.dart';
 import '../utils/path_utils.dart';
 import '../enums.dart'; // per ImageSource
 
@@ -54,6 +56,42 @@ class ImageSourceConverter extends TypeConverter<ImageSource?, String?> {
 
   @override
   String? toSql(ImageSource? value) => value?.name;
+}
+
+/// -------- Metadata <-> JSON TEXT --------
+class MetadataConverter extends TypeConverter<Metadata?, String?> {
+  const MetadataConverter();
+
+  @override
+  Metadata? fromSql(String? sqlValue) {
+    if (sqlValue == null) return null;
+    final map = json.decode(sqlValue) as Map<String, dynamic>;
+    return Metadata.fromJson(map);
+  }
+
+  @override
+  String? toSql(Metadata? value) {
+    if (value == null) return null;
+    return json.encode(value.toJson());
+  }
+}
+
+/// -------- MkvMetadata <-> JSON TEXT --------
+class MkvMetadataConverter extends TypeConverter<MkvMetadata?, String?> {
+  const MkvMetadataConverter();
+
+  @override
+  MkvMetadata? fromSql(String? sqlValue) {
+    if (sqlValue == null) return null;
+    final map = json.decode(sqlValue) as Map<String, dynamic>;
+    return MkvMetadata.fromJson(map);
+  }
+
+  @override
+  String? toSql(MkvMetadata? value) {
+    if (value == null) return null;
+    return json.encode(value.toJson());
+  }
 }
 
 // Generic JSON string converter
