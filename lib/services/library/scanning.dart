@@ -29,14 +29,13 @@ extension LibraryScanning on Library {
       final previousSeriesPaths = _series.map((s) => s.path).toSet();
 
       final scannedSeries = await _fileScanner.scanLibrary(_libraryPath!, existingSeriesMap);
-      
+
       // Identify new series
       final newSeries = scannedSeries.where((s) => !previousSeriesPaths.contains(s.path)).toList();
 
       // Identify removed series (exist in memory but not on disk anymore)
       final scannedPaths = scannedSeries.map((s) => s.path).toSet();
       final removedSeries = _series.where((s) => !scannedPaths.contains(s.path)).toList();
-      
 
       // Update existing series (maintain same instance but update content)
       for (final scannedSeries in scannedSeries) {
@@ -199,6 +198,8 @@ List<Episode> _mergeEpisodesWithMetadata(List<Episode> existing, List<Episode> s
         thumbnailUnavailable: existingEpisode.thumbnailUnavailable,
         watched: existingEpisode.watched,
         watchedPercentage: existingEpisode.watchedPercentage,
+        metadata: scannedEpisode.metadata ?? existingEpisode.metadata,
+        mkvMetadata: scannedEpisode.mkvMetadata ?? existingEpisode.mkvMetadata,
       ));
     } else {
       // This is a new episode
