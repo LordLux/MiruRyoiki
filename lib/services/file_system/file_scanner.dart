@@ -4,10 +4,13 @@ import 'package:collection/collection.dart';
 import 'package:fluent_ui/fluent_ui.dart' show decodeImageFromList;
 import 'package:path/path.dart' as p;
 
+import '../../models/metadata.dart';
+import '../../models/mkv_metadata.dart';
 import '../../models/series.dart';
 import '../../models/episode.dart';
 import '../../utils/logging.dart';
 import '../../utils/path_utils.dart';
+import 'media_info.dart';
 
 class FileScanner {
   static const List<String> _videoExtensions = ['.mkv', '.mp4', '.avi', '.mov', '.wmv', '.m4v', '.flv'];
@@ -161,21 +164,32 @@ class FileScanner {
     final episodes = <Episode>[];
 
     for (final file in files) {
+      final path = PathString(file.path);
       final name = _cleanEpisodeName(p.basenameWithoutExtension(file.path));
+
       // Check if this episode already exists in the library
-      final existingEpisode = existingEpisodes?.firstWhereOrNull((e) => e.path == PathString(file.path));
+      final existingEpisode = existingEpisodes?.firstWhereOrNull((e) => e.path.path == path.path);
+
+      final watched = existingEpisode?.watched ?? false;
+      final watchedPercent = existingEpisode?.watchedPercentage ?? 0.0;
+      final thumbPath = existingEpisode?.thumbnailPath;
+      final thumbUnavailable = existingEpisode?.thumbnailUnavailable ?? false;
+
+      Metadata? meta = existingEpisode?.metadata ?? await MediaInfo.getMetadata(path);
+      MkvMetadata? mkvMeta = existingEpisode?.mkvMetadata ?? await MediaInfo.getMkvMetadata(path);
+
       if (existingEpisode != null) {
         // Preserve watch data from existing episode
         // log('Found existing episode: ${existingEpisode.name}: ${(existingEpisode.watchedPercentage*100).toInt()}%');
         episodes.add(Episode(
-          path: PathString(file.path),
+          path: path,
           name: name,
-          thumbnailPath: existingEpisode.thumbnailPath,
-          // thumbnailUnavailable: existingEpisode.thumbnailUnavailable, we want to let it try again on startup
-          watched: existingEpisode.watched,
-          watchedPercentage: existingEpisode.watchedPercentage,
-          metadata: existingEpisode.metadata,
-          mkvMetadata: existingEpisode.mkvMetadata,
+          thumbnailPath: thumbPath,
+          watched: watched,
+          watchedPercentage: watchedPercent,
+          thumbnailUnavailable: thumbUnavailable,
+          metadata: meta,
+          mkvMetadata: mkvMeta,
         ));
       } else {
         // New episode
