@@ -26,21 +26,28 @@ class MkvMetadata {
       bitrate: json['bitrate'] as int? ?? 0,
       muxingApp: json['muxingApp'] as String? ?? '',
       writingApp: json['writingApp'] as String? ?? '',
-      videoStreams: (json['videoStreams'] as List?)
-          ?.map((stream) => VideoStream.fromJson(stream))
-          .toList() ?? [],
-      audioStreams: (json['audioStreams'] as List?)
-          ?.map((stream) => AudioStream.fromJson(stream))
-          .toList() ?? [],
-      attachments: (json['attachments'] as List?)
-          ?.map((attachment) => Attachment.fromJson(attachment))
-          .toList() ?? [],
+      videoStreams: (json['videoStreams'] as List?)?.map((stream) => VideoStream.fromJson(stream)).toList() ?? [],
+      audioStreams: (json['audioStreams'] as List?)?.map((stream) => AudioStream.fromJson(stream)).toList() ?? [],
+      attachments: (json['attachments'] as List?)?.map((attachment) => Attachment.fromJson(attachment)).toList() ?? [],
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'title': title,
+      'duration': duration,
+      'bitrate': bitrate,
+      'muxingApp': muxingApp,
+      'writingApp': writingApp,
+      'videoStreams': videoStreams.map((stream) => stream.toJson()).toList(),
+      'audioStreams': audioStreams.map((stream) => stream.toJson()).toList(),
+      'attachments': attachments.map((attachment) => attachment.toJson()).toList(),
+    };
   }
 
   // Helper method for bitrate display
   String get bitrateFormatted => '${(bitrate / 1000).round()} kbps';
-  
+
   // Helper method for duration display
   String get durationFormatted => '${duration.toStringAsFixed(2)} ms';
 }
@@ -71,6 +78,17 @@ class VideoStream {
       height: json['height'] as int? ?? 0,
       frameRate: json['frameRate'] as double? ?? 0.0,
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'trackNumber': trackNumber,
+      'codecId': codecId,
+      'codecName': codecName,
+      'width': width,
+      'height': height,
+      'frameRate': frameRate,
+    };
   }
 
   String get resolution => '$width×$height';
@@ -105,6 +123,17 @@ class AudioStream {
     );
   }
 
+  Map<String, dynamic> toJson() {
+    return {
+      'trackNumber': trackNumber,
+      'codecId': codecId,
+      'codecName': codecName,
+      'channels': channels,
+      'sampleRate': sampleRate,
+      'bitDepth': bitDepth,
+    };
+  }
+
   String get codec => '$codecName ($codecId)';
   String get sampleRateFormatted => '${sampleRate.round()} Hz';
   String get bitDepthFormatted => '$bitDepth bit';
@@ -133,6 +162,16 @@ class Attachment {
       description: json['description'] as String? ?? '',
       size: json['size'] as int? ?? 0,
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'index': index,
+      'fileName': fileName,
+      'mimeType': mimeType,
+      'description': description,
+      'size': size,
+    };
   }
 
   String get sizeFormatted => '${(size / 1024).round()} KB';

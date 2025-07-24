@@ -67,7 +67,7 @@ class EpisodesTable extends Table {
 
   @override
   List<String> get customConstraints => [
-        'UNIQUE (season_id, path)' // path è unico comunque, ma per sicurezza
+        'UNIQUE (season_id, path)'
       ];
 }
 

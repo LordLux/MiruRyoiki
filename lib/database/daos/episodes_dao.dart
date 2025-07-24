@@ -22,7 +22,7 @@ class EpisodesDao extends DatabaseAccessor<AppDatabase> with _$EpisodesDaoMixin 
   Future<int> insertEpisode(EpisodesTableCompanion comp) => into(episodesTable).insert(comp);
 
   Future<bool> updateEpisode(int id, EpisodesTableCompanion comp) async => //
-  (await (update(episodesTable)..where((t) => t.id.equals(id))).write(comp)) > 0;
+      (await (update(episodesTable)..where((t) => t.id.equals(id))).write(comp)) > 0;
 
   Future<int> deleteEpisode(int id) => (delete(episodesTable)..where((t) => t.id.equals(id))).go();
 
