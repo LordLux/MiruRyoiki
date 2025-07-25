@@ -288,9 +288,7 @@ class Series {
   String? get anilistBannerUrl => _anilistBannerUrl ?? _anilistData?.bannerImage;
 
   /// Calculate and cache the dominant color from the image
-  Future<Color?> calculateDominantColor({
-    bool forceRecalculate = false,
-  }) async {
+  Future<Color?> calculateDominantColor({bool forceRecalculate = false}) async {
     // If color already calculated and not forced, return cached color
     if (_dominantColor != null && !forceRecalculate) {
       logTrace('   No need to extract color, using cached dominant color for ${substringSafe(name, 0, 20, '"')}: ${_dominantColor!.toHex()}!');
