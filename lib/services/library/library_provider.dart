@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:isolate';
 
 import 'package:collection/collection.dart';
 import 'package:fluent_ui/fluent_ui.dart';
@@ -31,6 +32,7 @@ import '../../services/navigation/show_info.dart';
 import '../../utils/logging.dart';
 import '../../utils/path_utils.dart';
 import '../../utils/time_utils.dart';
+import 'library_scanning.dart';
 
 // Include all the parts
 part 'initialization.dart';
@@ -49,6 +51,7 @@ class Library with ChangeNotifier {
   final SettingsManager _settings;
   late final AppDatabase _db = AppDatabase();
   late final SeriesDao seriesDao = SeriesDao(_db);
+  LibraryScannerProgress? _scanProgress;
 
   bool _initialized = false;
   bool get initialized => _initialized;

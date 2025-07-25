@@ -28,9 +28,9 @@ class Metadata {
   factory Metadata.fromJson(Map<dynamic, dynamic> json) {
     return Metadata(
       size: json['size'] as int? ?? 0,
-      creationTime: DateTime.tryParse(json['creationTime'] as String) ?? DateTimeX.epoch,
-      lastModified: DateTime.tryParse(json['lastModified'] as String) ?? DateTimeX.epoch,
-      lastAccessed: DateTime.tryParse(json['lastAccessed'] as String) ?? DateTimeX.epoch,
+      creationTime: json['creationTime'] != null ? DateTime.fromMillisecondsSinceEpoch(json['creationTime'] as int) : DateTimeX.epoch,
+      lastModified: json['lastModified'] != null ? DateTime.fromMillisecondsSinceEpoch(json['lastModified'] as int) : DateTimeX.epoch,
+      lastAccessed: json['lastAccessed'] != null ? DateTime.fromMillisecondsSinceEpoch(json['lastAccessed'] as int) : DateTimeX.epoch,
     );
   }
 
