@@ -18,29 +18,6 @@ class PathStringConverter extends TypeConverter<PathString, String> {
   String toSql(PathString value) => value.path;
 }
 
-/// -------- Color <-> JSON TEXT --------
-class ColorJsonConverter extends TypeConverter<Color?, String?> {
-  const ColorJsonConverter();
-
-  @override
-  Color? fromSql(String? fromDb) {
-    if (fromDb == null) return null;
-    final map = jsonDecode(fromDb) as Map<String, dynamic>;
-    return Color.fromARGB(map['a'], map['r'], map['g'], map['b']);
-  }
-
-  @override
-  String? toSql(Color? value) {
-    if (value == null) return null;
-    return jsonEncode({
-      'r': value.red,
-      'g': value.green,
-      'b': value.blue,
-      'a': value.alpha,
-    });
-  }
-}
-
 /// -------- ImageSource <-> TEXT --------
 class ImageSourceConverter extends TypeConverter<ImageSource?, String?> {
   const ImageSourceConverter();
@@ -58,6 +35,30 @@ class ImageSourceConverter extends TypeConverter<ImageSource?, String?> {
   String? toSql(ImageSource? value) => value?.name;
 }
 
+/// -------- Color <-> JSON TEXT --------
+class ColorJsonConverter extends TypeConverter<Color?, String?> {
+  const ColorJsonConverter();
+
+  @override
+  Color? fromSql(String? fromDb) {
+    if (fromDb == null) return null;
+    final map = jsonDecode(fromDb) as Map<String, dynamic>;
+    // Se il JSON è malformato, jsonDecode lancerà FormatException
+    return Color.fromARGB(map['a'], map['r'], map['g'], map['b']);
+  }
+
+  @override
+  String? toSql(Color? value) {
+    if (value == null) return null;
+    return jsonEncode({
+      'r': value.red,
+      'g': value.green,
+      'b': value.blue,
+      'a': value.alpha,
+    });
+  }
+}
+
 /// -------- Metadata <-> JSON TEXT --------
 class MetadataConverter extends TypeConverter<Metadata?, String?> {
   const MetadataConverter();
@@ -66,6 +67,7 @@ class MetadataConverter extends TypeConverter<Metadata?, String?> {
   Metadata? fromSql(String? sqlValue) {
     if (sqlValue == null) return null;
     final map = json.decode(sqlValue) as Map<String, dynamic>;
+    // Se il JSON è malformato, json.decode lancerà FormatException
     return Metadata.fromJson(map);
   }
 
@@ -84,6 +86,7 @@ class MkvMetadataConverter extends TypeConverter<MkvMetadata?, String?> {
   MkvMetadata? fromSql(String? sqlValue) {
     if (sqlValue == null) return null;
     final map = json.decode(sqlValue) as Map<String, dynamic>;
+    // Se il JSON è malformato, json.decode lancerà FormatException
     return MkvMetadata.fromJson(map);
   }
 
@@ -99,8 +102,13 @@ class JsonMapConverter extends TypeConverter<Map<String, dynamic>?, String?> {
   const JsonMapConverter();
 
   @override
-  Map<String, dynamic>? fromSql(String? fromDb) => fromDb == null ? null : jsonDecode(fromDb) as Map<String, dynamic>;
+  Map<String, dynamic>? fromSql(String? fromDb) {
+    if (fromDb == null) return null;
+    // Se il JSON è malformato, jsonDecode lancerà FormatException
+    return jsonDecode(fromDb) as Map<String, dynamic>;
+  }
 
   @override
-  String? toSql(Map<String, dynamic>? value) => value == null ? null : jsonEncode(value);
+  String? toSql(Map<String, dynamic>? value) =>
+      value == null ? null : jsonEncode(value);
 }
