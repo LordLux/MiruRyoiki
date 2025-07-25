@@ -30,7 +30,7 @@ class FileScanner {
       if (entity is Directory) {
         try {
           final Series? existingSeries_ = existingSeries[PathString(entity.path)];
-          final Series seriesItem = await _processSeries(entity, existingSeries: existingSeries_);
+          final Series seriesItem = await processSeries(entity, existingSeries: existingSeries_);
           series.add(seriesItem);
         } catch (e, st) {
           logErr('3 | Error processing series ${entity.path}', e, st);
@@ -42,7 +42,7 @@ class FileScanner {
   }
 
   /// Process a series directory to extract seasons and episodes
-  Future<Series> _processSeries(Directory seriesDir, {Series? existingSeries}) async {
+  Future<Series> processSeries(Directory seriesDir, {Series? existingSeries}) async {
     final name = p.basename(seriesDir.path);
     // Use existing poster/banner paths if the series already exists
     PathString? posterPath = existingSeries?.folderPosterPath;

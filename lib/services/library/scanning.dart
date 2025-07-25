@@ -80,7 +80,56 @@ extension LibraryScanning on Library {
       notifyListeners();
     }
   }
+  
+  /// Scan the library in a background isolate to avoid blocking the UI
+   Future<void> scanLocalLibraryBackground() async {
+    if (_libraryPath == null) return;
 
+    _isLoading = true;
+    notifyListeners();
+    final receive = ReceivePort();
+    await Isolate.spawn(
+      _isolateScan,
+      LibraryScannerMessage(_libraryPath!, receive.sendPort),
+    );
+
+    receive.listen((msg) {
+      if (msg is LibraryScannerProgress) {
+        _scanProgress = msg;
+        notifyListeners();
+      } else if (msg is LibraryScannerResult) {
+        _series = msg.series;
+        _isLoading = false;
+        receive.close();
+        notifyListeners();
+      }
+    });
+  }
+
+  /// Questa è la funzione che gira nell’isolate
+  static Future<void> _isolateScan(LibraryScannerMessage msg) async {
+    final fs = FileScanner();
+    final port = msg.replyPort;
+
+    // prima facciamo un enum delle cartelle per contare totali
+    final allDirs = await Directory(msg.libraryPath).list().where((e) => e is Directory).toList();
+    final total = allDirs.length;
+    int processed = 0;
+
+    final results = <Series>[];
+    for (final ent in allDirs) {
+      final s = await fs.processSeries(ent as Directory);
+      results.add(s);
+
+      processed++;
+      // invia progresso
+      port.send(LibraryScannerProgress(processed, total));
+    }
+
+    // infine invia il risultato completo
+    port.send(LibraryScannerResult(results));
+  }
+  
   /// Calculate dominant colors only for series that need it
   Future<void> calculateDominantColors({bool forceRecalculate = false}) async {
     // Determine which series need processing
