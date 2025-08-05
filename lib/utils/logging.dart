@@ -36,7 +36,7 @@ Future<void> initializeLoggingSession() async {
     await initializeMiruRyoiokiSaveDirectory();
 
     // Create logs subdirectory
-    final logsDir = Directory(p.join(miruRyoiokiSaveDirectory.path, 'logs'));
+    final logsDir = Directory(p.join(miruRyoikiSaveDirectory.path, 'logs'));
     if (!await logsDir.exists()) {
       await logsDir.create(recursive: true);
     }

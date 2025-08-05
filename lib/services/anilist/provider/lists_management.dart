@@ -55,7 +55,7 @@ extension AnilistProviderListsManagement on AnilistProvider {
     if (!isLoggedIn || _userLists.isEmpty) return;
 
     try {
-      final dir = miruRyoiokiSaveDirectory;
+      final dir = miruRyoikiSaveDirectory;
       final file = File('${dir.path}/$lists_cache.json');
 
       final Map<String, dynamic> cache = {
@@ -82,7 +82,7 @@ extension AnilistProviderListsManagement on AnilistProvider {
   /// Load user lists from local cache
   Future<bool> _loadListsFromCache() async {
     try {
-      final dir = miruRyoiokiSaveDirectory;
+      final dir = miruRyoikiSaveDirectory;
       final file = File('${dir.path}/$lists_cache.json');
 
       if (!await file.exists()) {

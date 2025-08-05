@@ -117,4 +117,9 @@ class Episode {
       mkvMetadata: mkvMetadata ?? this.mkvMetadata,
     );
   }
+
+  String? get seriesName {
+    if (path.path.isEmpty) return null;
+    return path.getRelativeToMiruRyoikiSaveDirectory?.split(ps).first;
+  }
 }

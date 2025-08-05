@@ -7,7 +7,7 @@ class PathUtils {
   /// Normalize file paths for consistent comparison
   static String? normalizePath(String? path) {
     if (path == null || path.isEmpty) return null;
-    
+
     // Normalize path separators
     path = p.normalize(path).replaceAll('/', ps).replaceAll('\\', ps);
 
@@ -55,11 +55,20 @@ class PathString {
   String? get pathMaybe => PathUtils.normalizePath(_path);
 
   String? get original => _path;
-  String? get fileName => PathUtils.getFileName(_path);
-  String? get fileExtension => PathUtils.getFileExtension(_path);
+  String? get name => PathUtils.getFileName(_path);
+  String? get ext => PathUtils.getFileExtension(_path);
+
+  Directory? get directory {
+    if (_path == null || _path!.isEmpty) return null;
+    return Directory(_path!);
+  }
+  Directory? get parentFolder {
+    if (_path == null || _path!.isEmpty) return null;
+    return Directory(_path!).parent;
+  }
 
   String? get getRelativeToMiruRyoikiSaveDirectory {
-    final saveDir = miruRyoiokiSaveDirectory;
+    final saveDir = miruRyoikiSaveDirectory;
     return PathUtils.relativePath(path, saveDir.path);
   }
 
@@ -110,7 +119,7 @@ Future<void> initializeMiruRyoiokiSaveDirectory() async {
 /// Returns the MiruRyoiki save directory path.
 ///
 /// Throws if [initializeMiruRyoiokiSaveDirectory] has not been called.
-Directory get miruRyoiokiSaveDirectory {
+Directory get miruRyoikiSaveDirectory {
   if (_miruRyoiokiSaveDirectoryPath == null) //
     throw StateError('miruRyoiokiSaveDirectoryPath not initialized. Call initializeMiruRyoiokiSaveDirectory() first.');
 

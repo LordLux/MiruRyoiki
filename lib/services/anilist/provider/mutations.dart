@@ -4,7 +4,7 @@ extension AnilistProviderMutations on AnilistProvider {
   /// Save pending mutations to disk
   Future<void> saveMutationsQueue() async {
     try {
-      final dir = miruRyoiokiSaveDirectory;
+      final dir = miruRyoikiSaveDirectory;
       final file = File('${dir.path}/$mutations_queue');
 
       final mutations = _pendingMutations.map((m) => m.toJson()).toList();
@@ -19,7 +19,7 @@ extension AnilistProviderMutations on AnilistProvider {
   /// Load pending mutations from disk
   Future<void> loadMutationsQueue() async {
     try {
-      final dir = miruRyoiokiSaveDirectory;
+      final dir = miruRyoikiSaveDirectory;
       final file = File('${dir.path}/$mutations_queue');
 
       if (!await file.exists()) {

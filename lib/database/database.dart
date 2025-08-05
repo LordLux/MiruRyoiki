@@ -74,7 +74,7 @@ class AppDatabase extends _$AppDatabase {
 
 LazyDatabase _openConnection() {
   return LazyDatabase(() async {
-    final saveDirPath = PathString(miruRyoiokiSaveDirectory.path);
+    final saveDirPath = PathString(miruRyoikiSaveDirectory.path);
     final file = File('${saveDirPath.path}${Platform.pathSeparator}miruryoiki.db');
     return NativeDatabase.createInBackground(file);
   });

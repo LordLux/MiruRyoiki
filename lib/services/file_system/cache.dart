@@ -21,7 +21,7 @@ class ImageCacheService {
   Future<void> init() async {
     if (_initialized) return;
 
-    final dir = miruRyoiokiSaveDirectory;
+    final dir = miruRyoikiSaveDirectory;
     _cacheDir = Directory('${dir.path}/image_cache');
 
     if (!await _cacheDir!.exists()) //

@@ -11,7 +11,7 @@ extension AnilistProviderBackgroundSync on AnilistProvider {
     _syncTimer = Timer.periodic(_syncInterval, (_) => _performBackgroundSync());
 
     // Connectivity check timer
-    _connectivityTimer = Timer.periodic(const Duration(seconds: 15), (_) => _checkConnectivityAndNotify());
+    // _connectivityTimer = Timer.periodic(const Duration(seconds: 15), (_) => _checkConnectivityAndNotify());
 
     // Start user data refresh timer with foreground interval
     _startUserDataRefreshTimer(inForeground: true);
