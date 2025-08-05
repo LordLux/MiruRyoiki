@@ -33,7 +33,20 @@ class MediaInfo {
   /// Get metadata for a video file
   static Future<Metadata?> getMetadata(PathString filepath) async {
     try {
-      return Metadata.fromJson(await VideoDataExtractor.getFileMetadata(filePath: filepath.path));
+      
+      // Fetch base metadata and video duration in parallel for efficiency
+      final results = await Future.wait([
+        VideoDataExtractor.getFileMetadata(filePath: filepath.path),
+        getVideoDuration(filepath),
+      ]);
+
+      final fileMetadata = results[0] as Map<String, dynamic>;
+      final duration = results[1] as Duration;
+
+      return Metadata.fromJson({
+        ...fileMetadata,
+        'duration': duration,
+      });
     } catch (e) {
       logErr('Error getting video metadata', e);
       return null;

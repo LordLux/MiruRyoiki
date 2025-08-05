@@ -56,13 +56,18 @@ extension AnilistProviderInitialization on AnilistProvider {
   /// Check network connectivity
   Future<bool> _checkConnectivity() async {
     try {
-      final result = await InternetAddress.lookup('anilist.co');
-      if (result.isNotEmpty && result[0].rawAddress.isNotEmpty) {
+      final result = await Future.any([
+        InternetAddress.lookup('anilist.co'),
+        Future.delayed(Duration(seconds: 15), () => false),
+      ]);
+
+      if (result != false && (result as List<InternetAddress>).isNotEmpty && result[0].rawAddress.isNotEmpty) {
         _isOffline = false;
-        return true;
+        return true; // is online
       }
+      return false; // is offline
     } catch (_) {
-      _isOffline = true;
+      _isOffline = true; // is offline
     }
     return !_isOffline;
   }

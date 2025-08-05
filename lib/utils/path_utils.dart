@@ -7,7 +7,15 @@ class PathUtils {
   /// Normalize file paths for consistent comparison
   static String? normalizePath(String? path) {
     if (path == null || path.isEmpty) return null;
-    return p.normalize(path).replaceAll('/', ps).replaceAll('\\', ps);
+    
+    // Normalize path separators
+    path = p.normalize(path).replaceAll('/', ps).replaceAll('\\', ps);
+
+    // Windows long path support
+    if (path.length > 260 && !path.startsWith('\\\\?\\')) //
+      path = r'\\?\' + path;
+
+    return path;
   }
 
   /// Get relative path from a base directory

@@ -51,7 +51,7 @@ class Library with ChangeNotifier {
   final SettingsManager _settings;
   late final AppDatabase _db = AppDatabase();
   late final SeriesDao seriesDao = SeriesDao(_db);
-  LibraryScannerProgress? _scanProgress;
+  LibraryScannerProgress? scanProgress;
 
   bool _initialized = false;
   bool get initialized => _initialized;

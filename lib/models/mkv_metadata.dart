@@ -1,178 +1,178 @@
+
+import '../utils/units.dart' as units;
+
 class MkvMetadata {
-  final String title;
-  final double duration;
-  final int bitrate;
-  final String muxingApp;
-  final String writingApp;
+  final String format;
+  final int bitrate; // in bits per second
+  final List<String> attachments;
   final List<VideoStream> videoStreams;
   final List<AudioStream> audioStreams;
-  final List<Attachment> attachments;
+  final List<TextStream> textStreams;
 
   const MkvMetadata({
-    this.title = '',
-    this.duration = 0.0,
+    this.format = '',
     this.bitrate = 0,
-    this.muxingApp = '',
-    this.writingApp = '',
+    this.attachments = const [],
     this.videoStreams = const [],
     this.audioStreams = const [],
-    this.attachments = const [],
+    this.textStreams = const [],
   });
 
   factory MkvMetadata.fromJson(Map<dynamic, dynamic> json) {
     return MkvMetadata(
-      title: json['title'] as String? ?? '',
-      duration: json['duration'] as double? ?? 0.0,
+      format: json['format'] as String? ?? '',
       bitrate: json['bitrate'] as int? ?? 0,
-      muxingApp: json['muxingApp'] as String? ?? '',
-      writingApp: json['writingApp'] as String? ?? '',
+      attachments: (json['attachments'] as List?)?.map((item) => item as String).toList() ?? [],
       videoStreams: (json['videoStreams'] as List?)?.map((stream) => VideoStream.fromJson(stream)).toList() ?? [],
       audioStreams: (json['audioStreams'] as List?)?.map((stream) => AudioStream.fromJson(stream)).toList() ?? [],
-      attachments: (json['attachments'] as List?)?.map((attachment) => Attachment.fromJson(attachment)).toList() ?? [],
+      textStreams: (json['textStreams'] as List?)?.map((stream) => TextStream.fromJson(stream)).toList() ?? [],
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
-      'title': title,
-      'duration': duration,
+      'format': format,
       'bitrate': bitrate,
-      'muxingApp': muxingApp,
-      'writingApp': writingApp,
+      'attachments': attachments,
       'videoStreams': videoStreams.map((stream) => stream.toJson()).toList(),
       'audioStreams': audioStreams.map((stream) => stream.toJson()).toList(),
-      'attachments': attachments.map((attachment) => attachment.toJson()).toList(),
+      'textStreams': textStreams.map((stream) => stream.toJson()).toList(),
     };
   }
 
   // Helper method for bitrate display
-  String get bitrateFormatted => '${(bitrate / 1000).round()} kbps';
+  String get bitrateFormatted => units.fileTransferRate(bitrate);
 
-  // Helper method for duration display
-  String get durationFormatted => '${duration.toStringAsFixed(2)} ms';
+  @override
+  String toString() => 'MkvMetadata(format: $format, bitrate: $bitrateFormatted, videoStreams: ${videoStreams.length}, audioStreams: ${audioStreams.length}, textStreams: ${textStreams.length}, attachments: ${attachments.length})';
 }
 
-class VideoStream {
-  final int trackNumber;
-  final String codecId;
-  final String codecName;
+class Pair {
   final int width;
   final int height;
-  final double frameRate;
 
-  const VideoStream({
-    this.trackNumber = 0,
-    this.codecId = '',
-    this.codecName = '',
-    this.width = 0,
-    this.height = 0,
-    this.frameRate = 0.0,
-  });
+  const Pair({this.width = 0, this.height = 0});
 
-  factory VideoStream.fromJson(Map<dynamic, dynamic> json) {
-    return VideoStream(
-      trackNumber: json['trackNumber'] as int? ?? 0,
-      codecId: json['codecId'] as String? ?? '',
-      codecName: json['codecName'] as String? ?? '',
+  factory Pair.fromJson(Map<dynamic, dynamic> json) {
+    return Pair(
       width: json['width'] as int? ?? 0,
       height: json['height'] as int? ?? 0,
-      frameRate: json['frameRate'] as double? ?? 0.0,
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
-      'trackNumber': trackNumber,
-      'codecId': codecId,
-      'codecName': codecName,
       'width': width,
       'height': height,
-      'frameRate': frameRate,
     };
   }
 
-  String get resolution => '$width×$height';
-  String get codec => '$codecName ($codecId)';
+  @override
+  String toString() => '$width, $height';
 }
 
-class AudioStream {
-  final int trackNumber;
-  final String codecId;
-  final String codecName;
-  final int channels;
-  final double sampleRate;
+class VideoStream {
+  final String format;
+  final Pair size;
+  final Pair aspectRatio;
+  final double fps;
+  final int bitrate;
   final int bitDepth;
 
-  const AudioStream({
-    this.trackNumber = 0,
-    this.codecId = '',
-    this.codecName = '',
-    this.channels = 0,
-    this.sampleRate = 0.0,
+  const VideoStream({
+    this.format = '',
+    this.size = const Pair(),
+    this.aspectRatio = const Pair(),
+    this.fps = 0.0,
+    this.bitrate = 0,
     this.bitDepth = 0,
   });
 
-  factory AudioStream.fromJson(Map<dynamic, dynamic> json) {
-    return AudioStream(
-      trackNumber: json['trackNumber'] as int? ?? 0,
-      codecId: json['codecId'] as String? ?? '',
-      codecName: json['codecName'] as String? ?? '',
-      channels: json['channels'] as int? ?? 0,
-      sampleRate: json['sampleRate'] as double? ?? 0.0,
+  factory VideoStream.fromJson(Map<dynamic, dynamic> json) {
+    return VideoStream(
+      format: json['format'] as String? ?? '',
+      size: json['size'] != null ? Pair.fromJson(json['size']) : const Pair(),
+      aspectRatio: json['aspectRatio'] != null ? Pair.fromJson(json['aspectRatio']) : const Pair(),
+      fps: (json['fps'] as num?)?.toDouble() ?? 0.0,
+      bitrate: json['bitrate'] as int? ?? 0,
       bitDepth: json['bitDepth'] as int? ?? 0,
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
-      'trackNumber': trackNumber,
-      'codecId': codecId,
-      'codecName': codecName,
-      'channels': channels,
-      'sampleRate': sampleRate,
+      'format': format,
+      'size': size.toJson(),
+      'aspectRatio': aspectRatio.toJson(),
+      'fps': fps,
+      'bitrate': bitrate,
       'bitDepth': bitDepth,
     };
   }
 
-  String get codec => '$codecName ($codecId)';
-  String get sampleRateFormatted => '${sampleRate.round()} Hz';
-  String get bitDepthFormatted => '$bitDepth bit';
+  String get bitrateFormatted => units.fileTransferRate(bitrate);
+
+  String get aspectRatioFormatted => aspectRatio.width > 0 && aspectRatio.height > 0 ? '${aspectRatio.width}:${aspectRatio.height}' : 'N/A';
 }
 
-class Attachment {
-  final int index;
-  final String fileName;
-  final String mimeType;
-  final String description;
-  final int size;
+class AudioStream {
+  final String format;
+  final int bitrate;
+  final int channels;
+  final String? language;
 
-  const Attachment({
-    this.index = 0,
-    this.fileName = '',
-    this.mimeType = '',
-    this.description = '',
-    this.size = 0,
+  const AudioStream({
+    this.format = '',
+    this.bitrate = 0,
+    this.channels = 0,
+    this.language,
   });
 
-  factory Attachment.fromJson(Map<dynamic, dynamic> json) {
-    return Attachment(
-      index: json['index'] as int? ?? 0,
-      fileName: json['fileName'] as String? ?? '',
-      mimeType: json['mimeType'] as String? ?? '',
-      description: json['description'] as String? ?? '',
-      size: json['size'] as int? ?? 0,
+  factory AudioStream.fromJson(Map<dynamic, dynamic> json) {
+    return AudioStream(
+      format: json['format'] as String? ?? '',
+      bitrate: json['bitrate'] as int? ?? 0,
+      channels: json['channels'] as int? ?? 0,
+      language: json['language'] as String?,
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
-      'index': index,
-      'fileName': fileName,
-      'mimeType': mimeType,
-      'description': description,
-      'size': size,
+      'format': format,
+      'bitrate': bitrate,
+      'channels': channels,
+      'language': language,
     };
   }
 
-  String get sizeFormatted => '${(size / 1024).round()} KB';
+  String get bitrateFormatted => units.fileTransferRate(bitrate);
+}
+
+class TextStream {
+  final String format;
+  final String language;
+  final String? title;
+
+  const TextStream({
+    this.format = '',
+    this.language = '',
+    this.title,
+  });
+
+  factory TextStream.fromJson(Map<dynamic, dynamic> json) {
+    return TextStream(
+      format: json['format'] as String? ?? '',
+      language: json['language'] as String? ?? '',
+      title: json['title'] as String?,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'format': format,
+      'language': language,
+      'title': title,
+    };
+  }
 }

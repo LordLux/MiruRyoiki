@@ -13,10 +13,11 @@ import 'package:provider/provider.dart';
 import 'package:app_links/app_links.dart';
 import 'package:window_manager/window_manager.dart';
 
-import 'services/window/service.dart';
-import 'utils/path_utils.dart';
-import 'utils/screen_utils.dart';
-import 'utils/time_utils.dart';
+import '../../../services/window/service.dart';
+import '../../../utils/path_utils.dart';
+import '../../../utils/screen_utils.dart';
+import '../../../utils/time_utils.dart';
+import 'progress.dart';
 
 class EasySplashScreen extends StatefulWidget {
   /// Actual Content of the splash
@@ -214,6 +215,7 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
                   ),
                 ),
               ),
+              LibraryScanProgressIndicator(),
             ],
           );
         },
