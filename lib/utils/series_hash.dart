@@ -10,7 +10,18 @@ String computeSeriesHash(Series s) {
         .map((se) => {
               'name': se.name,
               'path': se.path.path,
-              'eps': se.episodes.map((e) => e.path.path).toList(),
+                'eps': se.episodes
+                  .map((e) => {
+                    'path': e.path.path,
+                    'watchedPercentage': e.watchedPercentage,
+                    'watched': e.watched,
+                    'thumbnailUnavailable': e.thumbnailUnavailable,
+                    'thumbnailPath': e.thumbnailPath,
+                    'name': e.name,
+                    'metadata': e.metadata?.toJson(),
+                    'mkvMetadata': e.mkvMetadata?.toJson(),
+                    }) //TODO should be fixed now after adding metadata to hash: it was skipping saving because series was 'not dirty' as metadata was not included in the hash
+                  .toList(),
             })
         .toList(),
     'mappings': s.anilistMappings

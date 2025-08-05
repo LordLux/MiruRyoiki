@@ -2,6 +2,7 @@
 import 'dart:convert';
 import 'dart:ui';
 import 'package:drift/drift.dart';
+import 'package:miruryoiki/utils/logging.dart';
 import '../database.dart';
 import '../tables.dart';
 import '../../models/series.dart';
@@ -50,7 +51,6 @@ class SeriesDao extends DatabaseAccessor<AppDatabase> with _$SeriesDaoMixin {
 
       final existingRow = await getSeriesRowByPath(series.path);
       if (existingRow != null && existingRow.metadataHash == newHash) {
-        // nothing changed → skip the heavy season/episode writes
         return existingRow.id;
       }
 
@@ -136,7 +136,6 @@ class SeriesDao extends DatabaseAccessor<AppDatabase> with _$SeriesDaoMixin {
 
       // AniList mappings
       await _saveMappings(seriesId, series.anilistMappings);
-
       return seriesId;
     });
   }
@@ -349,10 +348,8 @@ class SeriesDao extends DatabaseAccessor<AppDatabase> with _$SeriesDaoMixin {
   // ---------- LIBRARY SAVE ----------
   /// Salva una lista di Series in una transazione.
   Future<void> saveLibrary(List<Series> all) async {
-    await transaction(() async {
-      for (final s in all) {
-        await saveSeries(s);
-      }
-    });
+    for (final s in all) {
+      await saveSeries(s);
+    }
   }
 }

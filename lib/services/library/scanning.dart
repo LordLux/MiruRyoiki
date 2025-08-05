@@ -242,7 +242,7 @@ extension LibraryScanning on Library {
 
     // Save and notify when done
     if (anyChanged || forceRecalculate) {
-      await forceImmediateSave();
+      await _saveLibrary();
       notifyListeners();
       logTrace('Finished calculating dominant colors for $processed series');
       snackBar(
