@@ -8,7 +8,9 @@ import '../file_system/file_scanner.dart';
 class LibraryScannerMessage {
   final String libraryPath;
   final SendPort replyPort;
-  LibraryScannerMessage(this.libraryPath, this.replyPort);
+  final Map<PathString, Series>? existingSeriesMap;
+
+  LibraryScannerMessage(this.libraryPath, this.replyPort, {this.existingSeriesMap});
 }
 
 class LibraryScannerProgress {

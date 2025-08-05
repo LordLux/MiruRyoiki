@@ -26,7 +26,7 @@ import 'services/navigation/dialogs.dart';
 import 'services/navigation/statusbar.dart';
 import 'services/window/service.dart';
 import 'settings.dart';
-import 'splash_screen.dart';
+import 'widgets/dialogs/splash/splash_screen.dart';
 import 'utils/logging.dart';
 import 'manager.dart';
 import 'services/library/library_provider.dart';

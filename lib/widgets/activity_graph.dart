@@ -27,6 +27,8 @@ class ActivityGraph extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    return const SizedBox.shrink(); // Placeholder for now, as this widget is not used in the current context
+    
     // log('Building ActivityGraph with ${activityHistory.length} activities');
     // Create a map of date to activity
     final Map<DateTime, AnilistActivityHistory> activityMap = {};

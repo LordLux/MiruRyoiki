@@ -1,3 +1,5 @@
+// ignore_for_file: unnecessary_null_in_if_null_operators
+
 import 'dart:io';
 
 import 'package:collection/collection.dart';
@@ -168,15 +170,17 @@ class FileScanner {
       final name = _cleanEpisodeName(p.basenameWithoutExtension(file.path));
 
       // Check if this episode already exists in the library
-      final existingEpisode = existingEpisodes?.firstWhereOrNull((e) => e.path.path == path.path);
+      final Episode? existingEpisode = existingEpisodes?.firstWhereOrNull((e) => e.path.path == path.path);
+      
 
       final watched = existingEpisode?.watched ?? false;
       final watchedPercent = existingEpisode?.watchedPercentage ?? 0.0;
-      final thumbPath = existingEpisode?.thumbnailPath;
+      final thumbPath = existingEpisode?.thumbnailPath ?? null;
       final thumbUnavailable = existingEpisode?.thumbnailUnavailable ?? false;
 
       Metadata? meta = existingEpisode?.metadata ?? await MediaInfo.getMetadata(path);
-      MkvMetadata? mkvMeta = existingEpisode?.mkvMetadata ?? await MediaInfo.getMkvMetadata(path);
+      log('Processing episode ${existingEpisode?.name ?? path.pathMaybe ?? 'None'}: $meta');
+      // MkvMetadata? mkvMeta = existingEpisode?.mkvMetadata ?? await MediaInfo.getMkvMetadata(path);
 
       if (existingEpisode != null) {
         // Preserve watch data from existing episode
@@ -189,7 +193,7 @@ class FileScanner {
           watchedPercentage: watchedPercent,
           thumbnailUnavailable: thumbUnavailable,
           metadata: meta,
-          mkvMetadata: mkvMeta,
+          mkvMetadata: existingEpisode.mkvMetadata, // could be null
         ));
       } else {
         // New episode

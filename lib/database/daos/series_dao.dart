@@ -101,11 +101,27 @@ class SeriesDao extends DatabaseAccessor<AppDatabase> with _$SeriesDaoMixin {
         for (final ep in season.episodes) {
           final existingEp = dbEpByPath[ep.path.path];
           final epComp = _episodeToCompanion(ep, seasonId);
+
           if (existingEp == null) {
+            // New episode, insert with all its data
             await into(episodesTable).insert(epComp);
           } else {
-            await (update(episodesTable)..where((t) => t.id.equals(existingEp.id))) //
-                .write(epComp);
+            // Episode exists -> Check if we need to update it
+            final bool metadataNeedsUpdate = (ep.metadata != null && existingEp.metadata == null) || (ep.mkvMetadata != null && existingEp.mkvMetadata == null);
+
+            // Only write to database if something actually changed
+            // Create new companion for the update to be explicit
+            final updateComp = epComp.copyWith(
+              // Preserve existing metadata if new scan didn't find any
+              metadata: ep.metadata == null ? Value(existingEp.metadata) : Value(ep.metadata),
+              mkvMetadata: ep.mkvMetadata == null ? Value(existingEp.mkvMetadata) : Value(ep.mkvMetadata),
+            );
+
+            // By comparing the companions, we can detect any change, not just metadata
+            if (updateComp != _episodeToCompanion(ep.copyWith(metadata: existingEp.metadata, mkvMetadata: existingEp.mkvMetadata), seasonId) || metadataNeedsUpdate) {
+              await (update(episodesTable)..where((t) => t.id.equals(existingEp.id))) //
+                  .write(updateComp);
+            }
           }
         }
 
@@ -289,15 +305,7 @@ class SeriesDao extends DatabaseAccessor<AppDatabase> with _$SeriesDaoMixin {
   }
 
   EpisodesTableCompanion _episodeToCompanion(Episode e, int seasonId) {
-    return EpisodesTableCompanion(
-      seasonId: Value(seasonId),
-      name: Value(e.name),
-      path: Value(e.path),
-      thumbnailPath: e.thumbnailPath == null ? const Value.absent() : Value(e.thumbnailPath!),
-      watched: Value(e.watched),
-      watchedPercentage: Value(e.watchedPercentage),
-      thumbnailUnavailable: Value(e.thumbnailUnavailable),
-    );
+    return EpisodesTableCompanion(seasonId: Value(seasonId), name: Value(e.name), path: Value(e.path), thumbnailPath: e.thumbnailPath == null ? const Value.absent() : Value(e.thumbnailPath!), watched: Value(e.watched), watchedPercentage: Value(e.watchedPercentage), thumbnailUnavailable: Value(e.thumbnailUnavailable), metadata: e.metadata == null ? const Value.absent() : Value(e.metadata), mkvMetadata: e.mkvMetadata == null ? const Value.absent() : Value(e.mkvMetadata));
   }
 
   Episode _tableToEpisode(EpisodesTableData d) => Episode(
@@ -307,6 +315,8 @@ class SeriesDao extends DatabaseAccessor<AppDatabase> with _$SeriesDaoMixin {
         watched: d.watched,
         watchedPercentage: d.watchedPercentage,
         thumbnailUnavailable: d.thumbnailUnavailable,
+        metadata: d.metadata,
+        mkvMetadata: d.mkvMetadata,
       );
 
   AnilistMapping _tableToMapping(AnilistMappingsTableData d) => AnilistMapping(
@@ -336,9 +346,8 @@ class SeriesDao extends DatabaseAccessor<AppDatabase> with _$SeriesDaoMixin {
     );
   }
 
-  // ---------- LIBRARY SAVE (hashing TODO) ----------
+  // ---------- LIBRARY SAVE ----------
   /// Salva una lista di Series in una transazione.
-  /// TODO: se vuoi hashing per evitare salvataggi inutili, passami l’algoritmo/hashes.
   Future<void> saveLibrary(List<Series> all) async {
     await transaction(() async {
       for (final s in all) {

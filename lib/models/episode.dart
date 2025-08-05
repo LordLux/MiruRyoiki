@@ -27,6 +27,17 @@ class Episode {
     this.mkvMetadata,
   });
 
+  @override
+  String toString() {
+    return """
+    Episode(
+      name: $name,
+      metadata: $metadata,
+      mkvMetadata: $mkvMetadata
+    )
+    """;
+  }
+
   // For JSON serialization
   Map<String, dynamic> toJson() {
     return {
@@ -84,4 +95,26 @@ class Episode {
 
   static void resetAllFailedAttempts() => //
       ThumbnailManager().resetAllFailedAttempts();
+
+  Episode copyWith({
+    PathString? path,
+    String? name,
+    PathString? thumbnailPath,
+    bool? watched,
+    double? watchedPercentage,
+    bool? thumbnailUnavailable,
+    Metadata? metadata,
+    MkvMetadata? mkvMetadata,
+  }) {
+    return Episode(
+      path: path ?? this.path,
+      name: name ?? this.name,
+      thumbnailPath: thumbnailPath ?? this.thumbnailPath,
+      watched: watched ?? this.watched,
+      watchedPercentage: watchedPercentage ?? this.watchedPercentage,
+      thumbnailUnavailable: thumbnailUnavailable ?? this.thumbnailUnavailable,
+      metadata: metadata ?? this.metadata,
+      mkvMetadata: mkvMetadata ?? this.mkvMetadata,
+    );
+  }
 }

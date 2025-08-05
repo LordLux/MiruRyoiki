@@ -31,7 +31,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? db]) : super(db ?? _openConnection());
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -58,6 +58,10 @@ class AppDatabase extends _$AppDatabase {
             // recreate the indexes in case we skipped onCreate
             await m.issueCustomQuery('CREATE INDEX IF NOT EXISTS idx_series_path ON series_table(path);');
             // …and the others, same pattern…
+          }
+          if (from < 4) {
+            await m.addColumn(episodesTable, episodesTable.metadata);
+            await m.addColumn(episodesTable, episodesTable.mkvMetadata);
           }
         },
         beforeOpen: (details) async {

@@ -116,7 +116,8 @@ extension AnilistProviderAuthentication on AnilistProvider {
         logDebug('No Anilist user cache found');
         return false;
       }
-
+      
+      //TODO fix _TypeError (type 'String' is not a subtype of type 'int' of 'index')
       final userJson = await file.readAsString();
       final userData = jsonDecode(userJson) as Map<String, dynamic>;
 
