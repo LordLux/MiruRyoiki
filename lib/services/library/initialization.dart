@@ -39,7 +39,7 @@ extension LibraryInitialization on Library {
     if (!Manager.skipRegistryIndexing && !kDebugMode) await _mpcTracker.ensureInitialized();
 
     // Update watched status and force refresh
-    await _updateWatchedStatusAndForceRefresh();
+    // await _updateWatchedStatusAndForceRefresh(); watched status is updated in the reloadLibrary method and save is done right after this
 
     // Save library
     await _saveLibrary();
@@ -66,8 +66,6 @@ extension LibraryInitialization on Library {
     await scanLocalLibrary();
 
     await _mpcTracker.ensureInitialized();
-
-    await _updateWatchedStatusAndForceRefresh();
 
     await _saveLibrary();
 
@@ -141,40 +139,36 @@ extension LibraryInitialization on Library {
     if (!_cacheValidated) await cacheValidation();
   }
 
-  Future<void> _updateWatchedStatusAndForceRefresh() async {
-    _updateWatchedStatusAndResetThumbnailFetchFailedAttemptsCount();
-    // Force immediate save and UI refresh
-    // _isDirty = true;
-    await forceImmediateSave();
-    notifyListeners();
-  }
-
   void _updateWatchedStatusAndResetThumbnailFetchFailedAttemptsCount() {
     if (!_mpcTracker.isInitialized) return;
     logTrace('3 | Getting watched status for all series and resetting thumbnail fetch attempts');
 
     for (final series in _series) {
       // Update seasons/episodes
+      final seriesIndex = _series.indexOf(series);
       for (final season in series.seasons) {
+        final seasonIndex = series.seasons.indexOf(season);
         for (final episode in season.episodes) {
+          final episodeIndex = season.episodes.indexOf(episode);
           // Update watch percentages from tracker
           final trackerPercentage = _mpcTracker.getWatchPercentage(episode.path);
           if (trackerPercentage > 0.0) {
-            episode.watchedPercentage = trackerPercentage;
-            episode.watched = _mpcTracker.isWatched(episode.path);
+            _series[seriesIndex].seasons[seasonIndex].episodes[episodeIndex].watchedPercentage = trackerPercentage;
+            _series[seriesIndex].seasons[seasonIndex].episodes[episodeIndex].watched = _mpcTracker.isWatched(episode.path);
           }
-          episode.resetThumbnailStatus();
+          _series[seriesIndex].seasons[seasonIndex].episodes[episodeIndex].resetThumbnailStatus();
         }
       }
 
       // Update related media
       for (final episode in series.relatedMedia) {
+        final episodeIndex = series.relatedMedia.indexOf(episode);
         final trackerPercentage = _mpcTracker.getWatchPercentage(episode.path);
         if (trackerPercentage > 0.0) {
-          episode.watchedPercentage = trackerPercentage;
-          episode.watched = _mpcTracker.isWatched(episode.path);
+          _series[seriesIndex].relatedMedia[episodeIndex].watchedPercentage = trackerPercentage;
+          _series[seriesIndex].relatedMedia[episodeIndex].watched = _mpcTracker.isWatched(episode.path);
         }
-        episode.resetThumbnailStatus();
+        _series[seriesIndex].relatedMedia[episodeIndex].resetThumbnailStatus();
       }
     }
 

@@ -69,7 +69,7 @@ extension LibraryPersistence on Library {
   }
 
   /// Save library with optional debouncing
-  Future<void> _saveLibrary() async => _saveToDb();
+  Future<void> _saveLibrary() async => await _saveToDb();
 
   Future<void> migrateFromJson() async {
     // 1) Percorso del file JSON legacy

@@ -42,7 +42,7 @@ extension LibraryWatchTracking on Library {
 
     if (anyEpisodeUpdated) {
       logDebug('Updated watch status for $updatedCount episodes');
-      await forceImmediateSave();
+      await _saveLibrary();
 
       // Set the flag indicating a series was modified
       if (homeKey.currentState != null) homeKey.currentState!.seriesWasModified = true;
