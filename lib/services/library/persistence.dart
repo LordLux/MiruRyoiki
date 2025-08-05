@@ -4,7 +4,7 @@ extension LibraryPersistence on Library {
   /// Load settings from saved JSON file
   Future<void> _loadSettings() async {
     try {
-      final dir = miruRyoiokiSaveDirectory;
+      final dir = miruRyoikiSaveDirectory;
       final file = File('${dir.path}/${Library.settingsFileName}.json');
 
       if (await file.exists()) {
@@ -21,7 +21,7 @@ extension LibraryPersistence on Library {
   /// Save settings to JSON file
   Future<void> _saveSettings() async {
     try {
-      final dir = miruRyoiokiSaveDirectory;
+      final dir = miruRyoikiSaveDirectory;
       final file = File('${dir.path}/${Library.settingsFileName}.json');
 
       final data = {
@@ -73,7 +73,7 @@ extension LibraryPersistence on Library {
 
   Future<void> migrateFromJson() async {
     // 1) Percorso del file JSON legacy
-    final dir = miruRyoiokiSaveDirectory;
+    final dir = miruRyoikiSaveDirectory;
     final jsonFile = File('${dir.path}/${Library.miruryoikiLibrary}.json');
     final backupFile = File('${dir.path}/${Library.miruryoikiLibrary}.backup.json');
 

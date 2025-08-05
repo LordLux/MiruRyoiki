@@ -4,7 +4,7 @@ import '../manager.dart';
 
 DateTime get now => DateTime.now();
 
-String get nowFormatted => '${now.hour}:${now.minute}:${now.second}.${now.millisecond.toString().padLeft(3, '0')}';
+String get nowFormatted => '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}:${now.second.toString().padLeft(2, '0')}.${now.millisecond.toString().padLeft(3, '0')}';
 
 Duration getDuration(Duration duration) {
   if (Manager.animationsEnabled) {

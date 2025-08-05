@@ -109,7 +109,7 @@ extension AnilistProviderAuthentication on AnilistProvider {
   /// Load current user from cache
   Future<bool> _loadCurrentUserFromCache() async {
     try {
-      final dir = miruRyoiokiSaveDirectory;
+      final dir = miruRyoikiSaveDirectory;
       final file = File('${dir.path}/$user_cache.json');
 
       if (!await file.exists()) {
@@ -135,7 +135,7 @@ extension AnilistProviderAuthentication on AnilistProvider {
     if (!isLoggedIn || _currentUser == null) return;
 
     try {
-      final dir = miruRyoiokiSaveDirectory;
+      final dir = miruRyoikiSaveDirectory;
       final file = File('${dir.path}/$user_cache.json');
 
       await file.writeAsString(jsonEncode(_currentUser!.toJson()));

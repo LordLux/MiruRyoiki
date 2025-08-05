@@ -28,6 +28,7 @@ class FileScanner {
     if (!await dir.exists()) return series;
 
     // Get all first level directories (each is a series)
+    // TODO create futures and await them in parallel
     await for (final entity in dir.list()) {
       if (entity is Directory) {
         try {
@@ -39,6 +40,8 @@ class FileScanner {
         }
       }
     }
+    
+    logTrace('Scanned ${series.length} series in library: $libraryPath');
 
     return series;
   }
@@ -171,7 +174,9 @@ class FileScanner {
 
       // Check if this episode already exists in the library
       final Episode? existingEpisode = existingEpisodes?.firstWhereOrNull((e) => e.path.path == path.path);
-      
+
+      if (file.path.contains("Dress")) //
+        final breakpoint = 0;
 
       final watched = existingEpisode?.watched ?? false;
       final watchedPercent = existingEpisode?.watchedPercentage ?? 0.0;
@@ -179,29 +184,19 @@ class FileScanner {
       final thumbUnavailable = existingEpisode?.thumbnailUnavailable ?? false;
 
       Metadata? meta = existingEpisode?.metadata ?? await MediaInfo.getMetadata(path);
-      log('Processing episode ${existingEpisode?.name ?? path.pathMaybe ?? 'None'}: $meta');
+      log('Processing ${existingEpisode?.seriesName ?? 'Unknown Series'} - "${existingEpisode?.name ?? path.name ?? 'None'}" | Metadata: ${meta != null}', splitLines: true);
       // MkvMetadata? mkvMeta = existingEpisode?.mkvMetadata ?? await MediaInfo.getMkvMetadata(path);
 
-      if (existingEpisode != null) {
-        // Preserve watch data from existing episode
-        // log('Found existing episode: ${existingEpisode.name}: ${(existingEpisode.watchedPercentage*100).toInt()}%');
-        episodes.add(Episode(
-          path: path,
-          name: name,
-          thumbnailPath: thumbPath,
-          watched: watched,
-          watchedPercentage: watchedPercent,
-          thumbnailUnavailable: thumbUnavailable,
-          metadata: meta,
-          mkvMetadata: existingEpisode.mkvMetadata, // could be null
-        ));
-      } else {
-        // New episode
-        episodes.add(Episode(
-          path: PathString(file.path),
-          name: name,
-        ));
-      }
+      episodes.add(Episode(
+        path: path,
+        name: name,
+        thumbnailPath: thumbPath,
+        watched: watched,
+        watchedPercentage: watchedPercent,
+        thumbnailUnavailable: thumbUnavailable,
+        metadata: meta,
+        mkvMetadata: existingEpisode?.mkvMetadata, // could be null
+      ));
     }
 
     return episodes;

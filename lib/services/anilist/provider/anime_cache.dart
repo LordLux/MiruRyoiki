@@ -41,7 +41,7 @@ extension AnilistProviderAnimeCache on AnilistProvider {
   /// Save anime details to persistent cache
   Future<void> saveAnimeCacheToStorage() async {
     try {
-      final dir = miruRyoiokiSaveDirectory;
+      final dir = miruRyoikiSaveDirectory;
       final file = File('${dir.path}/$anime_cache');
 
       // Sort by MRU and limit to maxCachedAnimeCount
@@ -60,7 +60,7 @@ extension AnilistProviderAnimeCache on AnilistProvider {
   /// Load anime details from persistent cache
   Future<void> loadAnimeCacheFromStorage() async {
     try {
-      final dir = miruRyoiokiSaveDirectory;
+      final dir = miruRyoikiSaveDirectory;
       final file = File('${dir.path}/$anime_cache');
 
       if (!await file.exists()) {

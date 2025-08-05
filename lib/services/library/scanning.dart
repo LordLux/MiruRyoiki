@@ -40,9 +40,8 @@ extension LibraryScanning on Library {
       // Update existing series (maintain same instance but update content)
       for (final scanned in scannedSeries) {
         final existingIndex = _series.indexWhere((s) => s.path == scanned.path);
-        if (existingIndex >= 0 && scanned.seasons.isNotEmpty && scanned.seasons[0].episodes.isNotEmpty) {
+        if (existingIndex >= 0) {
           // Replace with updated version while preserving metadata
-          log("${scanned.seasons[0].episodes[0].metadata} + ${scanned.seasons[0].episodes[0].mkvMetadata}");
           final mergedSeries = _mergeSeriesMetadata(_series[existingIndex], scanned);
 
           _series[existingIndex] = mergedSeries;
