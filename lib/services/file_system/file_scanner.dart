@@ -40,8 +40,6 @@ class FileScanner {
         }
       }
     }
-    
-    logTrace('Scanned ${series.length} series in library: $libraryPath');
 
     return series;
   }

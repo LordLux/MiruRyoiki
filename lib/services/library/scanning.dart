@@ -59,7 +59,14 @@ extension LibraryScanning on Library {
 
       // Remove deleted series
       if (removedSeries.isNotEmpty) {
-        logDebug('3 | Removing ${removedSeries.length} deleted series');
+        logDebug('3 | Removing ${removedSeries.length} deleted series from memory and DB');
+        // Delete from db
+        for (final seriesToRemove in removedSeries) {
+          final row = await seriesDao.getSeriesRowByPath(seriesToRemove.path);
+          if (row != null) await seriesDao.deleteSeriesRow(row.id);
+        }
+
+        // Delete from memory
         _series.removeWhere((s) => removedSeries.any((removed) => removed.path == s.path));
       }
 
