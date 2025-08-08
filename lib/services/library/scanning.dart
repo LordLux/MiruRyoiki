@@ -1,6 +1,5 @@
 part of 'library_provider.dart';
 
-
 extension LibraryScanning on Library {
   Future<void> setLibraryPath(String path) async {
     _libraryPath = path;
@@ -70,14 +69,16 @@ extension LibraryScanning on Library {
       IsolateScanResult scanResult;
       if (filesToProcess.isNotEmpty) {
         logTrace('3 | Processing ${filesToProcess.length} files in a background isolate...');
-        
+
         // Prepare the payload for the isolate
-        final token = rootIsolateToken!;
+        final token = rootIsolateToken;
+        if (token == null) throw StateError('RootIsolateToken was not initialized in main.dart');
+
         final payload = IsolateScanPayload(
           filesToProcess: filesToProcess,
           rootIsolateToken: token,
         );
-        
+
         scanResult = await compute(processFilesIsolate, payload);
         logTrace('3 | Isolate processing complete. Found metadata for ${scanResult.processedFileMetadata.length} files.');
       } else {

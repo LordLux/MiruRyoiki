@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/services.dart';
 import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
+import 'package:video_data_utils/video_data_utils.dart';
 
 import '../main.dart' show rootIsolateToken;
 import '../utils/path_utils.dart';
@@ -111,7 +112,23 @@ class ThumbnailManager {
       await directory.create(recursive: true);
     }
 
-    return await MediaInfo.extractThumbnail(videoPath, outputPath: outputPath);
+    final bool success = await VideoDataUtils().extractCachedThumbnail(
+      videoPath: videoPath.path,
+      outputPath: outputPath.path,
+      size: 256, // TODO make configurable
+    );
+
+    if (!success) {
+      logErr('Failed to generate thumbnail for $videoPath');
+      return null;
+    }
+
+    if (!await File(outputPath.path).exists()) {
+      logErr('Thumbnail file was not created at: $outputPath');
+      return null;
+    }
+
+    return outputPath;
   }
 
   void resetFailedAttemptsForPath(PathString path) {
