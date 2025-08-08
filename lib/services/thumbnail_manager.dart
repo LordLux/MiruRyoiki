@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
 
+import '../main.dart' show rootIsolateToken;
 import '../utils/path_utils.dart';
 import 'file_system/media_info.dart';
 import '../utils/logging.dart';
@@ -69,7 +70,9 @@ class ThumbnailManager {
     try {
       final cachePath = await generateThumbnailPath(videoPath);
 
-      final token = RootIsolateToken.instance;
+      final token = rootIsolateToken;
+      if (token == null) throw StateError('RootIsolateToken was not initialized in main.dart');
+
       final PathString? thumbnailPath = await _extractThumbnailIsolate({
         'videoPath': videoPath,
         'outputPath': cachePath,

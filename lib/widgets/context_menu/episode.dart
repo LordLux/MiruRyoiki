@@ -12,7 +12,6 @@ import '../../models/episode.dart';
 import '../../models/series.dart';
 import '../../services/library/library_provider.dart';
 import '../../services/navigation/show_info.dart';
-import '../../utils/logging.dart';
 import '../../utils/shell_utils.dart';
 import 'icons.dart' as icons;
 

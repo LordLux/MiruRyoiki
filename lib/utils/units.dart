@@ -1,13 +1,10 @@
 // ignore_for_file: constant_identifier_names
 
-import '../enums.dart';
-
 abstract class FileUnit {
   String get symbol;
-  int get scale; // Number of bytes (or bytes/sec) per unit
+  int get scale; // Number of bytes per unit
 }
 
-// Enum for file size units
 enum FileSizeUnit implements FileUnit {
   B(1),
   KB(1024),
@@ -24,7 +21,6 @@ enum FileSizeUnit implements FileUnit {
   String get symbol => name;
 }
 
-// Enum for file transfer rate units
 enum FileTransferRateUnit implements FileUnit {
   Bps(1),
   KBps(1024),
@@ -41,28 +37,21 @@ enum FileTransferRateUnit implements FileUnit {
   String get symbol => name;
 }
 
-// Extension for human-readable label
 extension FileUnitX on FileUnit {
-  String get label => symbol.replaceAll('ps', '/s'); // e.g., "KB/s" instead of "KBps"
+  String get label => symbol.replaceAll('ps', '/s'); // KB/s or KBps
 }
 
-// Generic function to format a value using any FileUnit
 String formatWithUnit(num value, FileUnit unit) => '${(value / unit.scale).toStringAsFixed(2)} ${unit.symbol}';
 
 String _fileXUnit(int value, List<FileUnit> units, [FileUnit? unit]) {
-  if (unit != null) {
-    return formatWithUnit(value, unit);
-  }
+  if (unit != null) return formatWithUnit(value, unit);
 
   for (final unit in units.reversed) {
-    if (value >= unit.scale) {
-      return formatWithUnit(value, unit);
-    }
+    if (value >= unit.scale) return formatWithUnit(value, unit);
   }
   return formatWithUnit(value, units.last);
 }
 
-// Example: file size formatting with auto unit selection
 String fileSize(int size, [FileSizeUnit? unit]) => _fileXUnit(size, FileSizeUnit.values, unit);
 
 String fileTransferRate(int rate, [FileTransferRateUnit? unit]) => _fileXUnit(rate, FileTransferRateUnit.values, unit);

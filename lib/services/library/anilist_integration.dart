@@ -242,7 +242,7 @@ extension LibraryAnilistIntegration on Library {
       await series.calculateDominantColor(forceRecalculate: true);
     }
 
-    await seriesDao.saveSeries(series);
+    await seriesDao.syncSeries(series);
     notifyListeners();
   }
 
@@ -285,7 +285,7 @@ extension LibraryAnilistIntegration on Library {
     // Set the flag indicating a series was modified
     if (homeKey.currentState != null) homeKey.currentState!.seriesWasModified = true;
 
-    await seriesDao.saveSeries(series);
+    await seriesDao.syncSeries(series);
     notifyListeners();
     Manager.setState();
 

@@ -50,8 +50,10 @@ dependencies:
   flutter_custom_cursor: ^0.0.4
   intl: ^0.19.0
   image: any
-  video_thumbnail_exporter:
-    path: M:/Projects/video_thumbnail_exporter/
+  video_data_utils:
+    # path: M:/Projects/video_data_utils/
+    git:
+      url: https://github.com/LordLux/video_data_utils.git
   flutter_desktop_context_menu:
     path: M:/Projects/flutter_desktop_context_menu/
     # git:
@@ -69,6 +71,7 @@ dependencies:
   args: ^2.7.0
   drift: ^2.14.0
   sqlite3_flutter_libs: ^0.5.18
+  md5_file_checksum: ^1.1.0
 
 dev_dependencies:
   flutter_test:

@@ -11,7 +11,6 @@ import 'package:package_info_plus/package_info_plus.dart';
 
 import '../enums.dart';
 import '../manager.dart';
-import '../settings.dart';
 import 'time_utils.dart';
 import 'path_utils.dart';
 

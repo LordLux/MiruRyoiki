@@ -1,7 +1,6 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:miruryoiki/utils/time_utils.dart';
 
-import '../../manager.dart';
 import 'wrapper.dart';
 
 class LoadingButton extends StatefulWidget {

@@ -19,12 +19,16 @@ class Metadata {
   /// Last accessed time of the file.
   late final DateTime lastAccessed;
 
+  /// MD5 checksum of the file.
+  final String? checksum;
+
   Metadata({
     this.size = 0,
     creationTime,
     lastModified,
     lastAccessed,
     this.duration = Duration.zero,
+    this.checksum,
   }) {
     this.creationTime = creationTime ?? DateTimeX.epoch;
     this.lastModified = lastModified ?? DateTimeX.epoch;
@@ -38,6 +42,7 @@ class Metadata {
       lastModified: parseDate(json['lastModified']),
       lastAccessed: parseDate(json['lastAccessed']),
       duration: parseDuration(json['duration']),
+      checksum: json['checksum'] as String?,
     );
   }
 
@@ -48,6 +53,7 @@ class Metadata {
       'lastModified': lastModified.toIso8601String(),
       'lastAccessed': lastAccessed.toIso8601String(),
       'duration': duration.inMilliseconds,
+      'checksum': checksum,
     };
   }
 
@@ -62,7 +68,7 @@ class Metadata {
     if (minutes > 0 || hours > 0) parts.add('${minutes.toString().padLeft(2, '0')}:');
     if (seconds > 0 || minutes > 0 || hours > 0) parts.add('${seconds.toString().padLeft(2, '0')}.');
     if (milliseconds > 0 || seconds > 0 || minutes > 0 || hours > 0) parts.add(milliseconds.toString().padLeft(3, '0'));
-    
+
     if (parts.isEmpty) return '00:00:00.000';
 
     return parts.join();
@@ -101,13 +107,32 @@ class Metadata {
       lastAccessed: $lastAccessed
     )""";
   }
+
+  Metadata copyWith({
+    int? size,
+    Duration? duration,
+    DateTime? creationTime,
+    DateTime? lastModified,
+    DateTime? lastAccessed,
+    String? checksum,
+  }) {
+    return Metadata(
+      size: size ?? this.size,
+      duration: duration ?? this.duration,
+      creationTime: creationTime ?? this.creationTime,
+      lastModified: lastModified ?? this.lastModified,
+      lastAccessed: lastAccessed ?? this.lastAccessed,
+      checksum: checksum ?? this.checksum,
+    );
+  }
 }
 
 Duration parseDuration(dynamic value) {
   if (value == null) return Duration.zero;
-  
+
   if (value is Duration) return value;
   if (value is int) return Duration(milliseconds: value);
+  if (value is double) return Duration(milliseconds: value.toInt());
   if (value is String) {
     try {
       return Duration(milliseconds: int.parse(value));

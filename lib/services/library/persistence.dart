@@ -39,13 +39,18 @@ extension LibraryPersistence on Library {
     try {
       await _loadSettings();
 
+      // Check for legacy JSON and migrate if it exists
+      // await migrateFromJson();
+
       final rows = await seriesDao.getAllSeriesRows();
       final loaded = <Series>[];
 
-      for (final row in rows) {
+      // Using Future.wait for faster loading
+      await Future.wait(rows.map((row) async {
         final s = await seriesDao.loadFullSeries(row.id);
         if (s != null) loaded.add(s);
-      }
+      }));
+
       _series = loaded;
 
       logDebug('>> Loaded ${_series.length} series from DB');
@@ -56,59 +61,68 @@ extension LibraryPersistence on Library {
     notifyListeners();
   }
 
-  Future<void> forceImmediateSave() async => _saveLibrary();
-
   /// Perform the actual save operation
-  Future<void> _saveToDb() async {
+  Future<void> _saveLibrary() async {
+    logDebug('>> Syncing library with database...');
     try {
-      await seriesDao.saveLibrary(_series);
-      logDebug('>> Library saved to DB (${_series.length} serie)');
+      final dbSeriesRows = await seriesDao.getAllSeriesRows();
+      final dbSeriesPaths = dbSeriesRows.map((row) => row.path.path).toSet();
+      final modelSeriesPaths = _series.map((s) => s.path.path).toSet();
+
+      // 1. Delete series that are in the DB but no longer in our library
+      final pathsToDelete = dbSeriesPaths.difference(modelSeriesPaths);
+      for (final path in pathsToDelete) {
+        final row = dbSeriesRows.firstWhere((r) => r.path.path == path);
+        await seriesDao.deleteSeriesRow(row.id);
+      }
+      logTrace('   - Deleted ${pathsToDelete.length} series from DB.');
+
+      // 2. Insert or Update all series from our current library state
+      // The syncSeries function is transactional and handles all nested changes.
+      await Future.wait(_series.map((s) => seriesDao.syncSeries(s)));
+      logTrace('   - Synced ${_series.length} series.');
+
+      logDebug('>> Library sync with DB complete.');
     } catch (e, st) {
-      logErr('Error saving library to DB', e, st);
+      logErr('Error syncing library to DB', e, st);
     }
   }
 
-  /// Save library with optional debouncing
-  Future<void> _saveLibrary() async => await _saveToDb();
-
   Future<void> migrateFromJson() async {
-    // 1) Percorso del file JSON legacy
     final dir = miruRyoikiSaveDirectory;
     final jsonFile = File('${dir.path}/${Library.miruryoikiLibrary}.json');
-    final backupFile = File('${dir.path}/${Library.miruryoikiLibrary}.backup.json');
 
     if (!await jsonFile.exists()) {
-      // Nessun file da migrare
-      return;
+      return; // No file to migrate
     }
 
+    logDebug('!! Found legacy library.json, attempting to migrate to database...');
     try {
-      // 2) Leggi e deserializza la lista di Series
       final content = await jsonFile.readAsString();
+      if (content.isEmpty) {
+          await jsonFile.delete(); // Delete empty legacy file
+          return;
+      }
+
       final data = jsonDecode(content) as List<dynamic>;
       final legacySeries = data.map((e) => Series.fromJson(e as Map<String, dynamic>)).toList();
 
       if (legacySeries.isEmpty) {
-        // File vuoto: niente da fare
+        await jsonFile.delete(); // Delete empty legacy file
         return;
       }
 
-      // 3) Salva tutto nel DB in transazione
-      await seriesDao.saveLibrary(legacySeries);
-      logDebug('👍 Migrazione completata: ${legacySeries.length} series importate nel DB');
+      // Save all migrated series to the DB
+      await Future.wait(legacySeries.map((s) => seriesDao.syncSeries(s)));
 
-      // 4) Rinomina il file JSON per non rieseguire la migrazione
+      logDebug('👍 Migration complete: ${legacySeries.length} series imported into DB.');
+
+      // Rename the file to prevent re-migration
       final migratedFile = File('${dir.path}/${Library.miruryoikiLibrary}.migrated.json');
       await jsonFile.rename(migratedFile.path);
 
-      // Opzionale: rinomina anche il backup
-      if (await backupFile.exists()) {
-        final migratedBackup = File('${dir.path}/${Library.miruryoikiLibrary}.backup.migrated.json');
-        await backupFile.rename(migratedBackup.path);
-      }
     } catch (e, st) {
-      logErr('❌ Errore durante la migrazione da JSON a DB', e, st);
-      // Se vuoi, puoi rilanciare oppure lasciar fallire silenziosamente
+      logErr('❌ Error during migration from JSON to DB', e, st);
     }
   }
 }

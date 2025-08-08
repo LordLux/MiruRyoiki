@@ -112,12 +112,6 @@ class $SeriesTableTable extends SeriesTable
       type: DriftSqlType.dateTime,
       requiredDuringInsert: false,
       defaultValue: currentDateAndTime);
-  static const VerificationMeta _metadataHashMeta =
-      const VerificationMeta('metadataHash');
-  @override
-  late final GeneratedColumn<String> metadataHash = GeneratedColumn<String>(
-      'metadata_hash', aliasedName, true,
-      type: DriftSqlType.string, requiredDuringInsert: false);
   @override
   List<GeneratedColumn> get $columns => [
         id,
@@ -134,8 +128,7 @@ class $SeriesTableTable extends SeriesTable
         anilistBannerUrl,
         watchedPercentage,
         addedAt,
-        updatedAt,
-        metadataHash
+        updatedAt
       ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -210,12 +203,6 @@ class $SeriesTableTable extends SeriesTable
       context.handle(_updatedAtMeta,
           updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta));
     }
-    if (data.containsKey('metadata_hash')) {
-      context.handle(
-          _metadataHashMeta,
-          metadataHash.isAcceptableOrUnknown(
-              data['metadata_hash']!, _metadataHashMeta));
-    }
     return context;
   }
 
@@ -260,8 +247,6 @@ class $SeriesTableTable extends SeriesTable
           .read(DriftSqlType.dateTime, data['${effectivePrefix}added_at'])!,
       updatedAt: attachedDatabase.typeMapping
           .read(DriftSqlType.dateTime, data['${effectivePrefix}updated_at'])!,
-      metadataHash: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}metadata_hash']),
     );
   }
 
@@ -298,9 +283,6 @@ class SeriesTableData extends DataClass implements Insertable<SeriesTableData> {
   final double watchedPercentage;
   final DateTime addedAt;
   final DateTime updatedAt;
-
-  /// Hash of (name,path,seasons,episodes,mappings…) to do incremental saves
-  final String? metadataHash;
   const SeriesTableData(
       {required this.id,
       required this.name,
@@ -316,8 +298,7 @@ class SeriesTableData extends DataClass implements Insertable<SeriesTableData> {
       this.anilistBannerUrl,
       required this.watchedPercentage,
       required this.addedAt,
-      required this.updatedAt,
-      this.metadataHash});
+      required this.updatedAt});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -359,9 +340,6 @@ class SeriesTableData extends DataClass implements Insertable<SeriesTableData> {
     map['watched_percentage'] = Variable<double>(watchedPercentage);
     map['added_at'] = Variable<DateTime>(addedAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
-    if (!nullToAbsent || metadataHash != null) {
-      map['metadata_hash'] = Variable<String>(metadataHash);
-    }
     return map;
   }
 
@@ -398,9 +376,6 @@ class SeriesTableData extends DataClass implements Insertable<SeriesTableData> {
       watchedPercentage: Value(watchedPercentage),
       addedAt: Value(addedAt),
       updatedAt: Value(updatedAt),
-      metadataHash: metadataHash == null && nullToAbsent
-          ? const Value.absent()
-          : Value(metadataHash),
     );
   }
 
@@ -427,7 +402,6 @@ class SeriesTableData extends DataClass implements Insertable<SeriesTableData> {
       watchedPercentage: serializer.fromJson<double>(json['watchedPercentage']),
       addedAt: serializer.fromJson<DateTime>(json['addedAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
-      metadataHash: serializer.fromJson<String?>(json['metadataHash']),
     );
   }
   @override
@@ -451,7 +425,6 @@ class SeriesTableData extends DataClass implements Insertable<SeriesTableData> {
       'watchedPercentage': serializer.toJson<double>(watchedPercentage),
       'addedAt': serializer.toJson<DateTime>(addedAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
-      'metadataHash': serializer.toJson<String?>(metadataHash),
     };
   }
 
@@ -470,8 +443,7 @@ class SeriesTableData extends DataClass implements Insertable<SeriesTableData> {
           Value<String?> anilistBannerUrl = const Value.absent(),
           double? watchedPercentage,
           DateTime? addedAt,
-          DateTime? updatedAt,
-          Value<String?> metadataHash = const Value.absent()}) =>
+          DateTime? updatedAt}) =>
       SeriesTableData(
         id: id ?? this.id,
         name: name ?? this.name,
@@ -503,8 +475,6 @@ class SeriesTableData extends DataClass implements Insertable<SeriesTableData> {
         watchedPercentage: watchedPercentage ?? this.watchedPercentage,
         addedAt: addedAt ?? this.addedAt,
         updatedAt: updatedAt ?? this.updatedAt,
-        metadataHash:
-            metadataHash.present ? metadataHash.value : this.metadataHash,
       );
   SeriesTableData copyWithCompanion(SeriesTableCompanion data) {
     return SeriesTableData(
@@ -541,9 +511,6 @@ class SeriesTableData extends DataClass implements Insertable<SeriesTableData> {
           : this.watchedPercentage,
       addedAt: data.addedAt.present ? data.addedAt.value : this.addedAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
-      metadataHash: data.metadataHash.present
-          ? data.metadataHash.value
-          : this.metadataHash,
     );
   }
 
@@ -564,8 +531,7 @@ class SeriesTableData extends DataClass implements Insertable<SeriesTableData> {
           ..write('anilistBannerUrl: $anilistBannerUrl, ')
           ..write('watchedPercentage: $watchedPercentage, ')
           ..write('addedAt: $addedAt, ')
-          ..write('updatedAt: $updatedAt, ')
-          ..write('metadataHash: $metadataHash')
+          ..write('updatedAt: $updatedAt')
           ..write(')'))
         .toString();
   }
@@ -586,8 +552,7 @@ class SeriesTableData extends DataClass implements Insertable<SeriesTableData> {
       anilistBannerUrl,
       watchedPercentage,
       addedAt,
-      updatedAt,
-      metadataHash);
+      updatedAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -606,8 +571,7 @@ class SeriesTableData extends DataClass implements Insertable<SeriesTableData> {
           other.anilistBannerUrl == this.anilistBannerUrl &&
           other.watchedPercentage == this.watchedPercentage &&
           other.addedAt == this.addedAt &&
-          other.updatedAt == this.updatedAt &&
-          other.metadataHash == this.metadataHash);
+          other.updatedAt == this.updatedAt);
 }
 
 class SeriesTableCompanion extends UpdateCompanion<SeriesTableData> {
@@ -626,7 +590,6 @@ class SeriesTableCompanion extends UpdateCompanion<SeriesTableData> {
   final Value<double> watchedPercentage;
   final Value<DateTime> addedAt;
   final Value<DateTime> updatedAt;
-  final Value<String?> metadataHash;
   const SeriesTableCompanion({
     this.id = const Value.absent(),
     this.name = const Value.absent(),
@@ -643,7 +606,6 @@ class SeriesTableCompanion extends UpdateCompanion<SeriesTableData> {
     this.watchedPercentage = const Value.absent(),
     this.addedAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
-    this.metadataHash = const Value.absent(),
   });
   SeriesTableCompanion.insert({
     this.id = const Value.absent(),
@@ -661,7 +623,6 @@ class SeriesTableCompanion extends UpdateCompanion<SeriesTableData> {
     this.watchedPercentage = const Value.absent(),
     this.addedAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
-    this.metadataHash = const Value.absent(),
   })  : name = Value(name),
         path = Value(path);
   static Insertable<SeriesTableData> custom({
@@ -680,7 +641,6 @@ class SeriesTableCompanion extends UpdateCompanion<SeriesTableData> {
     Expression<double>? watchedPercentage,
     Expression<DateTime>? addedAt,
     Expression<DateTime>? updatedAt,
-    Expression<String>? metadataHash,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -700,7 +660,6 @@ class SeriesTableCompanion extends UpdateCompanion<SeriesTableData> {
       if (watchedPercentage != null) 'watched_percentage': watchedPercentage,
       if (addedAt != null) 'added_at': addedAt,
       if (updatedAt != null) 'updated_at': updatedAt,
-      if (metadataHash != null) 'metadata_hash': metadataHash,
     });
   }
 
@@ -719,8 +678,7 @@ class SeriesTableCompanion extends UpdateCompanion<SeriesTableData> {
       Value<String?>? anilistBannerUrl,
       Value<double>? watchedPercentage,
       Value<DateTime>? addedAt,
-      Value<DateTime>? updatedAt,
-      Value<String?>? metadataHash}) {
+      Value<DateTime>? updatedAt}) {
     return SeriesTableCompanion(
       id: id ?? this.id,
       name: name ?? this.name,
@@ -739,7 +697,6 @@ class SeriesTableCompanion extends UpdateCompanion<SeriesTableData> {
       watchedPercentage: watchedPercentage ?? this.watchedPercentage,
       addedAt: addedAt ?? this.addedAt,
       updatedAt: updatedAt ?? this.updatedAt,
-      metadataHash: metadataHash ?? this.metadataHash,
     );
   }
 
@@ -798,9 +755,6 @@ class SeriesTableCompanion extends UpdateCompanion<SeriesTableData> {
     if (updatedAt.present) {
       map['updated_at'] = Variable<DateTime>(updatedAt.value);
     }
-    if (metadataHash.present) {
-      map['metadata_hash'] = Variable<String>(metadataHash.value);
-    }
     return map;
   }
 
@@ -821,8 +775,7 @@ class SeriesTableCompanion extends UpdateCompanion<SeriesTableData> {
           ..write('anilistBannerUrl: $anilistBannerUrl, ')
           ..write('watchedPercentage: $watchedPercentage, ')
           ..write('addedAt: $addedAt, ')
-          ..write('updatedAt: $updatedAt, ')
-          ..write('metadataHash: $metadataHash')
+          ..write('updatedAt: $updatedAt')
           ..write(')'))
         .toString();
   }
@@ -2375,7 +2328,6 @@ typedef $$SeriesTableTableCreateCompanionBuilder = SeriesTableCompanion
   Value<double> watchedPercentage,
   Value<DateTime> addedAt,
   Value<DateTime> updatedAt,
-  Value<String?> metadataHash,
 });
 typedef $$SeriesTableTableUpdateCompanionBuilder = SeriesTableCompanion
     Function({
@@ -2394,7 +2346,6 @@ typedef $$SeriesTableTableUpdateCompanionBuilder = SeriesTableCompanion
   Value<double> watchedPercentage,
   Value<DateTime> addedAt,
   Value<DateTime> updatedAt,
-  Value<String?> metadataHash,
 });
 
 final class $$SeriesTableTableReferences
@@ -2502,9 +2453,6 @@ class $$SeriesTableTableFilterComposer
   ColumnFilters<DateTime> get updatedAt => $composableBuilder(
       column: $table.updatedAt, builder: (column) => ColumnFilters(column));
 
-  ColumnFilters<String> get metadataHash => $composableBuilder(
-      column: $table.metadataHash, builder: (column) => ColumnFilters(column));
-
   Expression<bool> seasonsTableRefs(
       Expression<bool> Function($$SeasonsTableTableFilterComposer f) f) {
     final $$SeasonsTableTableFilterComposer composer = $composerBuilder(
@@ -2611,10 +2559,6 @@ class $$SeriesTableTableOrderingComposer
 
   ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
       column: $table.updatedAt, builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<String> get metadataHash => $composableBuilder(
-      column: $table.metadataHash,
-      builder: (column) => ColumnOrderings(column));
 }
 
 class $$SeriesTableTableAnnotationComposer
@@ -2672,9 +2616,6 @@ class $$SeriesTableTableAnnotationComposer
 
   GeneratedColumn<DateTime> get updatedAt =>
       $composableBuilder(column: $table.updatedAt, builder: (column) => column);
-
-  GeneratedColumn<String> get metadataHash => $composableBuilder(
-      column: $table.metadataHash, builder: (column) => column);
 
   Expression<T> seasonsTableRefs<T extends Object>(
       Expression<T> Function($$SeasonsTableTableAnnotationComposer a) f) {
@@ -2760,7 +2701,6 @@ class $$SeriesTableTableTableManager extends RootTableManager<
             Value<double> watchedPercentage = const Value.absent(),
             Value<DateTime> addedAt = const Value.absent(),
             Value<DateTime> updatedAt = const Value.absent(),
-            Value<String?> metadataHash = const Value.absent(),
           }) =>
               SeriesTableCompanion(
             id: id,
@@ -2778,7 +2718,6 @@ class $$SeriesTableTableTableManager extends RootTableManager<
             watchedPercentage: watchedPercentage,
             addedAt: addedAt,
             updatedAt: updatedAt,
-            metadataHash: metadataHash,
           ),
           createCompanionCallback: ({
             Value<int> id = const Value.absent(),
@@ -2796,7 +2735,6 @@ class $$SeriesTableTableTableManager extends RootTableManager<
             Value<double> watchedPercentage = const Value.absent(),
             Value<DateTime> addedAt = const Value.absent(),
             Value<DateTime> updatedAt = const Value.absent(),
-            Value<String?> metadataHash = const Value.absent(),
           }) =>
               SeriesTableCompanion.insert(
             id: id,
@@ -2814,7 +2752,6 @@ class $$SeriesTableTableTableManager extends RootTableManager<
             watchedPercentage: watchedPercentage,
             addedAt: addedAt,
             updatedAt: updatedAt,
-            metadataHash: metadataHash,
           ),
           withReferenceMapper: (p0) => p0
               .map((e) => (

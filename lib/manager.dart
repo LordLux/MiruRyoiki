@@ -44,6 +44,7 @@ class Manager {
     if (args.arguments.isEmpty) return;
 
     if (args.wasParsed('help')) {
+      // ignore: avoid_print
       print(parser.usage);
       exit(0);
     }
@@ -68,16 +69,13 @@ class Manager {
       try {
         return Provider.of<AppTheme>(rootNavigatorKey.currentContext!, listen: false);
       } catch (e) {
-        // If we have a cached instance, return it
         if (_cachedAppTheme != null) return _cachedAppTheme!;
 
-        // Otherwise create a new default instance
         _cachedAppTheme = AppTheme();
         return _cachedAppTheme!;
       }
     }
 
-    // If context is null, use cached or create new
     return _cachedAppTheme ?? (_cachedAppTheme = AppTheme());
   }
 

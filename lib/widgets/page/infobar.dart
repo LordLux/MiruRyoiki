@@ -6,7 +6,6 @@ import 'package:smooth_scroll_multiplatform/smooth_scroll_multiplatform.dart';
 import '../../manager.dart';
 import '../../services/navigation/shortcuts.dart';
 import '../../utils/image_utils.dart';
-import '../../utils/logging.dart';
 import '../../utils/screen_utils.dart';
 import '../../utils/time_utils.dart';
 

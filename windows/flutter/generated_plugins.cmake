@@ -13,7 +13,6 @@ list(APPEND FLUTTER_PLUGIN_LIST
   sqlite3_flutter_libs
   system_theme
   url_launcher_windows
-  video_thumbnail_exporter
   webview_windows
   window_manager
   window_size
@@ -21,6 +20,7 @@ list(APPEND FLUTTER_PLUGIN_LIST
 )
 
 list(APPEND FLUTTER_FFI_PLUGIN_LIST
+  video_data_utils
 )
 
 set(PLUGIN_BUNDLED_LIBRARIES)
