@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:miruryoiki/services/file_system/media_info.dart';
 import 'package:miruryoiki/utils/logging.dart';
 import 'package:path/path.dart';
+import 'package:video_data_utils/video_data_utils.dart';
 import 'package:win32/win32.dart';
 import 'package:win32_registry/win32_registry.dart';
 
@@ -109,7 +110,7 @@ class MPCHCTracker with ChangeNotifier {
                 _fileToKeyMap[pathString.path] = subKey;
 
                 final position = RegistryUtils.getDwordValue(hFileKey, 'FilePosition') ?? 0;
-                final durationValue = await MediaInfo.getVideoDuration(pathString);
+                final durationValue = await VideoDataUtils().getFileDuration(videoPath: pathString.path);
 
                 final percentage = durationValue > 0 ? (position / durationValue).clamp(0.0, 1.0) : 0.0;
                 final previousPercentage = _keyToPositionMap[subKey] ?? 0.0;
@@ -134,7 +135,7 @@ class MPCHCTracker with ChangeNotifier {
                 final filename = PathString(filePath);
 
                 final position = RegistryUtils.getDwordValue(hFileKey, 'FilePosition') ?? 0;
-                final durationValue = await MediaInfo.getVideoDuration(filename);
+                final durationValue = await VideoDataUtils().getFileDuration(videoPath: filename.path);
 
                 final percentage = durationValue > 0 ? (position / durationValue).clamp(0.0, 1.0) : 0.0;
                 final previousPercentage = _keyToPositionMap[subKey] ?? 0.0;

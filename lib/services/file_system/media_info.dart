@@ -1,77 +1,10 @@
-import 'package:miruryoiki/models/metadata.dart';
-import 'package:video_data_utils/video_data_utils.dart';
-
 import '../../models/mkv_metadata.dart';
 import '../../utils/logging.dart';
 import 'dart:io';
 
 import '../../utils/path_utils.dart';
-import '../thumbnail_manager.dart';
 
 class MediaInfo {
-  static final _videoDataUtils = VideoDataUtils();
-
-  static Future<double> getVideoDuration(PathString filepath) async {
-    try {
-      return await _videoDataUtils.getFileDuration(videoPath: filepath.path);
-    } catch (e) {
-      logErr('Error getting video duration', e);
-      return 0.0;
-    }
-  }
-
-  /// Get metadata for a video file
-  static Future<Metadata?> getMetadata(PathString filepath) async {
-    try {
-      // Fetch base metadata and video duration in parallel for efficiency
-      final results = await Future.wait([
-        _videoDataUtils.getFileMetadataMap(filePath: filepath.path),
-        getVideoDuration(filepath),
-      ]);
-      
-      return Metadata.fromJson({
-        ...results[0] as Map<String, dynamic>,
-        'duration': results[1],
-      });
-    } catch (e) {
-      logErr('Error getting video metadata', e);
-      return null;
-    }
-  }
-
-  /// Extract a thumbnail from a video file to a specified path.
-  static Future<PathString?> extractThumbnail(PathString videoPath, {PathString? outputPath}) async {
-    try {
-      if (!await File(videoPath.path).exists()) {
-        logErr('Video file does not exist: $videoPath');
-        return null;
-      }
-
-      final PathString thumbnailPath = outputPath ?? await ThumbnailManager.generateThumbnailPath(videoPath);
-
-      final bool success = await _videoDataUtils.extractCachedThumbnail(
-        videoPath: videoPath.path,
-        outputPath: thumbnailPath.path,
-        size: 256, // TODO make configurable
-      );
-
-      if (!success) {
-        logErr('Failed to generate thumbnail for $videoPath');
-        return null;
-      }
-
-      if (!await File(thumbnailPath.path).exists()) {
-        logErr('Thumbnail file was not created at: $thumbnailPath');
-        return null;
-      }
-
-      return thumbnailPath;
-    } catch (e, stackTrace) {
-      logErr('Error extracting thumbnail from $videoPath', e, stackTrace);
-      return null;
-    }
-  }
-
   static Future<MkvMetadata?> getMkvMetadata(PathString filepath) async {
     try {
       final result = await Process.run('MediaInfo.exe', ['--fullscan', filepath.path], runInShell: true);
