@@ -40,7 +40,8 @@ void main() {
       anilistMappings: [],
     );
 
-    final id = await dao.saveSeries(series);
+    await dao.syncSeries(series);
+    final id = await dao.getIdByPath(series.path);
     final loaded = await dao.loadFullSeries(id);
 
     expect(loaded, isNotNull);

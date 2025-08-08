@@ -9,7 +9,6 @@ import '../utils/logging.dart';
 import '../utils/screen_utils.dart';
 import '../widgets/buttons/button.dart';
 import '../widgets/buttons/loading_button.dart';
-import 'accounts.dart';
 
 class AnilistAccountScreen extends StatelessWidget {
   final Future<void> Function() onLogout;

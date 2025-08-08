@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'dart:convert';
 
 import '../services/thumbnail_manager.dart';
 import '../utils/path_utils.dart';

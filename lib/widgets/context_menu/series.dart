@@ -14,7 +14,6 @@ import '../../services/navigation/show_info.dart';
 import '../../screens/series.dart';
 import '../../utils/shell_utils.dart';
 import '../dialogs/poster_select.dart';
-import '../../utils/logging.dart';
 import 'icons.dart' as icons;
 
 class SeriesContextMenu extends StatefulWidget {

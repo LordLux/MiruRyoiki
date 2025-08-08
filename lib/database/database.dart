@@ -31,17 +31,18 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? db]) : super(db ?? _openConnection());
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
         onCreate: (m) async {
           await m.createAll();
           // indexes
-          await m.issueCustomQuery('CREATE INDEX idx_series_path       ON series_table(path);');
-          await m.issueCustomQuery('CREATE INDEX idx_seasons_series_id ON seasons_table(series_id);');
-          await m.issueCustomQuery('CREATE INDEX idx_episodes_season_id ON episodes_table(season_id);');
-          await m.issueCustomQuery('CREATE INDEX idx_episodes_path      ON episodes_table(path);');
+          await m.issueCustomQuery('CREATE INDEX IF NOT EXISTS idx_series_path ON series_table(path);');
+          await m.issueCustomQuery('CREATE INDEX IF NOT EXISTS idx_seasons_series_id ON seasons_table(series_id);');
+          await m.issueCustomQuery('CREATE INDEX IF NOT EXISTS idx_episodes_season_id ON episodes_table(season_id);');
+          await m.issueCustomQuery('CREATE INDEX IF NOT EXISTS idx_episodes_path ON episodes_table(path);');
+          await m.issueCustomQuery('CREATE INDEX IF NOT EXISTS idx_anilist_mappings_series_id ON anilist_mappings_table(series_id);');
         },
         onUpgrade: (m, from, to) async {
           if (from < 2) {
@@ -53,21 +54,23 @@ class AppDatabase extends _$AppDatabase {
             await m.createAll();
           }
           if (from < 3) {
-            // add our new column
-            await m.addColumn(seriesTable, seriesTable.metadataHash);
             // recreate the indexes in case we skipped onCreate
             await m.issueCustomQuery('CREATE INDEX IF NOT EXISTS idx_series_path ON series_table(path);');
-            // …and the others, same pattern…
+            await m.issueCustomQuery('CREATE INDEX IF NOT EXISTS idx_seasons_series_id ON seasons_table(series_id);');
+            await m.issueCustomQuery('CREATE INDEX IF NOT EXISTS idx_episodes_season_id ON episodes_table(season_id);');
+            await m.issueCustomQuery('CREATE INDEX IF NOT EXISTS idx_episodes_path ON episodes_table(path);');
+            await m.issueCustomQuery('CREATE INDEX IF NOT EXISTS idx_anilist_mappings_series_id ON anilist_mappings_table(series_id);');
           }
           if (from < 4) {
             await m.addColumn(episodesTable, episodesTable.metadata);
             await m.addColumn(episodesTable, episodesTable.mkvMetadata);
           }
+          if (from < 5) {
+            await m.alterTable(TableMigration(seriesTable));
+          }
         },
         beforeOpen: (details) async {
-          if (details.wasCreated) {
-            // init default data if needed
-          }
+          // if (details.wasCreated) {}
         },
       );
 }

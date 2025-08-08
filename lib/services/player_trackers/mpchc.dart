@@ -109,7 +109,7 @@ class MPCHCTracker with ChangeNotifier {
                 _fileToKeyMap[pathString.path] = subKey;
 
                 final position = RegistryUtils.getDwordValue(hFileKey, 'FilePosition') ?? 0;
-                final durationValue = (await MediaInfo.getVideoDuration(pathString)).inMilliseconds;
+                final durationValue = await MediaInfo.getVideoDuration(pathString);
 
                 final percentage = durationValue > 0 ? (position / durationValue).clamp(0.0, 1.0) : 0.0;
                 final previousPercentage = _keyToPositionMap[subKey] ?? 0.0;
@@ -134,7 +134,7 @@ class MPCHCTracker with ChangeNotifier {
                 final filename = PathString(filePath);
 
                 final position = RegistryUtils.getDwordValue(hFileKey, 'FilePosition') ?? 0;
-                final durationValue = (await MediaInfo.getVideoDuration(filename)).inMilliseconds;
+                final durationValue = await MediaInfo.getVideoDuration(filename);
 
                 final percentage = durationValue > 0 ? (position / durationValue).clamp(0.0, 1.0) : 0.0;
                 final previousPercentage = _keyToPositionMap[subKey] ?? 0.0;

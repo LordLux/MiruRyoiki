@@ -164,7 +164,7 @@ class SeriesScreenState extends State<SeriesScreen> {
         else
           ctx = rootNavigatorKey.currentContext;
 
-        if (ctx != null) {
+        if (ctx != null && ctx.mounted) {
           try {
             final library = Provider.of<Library>(ctx, listen: false);
             await library.updateSeries(series!, invalidateCache: false);
@@ -230,7 +230,7 @@ class SeriesScreenState extends State<SeriesScreen> {
         }
 
         return DeferredPointerHandler(
-          key: ValueKey(series!.path),
+          key: ValueKey(series.path),
           link: deferredPointerLink,
           child: AnimatedContainer(
             duration: gradientChangeDuration,
@@ -239,12 +239,12 @@ class SeriesScreenState extends State<SeriesScreen> {
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
                 colors: [
-                  dominantColor.withOpacity(series!.isLinked ? 0.5 : 0.15),
+                  dominantColor.withOpacity(series.isLinked ? 0.5 : 0.15),
                   Colors.transparent,
                 ],
               ),
             ),
-            child: _buildSeriesContent(context, series!),
+            child: _buildSeriesContent(context, series),
           ),
         );
       },

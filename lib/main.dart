@@ -1,6 +1,7 @@
 // ignore_for_file: use_build_context_synchronously
 
 import 'dart:io';
+import 'dart:ui';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart' show Material, MaterialPageRoute, ScaffoldMessenger;
 import 'package:fluent_ui/fluent_ui.dart' hide ColorExtension;
@@ -14,12 +15,10 @@ import 'package:app_links/app_links.dart';
 import 'package:system_theme/system_theme.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:bitsdojo_window/bitsdojo_window.dart';
-import 'package:url_launcher/url_launcher_string.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:windows_single_instance/windows_single_instance.dart';
 import 'package:material_symbols_icons/material_symbols_icons.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:args/args.dart';
 
 import 'services/anilist/provider/anilist_provider.dart';
 import 'services/navigation/dialogs.dart';
@@ -46,7 +45,6 @@ import 'utils/path_utils.dart';
 import 'utils/screen_utils.dart';
 import 'utils/time_utils.dart';
 import 'widgets/animated_indicator.dart';
-import 'widgets/buttons/wrapper.dart';
 import 'widgets/cursors.dart';
 import 'widgets/dialogs/link_anilist_multi.dart';
 import 'widgets/window_buttons.dart';
@@ -54,6 +52,7 @@ import 'widgets/window_buttons.dart';
 final _appTheme = AppTheme();
 final _navigationManager = NavigationManager();
 final _settings = SettingsManager();
+RootIsolateToken? rootIsolateToken;
 
 final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
 final GlobalKey<_MiruRyoikiState> homeKey = GlobalKey<_MiruRyoikiState>();
@@ -73,6 +72,8 @@ void main(List<String> args) async {
       log("Second instance args: $secondInstanceArgs");
     },
   );
+  
+  rootIsolateToken = RootIsolateToken.instance;
 
   // Only run on Windows
   if (!Platform.isWindows) throw UnimplementedError('This app is only supported on Windows (for now).');

@@ -2,7 +2,6 @@
 import 'dart:convert';
 import 'dart:ui';
 import 'package:drift/drift.dart';
-import 'package:miruryoiki/utils/logging.dart';
 import '../database.dart';
 import '../tables.dart';
 import '../../models/series.dart';
@@ -12,7 +11,6 @@ import '../../models/anilist/anime.dart';
 import '../../utils/path_utils.dart';
 import '../../enums.dart';
 import '../converters.dart';
-import '../../utils/series_hash.dart';
 
 part 'series_dao.g.dart';
 
@@ -28,116 +26,143 @@ class SeriesDao extends DatabaseAccessor<AppDatabase> with _$SeriesDaoMixin {
   // ---------- BASIC CRUD ----------
   Future<List<SeriesTableData>> getAllSeriesRows() => select(seriesTable).get();
 
-  Future<SeriesTableData?> getSeriesRowById(int id) => //
-      (select(seriesTable)..where((tbl) => tbl.id.equals(id))) //
-          .getSingleOrNull();
+  Future<SeriesTableData?> getSeriesRowById(int id) => (select(seriesTable)..where((tbl) => tbl.id.equals(id))).getSingleOrNull();
 
-  Future<SeriesTableData?> getSeriesRowByPath(PathString path) => //
-      (select(seriesTable)..where((t) => t.path.equals(path.path))) //
-          .getSingleOrNull();
+  Future<SeriesTableData?> getSeriesRowByPath(PathString path) => (select(seriesTable)..where((t) => t.path.equals(path.path))).getSingleOrNull();
 
   Future<int> insertSeriesRow(SeriesTableCompanion comp) => into(seriesTable).insert(comp);
 
-  Future<bool> updateSeriesRow(int id, SeriesTableCompanion comp) async => //
-      (await (update(seriesTable)..where((t) => t.id.equals(id))).write(comp)) > 0;
+  Future<bool> updateSeriesRow(int id, SeriesTableCompanion comp) async => (await (update(seriesTable)..where((t) => t.id.equals(id))).write(comp)) > 0;
 
   Future<int> deleteSeriesRow(int id) => (delete(seriesTable)..where((t) => t.id.equals(id))).go();
+  
+  Future<int> getIdByPath(PathString path) async {
+    final row = await getSeriesRowByPath(path);
+    return row?.id ?? -1; // Return -1 if not found
+  }
 
-  // ---------- FULL SAVE / LOAD ----------
-  /// Save (insert or update) a whole Series (with seasons, episodes, mappings) in a transaction.
-  Future<int> saveSeries(Series series) async {
+  /// Synchronizes a single Series object with the database.
+  /// This performs targeted inserts, updates, and deletes for the series, its seasons, and its episodes in a single transaction.
+  Future<void> syncSeries(Series series) async {
     return transaction(() async {
-      final newHash = computeSeriesHash(series);
+      // 1. Sync the Series row itself
+      final seriesCompanion = _modelToSeriesCompanion(series);
+      final existingSeriesRow = await getSeriesRowByPath(series.path);
+      int seriesId;
 
-      final existingRow = await getSeriesRowByPath(series.path);
-      if (existingRow != null && existingRow.metadataHash == newHash) {
-        return existingRow.id;
-      }
-
-      final seriesComp = _modelToSeriesCompanion(series, isInsert: existingRow == null).copyWith(metadataHash: Value(newHash));
-      late final int seriesId;
-      if (existingRow == null) {
-        seriesId = await into(seriesTable).insert(seriesComp);
+      if (existingSeriesRow == null) {
+        seriesId = await into(seriesTable).insert(seriesCompanion);
       } else {
-        seriesId = existingRow.id;
-        await (update(seriesTable)..where((t) => t.id.equals(seriesId))).write(seriesComp);
+        seriesId = existingSeriesRow.id;
+        await (update(seriesTable)..where((t) => t.id.equals(seriesId))).write(seriesCompanion);
       }
 
-      // Save seasons
-      // First, get current seasons in DB
-      final dbSeasons = await (select(seasonsTable) //
-            ..where((t) => t.seriesId.equals(seriesId))) //
-          .get();
+      // 2. Sync Seasons and their Episodes
+      await _syncSeasons(seriesId, series.seasons, series.relatedMedia);
 
-      // Map by name to detect inserts/updates
-      final Map<String, SeasonsTableData> dbSeasonsByKey = {for (var s in dbSeasons) '${s.name}|${s.path.path}': s};
-
-      for (final season in series.seasons) {
-        final key = '${season.name}|${season.path.path}';
-        final existingSeason = dbSeasonsByKey[key];
-        int seasonId;
-        final seasonComp = SeasonsTableCompanion(
-          seriesId: Value(seriesId),
-          name: Value(season.name),
-          path: Value(season.path),
-        );
-
-        if (existingSeason == null) {
-          seasonId = await into(seasonsTable).insert(seasonComp);
-        } else {
-          seasonId = existingSeason.id;
-          await (update(seasonsTable)..where((t) => t.id.equals(seasonId))) //
-              .write(seasonComp);
-        }
-
-        // EPISODES
-        final dbEpisodes = await (select(episodesTable) //
-              ..where((t) => t.seasonId.equals(seasonId))) //
-            .get();
-        final Map<String, EpisodesTableData> dbEpByPath = {
-          for (var e in dbEpisodes) e.path.path: e //
-        };
-
-        for (final ep in season.episodes) {
-          final existingEp = dbEpByPath[ep.path.path];
-          final epComp = _episodeToCompanion(ep, seasonId);
-
-          if (existingEp == null) {
-            // New episode, insert with all its data
-            await into(episodesTable).insert(epComp);
-          } else {
-            // Episode exists -> Check if we need to update it
-            final bool metadataNeedsUpdate = (ep.metadata != null && existingEp.metadata == null) || (ep.mkvMetadata != null && existingEp.mkvMetadata == null);
-
-            // Only write to database if something actually changed
-            // Create new companion for the update to be explicit
-            final updateComp = epComp.copyWith(
-              // Preserve existing metadata if new scan didn't find any
-              metadata: ep.metadata == null ? Value(existingEp.metadata) : Value(ep.metadata),
-              mkvMetadata: ep.mkvMetadata == null ? Value(existingEp.mkvMetadata) : Value(ep.mkvMetadata),
-            );
-
-            // By comparing the companions, we can detect any change, not just metadata
-            if (updateComp != _episodeToCompanion(ep.copyWith(metadata: existingEp.metadata, mkvMetadata: existingEp.mkvMetadata), seasonId) || metadataNeedsUpdate) {
-              await (update(episodesTable)..where((t) => t.id.equals(existingEp.id))) //
-                  .write(updateComp);
-            }
-          }
-        }
-
-        // Delete eps not present anymore
-        final paths = season.episodes.map((e) => e.path.path).toSet();
-        for (final old in dbEpisodes) {
-          if (!paths.contains(old.path.path)) {
-            await (delete(episodesTable)..where((t) => t.id.equals(old.id))).go();
-          }
-        }
-      }
-
-      // AniList mappings
-      await _saveMappings(seriesId, series.anilistMappings);
-      return seriesId;
+      // 3. Sync Anilist Mappings
+      await _syncMappings(seriesId, series.anilistMappings);
     });
+  }
+
+  /// Synchronizes the seasons for a given seriesId.
+  Future<void> _syncSeasons(int seriesId, List<Season> modelSeasons, List<Episode> modelRelatedMedia) async {
+    final dbSeasons = await (select(seasonsTable)..where((t) => t.seriesId.equals(seriesId))).get();
+
+    // Use path as the unique key for seasons
+    final modelSeasonsMap = {for (var s in modelSeasons) s.path.path: s};
+    final dbSeasonsMap = {for (var s in dbSeasons) s.path.path: s};
+
+    // Delete seasons that are in DB but not in model
+    for (final dbSeasonPath in dbSeasonsMap.keys) {
+      if (!modelSeasonsMap.containsKey(dbSeasonPath)) {
+        await (delete(seasonsTable)..where((t) => t.id.equals(dbSeasonsMap[dbSeasonPath]!.id))).go();
+      }
+    }
+
+    // Insert or Update seasons
+    for (final modelSeason in modelSeasons) {
+      final seasonCompanion = SeasonsTableCompanion(
+        seriesId: Value(seriesId),
+        name: Value(modelSeason.name),
+        path: Value(modelSeason.path),
+      );
+      int seasonId;
+      final existingSeason = dbSeasonsMap[modelSeason.path.path];
+
+      if (existingSeason == null) {
+        seasonId = await into(seasonsTable).insert(seasonCompanion);
+      } else {
+        seasonId = existingSeason.id;
+        // Optionally update if name can change, otherwise skip
+        if (existingSeason.name != modelSeason.name) {
+          await (update(seasonsTable)..where((t) => t.id.equals(seasonId))).write(seasonCompanion);
+        }
+      }
+
+      // Sync episodes for this season
+      await _syncEpisodes(seasonId, modelSeason.episodes);
+    }
+
+    // Handle related media (as a special season with a known ID or name, e.g., ID -1)
+    // For simplicity, let's assume related media doesn't have a season. We could adapt this if needed.
+  }
+
+  /// Synchronizes the episodes for a given seasonId.
+  Future<void> _syncEpisodes(int seasonId, List<Episode> modelEpisodes) async {
+    final dbEpisodes = await (select(episodesTable)..where((t) => t.seasonId.equals(seasonId))).get();
+
+    final modelEpisodesMap = {for (var e in modelEpisodes) e.path.path: e};
+    final dbEpisodesMap = {for (var e in dbEpisodes) e.path.path: e};
+
+    // Delete episodes in DB but not in model
+    for (final dbEpisodePath in dbEpisodesMap.keys) {
+      if (!modelEpisodesMap.containsKey(dbEpisodePath)) {
+        await (delete(episodesTable)..where((t) => t.id.equals(dbEpisodesMap[dbEpisodePath]!.id))).go();
+      }
+    }
+
+    // Insert or Update episodes
+    for (final modelEpisode in modelEpisodes) {
+      final episodeCompanion = _episodeToCompanion(modelEpisode, seasonId);
+      final existingEpisode = dbEpisodesMap[modelEpisode.path.path];
+
+      if (existingEpisode == null) {
+        await into(episodesTable).insert(episodeCompanion);
+      } else {
+        // Only write to DB if data has actually changed
+        final oldCompanion = _episodeToCompanion(_tableToEpisode(existingEpisode), seasonId);
+        if (episodeCompanion != oldCompanion) {
+          await (update(episodesTable)..where((t) => t.id.equals(existingEpisode.id))).write(episodeCompanion);
+        }
+      }
+    }
+  }
+
+  Future<void> _syncMappings(int seriesId, List<AnilistMapping> modelMappings) async {
+    final dbMappings = await (select(anilistMappingsTable)..where((t) => t.seriesId.equals(seriesId))).get();
+    final modelMappingsMap = {for (var m in modelMappings) m.anilistId: m};
+    final dbMappingsMap = {for (var m in dbMappings) m.anilistId: m};
+
+    // Delete
+    for (final dbAnilistId in dbMappingsMap.keys) {
+      if (!modelMappingsMap.containsKey(dbAnilistId)) {
+        await (delete(anilistMappingsTable)..where((t) => t.id.equals(dbMappingsMap[dbAnilistId]!.id))).go();
+      }
+    }
+
+    // Insert/Update
+    for (final modelMapping in modelMappings) {
+      final companion = _mappingToCompanion(modelMapping, seriesId);
+      final existingMapping = dbMappingsMap[modelMapping.anilistId];
+      if (existingMapping == null) {
+        await into(anilistMappingsTable).insert(companion);
+      } else {
+        if (companion != _mappingToCompanion(_tableToMapping(existingMapping), seriesId)) {
+          await (update(anilistMappingsTable)..where((t) => t.id.equals(existingMapping.id))).write(companion);
+        }
+      }
+    }
   }
 
   /// Load a full Series object by id (Series + Seasons + Episodes + Mappings).
@@ -168,7 +193,18 @@ class SeriesDao extends DatabaseAccessor<AppDatabase> with _$SeriesDaoMixin {
     return _rowToSeries(row, seasons, mappings);
   }
 
-  // ---------- MAPPINGS ----------
+  // ---------- HELPERS ----------
+  AnilistMappingsTableCompanion _mappingToCompanion(AnilistMapping m, int seriesId) {
+    return AnilistMappingsTableCompanion(
+      seriesId: Value(seriesId),
+      localPath: Value(m.localPath),
+      anilistId: Value(m.anilistId),
+      title: Value(m.title),
+      lastSynced: Value(m.lastSynced),
+      anilistData: Value(m.anilistData != null ? jsonEncode(m.anilistData!.toJson()) : null),
+    );
+  }
+
   Future<void> _saveMappings(int seriesId, List<AnilistMapping> mappings) async {
     // Current in DB
     final current = await (select(anilistMappingsTable) //
@@ -265,41 +301,21 @@ class SeriesDao extends DatabaseAccessor<AppDatabase> with _$SeriesDaoMixin {
   }
 
   // ---------- MAPPERS ----------
-  SeriesTableCompanion _modelToSeriesCompanion(Series s, {required bool isInsert}) {
-    final colorStr = const ColorJsonConverter().toSql(s.dominantColor);
-
+  SeriesTableCompanion _modelToSeriesCompanion(Series s) {
     return SeriesTableCompanion(
       name: Value(s.name),
       path: Value(s.path),
-      folderPosterPath: s.folderPosterPath == null //
-          ? const Value.absent()
-          : Value(s.folderPosterPath!),
-      folderBannerPath: s.folderBannerPath == null //
-          ? const Value.absent()
-          : Value(s.folderBannerPath!),
-      primaryAnilistId: s.primaryAnilistId == null //
-          ? const Value.absent()
-          : Value(s.primaryAnilistId!),
+      folderPosterPath: Value(s.folderPosterPath),
+      folderBannerPath: Value(s.folderBannerPath),
+      primaryAnilistId: Value(s.primaryAnilistId),
       isHidden: Value(s.isHidden),
-      dominantColor: colorStr == null //
-          ? const Value.absent()
-          : Value(colorStr),
-      preferredPosterSource: s.preferredPosterSource == null //
-          ? const Value.absent()
-          : Value(s.preferredPosterSource!.name),
-      preferredBannerSource: s.preferredBannerSource == null //
-          ? const Value.absent()
-          : Value(s.preferredBannerSource!.name),
-      anilistPosterUrl: s.anilistPosterUrl == null //
-          ? const Value.absent()
-          : Value(s.anilistPosterUrl!),
-      anilistBannerUrl: s.anilistBannerUrl == null //
-          ? const Value.absent()
-          : Value(s.anilistBannerUrl!),
+      dominantColor: Value(const ColorJsonConverter().toSql(s.dominantColor)),
+      preferredPosterSource: Value(s.preferredPosterSource?.name),
+      preferredBannerSource: Value(s.preferredBannerSource?.name),
+      anilistPosterUrl: Value(s.anilistPosterUrl),
+      anilistBannerUrl: Value(s.anilistBannerUrl),
       watchedPercentage: Value(s.watchedPercentage),
-      addedAt: isInsert ? Value(DateTime.now()) : const Value.absent(),
       updatedAt: Value(DateTime.now()),
-      metadataHash: Value.absent(), // will be set later
     );
   }
 
@@ -343,13 +359,5 @@ class SeriesDao extends DatabaseAccessor<AppDatabase> with _$SeriesDaoMixin {
       primaryAnilistId: row.primaryAnilistId,
       isHidden: row.isHidden,
     );
-  }
-
-  // ---------- LIBRARY SAVE ----------
-  /// Salva una lista di Series in una transazione.
-  Future<void> saveLibrary(List<Series> all) async {
-    for (final s in all) {
-      await saveSeries(s);
-    }
   }
 }

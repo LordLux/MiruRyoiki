@@ -31,9 +31,6 @@ class SeriesTable extends Table {
   DateTimeColumn get addedAt => dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
 
-  /// Hash of (name,path,seasons,episodes,mappings…) to do incremental saves
-  TextColumn get metadataHash => text().nullable()();
-
   @override
   List<String> get customConstraints => ['UNIQUE (path)'];
 }
