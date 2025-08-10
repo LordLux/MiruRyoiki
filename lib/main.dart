@@ -8,8 +8,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_acrylic/flutter_acrylic.dart';
 import 'package:flutter_acrylic/window.dart' as flutter_acrylic;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:miruryoiki/screens/home.dart';
-import 'package:miruryoiki/widgets/svg.dart';
 import 'package:provider/provider.dart';
 import 'package:app_links/app_links.dart';
 import 'package:system_theme/system_theme.dart';
@@ -20,6 +18,8 @@ import 'package:windows_single_instance/windows_single_instance.dart';
 import 'package:material_symbols_icons/material_symbols_icons.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
+import 'screens/home.dart';
+import 'widgets/svg.dart';
 import 'services/anilist/provider/anilist_provider.dart';
 import 'services/navigation/dialogs.dart';
 import 'services/navigation/statusbar.dart';

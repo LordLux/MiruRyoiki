@@ -1,3 +1,5 @@
+import 'package:crypto/crypto.dart';
+
 import '../../models/mkv_metadata.dart';
 import '../../utils/logging.dart';
 import 'dart:io';
@@ -148,5 +150,18 @@ class MediaInfo {
       'audioStreams': audioStreams,
       'textStreams': textStreams,
     };
+  }
+
+  static Future<String?> getFileChecksum(PathString filePath) async {
+    final file = File(filePath.path);
+    if (!file.existsSync()) return null;
+    try {
+      final stream = file.openRead();
+      final hash = await md5.bind(stream).first;
+      // Return as lowercase hex string
+      return hash.bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
+    } catch (exception) {
+      return null;
+    }
   }
 }

@@ -15,7 +15,7 @@ import 'time_utils.dart';
 import 'path_utils.dart';
 
 bool doLogRelease = false; // Set to true to enable logging in release mode
-bool doLogTrace = false; // Set to true to enable trace logging; dotrace
+bool doLogTrace = true; // Set to true to enable trace logging; dotrace
 bool doLogComplexError = false; // Set to true to enable complex error logging
 
 // Session-based logging variables

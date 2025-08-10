@@ -144,8 +144,8 @@ extension AnilistProviderBackgroundSync on AnilistProvider {
     _userDataRefreshTimer?.cancel();
 
     final duration = inForeground
-        ? const Duration(minutes: 5) // 5 minutes in foreground
-        : const Duration(minutes: 15); // 15 minutes in background
+        ? const Duration(minutes: 15) // 15 minutes in foreground
+        : const Duration(minutes: 60); // 60 minutes in background
 
     _userDataRefreshTimer = Timer.periodic(duration, (_) {
       if (!_isOffline && isLoggedIn) {

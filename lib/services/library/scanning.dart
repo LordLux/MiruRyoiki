@@ -66,23 +66,13 @@ extension LibraryScanning on Library {
       // ===================================================================
       //          PROCESSING - Offload heavy work to an isolate
       // ===================================================================
-      IsolateScanResult scanResult;
+      Map<PathString, Metadata> scanResult = {};
       if (filesToProcess.isNotEmpty) {
         logTrace('3 | Processing ${filesToProcess.length} files in a background isolate...');
 
-        // Prepare the payload for the isolate
-        final token = rootIsolateToken;
-        if (token == null) throw StateError('RootIsolateToken was not initialized in main.dart');
+        scanResult = await IsolateManager().runInIsolate(processFilesIsolate, filesToProcess.toList());
 
-        final payload = IsolateScanPayload(
-          filesToProcess: filesToProcess,
-          rootIsolateToken: token,
-        );
-
-        scanResult = await compute(processFilesIsolate, payload);
-        logTrace('3 | Isolate processing complete. Found metadata for ${scanResult.processedFileMetadata.length} files.');
-      } else {
-        scanResult = IsolateScanResult(processedFileMetadata: {});
+        logTrace('3 | Isolate processing complete. Found metadata for ${scanResult.length} files.');
       }
 
       // ===================================================================
@@ -100,7 +90,7 @@ extension LibraryScanning on Library {
         final newSeries = await _buildSeriesFromScan(
           newSeriesPath,
           seriesDirsOnDisk[newSeriesPath]!,
-          scanResult.processedFileMetadata,
+          scanResult,
         );
         updatedSeriesList.add(newSeries);
       }
@@ -119,7 +109,7 @@ extension LibraryScanning on Library {
         // Create maps for efficient lookup by checksum
         final newFilesMetaByChecksum = {
           for (var path in newFilesForSeries)
-            if (scanResult.processedFileMetadata[path]?.checksum != null) scanResult.processedFileMetadata[path]!.checksum!: scanResult.processedFileMetadata[path]!
+            if (scanResult[path]?.checksum != null) scanResult[path]!.checksum!: scanResult[path]!
         };
         final missingEpisodesByChecksum = {
           for (var ep in missingEpisodesForSeries)
@@ -136,7 +126,7 @@ extension LibraryScanning on Library {
           if (missingEpisodesByChecksum.containsKey(checksum)) {
             final oldEpisode = missingEpisodesByChecksum[checksum]!;
             final newMetadata = newFilesMetaByChecksum[checksum]!;
-            final newPath = seriesDirsOnDisk[seriesPath]!.firstWhere((p) => scanResult.processedFileMetadata[p] == newMetadata);
+            final newPath = seriesDirsOnDisk[seriesPath]!.firstWhere((p) => scanResult[p] == newMetadata);
 
             // This is a RENAMED file. Update path, name, and metadata.
             final updatedEpisode = oldEpisode.copyWith(
@@ -152,7 +142,7 @@ extension LibraryScanning on Library {
         // Identify truly new and deleted episodes
         newFilesMetaByChecksum.forEach((checksum, metadata) {
           if (!matchedChecksums.contains(checksum)) {
-            final path = seriesDirsOnDisk[seriesPath]!.firstWhere((p) => scanResult.processedFileMetadata[p] == metadata);
+            final path = seriesDirsOnDisk[seriesPath]!.firstWhere((p) => scanResult[p] == metadata);
             episodesToAdd.add(_createEpisode(path, metadata));
           }
         });

@@ -62,6 +62,7 @@ class PathString {
     if (_path == null || _path!.isEmpty) return null;
     return Directory(_path!);
   }
+
   Directory? get parentFolder {
     if (_path == null || _path!.isEmpty) return null;
     return Directory(_path!).parent;
@@ -97,6 +98,9 @@ class PathString {
   factory PathString.fromFile(File file) => PathString(file.path);
   factory PathString.fromDirectory(Directory dir) => PathString(dir.path);
   Map<String, dynamic> toJson() => {'path': path};
+
+  Map<String, dynamic> toMap() => toJson();
+  factory PathString.fromMap(Map<String, dynamic> map) => fromJson(map)!;
 }
 
 String get assets => "${(Platform.resolvedExecutable.split(ps)..removeLast()).join(ps)}${ps}data${ps}flutter_assets${ps}assets";
