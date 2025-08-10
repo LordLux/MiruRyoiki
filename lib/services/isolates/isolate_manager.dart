@@ -1,13 +1,11 @@
 import 'dart:async';
 import 'dart:isolate';
 import 'package:flutter/services.dart';
-import 'package:md5_file_checksum/md5_file_checksum.dart';
 import 'package:video_data_utils/video_data_utils.dart';
 import '../../main.dart' show rootIsolateToken;
 import '../../models/metadata.dart';
 import '../../utils/logging.dart';
 import '../../utils/path_utils.dart';
-import '../file_system/media_info.dart';
 
 class _IsolateTask {
   final Function task;
@@ -93,23 +91,20 @@ Future<Map<PathString, Metadata>> processFilesIsolate(List<PathString> payload) 
     try {
       final videoDataUtils = VideoDataUtils();
 
-      // Fetch metadata and checksum concurrently.
+      // Fetch metadata and duration concurrently.
       final results = await Future.wait([
         videoDataUtils.getFileMetadataMap(filePath: filePath.path),
         videoDataUtils.getFileDuration(videoPath: filePath.path),
-        MediaInfo.getFileChecksum(filePath),
       ]);
 
       final res = results[0] as Map<String, dynamic>;
       final metadata = Metadata.fromJson(res);
       final durationMs = results[1] as double?;
-      final checksum = results[2] as String?;
-      // final checksum = List.generate(16, (index) => 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'[DateTime.now().microsecondsSinceEpoch.remainder(62)]).join();
 
       final duration = Duration(milliseconds: (durationMs ?? 0).toInt());
 
-      // Store the result with the newly calculated checksum.
-      processedFileMetadata[filePath] = metadata.copyWith(checksum: checksum, duration: duration);
+      // Store the result.
+      processedFileMetadata[filePath] = metadata.copyWith(duration: duration);
     } catch (e, stack) {
       logErr('Error processing file in isolate: ${filePath.path}', e, stack);
       // Don't rethrow, just log, so one bad file doesn't stop the whole scan.

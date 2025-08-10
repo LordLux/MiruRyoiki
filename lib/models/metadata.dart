@@ -19,16 +19,12 @@ class Metadata {
   /// Last accessed time of the file.
   late final DateTime lastAccessed;
 
-  /// MD5 checksum of the file.
-  final String? checksum;
-
   Metadata({
     this.size = 0,
     creationTime,
     lastModified,
     lastAccessed,
     this.duration = Duration.zero,
-    this.checksum,
   }) {
     this.creationTime = creationTime ?? DateTimeX.epoch;
     this.lastModified = lastModified ?? DateTimeX.epoch;
@@ -42,11 +38,9 @@ class Metadata {
       lastModified: parseDate(json['lastModified']),
       lastAccessed: parseDate(json['lastAccessed']),
       duration: parseDuration(json['duration']),
-      checksum: json['checksum'] as String?,
     );
   }
-  factory Metadata.fromMap(Map<dynamic, dynamic> json) => Metadata.fromJson(json);
-
+  
   Map<String, dynamic> toJson() {
     return {
       'fileSize': size,
@@ -54,11 +48,8 @@ class Metadata {
       'lastModified': lastModified.toIso8601String(),
       'lastAccessed': lastAccessed.toIso8601String(),
       'duration': duration.inMilliseconds,
-      'checksum': checksum,
     };
   }
-
-  Map<String, dynamic> toMap() => toJson();
 
   String get durationFormattedTimecode {
     final hours = duration.inHours;
@@ -116,16 +107,14 @@ class Metadata {
     Duration? duration,
     DateTime? creationTime,
     DateTime? lastModified,
-    DateTime? lastAccessed,
-    String? checksum,
+    DateTime? lastAccessed
   }) {
     return Metadata(
       size: size ?? this.size,
       duration: duration ?? this.duration,
       creationTime: creationTime ?? this.creationTime,
       lastModified: lastModified ?? this.lastModified,
-      lastAccessed: lastAccessed ?? this.lastAccessed,
-      checksum: checksum ?? this.checksum,
+      lastAccessed: lastAccessed ?? this.lastAccessed
     );
   }
 }
