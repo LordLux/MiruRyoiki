@@ -35,15 +35,13 @@ extension LibraryScanning on Library {
       final existingSeriesPathsToCheck = seriesPathsOnDisk.intersection(seriesPathsInMemory);
 
       final filesToProcess = <PathString>{};
+      final unresolvedFiles = <PathString, Set<PathString>>{}; // Files that are new or renamed
+      final unresolvedEpisodes = <PathString, Set<Episode>>{}; // Episodes that are deleted or renamed
 
       // Collect all files from brand new series
       for (final newPath in newSeriesPaths) {
         filesToProcess.addAll(seriesDirsOnDisk[newPath]!);
       }
-
-      // For existing series, find new/deleted files by path comparison
-      final unresolvedFiles = <PathString, Set<PathString>>{}; // Files that are new or renamed
-      final unresolvedEpisodes = <PathString, Set<Episode>>{}; // Episodes that are deleted or renamed
 
       for (final seriesPath in existingSeriesPathsToCheck) {
         final series = existingSeriesMap[seriesPath]!;
@@ -67,7 +65,9 @@ extension LibraryScanning on Library {
       //          PROCESSING - Offload heavy work to an isolate
       // ===================================================================
       Map<PathString, Metadata> scanResult = {};
-      if (filesToProcess.isNotEmpty) {
+      if (filesToProcess.isEmpty) {
+        logWarn('3 | No files to process, skipping isolate scan.');
+      } else {
         logTrace('3 | Processing ${filesToProcess.length} files in a background isolate...');
 
         scanResult = await IsolateManager().runInIsolate(processFilesIsolate, filesToProcess.toList());
@@ -83,7 +83,7 @@ extension LibraryScanning on Library {
 
       // --- 3a. Delete series that no longer exist ---
       updatedSeriesList.removeWhere((s) => deletedSeriesPaths.contains(s.path));
-      logTrace('3 | Removed ${deletedSeriesPaths.length} deleted series.');
+      if (deletedSeriesPaths.isNotEmpty) logTrace('3 | Removed ${deletedSeriesPaths.length} deleted series.');
 
       // --- 3b. Add brand new series ---
       for (final newSeriesPath in newSeriesPaths) {
@@ -94,7 +94,7 @@ extension LibraryScanning on Library {
         );
         updatedSeriesList.add(newSeries);
       }
-      logTrace('3 | Added ${newSeriesPaths.length} new series.');
+      if (newSeriesPaths.isNotEmpty) logTrace('3 | Added ${newSeriesPaths.length} new series.');
 
       // --- 3c. Update existing series ---
       for (final seriesPath in existingSeriesPathsToCheck) {
@@ -102,67 +102,66 @@ extension LibraryScanning on Library {
         final seriesIndex = updatedSeriesList.indexWhere((s) => s.path == seriesPath);
         if (seriesIndex == -1) continue;
 
-        // Get unresolved items for this specific series
         final newFilesForSeries = unresolvedFiles[seriesPath] ?? <PathString>{};
         final missingEpisodesForSeries = unresolvedEpisodes[seriesPath] ?? <Episode>{};
 
-        // Create maps for efficient lookup by checksum
-        final newFilesMetaByChecksum = {
+        // For rename detection, we create a key from size and duration
+        final newFilesByMetadata = {
           for (var path in newFilesForSeries)
-            if (scanResult[path]?.checksum != null) scanResult[path]!.checksum!: scanResult[path]!
+            if (scanResult.containsKey(path)) _createMetadataKey(scanResult[path]!): path,
         };
-        final missingEpisodesByChecksum = {
+        final missingEpisodesByMetadata = {
           for (var ep in missingEpisodesForSeries)
-            if (ep.metadata?.checksum != null) ep.metadata!.checksum!: ep
+            if (ep.metadata != null) _createMetadataKey(ep.metadata!): ep,
         };
 
         final Set<Episode> episodesToAdd = {};
         final Set<Episode> episodesToDelete = {};
         final Map<Episode, Episode> episodesToUpdate = {}; // Map<Old, New>
 
-        // Match renamed files by checksum
-        final Set<String> matchedChecksums = {};
-        for (var checksum in newFilesMetaByChecksum.keys) {
-          if (missingEpisodesByChecksum.containsKey(checksum)) {
-            final oldEpisode = missingEpisodesByChecksum[checksum]!;
-            final newMetadata = newFilesMetaByChecksum[checksum]!;
-            final newPath = seriesDirsOnDisk[seriesPath]!.firstWhere((p) => scanResult[p] == newMetadata);
+        // Match renamed files by metadata key
+        final Set<String> matchedKeys = {};
+        for (var metaKey in newFilesByMetadata.keys) {
+          if (missingEpisodesByMetadata.containsKey(metaKey)) {
+            final oldEpisode = missingEpisodesByMetadata[metaKey]!;
+            final newPath = newFilesByMetadata[metaKey]!;
+            final newMetadata = scanResult[newPath]!;
 
-            // This is a RENAMED file. Update path, name, and metadata.
             final updatedEpisode = oldEpisode.copyWith(
               path: newPath,
               name: _cleanEpisodeName(p.basenameWithoutExtension(newPath.path)),
               metadata: newMetadata,
             );
             episodesToUpdate[oldEpisode] = updatedEpisode;
-            matchedChecksums.add(checksum);
+            matchedKeys.add(metaKey);
           }
         }
 
         // Identify truly new and deleted episodes
-        newFilesMetaByChecksum.forEach((checksum, metadata) {
-          if (!matchedChecksums.contains(checksum)) {
-            final path = seriesDirsOnDisk[seriesPath]!.firstWhere((p) => scanResult[p] == metadata);
-            episodesToAdd.add(_createEpisode(path, metadata));
+        newFilesByMetadata.forEach((metaKey, path) {
+          if (!matchedKeys.contains(metaKey)) {
+            episodesToAdd.add(_createEpisode(path, scanResult[path]!));
           }
         });
 
-        missingEpisodesByChecksum.forEach((checksum, episode) {
-          if (!matchedChecksums.contains(checksum)) {
+        missingEpisodesByMetadata.forEach((metaKey, episode) {
+          if (!matchedKeys.contains(metaKey)) {
             episodesToDelete.add(episode);
           }
         });
 
         // Rebuild the series with all the collected changes
-        final rebuiltSeries = _rebuildSeries(originalSeries, episodesToAdd, episodesToDelete, episodesToUpdate);
-        updatedSeriesList[seriesIndex] = rebuiltSeries;
+        if (episodesToAdd.isNotEmpty || episodesToDelete.isNotEmpty || episodesToUpdate.isNotEmpty) {
+          final rebuiltSeries = _rebuildSeries(originalSeries, episodesToAdd, episodesToDelete, episodesToUpdate);
+          updatedSeriesList[seriesIndex] = rebuiltSeries;
+        }
       }
       logTrace('3 | Updated ${existingSeriesPathsToCheck.length} existing series.');
 
       // --- 3d. Finalize ---
-      _series = updatedSeriesList;
+      _series = updatedSeriesList; // Save the updated series list to memory
       _updateWatchedStatusAndResetThumbnailFetchFailedAttemptsCount();
-      await _saveLibrary(); // This now saves the fully updated list to DB and/or JSON
+      await _saveLibrary(); // Save the updated library to database
 
       if (showSnack) {
         final changeCount = newSeriesPaths.length + deletedSeriesPaths.length;
@@ -178,6 +177,9 @@ extension LibraryScanning on Library {
       notifyListeners();
     }
   }
+
+  /// Creates a consistent key from metadata for matching renamed files.
+  String _createMetadataKey(Metadata meta) => '${meta.size}_${meta.duration.inMilliseconds}';
 
   /// Discovers all first-level directories (series) and their video files.
   Future<Map<PathString, Set<PathString>>> _discoverSeriesDirectories(String libraryPath) async {
@@ -205,10 +207,8 @@ extension LibraryScanning on Library {
     final posterPath = await _findPosterImage(Directory(seriesPath.path));
     final bannerPath = await _findBannerImage(Directory(seriesPath.path));
 
-    final episodes = files
-        .map((path) {
-          return metadataMap.containsKey(path) ? _createEpisode(path, metadataMap[path]!) : null;
-        })
+    final episodes = files //
+        .map((path) => metadataMap.containsKey(path) ? _createEpisode(path, metadataMap[path]!) : null)
         .whereNotNull()
         .toList();
 
@@ -222,7 +222,6 @@ extension LibraryScanning on Library {
       path: path,
       name: _cleanEpisodeName(p.basenameWithoutExtension(path.path)),
       metadata: metadata,
-      // Default values for new episodes
       watched: false,
       watchedPercentage: 0.0,
       thumbnailUnavailable: false,
@@ -253,42 +252,56 @@ extension LibraryScanning on Library {
     return _organizeEpisodesIntoSeasons(original, currentEpisodes);
   }
 
-  /// Organizes a flat list of episodes into the correct Season/Related Media structure based on file paths.
+  /// Organizes a flat list of episodes into the correct Season/Related Media structure.
+  /// This logic is ported from the original, working FileScanner.
   Series _organizeEpisodesIntoSeasons(Series series, List<Episode> allEpisodes) {
     final seasons = <Season>[];
     final relatedMedia = <Episode>[];
 
-    // Group episodes by their parent directory (which defines the season)
-    final episodesBySeasonDir = groupBy(allEpisodes, (ep) => PathString(p.dirname(ep.path.path)));
+    // Group episodes by their parent directory path
+    final episodesByParentDir = groupBy(allEpisodes, (ep) => p.dirname(ep.path.path));
 
-    // Directory seriesDir = Directory(series.path.path);
+    final seriesRootPath = series.path.path;
+    final seasonDirPaths = <String>[];
+    final otherDirPaths = <String>[];
 
-    episodesBySeasonDir.forEach((seasonPath, episodes) {
-      if (seasonPath == series.path) {
-        // Files in the root of the series folder
-        relatedMedia.addAll(episodes);
+    // Categorize all directories within the series folder
+    for (final dirPath in episodesByParentDir.keys) {
+      if (dirPath == seriesRootPath) continue; // Skip the root, handle it separately
+      if (_isSeasonDirectory(p.basename(dirPath))) {
+        seasonDirPaths.add(dirPath);
       } else {
-        final seasonName = p.basename(seasonPath.path);
-        seasons.add(Season(
-          name: _isSeasonDirectory(seasonName) ? _formatSeasonName(seasonName) : seasonName,
-          path: seasonPath,
-          episodes: episodes,
-        ));
+        otherDirPaths.add(dirPath);
       }
-    });
+    }
 
-    // Edge Case: If there are no season folders but files exist in the root,
-    // move them into a default "Season 01".
-    if (seasons.isEmpty && relatedMedia.isNotEmpty) {
+    final rootVideoFiles = episodesByParentDir[seriesRootPath] ?? [];
+
+    // Case 1: No season folders found, treat root videos as "Season 01"
+    if (seasonDirPaths.isEmpty && rootVideoFiles.isNotEmpty) {
       seasons.add(Season(
         name: 'Season 01',
         path: series.path,
-        episodes: relatedMedia,
+        episodes: rootVideoFiles,
       ));
-      relatedMedia.clear();
+    } else {
+      // Case 2: Season folders exist, process them
+      for (final seasonPath in seasonDirPaths) {
+        seasons.add(Season(
+          name: _formatSeasonName(p.basename(seasonPath)),
+          path: PathString(seasonPath),
+          episodes: episodesByParentDir[seasonPath]!,
+        ));
+      }
+      // Any videos in the root folder are now related media
+      relatedMedia.addAll(rootVideoFiles);
     }
 
-    // Sort seasons by name for consistency
+    // Process "other" directories (OVAs, Specials, etc.) as related media
+    for (final otherPath in otherDirPaths) {
+      relatedMedia.addAll(episodesByParentDir[otherPath]!);
+    }
+
     seasons.sort((a, b) => a.name.compareTo(b.name));
 
     return series.copyWith(
@@ -304,13 +317,17 @@ extension LibraryScanning on Library {
   /// Check if a filename is a video file
   bool _isVideoFile(String path) => _videoExtensions.contains(p.extension(path).toLowerCase());
 
-  /// Check if a directory name matches the season pattern (S01, Season 01, etc.)
-  bool _isSeasonDirectory(String name) => RegExp(r'S\d{1,2}|Season\s*\d+', caseSensitive: false).hasMatch(name);
+  /// Check if a directory name matches the season pattern (S1, S01, Season 01, etc.)
+  bool _isSeasonDirectory(String name) => RegExp(r'S\d+', caseSensitive: false).hasMatch(name) || RegExp(r'Season\s+\d+', caseSensitive: false).hasMatch(name);
 
   /// Format season name to be consistent
   String _formatSeasonName(String name) {
     final match = RegExp(r'(\d+)').firstMatch(name);
-    return 'Season ${int.parse(match?.group(1) ?? '1').toString().padLeft(2, '0')}';
+    if (match != null) {
+      final num = int.parse(match.group(1)!).toString().padLeft(2, '0');
+      return 'Season $num';
+    }
+    return name;
   }
 
   /// Clean up episode name from filename
@@ -429,74 +446,4 @@ extension LibraryScanning on Library {
       );
     }
   }
-}
-
-/// Merges metadata from existing series with updated content from scanned series
-Series _mergeSeriesMetadata(Series existing, Series scanned) {
-  return existing.copyWith(
-    // Update basic properties
-    name: scanned.name,
-    folderPosterPath: scanned.folderPosterPath,
-    folderBannerPath: scanned.folderBannerPath,
-
-    // Merge seasons while preserving watched status
-    seasons: _mergeSeasonsWithMetadata(existing.seasons, scanned.seasons),
-
-    // Merge related media while preserving watched status
-    relatedMedia: _mergeEpisodesWithMetadata(existing.relatedMedia, scanned.relatedMedia),
-  )..isHidden = existing.isHidden; // Ensure hidden status is preserved
-}
-
-/// Merges seasons from existing and scanned series, preserving watch metadata
-List<Season> _mergeSeasonsWithMetadata(List<Season> existing, List<Season> scanned) {
-  final result = <Season>[];
-
-  // For each scanned season, find matching existing season (if any)
-  for (final scannedSeason in scanned) {
-    final existingSeason = existing.firstWhereOrNull((s) => s.path == scannedSeason.path);
-
-    if (existingSeason != null) {
-      // Merge episodes while preserving watched status
-      final mergedEpisodes = _mergeEpisodesWithMetadata(existingSeason.episodes, scannedSeason.episodes);
-      result.add(Season(
-        name: scannedSeason.name,
-        path: scannedSeason.path,
-        episodes: mergedEpisodes,
-      ));
-    } else {
-      // This is a new season
-      result.add(scannedSeason);
-    }
-  }
-
-  return result;
-}
-
-/// Merges episodes while preserving watch status
-List<Episode> _mergeEpisodesWithMetadata(List<Episode> existing, List<Episode> scanned) {
-  final result = <Episode>[];
-
-  // For each scanned episode, find matching existing episode (if any)
-  for (final scannedEpisode in scanned) {
-    final existingEpisode = existing.firstWhereOrNull((e) => e.path == scannedEpisode.path);
-
-    if (existingEpisode != null) {
-      // Preserve watched status and percentage
-      result.add(Episode(
-        path: scannedEpisode.path,
-        name: scannedEpisode.name,
-        thumbnailPath: existingEpisode.thumbnailPath,
-        thumbnailUnavailable: existingEpisode.thumbnailUnavailable,
-        watched: existingEpisode.watched,
-        watchedPercentage: existingEpisode.watchedPercentage,
-        metadata: scannedEpisode.metadata ?? existingEpisode.metadata,
-        mkvMetadata: scannedEpisode.mkvMetadata ?? existingEpisode.mkvMetadata,
-      ));
-    } else {
-      // This is a new episode
-      result.add(scannedEpisode);
-    }
-  }
-
-  return result;
 }
