@@ -45,6 +45,7 @@ class Metadata {
       checksum: json['checksum'] as String?,
     );
   }
+  factory Metadata.fromMap(Map<dynamic, dynamic> json) => Metadata.fromJson(json);
 
   Map<String, dynamic> toJson() {
     return {
@@ -56,6 +57,8 @@ class Metadata {
       'checksum': checksum,
     };
   }
+
+  Map<String, dynamic> toMap() => toJson();
 
   String get durationFormattedTimecode {
     final hours = duration.inHours;

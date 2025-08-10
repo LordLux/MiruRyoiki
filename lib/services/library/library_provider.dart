@@ -30,7 +30,7 @@ import '../../services/navigation/show_info.dart';
 import '../../utils/logging.dart';
 import '../../utils/path_utils.dart';
 import '../../utils/time_utils.dart';
-import 'scanning_tasks.dart';
+import '../isolates/isolate_manager.dart';
 
 // Include all the parts
 part 'initialization.dart';
