@@ -25,7 +25,8 @@ Duration get dimDuration => getDuration(const Duration(milliseconds: 200));
 
 Duration get shortDuration => getDuration(const Duration(milliseconds: 150));
 
-final Duration splashScreenFadeAnimation = const Duration(milliseconds: 800); // hardcoded
+final Duration splashScreenFadeAnimationIn = const Duration(milliseconds: 400); // hardcoded
+final Duration splashScreenFadeAnimationOut = const Duration(milliseconds: 400); // hardcoded
 
 /// Runs a function after the current frame is rendered.
 ///
