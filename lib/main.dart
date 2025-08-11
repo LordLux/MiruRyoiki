@@ -237,9 +237,9 @@ class _AppContainerState extends State<AppContainer> {
 
   @override
   Widget build(BuildContext context) {
-    print("initialized: $_initialized");
     return AnimatedSwitcher(
       duration: const Duration(milliseconds: 500),
+      // transitionBuilder: (_, Animation<double> animation) => FadeTransition(opacity: animation, child: _),
       child: _initialized ? _miruRyoikiRoot : _splashScreen,
     );
   }

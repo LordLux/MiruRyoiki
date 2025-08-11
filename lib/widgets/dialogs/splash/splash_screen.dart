@@ -94,21 +94,29 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
   @override
   void initState() {
     super.initState();
-
+    
+    // Logo fade in and fade out
     _splashOpacityController = AnimationController(
-      duration: splashScreenFadeAnimation,
+      duration: splashScreenFadeAnimationIn,
+      reverseDuration: splashScreenFadeAnimationOut,
       vsync: this,
+      animationBehavior: AnimationBehavior.preserve,
     );
 
     _opacityAnimation = Tween<double>(
       begin: 1.0,
       end: 0.0,
-    ).animate(_splashOpacityController);
+    ).animate(CurvedAnimation(
+      parent: _splashOpacityController,
+      curve: Curves.easeOutQuint,
+      reverseCurve: Curves.easeIn,
+    ));
 
-    // New background fade animation setup - 1 second duration
+    // Background fade animation to hide acrylic startup
     _backdropFadeController = AnimationController(
       duration: const Duration(seconds: 1),
       vsync: this,
+      animationBehavior: AnimationBehavior.preserve,
     );
 
     _backdropOpacityAnimation = Tween<double>(
@@ -121,7 +129,7 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
 
     // Animate opacity out
     _splashOpacityController.forward();
-    Future.delayed(Duration(milliseconds: 1000), () => _backdropFadeController.forward());
+    Future.delayed(Duration(milliseconds: 700), () => _backdropFadeController.forward());
   }
 
   Future<String?> _initializeApp() async {
@@ -142,10 +150,11 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
       logTrace('Initializing library provider');
       await libraryProvider.initialize(context);
       await anilistProvider.initialize();
+      await Future.delayed(const Duration(milliseconds: 1000)); // otherwise splash screen will be too short
       //
 
-      _splashOpacityController.reverse();
-      await Future.delayed(splashScreenFadeAnimation);
+      Future.delayed(Duration(milliseconds: 150), () => _splashOpacityController.reverse());
+      await Future.delayed(splashScreenFadeAnimationIn);
     } catch (e, st) {
       logErr('Error during app initialization', e, st);
     }
@@ -181,7 +190,7 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
   @override
   Widget build(BuildContext context) {
     return EasySplashScreen(
-      waitBeforeFutureNavigator: splashScreenFadeAnimation,
+      waitBeforeFutureNavigator: splashScreenFadeAnimationIn,
       futureNavigator: _initializeApp,
       beforeNavigate: () async => await initializeAndMorphWindow(),
       onNavigate: widget.onInitComplete,
@@ -216,7 +225,6 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
                   ),
                 ),
               ),
-              LibraryScanProgressIndicator(),
             ],
           );
         },
