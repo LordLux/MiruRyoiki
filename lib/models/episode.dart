@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import '../services/thumbnail_manager.dart';
+import '../services/isolates/thumbnail_manager.dart';
 import '../utils/path_utils.dart';
 import 'metadata.dart';
 import 'mkv_metadata.dart';
