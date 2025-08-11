@@ -831,6 +831,7 @@ class LibraryScreenState extends State<LibraryScreen> {
   }
 
   Future<void> _applySortingAsync(List<Series> series, {String? groupName}) async {
+    if (!mounted) return;
     if (_currentSortOperation != null) return _currentSortOperation;
     // logInfo('Applying sorting for group: $groupName');
 
@@ -841,7 +842,9 @@ class LibraryScreenState extends State<LibraryScreen> {
     }
 
     _isProcessing = true;
-    nextFrame(() => setState(() {}));
+    nextFrame(() {
+      if (mounted) setState(() {});
+    });
 
     final sortData = <int, Map<String, dynamic>>{};
 
@@ -1277,14 +1280,14 @@ class LibraryScreenState extends State<LibraryScreen> {
 
   void removeHiddenSeriesWithoutInvalidatingCache(Series series) {
     if (Manager.settings.showHiddenSeries) return; // Don't remove if hidden series are shown
-    
+
     // Go through all cached lists and remove the series with the same path
     _cachedGroups.forEach((key, value) {
       value.removeWhere((s) => s.path == series.path);
     });
     _sortedGroupedSeries.removeWhere((key, value) => value.any((s) => s.path == series.path));
     _sortedUngroupedSeries.removeWhere((s) => s.path == series.path);
-    
+
     Manager.setState();
   }
 }

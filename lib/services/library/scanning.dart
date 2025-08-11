@@ -13,10 +13,10 @@ extension LibraryScanning on Library {
       logDebug('\n3 | Skipping scan, library path is null', splitLines: true);
       return;
     }
-    if (_isLoading) return;
+    if (_isScanning) return;
 
     logDebug('\n3 | Scanning library at $_libraryPath', splitLines: true);
-    _isLoading = true;
+    _isScanning = true;
     notifyListeners();
 
     try {
@@ -39,9 +39,8 @@ extension LibraryScanning on Library {
       final unresolvedEpisodes = <PathString, Set<Episode>>{}; // Episodes that are deleted or renamed
 
       // Collect all files from brand new series
-      for (final newPath in newSeriesPaths) {
+      for (final newPath in newSeriesPaths) //
         filesToProcess.addAll(seriesDirsOnDisk[newPath]!);
-      }
 
       for (final seriesPath in existingSeriesPathsToCheck) {
         final series = existingSeriesMap[seriesPath]!;
@@ -70,7 +69,17 @@ extension LibraryScanning on Library {
       } else {
         logTrace('3 | Processing ${filesToProcess.length} files in a background isolate...');
 
-        scanResult = await IsolateManager().runInIsolate(processFilesIsolate, filesToProcess.toList());
+        final isolateManager = IsolateManager();
+        final receivePort = ReceivePort();
+        
+        scanResult = await isolateManager.runIsolateWithProgress<ProcessFilesParams, Map<PathString, Metadata>>(
+          task: processFilesIsolate,
+          params: ProcessFilesParams(filesToProcess.toList(), receivePort.sendPort),
+          onProgress: (processed, total) {
+            scanProgress.value = (processed, total);
+          },
+        );
+        receivePort.close();
 
         logTrace('3 | Isolate processing complete. Found metadata for ${scanResult.length} files.');
       }
@@ -108,30 +117,26 @@ extension LibraryScanning on Library {
         // For rename detection, we create a key from size and duration
         final newFilesByMetadata = {
           for (var path in newFilesForSeries)
-            if (scanResult.containsKey(path)) _createMetadataKey(scanResult[path]!): path,
+            if (scanResult.containsKey(path)) _createMetadataKey(scanResult[path]!): path
         };
         final missingEpisodesByMetadata = {
           for (var ep in missingEpisodesForSeries)
-            if (ep.metadata != null) _createMetadataKey(ep.metadata!): ep,
+            if (ep.metadata != null) _createMetadataKey(ep.metadata!): ep
         };
 
         final Set<Episode> episodesToAdd = {};
         final Set<Episode> episodesToDelete = {};
         final Map<Episode, Episode> episodesToUpdate = {}; // Map<Old, New>
+        final Set<String> matchedKeys = {};
 
         // Match renamed files by metadata key
-        final Set<String> matchedKeys = {};
         for (var metaKey in newFilesByMetadata.keys) {
           if (missingEpisodesByMetadata.containsKey(metaKey)) {
             final oldEpisode = missingEpisodesByMetadata[metaKey]!;
             final newPath = newFilesByMetadata[metaKey]!;
             final newMetadata = scanResult[newPath]!;
 
-            final updatedEpisode = oldEpisode.copyWith(
-              path: newPath,
-              name: _cleanEpisodeName(p.basenameWithoutExtension(newPath.path)),
-              metadata: newMetadata,
-            );
+            final updatedEpisode = oldEpisode.copyWith(path: newPath, name: _cleanEpisodeName(p.basenameWithoutExtension(newPath.path)), metadata: newMetadata);
             episodesToUpdate[oldEpisode] = updatedEpisode;
             matchedKeys.add(metaKey);
           }
@@ -139,15 +144,10 @@ extension LibraryScanning on Library {
 
         // Identify truly new and deleted episodes
         newFilesByMetadata.forEach((metaKey, path) {
-          if (!matchedKeys.contains(metaKey)) {
-            episodesToAdd.add(_createEpisode(path, scanResult[path]!));
-          }
+          if (!matchedKeys.contains(metaKey)) episodesToAdd.add(_createEpisode(path, scanResult[path]!));
         });
-
         missingEpisodesByMetadata.forEach((metaKey, episode) {
-          if (!matchedKeys.contains(metaKey)) {
-            episodesToDelete.add(episode);
-          }
+          if (!matchedKeys.contains(metaKey)) episodesToDelete.add(episode);
         });
 
         // Rebuild the series with all the collected changes
@@ -173,7 +173,8 @@ extension LibraryScanning on Library {
       else
         logErr('Error scanning library', e, stackTrace);
     } finally {
-      _isLoading = false;
+      _isScanning = false;
+      scanProgress.value = null;
       notifyListeners();
     }
   }

@@ -13,6 +13,7 @@ import 'package:provider/provider.dart';
 import 'package:app_links/app_links.dart';
 import 'package:window_manager/window_manager.dart';
 
+import '../../../services/anilist/provider/anilist_provider.dart';
 import '../../../services/window/service.dart';
 import '../../../utils/path_utils.dart';
 import '../../../utils/screen_utils.dart';
@@ -125,9 +126,6 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
 
   Future<String?> _initializeApp() async {
     try {
-      // Initialize AppLinks
-      _appLinks = AppLinks();
-
       // Handle initial deep link
       logTrace('Handling initial deep link');
       await _handleInitialUri();
@@ -135,6 +133,7 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
       // Get providers
       final settings = Provider.of<SettingsManager>(context, listen: false);
       final libraryProvider = Provider.of<Library>(context, listen: false);
+      final anilistProvider = Provider.of<AnilistProvider>(context, listen: false);
 
       // Initialize settings
       settings.applySettings(context);
@@ -142,6 +141,7 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
       // Initialize library
       logTrace('Initializing library provider');
       await libraryProvider.initialize(context);
+      await anilistProvider.initialize();
       //
 
       _splashOpacityController.reverse();
@@ -155,6 +155,7 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
   }
 
   Future<void> _handleInitialUri() async {
+    _appLinks = AppLinks();
     if (!_initialUriHandled) {
       _initialUriHandled = true;
       try {

@@ -19,10 +19,11 @@ import 'package:material_symbols_icons/material_symbols_icons.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
 import 'screens/home.dart';
+import 'services/navigation/statusbar/library_scan_statusbar.dart';
 import 'widgets/svg.dart';
 import 'services/anilist/provider/anilist_provider.dart';
 import 'services/navigation/dialogs.dart';
-import 'services/navigation/statusbar.dart';
+import 'services/navigation/statusbar/statusbar.dart';
 import 'services/window/service.dart';
 import 'settings.dart';
 import 'widgets/dialogs/splash/splash_screen.dart';
@@ -72,7 +73,7 @@ void main(List<String> args) async {
       log("Second instance args: $secondInstanceArgs");
     },
   );
-  
+
   rootIsolateToken = ServicesBinding.rootIsolateToken;
 
   // Only run on Windows
@@ -214,7 +215,19 @@ class AppContainer extends StatefulWidget {
 }
 
 class _AppContainerState extends State<AppContainer> {
+  late final MiruRyoikiRoot _miruRyoikiRoot;
+  late final SplashScreen _splashScreen;
   bool _initialized = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _miruRyoikiRoot = MiruRyoikiRoot();
+    _splashScreen = SplashScreen(
+      key: ValueKey('splash'),
+      onInitComplete: () => setState(() => _initialized = true),
+    );
+  }
 
   @override
   void dispose() {
@@ -224,18 +237,10 @@ class _AppContainerState extends State<AppContainer> {
 
   @override
   Widget build(BuildContext context) {
+    print("initialized: $_initialized");
     return AnimatedSwitcher(
       duration: const Duration(milliseconds: 500),
-      child: _initialized
-          ? MiruRyoikiRoot()
-          : SplashScreen(
-              key: ValueKey('splash'),
-              onInitComplete: () {
-                setState(() {
-                  _initialized = true;
-                });
-              },
-            ),
+      child: _initialized ? _miruRyoikiRoot : _splashScreen,
     );
   }
 }
@@ -258,6 +263,11 @@ class _MiruRyoikiRootState extends State<MiruRyoikiRoot> {
     // Listen for future deep links
     _appLinks = AppLinks();
     _handleIncomingLinks();
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
   }
 
   void _handleIncomingLinks() {
@@ -314,28 +324,32 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
 
   final GlobalKey<NavigationViewState> _paneKey = GlobalKey<NavigationViewState>();
 
-  Widget anilistIcon(bool offline) => SizedBox(
-        height: 25,
-        width: 18,
-        child: Transform.translate(
-          offset: const Offset(2.5, 4),
-          child: Transform.scale(
-            scale: 1.45,
-            child: Stack(
-              children: [
-                if (!offline) anilistLogo,
-                if (offline) offlineLogo,
-              ],
-            ),
+  Widget anilistIcon(bool offline) {
+    return SizedBox(
+      height: 25,
+      width: 18,
+      child: Transform.translate(
+        offset: const Offset(2.5, 4),
+        child: Transform.scale(
+          scale: 1.45,
+          child: Stack(
+            children: [
+              if (!offline) anilistLogo,
+              if (offline) offlineLogo,
+            ],
           ),
         ),
-      );
+      ),
+    );
+  }
 
-  Widget get settingsIcon => AnimatedRotation(
-        duration: getDuration(const Duration(milliseconds: 200)),
-        turns: _selectedIndex == settingsIndex ? 0.5 : 0.0,
-        child: const Icon(FluentIcons.settings, size: 18),
-      );
+  Widget get settingsIcon {
+    return AnimatedRotation(
+      duration: getDuration(const Duration(milliseconds: 200)),
+      turns: _selectedIndex == settingsIndex ? 0.5 : 0.0,
+      child: const Icon(FluentIcons.settings, size: 18),
+    );
+  }
 
   // Controllers will be added in initState
   // Define static consts for navigation indices to avoid duplication
@@ -358,7 +372,7 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
 
   ScrollController _scrollController(int index) => _navigationMap[index]?['controller'] as ScrollController;
 
-// Reset scroll position to top
+  // Reset scroll position to top
   void _resetScrollPosition(int index, {bool animate = false}) {
     final controller = _scrollController(index);
     if (controller.hasClients) {
@@ -407,7 +421,8 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
           return AnimatedContainer(
             duration: dimDuration,
             color: getDimmableBlack(context),
-            child: Stack(
+            child: 
+            Stack(
               children: [
                 // Actual Window Content
                 Positioned.fill(
@@ -646,6 +661,7 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
                   ),
                 ),
                 const StatusBarWidget(),
+                const LibraryScanStatusBar(),
                 //TODO add timer for when we are back online, to hide this after a few seconds
                 // AnimatedPositioned(
                 //   duration: dimDuration,

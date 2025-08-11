@@ -12,7 +12,7 @@ import '../../manager.dart';
 import '../library/library_provider.dart';
 import '../../utils/logging.dart';
 import '../../utils/screen_utils.dart';
-import 'statusbar.dart';
+import 'statusbar/statusbar.dart';
 
 class KeyboardState {
   static final ValueNotifier<bool> ctrlPressedNotifier = ValueNotifier<bool>(false);

@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:miruryoiki/utils/time_utils.dart';
 
-import '../../manager.dart';
+import '../../../manager.dart';
 
 /// Defines the visual style of the status bar
 class StatusBarStyle {

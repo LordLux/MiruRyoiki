@@ -117,7 +117,6 @@ extension AnilistProviderAuthentication on AnilistProvider {
         return false;
       }
       
-      //TODO fix _TypeError (type 'String' is not a subtype of type 'int' of 'index')
       final userJson = await file.readAsString();
       final userData = jsonDecode(userJson) as Map<String, dynamic>;
 

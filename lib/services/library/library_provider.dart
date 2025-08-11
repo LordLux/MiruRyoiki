@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:isolate';
 
 import 'package:collection/collection.dart';
 import 'package:fluent_ui/fluent_ui.dart';
@@ -44,18 +45,22 @@ class Library with ChangeNotifier {
   List<Series> _series = [];
   String? _libraryPath;
   bool _isLoading = false;
+  bool _isScanning = false;
+  final ValueNotifier<(int, int)?> scanProgress = ValueNotifier(null);
+  
   late final MPCHCTracker _mpcTracker;
   final SettingsManager _settings;
   late final AppDatabase _db = AppDatabase();
   late final SeriesDao seriesDao = SeriesDao(_db);
 
   bool _initialized = false;
-  bool get initialized => _initialized;
   bool _cacheValidated = false;
 
   List<Series> get series => List.unmodifiable(_series);
   String? get libraryPath => _libraryPath;
+  bool get initialized => _initialized;
   bool get isLoading => _isLoading;
+  bool get isScanning => _isScanning;
 
   static const String settingsFileName = 'settings';
   static const String miruryoikiLibrary = 'library';
@@ -68,6 +73,7 @@ class Library with ChangeNotifier {
   @override
   void dispose() {
     _mpcTracker.dispose();
+    scanProgress.dispose();
     super.dispose();
   }
 }

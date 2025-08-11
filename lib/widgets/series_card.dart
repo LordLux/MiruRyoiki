@@ -5,7 +5,7 @@ import '../enums.dart';
 import '../manager.dart';
 
 import '../models/series.dart';
-import '../services/navigation/statusbar.dart';
+import '../services/navigation/statusbar/statusbar.dart';
 import '../utils/logging.dart';
 import '../utils/screen_utils.dart';
 import '../utils/time_utils.dart';

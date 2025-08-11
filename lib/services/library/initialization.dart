@@ -3,71 +3,54 @@ part of 'library_provider.dart';
 extension LibraryInitialization on Library {
   Future<void> initialize(BuildContext context) async {
     if (!_initialized) {
-      await _loadLibrary();
+      await _loadLibrary(); // Fast DB load
       _initialized = true;
     }
-    final BuildContext ctx;
-    if (context.mounted)
-      ctx = context;
-    else
-      ctx = Manager.context;
-    // ignore: use_build_context_synchronously
+
+    // Asynchronously start the full loading process after the UI is built
     nextFrame(() {
-      final appTheme = Provider.of<AppTheme>(ctx, listen: false);
+      final appTheme = Provider.of<AppTheme>(context, listen: false);
       appTheme.setEffect(appTheme.windowEffect, rootNavigatorKey.currentContext!);
+      startBackgroundLoading(context);
     });
-    await loadLibraryFirstTime(ctx);
   }
 
-  // DISPOSE IN MAIN
-
-  Future<void> loadLibraryFirstTime(BuildContext context) async {
+  /// The main, long-running initialization sequence, now non-blocking.
+  Future<void> startBackgroundLoading(BuildContext context) async {
     final anilistProvider = Provider.of<AnilistProvider>(context, listen: false);
 
-    // 2. Initialize Anilist API
-    await anilistProvider.initialize();
-
-    // if (!anilistProvider.isOffline && anilistProvider.isLoggedIn) {
-    //   // This will load the latest data and update the cache
-    //   await anilistProvider.refreshUserLists();
-    // }
-
-    // 3. Scan Library
+    // 1. Scan Local Library (this now reports progress and manages its own state)
     await scanLocalLibrary();
+
+    // 2. Initialize Anilist online features (only runs after scan is complete)
+    await anilistProvider.initializeOnlineFeatures();
 
     // Initialize MPC Tracker
     if (!Manager.skipRegistryIndexing && !kDebugMode) await _mpcTracker.ensureInitialized();
 
-    // Update watched status and force refresh
-    // await _updateWatchedStatusAndForceRefresh(); watched status is updated in the reloadLibrary method and save is done right after this
-
-    // Save library
-    await _saveLibrary();
-
-    // 4. Validate Cache
+    // 3. Validate Cache
     await ensureCacheValidated();
 
-    // 5. Load posters for library
+    // 4. Load posters for library
     await loadAnilistPostersForLibrary(onProgress: (loaded, total) {
       if (loaded % 2 == 0 || loaded == total) {
-        // Force UI refresh every 5 items or on completion
-        // if (context.mounted) Manager.setState();
+        // UI can be notified of progress here if needed
       }
     });
-    logTrace('Library initialized successfully');
+    logTrace('Full library initialization complete.');
   }
+
+  // DISPOSE IN MAIN
 
   Future<void> reloadLibrary({bool force = false}) async {
     if (_libraryPath == null) return;
-    if (!force && _isLoading) return;
+    if (!force && _isScanning) return;
     logDebug('Reloading Library...');
 
     snackBar('Reloading Library...', severity: InfoBarSeverity.info);
     await scanLocalLibrary();
 
     await _mpcTracker.ensureInitialized();
-
-    await _saveLibrary();
 
     await ensureCacheValidated();
 
