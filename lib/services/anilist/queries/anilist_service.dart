@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:graphql/client.dart';
 import '../../../../models/anilist/anime.dart';

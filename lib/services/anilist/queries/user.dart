@@ -171,6 +171,10 @@ extension AnilistServiceUser on AnilistService {
       );
 
       if (result.hasException) {
+        if (result.exception is OperationException && result.exception!.linkException is UnknownException && result.exception!.linkException!.originalException is TimeoutException) {
+          logWarn('Anilist user info GET request timed out');
+          return null;
+        }
         logErr('Error getting user info data', result.exception);
         return null;
       }

@@ -65,7 +65,7 @@ class MPCHCTracker with ChangeNotifier {
   /// Initialize the tracker by scanning the registry
   Future<void> indexRegistry() async {
     try {
-      await _scanRegistryEntries(clearExisting: true);
+      // await _scanRegistryEntries(clearExisting: true);
       _isInitialized = true;
       notifyListeners();
     } catch (e) {
@@ -216,19 +216,19 @@ class MPCHCTracker with ChangeNotifier {
           // Handle completed videos that might have been removed from registry
           final completedVideos = _checkForRemovedButCompleteVideos();
 
-          final changedFiles = await checkForUpdates(fullReindex: false);
-
-          final allChanges = Map<String, double>.from(changedFiles);
-          allChanges.addAll(completedVideos);
-
-          if (allChanges.isNotEmpty) {
-            log('Updated watch status for ${allChanges.length} episodes');
-            if (onWatchStatusChanged != null) {
-              await onWatchStatusChanged!(allChanges);
-            } else {
-              notifyListeners();
-            }
-          }
+          // final changedFiles = await checkForUpdates(fullReindex: false);
+          //
+          // final allChanges = Map<String, double>.from(changedFiles);
+          // allChanges.addAll(completedVideos);
+          // 
+          // if (allChanges.isNotEmpty) {
+          //   log('Updated watch status for ${allChanges.length} episodes');
+          //   if (onWatchStatusChanged != null) {
+          //     await onWatchStatusChanged!(allChanges);
+          //   } else {
+          //     notifyListeners();
+          //   }
+          // }
         } catch (e, stack) {
           logErr('Error processing registry changes', e, stack);
         }
@@ -280,27 +280,6 @@ class MPCHCTracker with ChangeNotifier {
       logErr('Error checking for removed but complete videos', e);
       return {};
     }
-  }
-
-  /// Check for updates in the registry and identify completed videos
-  Future<Map<String, double>> checkForUpdates({bool fullReindex = false}) async {
-    if (!_isInitialized || fullReindex) {
-      await indexRegistry();
-      return {};
-    }
-
-    final watchedFiles = <PathString>[];
-    final changedPathsToPercentages = await _scanRegistryEntries(
-      thresholdCrossedFiles: watchedFiles,
-      clearExisting: false,
-    );
-
-    if (onWatchStatusChanged == null) {
-      notifyListeners();
-      Manager.setState();
-    }
-
-    return changedPathsToPercentages;
   }
 
   /// Check if a specific file has been watched

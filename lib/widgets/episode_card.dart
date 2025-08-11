@@ -3,7 +3,7 @@ import 'dart:ui';
 
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/material.dart' show InkWell, Material;
-import 'package:miruryoiki/services/navigation/statusbar.dart';
+import 'package:miruryoiki/services/navigation/statusbar/statusbar.dart';
 import 'package:miruryoiki/services/player_trackers/mpchc.dart';
 
 import '../manager.dart';

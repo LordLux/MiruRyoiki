@@ -216,7 +216,7 @@ class AnilistUser {
     return AnilistUser(
       id: json['id'],
       name: json['name'],
-      avatar: json['avatar']?['large'],
+      avatar: parseProfilePicture(json['avatar']),
       bannerImage: json['bannerImage'],
       userData: json['userData'] != null ? AnilistUserData.fromJson(json['userData']) : null, //is null when called by getCurrentUser() but is then populated by getCurrentUser()
     );
@@ -231,4 +231,13 @@ class AnilistUser {
       'userData': userData?.toJson(),
     };
   }
+}
+
+String? parseProfilePicture(dynamic avatar) {
+  if (avatar == null) return null;
+  if (avatar is String) return avatar;
+  if (avatar is Map<String, dynamic>) {
+    return avatar['large'] ?? avatar['medium'] ?? avatar['small'];
+  }
+  return null;
 }

@@ -97,7 +97,7 @@ class ThumbnailManager {
       final isolateManager = IsolateManager();
       final params = _ThumbnailIsolateParams(videoPath, cachePath);
 
-      final PathString? thumbnailPath = await isolateManager.runInIsolate(_thumbnailIsolateTask, params);
+      final PathString? thumbnailPath = await isolateManager.runIsolateWithProgress(task: _thumbnailIsolateTask, params: params, onProgress: (_, __) {});
 
       if (thumbnailPath?.pathMaybe != null) {
         _failedAttempts.remove(videoPath);

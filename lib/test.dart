@@ -22,9 +22,10 @@ Future<String> testIsolateSystem() async {
     };
 
     // Run the test in the isolate
-    final result = await isolateManager.runInIsolate(
-      simpleIsolateTest,
-      testPayload,
+    final result = await isolateManager.runIsolateWithProgress(
+      task: simpleIsolateTest,
+      params: testPayload,
+      onProgress: (processed, total) => print('Progress: $processed / $total'),
     );
 
     // Return a simple success message

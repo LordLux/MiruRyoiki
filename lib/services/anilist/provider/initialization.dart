@@ -13,33 +13,39 @@ extension AnilistProviderInitialization on AnilistProvider {
     // Load pending mutations from disk
     await loadMutationsQueue();
 
-    // Check connectivity
-    final isOnline = await _checkConnectivity();
-
-    _isInitialized = await _anilistService.initialize();
-    if (isOnline) {
-      if (_isInitialized && isLoggedIn) {
-        await _loadUserData();
-        await _saveListsToCache();
-      }
-    } else {
-      logInfo('   2 | Offline mode, using cached data');
-
-      if (_isInitialized && isLoggedIn) {
-        // Try to load user and lists from cache
-        await _loadCurrentUserFromCache();
-        if (!await _loadListsFromCache()) //
-          logWarn('   2 | Failed to load Anilist lists from cache while offline');
+    final hasCredentials = await _anilistService.initialize();
+    if (hasCredentials) {
+      await _loadCurrentUserFromCache();
+      if (!await _loadListsFromCache()) {
+        logWarn('   2 | Could not load Anilist lists from cache during offline init.');
       }
     }
 
-    // Start background sync
-    startBackgroundSync();
+    _isInitialized = true;
+    _isLoading = false;
+    notifyListeners();
+    logTrace('2 | AnilistProvider initialization complete.');
+  }
+
+  /// Completes initialization by fetching live data from Anilist API and starting sync services.
+  Future<void> initializeOnlineFeatures() async {
+    logDebug('\n_ | Initializing AnilistService (Online Features)...', splitLines: true);
+    _isLoading = true;
+    notifyListeners();
+
+    final isOnline = await _checkConnectivity();
+    if (isOnline && isLoggedIn) {
+      await _loadUserData();
+      await _saveListsToCache();
+      startBackgroundSync();
+    } else {
+      logInfo('   _ | Skipping online features: ${!isOnline ? "Offline" : "Not logged in"}');
+    }
 
     _isReady = true;
     _isLoading = false;
     notifyListeners();
-    logTrace('2 | AnilistProvider initialized: $_isInitialized${isOnline ? '' : ' (Offline)'}');
+    logTrace('_ | AnilistProvider online features initialized.');
   }
 
   // DISPOSE IS IN MAIN FILE

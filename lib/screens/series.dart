@@ -9,7 +9,7 @@ import 'package:defer_pointer/defer_pointer.dart';
 import '../main.dart';
 import '../services/library/library_provider.dart';
 import '../services/navigation/show_info.dart';
-import '../services/navigation/statusbar.dart';
+import '../services/navigation/statusbar/statusbar.dart';
 import '../utils/path_utils.dart';
 import '../widgets/buttons/button.dart';
 import '../services/anilist/provider/anilist_provider.dart';
