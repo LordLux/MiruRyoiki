@@ -38,6 +38,10 @@ extension LibraryScanning on Library {
       final unresolvedFiles = <PathString, Set<PathString>>{}; // Files that are new or renamed
       final unresolvedEpisodes = <PathString, Set<Episode>>{}; // Episodes that are deleted or renamed
 
+      logDebug("SCAN  New series found: ${newSeriesPaths.length}");
+      logDebug("SCAN  Deleted series found: ${deletedSeriesPaths.length}");
+      logDebug("SCAN  Existing series to check: ${existingSeriesPathsToCheck.length}");
+
       // Collect all files from brand new series
       for (final newPath in newSeriesPaths) //
         filesToProcess.addAll(seriesDirsOnDisk[newPath]!);
@@ -48,14 +52,26 @@ extension LibraryScanning on Library {
         final episodesInSeries = series.seasons.expand((s) => s.episodes).toList()..addAll(series.relatedMedia);
         final episodePaths = episodesInSeries.map((e) => e.path).toSet();
 
+        logDebug('SCAN Checking series: ${series.name}');
+        logDebug('SCAN  Files on disk: ${filesInSeriesDir.length}');
+        logDebug('SCAN  Episodes in memory: ${episodePaths.length}');
+
         final newFilePaths = filesInSeriesDir.where((file) => !episodePaths.contains(file)).toSet();
         if (newFilePaths.isNotEmpty) {
+          logDebug('SCAN  New files found: ${newFilePaths.length}');
+          for (final newFile in newFilePaths) {
+            logTrace('SCAN    New: ${p.basename(newFile.path)}');
+          }
           filesToProcess.addAll(newFilePaths);
           unresolvedFiles[seriesPath] = newFilePaths;
         }
 
         final missingEpisodePaths = episodePaths.where((path) => !filesInSeriesDir.contains(path)).toSet();
         if (missingEpisodePaths.isNotEmpty) {
+          logDebug('SCAN  Missing episodes: ${missingEpisodePaths.length}');
+          for (final missingPath in missingEpisodePaths) {
+            logTrace('SCAN    Missing: ${p.basename(missingPath.path)}');
+          }
           unresolvedEpisodes[seriesPath] = episodesInSeries.where((e) => missingEpisodePaths.contains(e.path)).toSet();
         }
       }
@@ -67,27 +83,34 @@ extension LibraryScanning on Library {
       if (filesToProcess.isEmpty) {
         logWarn('3 | No files to process, skipping isolate scan.');
       } else {
-        logTrace('3 | Processing ${filesToProcess.length} files in a background isolate...');
+        logDebug('3 | Processing ${filesToProcess.length} files in a background isolate...');
+        for (final file in filesToProcess) {
+          logTrace('3 |  Processing: ${p.basename(file.path)}');
+        }
 
         final isolateManager = IsolateManager();
-        final receivePort = ReceivePort();
+
+        // The SendPort will be replaced by the isolate manager with the correct one
+        final dummyReceivePort = ReceivePort();
+        final dummySendPort = dummyReceivePort.sendPort;
+        dummyReceivePort.close(); // Close immediately since it's just for the constructor
         
         scanResult = await isolateManager.runIsolateWithProgress<ProcessFilesParams, Map<PathString, Metadata>>(
           task: processFilesIsolate,
-          params: ProcessFilesParams(filesToProcess.toList(), receivePort.sendPort),
-          onProgress: (processed, total) {
-            scanProgress.value = (processed, total);
-          },
+          params: ProcessFilesParams(filesToProcess.toList(), dummySendPort),
+          onProgress: (processed, total) => scanProgress.value = (processed, total),
         );
-        receivePort.close();
 
-        logTrace('3 | Isolate processing complete. Found metadata for ${scanResult.length} files.');
+        logDebug('3 | Isolate processing complete. Found metadata for ${scanResult.length} files.');
+        for (final result in scanResult.entries) {
+          logTrace('  Processed: ${p.basename(result.key.path)} -> ${result.value.duration}');
+        }
       }
 
       // ===================================================================
       //        MERGING - Apply changes using data from the isolate
       // ===================================================================
-      logTrace('3 | Merging scan results...');
+      logDebug('3 | Merging scan results...');
       final List<Series> updatedSeriesList = List.from(_series);
 
       // --- 3a. Delete series that no longer exist ---
@@ -144,16 +167,30 @@ extension LibraryScanning on Library {
 
         // Identify truly new and deleted episodes
         newFilesByMetadata.forEach((metaKey, path) {
-          if (!matchedKeys.contains(metaKey)) episodesToAdd.add(_createEpisode(path, scanResult[path]!));
+          if (!matchedKeys.contains(metaKey)) {
+            logDebug('    Adding new episode: ${p.basename(path.path)}');
+            episodesToAdd.add(_createEpisode(path, scanResult[path]!));
+          }
         });
         missingEpisodesByMetadata.forEach((metaKey, episode) {
-          if (!matchedKeys.contains(metaKey)) episodesToDelete.add(episode);
+          if (!matchedKeys.contains(metaKey)) {
+            logDebug('    Deleting episode: ${p.basename(episode.path.path)}');
+            episodesToDelete.add(episode);
+          }
         });
+
+        logDebug('  Episodes to add: ${episodesToAdd.length}');
+        logDebug('  Episodes to delete: ${episodesToDelete.length}');
+        logDebug('  Episodes to update: ${episodesToUpdate.length}');
 
         // Rebuild the series with all the collected changes
         if (episodesToAdd.isNotEmpty || episodesToDelete.isNotEmpty || episodesToUpdate.isNotEmpty) {
+          logDebug('  Rebuilding series due to changes...');
           final rebuiltSeries = _rebuildSeries(originalSeries, episodesToAdd, episodesToDelete, episodesToUpdate);
           updatedSeriesList[seriesIndex] = rebuiltSeries;
+          logDebug('  Series updated in list');
+        } else {
+          logDebug('  No changes needed for this series');
         }
       }
       logTrace('3 | Updated ${existingSeriesPathsToCheck.length} existing series.');
@@ -186,19 +223,37 @@ extension LibraryScanning on Library {
   Future<Map<PathString, Set<PathString>>> _discoverSeriesDirectories(String libraryPath) async {
     final seriesMap = <PathString, Set<PathString>>{};
     final dir = Directory(libraryPath);
-    if (!await dir.exists()) return seriesMap;
+    if (!await dir.exists()) {
+      logDebug('Library directory does not exist: $libraryPath');
+      return seriesMap;
+    }
+
+    logDebug('Scanning library directory: $libraryPath');
+    int seriesCount = 0;
 
     await for (final entity in dir.list()) {
       if (entity is Directory) {
+        seriesCount++;
         final seriesPath = PathString(entity.path);
+        final seriesName = p.basename(entity.path);
+        logTrace('Found series directory: $seriesName');
+
         seriesMap[seriesPath] = <PathString>{};
+        int fileCount = 0;
+
         await for (final file in entity.list(recursive: true)) {
           if (file is File && _isVideoFile(file.path)) {
+            fileCount++;
             seriesMap[seriesPath]!.add(PathString(file.path));
+            logTrace('  Found video file: ${p.basename(file.path)}');
           }
         }
+
+        logDebug('Series "$seriesName" has $fileCount video files');
       }
     }
+
+    logDebug('Total series directories found: $seriesCount');
     return seriesMap;
   }
 
@@ -233,6 +288,12 @@ extension LibraryScanning on Library {
   Series _rebuildSeries(Series original, Set<Episode> toAdd, Set<Episode> toDelete, Map<Episode, Episode> toUpdate) {
     List<Episode> currentEpisodes = original.seasons.expand((s) => s.episodes).toList()..addAll(original.relatedMedia);
 
+    logDebug('  Rebuilding series: ${original.name}');
+    logDebug('    Current episodes: ${currentEpisodes.length}');
+    logDebug('    To add: ${toAdd.length}');
+    logDebug('    To delete: ${toDelete.length}');
+    logDebug('    To update: ${toUpdate.length}');
+
     // Apply updates
     currentEpisodes = currentEpisodes.map((ep) => toUpdate[ep] ?? ep).toList();
 
@@ -243,6 +304,8 @@ extension LibraryScanning on Library {
     // Apply additions
     currentEpisodes.addAll(toAdd);
 
+    logDebug('    Final episodes: ${currentEpisodes.length}');
+
     // Reset thumbnail status for updated episodes if metadata changed
     toUpdate.forEach((oldEp, newEp) {
       if (oldEp.metadata?.size != newEp.metadata?.size || oldEp.metadata?.duration != newEp.metadata?.duration) {
@@ -250,7 +313,9 @@ extension LibraryScanning on Library {
       }
     });
 
-    return _organizeEpisodesIntoSeasons(original, currentEpisodes);
+    final rebuilt = _organizeEpisodesIntoSeasons(original, currentEpisodes);
+    logDebug('    After organization - Seasons: ${rebuilt.seasons.length}, Related: ${rebuilt.relatedMedia.length}');
+    return rebuilt;
   }
 
   /// Organizes a flat list of episodes into the correct Season/Related Media structure.

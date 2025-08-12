@@ -1012,6 +1012,9 @@ class LibraryScreenState extends State<LibraryScreen> {
     double maxWidth,
     Widget Function(List<Series>, ScrollController, ScrollPhysics, bool, {bool allowMeasurement}) episodesGrid,
   ) {
+    logTrace("---------------------------------------------------------------");
+    logTrace("-------------------- Starting Grouping ------------------------");
+    logTrace("---------------------------------------------------------------");
     // Create the groupings based on selected grouping type
     Map<String, List<Series>> groups = _cachedGroups;
 
