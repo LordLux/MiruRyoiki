@@ -21,7 +21,7 @@ part 'series_dao.g.dart';
   AnilistMappingsTable,
 ])
 class SeriesDao extends DatabaseAccessor<AppDatabase> with _$SeriesDaoMixin {
-  SeriesDao(AppDatabase db) : super(db);
+  SeriesDao(super.db);
 
   // ---------- BASIC CRUD ----------
   Future<List<SeriesTableData>> getAllSeriesRows() => select(seriesTable).get();
