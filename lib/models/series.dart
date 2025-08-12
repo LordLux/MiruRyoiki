@@ -942,11 +942,36 @@ class Series {
   String? get posterImage => currentAnilistData?.posterImage;
 
   /// Official title from Anilist
-  String get displayTitle =>
-      currentAnilistData?.title.userPreferred ?? //
-      currentAnilistData?.title.english ??
-      currentAnilistData?.title.romaji ??
-      name;
+  String get displayTitle {
+    // Helper: Remove season indicators in various languages/scripts
+    String removeSeasonIndicators(String input) {
+      // Patterns for season indicators in English, Japanese, Romaji, etc.
+      final patterns = [
+        RegExp(r'(?:Season|S|Seasons?|Part|Cour|Vol(?:ume)?|Chapter|Ch)\s*\d+', caseSensitive: false),
+        RegExp(r'(?:第\s*\d+\s*(?:期|シーズン|部|章|クール|巻))'), // Japanese: 第1期, 第2部, etc.
+        RegExp(r'(?:シーズン|クール|パート|章|巻)\s*\d+'), // Japanese: シーズン2, クール1, etc.
+        RegExp(r'(?:kikaku|ki|bu|shou|kuru|kan)\s*\d+', caseSensitive: false), // Romaji
+        RegExp(r'(?:\d+\s*(?:期|シーズン|部|章|クール|巻))'), // Japanese: 2期, 3部, etc.
+        RegExp(r'[\(\[]\s*(?:Season|S|Seasons?|Part|Cour|Vol(?:ume)?|Chapter|Ch|第\d+期|シーズン\d+|クール\d+|パート\d+|章\d+|巻\d+)\s*[\)\]]', caseSensitive: false),
+      ];
+
+      String result = input;
+      for (final pattern in patterns) {
+        result = result.replaceAll(pattern, '');
+      }
+      // Remove extra whitespace and trailing punctuation
+      result = result.replaceAll(RegExp(r'\s+'), ' ').trim();
+      result = result.replaceAll(RegExp(r'[\-–—:：,;]+$'), '').trim();
+      return result;
+    }
+
+    final title = (currentAnilistData?.title.userPreferred ??
+        currentAnilistData?.title.english ??
+        currentAnilistData?.title.romaji ??
+        name);
+
+    return removeSeasonIndicators(title);
+  }
 
   /// Description from Anilist
   String? get description => currentAnilistData?.description;
