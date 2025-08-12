@@ -116,7 +116,7 @@ class AccountsScreenState extends State<AccountsScreen> {
 
   HeaderWidget header({required AnilistProvider anilistProvider, required bool isLoggedIn}) {
     return HeaderWidget(
-      title: (style) => Align(
+      title: (style, _) => Align(
         alignment: Alignment.centerLeft,
         child: WrappedHyperlinkButton(
           tooltipWaitDuration: const Duration(milliseconds: 600),

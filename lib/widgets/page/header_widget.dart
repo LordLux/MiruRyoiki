@@ -7,20 +7,31 @@ import '../../utils/screen_utils.dart';
 import '../../utils/time_utils.dart';
 
 class HeaderWidget extends StatefulWidget {
-  final Widget Function(TextStyle titleStyle) title;
+  final Widget Function(TextStyle titleStyle, BoxConstraints constraints) title;
   final ImageProvider? image;
+  final Widget? image_widget;
   final ColorFilter? colorFilter;
   final List<Widget> children;
   final bool titleLeftAligned;
+  final EdgeInsets headerPadding;
 
   const HeaderWidget({
     super.key,
     required this.title,
-    required this.image,
+    this.image,
     this.colorFilter,
     this.children = const [],
     this.titleLeftAligned = false,
-  });
+    this.image_widget,
+    this.headerPadding = const EdgeInsets.only(bottom: 16.0),
+  })  : assert(
+          image != null || image_widget != null,
+          'Either image or image_widget must be provided',
+        ),
+        assert(
+          !(image != null && image_widget != null),
+          'Only one of image or image_widget can be provided',
+        );
 
   @override
   State<HeaderWidget> createState() => _HeaderWidgetState();
@@ -46,21 +57,24 @@ class _HeaderWidgetState extends State<HeaderWidget> {
                   Colors.transparent,
                 ],
               ),
-              image: () {
-                final imageProvider = widget.image;
-                if (imageProvider == null) return null;
+              image: widget.image_widget == null
+                  ? () {
+                      final imageProvider = widget.image;
+                      if (imageProvider == null) return null;
 
-                return DecorationImage(
-                  alignment: Alignment.topCenter,
-                  image: imageProvider,
-                  fit: BoxFit.cover,
-                  isAntiAlias: true,
-                  colorFilter: widget.colorFilter,
-                );
-              }(),
+                      return DecorationImage(
+                        alignment: Alignment.topCenter,
+                        image: imageProvider,
+                        fit: BoxFit.cover,
+                        isAntiAlias: true,
+                        colorFilter: widget.colorFilter,
+                      );
+                    }()
+                  : null,
             ),
-            padding: const EdgeInsets.only(bottom: 16.0),
+            padding: widget.headerPadding,
             alignment: Alignment.bottomLeft,
+            child: widget.image_widget,
           ),
           // Title and watched percentage
           Positioned(
@@ -78,15 +92,20 @@ class _HeaderWidgetState extends State<HeaderWidget> {
               mainAxisAlignment: MainAxisAlignment.start,
               children: [
                 // Series title
-                SizedBox(
-                  width: ScreenUtils.kMaxContentWidth - ScreenUtils.kInfoBarWidth - 32,
-                  child: widget.title(
-                    const TextStyle(
-                      fontSize: 32,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    return SizedBox(
+                      width: ScreenUtils.kMaxContentWidth - ScreenUtils.kInfoBarWidth - 32,
+                      child: widget.title(
+                        const TextStyle(
+                          fontSize: 32,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                        constraints,
+                      ),
+                    );
+                  },
                 ),
                 VDiv(8),
                 ...widget.children,

@@ -19,7 +19,7 @@ class MiruRyoikiInfobar extends StatefulWidget {
     required double squareness,
     required double offset,
   })? poster;
-  final EdgeInsets contentPadding;
+  final EdgeInsets Function(double posterExtraVertical) contentPadding;
   final bool isProfilePicture;
   final VoidCallback? setStateCallback;
   final List<Widget>? footer;
@@ -31,11 +31,13 @@ class MiruRyoikiInfobar extends StatefulWidget {
     this.poster,
     this.getPosterImage,
     this.isProfilePicture = false,
-    this.contentPadding = const EdgeInsets.all(32.0),
+    EdgeInsets Function(double posterExtraVertical)? contentPadding,
     this.setStateCallback,
     this.footer,
     this.footerPadding = const EdgeInsets.all(32.0),
-  });
+  }) : contentPadding = contentPadding ?? _defaultContentPadding;
+
+  static EdgeInsets _defaultContentPadding(double _) => const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0);
 
   @override
   State<MiruRyoikiInfobar> createState() => _MiruRyoikiInfobarState();
@@ -146,7 +148,7 @@ class _MiruRyoikiInfobarState extends State<MiruRyoikiInfobar> {
                                         maxWidth: ScreenUtils.kInfoBarWidth,
                                       ),
                                       child: Padding(
-                                        padding: widget.contentPadding,
+                                        padding: widget.contentPadding(getInfoBarOffset),
                                         child: widget.content,
                                       ),
                                     ),

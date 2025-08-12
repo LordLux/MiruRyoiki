@@ -30,6 +30,9 @@ import '../utils/screen_utils.dart';
 import '../utils/time_utils.dart';
 import '../widgets/episode_grid.dart';
 import '../widgets/gradient_mask.dart';
+import '../widgets/page/header_widget.dart';
+import '../widgets/page/infobar.dart';
+import '../widgets/page/page.dart';
 import '../widgets/shift_clickable_hover.dart';
 import '../widgets/transparency_shadow_image.dart';
 import 'anilist_settings.dart';
@@ -49,8 +52,6 @@ class SeriesScreen extends StatefulWidget {
 }
 
 class SeriesScreenState extends State<SeriesScreen> {
-  // final ScrollController _scrollController = ScrollController();
-  late double _headerHeight;
   bool posterChangeDisabled = false;
   bool bannerChangeDisabled = false;
 
@@ -71,7 +72,6 @@ class SeriesScreenState extends State<SeriesScreen> {
   @override
   void initState() {
     super.initState();
-    _headerHeight = ScreenUtils.kMaxHeaderHeight;
     nextFrame(() {
       _loadAnilistDataForCurrentSeries();
     });
@@ -232,19 +232,11 @@ class SeriesScreenState extends State<SeriesScreen> {
         return DeferredPointerHandler(
           key: ValueKey(series.path),
           link: deferredPointerLink,
-          child: AnimatedContainer(
-            duration: gradientChangeDuration,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  dominantColor.withOpacity(series.isLinked ? 0.5 : 0.15),
-                  Colors.transparent,
-                ],
-              ),
-            ),
-            child: _buildSeriesContent(context, series),
+          child: MiruRyoikiHeaderInfoBarPage(
+            headerWidget: _buildHeader(context, series),
+            infobar: _buildInfoBar(context, series),
+            content: _buildEpisodesList(context),
+            backgroundColor: dominantColor,
           ),
         );
       },
@@ -259,25 +251,25 @@ class SeriesScreenState extends State<SeriesScreen> {
     return path.path;
   }
 
-  Widget _buildSeriesHeader(BuildContext context, Series series) {
-    return FutureBuilder(
-      future: series.getBannerImage(),
-      builder: (context, snapshot) {
-        return Stack(
-          children: [
-            // Banner
-            ShiftClickableHover(
-              series: series,
-              enabled: _isBannerHovering && !bannerChangeDisabled,
-              onTap: (context) => selectImage(context, true),
-              onEnter: bannerChangeDisabled ? () {} : () => setState(() => _isBannerHovering = true),
-              onExit: () {
-                StatusBarManager().hide();
-                setState(() => _isBannerHovering = false);
-              },
-              onHover: bannerChangeDisabled ? null : () => StatusBarManager().show(KeyboardState.shiftPressedNotifier.value ? 'Click to change Banner' : 'Shift-click to change Banner', autoHideDuration: Duration.zero),
-              finalChild: (BuildContext context, bool enabled) {
-                return LayoutBuilder(builder: (context, constraints) {
+  HeaderWidget _buildHeader(BuildContext context, Series series) {
+    return HeaderWidget(
+      image_widget: FutureBuilder(
+        future: series.getBannerImage(),
+        builder: (context, snapshot) {
+          return Stack(
+            children: [
+              // Banner
+              ShiftClickableHover(
+                series: series,
+                enabled: _isBannerHovering && !bannerChangeDisabled,
+                onTap: (context) => selectImage(context, true),
+                onEnter: bannerChangeDisabled ? () {} : () => setState(() => _isBannerHovering = true),
+                onExit: () {
+                  StatusBarManager().hide();
+                  setState(() => _isBannerHovering = false);
+                },
+                onHover: bannerChangeDisabled ? null : () => StatusBarManager().show(KeyboardState.shiftPressedNotifier.value ? 'Click to change Banner' : 'Shift-click to change Banner', autoHideDuration: Duration.zero),
+                finalChild: (BuildContext context, bool enabled) {
                   return Stack(
                     children: [
                       AnimatedOpacity(
@@ -353,109 +345,112 @@ class SeriesScreenState extends State<SeriesScreen> {
                           ),
                         ),
                       ],
-                      // Title and watched percentage
-                      Positioned(
-                        bottom: 0,
-                        left: math.max(constraints.maxWidth / 2 - 380 + 10, ScreenUtils.kInfoBarWidth - (6 * 2) + 42),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisAlignment: MainAxisAlignment.start,
-                          children: [
-                            // Series title
-                            SizedBox(
-                              width: ScreenUtils.kMaxContentWidth - ScreenUtils.kInfoBarWidth - 32,
-                              child: Text(
-                                series.displayTitle,
-                                style: const TextStyle(
-                                  fontSize: 32,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                ),
-                              ),
-                            ),
-                            VDiv(8),
-                            // Watched percentage
-                            Text(
-                              'Episodes: ${series.totalEpisodes} | Watched: ${series.watchedEpisodes} (${(series.watchedPercentage * 100).round()}%)',
-                              style: const TextStyle(
-                                fontSize: 16,
-                                color: Colors.white,
-                              ),
-                            ),
-                            VDiv(12),
-                          ],
-                        ),
-                      ),
                     ],
                   );
-                });
-              },
-            ),
-            // temp buttons
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                _buildButton(
-                  widget.onBack,
-                  const Icon(FluentIcons.back),
-                  'Back to Library',
-                ),
-                _buildButton(
-                  () {
-                    logInfo(series);
-                    showSimpleManagedDialog(
-                      context: context,
-                      id: 'showSeries:${series.hashCode}',
-                      title: 'Series Info',
-                      constraints: const BoxConstraints(
-                        maxWidth: 800,
-                        maxHeight: 500,
-                      ),
-                      body: series.toString(),
-                    );
-                  },
-                  const Icon(FluentIcons.info),
-                  'Print Series',
-                ),
-                _buildButton(
-                  series.watchedPercentage == 1
-                      ? null
-                      : () => showSimpleManagedDialog(
-                            context: context,
-                            id: 'confirmWatchAll',
-                            title: 'Confirm Watch All',
-                            body: 'Are you sure you want to mark all episodes of "${series.displayTitle}" as watched?',
-                            positiveButtonText: 'Confirm',
-                            onPositive: () {
-                              final library = context.read<Library>();
-                              library.markSeriesWatched(series);
-                            },
-                          ),
-                  const Icon(FluentIcons.check_mark),
-                  series.watchedPercentage == 1 ? 'You have already watched all episodes' : 'Mark All as Watched',
-                ),
-                if (context.watch<AnilistProvider>().isLoggedIn)
+                },
+              ),
+              // temp buttons
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
                   _buildButton(
-                    series.seasons.isNotEmpty
-                        ? () => linkWithAnilist(
-                              context,
-                              series,
-                              _loadAnilistData,
-                              setState,
-                            )
-                        : null,
-                    Icon(
-                      series.anilistId != null ? FluentIcons.link : FluentIcons.add_link,
-                      color: Colors.white,
-                    ),
-                    series.anilistId != null ? 'Update Anilist Link' : 'Link with Anilist',
+                    widget.onBack,
+                    const Icon(FluentIcons.back),
+                    'Back to Library',
                   ),
-              ],
-            )
-          ],
+                  _buildButton(
+                    () {
+                      logInfo(series);
+                      showSimpleManagedDialog(
+                        context: context,
+                        id: 'showSeries:${series.hashCode}',
+                        title: 'Series Info',
+                        constraints: const BoxConstraints(
+                          maxWidth: 800,
+                          maxHeight: 500,
+                        ),
+                        body: series.toString(),
+                      );
+                    },
+                    const Icon(FluentIcons.info),
+                    'Print Series',
+                  ),
+                  _buildButton(
+                    series.watchedPercentage == 1
+                        ? null
+                        : () => showSimpleManagedDialog(
+                              context: context,
+                              id: 'confirmWatchAll',
+                              title: 'Confirm Watch All',
+                              body: 'Are you sure you want to mark all episodes of "${series.displayTitle}" as watched?',
+                              positiveButtonText: 'Confirm',
+                              onPositive: () {
+                                final library = context.read<Library>();
+                                library.markSeriesWatched(series);
+                              },
+                            ),
+                    const Icon(FluentIcons.check_mark),
+                    series.watchedPercentage == 1 ? 'You have already watched all episodes' : 'Mark All as Watched',
+                  ),
+                  if (context.watch<AnilistProvider>().isLoggedIn)
+                    _buildButton(
+                      series.seasons.isNotEmpty
+                          ? () => linkWithAnilist(
+                                context,
+                                series,
+                                _loadAnilistData,
+                                setState,
+                              )
+                          : null,
+                      Icon(
+                        series.anilistId != null ? FluentIcons.link : FluentIcons.add_link,
+                        color: Colors.white,
+                      ),
+                      series.anilistId != null ? 'Update Anilist Link' : 'Link with Anilist',
+                    ),
+                ],
+              )
+            ],
+          );
+        },
+      ),
+      colorFilter: null,
+      titleLeftAligned: false,
+      title: (style, constraints) {
+        return Positioned(
+          bottom: 0,
+          left: math.max(constraints.maxWidth / 2 - 380 + 10, ScreenUtils.kInfoBarWidth - (6 * 2) + 42),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.start,
+            children: [
+              // Series title
+              SizedBox(
+                width: ScreenUtils.kMaxContentWidth - ScreenUtils.kInfoBarWidth - 32,
+                child: Text(
+                  series.displayTitle,
+                  style: const TextStyle(
+                    fontSize: 32,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+              // Watched percentage
+              Text(
+                'Episodes: ${series.totalEpisodes} | Watched: ${series.watchedEpisodes} (${(series.watchedPercentage * 100).round()}%)',
+                style: const TextStyle(
+                  fontSize: 16,
+                  color: Colors.white,
+                ),
+              ),
+              VDiv(16),
+            ],
+          ),
         );
       },
+      children: [],
     );
   }
 
@@ -472,400 +467,243 @@ class SeriesScreenState extends State<SeriesScreen> {
     );
   }
 
-  Widget _infoBar(Series series) {
-    return Padding(
-      padding: const EdgeInsets.all(20.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('Info', style: FluentTheme.of(context).typography.subtitle),
-          VDiv(8),
-
-          if (series.anilistMappings.length > 1) ...[
-            InfoLabel(
-              label: 'Anilist Source',
-              child: ComboBox<int>(
-                placeholder: const Text('Select Anilist source'),
-                isExpanded: true,
-                items: series.anilistMappings.map((mapping) {
-                  final title = mapping.title ?? 'Anilist ID: ${mapping.anilistId}';
-                  final path = _getDisplayPath(mapping.localPath, series.path);
-                  return ComboBoxItem<int>(
-                    value: mapping.anilistId,
-                    child: Text('$title ($path)'),
-                  );
-                }).toList(),
-                value: series.primaryAnilistId,
-                onChanged: (value) async {
-                  if (value != null) {
-                    setState(() {
-                      series.primaryAnilistId = value;
-                    });
-
-                    if (libraryScreenKey.currentState != null) libraryScreenKey.currentState!.updateSeriesInSortCache(series);
-                    // Fetch and load Anilist data
-                    await _loadAnilistData(value);
-                  }
-                },
-              ),
-            ),
-            VDiv(16),
-          ],
-
-          // Add description if available
-          if (series.description != null) ...[
-            Text(
-              series.description!,
-              maxLines: 4,
-              overflow: TextOverflow.ellipsis,
-            ),
-            VDiv(16),
-          ],
-
-          // Series metadata
-          Wrap(
-            spacing: 24,
-            runSpacing: 12,
-            children: [
-              InfoLabel(
-                label: 'Seasons',
-                child: Text('${series.seasons.isNotEmpty ? series.seasons.length : 1}'),
-              ),
-              InfoLabel(
-                label: 'Episodes',
-                child: Text('${series.totalEpisodes}'),
-              ),
-              if (series.seasonYear != null)
-                InfoLabel(
-                  label: 'Year',
-                  child: Text('${series.seasonYear}'),
-                ),
-              if (series.format != null)
-                InfoLabel(
-                  label: 'Format',
-                  child: Text(series.format!),
-                ),
-              if (series.rating != null)
-                InfoLabel(
-                  label: 'Rating',
-                  child: Text('${series.rating! / 10}/10'),
-                ),
-              if (series.popularity != null)
-                InfoLabel(
-                  label: 'Popularity',
-                  child: Text('#${series.popularity}'),
-                ),
-              if (series.relatedMedia.isNotEmpty)
-                InfoLabel(
-                  label: 'Related Media',
-                  child: Text('${series.relatedMedia.length}'),
-                ),
-            ],
+  MiruRyoikiInfobar _buildInfoBar(BuildContext context, Series series) {
+    final anilistProvider = Provider.of<AnilistProvider>(context, listen: false);
+    return MiruRyoikiInfobar(
+      getPosterImage: series.getPosterImage(),
+      isProfilePicture: false,
+      contentPadding: (posterExtraVertical) => EdgeInsets.only(left: 24.0, right: 24.0, bottom: 16.0, top: 16.0 + posterExtraVertical),
+      setStateCallback: () => setState(() {}),
+      content: _buildInfoBarContent(series),
+      footerPadding: EdgeInsets.all(8.0),
+      footer: [
+        if (series.seasons.isNotEmpty && anilistProvider.isLoggedIn)
+          NormalButton(
+            expand: true,
+            tooltip: !series.isLinked ? 'Link with Anilist' : 'Manage Anilist Links',
+            label: !series.isLinked ? 'Link with Anilist' : 'Manage Anilist Links',
+            onPressed: () => linkWithAnilist(context, series, _loadAnilistData, setState),
+            isButtonDisabled: anilistProvider.isOffline,
           ),
+      ],
+      poster: ({required imageProvider, required width, required height, required squareness, required offset}) {
+        return DeferPointer(
+          link: deferredPointerLink,
+          paintOnTop: true,
+          child: SizedBox(
+            height: height - offset,
+            width: width,
+            child: ShiftClickableHover(
+              series: series,
+              enabled: _isPosterHovering && !posterChangeDisabled,
+              onTap: (context) => selectImage(context, false),
+              onEnter: posterChangeDisabled ? () {} : () => setState(() => _isPosterHovering = true),
+              onExit: () {
+                setState(() => _isPosterHovering = false);
+                StatusBarManager().hide();
+              },
+              onHover: posterChangeDisabled ? null : () => StatusBarManager().show(KeyboardState.shiftPressedNotifier.value ? 'Click to change Poster' : 'Shift-click to change Poster', autoHideDuration: Duration.zero),
+              finalChild: (BuildContext context, bool enabled) {
+                return Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    AnimatedContainer(
+                      duration: shortStickyHeaderDuration,
+                      width: width,
+                      height: height,
+                      child: Builder(builder: (context) {
+                        if (imageProvider != null)
+                          // Image available -> show it
+                          return Center(
+                            child: ShadowedImage(
+                              imageProvider: imageProvider,
+                              fit: BoxFit.cover,
+                              colorFilter: series.posterImage != null ? ColorFilter.mode(Colors.black.withOpacity(0), BlendMode.darken) : null,
+                              blurSigma: 0,
+                              shadowColorOpacity: 0,
+                            ),
+                          );
 
-          // Genre tags
-          if (series.genres.isNotEmpty) ...[
-            VDiv(16),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: series.genres.map((genre) => Chip(text: Text(genre))).toList(),
-            ),
-          ],
-
-          // Progress bar
-          VDiv(16),
-          SizedBox(
-            width: 300,
-            child: ProgressBar(
-              value: series.watchedPercentage * 100,
-              activeColor: dominantColor,
-              backgroundColor: Colors.white.withOpacity(.3),
-            ),
-          ),
-          ...[
-            for (int i = 0; i < 30; i++)
-              Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: Text('test $i', style: FluentTheme.of(context).typography.body),
-              ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSeriesContent(BuildContext context, Series series) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16.0),
-      child: Column(
-        children: [
-          // Sticky header
-          AnimatedContainer(
-            height: _headerHeight,
-            width: double.infinity,
-            duration: stickyHeaderDuration,
-            curve: Curves.ease,
-            alignment: Alignment.center,
-            child: // Header with poster as background
-                _buildSeriesHeader(context, series),
-          ),
-          Expanded(
-            child: SizedBox(
-              width: ScreenUtils.kMaxContentWidth,
-              child: Row(
-                children: [
-                  // Info bar on the left
-                  Padding(
-                    padding: const EdgeInsets.only(top: 16.0, left: 14.0),
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.05),
-                        borderRadius: BorderRadius.circular(8.0),
-                      ),
-                      height: double.infinity,
-                      width: ScreenUtils.kInfoBarWidth,
-                      child: FutureBuilder(
-                          future: series.getPosterImage(),
-                          builder: (context, snapshot) {
-                            ImageProvider? imageProvider = snapshot.data;
-
-                            return FutureBuilder(
-                              future: getImageDimensions(imageProvider),
-                              builder: (BuildContext context, AsyncSnapshot<Size> snapshot) {
-                                double posterWidth = 230.0; // Default width
-                                double posterHeight = 230.0; // Default height 326.0
-                                final double squareSize = 253.0;
-                                double getInfoBarOffset = 0;
-
-                                if (snapshot.hasData && snapshot.data != null) {
-                                  final Size originalSize = snapshot.data!;
-
-                                  // Avoid division by zero when image is empty
-                                  if (originalSize.width > 0 && originalSize.height > 0) {
-                                    final double aspectRatio = originalSize.height / originalSize.width;
-
-                                    double maxWidth = 326.0;
-                                    double maxHeight = 300.0;
-
-                                    // Constrain aspect ratio between ScreenUtils.kDefaultAspectRatio and 1.41
-                                    double effectiveAspectRatio = aspectRatio;
-                                    if (aspectRatio < ScreenUtils.kDefaultAspectRatio) effectiveAspectRatio = ScreenUtils.kDefaultAspectRatio;
-                                    if (aspectRatio > 1.41) effectiveAspectRatio = 1.41;
-
-                                    // For square images (aspect ratio around 1), fit to the green box
-                                    if (effectiveAspectRatio < 1) {
-                                      // Wider than tall: linearly interpolate width based on distance from square
-                                      // As AR approaches ScreenUtils.kDefaultAspectRatio, width approaches maxWidth (326)
-                                      double ratioFactor = (1 - effectiveAspectRatio) / (1 - ScreenUtils.kDefaultAspectRatio); // 0 when AR=1, 1 when AR=ScreenUtils.kDefaultAspectRatio
-                                      posterWidth = squareSize + (maxWidth - squareSize) * ratioFactor;
-                                      posterHeight = posterWidth * effectiveAspectRatio;
-
-                                      // Ensure we don't exceed height bound
-                                      if (posterHeight > maxHeight) {
-                                        posterHeight = maxHeight;
-                                        posterWidth = posterHeight / effectiveAspectRatio;
-                                      }
-                                    } else {
-                                      double ratioFactor = (effectiveAspectRatio - 1) / (1.41 - 1); // 0 when AR=1, 1 when AR=1.41
-                                      posterHeight = squareSize + (maxHeight - squareSize) * ratioFactor;
-                                      posterWidth = posterHeight / effectiveAspectRatio;
-
-                                      // Ensure we don't exceed width bound
-                                      if (posterWidth > maxWidth) {
-                                        posterWidth = maxWidth;
-                                        posterHeight = posterWidth * effectiveAspectRatio;
-                                      }
-                                    }
-                                    getInfoBarOffset = math.max(posterHeight - squareSize - 16, 0);
-                                  }
-                                }
-
-                                final double squareness = (getInfoBarOffset / 31);
-                                return Stack(
-                                  clipBehavior: Clip.none,
-                                  children: [
-                                    // Info bar
-                                    Positioned.fill(
-                                      child: FadingEdgeScrollView(
-                                        gradientStops: [
-                                          (squareness * 0.025),
-                                          (squareness * 0.04) + 0.025,
-                                          (squareness * 0.075) + 0.05,
-                                          0.9,
-                                          0.95,
-                                          0.98,
-                                        ],
-                                        // debug: true,
-                                        child: ScrollConfiguration(
-                                          behavior: ScrollConfiguration.of(context).copyWith(overscroll: true, platform: TargetPlatform.windows, scrollbars: false),
-                                          child: DynMouseScroll(
-                                            stopScroll: KeyboardState.ctrlPressedNotifier,
-                                            scrollSpeed: 1.0,
-                                            enableSmoothScroll: Manager.animationsEnabled,
-                                            durationMS: 350,
-                                            animationCurve: Curves.easeOutQuint,
-                                            builder: (context, controller, physics) {
-                                              return SingleChildScrollView(
-                                                controller: controller,
-                                                physics: physics,
-                                                child: Padding(
-                                                  padding: EdgeInsets.only(top: math.max(0, getInfoBarOffset)),
-                                                  child: _infoBar(series),
-                                                ),
-                                              );
-                                            },
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-
-                                    // Poster image that overflows the info bar from above to appear 'in' the header
-                                    AnimatedPositioned(
-                                      duration: stickyHeaderDuration,
-                                      left: (ScreenUtils.kInfoBarWidth) / 2 - (posterWidth) / 2,
-                                      top: -(ScreenUtils.kMaxHeaderHeight) + 32,
-                                      child: DeferPointer(
-                                        link: deferredPointerLink,
-                                        paintOnTop: true,
-                                        // Poster
-                                        child: ShiftClickableHover(
-                                            series: series,
-                                            enabled: _isPosterHovering && !posterChangeDisabled,
-                                            onTap: (context) => selectImage(context, false),
-                                            onEnter: posterChangeDisabled ? () {} : () => setState(() => _isPosterHovering = true),
-                                            onExit: () {
-                                              setState(() => _isPosterHovering = false);
-                                              StatusBarManager().hide();
-                                            },
-                                            onHover: posterChangeDisabled ? null : () => StatusBarManager().show(KeyboardState.shiftPressedNotifier.value ? 'Click to change Poster' : 'Shift-click to change Poster', autoHideDuration: Duration.zero),
-                                            finalChild: (BuildContext context, bool enabled) => Stack(
-                                                  alignment: Alignment.center,
-                                                  children: [
-                                                    AnimatedContainer(
-                                                      duration: shortStickyHeaderDuration,
-                                                      width: posterWidth,
-                                                      height: posterHeight,
-                                                      child: Builder(builder: (context) {
-                                                        if (imageProvider != null)
-                                                          // Image available -> show it
-                                                          return ShadowedImage(
-                                                            imageProvider: imageProvider,
-                                                            fit: BoxFit.cover,
-                                                            colorFilter: series.posterImage != null ? ColorFilter.mode(Colors.black.withOpacity(0), BlendMode.darken) : null,
-                                                            blurSigma: 10,
-                                                            shadowColorOpacity: .5,
-                                                          );
-
-                                                        // No image -> image + plus to add first
-                                                        return Center(
-                                                          child: Stack(
-                                                            children: [
-                                                              AnimatedOpacity(
-                                                                duration: shortStickyHeaderDuration,
-                                                                opacity: enabled ? 0 : 1,
-                                                                child: Icon(FluentIcons.picture, size: 48, color: Colors.white),
-                                                              ),
-                                                              AnimatedOpacity(
-                                                                duration: shortStickyHeaderDuration,
-                                                                opacity: enabled ? 1 : 0,
-                                                                child: Icon(FluentIcons.add, size: 48, color: Colors.white),
-                                                              ),
-                                                            ],
-                                                          ),
-                                                        );
-                                                      }),
-                                                    ),
-                                                    // Edit poster
-                                                    ...[
-                                                      AnimatedOpacity(
-                                                        duration: shortStickyHeaderDuration,
-                                                        opacity: enabled && imageProvider != null ? 1 : 0,
-                                                        child: AnimatedContainer(
-                                                          width: posterWidth,
-                                                          height: posterHeight,
-                                                          duration: shortStickyHeaderDuration,
-                                                          decoration: BoxDecoration(
-                                                            borderRadius: BorderRadius.circular(8.0),
-                                                            gradient: RadialGradient(
-                                                              colors: [
-                                                                Colors.black.withOpacity(.95),
-                                                                dominantColor.withOpacity(.2),
-                                                              ],
-                                                              radius: 0.5,
-                                                              center: Alignment.center,
-                                                              focal: Alignment.center,
-                                                            ),
-                                                          ),
-                                                          child: Center(
-                                                            child: Icon(FluentIcons.edit, size: 35, color: Colors.white),
-                                                          ),
-                                                        ),
-                                                      ),
-                                                      AnimatedOpacity(
-                                                        duration: shortStickyHeaderDuration,
-                                                        opacity: enabled && imageProvider != null ? 1 : 0,
-                                                        child: Center(
-                                                          child: Icon(FluentIcons.edit, size: 35, color: Colors.white),
-                                                        ),
-                                                      ),
-                                                    ],
-                                                  ],
-                                                )),
-                                      ),
-                                    ),
-                                  ],
-                                );
-                              },
-                            );
-                          }),
+                        // No image -> image + plus to add first
+                        return Center(
+                          child: Stack(
+                            children: [
+                              AnimatedOpacity(
+                                duration: shortStickyHeaderDuration,
+                                opacity: enabled ? 0 : 1,
+                                child: Icon(FluentIcons.picture, size: 48, color: Colors.white),
+                              ),
+                              AnimatedOpacity(
+                                duration: shortStickyHeaderDuration,
+                                opacity: enabled ? 1 : 0,
+                                child: Icon(FluentIcons.add, size: 48, color: Colors.white),
+                              ),
+                            ],
+                          ),
+                        );
+                      }),
                     ),
-                  ),
-                  // Content area on the right
-                  Expanded(
-                    child: Align(
-                      alignment: Alignment.topCenter,
-                      child: FadingEdgeScrollView(
-                        fadeEdges: const EdgeInsets.symmetric(vertical: 16),
-                        child: ScrollConfiguration(
-                          behavior: ScrollConfiguration.of(context).copyWith(overscroll: true, platform: TargetPlatform.windows, scrollbars: false),
-                          child: DynMouseScroll(
-                            stopScroll: KeyboardState.ctrlPressedNotifier,
-                            scrollSpeed: 1.8,
-                            enableSmoothScroll: Manager.animationsEnabled,
-                            durationMS: 350,
-                            animationCurve: Curves.easeOut,
-                            builder: (context, controller, physics) {
-                              controller.addListener(() {
-                                final offset = controller.offset;
-                                final double newHeight = offset > 0 ? ScreenUtils.kMinHeaderHeight : ScreenUtils.kMaxHeaderHeight;
-
-                                if (newHeight != _headerHeight && mounted) //
-                                  setState(() => _headerHeight = newHeight);
-                              });
-
-                              // Then use the controller for your scrollable content
-                              return CustomScrollView(
-                                controller: controller,
-                                physics: physics,
-                                slivers: [
-                                  SliverToBoxAdapter(
-                                    child: _buildEpisodesList(context),
-                                  ),
-                                ],
-                              );
-                            },
+                    // Edit poster
+                    ...[
+                      AnimatedOpacity(
+                        duration: shortStickyHeaderDuration,
+                        opacity: enabled && imageProvider != null ? 1 : 0,
+                        child: AnimatedContainer(
+                          width: width,
+                          height: height,
+                          duration: shortStickyHeaderDuration,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(8.0),
+                            gradient: RadialGradient(
+                              colors: [
+                                Colors.black.withOpacity(.95),
+                                dominantColor.withOpacity(.2),
+                              ],
+                              radius: 0.5,
+                              center: Alignment.center,
+                              focal: Alignment.center,
+                            ),
+                          ),
+                          child: Center(
+                            child: Icon(FluentIcons.edit, size: 35, color: Colors.white),
                           ),
                         ),
                       ),
-                    ),
-                  ),
-                ],
-              ),
+                      AnimatedOpacity(
+                        duration: shortStickyHeaderDuration,
+                        opacity: enabled && imageProvider != null ? 1 : 0,
+                        child: Center(
+                          child: Icon(FluentIcons.edit, size: 35, color: Colors.white),
+                        ),
+                      ),
+                    ],
+                  ],
+                );
+              },
             ),
           ),
+        );
+      },
+    );
+  }
+
+  Widget _buildInfoBarContent(Series series) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Info', style: FluentTheme.of(context).typography.subtitle),
+        VDiv(8),
+
+        if (series.anilistMappings.length > 1) ...[
+          InfoLabel(
+            label: 'Anilist Source',
+            child: ComboBox<int>(
+              placeholder: const Text('Select Anilist source'),
+              isExpanded: true,
+              items: series.anilistMappings.map((mapping) {
+                final title = mapping.title ?? 'Anilist ID: ${mapping.anilistId}';
+                final path = _getDisplayPath(mapping.localPath, series.path);
+                return ComboBoxItem<int>(
+                  value: mapping.anilistId,
+                  child: Text('$title ($path)'),
+                );
+              }).toList(),
+              value: series.primaryAnilistId,
+              onChanged: (value) async {
+                if (value != null) {
+                  setState(() {
+                    series.primaryAnilistId = value;
+                  });
+
+                  if (libraryScreenKey.currentState != null) libraryScreenKey.currentState!.updateSeriesInSortCache(series);
+                  // Fetch and load Anilist data
+                  await _loadAnilistData(value);
+                }
+              },
+            ),
+          ),
+          VDiv(16),
         ],
-      ),
+
+        // Add description if available
+        if (series.description != null) ...[
+          Text(
+            series.description!,
+            maxLines: 4,
+            overflow: TextOverflow.ellipsis,
+          ),
+          VDiv(16),
+        ],
+
+        // Series metadata
+        Wrap(
+          spacing: 24,
+          runSpacing: 12,
+          children: [
+            InfoLabel(
+              label: 'Seasons',
+              child: Text('${series.seasons.isNotEmpty ? series.seasons.length : 1}'),
+            ),
+            InfoLabel(
+              label: 'Episodes',
+              child: Text('${series.totalEpisodes}'),
+            ),
+            if (series.seasonYear != null)
+              InfoLabel(
+                label: 'Year',
+                child: Text('${series.seasonYear}'),
+              ),
+            if (series.format != null)
+              InfoLabel(
+                label: 'Format',
+                child: Text(series.format!),
+              ),
+            if (series.rating != null)
+              InfoLabel(
+                label: 'Rating',
+                child: Text('${series.rating! / 10}/10'),
+              ),
+            if (series.popularity != null)
+              InfoLabel(
+                label: 'Popularity',
+                child: Text('#${series.popularity}'),
+              ),
+            if (series.relatedMedia.isNotEmpty)
+              InfoLabel(
+                label: 'Related Media',
+                child: Text('${series.relatedMedia.length}'),
+              ),
+          ],
+        ),
+
+        // Genre tags
+        if (series.genres.isNotEmpty) ...[
+          VDiv(16),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: series.genres.map((genre) => Chip(text: Text(genre))).toList(),
+          ),
+        ],
+
+        // Progress bar
+        VDiv(16),
+        SizedBox(
+          width: 300,
+          child: ProgressBar(
+            value: series.watchedPercentage * 100,
+            activeColor: dominantColor,
+            backgroundColor: Colors.white.withOpacity(.3),
+          ),
+        ),
+        ...[
+          for (int i = 0; i < 30; i++)
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Text('test $i', style: FluentTheme.of(context).typography.body),
+            ),
+        ],
+      ],
     );
   }
 
