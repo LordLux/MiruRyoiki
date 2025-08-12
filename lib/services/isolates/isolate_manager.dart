@@ -69,10 +69,16 @@ class IsolateManager {
     final token = rootIsolateToken;
     if (token == null) throw StateError('IsolateManager cannot run without a valid RootIsolateToken.');
 
+    // Special handling for ProcessFilesParams to inject the correct SendPort
+    P actualParams = params;
+    if (params is ProcessFilesParams) {
+      actualParams = ProcessFilesParams(params.files, receivePort.sendPort) as P;
+    }
+
     // We pass the receivePort's sendPort to the task itself.
     final isolateTask = _IsolateTask(
       task: task,
-      params: params,
+      params: actualParams,
       token: token,
     );
 
