@@ -5,10 +5,10 @@ import '../utils/units.dart';
 /// Represents metadata for a video file.
 class Metadata {
   /// Size in bytes.
-  final int size;
+  late final int size;
 
   /// Duration in milliseconds.
-  final Duration duration;
+  late final Duration duration;
 
   /// Creation time of the file.
   late final DateTime creationTime;
@@ -20,12 +20,14 @@ class Metadata {
   late final DateTime lastAccessed;
 
   Metadata({
-    this.size = 0,
-    creationTime,
-    lastModified,
-    lastAccessed,
-    this.duration = Duration.zero,
+    int? size,
+    Duration? duration,
+    DateTime? creationTime,
+    DateTime? lastModified,
+    DateTime? lastAccessed,
   }) {
+    this.size = size ?? 0;
+    this.duration = duration ?? Duration.zero;
     this.creationTime = creationTime ?? DateTimeX.epoch;
     this.lastModified = lastModified ?? DateTimeX.epoch;
     this.lastAccessed = lastAccessed ?? DateTimeX.epoch;
@@ -34,20 +36,20 @@ class Metadata {
   factory Metadata.fromJson(Map<dynamic, dynamic> json) {
     return Metadata(
       size: json['fileSize'] as int? ?? 0,
+      duration: parseDuration(json['duration']),
       creationTime: parseDate(json['creationTime']),
       lastModified: parseDate(json['lastModified']),
       lastAccessed: parseDate(json['lastAccessed']),
-      duration: parseDuration(json['duration']),
     );
   }
   
   Map<String, dynamic> toJson() {
     return {
       'fileSize': size,
+      'duration': duration.inMilliseconds,
       'creationTime': creationTime.toIso8601String(),
       'lastModified': lastModified.toIso8601String(),
       'lastAccessed': lastAccessed.toIso8601String(),
-      'duration': duration.inMilliseconds,
     };
   }
 

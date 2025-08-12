@@ -261,198 +261,202 @@ class SeriesScreenState extends State<SeriesScreen> {
 
   Widget _buildSeriesHeader(BuildContext context, Series series) {
     return FutureBuilder(
-        future: series.getBannerImage(),
-        builder: (context, snapshot) {
-          return Stack(
-            children: [
-              // Banner
-              ShiftClickableHover(
-                  series: series,
-                  enabled: _isBannerHovering && !bannerChangeDisabled,
-                  onTap: (context) => selectImage(context, true),
-                  onEnter: bannerChangeDisabled ? () {} : () => setState(() => _isBannerHovering = true),
-                  onExit: () {
-                    StatusBarManager().hide();
-                    setState(() => _isBannerHovering = false);
-                  },
-                  onHover: bannerChangeDisabled ? null : () => StatusBarManager().show(KeyboardState.shiftPressedNotifier.value ? 'Click to change Banner' : 'Shift-click to change Banner', autoHideDuration: Duration.zero),
-                  finalChild: (BuildContext context, bool enabled) => LayoutBuilder(builder: (context, constraints) {
-                        return Stack(
-                          children: [
-                            AnimatedOpacity(
-                              duration: shortStickyHeaderDuration,
-                              opacity: enabled ? 0.75 : 1,
-                              child: AnimatedContainer(
-                                duration: shortStickyHeaderDuration,
-                                height: ScreenUtils.kMaxHeaderHeight,
-                                width: double.infinity,
-                                // Background image
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    begin: Alignment.topCenter,
-                                    end: Alignment.bottomCenter,
-                                    colors: [
-                                      dominantColor.withOpacity(0.27),
-                                      Colors.transparent,
-                                    ],
-                                  ),
-                                  color: enabled ? (series.dominantColor ?? Manager.accentColor).withOpacity(0.75) : Colors.transparent,
-                                  image: _getBannerDecoration(snapshot.data),
-                                ),
-                                padding: const EdgeInsets.only(bottom: 16.0),
-                                alignment: Alignment.bottomLeft,
-                                child: Builder(builder: (context) {
-                                  if (snapshot.data != null) return SizedBox.shrink();
-
-                                  return Center(
-                                    child: Stack(
-                                      children: [
-                                        AnimatedOpacity(
-                                          duration: shortStickyHeaderDuration,
-                                          opacity: enabled ? 0 : 1,
-                                          child: Icon(FluentIcons.picture, size: 48, color: Colors.white),
-                                        ),
-                                        AnimatedOpacity(
-                                          duration: shortStickyHeaderDuration,
-                                          opacity: enabled ? 1 : 0,
-                                          child: Icon(FluentIcons.add, size: 48, color: Colors.white),
-                                        ),
-                                      ],
-                                    ),
-                                  );
-                                }),
-                              ),
+      future: series.getBannerImage(),
+      builder: (context, snapshot) {
+        return Stack(
+          children: [
+            // Banner
+            ShiftClickableHover(
+              series: series,
+              enabled: _isBannerHovering && !bannerChangeDisabled,
+              onTap: (context) => selectImage(context, true),
+              onEnter: bannerChangeDisabled ? () {} : () => setState(() => _isBannerHovering = true),
+              onExit: () {
+                StatusBarManager().hide();
+                setState(() => _isBannerHovering = false);
+              },
+              onHover: bannerChangeDisabled ? null : () => StatusBarManager().show(KeyboardState.shiftPressedNotifier.value ? 'Click to change Banner' : 'Shift-click to change Banner', autoHideDuration: Duration.zero),
+              finalChild: (BuildContext context, bool enabled) {
+                return LayoutBuilder(builder: (context, constraints) {
+                  return Stack(
+                    children: [
+                      AnimatedOpacity(
+                        duration: shortStickyHeaderDuration,
+                        opacity: enabled ? 0.75 : 1,
+                        child: AnimatedContainer(
+                          duration: shortStickyHeaderDuration,
+                          height: ScreenUtils.kMaxHeaderHeight,
+                          width: double.infinity,
+                          // Background image
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [
+                                dominantColor.withOpacity(0.27),
+                                Colors.transparent,
+                              ],
                             ),
-                            ...[
-                              AnimatedOpacity(
-                                duration: shortStickyHeaderDuration,
-                                opacity: enabled && snapshot.data != null ? 1 : 0,
-                                child: Container(
-                                  decoration: BoxDecoration(
-                                    gradient: RadialGradient(
-                                      colors: [
-                                        Colors.black.withOpacity(.95),
-                                        Colors.black.withOpacity(0),
-                                      ],
-                                      radius: 0.5,
-                                      center: Alignment.center,
-                                      focal: Alignment.center,
-                                    ),
-                                  ),
-                                  child: Center(
-                                    child: Icon(FluentIcons.edit, size: 35, color: Colors.white),
-                                  ),
-                                ),
-                              ),
-                              AnimatedOpacity(
-                                duration: shortStickyHeaderDuration,
-                                opacity: enabled && snapshot.data != null ? 1 : 0,
-                                child: Center(
-                                  child: Icon(FluentIcons.edit, size: 35, color: Colors.white),
-                                ),
-                              ),
-                            ],
-                            // Title and watched percentage
-                            Positioned(
-                              bottom: 0,
-                              left: math.max(constraints.maxWidth / 2 - 380 + 10, ScreenUtils.kInfoBarWidth - (6 * 2) + 42),
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                mainAxisAlignment: MainAxisAlignment.start,
+                            color: enabled ? (series.dominantColor ?? Manager.accentColor).withOpacity(0.75) : Colors.transparent,
+                            image: _getBannerDecoration(snapshot.data),
+                          ),
+                          padding: const EdgeInsets.only(bottom: 16.0),
+                          alignment: Alignment.bottomLeft,
+                          child: Builder(builder: (context) {
+                            if (snapshot.data != null) return SizedBox.shrink();
+
+                            return Center(
+                              child: Stack(
                                 children: [
-                                  // Series title
-                                  SizedBox(
-                                    width: ScreenUtils.kMaxContentWidth - ScreenUtils.kInfoBarWidth - 32,
-                                    child: Text(
-                                      series.displayTitle,
-                                      style: const TextStyle(
-                                        fontSize: 32,
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.white,
-                                      ),
-                                    ),
+                                  AnimatedOpacity(
+                                    duration: shortStickyHeaderDuration,
+                                    opacity: enabled ? 0 : 1,
+                                    child: Icon(FluentIcons.picture, size: 48, color: Colors.white),
                                   ),
-                                  VDiv(8),
-                                  // Watched percentage
-                                  Text(
-                                    'Episodes: ${series.totalEpisodes} | Watched: ${series.watchedEpisodes} (${(series.watchedPercentage * 100).round()}%)',
-                                    style: const TextStyle(
-                                      fontSize: 16,
-                                      color: Colors.white,
-                                    ),
+                                  AnimatedOpacity(
+                                    duration: shortStickyHeaderDuration,
+                                    opacity: enabled ? 1 : 0,
+                                    child: Icon(FluentIcons.add, size: 48, color: Colors.white),
                                   ),
-                                  VDiv(12),
                                 ],
                               ),
-                            ),
-                          ],
-                        );
-                      })),
-              // temp buttons
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  _buildButton(
-                    widget.onBack,
-                    const Icon(FluentIcons.back),
-                    'Back to Library',
-                  ),
-                  _buildButton(
-                    () {
-                      logInfo(series);
-                      showSimpleManagedDialog(
-                        context: context,
-                        id: 'showSeries:${series.hashCode}',
-                        title: 'Series Info',
-                        constraints: const BoxConstraints(
-                          maxWidth: 800,
-                          maxHeight: 500,
+                            );
+                          }),
                         ),
-                        body: series.toString(),
-                      );
-                    },
-                    const Icon(FluentIcons.info),
-                    'Print Series',
-                  ),
-                  _buildButton(
-                    series.watchedPercentage == 1
-                        ? null
-                        : () => showSimpleManagedDialog(
-                              context: context,
-                              id: 'confirmWatchAll',
-                              title: 'Confirm Watch All',
-                              body: 'Are you sure you want to mark all episodes of "${series.displayTitle}" as watched?',
-                              positiveButtonText: 'Confirm',
-                              onPositive: () {
-                                final library = context.read<Library>();
-                                library.markSeriesWatched(series);
-                              },
-                            ),
-                    const Icon(FluentIcons.check_mark),
-                    series.watchedPercentage == 1 ? 'You have already watched all episodes' : 'Mark All as Watched',
-                  ),
-                  if (context.watch<AnilistProvider>().isLoggedIn)
-                    _buildButton(
-                      series.seasons.isNotEmpty
-                          ? () => linkWithAnilist(
-                                context,
-                                series,
-                                _loadAnilistData,
-                                setState,
-                              )
-                          : null,
-                      Icon(
-                        series.anilistId != null ? FluentIcons.link : FluentIcons.add_link,
-                        color: Colors.white,
                       ),
-                      series.anilistId != null ? 'Update Anilist Link' : 'Link with Anilist',
+                      ...[
+                        AnimatedOpacity(
+                          duration: shortStickyHeaderDuration,
+                          opacity: enabled && snapshot.data != null ? 1 : 0,
+                          child: Container(
+                            decoration: BoxDecoration(
+                              gradient: RadialGradient(
+                                colors: [
+                                  Colors.black.withOpacity(.95),
+                                  Colors.black.withOpacity(0),
+                                ],
+                                radius: 0.5,
+                                center: Alignment.center,
+                                focal: Alignment.center,
+                              ),
+                            ),
+                            child: Center(
+                              child: Icon(FluentIcons.edit, size: 35, color: Colors.white),
+                            ),
+                          ),
+                        ),
+                        AnimatedOpacity(
+                          duration: shortStickyHeaderDuration,
+                          opacity: enabled && snapshot.data != null ? 1 : 0,
+                          child: Center(
+                            child: Icon(FluentIcons.edit, size: 35, color: Colors.white),
+                          ),
+                        ),
+                      ],
+                      // Title and watched percentage
+                      Positioned(
+                        bottom: 0,
+                        left: math.max(constraints.maxWidth / 2 - 380 + 10, ScreenUtils.kInfoBarWidth - (6 * 2) + 42),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.start,
+                          children: [
+                            // Series title
+                            SizedBox(
+                              width: ScreenUtils.kMaxContentWidth - ScreenUtils.kInfoBarWidth - 32,
+                              child: Text(
+                                series.displayTitle,
+                                style: const TextStyle(
+                                  fontSize: 32,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                            VDiv(8),
+                            // Watched percentage
+                            Text(
+                              'Episodes: ${series.totalEpisodes} | Watched: ${series.watchedEpisodes} (${(series.watchedPercentage * 100).round()}%)',
+                              style: const TextStyle(
+                                fontSize: 16,
+                                color: Colors.white,
+                              ),
+                            ),
+                            VDiv(12),
+                          ],
+                        ),
+                      ),
+                    ],
+                  );
+                });
+              },
+            ),
+            // temp buttons
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                _buildButton(
+                  widget.onBack,
+                  const Icon(FluentIcons.back),
+                  'Back to Library',
+                ),
+                _buildButton(
+                  () {
+                    logInfo(series);
+                    showSimpleManagedDialog(
+                      context: context,
+                      id: 'showSeries:${series.hashCode}',
+                      title: 'Series Info',
+                      constraints: const BoxConstraints(
+                        maxWidth: 800,
+                        maxHeight: 500,
+                      ),
+                      body: series.toString(),
+                    );
+                  },
+                  const Icon(FluentIcons.info),
+                  'Print Series',
+                ),
+                _buildButton(
+                  series.watchedPercentage == 1
+                      ? null
+                      : () => showSimpleManagedDialog(
+                            context: context,
+                            id: 'confirmWatchAll',
+                            title: 'Confirm Watch All',
+                            body: 'Are you sure you want to mark all episodes of "${series.displayTitle}" as watched?',
+                            positiveButtonText: 'Confirm',
+                            onPositive: () {
+                              final library = context.read<Library>();
+                              library.markSeriesWatched(series);
+                            },
+                          ),
+                  const Icon(FluentIcons.check_mark),
+                  series.watchedPercentage == 1 ? 'You have already watched all episodes' : 'Mark All as Watched',
+                ),
+                if (context.watch<AnilistProvider>().isLoggedIn)
+                  _buildButton(
+                    series.seasons.isNotEmpty
+                        ? () => linkWithAnilist(
+                              context,
+                              series,
+                              _loadAnilistData,
+                              setState,
+                            )
+                        : null,
+                    Icon(
+                      series.anilistId != null ? FluentIcons.link : FluentIcons.add_link,
+                      color: Colors.white,
                     ),
-                ],
-              )
-            ],
-          );
-        });
+                    series.anilistId != null ? 'Update Anilist Link' : 'Link with Anilist',
+                  ),
+              ],
+            )
+          ],
+        );
+      },
+    );
   }
 
   // Get the decoration image based on the banner image

@@ -5,6 +5,7 @@ import 'dart:ui';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart' show Colors;
 import 'package:flutter/widgets.dart' hide Image;
+import 'package:miruryoiki/models/metadata.dart';
 import 'package:palette_generator/palette_generator.dart';
 import 'package:collection/collection.dart';
 import 'package:provider/provider.dart';
@@ -29,20 +30,59 @@ class Season {
     required this.name,
     required this.path,
     required this.episodes,
-  });
+    Metadata? metadata,
+  }) : _metadata = metadata;
 
   @override
   String toString() {
     return '''
-Season(
-  name: $name, path: $path,
-  episodes: $episodes
-    )''';
+      Season(
+        name: $name, path: $path,
+        episodes: $episodes
+      )
+    ''';
   }
 
   int get watchedCount => episodes.where((e) => e.watched).length;
   int get totalCount => episodes.length;
   double get watchedPercentage => totalCount > 0 ? watchedCount / totalCount : 0.0;
+
+  Metadata? _metadata;
+
+  Metadata? get metadata => _metadata ?? _getMetadata();
+
+  Metadata? _getMetadata() {
+    if (_metadata != null) return _metadata;
+
+    // Get total duration
+    int totSize = 0;
+    Duration totDuration = Duration.zero;
+    DateTime? creationDate; // earliest creation date among all episodes
+    DateTime? lastModifiedDate; // latest modification date among all episodes
+    DateTime? lastAccessedDate; // latest access date among all episodes
+
+    // Populate variables
+    for (final episode in episodes) {
+      final metadata = episode.metadata;
+      if (metadata != null) {
+        totSize += metadata.size;
+        totDuration += metadata.duration;
+        creationDate ??= _minDate(creationDate, metadata.creationTime);
+        lastModifiedDate ??= _maxDate(lastModifiedDate, metadata.lastModified);
+        lastAccessedDate ??= _maxDate(lastAccessedDate, metadata.lastAccessed);
+      }
+    }
+
+    _metadata = Metadata(
+      size: totSize,
+      duration: totDuration,
+      creationTime: creationDate,
+      lastModified: lastModifiedDate,
+      lastAccessed: lastAccessedDate,
+    );
+
+    return _metadata;
+  }
 
   // For JSON serialization
   Map<String, dynamic> toJson() {
@@ -50,6 +90,7 @@ Season(
       'name': name,
       'path': path.path, // not nullable
       'episodes': episodes.map((e) => e.toJson()).toList(),
+      'metadata': _metadata?.toJson(),
     };
   }
 
@@ -59,6 +100,7 @@ Season(
       name: json['name'],
       path: PathString.fromJson(json['path'])!,
       episodes: (json['episodes'] as List).map((e) => Episode.fromJson(e)).toList(),
+      metadata: json['metadata'] != null ? Metadata.fromJson(json['metadata']) : null,
     );
   }
 }
@@ -109,8 +151,6 @@ class Series {
   /// Whether the series is hidden from the library (only when not linked to Anilist)
   bool isHidden = false;
 
-  // TODO add file info object to store info about the series folder (creation date, last modification date, size, etc)
-
   Series({
     required this.name,
     required this.path,
@@ -127,11 +167,13 @@ class Series {
     String? anilistBanner,
     int? primaryAnilistId,
     this.isHidden = false,
+    Metadata? metadata,
   })  : _anilistData = anilistData,
         _dominantColor = dominantColor,
         _anilistPosterUrl = anilistPoster,
         _anilistBannerUrl = anilistBanner,
-        _primaryAnilistId = primaryAnilistId ?? anilistMappings.firstOrNull?.anilistId;
+        _primaryAnilistId = primaryAnilistId ?? anilistMappings.firstOrNull?.anilistId,
+        _metadata = metadata;
 
   Series copyWith({
     String? name,
@@ -149,6 +191,7 @@ class Series {
     String? anilistPoster,
     String? anilistBanner,
     bool? isHidden,
+    Metadata? metadata,
   }) {
     return Series(
       name: name ?? this.name,
@@ -166,7 +209,256 @@ class Series {
       anilistPoster: anilistPoster ?? _anilistPosterUrl,
       anilistBanner: anilistBanner ?? _anilistBannerUrl,
       isHidden: isHidden ?? this.isHidden,
+      metadata: metadata ?? _metadata,
     );
+  }
+
+  /// JSON serialization
+  Map<String, dynamic> toJson() {
+    return {
+      'name': name,
+      'path': path.path, //not nullable
+      'posterPath': folderPosterPath?.pathMaybe, // nullable
+      'bannerPath': folderBannerPath?.pathMaybe, // nullable
+      'seasons': seasons.map((s) => s.toJson()).toList(),
+      'relatedMedia': relatedMedia.map((e) => e.toJson()).toList(),
+      'anilistMappings': anilistMappings.map((m) => m.toJson()).toList(),
+      'dominantColor': _dominantColor?.value, // nullable
+      'dataVersion': _dataVersion,
+      'primaryAnilistId': _primaryAnilistId,
+      'anilistPosterUrl': _anilistPosterUrl ?? _anilistData?.posterImage, // nullable
+      'anilistBannerUrl': _anilistBannerUrl ?? _anilistData?.bannerImage, // nullable
+      'preferredPosterSource': preferredPosterSource?.name_, // nullable
+      'preferredBannerSource': preferredBannerSource?.name_, // nullable
+      'isHidden': isHidden,
+      'metadata': _metadata?.toJson(), // nullable
+    };
+  }
+
+  /// JSON deserialization
+  factory Series.fromJson(Map<String, dynamic> json) {
+    Color? extractDominantColor(Map<String, dynamic> json) {
+      if (json.containsKey('dominantColor') && json['dominantColor'] != null) {
+        try {
+          // log('Parsing dominant color from JSON: ${json['dominantColor']}: ${Color(json['dominantColor'] as int).toHex()}');
+          return Color(json['dominantColor'] as int);
+        } catch (e, st) {
+          logErr('Error parsing dominant color', e, st);
+        }
+      }
+      return null;
+    }
+
+    List<AnilistMapping> extractAnilistMapping(Map<String, dynamic> json, PathString path) {
+      final List<AnilistMapping> mappings = [];
+      try {
+        if (json.containsKey('anilistMappings') && json['anilistMappings'] != null) {
+          // Handle newer format with anilistMappings array
+          final mappingsJson = json['anilistMappings'] as List?;
+          if (mappingsJson != null) {
+            for (final mapping in mappingsJson) {
+              if (mapping is Map<String, dynamic>) {
+                try {
+                  mappings.add(AnilistMapping.fromJson(mapping));
+                } catch (e, st) {
+                  logErr('Error parsing individual Anilist mapping', e, st);
+                }
+              }
+            }
+          }
+        }
+        // // Support legacy format with single anilistId
+        // else if (json.containsKey('anilistId') && json['anilistId'] != null) {
+        //   mappings.add(AnilistMapping(
+        //     localPath: path,
+        //     anilistId: json['anilistId'] as int,
+        //   ));
+        // }
+      } catch (e, st) {
+        logErr('Error processing Anilist mappings', e, st);
+      }
+      return mappings;
+    }
+
+    List<Season> extractSeasons(Map<String, dynamic> json, PathString path) {
+      List<Season> seasons = [];
+      try {
+        if (json.containsKey('seasons') && json['seasons'] != null) {
+          final seasonsJson = json['seasons'] as List?;
+          if (seasonsJson != null) {
+            for (final season in seasonsJson) {
+              if (season is Map<String, dynamic>) {
+                try {
+                  seasons.add(Season.fromJson(season));
+                } catch (e, st) {
+                  logErr('Error parsing season', e, st);
+                }
+              }
+            }
+          }
+        }
+      } catch (e, st) {
+        logErr('Error processing seasons', e, st);
+        // Create empty season if none parsed successfully (required field)
+        if (seasons.isEmpty) //
+          seasons = [Season(name: 'Season 1', path: path, episodes: [])];
+      }
+      return seasons;
+    }
+
+    List<Episode> extractRelatedMedia(Map<String, dynamic> json, PathString path) {
+      List<Episode> relatedMedia = [];
+      try {
+        if (json.containsKey('relatedMedia') && json['relatedMedia'] != null) {
+          final mediaJson = json['relatedMedia'] as List?;
+          if (mediaJson != null) {
+            for (final episode in mediaJson) {
+              if (episode is Map<String, dynamic>) {
+                try {
+                  relatedMedia.add(Episode.fromJson(episode));
+                } catch (e, st) {
+                  logErr('Error parsing related media episode', e, st);
+                }
+              }
+            }
+          }
+        }
+      } catch (e, st) {
+        logErr('Error processing related media', e, st);
+      }
+      return relatedMedia;
+    }
+
+    try {
+      // Validate required fields
+      final name = json['name'] as String? ?? '';
+      final path = PathString(json['path'] as String? ?? '');
+
+      if (name.isEmpty || path.path.isEmpty) //
+        logWarn('Series JSON missing required name or path: $json');
+
+      // Process dominant color with safe parsing
+      Color? dominantColor = extractDominantColor(json);
+
+      // Process anilist mappings with validation
+      List<AnilistMapping> mappings = extractAnilistMapping(json, path);
+
+      // Process seasons with validation
+      List<Season> seasons = extractSeasons(json, path);
+
+      // Process related media with validation
+      List<Episode> relatedMedia = extractRelatedMedia(json, path);
+
+      // Create the Series instance
+      final series = Series(
+        name: name,
+        path: path,
+        folderPosterPath: PathString.fromJson(json['posterPath']),
+        folderBannerPath: PathString.fromJson(json['bannerPath']),
+        seasons: seasons,
+        relatedMedia: relatedMedia,
+        anilistMappings: mappings,
+        dominantColor: dominantColor,
+        anilistPoster: json['anilistPosterUrl'] as String?,
+        anilistBanner: json['anilistBannerUrl'] as String?,
+        metadata: json['metadata'] != null ? Metadata.fromJson(json['metadata']) : null,
+        // anilistData is not serialized directly, but retrieved on demand
+        // preferredPosterSource and preferredBannerSource
+        // are null by default to be set by the settings
+      );
+      series.isHidden = (json['isHidden'] as bool? ?? false) == true;
+
+      // Set primary Anilist ID if available
+      try {
+        if (json.containsKey('primaryAnilistId') && json['primaryAnilistId'] != null) {
+          series._primaryAnilistId = json['primaryAnilistId'] as int?;
+          // Validate that the primary ID exists in mappings
+          if (series._primaryAnilistId != null && !mappings.any((m) => m.anilistId == series._primaryAnilistId)) {
+            logWarn('primaryAnilistId ${series._primaryAnilistId} not found in mappings');
+          }
+        }
+      } catch (e, st) {
+        logErr('Error setting primaryAnilistId', e, st);
+      }
+
+      // Set preferred poster source if available
+      try {
+        if (json['preferredPosterSource'] != null) {
+          final sourceStr = json['preferredPosterSource'] as String?;
+          if (sourceStr == 'local')
+            series.preferredPosterSource = ImageSource.local;
+          else if (sourceStr == 'anilist') //
+            series.preferredPosterSource = ImageSource.anilist;
+          // if the preferred source is not set, it will be decided by the setting
+        }
+      } catch (e, st) {
+        logErr('Error setting preferredPosterSource', e, st);
+      }
+
+      // Set preferred banner source if available
+      try {
+        if (json['preferredBannerSource'] != null) {
+          final sourceStr = json['preferredBannerSource'] as String?;
+          if (sourceStr == 'local')
+            series.preferredBannerSource = ImageSource.local;
+          else if (sourceStr == 'anilist') //
+            series.preferredBannerSource = ImageSource.anilist;
+          // if the preferred source is not set, it will be decided by the setting
+        }
+      } catch (e, st) {
+        logErr('Error setting preferredBannerSource', e, st);
+      }
+
+      return series;
+    } catch (e, st) {
+      // If anything fails critically, create a minimal valid series
+      logErr('Critical error parsing Series.fromJson', e, st);
+      return Series(
+        name: json['name'] as String? ?? 'Unknown Series',
+        path: PathString.fromJson(json['path'])!,
+        seasons: [],
+      );
+    }
+  }
+
+  factory Series.fromValues({
+    required String name,
+    required PathString path,
+    PathString? folderPosterPath,
+    PathString? folderBannerPath,
+    required List<Season> seasons,
+    List<Episode> relatedMedia = const [],
+    List<AnilistMapping> anilistMappings = const [],
+    int? primaryAnilistId,
+    AnilistAnime? anilistData,
+    ImageSource? preferredPosterSource,
+    ImageSource? preferredBannerSource,
+    Color? dominantColor,
+    String? anilistPoster,
+    String? anilistBanner,
+    bool isHidden = false,
+    Metadata? metadata,
+  }) {
+    final series = Series(
+      name: name,
+      path: path,
+      folderPosterPath: folderPosterPath,
+      folderBannerPath: folderBannerPath,
+      seasons: seasons,
+      relatedMedia: relatedMedia,
+      anilistMappings: anilistMappings,
+      dominantColor: dominantColor,
+      preferredPosterSource: preferredPosterSource,
+      preferredBannerSource: preferredBannerSource,
+      anilistData: anilistData,
+      primaryAnilistId: primaryAnilistId,
+      anilistBanner: anilistBanner,
+      anilistPoster: anilistPoster,
+      isHidden: isHidden,
+      metadata: metadata,
+    );
+
+    return series;
   }
 
   @override
@@ -189,7 +481,7 @@ class Series {
 
   String toStringMini() => '''Series(${name.substring(0, min(30, name.length))}...)''';
 
-// Getter and setter for primaryAnilistId
+  // Getter and setter for primaryAnilistId
   int? get primaryAnilistId => _primaryAnilistId ?? anilistId; // Fall back to the first mapping
 
   set primaryAnilistId(int? value) {
@@ -250,7 +542,7 @@ class Series {
 
   int _dataVersion = 0;
 
-// Include in the key for SeriesCard
+  // Include in the key for SeriesCard
   int get dataVersion => _dataVersion;
 
   // Get Anilist ID for an episode
@@ -609,250 +901,6 @@ class Series {
     return null;
   }
 
-  /// JSON serialization
-  Map<String, dynamic> toJson() {
-    return {
-      'name': name,
-      'path': path.path, //not nullable
-      'posterPath': folderPosterPath?.pathMaybe, // nullable
-      'bannerPath': folderBannerPath?.pathMaybe, // nullable
-      'seasons': seasons.map((s) => s.toJson()).toList(),
-      'relatedMedia': relatedMedia.map((e) => e.toJson()).toList(),
-      'anilistMappings': anilistMappings.map((m) => m.toJson()).toList(),
-      'dominantColor': _dominantColor?.value, // nullable
-      'dataVersion': _dataVersion,
-      'primaryAnilistId': _primaryAnilistId,
-      'anilistPosterUrl': _anilistPosterUrl ?? _anilistData?.posterImage, // nullable
-      'anilistBannerUrl': _anilistBannerUrl ?? _anilistData?.bannerImage, // nullable
-      'preferredPosterSource': preferredPosterSource?.name_, // nullable
-      'preferredBannerSource': preferredBannerSource?.name_, // nullable
-      'isHidden': isHidden,
-    };
-  }
-
-  /// JSON deserialization
-  factory Series.fromJson(Map<String, dynamic> json) {
-    Color? extractDominantColor(Map<String, dynamic> json) {
-      if (json.containsKey('dominantColor') && json['dominantColor'] != null) {
-        try {
-          // log('Parsing dominant color from JSON: ${json['dominantColor']}: ${Color(json['dominantColor'] as int).toHex()}');
-          return Color(json['dominantColor'] as int);
-        } catch (e, st) {
-          logErr('Error parsing dominant color', e, st);
-        }
-      }
-      return null;
-    }
-
-    List<AnilistMapping> extractAnilistMapping(Map<String, dynamic> json, PathString path) {
-      final List<AnilistMapping> mappings = [];
-      try {
-        if (json.containsKey('anilistMappings') && json['anilistMappings'] != null) {
-          // Handle newer format with anilistMappings array
-          final mappingsJson = json['anilistMappings'] as List?;
-          if (mappingsJson != null) {
-            for (final mapping in mappingsJson) {
-              if (mapping is Map<String, dynamic>) {
-                try {
-                  mappings.add(AnilistMapping.fromJson(mapping));
-                } catch (e, st) {
-                  logErr('Error parsing individual Anilist mapping', e, st);
-                }
-              }
-            }
-          }
-        }
-        // // Support legacy format with single anilistId
-        // else if (json.containsKey('anilistId') && json['anilistId'] != null) {
-        //   mappings.add(AnilistMapping(
-        //     localPath: path,
-        //     anilistId: json['anilistId'] as int,
-        //   ));
-        // }
-      } catch (e, st) {
-        logErr('Error processing Anilist mappings', e, st);
-      }
-      return mappings;
-    }
-
-    List<Season> extractSeasons(Map<String, dynamic> json, PathString path) {
-      List<Season> seasons = [];
-      try {
-        if (json.containsKey('seasons') && json['seasons'] != null) {
-          final seasonsJson = json['seasons'] as List?;
-          if (seasonsJson != null) {
-            for (final season in seasonsJson) {
-              if (season is Map<String, dynamic>) {
-                try {
-                  seasons.add(Season.fromJson(season));
-                } catch (e, st) {
-                  logErr('Error parsing season', e, st);
-                }
-              }
-            }
-          }
-        }
-      } catch (e, st) {
-        logErr('Error processing seasons', e, st);
-        // Create empty season if none parsed successfully (required field)
-        if (seasons.isEmpty) //
-          seasons = [Season(name: 'Season 1', path: path, episodes: [])];
-      }
-      return seasons;
-    }
-
-    List<Episode> extractRelatedMedia(Map<String, dynamic> json, PathString path) {
-      List<Episode> relatedMedia = [];
-      try {
-        if (json.containsKey('relatedMedia') && json['relatedMedia'] != null) {
-          final mediaJson = json['relatedMedia'] as List?;
-          if (mediaJson != null) {
-            for (final episode in mediaJson) {
-              if (episode is Map<String, dynamic>) {
-                try {
-                  relatedMedia.add(Episode.fromJson(episode));
-                } catch (e, st) {
-                  logErr('Error parsing related media episode', e, st);
-                }
-              }
-            }
-          }
-        }
-      } catch (e, st) {
-        logErr('Error processing related media', e, st);
-      }
-      return relatedMedia;
-    }
-
-    try {
-      // Validate required fields
-      final name = json['name'] as String? ?? '';
-      final path = PathString(json['path'] as String? ?? '');
-
-      if (name.isEmpty || path.path.isEmpty) //
-        logWarn('Series JSON missing required name or path: $json');
-
-      // Process dominant color with safe parsing
-      Color? dominantColor = extractDominantColor(json);
-
-      // Process anilist mappings with validation
-      List<AnilistMapping> mappings = extractAnilistMapping(json, path);
-
-      // Process seasons with validation
-      List<Season> seasons = extractSeasons(json, path);
-
-      // Process related media with validation
-      List<Episode> relatedMedia = extractRelatedMedia(json, path);
-
-      // Create the Series instance
-      final series = Series(
-        name: name,
-        path: path,
-        folderPosterPath: PathString.fromJson(json['posterPath']),
-        folderBannerPath: PathString.fromJson(json['bannerPath']),
-        seasons: seasons,
-        relatedMedia: relatedMedia,
-        anilistMappings: mappings,
-        dominantColor: dominantColor,
-        anilistPoster: json['anilistPosterUrl'] as String?,
-        anilistBanner: json['anilistBannerUrl'] as String?,
-        // anilistData is not serialized directly, but retrieved on demand
-        // preferredPosterSource and preferredBannerSource
-        // are null by default to be set by the settings
-      );
-      series.isHidden = (json['isHidden'] as bool? ?? false) == true;
-
-      // Set primary Anilist ID if available
-      try {
-        if (json.containsKey('primaryAnilistId') && json['primaryAnilistId'] != null) {
-          series._primaryAnilistId = json['primaryAnilistId'] as int?;
-          // Validate that the primary ID exists in mappings
-          if (series._primaryAnilistId != null && !mappings.any((m) => m.anilistId == series._primaryAnilistId)) {
-            logWarn('primaryAnilistId ${series._primaryAnilistId} not found in mappings');
-          }
-        }
-      } catch (e, st) {
-        logErr('Error setting primaryAnilistId', e, st);
-      }
-
-      // Set preferred poster source if available
-      try {
-        if (json['preferredPosterSource'] != null) {
-          final sourceStr = json['preferredPosterSource'] as String?;
-          if (sourceStr == 'local')
-            series.preferredPosterSource = ImageSource.local;
-          else if (sourceStr == 'anilist') //
-            series.preferredPosterSource = ImageSource.anilist;
-          // if the preferred source is not set, it will be decided by the setting
-        }
-      } catch (e, st) {
-        logErr('Error setting preferredPosterSource', e, st);
-      }
-
-      // Set preferred banner source if available
-      try {
-        if (json['preferredBannerSource'] != null) {
-          final sourceStr = json['preferredBannerSource'] as String?;
-          if (sourceStr == 'local')
-            series.preferredBannerSource = ImageSource.local;
-          else if (sourceStr == 'anilist') //
-            series.preferredBannerSource = ImageSource.anilist;
-          // if the preferred source is not set, it will be decided by the setting
-        }
-      } catch (e, st) {
-        logErr('Error setting preferredBannerSource', e, st);
-      }
-
-      return series;
-    } catch (e, st) {
-      // If anything fails critically, create a minimal valid series
-      logErr('Critical error parsing Series.fromJson', e, st);
-      return Series(
-        name: json['name'] as String? ?? 'Unknown Series',
-        path: PathString.fromJson(json['path'])!,
-        seasons: [],
-      );
-    }
-  }
-
-  factory Series.fromValues({
-    required String name,
-    required PathString path,
-    PathString? folderPosterPath,
-    PathString? folderBannerPath,
-    required List<Season> seasons,
-    List<Episode> relatedMedia = const [],
-    List<AnilistMapping> anilistMappings = const [],
-    int? primaryAnilistId,
-    AnilistAnime? anilistData,
-    ImageSource? preferredPosterSource,
-    ImageSource? preferredBannerSource,
-    Color? dominantColor,
-    String? anilistPoster,
-    String? anilistBanner,
-    bool isHidden = false,
-  }) {
-    final series = Series(
-      name: name,
-      path: path,
-      folderPosterPath: folderPosterPath,
-      folderBannerPath: folderBannerPath,
-      seasons: seasons,
-      relatedMedia: relatedMedia,
-      anilistMappings: anilistMappings,
-      dominantColor: dominantColor,
-      preferredPosterSource: preferredPosterSource,
-      preferredBannerSource: preferredBannerSource,
-      anilistData: anilistData,
-      primaryAnilistId: primaryAnilistId,
-      anilistBanner: anilistBanner,
-      anilistPoster: anilistPoster,
-      isHidden: isHidden,
-    );
-
-    return series;
-  }
-
   /// Getters for seasons and episodes
   List<Episode> getEpisodesForSeason([int i = 1]) {
     // TODO check if series has global episodes numbering or not
@@ -1021,4 +1069,81 @@ class Series {
     }
     return null;
   }
+
+  Metadata? _metadata;
+
+  Metadata? get metadata => _metadata ?? _getMetadata();
+
+  set metadata(Metadata? metadata) {
+    if (metadata == null) logWarn('Setting metadata for series $name to null');
+    _metadata = metadata;
+    _dataVersion++;
+  }
+
+  void setMetadataFromValues({
+    int? size,
+    Duration? duration,
+    DateTime? creationTime,
+    DateTime? lastModified,
+    DateTime? lastAccessed,
+  }) {
+    _metadata = _metadata?.copyWith(
+          size: size,
+          duration: duration,
+          creationTime: creationTime,
+          lastModified: lastModified,
+          lastAccessed: lastAccessed,
+        ) ??
+        Metadata(
+          size: size,
+          duration: duration,
+          creationTime: creationTime,
+          lastModified: lastModified,
+          lastAccessed: lastAccessed,
+        );
+    _dataVersion++;
+  }
+
+  Metadata? _getMetadata() {
+    if (_metadata != null) return _metadata;
+
+    // Get total duration
+    int totSize = 0;
+    Duration totDuration = Duration.zero;
+    DateTime? creationDate; // earliest creation date among all seasons
+    DateTime? lastModifiedDate; // latest modification date among all seasons
+    DateTime? lastAccessedDate; // latest access date among all seasons
+
+    // Populate the variables
+    for (final season in seasons) {
+      totSize += season.metadata?.size ?? 0;
+      totDuration += season.metadata?.duration ?? Duration.zero;
+
+      creationDate = _minDate(creationDate, season.metadata?.creationTime);
+      lastModifiedDate = _maxDate(lastModifiedDate, season.metadata?.lastModified);
+      lastAccessedDate = _maxDate(lastAccessedDate, season.metadata?.lastAccessed);
+    }
+
+    _metadata = Metadata(
+      size: totSize,
+      duration: totDuration,
+      creationTime: creationDate,
+      lastModified: lastModifiedDate,
+      lastAccessed: lastAccessedDate,
+    );
+
+    return _metadata;
+  }
+}
+
+DateTime? _minDate(DateTime? date1, DateTime? date2) {
+  if (date1 == null) return date2;
+  if (date2 == null) return date1;
+  return date1.isBefore(date2) ? date1 : date2;
+}
+
+DateTime? _maxDate(DateTime? date1, DateTime? date2) {
+  if (date1 == null) return date2;
+  if (date2 == null) return date1;
+  return date1.isAfter(date2) ? date1 : date2;
 }
