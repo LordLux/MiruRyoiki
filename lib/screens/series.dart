@@ -10,7 +10,9 @@ import '../main.dart';
 import '../services/library/library_provider.dart';
 import '../services/navigation/show_info.dart';
 import '../services/navigation/statusbar/statusbar.dart';
+import '../utils/color_utils.dart';
 import '../utils/path_utils.dart';
+import '../utils/text_utils.dart';
 import '../widgets/buttons/button.dart';
 import '../services/anilist/provider/anilist_provider.dart';
 import '../widgets/buttons/wrapper.dart';
@@ -478,10 +480,20 @@ class SeriesScreenState extends State<SeriesScreen> {
       footerPadding: EdgeInsets.all(8.0),
       footer: [
         if (series.seasons.isNotEmpty && anilistProvider.isLoggedIn)
-          NormalButton(
+          StandardButton(
             expand: true,
             tooltip: !series.isLinked ? 'Link with Anilist' : 'Manage Anilist Links',
-            label: !series.isLinked ? 'Link with Anilist' : 'Manage Anilist Links',
+            label: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(series.isLinked ? FluentIcons.link : FluentIcons.add_link),
+                HDiv(4),
+                Text(
+                  !series.isLinked ? 'Link with Anilist' : 'Manage Anilist Links',
+                  style: getStyleBasedOnAccent(false),
+                ),
+              ],
+            ),
             onPressed: () => linkWithAnilist(context, series, _loadAnilistData, setState),
             isButtonDisabled: anilistProvider.isOffline,
           ),
@@ -627,10 +639,10 @@ class SeriesScreenState extends State<SeriesScreen> {
 
         // Add description if available
         if (series.description != null) ...[
-          Text(
+          SelectableText(
             series.description!,
-            maxLines: 4,
-            overflow: TextOverflow.ellipsis,
+            maxLines: 10,
+            cursorColor: Manager.currentDominantColor,
           ),
           VDiv(16),
         ],
