@@ -682,7 +682,7 @@ class SeriesScreenState extends State<SeriesScreen> {
           Wrap(
             spacing: 8,
             runSpacing: 8,
-            children: series.genres.map((genre) => Chip(text: Text(genre))).toList(),
+            children: series.genres.map((genre) => Chip(text: (color) => Text(genre, style: Manager.bodyStyle.copyWith(color: color)))).toList(),
           ),
         ],
 
@@ -913,7 +913,8 @@ void linkWithAnilist(BuildContext context, Series? series, Future<void> Function
         }
 
         // Update the series with the new mappings
-        setState(() {});
+        Manager.currentDominantColor = series.dominantColor;
+        Manager.setState();
       },
     ),
   );

@@ -424,7 +424,7 @@ class AccountsScreenState extends State<AccountsScreen> {
       LoadingButton(
         expand: true,
         tooltip: 'Logout from Anilist',
-        hoverFillColor: Colors.red.toAccentColor().darkest,
+        hoverFillColor: Color.fromARGB(176, 94, 26, 26),
         label: 'Logout',
         isLoading: false,
         isAlreadyBig: true,

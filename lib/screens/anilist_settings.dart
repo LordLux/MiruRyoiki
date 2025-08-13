@@ -1,4 +1,5 @@
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:miruryoiki/utils/color_utils.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
@@ -202,14 +203,14 @@ class AnilistAccountScreen extends StatelessWidget {
 
   Widget _buildListChip(BuildContext context, dynamic list) {
     return Chip(
-      text: Text(list.name),
+      text: (color) => Text(list.name, style: Manager.bodyStyle.copyWith(color: color)),
       trailing: Text(list.entries.length.toString()),
     );
   }
 }
 
 Widget Chip({
-  required Widget text,
+  required Widget Function(Color primaryColor) text,
   Widget? trailing,
   Color? backgroundColor,
 }) {
@@ -222,7 +223,7 @@ Widget Chip({
     child: Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        text,
+        text(determineTextColor(Manager.currentDominantColor ?? Colors.black)),
         if (trailing != null) ...[
           const SizedBox(width: 8),
           trailing,

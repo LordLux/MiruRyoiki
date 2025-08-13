@@ -76,7 +76,7 @@ class _MiruRyoikiHeaderInfoBarPageState extends State<MiruRyoikiHeaderInfoBarPag
                       child: Align(
                         alignment: Alignment.topCenter,
                         child: Padding(
-                          padding: EdgeInsets.only(left: 16.0 * Manager.fontSizeMultiplier, top: 16.0),
+                          padding: EdgeInsets.only(left: 16.0 * Manager.fontSizeMultiplier, top: 16.0, right: 16.0),
                           child: ClipRRect(
                             borderRadius: BorderRadius.circular(ScreenUtils.kStatCardBorderRadius),
                             child: ScrollConfiguration(
