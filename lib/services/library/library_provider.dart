@@ -23,6 +23,7 @@ import '../../models/series.dart';
 import '../../services/anilist/linking.dart';
 import '../../settings.dart';
 import '../../theme.dart';
+import '../../widgets/dialogs/splash/progress.dart';
 import '../anilist/provider/anilist_provider.dart';
 import '../anilist/queries/anilist_service.dart';
 import '../file_system/cache.dart';

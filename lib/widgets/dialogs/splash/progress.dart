@@ -1,47 +1,131 @@
 import 'package:fluent_ui/fluent_ui.dart';
-import 'package:provider/provider.dart';
-import '../../../services/library/library_provider.dart';
+import 'package:flutter/material.dart' as mat;
+import 'package:miruryoiki/utils/screen_utils.dart';
 
+import '../../../utils/time_utils.dart';
+import '../../../manager.dart';
+
+/// Manages the global status bar
+class LibraryScanProgressManager {
+  // Singleton boilerplate
+  static final LibraryScanProgressManager _instance = LibraryScanProgressManager._internal();
+  factory LibraryScanProgressManager() => _instance;
+  LibraryScanProgressManager._internal();
+
+  final ValueNotifier<double> _progress = ValueNotifier<double>(0.0);
+
+  /// Notifier that tells widgets whether to show/hide the bar
+  final ValueNotifier<bool> _isShowingNotifier = ValueNotifier<bool>(false);
+
+  /// Notifier that carries the current style
+  final ValueNotifier<Color> _styleNotifier = ValueNotifier<Color>(Manager.currentDominantColor ?? Colors.white);
+
+  bool get isShowing => _isShowingNotifier.value;
+  Color get style => _styleNotifier.value;
+  double get progress => _progress.value;
+
+  /// Expose the notifiers for widgets to listen to
+  ValueNotifier<bool> get showingNotifier => _isShowingNotifier;
+  ValueNotifier<Color> get styleNotifier => _styleNotifier;
+  ValueNotifier<double> get progressNotifier => _progress;
+
+  /// Shows the status bar immediately, with given message/style.
+  void show(
+    double amount, {
+    Color? style,
+    bool replaceExisting = true,
+  }) {
+    assert(amount >= 0 && amount <= 1, 'Status bar progress must be between 0 and 1');
+
+    _progress.value = amount;
+
+    if (style != null) _styleNotifier.value = style;
+
+    if (!isShowing) _isShowingNotifier.value = true;
+  }
+
+  /// Updates only the style of the status bar (without changing the message or visibility)
+  void updateColor(Color color) => _styleNotifier.value = color;
+
+  /// Hides the status bar immediately.
+  void hide() => _isShowingNotifier.value = false;
+}
+
+/// Widget that displays the current status of the library scan
 class LibraryScanProgressIndicator extends StatelessWidget {
   const LibraryScanProgressIndicator({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<Library>(
-      builder: (context, library, _) {
-        if (!library.isLoading /*|| library.scanProgress == null*/) {
-          return Text('No library scan in progress');
-        }
+    final libraryScanProgressManager = LibraryScanProgressManager();
 
-        return Container();
+    return Positioned(
+      right: 8,
+      bottom: 0,
+      child: ValueListenableBuilder<bool>(
+        valueListenable: libraryScanProgressManager.showingNotifier,
+        builder: (context, isShowing, _) {
+          return AnimatedOpacity(
+            opacity: isShowing ? 1.0 : 0.0,
+            duration: getDuration(const Duration(milliseconds: 200)),
+            child: SizedBox(
+              width: 350,
+              height: ScreenUtils.kStatusBarHeight,
+              child: Row(
+                children: [
+                  SizedBox(width: 100, child: Text('Indexing library...', style: Manager.captionStyle.copyWith(fontSize: 11))),
+                  SizedBox(
+                    width: 250,
+                    child: AnimatedProgressIndicator(progressNotifier: libraryScanProgressManager.progressNotifier),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
 
-        //   final progress = library.scanProgress!;
-        //   final percentage = progress.total > 0 ? (progress.processed / progress.total * 100).toInt() : 0;
+class AnimatedProgressIndicator extends StatefulWidget {
+  final ValueNotifier<double> progressNotifier;
 
-        //   return Positioned(
-        //     right: 16,
-        //     bottom: 16,
-        //     child: Card(
-        //       child: Padding(
-        //         padding: const EdgeInsets.all(12.0),
-        //         child: Column(
-        //           crossAxisAlignment: CrossAxisAlignment.start,
-        //           mainAxisSize: MainAxisSize.min,
-        //           children: [
-        //             Text(
-        //               'Scanning library: ${progress.processed}/${progress.total}',
-        //               style: FluentTheme.of(context).typography.caption,
-        //             ),
-        //             const SizedBox(height: 8),
-        //             SizedBox(
-        //               width: 200,
-        //               child: ProgressBar(value: percentage.toDouble()),
-        //             ),
-        //           ],
-        //         ),
-        //       ),
-        //     ),
-        //   );
+  const AnimatedProgressIndicator({
+    super.key,
+    required this.progressNotifier,
+  });
+
+  @override
+  State<AnimatedProgressIndicator> createState() => _AnimatedProgressIndicatorState();
+}
+
+class _AnimatedProgressIndicatorState extends State<AnimatedProgressIndicator> {
+  double _previousValue = 0.0;
+
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder<double>(
+      valueListenable: widget.progressNotifier,
+      builder: (context, progress, _) {
+        final beginValue = _previousValue;
+        _previousValue = progress;
+
+        return TweenAnimationBuilder<double>(
+          tween: Tween(begin: beginValue, end: progress),
+          duration: const Duration(milliseconds: 600),
+          curve: Curves.easeOut,
+          builder: (context, animatedValue, _) {
+            return mat.LinearProgressIndicator(
+              value: animatedValue,
+              trackGap: 2.5,
+              backgroundColor: Colors.white.withOpacity(.15),
+              year2023: false,
+              stopIndicatorRadius: 0,
+              valueColor: AlwaysStoppedAnimation<Color>(Manager.currentDominantColor ?? Manager.accentColor.normal),
+            );
+          },
+        );
       },
     );
   }

@@ -2,12 +2,14 @@ import 'dart:async';
 
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:miruryoiki/utils/time_utils.dart';
+import 'package:miruryoiki/widgets/dialogs/splash/progress.dart';
 
 import '../../../manager.dart';
 
 /// Defines the visual style of the status bar
 class StatusBarStyle {
   final TextStyle? textStyle;
+  final Color? mainColor;
   final BoxDecoration? container;
   final Color? acrylic_color;
   final Duration animationDuration;
@@ -17,6 +19,7 @@ class StatusBarStyle {
   const StatusBarStyle({
     this.textStyle,
     this.container,
+    this.mainColor,
     this.animationDuration = Duration.zero,
     this.iconColor,
     this.icon,
@@ -31,6 +34,7 @@ class StatusBarStyle {
     Color? iconColor,
     Color? acrylic_color,
     IconData? icon,
+    Color? mainColor,
   }) {
     return StatusBarStyle(
       textStyle: textStyle ?? this.textStyle,
@@ -39,6 +43,7 @@ class StatusBarStyle {
       animationDuration: animationDuration ?? this.animationDuration,
       iconColor: iconColor ?? this.iconColor,
       icon: icon ?? this.icon,
+      mainColor: mainColor ?? this.mainColor,
     );
   }
 }
@@ -54,7 +59,7 @@ class StatusBarManager {
   final ValueNotifier<bool> _isShowingNotifier = ValueNotifier<bool>(false);
 
   /// Notifier that carries the current text message
-  final ValueNotifier<String> _messageNotifier = ValueNotifier<String>('');
+  final ValueNotifier _messageNotifier = ValueNotifier('');
 
   /// Notifier that carries the current style
   final ValueNotifier<StatusBarStyle> _styleNotifier = ValueNotifier<StatusBarStyle>(
@@ -64,6 +69,7 @@ class StatusBarManager {
         color: const Color.fromARGB(255, 22, 22, 22).withOpacity(0.9),
         borderRadius: BorderRadius.circular(10),
       ),
+      mainColor: Manager.currentDominantColor,
       acrylic_color: Manager.accentColor.lightest,
     ),
   );
@@ -82,12 +88,12 @@ class StatusBarManager {
   static const Duration _defaultImmediateWindowDuration = Duration(milliseconds: 500);
 
   bool get isShowing => _isShowingNotifier.value;
-  String get message => _messageNotifier.value;
+  dynamic get message => _messageNotifier.value;
   StatusBarStyle get style => _styleNotifier.value;
 
   /// Expose the notifiers for widgets to listen to
   ValueNotifier<bool> get showingNotifier => _isShowingNotifier;
-  ValueNotifier<String> get messageNotifier => _messageNotifier;
+  ValueNotifier get messageNotifier => _messageNotifier;
   ValueNotifier<StatusBarStyle> get styleNotifier => _styleNotifier;
 
   /// Shows the status bar immediately, with given message/style.
@@ -96,11 +102,14 @@ class StatusBarManager {
   /// - Cancels any existing auto-hide timer and replaces it with a new one,
   ///   if [autoHideDuration] != Duration.zero.
   void show(
-    String message, {
+    dynamic message, {
     StatusBarStyle? style,
     Duration autoHideDuration = const Duration(seconds: 3),
     bool replaceExisting = true,
   }) {
+    assert(message != null, 'Status bar message cannot be null');
+    assert(message is String || message is Widget, 'Status bar message must be a String or Widget');
+
     // 1) Cancel any existing auto-hide timer
     _hideTimer?.cancel();
     _hideTimer = null;
@@ -133,12 +142,15 @@ class StatusBarManager {
   /// - Otherwise, schedule a [_delayTimer] that calls show(...) after [delay].
   /// - If hide() is called before [delay] expires, the delay is canceled.
   void showDelayed(
-    String message, {
+    dynamic message, {
     StatusBarStyle? style,
     Duration autoHideDuration = const Duration(seconds: 3),
     bool replaceExisting = true,
     Duration delay = const Duration(milliseconds: 500),
   }) {
+    assert(message != null, 'Status bar message cannot be null');
+    assert(message is String || message is Widget, 'Status bar message must be a String or Widget');
+
     // Cancel any existing timers
     _hideTimer?.cancel();
     _hideTimer = null;
@@ -227,7 +239,7 @@ class StatusBarWidget extends StatelessWidget {
       builder: (context, isShowing, _) {
         return Positioned(
           right: 8,
-          bottom: 8,
+          bottom: LibraryScanProgressManager().isShowing ? 8 : 16,
           child: AnimatedOpacity(
             opacity: isShowing ? 1.0 : 0.0,
             duration: getDuration(const Duration(milliseconds: 200)),
@@ -237,7 +249,7 @@ class StatusBarWidget extends StatelessWidget {
                 return AnimatedContainer(
                   decoration: style.container,
                   duration: style.animationDuration,
-                  child: ValueListenableBuilder<String>(
+                  child: ValueListenableBuilder(
                     valueListenable: statusBarManager.messageNotifier,
                     builder: (context, message, _) {
                       return Padding(
@@ -253,10 +265,12 @@ class StatusBarWidget extends StatelessWidget {
                               ),
                               const SizedBox(width: 6),
                             ],
-                            Text(
-                              message,
-                              style: style.textStyle,
-                            ),
+                            message is String
+                                ? Text(
+                                    message,
+                                    style: style.textStyle,
+                                  )
+                                : message
                           ],
                         ),
                       );

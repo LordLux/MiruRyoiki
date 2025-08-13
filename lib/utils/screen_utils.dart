@@ -12,6 +12,7 @@ class ScreenUtils {
   static const double kDefaultCardWidth = 200.0;
   static const double kDefaultCardHeight = 200.0 * kDefaultCardAspectRatio;
   static const double kNavigationBarWidth = 300.0;
+  static const double kStatusBarHeight = 24.0;
   static const double kMaxHeaderHeight = 290.0;
   static const double kMinHeaderHeight = 150.0;
   static const double kInfoBarWidth = 300.0;
@@ -37,6 +38,7 @@ class ScreenUtils {
   static const double kMaxDistrCardWidth = 900.0;
 
   static Size? cardSize;
+
 
 
   static MediaQueryData get _mediaQuery => MediaQueryData.fromWindow(WidgetsBinding.instance.window);
