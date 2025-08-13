@@ -262,7 +262,7 @@ extension DurationX on Duration {
 extension DateTimeX on DateTime? {
   String pretty() {
     if (this == null) return 'null';
-    return DateFormat('dd MMM yy', 'en').format(this!);
+    return DateFormat('dd MMM yyyy', 'en').format(this!);
   }
 
   static DateTime get epoch => DateTime.fromMillisecondsSinceEpoch(0);

@@ -23,7 +23,7 @@ class HeaderWidget extends StatefulWidget {
     this.children = const [],
     this.titleLeftAligned = false,
     this.image_widget,
-    this.headerPadding = const EdgeInsets.only(bottom: 16.0),
+    this.headerPadding = const EdgeInsets.only(bottom: 0.0),
   })  : assert(
           image != null || image_widget != null,
           'Either image or image_widget must be provided',
@@ -80,11 +80,18 @@ class _HeaderWidgetState extends State<HeaderWidget> {
           Positioned(
             bottom: 0,
             left: () {
-              final double shrinkedI = ScreenUtils.kInfoBarWidth - (6 * 2) + 42; // when the window is shorter than the maximum content width and there is a poster on the left
-              final double maximisedI = (constraints.maxWidth - ScreenUtils.kMaxContentWidth) / 2 + 310 + 20; // when the window is larger than the maximum content width and there is a poster on the left
-              final double shrinked = (constraints.maxWidth - ScreenUtils.kMaxContentWidth) / 2 + 20; // when the window is shorter than the maximum content width and there is no poster on the left
-              final double maximised = 20; // when the window is larger than the maximum content width and there is no poster on the left
-              return widget.titleLeftAligned ? math.max(maximised, shrinked) : math.max(maximisedI, shrinkedI);
+              final double shrinkedI = ScreenUtils.kInfoBarWidth - (6 * 2) + 42;
+              final double maximisedI = (constraints.maxWidth - ScreenUtils.kMaxContentWidth) / 2 + 310 + 20;
+              final double shrinked = (constraints.maxWidth - ScreenUtils.kMaxContentWidth) / 2 + 20;
+              final double maximised = 20;
+
+              // Calculate value safely and prevent Infinity
+              double result = widget.titleLeftAligned ? math.max(maximised, shrinked) : math.max(maximisedI, shrinkedI);
+
+              // Guard against invalid values
+              if (result.isInfinite || result.isNaN) return 20.0;
+
+              return result;
             }(),
             child: Column(
               mainAxisSize: MainAxisSize.min,

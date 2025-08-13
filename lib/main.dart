@@ -421,8 +421,7 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
           return AnimatedContainer(
             duration: dimDuration,
             color: getDimmableBlack(context),
-            child: 
-            Stack(
+            child: Stack(
               children: [
                 // Actual Window Content
                 Positioned.fill(
@@ -458,6 +457,7 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
                             lastSelectedSeriesPath = _selectedSeriesPath;
                             _selectedSeriesPath = null;
                             _isSeriesView = false;
+                            Manager.currentDominantColor = null;
 
                             // Reset scroll when directly navigating to library
                             _resetScrollPosition(index);
