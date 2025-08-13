@@ -15,6 +15,7 @@ import '../utils/path_utils.dart';
 import '../utils/text_utils.dart';
 import '../widgets/buttons/button.dart';
 import '../services/anilist/provider/anilist_provider.dart';
+import '../widgets/buttons/hyperlink.dart';
 import '../widgets/buttons/wrapper.dart';
 import '../widgets/dialogs/link_anilist_multi.dart';
 import '../widgets/dialogs/poster_select.dart';
@@ -418,41 +419,16 @@ class SeriesScreenState extends State<SeriesScreen> {
       ),
       colorFilter: null,
       titleLeftAligned: false,
-      title: (style, constraints) {
-        return Positioned(
-          bottom: 0,
-          left: math.max(constraints.maxWidth / 2 - 380 + 10, ScreenUtils.kInfoBarWidth - (6 * 2) + 42),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.start,
-            children: [
-              // Series title
-              SizedBox(
-                width: ScreenUtils.kMaxContentWidth - ScreenUtils.kInfoBarWidth - 32,
-                child: Text(
-                  series.displayTitle,
-                  style: const TextStyle(
-                    fontSize: 32,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-              // Watched percentage
-              Text(
-                'Episodes: ${series.totalEpisodes} | Watched: ${series.watchedEpisodes} (${(series.watchedPercentage * 100).round()}%)',
-                style: const TextStyle(
-                  fontSize: 16,
-                  color: Colors.white,
-                ),
-              ),
-              VDiv(16),
-            ],
+      title: (style, constraints) => Text(series.displayTitle, style: style),
+      children: [
+        Text(
+          'Episodes: ${series.totalEpisodes} | Watched: ${series.watchedEpisodes} (${(series.watchedPercentage * 100).round()}%)',
+          style: const TextStyle(
+            fontSize: 16,
+            color: Colors.white,
           ),
-        );
-      },
-      children: [],
+        )
+      ],
     );
   }
 
@@ -600,6 +576,7 @@ class SeriesScreenState extends State<SeriesScreen> {
   }
 
   Widget _buildInfoBarContent(Series series) {
+    final libraryProvider = Provider.of<Library>(context, listen: false);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -610,14 +587,23 @@ class SeriesScreenState extends State<SeriesScreen> {
           InfoLabel(
             label: 'Anilist Source',
             child: ComboBox<int>(
-              placeholder: const Text('Select Anilist source'),
               isExpanded: true,
+              placeholder: const Text('Select Anilist source'),
               items: series.anilistMappings.map((mapping) {
                 final title = mapping.title ?? 'Anilist ID: ${mapping.anilistId}';
-                final path = _getDisplayPath(mapping.localPath, series.path);
                 return ComboBoxItem<int>(
                   value: mapping.anilistId,
-                  child: Text('$title ($path)'),
+                  child: SizedBox(
+                    width: ScreenUtils.kInfoBarWidth - 106,
+                    child: Tooltip(
+                      message: title,
+                      child: Text(
+                        title,
+                        style: Manager.captionStyle.copyWith(fontSize: 11),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ),
                 );
               }).toList(),
               value: series.primaryAnilistId,
@@ -631,6 +617,7 @@ class SeriesScreenState extends State<SeriesScreen> {
                   // Fetch and load Anilist data
                   await _loadAnilistData(value);
                 }
+                Manager.setState();
               },
             ),
           ),
@@ -649,6 +636,7 @@ class SeriesScreenState extends State<SeriesScreen> {
 
         // Series metadata
         Wrap(
+          alignment: WrapAlignment.spaceBetween,
           spacing: 24,
           runSpacing: 12,
           children: [
@@ -708,12 +696,31 @@ class SeriesScreenState extends State<SeriesScreen> {
             backgroundColor: Colors.white.withOpacity(.3),
           ),
         ),
-        ...[
-          for (int i = 0; i < 30; i++)
-            Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: Text('test $i', style: FluentTheme.of(context).typography.body),
+
+        if (series.metadata != null) ...[
+          VDiv(16),
+          Wrap(alignment: WrapAlignment.spaceBetween, spacing: 8, runSpacing: 8, children: [
+            InfoLabel(
+              label: 'Path',
+              child: Text(
+                series.path.path,
+                style: Manager.captionStyle,
+              ),
             ),
+            InfoLabel(
+              label: 'Size',
+              child: Text(series.metadata!.fileSize()),
+            ),
+            InfoLabel(
+              label: 'First Downloaded',
+              child: Text(series.metadata!.creationTime.pretty()),
+            ),
+            InfoLabel(
+              label: 'Last Modified',
+              child: Text(series.metadata!.lastModified.pretty()),
+            ),
+          ]),
+          VDiv(16),
         ],
       ],
     );
@@ -797,16 +804,10 @@ class SeriesScreenState extends State<SeriesScreen> {
 
       return Align(
         alignment: Alignment.topCenter,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0),
-          child: Padding(
-            padding: const EdgeInsets.only(top: 16.0),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.start,
-              spacing: 12.0,
-              children: seasonWidgets,
-            ),
-          ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.start,
+          spacing: 12.0,
+          children: seasonWidgets,
         ),
       );
     } else {

@@ -981,13 +981,9 @@ class AccountsScreenState extends State<AccountsScreen> {
         return Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Expanded(
-              child: statusCard,
-            ),
+            Expanded(child: statusCard),
             SizedBox(width: spacing),
-            Expanded(
-              child: formatCard,
-            ),
+            Expanded(child: formatCard),
           ],
         );
       } else {

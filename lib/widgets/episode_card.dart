@@ -142,7 +142,8 @@ class _HoverableEpisodeTileState extends State<HoverableEpisodeTile> {
                               height: 3.5,
                               child: Align(
                                 alignment: Alignment.centerLeft,
-                                child: Container(
+                                child: AnimatedContainer(
+                                  duration: shortStickyHeaderDuration,
                                   decoration: BoxDecoration(
                                     borderRadius: BorderRadius.only(bottomLeft: Radius.circular(ScreenUtils.kEpisodeCardBorderRadius), bottomRight: Radius.circular(ScreenUtils.kEpisodeCardBorderRadius)),
                                     color: widget.series.dominantColor,

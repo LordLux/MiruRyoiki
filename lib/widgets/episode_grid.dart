@@ -1,4 +1,5 @@
 import 'package:fluent_ui/fluent_ui.dart';
+import '../manager.dart';
 import '../models/episode.dart';
 import '../models/series.dart';
 import 'episode_card.dart';
@@ -22,20 +23,19 @@ class EpisodeGrid extends StatefulWidget {
     required this.onTap,
     this.expanderKey,
   });
-  
+
   @override
   State<EpisodeGrid> createState() => _EpisodeGridState();
 }
 
 class _EpisodeGridState extends State<EpisodeGrid> {
-
   @override
   Widget build(BuildContext context) {
     if (widget.episodes.isEmpty) {
       return Center(
         child: Text(
           'No episodes found',
-          style: FluentTheme.of(context).typography.body,
+          style: Manager.bodyStyle,
         ),
       );
     }
@@ -70,7 +70,7 @@ class _EpisodeGridState extends State<EpisodeGrid> {
           ),
         ),
         child: Padding(
-          padding: const EdgeInsets.only(left: 16.0, right: 16.0, bottom: 16.0),
+          padding: const EdgeInsets.only(top: 8.0, left: 16.0, right: 16.0, bottom: 16.0),
           child: LayoutBuilder(builder: (context, constraints) {
             return GridView.builder(
               shrinkWrap: true,
@@ -78,8 +78,8 @@ class _EpisodeGridState extends State<EpisodeGrid> {
               gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: (constraints.maxWidth ~/ 200).clamp(1, 10),
                 childAspectRatio: 1.78, // 16:9 aspect ratio
-                crossAxisSpacing: 8,
-                mainAxisSpacing: 8,
+                crossAxisSpacing: 12,
+                mainAxisSpacing: 12,
               ),
               itemCount: widget.episodes.length,
               itemBuilder: (context, index) {
