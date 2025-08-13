@@ -39,6 +39,7 @@ class AnilistProvider extends ChangeNotifier with WidgetsBindingObserver {
   final Duration _syncInterval = const Duration(minutes: 30);
   bool _isSyncing = false;
   ValueNotifier<String?> syncStatusMessage = ValueNotifier(null);
+  DateTime? _lastUserDataRefreshTime;
 
   /// Cache
   DateTime? _lastListsCacheTime;

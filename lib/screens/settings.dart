@@ -3,6 +3,7 @@
 
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart' as mat;
 import 'package:flutter_acrylic/window_effect.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:miruryoiki/widgets/gradient_mask.dart';
@@ -31,6 +32,7 @@ import '../utils/path_utils.dart';
 import '../utils/screen_utils.dart';
 import '../utils/time_utils.dart';
 import '../widgets/buttons/button.dart';
+import '../widgets/buttons/hyperlink.dart';
 import '../widgets/buttons/wrapper.dart';
 import '../widgets/enum_toggle.dart';
 import '../widgets/series_image.dart';
@@ -1321,9 +1323,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                       title: Text('Log Files Location', style: Manager.bodyStrongStyle),
                                       content: Padding(
                                         padding: EdgeInsets.only(right: 8.0),
-                                        child: Text(
-                                          'Log files are stored in the application data directory. Each session creates a unique log file.',
-                                          style: Manager.bodyStyle,
+                                        child: Wrap(
+                                          crossAxisAlignment: WrapCrossAlignment.center,
+                                          children: [
+                                            Text(
+                                              'Log files are stored in the ',
+                                              style: Manager.bodyStyle,
+                                            ),
+                                            Transform.translate(
+                                              offset: Offset(10, 1.25),
+                                              child: WrappedHyperlinkButton(
+                                                text: 'application data directory',
+                                                url: "file:///${miruRyoikiSaveDirectory.path}/logs",
+                                                icon: Icon(mat.Icons.folder_outlined, size: 19),
+                                                style: Manager.bodyStyle,
+                                              ),
+                                            ),
+                                            Text(
+                                              '. Each session creates a unique log file.',
+                                              style: Manager.bodyStyle,
+                                            ),
+                                          ],
                                         ),
                                       ),
                                       severity: InfoBarSeverity.info,

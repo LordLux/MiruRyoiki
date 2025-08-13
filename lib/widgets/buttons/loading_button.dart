@@ -13,7 +13,7 @@ class LoadingButton extends StatefulWidget {
   final bool isFilled;
   final String? tooltip;
   final Widget? tooltipWidget;
-  final Color? filledColor;
+  final Color filledColor;
   final Color? hoverFillColor;
   final bool expand;
 
@@ -28,7 +28,7 @@ class LoadingButton extends StatefulWidget {
     this.isFilled = false,
     this.tooltip,
     this.tooltipWidget,
-    this.filledColor,
+    this.filledColor = Colors.transparent,
     this.hoverFillColor,
     this.expand = false,
   });
@@ -55,12 +55,10 @@ class LoadingButtonState extends State<LoadingButton> {
       isLoading: widget.isLoading,
       tooltip: widget.tooltip,
       tooltipWidget: widget.tooltipWidget,
-      child: (_) {
+      child: (isHovering) {
         ButtonStyle copy = ButtonStyle(
           padding: WidgetStatePropertyAll(EdgeInsets.zero),
-          backgroundColor: WidgetStateProperty.resolveWith<Color?>(
-            (states) => states.contains(WidgetState.hovered) ? widget.hoverFillColor : widget.filledColor,
-          ),
+          backgroundColor: WidgetStateProperty.all<Color?>(isHovering ? widget.hoverFillColor : widget.filledColor),
         );
         Widget btn(Widget child) => Button(
               onPressed: widget.isButtonDisabled ? null : widget.onPressed,

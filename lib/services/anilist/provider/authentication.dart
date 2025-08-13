@@ -56,6 +56,16 @@ extension AnilistProviderAuthentication on AnilistProvider {
   Future<void> refreshUserData() async {
     if (!isLoggedIn) return;
 
+    final lastRefreshDuration = _lastUserDataRefreshTime != null //
+        ? now.difference(_lastUserDataRefreshTime!)
+        : const Duration(minutes: 1); // Default to a long time if null
+
+    if (lastRefreshDuration.inSeconds < 15) {
+      _isLoading = false;
+      return;
+    }
+    _lastUserDataRefreshTime = now;
+
     _isLoading = true;
     notifyListeners();
 
@@ -116,7 +126,7 @@ extension AnilistProviderAuthentication on AnilistProvider {
         logDebug('No Anilist user cache found');
         return false;
       }
-      
+
       final userJson = await file.readAsString();
       final userData = jsonDecode(userJson) as Map<String, dynamic>;
 
