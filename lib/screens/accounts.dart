@@ -1225,7 +1225,7 @@ class AccountsScreenState extends State<AccountsScreen> {
       //
       // Favorite Anime section
       if (favorites.anime?.nodes != null && favorites.anime!.nodes!.isNotEmpty) ...[
-        VDiv(16),
+        VDiv(8),
         Text(
           'Favorite Anime',
           style: Manager.bodyStrongStyle,
@@ -1236,6 +1236,7 @@ class AccountsScreenState extends State<AccountsScreen> {
       //
       // Favorite Staff section
       if (favorites.characters?.nodes != null && favorites.characters!.nodes!.isNotEmpty) ...[
+        VDiv(8),
         Text(
           'Favorite Characters',
           style: Manager.bodyStrongStyle,
@@ -1244,7 +1245,7 @@ class AccountsScreenState extends State<AccountsScreen> {
         buildList(favorites.characters!),
       ],
       if (favorites.staff?.nodes != null && favorites.staff!.nodes!.isNotEmpty) ...[
-        VDiv(16),
+        VDiv(8),
         Text(
           'Favorite Staff',
           style: Manager.bodyStrongStyle,

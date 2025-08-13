@@ -37,11 +37,19 @@ class _IsolateError {
   _IsolateError(this.error, this.stackTrace);
 }
 
+class _IsolateStarted {
+  const _IsolateStarted();
+}
+
 Future<void> _isolateEntry(dynamic isolateTask) async {
   final _IsolateTask data = isolateTask as _IsolateTask;
   BackgroundIsolateBinaryMessenger.ensureInitialized(data.token);
 
   try {
+    // Send a signal that the task is starting
+    if (data.params is ProcessFilesParams) {
+      data.params.replyPort.send(const _IsolateStarted());
+    }
     // The task is now responsible for sending its own completion message.
     await Function.apply(data.task, [data.params]);
   } catch (e, stack) {
@@ -61,6 +69,7 @@ class IsolateManager {
   Future<R> runIsolateWithProgress<P, R>({
     required dynamic Function(P params) task,
     required P params,
+    void Function()? onStart,
     required void Function(int processed, int total) onProgress,
   }) async {
     final completer = Completer<R>();
@@ -83,7 +92,9 @@ class IsolateManager {
     );
 
     receivePort.listen((message) {
-      if (message is _IsolateProgressUpdate) {
+      if (message is _IsolateStarted) {
+        if (onStart != null) onStart();
+      } else if (message is _IsolateProgressUpdate) {
         onProgress(message.processed, message.total);
       } else if (message is _IsolateError) {
         completer.completeError(message.error, StackTrace.fromString(message.stackTrace));
@@ -129,9 +140,11 @@ Future<void> processFilesIsolate(ProcessFilesParams params) async {
       logErr('Error processing file in isolate: ${filePath.path}', e, stack);
     } finally {
       processedCount++;
+      // final int divisions = (totalFiles ~/ 10).clamp(1, totalFiles);
+
       // Send a progress update after each file.
-      if (processedCount % 10 == 0 || processedCount == totalFiles) {
-        // Send progress update every 10 files or on completion
+      if (processedCount % 5 == 0 || processedCount == totalFiles) {
+        // Send progress update every 5 files or on completion
         params.replyPort.send(_IsolateProgressUpdate(processedCount, totalFiles));
       }
     }

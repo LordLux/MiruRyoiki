@@ -153,7 +153,7 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
       await Future.delayed(const Duration(milliseconds: 1000)); // otherwise splash screen will be too short
       //
 
-      Future.delayed(Duration(milliseconds: 150), () => _splashOpacityController.reverse());
+      Future.delayed(Duration(milliseconds: 350), () => _splashOpacityController.reverse()); // start fade out of logo
       await Future.delayed(splashScreenFadeAnimationIn);
     } catch (e, st) {
       logErr('Error during app initialization', e, st);
