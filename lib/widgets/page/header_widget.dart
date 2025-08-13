@@ -1,4 +1,4 @@
-import 'dart:math' as math show max;
+import 'dart:math' as math show max, min;
 
 import 'package:fluent_ui/fluent_ui.dart';
 
@@ -99,20 +99,16 @@ class _HeaderWidgetState extends State<HeaderWidget> {
               mainAxisAlignment: MainAxisAlignment.start,
               children: [
                 // Series title
-                LayoutBuilder(
-                  builder: (context, constraints) {
-                    return SizedBox(
-                      width: ScreenUtils.kMaxContentWidth - ScreenUtils.kInfoBarWidth - 32,
-                      child: widget.title(
-                        const TextStyle(
-                          fontSize: 32,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                        constraints,
-                      ),
-                    );
-                  },
+                SizedBox(
+                  width: math.min(ScreenUtils.kMaxContentWidth, constraints.maxWidth - 16 /*right padding*/) - ScreenUtils.kInfoBarWidth - 32,
+                  child: widget.title(
+                    const TextStyle(
+                      fontSize: 32,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                    constraints,
+                  ),
                 ),
                 VDiv(8),
                 ...widget.children,
