@@ -13,9 +13,17 @@ class SettingCategoryButton extends StandardButton {
     required void Function(int index) onPressed,
     this.isSelected = false,
   }) : super(
-          label: Text(SettingsScreenState.settingsList[index] ?? ""),
+          label: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SettingsScreenState.settingsList[index]["icon"] as Widget,
+              const SizedBox(width: 8),
+              Text(SettingsScreenState.settingsList[index]["title"] ?? ""),
+            ],
+          ),
           onPressed: () => onPressed(index),
           expand: true,
+          isWide: true,
         );
 
   @override
