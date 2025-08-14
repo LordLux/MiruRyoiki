@@ -24,11 +24,7 @@ class HeaderWidget extends StatefulWidget {
     this.titleLeftAligned = false,
     this.image_widget,
     this.headerPadding = const EdgeInsets.only(bottom: 0.0),
-  })  : assert(
-          image != null || image_widget != null,
-          'Either image or image_widget must be provided',
-        ),
-        assert(
+  }) : assert(
           !(image != null && image_widget != null),
           'Only one of image or image_widget can be provided',
         );
@@ -110,9 +106,8 @@ class _HeaderWidgetState extends State<HeaderWidget> {
                     constraints,
                   ),
                 ),
-                VDiv(8),
                 ...widget.children,
-                if (widget.children.isNotEmpty) VDiv(12),
+                if (widget.children.isNotEmpty) VDiv(8),
               ],
             ),
           ),

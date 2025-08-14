@@ -8,6 +8,7 @@ import 'package:flutter_acrylic/window_effect.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:miruryoiki/widgets/gradient_mask.dart';
 import 'package:miruryoiki/widgets/buttons/loading_button.dart';
+import 'package:miruryoiki/widgets/page/infobar.dart';
 import 'package:provider/provider.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:smooth_scroll_multiplatform/smooth_scroll_multiplatform.dart';
@@ -20,6 +21,7 @@ import '../main.dart';
 import '../manager.dart';
 import '../models/formatter/action.dart';
 import '../models/series.dart';
+import '../services/anilist/provider/anilist_provider.dart';
 import '../services/navigation/dialogs.dart';
 import '../services/navigation/shortcuts.dart';
 import '../services/navigation/show_info.dart';
@@ -33,9 +35,13 @@ import '../utils/screen_utils.dart';
 import '../utils/time_utils.dart';
 import '../widgets/buttons/button.dart';
 import '../widgets/buttons/hyperlink.dart';
+import '../widgets/buttons/setting_category_button.dart';
 import '../widgets/buttons/wrapper.dart';
 import '../widgets/enum_toggle.dart';
+import '../widgets/page/header_widget.dart';
+import '../widgets/page/page.dart';
 import '../widgets/series_image.dart';
+import '../widgets/widget_image_provider.dart';
 
 class SettingsScreen extends StatefulWidget {
   final ScrollController scrollController;
@@ -43,7 +49,7 @@ class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key, required this.scrollController});
 
   @override
-  State<SettingsScreen> createState() => _SettingsScreenState();
+  State<SettingsScreen> createState() => SettingsScreenState();
 }
 
 // ignore: non_constant_identifier_names
@@ -63,11 +69,11 @@ List<WindowEffect> get _PlatformWindowEffects => switch (defaultTargetPlatform) 
       _ => [WindowEffect.disabled],
     };
 
-class _SettingsScreenState extends State<SettingsScreen> {
+class SettingsScreenState extends State<SettingsScreen> {
   FlyoutController controller = FlyoutController();
   Color tempColor = Colors.transparent;
-  late double _headerHeight;
   List<SeriesFormatPreview> _issuesPreview = [];
+
   // ignore: unused_field
   bool _isFormatting = false;
   bool _isOpenFolderHovered = false;
@@ -79,6 +85,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _isSelectingFolder = false;
 
   final FocusNode fontSizeFocusNode = FocusNode();
+
+  int _selectedSettingCategory = 0;
+
+  static final Map<int, String> settingsList = {
+    0: "Library",
+    1: "Appearance",
+    2: "Behaviour",
+    3: "Advanced",
+    4: "About ${Manager.appTitle}",
+  };
 
   Widget standard(BuildContext context) {
     return Column(
@@ -499,7 +515,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-// Helper method to build a summary item
+  // Helper method to build a summary item
   Widget _buildSummaryItem(String label, String value) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4.0),
@@ -513,7 +529,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-// Helper method to count actions of a specific type
+  // Helper method to count actions of a specific type
   int _countActionType(Map<PathString, SeriesFormatPreview> results, ActionType type) {
     int count = 0;
     for (final preview in results.values) {
@@ -522,7 +538,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return count;
   }
 
-// Build a list item for a series with issues
+  // Build a list item for a series with issues
   Widget _buildSeriesIssueItem(BuildContext context, SeriesFormatPreview preview, Series? series, List previewSeries, int index) {
     return Card(
       child: Row(
@@ -629,7 +645,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-// Apply formatting for a single series
+  // Apply formatting for a single series
   Future<void> _applyFormattingForSeries(BuildContext context, SeriesFormatPreview preview) async {
     try {
       final result = await applySeriesFormatting(preview, skipIssues: false);
@@ -661,7 +677,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   void initState() {
     super.initState();
-    _headerHeight = ScreenUtils.kMinHeaderHeight;
 
     nextFrame(() {
       final settings = Provider.of<SettingsManager>(context, listen: false);
@@ -674,750 +689,743 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final library = Provider.of<Library>(context);
     final settings = Provider.of<SettingsManager>(context);
 
-    return ScaffoldPage(
-      content: Padding(
-        padding: const EdgeInsets.only(top: 15),
-        child: Stack(
-          children: [
-            // Body
-            Positioned(
-              child: SizedBox(
-                width: ScreenUtils.kMaxContentWidth - ScreenUtils.kInfoBarWidth,
-                child: FadingEdgeScrollView(
-                  fadeEdges: const EdgeInsets.only(top: 70, bottom: 32),
-                  debug: false,
-                  child: ValueListenableBuilder(
-                      valueListenable: KeyboardState.ctrlPressedNotifier,
-                      builder: (context, isCtrlPressed, _) {
-                        return DynMouseScroll(
-                          stopScroll: KeyboardState.ctrlPressedNotifier,
-                          enableSmoothScroll: Manager.animationsEnabled,
-                          scrollSpeed: 2.0,
-                          controller: widget.scrollController,
-                          durationMS: 300,
-                          animationCurve: Curves.ease,
-                          // ignore: no_leading_underscores_for_local_identifiers
-                          builder: (context, _controller, physics) {
-                            return ListView(
-                              controller: _controller,
-                              physics: isCtrlPressed ? const NeverScrollableScrollPhysics() : physics,
-                              padding: const EdgeInsets.only(left: 20, right: 20, top: 80, bottom: 20),
-                              children: [
-                                // Library location section
-                                SettingsCard(
-                                  children: [
-                                    Text(
-                                      'Library Location',
-                                      style: Manager.subtitleStyle,
-                                    ),
-                                    VDiv(12),
-                                    Text(
-                                      'Select the folder that contains your media library. '
-                                      'The app will scan this folder for video files.',
-                                      style: Manager.bodyStyle,
-                                    ),
-                                    VDiv(24),
-                                    Row(
-                                      children: [
-                                        Expanded(
-                                          child: SizedBox(
-                                            height: 34,
-                                            child: Stack(
-                                              alignment: Alignment.centerRight,
-                                              children: [
-                                                TextBox(
-                                                  placeholder: 'No folder selected',
-                                                  controller: TextEditingController(text: library.libraryPath ?? ''),
-                                                  readOnly: true,
-                                                  enabled: false,
-                                                ),
-                                                Padding(
-                                                  padding: const EdgeInsets.all(3),
-                                                  child: ValueListenableBuilder(
-                                                      valueListenable: KeyboardState.shiftPressedNotifier,
-                                                      builder: (context, isShiftPressed, _) {
-                                                        return MouseButtonWrapper(
-                                                          tooltip: isShiftPressed ? 'Copy Library Folder Path' : 'Open Library Folder',
-                                                          child: (_) => SizedBox(
-                                                            height: 28,
-                                                            child: MouseRegion(
-                                                              onEnter: (_) => setState(() => _isOpenFolderHovered = true),
-                                                              onExit: (_) => setState(() => _isOpenFolderHovered = false),
-                                                              child: IconButton(
-                                                                icon: Transform.translate(
-                                                                  offset: isShiftPressed ? Offset(-.5, -.5) : Offset(0, -1),
-                                                                  child: AnimatedRotation(
-                                                                    turns: isShiftPressed ? -0.125 : 0,
-                                                                    duration: getDuration(const Duration(milliseconds: 40)),
-                                                                    child: Icon(
-                                                                      isShiftPressed ? Symbols.link : (_isOpenFolderHovered ? Symbols.folder_open : Symbols.folder),
-                                                                      size: 18,
-                                                                      color: FluentTheme.of(context).resources.textFillColorPrimary,
-                                                                    ),
-                                                                  ),
-                                                                ),
-                                                                onPressed: library.libraryPath == null
-                                                                    ? null
-                                                                    : () {
-                                                                        if (isShiftPressed) {
-                                                                          // Copy path to clipboard
-                                                                          snackBar('Library path copied to clipboard', severity: InfoBarSeverity.success);
-                                                                          copyToClipboard(library.libraryPath!);
-                                                                          return;
-                                                                        }
-                                                                        // Open path in file explorer
-                                                                        try {
-                                                                          Process.run('explorer', [library.libraryPath!]);
-                                                                        } catch (e, stackTrace) {
-                                                                          snackBar(
-                                                                            'Failed to open library folder: $e',
-                                                                            severity: InfoBarSeverity.error,
-                                                                            exception: e,
-                                                                            stackTrace: stackTrace,
-                                                                          );
-                                                                        }
-                                                                      },
-                                                              ),
-                                                            ),
-                                                          ),
-                                                        );
-                                                      }),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                        ),
-                                        const SizedBox(width: 6),
-                                        LoadingButton(
-                                          label: 'Scan Library',
-                                          onPressed: () => library.reloadLibrary(force: true),
-                                          isLoading: library.isLoading,
-                                          isSmall: true,
-                                          isAlreadyBig: true,
-                                        ),
-                                        const SizedBox(width: 6),
-                                        NormalButton(
-                                          label: 'Browse',
-                                          isFilled: true,
-                                          isSmall: true,
-                                          tooltip: 'Select Library Folder',
-                                          isLoading: _isSelectingFolder,
-                                          onPressed: () async {
-                                            setState(() => _isSelectingFolder = true);
+    return MiruRyoikiHeaderInfoBarPage(
+      headerWidget: HeaderWidget(
+        title: (_, __) => PageHeader(title: Text('Settings', style: Manager.titleLargeStyle)),
+        headerPadding: EdgeInsets.zero,
+      ),
+      infobar: (noHeaderBanner) => _buildInfoBar(noHeaderBanner),
+      content: _buildContent(library, settings),
+      hideInfoBar: false,
+      noHeaderBanner: true,
+    );
+  }
 
-                                            final result = await FilePicker.platform.getDirectoryPath(
-                                              dialogTitle: 'Select Library Folder',
-                                            );
-
-                                            setState(() => _isSelectingFolder = false);
-
-                                            if (result != null) library.setLibraryPath(result);
-                                          },
-                                        ),
-                                      ],
-                                    ),
-                                    if (library.libraryPath != null) ...[],
-
-                                    VDiv(24),
-                                    Text(
-                                      'Series Formatter',
-                                      style: Manager.subtitleStyle,
-                                    ),
-                                    VDiv(12),
-                                    Text(
-                                      'The Series Formatter helps organize your media files into a standardized structure.',
-                                      style: Manager.bodyStyle,
-                                    ),
-                                    VDiv(16),
-                                    NormalButton(
-                                      label: 'Format Series',
-                                      isLoading: _isFormatting,
-                                      isFilled: true,
-                                      onPressed: () => _showSeriesFormatterDialog(context),
-                                    ),
-
-                                    // This section will show series with formatting issues
-                                    if (_issuesPreview.isNotEmpty) ...[
-                                      VDiv(24),
-                                      Text('Last Scan: ', style: Manager.subtitleStyle),
-                                      VDiv(12),
-                                      Expander(
-                                        header: Text(
-                                          "Series that couldn't be automatically parsed (${_issuesPreview.length})",
-                                          style: Manager.bodyStrongStyle,
-                                        ),
-                                        initiallyExpanded: true,
-                                        content: SizedBox(
-                                          height: 117.0 * _issuesPreview.length,
-                                          child: SingleChildScrollView(
-                                            child: Column(
-                                              mainAxisSize: MainAxisSize.min,
-                                              children: _issuesPreview.map((preview) {
-                                                final series = library.getSeriesByPath(preview.seriesPath);
-                                                return _buildSeriesIssueItem(context, preview, series, _issuesPreview, _issuesPreview.indexOf(preview));
-                                              }).toList(),
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ],
-                                ),
-                                VDiv(24),
-                                // Appearance section
-                                Builder(builder: (context) {
-                                  final appTheme = context.watch<AppTheme>();
-
-                                  return SettingsCard(
-                                    children: [
-                                      Text(
-                                        'Appearance',
-                                        style: Manager.subtitleStyle,
-                                      ),
-                                      VDiv(6),
-                                      // Theme and font effect settings
-                                      ...[
-                                        Text('Edit how MiruRyoiki looks and feels.', style: Manager.bodyStyle),
-                                        VDiv(24),
-                                        // Row(children: [
-                                        //   // Theme
-                                        //   const Text('Theme:'),
-                                        //   const SizedBox(width: 12),
-                                        //   ComboBox<ThemeMode>(
-                                        //     value: appTheme.mode,
-                                        //     items: <ThemeMode>[ThemeMode.system, ThemeMode.light, ThemeMode.dark].map((ThemeMode value) {
-                                        //       return ComboBoxItem<ThemeMode>(
-                                        //         value: value,
-                                        //         child: Text(value.name.titleCase),
-                                        //       );
-                                        //     }).toList(),
-                                        //     onChanged: (ThemeMode? newValue) async {
-                                        //       appTheme.mode = newValue!;
-                                        //       appTheme.setEffect(appTheme.windowEffect, context);
-                                        //       settings.themeMode = newValue;
-
-                                        //       await Future.delayed(const Duration(milliseconds: 300));
-                                        //       appTheme.setEffect(appTheme.windowEffect, context);
-                                        //     },
-                                        //   ),
-                                        // ]),
-                                      ],
-                                      // VDiv(12),
-                                      // Effect
-                                      ...[
-                                        Row(
-                                          children: [
-                                            Expanded(
-                                              child: Row(
-                                                children: [
-                                                  Text('Effect:', style: Manager.bodyStyle),
-                                                  const SizedBox(width: 12),
-                                                  ComboBox<WindowEffect>(
-                                                    value: appTheme.windowEffect,
-                                                    items: _PlatformWindowEffects.map((WindowEffect value) {
-                                                      return ComboBoxItem<WindowEffect>(
-                                                        value: value,
-                                                        child: Text(value.name_),
-                                                      );
-                                                    }).toList(),
-                                                    onChanged: (WindowEffect? newValue) {
-                                                      appTheme.windowEffect = newValue!;
-                                                      appTheme.setEffect(newValue, context);
-                                                      settings.windowEffect = newValue;
-                                                    },
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                            if (!Manager.isWin11)
-                                              TooltipTheme(
-                                                data: TooltipThemeData(waitDuration: const Duration(milliseconds: 100)),
-                                                child: Tooltip(
-                                                  message: 'Mica Effect is unfortunately only available on Windows 11',
-                                                  child: Opacity(opacity: .5, child: Icon(FluentIcons.info)),
-                                                ),
-                                              ),
-                                          ],
-                                        ),
-                                      ],
-                                      VDiv(12),
-                                      // Accent Color
-                                      ...[
-                                        Row(
-                                          children: [
-                                            Text('Accent Color:', style: Manager.bodyStyle),
-                                            const SizedBox(width: 12),
-                                            FlyoutTarget(
-                                              controller: controller,
-                                              child: GestureDetector(
-                                                child: Container(
-                                                  width: 34,
-                                                  height: 34,
-                                                  decoration: BoxDecoration(
-                                                    color: settings.accentColor.toAccentColor().light,
-                                                    border: Border.all(
-                                                      color: settings.accentColor.lerpWith(Colors.black, .25),
-                                                      width: 1.25,
-                                                    ),
-                                                    borderRadius: BorderRadius.circular(4),
-                                                  ),
-                                                ),
-                                                onTapDown: (details) {
-                                                  final Offset offset = details.localPosition;
-                                                  final RenderBox renderBox = context.findRenderObject() as RenderBox;
-                                                  final Offset globalOffset = renderBox.localToGlobal(offset);
-                                                  final Offset flyoutOffset = Offset(globalOffset.dx, globalOffset.dy + renderBox.size.height / 3);
-
-                                                  // ignore: avoid_single_cascade_in_expression_statements
-                                                  controller.showFlyout(
-                                                    autoModeConfiguration: FlyoutAutoConfiguration(
-                                                      preferredMode: FlyoutPlacementMode.right,
-                                                      horizontal: true,
-                                                    ),
-                                                    barrierDismissible: true,
-                                                    dismissOnPointerMoveAway: true,
-                                                    dismissWithEsc: true,
-                                                    navigatorKey: rootNavigatorKey.currentState,
-                                                    position: flyoutOffset,
-                                                    builder: (context) {
-                                                      return FlyoutContent(
-                                                        child: ColorPicker(
-                                                          color: settings.accentColor,
-                                                          onChanged: (color) {
-                                                            tempColor = color;
-                                                          },
-                                                          minValue: 100,
-                                                          isAlphaSliderVisible: false,
-                                                          colorSpectrumShape: ColorSpectrumShape.ring,
-                                                          isMoreButtonVisible: false,
-                                                          isColorSliderVisible: false,
-                                                          isColorChannelTextInputVisible: false,
-                                                          isHexInputVisible: false,
-                                                          minSaturation: 80,
-                                                          maxSaturation: 80,
-                                                          isAlphaEnabled: false,
-                                                        ),
-                                                      );
-                                                    },
-                                                  )..then((_) {
-                                                      settings.accentColor = tempColor.saturate(300);
-                                                      appTheme.color = settings.accentColor.toAccentColor();
-                                                      settings.accentColor = settings.accentColor;
-                                                    });
-                                                },
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ],
-                                      // Extra dim for acrylic and mica
-                                      if (appTheme.windowEffect == WindowEffect.aero || appTheme.windowEffect == WindowEffect.acrylic || appTheme.windowEffect == WindowEffect.mica) //
-                                        ...[
-                                        VDiv(12),
-                                        Row(
-                                          children: [
-                                            Text('Dim', style: Manager.bodyStyle),
-                                            const SizedBox(width: 12),
-                                            EnumToggle<Dim>(
-                                              enumValues: Dim.values,
-                                              labelExtractor: (value) => value.name_,
-                                              currentValue: appTheme.dim,
-                                              onChanged: (value) {
-                                                appTheme.dim = value;
-                                                settings.dim = value;
-                                              },
-                                            ),
-                                          ],
-                                        ),
-                                      ],
-                                      VDiv(12),
-                                      // Font Size
-                                      ...[
-                                        Row(
-                                          children: [
-                                            Text('Font Size:', style: Manager.bodyStyle),
-                                            const SizedBox(width: 12),
-                                            ComboBox<double>(
-                                              focusNode: fontSizeFocusNode,
-                                              value: appTheme.fontSize,
-                                              items: <double>[for (double i = ScreenUtils.kMinFontSize; i <= ScreenUtils.kMaxFontSize; i += 2) i].map((double value) {
-                                                return ComboBoxItem<double>(
-                                                  value: value,
-                                                  child: Text(value.toString()),
-                                                );
-                                              }).toList(),
-                                              onChanged: (double? newValue) {
-                                                appTheme.fontSize = newValue!;
-                                                settings.fontSize = newValue;
-                                              },
-                                            ),
-                                          ],
-                                        ),
-                                      ],
-                                      VDiv(16),
-                                      // Disable Animations
-                                      ...[
-                                        Row(
-                                          children: [
-                                            Text(
-                                              'Disable Most Animations',
-                                              style: Manager.bodyStyle,
-                                            ),
-                                            const SizedBox(width: 12),
-                                            ToggleSwitch(
-                                              checked: settings.disableAnimations,
-                                              content: Text(settings.disableAnimations ? 'Animations Disabled' : 'Animations Enabled', style: Manager.bodyStyle),
-                                              onChanged: (value) {
-                                                settings.disableAnimations = value;
-                                              },
-                                            ),
-                                          ],
-                                        ),
-                                      ],
-                                      VDiv(12),
-                                      // Library colors
-                                      ...[
-                                        Row(
-                                          children: [
-                                            Text(
-                                              'Library Cards Colors',
-                                              style: Manager.bodyStyle,
-                                            ),
-                                            const SizedBox(width: 12),
-                                            ToggleSwitch(
-                                              checked: showAccentLibViewCol,
-                                              content: Text(showAccentLibViewCol ? 'Accent' : 'Dominant', style: Manager.bodyStyle),
-                                              onChanged: (value) => setState(() {
-                                                showAccentLibViewCol = value;
-
-                                                // Convert between equivalent modes when toggle changes
-                                                switch (settings.libColView) {
-                                                  case LibraryColorView.alwaysAccent:
-                                                  case LibraryColorView.alwaysDominant:
-                                                    settings.libColView = value ? LibraryColorView.alwaysAccent : LibraryColorView.alwaysDominant;
-                                                    break;
-
-                                                  case LibraryColorView.hoverAccent:
-                                                  case LibraryColorView.hoverDominant:
-                                                    settings.libColView = value ? LibraryColorView.hoverAccent : LibraryColorView.hoverDominant;
-                                                    break;
-
-                                                  case LibraryColorView.none:
-                                                    settings.libColView = LibraryColorView.none;
-                                                    break;
-                                                }
-                                              }),
-                                            ),
-                                            const SizedBox(width: 12),
-                                            Builder(builder: (context) {
-                                              final List<double> customWidths = [140.0, 130, 80.0];
-
-                                              // Define the options based on current toggle state
-                                              final options = showAccentLibViewCol ? [LibraryColorView.alwaysAccent, LibraryColorView.hoverAccent, LibraryColorView.none] : [LibraryColorView.alwaysDominant, LibraryColorView.hoverDominant, LibraryColorView.none];
-
-                                              // Find the correct index in our filtered list
-                                              int initialIndex = options.indexOf(settings.libColView);
-                                              if (initialIndex < 0) initialIndex = 0; // Fallback
-
-                                              return Flexible(
-                                                child: toggle.ToggleSwitch(
-                                                  animate: true,
-                                                  multiLineText: true,
-                                                  animationDuration: dimDuration.inMilliseconds,
-                                                  initialLabelIndex: initialIndex,
-                                                  totalSwitches: 3,
-                                                  customTextStyles: [
-                                                    for (var i = 0; i < options.length; i++) Manager.bodyStyle.copyWith(color: initialIndex == i ? getPrimaryColorBasedOnAccent() : null),
-                                                  ],
-                                                  activeFgColor: getPrimaryColorBasedOnAccent(),
-                                                  activeBgColor: [FluentTheme.of(context).accentColor.lighter],
-                                                  customWidths: customWidths,
-                                                  labels: options.map((opt) => opt.name_).toList(),
-                                                  onToggle: (int? value) {
-                                                    if (value != null && value >= 0 && value < options.length) {
-                                                      settings.libColView = options[value];
-                                                    }
-                                                  },
-                                                ),
-                                              );
-                                            }),
-                                          ],
-                                        ),
-                                      ],
-                                      VDiv(6),
-                                      ...[
-                                        Row(
-                                          children: [
-                                            Text('Dominant Color Source', style: Manager.bodyStyle),
-                                            const SizedBox(width: 12),
-                                            EnumToggle<DominantColorSource>(
-                                              enumValues: DominantColorSource.values,
-                                              labelExtractor: (value) => value.name_,
-                                              currentValue: settings.dominantColorSource,
-                                              onChanged: (value) {
-                                                showSimpleManagedDialog(
-                                                  context: context,
-                                                  id: 'dominantColorSource',
-                                                  title: 'Recalculate Colors?',
-                                                  body: 'Would you like to recalculate all dominant colors using the new source?',
-                                                  onPositive: () {
-                                                    settings.dominantColorSource = value;
-                                                    final library = Provider.of<Library>(context, listen: false);
-                                                    library.calculateDominantColors(forceRecalculate: true);
-
-                                                    snackBar(
-                                                      'Dominant colors recalculated using ${value.name_} source.',
-                                                      severity: InfoBarSeverity.info,
-                                                    );
-                                                  },
-                                                );
-                                              },
-                                            ),
-                                          ],
-                                        ),
-                                      ],
-                                      //
-                                    ],
-                                  );
-                                }),
-                                VDiv(24),
-                                // Behavior section
-                                SettingsCard(
-                                  children: [
-                                    Text(
-                                      'Behavior',
-                                      style: Manager.subtitleStyle,
-                                    ),
-                                    VDiv(12),
-                                    Row(
-                                      children: [
-                                        Column(
-                                          children: [
-                                            Text(
-                                              'Default Poster source for series.',
-                                              style: Manager.bodyStyle,
-                                            ),
-                                            VDiv(12),
-                                            ToggleSwitch(
-                                              checked: Manager.defaultPosterSource == ImageSource.autoAnilist,
-                                              content: Text(Manager.defaultPosterSource == ImageSource.autoAnilist ? 'Prefer Anilist Posters' : 'Prefer Local Posters', style: Manager.bodyStyle),
-                                              onChanged: (value) {
-                                                settings.defaultPosterSource = value ? ImageSource.autoAnilist : ImageSource.autoLocal;
-                                              },
-                                            ),
-                                          ],
-                                        ),
-                                        const SizedBox(width: 24),
-                                        Column(
-                                          children: [
-                                            Text(
-                                              'Default Banner source for series.',
-                                              style: Manager.bodyStyle,
-                                            ),
-                                            VDiv(12),
-                                            ToggleSwitch(
-                                              checked: Manager.defaultBannerSource == ImageSource.autoAnilist,
-                                              content: Text(Manager.defaultBannerSource == ImageSource.autoAnilist ? 'Prefer Anilist Banners' : 'Prefer Local Banners', style: Manager.bodyStyle),
-                                              onChanged: (value) {
-                                                settings.defaultBannerSource = value ? ImageSource.autoAnilist : ImageSource.autoLocal;
-                                              },
-                                            ),
-                                          ],
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                                SizedBox(height: 24),
-                                // Logging section
-                                SettingsCard(
-                                  children: [
-                                    Text(
-                                      'Logging & Debugging',
-                                      style: Manager.subtitleStyle,
-                                    ),
-                                    SizedBox(height: 12),
-                                    Text(
-                                      'Configure logging behavior for debugging and troubleshooting.',
-                                      style: Manager.bodyStyle,
-                                    ),
-                                    SizedBox(height: 24),
-                                    Row(
-                                      children: [
-                                        Expanded(
-                                          child: Column(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
-                                            children: [
-                                              Text(
-                                                'File log level',
-                                                style: Manager.bodyStrongStyle,
-                                              ),
-                                              SizedBox(height: 8),
-                                              Text(
-                                                'Choose which log messages are written to file. Higher levels include all lower levels.',
-                                                style: Manager.bodyStyle,
-                                              ),
-                                              SizedBox(height: 12),
-                                              EnumToggle<LogLevel>(
-                                                enumValues: LogLevel.values,
-                                                labelExtractor: (level) => level.displayName,
-                                                currentValue: settings.fileLogLevel,
-                                                onChanged: (LogLevel newLevel) {
-                                                  settings.fileLogLevel = newLevel;
-                                                  setState(() {
-                                                    if (newLevel == LogLevel.trace)
-                                                      doLogTrace = true;
-                                                    else
-                                                      doLogTrace = false;
-                                                  });
-                                                },
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                        SizedBox(width: 32),
-                                        Expanded(
-                                          child: Column(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
-                                            children: [
-                                              Text(
-                                                'Log retention',
-                                                style: Manager.bodyStrongStyle,
-                                              ),
-                                              SizedBox(height: 8),
-                                              Text(
-                                                'Number of days to keep log files. (0 to disable)\nOlder files are automatically deleted.',
-                                                style: Manager.bodyStyle,
-                                              ),
-                                              SizedBox(height: 12),
-                                              Row(
-                                                mainAxisSize: MainAxisSize.min,
-                                                children: [
-                                                  Expanded(
-                                                    child: NumberBox<int>(
-                                                      value: settings.logRetentionDays,
-                                                      onChanged: (int? value) {
-                                                        if (value != null && value >= 0) settings.logRetentionDays = value;
-                                                      },
-                                                      min: 0,
-                                                      max: 365,
-                                                      mode: SpinButtonPlacementMode.inline,
-                                                    ),
-                                                  ),
-                                                  HDiv(8),
-                                                  Text(
-                                                    'days',
-                                                    style: Manager.bodyStyle.copyWith(
-                                                      color: FluentTheme.of(context).resources.textFillColorSecondary,
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    SizedBox(height: 16),
-                                    InfoBar(
-                                      title: Text('Log Files Location', style: Manager.bodyStrongStyle),
-                                      content: Padding(
-                                        padding: EdgeInsets.only(right: 8.0),
-                                        child: Wrap(
-                                          crossAxisAlignment: WrapCrossAlignment.center,
-                                          children: [
-                                            Text(
-                                              'Log files are stored in the ',
-                                              style: Manager.bodyStyle,
-                                            ),
-                                            Transform.translate(
-                                              offset: Offset(10, 1.25),
-                                              child: WrappedHyperlinkButton(
-                                                text: 'application data directory',
-                                                url: "file:///${miruRyoikiSaveDirectory.path}/logs",
-                                                icon: Icon(mat.Icons.folder_outlined, size: 19),
-                                                style: Manager.bodyStyle,
-                                              ),
-                                            ),
-                                            Text(
-                                              '. Each session creates a unique log file.',
-                                              style: Manager.bodyStyle,
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                      severity: InfoBarSeverity.info,
-                                    ),
-                                    if (Manager.args.isNotEmpty) SizedBox(height: 16),
-                                    if (Manager.args.isNotEmpty)
-                                      InfoBar(
-                                        title: Text('Command Line Arguments', style: Manager.bodyStrongStyle),
-                                        content: Padding(
-                                          padding: EdgeInsets.only(right: 8.0),
-                                          child: Text(
-                                            'Current session arguments: ${Manager.args.join(', ')}',
-                                            style: Manager.bodyStyle,
-                                          ),
-                                        ),
-                                        severity: InfoBarSeverity.info,
-                                        isLong: Manager.args.isNotEmpty && Manager.args.join(', ').length > 50,
-                                      )
-                                  ],
-                                ),
-                                SizedBox(height: 24),
-                                // About section
-                                SettingsCard(
-                                  children: [
-                                    Text(
-                                      'About ${Manager.appTitle}',
-                                      style: Manager.subtitleStyle,
-                                    ),
-                                    VDiv(12),
-                                    Text(
-                                      '${Manager.appTitle} is a video tracking application that integrates with '
-                                      'Media Player Classic: Home Cinema to track your watched videos.',
-                                      style: Manager.bodyStyle,
-                                    ),
-                                    VDiv(24),
-                                    InfoBar(
-                                      title: Text('MPC-HC Integration', style: Manager.bodyStrongStyle),
-                                      content: Padding(
-                                        padding: EdgeInsets.only(right: 8.0),
-                                        child: Text(
-                                          'This app reads data from the Windows Registry to detect videos played in MPC-HC. '
-                                          'Please ensure MPC-HC is installed and configured properly.',
-                                          style: Manager.bodyStyle,
-                                        ),
-                                      ),
-                                      severity: InfoBarSeverity.info,
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            );
-                          },
-                        );
-                      }),
-                ),
-              ),
-            ),
-
-            // Sticky header
-            Positioned.fill(
-              top: 0,
-              child: AnimatedContainer(
-                height: _headerHeight,
-                width: double.infinity,
-                duration: stickyHeaderDuration,
-                curve: Curves.ease,
-                alignment: Alignment.topCenter,
-                child: PageHeader(title: Text('Settings', style: Manager.titleLargeStyle)),
-              ),
-            ),
-          ],
+  MiruRyoikiInfobar _buildInfoBar(bool noHeaderBanner) {
+    return MiruRyoikiInfobar(
+      noHeaderBanner: noHeaderBanner,
+      content: SizedBox(
+        width: ScreenUtils.kInfoBarWidth,
+        child: Column(
+          children: [for (int i = 0; i < settingsList.length; i++) SettingCategoryButton(i, onPressed: (index) => setState(() => _selectedSettingCategory = index))],
         ),
       ),
+      setStateCallback: () => setState(() {}),
+      isProfilePicture: true,
+      getPosterImage: Future.value(WidgetImageProvider(
+        SizedBox(),
+        size: Size(32, 32),
+      )),
+      poster: ({required double width, required double height, required double offset, required double squareness, required ImageProvider<Object>? imageProvider}) => Container(
+        width: width,
+        height: height,
+        color: Colors.red,
+        child: Center(child: Text('Poster')),
+      ),
+      contentPadding: (_) => EdgeInsets.symmetric(horizontal: 8, vertical: 8),
     );
+  }
+
+  Widget _buildContent(Library library, SettingsManager settings) {
+    final list = switch (_selectedSettingCategory) {
+      // Library location section
+      0 => [
+          SettingsCard(
+            children: [
+              Text(
+                settingsList[0]!,
+                style: Manager.subtitleStyle,
+              ),
+              VDiv(12),
+              Text(
+                'Select the folder that contains your media library. '
+                'The app will scan this folder for video files.',
+                style: Manager.bodyStyle,
+              ),
+              VDiv(24),
+              Row(
+                children: [
+                  Expanded(
+                    child: SizedBox(
+                      height: 34,
+                      child: Stack(
+                        alignment: Alignment.centerRight,
+                        children: [
+                          TextBox(
+                            placeholder: 'No folder selected',
+                            controller: TextEditingController(text: library.libraryPath ?? ''),
+                            readOnly: true,
+                            enabled: false,
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.all(3),
+                            child: ValueListenableBuilder(
+                                valueListenable: KeyboardState.shiftPressedNotifier,
+                                builder: (context, isShiftPressed, _) {
+                                  return MouseButtonWrapper(
+                                    tooltip: isShiftPressed ? 'Copy Library Folder Path' : 'Open Library Folder',
+                                    child: (_) => SizedBox(
+                                      height: 28,
+                                      child: MouseRegion(
+                                        onEnter: (_) => setState(() => _isOpenFolderHovered = true),
+                                        onExit: (_) => setState(() => _isOpenFolderHovered = false),
+                                        child: IconButton(
+                                          icon: Transform.translate(
+                                            offset: isShiftPressed ? Offset(-.5, -.5) : Offset(0, -1),
+                                            child: AnimatedRotation(
+                                              turns: isShiftPressed ? -0.125 : 0,
+                                              duration: getDuration(const Duration(milliseconds: 40)),
+                                              child: Icon(
+                                                isShiftPressed ? Symbols.link : (_isOpenFolderHovered ? Symbols.folder_open : Symbols.folder),
+                                                size: 18,
+                                                color: FluentTheme.of(context).resources.textFillColorPrimary,
+                                              ),
+                                            ),
+                                          ),
+                                          onPressed: library.libraryPath == null
+                                              ? null
+                                              : () {
+                                                  if (isShiftPressed) {
+                                                    // Copy path to clipboard
+                                                    snackBar('Library path copied to clipboard', severity: InfoBarSeverity.success);
+                                                    copyToClipboard(library.libraryPath!);
+                                                    return;
+                                                  }
+                                                  // Open path in file explorer
+                                                  try {
+                                                    Process.run('explorer', [library.libraryPath!]);
+                                                  } catch (e, stackTrace) {
+                                                    snackBar(
+                                                      'Failed to open library folder: $e',
+                                                      severity: InfoBarSeverity.error,
+                                                      exception: e,
+                                                      stackTrace: stackTrace,
+                                                    );
+                                                  }
+                                                },
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                }),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  LoadingButton(
+                    label: 'Scan Library',
+                    onPressed: () => library.reloadLibrary(force: true),
+                    isLoading: library.isLoading,
+                    isSmall: true,
+                    isAlreadyBig: true,
+                  ),
+                  const SizedBox(width: 6),
+                  NormalButton(
+                    label: 'Browse',
+                    isFilled: true,
+                    isSmall: true,
+                    tooltip: 'Select Library Folder',
+                    isLoading: _isSelectingFolder,
+                    onPressed: () async {
+                      setState(() => _isSelectingFolder = true);
+
+                      final result = await FilePicker.platform.getDirectoryPath(
+                        dialogTitle: 'Select Library Folder',
+                      );
+
+                      setState(() => _isSelectingFolder = false);
+
+                      if (result != null) library.setLibraryPath(result);
+                    },
+                  ),
+                ],
+              ),
+              if (library.libraryPath != null) ...[],
+
+              VDiv(24),
+              Text(
+                'Series Formatter',
+                style: Manager.subtitleStyle,
+              ),
+              VDiv(12),
+              Text(
+                'The Series Formatter helps organize your media files into a standardized structure.',
+                style: Manager.bodyStyle,
+              ),
+              VDiv(16),
+              NormalButton(
+                label: 'Format Series',
+                isLoading: _isFormatting,
+                isFilled: true,
+                onPressed: () => _showSeriesFormatterDialog(context),
+              ),
+
+              // This section will show series with formatting issues
+              if (_issuesPreview.isNotEmpty) ...[
+                VDiv(24),
+                Text('Last Scan: ', style: Manager.subtitleStyle),
+                VDiv(12),
+                Expander(
+                  header: Text(
+                    "Series that couldn't be automatically parsed (${_issuesPreview.length})",
+                    style: Manager.bodyStrongStyle,
+                  ),
+                  initiallyExpanded: true,
+                  content: SizedBox(
+                    height: 117.0 * _issuesPreview.length,
+                    child: SingleChildScrollView(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: _issuesPreview.map((preview) {
+                          final series = library.getSeriesByPath(preview.seriesPath);
+                          return _buildSeriesIssueItem(context, preview, series, _issuesPreview, _issuesPreview.indexOf(preview));
+                        }).toList(),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+          VDiv(24),
+        ],
+      // Appearance section
+      1 => [
+          Builder(builder: (context) {
+            final appTheme = context.watch<AppTheme>();
+
+            return SettingsCard(
+              children: [
+                Text(
+                  settingsList[1]!,
+                  style: Manager.subtitleStyle,
+                ),
+                VDiv(6),
+                // Theme and font effect settings
+                ...[
+                  Text('Edit how MiruRyoiki looks and feels.', style: Manager.bodyStyle),
+                  VDiv(24),
+                  // Row(children: [
+                  //   // Theme
+                  //   const Text('Theme:'),
+                  //   const SizedBox(width: 12),
+                  //   ComboBox<ThemeMode>(
+                  //     value: appTheme.mode,
+                  //     items: <ThemeMode>[ThemeMode.system, ThemeMode.light, ThemeMode.dark].map((ThemeMode value) {
+                  //       return ComboBoxItem<ThemeMode>(
+                  //         value: value,
+                  //         child: Text(value.name.titleCase),
+                  //       );
+                  //     }).toList(),
+                  //     onChanged: (ThemeMode? newValue) async {
+                  //       appTheme.mode = newValue!;
+                  //       appTheme.setEffect(appTheme.windowEffect, context);
+                  //       settings.themeMode = newValue;
+
+                  //       await Future.delayed(const Duration(milliseconds: 300));
+                  //       appTheme.setEffect(appTheme.windowEffect, context);
+                  //     },
+                  //   ),
+                  // ]),
+                ],
+                // VDiv(12),
+                // Effect
+                ...[
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Row(
+                          children: [
+                            Text('Effect:', style: Manager.bodyStyle),
+                            const SizedBox(width: 12),
+                            ComboBox<WindowEffect>(
+                              value: appTheme.windowEffect,
+                              items: _PlatformWindowEffects.map((WindowEffect value) {
+                                return ComboBoxItem<WindowEffect>(
+                                  value: value,
+                                  child: Text(value.name_),
+                                );
+                              }).toList(),
+                              onChanged: (WindowEffect? newValue) {
+                                appTheme.windowEffect = newValue!;
+                                appTheme.setEffect(newValue, context);
+                                settings.windowEffect = newValue;
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                      if (!Manager.isWin11)
+                        TooltipTheme(
+                          data: TooltipThemeData(waitDuration: const Duration(milliseconds: 100)),
+                          child: Tooltip(
+                            message: 'Mica Effect is unfortunately only available on Windows 11',
+                            child: Opacity(opacity: .5, child: Icon(FluentIcons.info)),
+                          ),
+                        ),
+                    ],
+                  ),
+                ],
+                VDiv(12),
+                // Accent Color
+                ...[
+                  Row(
+                    children: [
+                      Text('Accent Color:', style: Manager.bodyStyle),
+                      const SizedBox(width: 12),
+                      FlyoutTarget(
+                        controller: controller,
+                        child: GestureDetector(
+                          child: Container(
+                            width: 34,
+                            height: 34,
+                            decoration: BoxDecoration(
+                              color: settings.accentColor.toAccentColor().light,
+                              border: Border.all(
+                                color: settings.accentColor.lerpWith(Colors.black, .25),
+                                width: 1.25,
+                              ),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                          ),
+                          onTapDown: (details) {
+                            final Offset offset = details.localPosition;
+                            final RenderBox renderBox = context.findRenderObject() as RenderBox;
+                            final Offset globalOffset = renderBox.localToGlobal(offset);
+                            final Offset flyoutOffset = Offset(globalOffset.dx, globalOffset.dy + renderBox.size.height / 3);
+
+                            // ignore: avoid_single_cascade_in_expression_statements
+                            controller.showFlyout(
+                              autoModeConfiguration: FlyoutAutoConfiguration(
+                                preferredMode: FlyoutPlacementMode.right,
+                                horizontal: true,
+                              ),
+                              barrierDismissible: true,
+                              dismissOnPointerMoveAway: true,
+                              dismissWithEsc: true,
+                              navigatorKey: rootNavigatorKey.currentState,
+                              position: flyoutOffset,
+                              builder: (context) {
+                                return FlyoutContent(
+                                  child: ColorPicker(
+                                    color: settings.accentColor,
+                                    onChanged: (color) {
+                                      tempColor = color;
+                                    },
+                                    minValue: 100,
+                                    isAlphaSliderVisible: false,
+                                    colorSpectrumShape: ColorSpectrumShape.ring,
+                                    isMoreButtonVisible: false,
+                                    isColorSliderVisible: false,
+                                    isColorChannelTextInputVisible: false,
+                                    isHexInputVisible: false,
+                                    minSaturation: 80,
+                                    maxSaturation: 80,
+                                    isAlphaEnabled: false,
+                                  ),
+                                );
+                              },
+                            )..then((_) {
+                                settings.accentColor = tempColor.saturate(300);
+                                appTheme.color = settings.accentColor.toAccentColor();
+                                settings.accentColor = settings.accentColor;
+                              });
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+                // Extra dim for acrylic and mica
+                if (appTheme.windowEffect == WindowEffect.aero || appTheme.windowEffect == WindowEffect.acrylic || appTheme.windowEffect == WindowEffect.mica) //
+                  ...[
+                  VDiv(12),
+                  Row(
+                    children: [
+                      Text('Dim', style: Manager.bodyStyle),
+                      const SizedBox(width: 12),
+                      EnumToggle<Dim>(
+                        enumValues: Dim.values,
+                        labelExtractor: (value) => value.name_,
+                        currentValue: appTheme.dim,
+                        onChanged: (value) {
+                          appTheme.dim = value;
+                          settings.dim = value;
+                        },
+                      ),
+                    ],
+                  ),
+                ],
+                VDiv(12),
+                // Font Size
+                ...[
+                  Row(
+                    children: [
+                      Text('Font Size:', style: Manager.bodyStyle),
+                      const SizedBox(width: 12),
+                      ComboBox<double>(
+                        focusNode: fontSizeFocusNode,
+                        value: appTheme.fontSize,
+                        items: <double>[for (double i = ScreenUtils.kMinFontSize; i <= ScreenUtils.kMaxFontSize; i += 2) i].map((double value) {
+                          return ComboBoxItem<double>(
+                            value: value,
+                            child: Text(value.toString()),
+                          );
+                        }).toList(),
+                        onChanged: (double? newValue) {
+                          appTheme.fontSize = newValue!;
+                          settings.fontSize = newValue;
+                        },
+                      ),
+                    ],
+                  ),
+                ],
+                VDiv(16),
+                // Disable Animations
+                ...[
+                  Row(
+                    children: [
+                      Text(
+                        'Disable Most Animations',
+                        style: Manager.bodyStyle,
+                      ),
+                      const SizedBox(width: 12),
+                      ToggleSwitch(
+                        checked: settings.disableAnimations,
+                        content: Text(settings.disableAnimations ? 'Animations Disabled' : 'Animations Enabled', style: Manager.bodyStyle),
+                        onChanged: (value) {
+                          settings.disableAnimations = value;
+                        },
+                      ),
+                    ],
+                  ),
+                ],
+                VDiv(12),
+                // Library colors
+                ...[
+                  Row(
+                    children: [
+                      Text(
+                        'Library Cards Colors',
+                        style: Manager.bodyStyle,
+                      ),
+                      const SizedBox(width: 12),
+                      ToggleSwitch(
+                        checked: showAccentLibViewCol,
+                        content: Text(showAccentLibViewCol ? 'Accent' : 'Dominant', style: Manager.bodyStyle),
+                        onChanged: (value) => setState(() {
+                          showAccentLibViewCol = value;
+
+                          // Convert between equivalent modes when toggle changes
+                          switch (settings.libColView) {
+                            case LibraryColorView.alwaysAccent:
+                            case LibraryColorView.alwaysDominant:
+                              settings.libColView = value ? LibraryColorView.alwaysAccent : LibraryColorView.alwaysDominant;
+                              break;
+
+                            case LibraryColorView.hoverAccent:
+                            case LibraryColorView.hoverDominant:
+                              settings.libColView = value ? LibraryColorView.hoverAccent : LibraryColorView.hoverDominant;
+                              break;
+
+                            case LibraryColorView.none:
+                              settings.libColView = LibraryColorView.none;
+                              break;
+                          }
+                        }),
+                      ),
+                      const SizedBox(width: 12),
+                      Builder(builder: (context) {
+                        final List<double> customWidths = [140.0, 130, 80.0];
+
+                        // Define the options based on current toggle state
+                        final options = showAccentLibViewCol ? [LibraryColorView.alwaysAccent, LibraryColorView.hoverAccent, LibraryColorView.none] : [LibraryColorView.alwaysDominant, LibraryColorView.hoverDominant, LibraryColorView.none];
+
+                        // Find the correct index in our filtered list
+                        int initialIndex = options.indexOf(settings.libColView);
+                        if (initialIndex < 0) initialIndex = 0; // Fallback
+
+                        return Flexible(
+                          child: toggle.ToggleSwitch(
+                            animate: true,
+                            multiLineText: true,
+                            animationDuration: dimDuration.inMilliseconds,
+                            initialLabelIndex: initialIndex,
+                            totalSwitches: 3,
+                            customTextStyles: [
+                              for (var i = 0; i < options.length; i++) Manager.bodyStyle.copyWith(color: initialIndex == i ? getPrimaryColorBasedOnAccent() : null),
+                            ],
+                            activeFgColor: getPrimaryColorBasedOnAccent(),
+                            activeBgColor: [FluentTheme.of(context).accentColor.lighter],
+                            customWidths: customWidths,
+                            labels: options.map((opt) => opt.name_).toList(),
+                            onToggle: (int? value) {
+                              if (value != null && value >= 0 && value < options.length) {
+                                settings.libColView = options[value];
+                              }
+                            },
+                          ),
+                        );
+                      }),
+                    ],
+                  ),
+                ],
+                VDiv(6),
+                ...[
+                  Row(
+                    children: [
+                      Text('Dominant Color Source', style: Manager.bodyStyle),
+                      const SizedBox(width: 12),
+                      EnumToggle<DominantColorSource>(
+                        enumValues: DominantColorSource.values,
+                        labelExtractor: (value) => value.name_,
+                        currentValue: settings.dominantColorSource,
+                        onChanged: (value) {
+                          showSimpleManagedDialog(
+                            context: context,
+                            id: 'dominantColorSource',
+                            title: 'Recalculate Colors?',
+                            body: 'Would you like to recalculate all dominant colors using the new source?',
+                            onPositive: () {
+                              settings.dominantColorSource = value;
+                              final library = Provider.of<Library>(context, listen: false);
+                              library.calculateDominantColors(forceRecalculate: true);
+
+                              snackBar(
+                                'Dominant colors recalculated using ${value.name_} source.',
+                                severity: InfoBarSeverity.info,
+                              );
+                            },
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                ],
+                //
+              ],
+            );
+          }),
+          VDiv(24),
+        ],
+      // Behavior section
+      2 => [
+          SettingsCard(
+            children: [
+              Text(
+                settingsList[2]!,
+                style: Manager.subtitleStyle,
+              ),
+              VDiv(12),
+              Row(
+                children: [
+                  Column(
+                    children: [
+                      Text(
+                        'Default Poster source for series.',
+                        style: Manager.bodyStyle,
+                      ),
+                      VDiv(12),
+                      ToggleSwitch(
+                        checked: Manager.defaultPosterSource == ImageSource.autoAnilist,
+                        content: Text(Manager.defaultPosterSource == ImageSource.autoAnilist ? 'Prefer Anilist Posters' : 'Prefer Local Posters', style: Manager.bodyStyle),
+                        onChanged: (value) {
+                          settings.defaultPosterSource = value ? ImageSource.autoAnilist : ImageSource.autoLocal;
+                        },
+                      ),
+                    ],
+                  ),
+                  const SizedBox(width: 24),
+                  Column(
+                    children: [
+                      Text(
+                        'Default Banner source for series.',
+                        style: Manager.bodyStyle,
+                      ),
+                      VDiv(12),
+                      ToggleSwitch(
+                        checked: Manager.defaultBannerSource == ImageSource.autoAnilist,
+                        content: Text(Manager.defaultBannerSource == ImageSource.autoAnilist ? 'Prefer Anilist Banners' : 'Prefer Local Banners', style: Manager.bodyStyle),
+                        onChanged: (value) {
+                          settings.defaultBannerSource = value ? ImageSource.autoAnilist : ImageSource.autoLocal;
+                        },
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ],
+          ),
+          SizedBox(height: 24),
+        ],
+      // Logging section
+      3 => [
+          SettingsCard(
+            children: [
+              Text(
+                settingsList[3]!,
+                style: Manager.subtitleStyle,
+              ),
+              SizedBox(height: 12),
+              Text(
+                'Configure logging behavior for debugging and troubleshooting.',
+                style: Manager.bodyStyle,
+              ),
+              SizedBox(height: 24),
+              Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'File log level',
+                          style: Manager.bodyStrongStyle,
+                        ),
+                        SizedBox(height: 8),
+                        Text(
+                          'Choose which log messages are written to file. Higher levels include all lower levels.',
+                          style: Manager.bodyStyle,
+                        ),
+                        SizedBox(height: 12),
+                        EnumToggle<LogLevel>(
+                          enumValues: LogLevel.values,
+                          labelExtractor: (level) => level.displayName,
+                          currentValue: settings.fileLogLevel,
+                          onChanged: (LogLevel newLevel) {
+                            settings.fileLogLevel = newLevel;
+                            setState(() {
+                              if (newLevel == LogLevel.trace)
+                                doLogTrace = true;
+                              else
+                                doLogTrace = false;
+                            });
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                  SizedBox(width: 32),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Log retention',
+                          style: Manager.bodyStrongStyle,
+                        ),
+                        SizedBox(height: 8),
+                        Text(
+                          'Number of days to keep log files. (0 to disable)\nOlder files are automatically deleted.',
+                          style: Manager.bodyStyle,
+                        ),
+                        SizedBox(height: 12),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Expanded(
+                              child: NumberBox<int>(
+                                value: settings.logRetentionDays,
+                                onChanged: (int? value) {
+                                  if (value != null && value >= 0) settings.logRetentionDays = value;
+                                },
+                                min: 0,
+                                max: 365,
+                                mode: SpinButtonPlacementMode.inline,
+                              ),
+                            ),
+                            HDiv(8),
+                            Text(
+                              'days',
+                              style: Manager.bodyStyle.copyWith(
+                                color: FluentTheme.of(context).resources.textFillColorSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(height: 16),
+              Wrap(
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  Text(
+                    'Log files are stored in the ',
+                    style: Manager.bodyStyle,
+                  ),
+                  Transform.translate(
+                    offset: Offset(10, 1.25),
+                    child: WrappedHyperlinkButton(
+                      text: 'application data directory',
+                      url: "file:///${miruRyoikiSaveDirectory.path}/logs",
+                      icon: Icon(mat.Icons.folder_outlined, size: 19),
+                      style: Manager.bodyStyle,
+                    ),
+                  ),
+                  Text(
+                    '. Each session creates a unique log file.',
+                    style: Manager.bodyStyle,
+                  ),
+                ],
+              ),
+              if (Manager.args.isNotEmpty) SizedBox(height: 16),
+              if (Manager.args.isNotEmpty)
+                InfoBar(
+                  title: Text('Command Line Arguments', style: Manager.bodyStrongStyle),
+                  content: Padding(
+                    padding: EdgeInsets.only(right: 8.0),
+                    child: Text(
+                      'Current session arguments: ${Manager.args.join(', ')}',
+                      style: Manager.bodyStyle,
+                    ),
+                  ),
+                  severity: InfoBarSeverity.info,
+                  isLong: Manager.args.isNotEmpty && Manager.args.join(', ').length > 50,
+                )
+            ],
+          ),
+          SizedBox(height: 24),
+        ],
+      // About section
+      4 => [
+          SettingsCard(
+            children: [
+              Text(
+                settingsList[4]!,
+                style: Manager.subtitleStyle,
+              ),
+              VDiv(12),
+              Text(
+                '${Manager.appTitle} is a video tracking application that integrates with '
+                'Media Player Classic: Home Cinema to track your watched videos.',
+                style: Manager.bodyStyle,
+              ),
+              VDiv(24),
+              InfoBar(
+                title: Text('MPC-HC Integration', style: Manager.bodyStrongStyle),
+                content: Padding(
+                  padding: EdgeInsets.only(right: 8.0),
+                  child: Text(
+                    'This app reads data from the Windows Registry to detect videos played in MPC-HC. '
+                    'Please ensure MPC-HC is installed and configured properly.',
+                    style: Manager.bodyStyle,
+                  ),
+                ),
+                severity: InfoBarSeverity.info,
+              ),
+            ],
+          ),
+        ],
+      // Default/fallback
+      _ => <Widget>[],
+    };
+
+    return Column(children: list);
   }
 }
 
