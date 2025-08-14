@@ -257,6 +257,7 @@ class AnilistLinkMultiContentState extends State<_AnilistLinkMultiContent> {
         Text('Current Anilist Links:'),
         SizedBox(height: 10),
         Expanded(
+          //TODO remove a bit of left padding for the image + add borderradius to poster
           child: mappings.isEmpty
               ? Center(
                   child: Column(

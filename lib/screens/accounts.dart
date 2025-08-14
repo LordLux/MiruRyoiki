@@ -152,6 +152,7 @@ class AccountsScreenState extends State<AccountsScreen> {
       colorFilter: anilistProvider.currentUser?.bannerImage != null //
           ? ColorFilter.mode(Colors.black.withOpacity(0.5), BlendMode.darken)
           : null,
+      children: [VDiv(0)], // just to have automatic bottom padding
     );
   }
 
@@ -222,7 +223,7 @@ class AccountsScreenState extends State<AccountsScreen> {
       child: DeferredPointerHandler(
         child: MiruRyoikiHeaderInfoBarPage(
           headerWidget: header(anilistProvider: anilistProvider, isLoggedIn: isLoggedIn),
-          infobar: infoBar(anilistProvider: anilistProvider),
+          infobar: (_) => infoBar(anilistProvider: anilistProvider),
           content: buildMainContent(anilistProvider),
           hideInfoBar: !isLoggedIn,
         ),

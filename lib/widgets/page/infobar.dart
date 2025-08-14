@@ -12,6 +12,7 @@ import '../../utils/time_utils.dart';
 class MiruRyoikiInfobar extends StatefulWidget {
   final Future<ImageProvider<Object>?>? getPosterImage;
   final Widget content;
+  final bool noHeaderBanner;
   final Widget Function({
     required ImageProvider<Object>? imageProvider,
     required double width,
@@ -28,6 +29,7 @@ class MiruRyoikiInfobar extends StatefulWidget {
   const MiruRyoikiInfobar({
     super.key,
     required this.content,
+    this.noHeaderBanner = false,
     this.poster,
     this.getPosterImage,
     this.isProfilePicture = false,
@@ -120,7 +122,7 @@ class _MiruRyoikiInfobarState extends State<MiruRyoikiInfobar> {
                     children: [
                       Expanded(
                         child: Padding(
-                          padding: const EdgeInsets.only(top: 16.0, left: 14.0),
+                          padding: EdgeInsets.only(top: widget.noHeaderBanner ? 0.0 : 16.0, left: 14.0),
                           child: Container(
                             decoration: BoxDecoration(
                               color: Colors.white.withOpacity(0.05),

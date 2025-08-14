@@ -10,10 +10,11 @@ import 'infobar.dart';
 
 class MiruRyoikiHeaderInfoBarPage extends StatefulWidget {
   final HeaderWidget headerWidget;
-  final MiruRyoikiInfobar infobar;
+  final MiruRyoikiInfobar Function(bool noHeaderBanner) infobar;
   final Widget content;
   final Color? backgroundColor;
   final bool hideInfoBar;
+  final bool noHeaderBanner;
 
   const MiruRyoikiHeaderInfoBarPage({
     super.key,
@@ -22,6 +23,7 @@ class MiruRyoikiHeaderInfoBarPage extends StatefulWidget {
     required this.content,
     this.backgroundColor,
     this.hideInfoBar = false,
+    this.noHeaderBanner = false,
   });
 
   @override
@@ -68,7 +70,7 @@ class _MiruRyoikiHeaderInfoBarPageState extends State<MiruRyoikiHeaderInfoBarPag
                       SizedBox(
                         height: double.infinity,
                         width: ScreenUtils.kInfoBarWidth,
-                        child: widget.infobar,
+                        child: widget.infobar(widget.noHeaderBanner),
                       ),
 
                     // Content area on the right
@@ -76,7 +78,7 @@ class _MiruRyoikiHeaderInfoBarPageState extends State<MiruRyoikiHeaderInfoBarPag
                       child: Align(
                         alignment: Alignment.topCenter,
                         child: Padding(
-                          padding: EdgeInsets.only(left: 16.0 * Manager.fontSizeMultiplier, top: 16.0, right: 16.0),
+                          padding: EdgeInsets.only(left: 16.0 * Manager.fontSizeMultiplier, top: widget.noHeaderBanner ? 0.0 : 16.0, right: 16.0),
                           child: ClipRRect(
                             borderRadius: BorderRadius.circular(ScreenUtils.kStatCardBorderRadius),
                             child: ScrollConfiguration(

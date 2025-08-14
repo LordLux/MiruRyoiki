@@ -237,7 +237,7 @@ class SeriesScreenState extends State<SeriesScreen> {
           link: deferredPointerLink,
           child: MiruRyoikiHeaderInfoBarPage(
             headerWidget: _buildHeader(context, series),
-            infobar: _buildInfoBar(context, series),
+            infobar: (_) => _buildInfoBar(context, series),
             content: _buildEpisodesList(context),
             backgroundColor: dominantColor,
           ),
