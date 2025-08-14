@@ -87,14 +87,30 @@ class SettingsScreenState extends State<SettingsScreen> {
   final FocusNode fontSizeFocusNode = FocusNode();
 
   int _selectedSettingCategory = 0;
+  int _rotationCounter = 0;
 
-  static final Map<int, String> settingsList = {
-    0: "Library",
-    1: "Appearance",
-    2: "Behaviour",
-    3: "Advanced",
-    4: "About ${Manager.appTitle}",
-  };
+  static final List<Map<String, dynamic>> settingsList = [
+    {
+      "title": "Library",
+      "icon": Icon(mat.Icons.library_books),
+    },
+    {
+      "title": "Appearance",
+      "icon": Icon(mat.Icons.palette),
+    },
+    {
+      "title": "Behavior",
+      "icon": Icon(mat.Icons.tune),
+    },
+    {
+      "title": "Advanced",
+      "icon": Icon(mat.Icons.settings),
+    },
+    {
+      "title": "About ${Manager.appTitle}",
+      "icon": Icon(mat.Icons.info),
+    },
+  ];
 
   Widget standard(BuildContext context) {
     return Column(
@@ -707,7 +723,14 @@ class SettingsScreenState extends State<SettingsScreen> {
       content: SizedBox(
         width: ScreenUtils.kInfoBarWidth,
         child: Column(
-          children: [for (int i = 0; i < settingsList.length; i++) SettingCategoryButton(i, onPressed: (index) => setState(() => _selectedSettingCategory = index))],
+          children: [
+            for (int i = 0; i < settingsList.length; i++)
+              SettingCategoryButton(i,
+                  onPressed: (index) => setState(() {
+                        _selectedSettingCategory = index;
+                        _rotationCounter++;
+                      }))
+          ],
         ),
       ),
       setStateCallback: () => setState(() {}),
@@ -719,8 +742,13 @@ class SettingsScreenState extends State<SettingsScreen> {
       poster: ({required double width, required double height, required double offset, required double squareness, required ImageProvider<Object>? imageProvider}) => Container(
         width: width,
         height: height,
-        color: Colors.red,
-        child: Center(child: Text('Poster')),
+        color: Colors.transparent,
+        child: Center(
+            child: AnimatedRotation(
+          turns: _rotationCounter.toDouble(),
+          duration: const Duration(milliseconds: 200),
+          child: Transform.scale(scale: 4, child: settingsList[_selectedSettingCategory]["icon"] as Widget),
+        )),
       ),
       contentPadding: (_) => EdgeInsets.symmetric(horizontal: 8, vertical: 8),
     );
@@ -733,7 +761,7 @@ class SettingsScreenState extends State<SettingsScreen> {
           SettingsCard(
             children: [
               Text(
-                settingsList[0]!,
+                settingsList[0]['title'],
                 style: Manager.subtitleStyle,
               ),
               VDiv(12),
@@ -750,7 +778,7 @@ class SettingsScreenState extends State<SettingsScreen> {
                       height: 34,
                       child: Stack(
                         alignment: Alignment.centerRight,
-                        children: [
+                        children: [//TODO make this go above if the horizontal space is too small
                           TextBox(
                             placeholder: 'No folder selected',
                             controller: TextEditingController(text: library.libraryPath ?? ''),
@@ -899,7 +927,7 @@ class SettingsScreenState extends State<SettingsScreen> {
             return SettingsCard(
               children: [
                 Text(
-                  settingsList[1]!,
+                  settingsList[1]["title"],
                   style: Manager.subtitleStyle,
                 ),
                 VDiv(6),
@@ -1215,7 +1243,7 @@ class SettingsScreenState extends State<SettingsScreen> {
           SettingsCard(
             children: [
               Text(
-                settingsList[2]!,
+                settingsList[2]["title"],
                 style: Manager.subtitleStyle,
               ),
               VDiv(12),
@@ -1265,7 +1293,7 @@ class SettingsScreenState extends State<SettingsScreen> {
           SettingsCard(
             children: [
               Text(
-                settingsList[3]!,
+                settingsList[3]["title"],
                 style: Manager.subtitleStyle,
               ),
               SizedBox(height: 12),
@@ -1359,7 +1387,7 @@ class SettingsScreenState extends State<SettingsScreen> {
                     style: Manager.bodyStyle,
                   ),
                   Transform.translate(
-                    offset: Offset(10, 1.25),
+                    offset: Offset(10, .5),
                     child: WrappedHyperlinkButton(
                       text: 'application data directory',
                       url: "file:///${miruRyoikiSaveDirectory.path}/logs",
@@ -1396,7 +1424,7 @@ class SettingsScreenState extends State<SettingsScreen> {
           SettingsCard(
             children: [
               Text(
-                settingsList[4]!,
+                settingsList[4]["title"],
                 style: Manager.subtitleStyle,
               ),
               VDiv(12),

@@ -190,6 +190,7 @@ extension AnilistProviderBackgroundSync on AnilistProvider {
         // Immediate refresh when app comes to foreground
         if (isLoggedIn && !_isOffline) {
           refreshUserData();
+          refreshUserLists(showSnackBar: false);
           _checkConnectivityAndNotify();
         }
         break;

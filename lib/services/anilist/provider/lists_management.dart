@@ -2,12 +2,12 @@ part of 'anilist_provider.dart';
 
 extension AnilistProviderListsManagement on AnilistProvider {
   /// Refresh user lists
-  Future<void> refreshUserLists() async {
+  Future<void> refreshUserLists({bool showSnackBar = true}) async {
     if (!isLoggedIn) return;
 
     final startTime = DateTime.now().millisecondsSinceEpoch;
 
-    snackBar(
+    if (showSnackBar) snackBar(
       'Refreshing user lists...',
       severity: InfoBarSeverity.info,
     );
@@ -28,7 +28,7 @@ extension AnilistProviderListsManagement on AnilistProvider {
           logWarn('Failed to refresh lists: Offline and no cache available');
       }
     } catch (e) {
-      snackBar(
+      if (showSnackBar) snackBar(
         'Failed to refresh user lists: ${e.toString()}',
         severity: InfoBarSeverity.error,
         exception: e,
@@ -41,7 +41,7 @@ extension AnilistProviderListsManagement on AnilistProvider {
     final endTime = DateTime.now().millisecondsSinceEpoch;
     if (endTime - startTime < 1000) await Future.delayed(Duration(milliseconds: 1000 - (endTime - startTime))); // Ensure at least 1 second delay
     
-    snackBar(
+    if (showSnackBar) snackBar(
       'User lists refreshed successfully',
       severity: InfoBarSeverity.success,
     );
