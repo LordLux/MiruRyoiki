@@ -40,22 +40,18 @@ ColorScheme generateColorScheme(Color baseColor, {Brightness brightness = Bright
 
 Color darken(Color color, [double amount = 0.1]) {
   assert(amount >= 0 && amount <= 1, 'Amount must be between 0 and 1');
-  return Color.fromRGBO(
-    (color.red * (1 - amount)).round(),
-    (color.green * (1 - amount)).round(),
-    (color.blue * (1 - amount)).round(),
-    color.opacity,
-  );
+  return _changeLighting(color, amount);
+}
+
+Color _changeLighting(Color color, double amount) {
+  final hsl = HSLColor.fromColor(color);
+  final hslLight = hsl.withLightness((hsl.lightness + amount).clamp(0.0, 1.0));
+  return hslLight.toColor();
 }
 
 Color lighten(Color color, [double amount = 0.1]) {
   assert(amount >= 0 && amount <= 1, 'Amount must be between 0 and 1');
-  return Color.fromRGBO(
-    (color.red * (1 + amount)).round(),
-    (color.green * (1 + amount)).round(),
-    (color.blue * (1 + amount)).round(),
-    color.opacity,
-  );
+  return _changeLighting(color, amount);
 }
 
 Color getDimmable(Color color, BuildContext context, [List<double> opacity = const [0.25, 0.15, 0]]) {

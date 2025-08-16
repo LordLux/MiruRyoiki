@@ -17,6 +17,7 @@ class StandardButton extends StatelessWidget {
   final String? tooltip;
   final Widget? tooltipWidget;
   final bool expand;
+  final EdgeInsets? padding;
 
   const StandardButton({
     super.key,
@@ -30,6 +31,7 @@ class StandardButton extends StatelessWidget {
     this.tooltip,
     this.tooltipWidget,
     this.expand = false,
+    this.padding,
   });
 
   @override
@@ -60,7 +62,7 @@ class StandardButton extends StatelessWidget {
                 duration: shortStickyHeaderDuration,
                 curve: Curves.easeInOut,
                 child: Padding(
-                  padding: EdgeInsets.symmetric(horizontal: isWide ? 16 : 12),
+                  padding: padding ?? EdgeInsets.symmetric(horizontal: isWide ? 16 : 12),
                   child: label,
                 ),
               ),
@@ -90,7 +92,6 @@ class NormalButton extends StatelessWidget {
   final bool isLoading;
   final String? tooltip;
   final Widget? tooltipWidget;
-  
 
   const NormalButton({
     super.key,

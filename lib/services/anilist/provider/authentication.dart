@@ -50,7 +50,7 @@ extension AnilistProviderAuthentication on AnilistProvider {
   }
 
   Future<void> _loadUserLists() async {
-    _userLists = await _anilistService.getUserAnimeLists(userId: _currentUser?.id);
+    _userLists = await _anilistService.getUserAnimeLists(userId: _currentUser?.id, userName: _currentUser?.name);
     notifyListeners();
     Manager.setState();
   }

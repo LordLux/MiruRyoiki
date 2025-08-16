@@ -239,7 +239,7 @@ class StatusBarWidget extends StatelessWidget {
       builder: (context, isShowing, _) {
         return Positioned(
           right: 8,
-          bottom: LibraryScanProgressManager().isShowing ? 8 : 16,
+          bottom: LibraryScanProgressManager().isShowing ? 28 : 8,
           child: AnimatedOpacity(
             opacity: isShowing ? 1.0 : 0.0,
             duration: getDuration(const Duration(milliseconds: 200)),

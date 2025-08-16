@@ -89,28 +89,28 @@ class SettingsScreenState extends State<SettingsScreen> {
   int _selectedSettingCategory = 0;
   int _rotationCounter = 0;
 
-  static final List<Map<String, dynamic>> settingsList = [
-    {
-      "title": "Library",
-      "icon": Icon(mat.Icons.library_books),
-    },
-    {
-      "title": "Appearance",
-      "icon": Icon(mat.Icons.palette),
-    },
-    {
-      "title": "Behavior",
-      "icon": Icon(mat.Icons.tune),
-    },
-    {
-      "title": "Advanced",
-      "icon": Icon(mat.Icons.settings),
-    },
-    {
-      "title": "About ${Manager.appTitle}",
-      "icon": Icon(mat.Icons.info),
-    },
-  ];
+  static List<Map<String, dynamic>> get settingsList => [
+        {
+          "title": "Library",
+          "icon": Icon(mat.Icons.library_books, color: lighten(Manager.accentColor), size: 23),
+        },
+        {
+          "title": "Appearance",
+          "icon": Icon(mat.Icons.palette, color: lighten(Manager.accentColor), size: 23),
+        },
+        {
+          "title": "Behavior",
+          "icon": Icon(mat.Icons.tune, color: lighten(Manager.accentColor), size: 23),
+        },
+        {
+          "title": "Advanced",
+          "icon": Icon(mat.Icons.settings, color: lighten(Manager.accentColor), size: 23),
+        },
+        {
+          "title": "About ${Manager.appTitle}",
+          "icon": Icon(mat.Icons.info, color: lighten(Manager.accentColor), size: 23),
+        },
+      ];
 
   Widget standard(BuildContext context) {
     return Column(
@@ -725,11 +725,14 @@ class SettingsScreenState extends State<SettingsScreen> {
         child: Column(
           children: [
             for (int i = 0; i < settingsList.length; i++)
-              SettingCategoryButton(i,
-                  onPressed: (index) => setState(() {
-                        _selectedSettingCategory = index;
-                        _rotationCounter++;
-                      }))
+              SettingCategoryButton(
+                i,
+                isSelected: _selectedSettingCategory == i,
+                onCategoryPressed: (index) => setState(() {
+                  _selectedSettingCategory = index;
+                  _rotationCounter++;
+                }),
+              )
           ],
         ),
       ),
@@ -778,7 +781,8 @@ class SettingsScreenState extends State<SettingsScreen> {
                       height: 34,
                       child: Stack(
                         alignment: Alignment.centerRight,
-                        children: [//TODO make this go above if the horizontal space is too small
+                        children: [
+                          //TODO make this go above if the horizontal space is too small
                           TextBox(
                             placeholder: 'No folder selected',
                             controller: TextEditingController(text: library.libraryPath ?? ''),

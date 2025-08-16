@@ -73,6 +73,10 @@ extension AnilistServiceAnimeDetails on AnilistService {
       );
 
       if (result.hasException) {
+        if (result.exception is OperationException && result.exception!.linkException is UnknownException && result.exception!.linkException!.originalException is TimeoutException) {
+          logWarn('Anilist anime details GET request timed out');
+          return null;
+        }
         logErr('Error getting anime details', result.exception);
         return null;
       }
@@ -159,6 +163,10 @@ extension AnilistServiceAnimeDetails on AnilistService {
       );
 
       if (result.hasException) {
+        if (result.exception is OperationException && result.exception!.linkException is UnknownException && result.exception!.linkException!.originalException is TimeoutException) {
+          logWarn('Anilist animes details GET request timed out');
+          return {};
+        }
         logErr('Error getting anime details', result.exception);
         return {};
       }
@@ -281,6 +289,10 @@ extension AnilistServiceAnimeDetails on AnilistService {
       );
 
       if (result.hasException) {
+        if (result.exception is OperationException && result.exception!.linkException is UnknownException && result.exception!.linkException!.originalException is TimeoutException) {
+          logWarn('Anilist anime lists GET request timed out');
+          return {};
+        }
         logErr('2 | Error getting anime lists', result.exception);
         return {};
       }
