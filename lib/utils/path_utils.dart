@@ -113,6 +113,7 @@ String? _miruRyoiokiSaveDirectoryPath;
 /// Initializes and stores the MiruRyoiki save directory path.
 /// Call this once at app startup (e.g., in main()).
 Future<void> initializeMiruRyoiokiSaveDirectory() async {
+  if (_miruRyoiokiSaveDirectoryPath != null) return; // Already initialized
   final appDataDir = await getApplicationSupportDirectory();
   final parentPath = appDataDir.path.split('com.lordlux').first;
   final miruRyoiokiDir = Directory('${parentPath}MiruRyoiki');
