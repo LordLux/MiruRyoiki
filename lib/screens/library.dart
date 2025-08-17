@@ -11,6 +11,7 @@ import '../main.dart';
 import '../models/anilist/anime.dart';
 import '../models/anilist/user_data.dart';
 import '../models/anilist/user_list.dart';
+import '../services/anilist/queries/anilist_service.dart';
 import '../services/library/library_provider.dart';
 import '../models/series.dart';
 import '../services/anilist/provider/anilist_provider.dart';
@@ -556,7 +557,7 @@ class LibraryScreenState extends State<LibraryScreen> {
     final allLists = <String>[];
 
     // Add standard lists in default order
-    for (final listName in ['CURRENT', 'PLANNING', 'PAUSED', 'COMPLETED', 'DROPPED', 'REPEATING']) {
+    for (final listName in AnilistService.statusListNamesApi) {
       if (anilistProvider.userLists.containsKey(listName)) {
         allLists.add(listName);
       }
@@ -591,7 +592,7 @@ class LibraryScreenState extends State<LibraryScreen> {
               proxyDecorator: (child, index, animation) {
                 _isReordering = true;
                 final listName = _customListOrder[index];
-                final displayName = listName == '__unlinked' ? 'Unlinked' : StatusStatistic.fromApiListName(listName);
+                final displayName = listName == '__unlinked' ? 'Unlinked' : StatusStatistic.statusNameToPretty(listName);
 
                 return AnimatedReorderableTile(
                   key: ValueKey('${listName}_dragging'),
@@ -618,7 +619,7 @@ class LibraryScreenState extends State<LibraryScreen> {
               prototypeItem: SizedBox(height: childHeight),
               itemBuilder: (context, index) {
                 final listName = _customListOrder[index];
-                final displayName = listName == '__unlinked' ? 'Unlinked' : StatusStatistic.fromApiListName(listName);
+                final displayName = listName == '__unlinked' ? 'Unlinked' : StatusStatistic.statusNameToPretty(listName);
 
                 return AnimatedReorderableTile(
                   key: ValueKey(listName),
@@ -1027,7 +1028,7 @@ class LibraryScreenState extends State<LibraryScreen> {
 
       // sort them to have CURRENT, PLAN TO WATCH, ON HOLD, COMPLETED, DROPPED
       for (final listName in _customListOrder) {
-        groups[listName == '__unlinked' ? 'Unlinked' : StatusStatistic.fromApiListName(listName)] = [];
+        groups[listName == '__unlinked' ? 'Unlinked' : StatusStatistic.statusNameToPretty(listName)] = [];
       }
 
       // Sort series into groups
@@ -1036,7 +1037,7 @@ class LibraryScreenState extends State<LibraryScreen> {
           logTrace('----\nProcessing series: ${series.name}', splitLines: true);
           if (series.anilistMappings.isNotEmpty) {
             bool allCompleted = true;
-            final completedList = anilistProvider.userLists['COMPLETED'];
+            final completedList = anilistProvider.userLists[AnilistListApiStatus.COMPLETED.name_];
 
             if (completedList != null) {
               for (final mapping in series.anilistMappings) {
@@ -1049,7 +1050,7 @@ class LibraryScreenState extends State<LibraryScreen> {
 
               if (allCompleted) {
                 logTrace('  ADDING TO ALL COMPLETED GROUP');
-                final completedKey = StatusStatistic.fromApiListName('COMPLETED');
+                final completedKey = StatusStatistic.statusNameToPretty(AnilistListApiStatus.COMPLETED.name_); // Completed
                 if (groups.containsKey(completedKey)) {
                   groups[completedKey]?.add(series);
                   continue; // Skip to next series
@@ -1060,12 +1061,12 @@ class LibraryScreenState extends State<LibraryScreen> {
             // For series that aren't all completed, check all mappings and prioritize lists
             // Define list priority order (highest to lowest)
             final listPriority = [
-              AnilistListStatus.CURRENT.name_,
-              AnilistListStatus.REPEATING.name_,
-              AnilistListStatus.PAUSED.name_,
-              AnilistListStatus.PLANNING.name_,
-              AnilistListStatus.DROPPED.name_,
-              AnilistListStatus.COMPLETED.name_,
+              AnilistListApiStatus.CURRENT.name_, //   CURRENT
+              AnilistListApiStatus.REPEATING.name_, // REPEATING
+              AnilistListApiStatus.PAUSED.name_, //    PAUSED
+              AnilistListApiStatus.PLANNING.name_, //  PLANNING
+              AnilistListApiStatus.DROPPED.name_, //   DROPPED
+              AnilistListApiStatus.COMPLETED.name_, // COMPLETED
             ];
 
             // Collect all lists this series appears in
@@ -1115,7 +1116,7 @@ class LibraryScreenState extends State<LibraryScreen> {
 
             // Add to the highest priority list if found
             if (highestPriorityList != null) {
-              final displayName = StatusStatistic.fromApiListName(highestPriorityList);
+              final displayName = StatusStatistic.statusNameToPretty(highestPriorityList);
               logTrace('  ADDING TO GROUP: $displayName');
               if (groups.containsKey(displayName)) {
                 groups[displayName]?.add(series);
@@ -1132,7 +1133,7 @@ class LibraryScreenState extends State<LibraryScreen> {
 
                 final list = entry.value;
                 if (list.entries.any((listEntry) => listEntry.media.id == mapping.anilistId)) {
-                  groups[StatusStatistic.fromApiListName(listName)]?.add(series);
+                  groups[StatusStatistic.statusNameToPretty(listName)]?.add(series);
                   foundInCustomList = true;
                   break;
                 }
@@ -1184,8 +1185,8 @@ class LibraryScreenState extends State<LibraryScreen> {
           final displayOrder = groups.keys.toList();
           displayOrder.sort((a, b) {
             // Get the original position in _customListOrder
-            final aIndex = _customListOrder.indexOf(a == 'Unlinked' ? '__unlinked' : StatusStatistic.toApiListName(a));
-            final bIndex = _customListOrder.indexOf(b == 'Unlinked' ? '__unlinked' : StatusStatistic.toApiListName(b));
+            final aIndex = _customListOrder.indexOf(a == 'Unlinked' ? '__unlinked' : StatusStatistic.statusNameToApi(a));
+            final bIndex = _customListOrder.indexOf(b == 'Unlinked' ? '__unlinked' : StatusStatistic.statusNameToApi(b));
 
             // If one is not found, put it at the end
             if (aIndex == -1) return 1;

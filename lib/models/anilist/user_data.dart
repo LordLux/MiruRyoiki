@@ -4,6 +4,7 @@ import 'package:recase/recase.dart';
 
 import '../../manager.dart';
 import '../../services/anilist/provider/anilist_provider.dart';
+import '../../services/anilist/queries/anilist_service.dart';
 import 'anime.dart';
 
 class AnilistUserData {
@@ -617,60 +618,39 @@ class StatusStatistic {
   final double? meanScore;
   final int? timeWatched;
 
-  String? get statusPretty => fromApiListName(status ?? '');
+  String? get statusPretty => statusNameToPretty(status ?? '');
 
-  String? get statusApi => toApiListName(statusPretty ?? '');
+  String? get statusApi => statusNameToApi(statusPretty ?? '');
+
   // Helper method to format list names for display
-  static String fromApiListName(String listName) {
-    // Handle the standard Anilist list names which are in uppercase
-    switch (listName) {
-      case 'CURRENT':
-        return 'Watching';
-      case 'COMPLETED':
-        return 'Completed';
-      case 'PLANNING':
-        return 'Plan to Watch';
-      case 'DROPPED':
-        return 'Dropped';
-      case 'PAUSED':
-        return 'On Hold';
-      case 'REPEATING':
-        return 'Rewatching';
-      default:
-        // Custom lists already have proper formatting
-        if (listName.startsWith('custom_')) //
-          return listName.substring(7); // Remove 'custom_' prefix
-        return listName;
-    }
+  static String statusNameToApi(String listName) {
+    if (listName == AnilistService.statusListNamesPretty[0]) return AnilistService.statusListNamesApi[0]; // Watching -> CURRENT
+    if (listName == AnilistService.statusListNamesPretty[1]) return AnilistService.statusListNamesApi[1]; // Completed -> COMPLETED
+    if (listName == AnilistService.statusListNamesPretty[2]) return AnilistService.statusListNamesApi[2]; // Plan to Watch -> PLANNING
+    if (listName == AnilistService.statusListNamesPretty[3]) return AnilistService.statusListNamesApi[3]; // Dropped -> DROPPED
+    if (listName == AnilistService.statusListNamesPretty[4]) return AnilistService.statusListNamesApi[4]; // On Hold -> PAUSED
+    if (listName == AnilistService.statusListNamesPretty[5]) return AnilistService.statusListNamesApi[5]; // Rewatching -> REPEATING
+    if (listName == 'Unlinked') return '__unlinked';
+    if (listName.startsWith('custom_')) return listName.substring(7); // Remove 'custom_' prefix
+    return listName;
   }
 
-  static String toApiListName(String displayName) {
-    switch (displayName) {
-      case 'Watching':
-        return 'CURRENT';
-      case 'Completed':
-        return 'COMPLETED';
-      case 'Plan to Watch':
-        return 'PLANNING';
-      case 'Dropped':
-        return 'DROPPED';
-      case 'On Hold':
-        return 'PAUSED';
-      case 'Rewatching':
-        return 'REPEATING';
-      case 'Unlinked':
-        return '__unlinked';
-      default:
-        // Check if it might be a custom list
-        final customLists = Provider.of<AnilistProvider>(Manager.context, listen: false).userLists.keys.where((k) => k.startsWith('custom_'));
+  static String statusNameToPretty(String displayName) {
+    if (displayName == AnilistService.statusListNamesApi[0]) return AnilistService.statusListNamesPretty[0]; // CURRENT -> Watching
+    if (displayName == AnilistService.statusListNamesApi[1]) return AnilistService.statusListNamesPretty[1]; // COMPLETED -> Completed
+    if (displayName == AnilistService.statusListNamesApi[2]) return AnilistService.statusListNamesPretty[2]; // PLANNING -> Plan to Watch
+    if (displayName == AnilistService.statusListNamesApi[3]) return AnilistService.statusListNamesPretty[3]; // DROPPED -> Dropped
+    if (displayName == AnilistService.statusListNamesApi[4]) return AnilistService.statusListNamesPretty[4]; // PAUSED -> On Hold
+    if (displayName == AnilistService.statusListNamesApi[5]) return AnilistService.statusListNamesPretty[5]; // REPEATING -> Rewatching
+    if (displayName == '__unlinked') return 'Unlinked';
+    if (displayName.startsWith('custom_')) return displayName.substring(7); // Remove 'custom_' prefix
 
-        for (final customList in customLists) {
-          if (fromApiListName(customList) == displayName) {
-            return customList;
-          }
-        }
-        return displayName;
+    // Check if it might be a custom list
+    final customLists = Provider.of<AnilistProvider>(Manager.context, listen: false).userLists.keys.where((k) => k.startsWith('custom_'));
+    for (final customList in customLists) {
+      if (statusNameToApi(customList) == displayName) return customList;
     }
+    return displayName;
   }
 
   StatusStatistic({
@@ -872,7 +852,7 @@ class AnilistActivityHistory {
     required this.amount,
     required this.level,
   });
-  
+
   String get datePretty => DateTime.fromMillisecondsSinceEpoch(date * 1000).pretty();
 
   factory AnilistActivityHistory.fromJson(Map<String, dynamic> json) {

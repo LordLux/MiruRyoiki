@@ -4,7 +4,7 @@
 import 'anime.dart';
 import 'user_data.dart';
 
-enum AnilistListStatus {
+enum AnilistListApiStatus {
   CURRENT,
   PLANNING,
   COMPLETED,
@@ -13,29 +13,29 @@ enum AnilistListStatus {
   REPEATING,
   CUSTOM,
 }
-extension AnilistListStatusX on AnilistListStatus {
+extension AnilistListStatusX on AnilistListApiStatus {
   String get name_ {
     return switch (this) {
-      AnilistListStatus.CURRENT => 'CURRENT',
-      AnilistListStatus.PLANNING => 'PLANNING',
-      AnilistListStatus.COMPLETED => 'COMPLETED',
-      AnilistListStatus.DROPPED => 'DROPPED',
-      AnilistListStatus.PAUSED => 'PAUSED',
-      AnilistListStatus.REPEATING => 'REPEATING',
-      AnilistListStatus.CUSTOM => 'CUSTOM',
+      AnilistListApiStatus.CURRENT => 'CURRENT',
+      AnilistListApiStatus.PLANNING => 'PLANNING',
+      AnilistListApiStatus.COMPLETED => 'COMPLETED',
+      AnilistListApiStatus.DROPPED => 'DROPPED',
+      AnilistListApiStatus.PAUSED => 'PAUSED',
+      AnilistListApiStatus.REPEATING => 'REPEATING',
+      AnilistListApiStatus.CUSTOM => 'CUSTOM',
     };
   }
 }
 
 extension AnilistListStatusExtension on String {
-  AnilistListStatus? toListStatus() {
+  AnilistListApiStatus? toListStatus() {
     return switch (this) {
-      'CURRENT' => AnilistListStatus.CURRENT,
-      'PLANNING' => AnilistListStatus.PLANNING,
-      'COMPLETED' => AnilistListStatus.COMPLETED,
-      'DROPPED' => AnilistListStatus.DROPPED,
-      'PAUSED' => AnilistListStatus.PAUSED,
-      'REPEATING' => AnilistListStatus.REPEATING,
+      'CURRENT' => AnilistListApiStatus.CURRENT,
+      'PLANNING' => AnilistListApiStatus.PLANNING,
+      'COMPLETED' => AnilistListApiStatus.COMPLETED,
+      'DROPPED' => AnilistListApiStatus.DROPPED,
+      'PAUSED' => AnilistListApiStatus.PAUSED,
+      'REPEATING' => AnilistListApiStatus.REPEATING,
       _ => null,
     };
   }
@@ -45,7 +45,7 @@ class AnilistMediaListEntry {
   final int id;
   final int mediaId;
   final AnilistAnime media;
-  final AnilistListStatus status;
+  final AnilistListApiStatus status;
   final int? progress;
   final int? score;
   final String? customLists;
@@ -77,7 +77,7 @@ class AnilistMediaListEntry {
       id: json['id'],
       mediaId: json['mediaId'],
       media: AnilistAnime.fromJson(json['media']),
-      status: json['status'].toString().toListStatus() ?? AnilistListStatus.CURRENT,
+      status: json['status'].toString().toListStatus() ?? AnilistListApiStatus.CURRENT,
       progress: json['progress'],
       score: json['score'],
       customLists: json['customLists']?.toString(),
@@ -112,7 +112,7 @@ class AnilistMediaListEntry {
     int? id,
     int? mediaId,
     AnilistAnime? media,
-    AnilistListStatus? status,
+    AnilistListApiStatus? status,
     int? progress,
     int? score,
     String? customLists,
@@ -144,7 +144,7 @@ class AnilistMediaListEntry {
 class AnilistUserList {
   final List<AnilistMediaListEntry> entries;
   final String name;
-  final AnilistListStatus? status;
+  final AnilistListApiStatus? status;
 
   AnilistUserList({
     required this.entries,
@@ -152,7 +152,7 @@ class AnilistUserList {
     this.status,
   });
 
-  bool get isCustomList => status == null || status == AnilistListStatus.CUSTOM;
+  bool get isCustomList => status == null || status == AnilistListApiStatus.CUSTOM;
 
   factory AnilistUserList.fromJson(Map<String, dynamic> json, String name, {bool isCustomList = false}) {
     final lists = json['lists'] as List<dynamic>?;
@@ -170,7 +170,7 @@ class AnilistUserList {
     return AnilistUserList(
       entries: entries,
       name: name,
-      status: isCustomList ? AnilistListStatus.CUSTOM : json['status']?.toString().toListStatus(),
+      status: isCustomList ? AnilistListApiStatus.CUSTOM : json['status']?.toString().toListStatus(),
     );
   }
   

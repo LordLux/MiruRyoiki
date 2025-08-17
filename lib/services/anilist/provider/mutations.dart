@@ -132,7 +132,7 @@ extension AnilistProviderMutations on AnilistProvider {
   }
 
   /// Update status for an anime (works online or offline)
-  Future<bool> updateStatus(int mediaId, AnilistListStatus status) async {
+  Future<bool> updateStatus(int mediaId, AnilistListApiStatus status) async {
     if (!_isOffline) {
       try {
         // Try to update online

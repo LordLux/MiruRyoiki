@@ -38,7 +38,7 @@ extension AnilistServiceMutations on AnilistService {
   }
 
   /// Update status for an anime
-  Future<bool> updateStatus(int mediaId, AnilistListStatus status) async {
+  Future<bool> updateStatus(int mediaId, AnilistListApiStatus status) async {
     if (_client == null) return false;
 
     const mutation = r'''

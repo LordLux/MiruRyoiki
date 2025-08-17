@@ -6,6 +6,7 @@ import '../services/library/library_provider.dart';
 import '../models/series.dart';
 import '../services/anilist/provider/anilist_provider.dart';
 import '../services/navigation/shortcuts.dart';
+import '../utils/color_utils.dart';
 import '../utils/path_utils.dart';
 import '../utils/screen_utils.dart';
 import '../widgets/series_card.dart';
@@ -25,16 +26,10 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
+Color get lessGradientColor => shiftHue(Manager.accentColor.lighter, -60);
+Color get moreGradientColor => shiftHue(Manager.accentColor.lighter, 10);
+
 class _HomeScreenState extends State<HomeScreen> {
-  Color _shiftHue(Color color, double shift) {
-    final hsvColor = HSVColor.fromColor(color);
-    final newHue = (hsvColor.hue + shift) % 360;
-    return hsvColor.withHue(newHue).toColor();
-  }
-
-  Color get lessGradientColor => _shiftHue(Manager.accentColor.lighter, -60);
-  Color get moreGradientColor => _shiftHue(Manager.accentColor.lighter, 10);
-
   @override
   Widget build(BuildContext context) {
     return ValueListenableBuilder(
@@ -45,38 +40,7 @@ class _HomeScreenState extends State<HomeScreen> {
             controller: widget.scrollController,
             physics: isCtrlPressed ? const NeverScrollableScrollPhysics() : null,
             children: [
-              Consumer<AnilistProvider>(builder: (context, anilistProvider, _) {
-                final userName = anilistProvider.currentUser?.name;
-                return Row(
-                  children: [
-                    Text(
-                      'Welcome Back${userName != null ? "," : ""} ',
-                      style: FluentTheme.of(context).typography.title,
-                    ),
-                    if (userName != null)
-                      ShaderMask(
-                        shaderCallback: (bounds) {
-                          return LinearGradient(
-                            colors: [
-                              lessGradientColor,
-                              moreGradientColor,
-                            ],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ).createShader(bounds);
-                        },
-                        child: Text(
-                          userName.titleCase,
-                          style: FluentTheme.of(context).typography.title,
-                        ),
-                      ),
-                    Text(
-                      '!',
-                      style: FluentTheme.of(context).typography.title,
-                    ),
-                  ],
-                );
-              }),
+              WelcomeWidget(),
               VDiv(24),
 
               // Currently Watching Section
@@ -124,12 +88,15 @@ class _HomeScreenState extends State<HomeScreen> {
     final anilistProvider = Provider.of<AnilistProvider>(context);
     final library = Provider.of<Library>(context);
 
+    final userLists = anilistProvider.userLists;
+    // Get the "Watching" list from Anilist user lists
+    final watchingList = userLists['Watching'];
+
     // Filter to get only series that are in "Watching" list and in library
     final watchingSeries = library.series
-        // TODO .where((s) => s.isLinked &&
-        //             s.anilistMappings.any((m) =>
-        //               m.status == 'CURRENT' || m.status == 'Watching'))
-        .toList();
+        //  .where((s) => s.isLinked &&
+        //     anilistProvider.
+        ;
 
     if (watchingSeries.isEmpty) {
       return _buildEmptyState('No series in your watching list', 'Link your series with Anilist and add them to your watching list');
@@ -240,5 +207,45 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       ),
     );
+  }
+}
+
+class WelcomeWidget extends StatelessWidget {
+  const WelcomeWidget({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer<AnilistProvider>(builder: (context, anilistProvider, _) {
+      final userName = anilistProvider.currentUser?.name;
+      return Row(
+        children: [
+          Text(
+            'Welcome Back${userName != null ? "," : ""} ',
+            style: FluentTheme.of(context).typography.title,
+          ),
+          if (userName != null)
+            ShaderMask(
+              shaderCallback: (bounds) {
+                return LinearGradient(
+                  colors: [
+                    lessGradientColor,
+                    moreGradientColor,
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ).createShader(bounds);
+              },
+              child: Text(
+                userName.titleCase,
+                style: FluentTheme.of(context).typography.title,
+              ),
+            ),
+          Text(
+            '!',
+            style: FluentTheme.of(context).typography.title,
+          ),
+        ],
+      );
+    });
   }
 }

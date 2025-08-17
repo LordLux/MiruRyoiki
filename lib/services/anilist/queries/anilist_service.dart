@@ -27,23 +27,23 @@ class AnilistService {
 
   bool get isLoggedIn => _authService.isAuthenticated;
 
-  /// Format status name for display
-  String _formatStatusName(String status) {
-    switch (status) {
-      case 'CURRENT':
-        return 'Watching';
-      case 'PLANNING':
-        return 'Plan to Watch';
-      case 'COMPLETED':
-        return 'Completed';
-      case 'DROPPED':
-        return 'Dropped';
-      case 'PAUSED':
-        return 'On Hold';
-      case 'REPEATING':
-        return 'Rewatching';
-      default:
-        return status;
-    }
-  }
+  static final List<String> statusListNamesApi = [
+    AnilistListApiStatus.CURRENT.name_,
+    AnilistListApiStatus.PLANNING.name_,
+    AnilistListApiStatus.COMPLETED.name_,
+    AnilistListApiStatus.DROPPED.name_,
+    AnilistListApiStatus.PAUSED.name_,
+    AnilistListApiStatus.REPEATING.name_,
+  ];
+
+  static const List<String> statusListNamesPretty = [
+    "Watching",
+    "Plan to Watch",
+    "Completed",
+    "Dropped",
+    "On Hold",
+    "Rewatching",
+  ];
+
+  static String printAllStatuses() => statusListNamesApi.map((status) => StatusStatistic.statusNameToPretty(status)).join(', ');
 }

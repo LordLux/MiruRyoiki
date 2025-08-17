@@ -152,7 +152,7 @@ extension DominantColorSourceX on DominantColorSource {
   }
 }
 
-extension AnilistListStatusX on AnilistListStatus? {
+extension AnilistListStatusX on AnilistListApiStatus? {
   String get name_ => enumToString(this, false);
 }
 

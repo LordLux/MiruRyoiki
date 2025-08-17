@@ -54,6 +54,12 @@ Color lighten(Color color, [double amount = 0.1]) {
   return _changeLighting(color, amount);
 }
 
+Color shiftHue(Color color, double shift) {
+  final hsvColor = HSVColor.fromColor(color);
+  final newHue = (hsvColor.hue + shift) % 360;
+  return hsvColor.withHue(newHue).toColor();
+}
+
 Color getDimmable(Color color, BuildContext context, [List<double> opacity = const [0.25, 0.15, 0]]) {
   final appTheme = Provider.of<AppTheme>(context, listen: false);
   if (appTheme.mode == ThemeMode.light) return Colors.transparent;

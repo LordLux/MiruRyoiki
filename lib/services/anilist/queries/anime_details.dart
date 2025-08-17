@@ -314,7 +314,7 @@ extension AnilistServiceAnimeDetails on AnilistService {
             {
               'lists': [list]
             },
-            _formatStatusName(status),
+            StatusStatistic.statusNameToPretty(status),
           );
         }
       }
