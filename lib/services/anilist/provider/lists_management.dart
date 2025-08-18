@@ -97,7 +97,7 @@ extension AnilistProviderListsManagement on AnilistProvider {
 
       // Check if cache is for current user
       if (cache['userId'] != _currentUser?.id) {
-        logDebug('Cached lists belong to different user');
+        logDebug('Cached lists belong to different user: cached user ${cache['userId']} vs current user ${_currentUser?.id}');
         return false;
       }
 

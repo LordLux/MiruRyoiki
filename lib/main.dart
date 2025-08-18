@@ -19,8 +19,9 @@ import 'package:material_symbols_icons/material_symbols_icons.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
 import 'screens/home.dart';
-import 'services/navigation/statusbar/library_scan_statusbar.dart';
+import 'screens/release_calendar.dart';
 import 'widgets/dialogs/splash/progress.dart';
+import 'widgets/release_notification.dart';
 import 'widgets/svg.dart';
 import 'widgets/connectivity_indicator.dart';
 import 'services/anilist/provider/anilist_provider.dart';
@@ -335,6 +336,7 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
 
   final ScrollController libraryController = ScrollController();
   final ScrollController homeController = ScrollController();
+  final ScrollController calendarController = ScrollController();
   final ScrollController accountsController = ScrollController();
   final ScrollController settingsController = ScrollController();
 
@@ -381,18 +383,21 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
   // Define static consts for navigation indices to avoid duplication
   static const int homeIndex = 0;
   static const int libraryIndex = 1;
-  static const int accountsIndex = 2;
-  static const int settingsIndex = 3;
+  static const int calendarIndex = 2;
+  static const int accountsIndex = 3;
+  static const int settingsIndex = 4;
 
   final Map<int, Map<String, dynamic>> _navigationMap = {
     homeIndex: {'id': 'home', 'title': 'Home', 'controller': null},
     libraryIndex: {'id': 'library', 'title': 'Library', 'controller': null},
+    calendarIndex: {'id': 'calendar', 'title': 'Release Calendar', 'controller': null},
     accountsIndex: {'id': 'accounts', 'title': 'Account', 'controller': null},
     settingsIndex: {'id': 'settings', 'title': 'Settings', 'controller': null},
   };
 
   Map<String, dynamic> get _homeMap => _navigationMap[homeIndex]!;
   Map<String, dynamic> get _libraryMap => _navigationMap[libraryIndex]!;
+  Map<String, dynamic> get _calendarMap => _navigationMap[calendarIndex]!;
   Map<String, dynamic> get _accountsMap => _navigationMap[accountsIndex]!;
   Map<String, dynamic> get _settingsMap => _navigationMap[settingsIndex]!;
 
@@ -414,6 +419,7 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
     super.initState();
     _homeMap['controller'] = homeController;
     _libraryMap['controller'] = libraryController;
+    _calendarMap['controller'] = calendarController;
     _accountsMap['controller'] = accountsController;
     _settingsMap['controller'] = settingsController;
 
@@ -601,6 +607,14 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
                                     ),
                                   ),
                               ],
+                            ),
+                          ),
+                          buildPaneItem(
+                            calendarIndex,
+                            icon: movedPaneItemIcon(const Icon(FluentIcons.calendar)),
+                            body: ReleaseCalendarScreen(
+                              onSeriesSelected: navigateToSeries,
+                              scrollController: _calendarMap['controller'] as ScrollController,
                             ),
                           ),
                         ],
@@ -838,9 +852,34 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
                           ),
                         ),
                       ),
-                      SizedBox(
-                        height: ScreenUtils.kTitleBarHeight,
-                        child: WindowButtons(isSecondary: isSecondary, onFullScreenOpen: () => setState(() => _isSecondaryTitleBarVisible = true)),
+                      // Notification area - before window buttons
+                      Row(
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.only(right: 8.0),
+                            child: ReleaseNotificationWidget(
+                              onMorePressed: () {
+                                // Navigate to calendar screen
+                                setState(() {
+                                  if (_isSeriesView && _selectedSeriesPath != null) {
+                                    exitSeriesView();
+                                  }
+                                  _selectedIndex = calendarIndex;
+                                  _resetScrollPosition(calendarIndex);
+
+                                  final navManager = Provider.of<NavigationManager>(context, listen: false);
+                                  navManager.clearStack();
+                                  final item = _navigationMap[calendarIndex]!;
+                                  navManager.pushPane(item['id'], item['title']);
+                                });
+                              },
+                            ),
+                          ),
+                          SizedBox(
+                            height: ScreenUtils.kTitleBarHeight,
+                            child: WindowButtons(isSecondary: isSecondary, onFullScreenOpen: () => setState(() => _isSecondaryTitleBarVisible = true)),
+                          ),
+                        ],
                       ),
                     ],
                   ),

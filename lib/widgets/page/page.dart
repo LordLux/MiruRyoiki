@@ -17,6 +17,7 @@ class MiruRyoikiHeaderInfoBarPage extends StatefulWidget {
   final bool noHeaderBanner;
   final double? headerMaxHeight;
   final double? headerMinHeight;
+  final bool scrollableContent;
 
   const MiruRyoikiHeaderInfoBarPage({
     super.key,
@@ -28,6 +29,7 @@ class MiruRyoikiHeaderInfoBarPage extends StatefulWidget {
     this.noHeaderBanner = false,
     this.headerMaxHeight = ScreenUtils.kMaxHeaderHeight,
     this.headerMinHeight = ScreenUtils.kMinHeaderHeight,
+    this.scrollableContent = true,
   });
 
   @override
@@ -94,32 +96,38 @@ class _MiruRyoikiHeaderInfoBarPageState extends State<MiruRyoikiHeaderInfoBarPag
                           padding: EdgeInsets.only(left: 16.0 * Manager.fontSizeMultiplier, top: widget.noHeaderBanner ? 0.0 : 16.0, right: 16.0),
                           child: ClipRRect(
                             borderRadius: BorderRadius.circular(ScreenUtils.kStatCardBorderRadius),
-                            child: ScrollConfiguration(
-                              behavior: ScrollConfiguration.of(context).copyWith(overscroll: true, platform: TargetPlatform.windows, scrollbars: false),
-                              child: DynMouseScroll(
-                                stopScroll: KeyboardState.ctrlPressedNotifier,
-                                scrollSpeed: 1.8,
-                                enableSmoothScroll: Manager.animationsEnabled,
-                                durationMS: 350,
-                                animationCurve: Curves.easeOut,
-                                builder: (context, controller, physics) {
-                                  if (_headerHeight != _minHeaderHeight) {
-                                    controller.addListener(() {
-                                      final offset = controller.offset;
-                                      final double newHeight = offset > 0 ? _minHeaderHeight : _headerHeight;
-
-                                      if (newHeight != _headerHeight && mounted) setState(() => _headerHeight = newHeight);
-                                    });
-                                  }
-
-                                  // Then use the controller for your scrollable content
-                                  return CustomScrollView(
-                                    controller: controller,
-                                    physics: physics,
-                                    slivers: [SliverToBoxAdapter(child: widget.content)],
-                                  );
-                                },
-                              ),
+                            child: Builder(
+                              builder: (context) {
+                                if (!widget.scrollableContent) return widget.content;
+                                
+                                return ScrollConfiguration(
+                                  behavior: ScrollConfiguration.of(context).copyWith(overscroll: true, platform: TargetPlatform.windows, scrollbars: false),
+                                  child: DynMouseScroll(
+                                    stopScroll: KeyboardState.ctrlPressedNotifier,
+                                    scrollSpeed: 1.8,
+                                    enableSmoothScroll: Manager.animationsEnabled,
+                                    durationMS: 350,
+                                    animationCurve: Curves.easeOut,
+                                    builder: (context, controller, physics) {
+                                      if (_headerHeight != _minHeaderHeight) {
+                                        controller.addListener(() {
+                                          final offset = controller.offset;
+                                          final double newHeight = offset > 0 ? _minHeaderHeight : _headerHeight;
+                                
+                                          if (newHeight != _headerHeight && mounted) setState(() => _headerHeight = newHeight);
+                                        });
+                                      }
+                                
+                                      // Then use the controller for your scrollable content
+                                      return CustomScrollView(
+                                        controller: controller,
+                                        physics: physics,
+                                        slivers: [SliverToBoxAdapter(child: widget.content)],
+                                      );
+                                    },
+                                  ),
+                                );
+                              }
                             ),
                           ),
                         ),
