@@ -122,11 +122,11 @@ class _HomeScreenState extends State<HomeScreen> {
       final aUpdated = a.latestUpdatedAt ?? 0;
       final bUpdated = b.latestUpdatedAt ?? 0;
       final updatedComparison = bUpdated.compareTo(aUpdated);
-      
+
       if (updatedComparison != 0) {
         return updatedComparison;
       }
-      
+
       // Secondary sort: higher progress percentage first (for series updated at same time)
       final aProgress = a.watchedPercentage;
       final bProgress = b.watchedPercentage;
@@ -176,10 +176,7 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     // Get cached data immediately
-    final cachedUpcomingEpisodes = anilistProvider.getCachedUpcomingEpisodes(
-      animeIds.toList(), 
-      refreshInBackground: true
-    );
+    final cachedUpcomingEpisodes = anilistProvider.getCachedUpcomingEpisodes(animeIds.toList(), refreshInBackground: true);
 
     // Filter to only series with cached upcoming episodes data
     final seriesWithUpcomingEpisodes = watchingSeries.where((series) {
@@ -212,7 +209,7 @@ class _HomeScreenState extends State<HomeScreen> {
           }
 
           final freshUpcomingEpisodes = snapshot.data ?? <int, AiringEpisode?>{};
-          
+
           final freshSeriesWithUpcomingEpisodes = watchingSeries.where((series) {
             return series.anilistMappings.any((mapping) {
               final upcomingEpisode = freshUpcomingEpisodes[mapping.anilistId];
@@ -243,8 +240,7 @@ class _HomeScreenState extends State<HomeScreen> {
       for (final mapping in a.anilistMappings) {
         final episode = upcomingEpisodesMap[mapping.anilistId];
         if (episode?.airingAt != null) {
-          aNextAiring = aNextAiring == null ? episode!.airingAt! : 
-              (episode!.airingAt! < aNextAiring ? episode.airingAt! : aNextAiring);
+          aNextAiring = aNextAiring == null ? episode!.airingAt! : (episode!.airingAt! < aNextAiring ? episode.airingAt! : aNextAiring);
         }
       }
 
@@ -252,8 +248,7 @@ class _HomeScreenState extends State<HomeScreen> {
       for (final mapping in b.anilistMappings) {
         final episode = upcomingEpisodesMap[mapping.anilistId];
         if (episode?.airingAt != null) {
-          bNextAiring = bNextAiring == null ? episode!.airingAt! : 
-              (episode!.airingAt! < bNextAiring ? episode.airingAt! : bNextAiring);
+          bNextAiring = bNextAiring == null ? episode!.airingAt! : (episode!.airingAt! < bNextAiring ? episode.airingAt! : bNextAiring);
         }
       }
 
@@ -266,7 +261,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildUpcomingEpisodesSeriesList(List<Series> series, Map<int, AiringEpisode?> upcomingEpisodesMap) {
     return SizedBox(
-      height: 280, // Increased height to accommodate natural series card size + episode info
+      height: 310, // Increased height to accommodate natural series card size + episode info
       child: ValueListenableBuilder(
           valueListenable: KeyboardState.ctrlPressedNotifier,
           builder: (context, isCtrlPressed, _) {
@@ -276,23 +271,19 @@ class _HomeScreenState extends State<HomeScreen> {
               itemCount: series.length,
               itemBuilder: (context, index) {
                 final currentSeries = series[index];
-                
+
                 // Get the upcoming episode info for this series
                 AiringEpisode? nextEpisode;
                 for (final mapping in currentSeries.anilistMappings) {
                   final episode = upcomingEpisodesMap[mapping.anilistId];
                   if (episode?.airingAt != null) {
-                    nextEpisode = nextEpisode == null ? episode : 
-                        (episode!.airingAt! < nextEpisode.airingAt! ? episode : nextEpisode);
+                    nextEpisode = nextEpisode == null ? episode : (episode!.airingAt! < nextEpisode.airingAt! ? episode : nextEpisode);
                   }
                 }
-                
+
                 return Padding(
                   padding: const EdgeInsets.only(right: 12),
-                  child: SizedBox(
-                    width: 150,
-                    child: _buildUpcomingEpisodeCard(currentSeries, nextEpisode),
-                  ),
+                  child: _buildUpcomingEpisodeCard(currentSeries, nextEpisode),
                 );
               },
             );
@@ -301,30 +292,39 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildUpcomingEpisodeCard(Series series, AiringEpisode? upcomingEpisode) {
+    final double width = 180;
+    final double cardHeight = 260; // Height for the series card
     return Stack(
       children: [
         // Series card with its natural aspect ratio
         SizedBox(
-          width: 150,
-          height: 230, // Natural height for series card (aspect ratio roughly 150x220)
+          width: width,
+          height: cardHeight,
           child: SeriesCard(
             series: series,
             onTap: () => widget.onSeriesSelected(series.path),
+            borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(8),
+              topRight: Radius.circular(8),
+            ),
           ),
         ),
-        
+    
         // Upcoming episode info positioned below the series card
         if (upcomingEpisode != null && upcomingEpisode.airingAt != null)
           Positioned(
-            bottom: 0, // Position below the series card
+            bottom: 0,
             left: 0,
             right: 0,
             child: Container(
               width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
               decoration: BoxDecoration(
                 color: FluentTheme.of(context).resources.cardBackgroundFillColorDefault,
-                borderRadius: BorderRadius.circular(4),
+                borderRadius: BorderRadius.only(
+                  bottomLeft: Radius.circular(8),
+                  bottomRight: Radius.circular(8),
+                ),
                 border: Border.all(
                   color: FluentTheme.of(context).resources.cardStrokeColorDefault,
                   width: 1,
@@ -337,17 +337,17 @@ class _HomeScreenState extends State<HomeScreen> {
                   Text(
                     'Episode ${upcomingEpisode.episode ?? '?'}',
                     style: FluentTheme.of(context).typography.caption?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
+                          fontWeight: FontWeight.w600,
+                        ),
                     overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 2),
                   Text(
                     _formatAiringTime(upcomingEpisode.airingAt!),
                     style: FluentTheme.of(context).typography.caption?.copyWith(
-                      fontSize: 10,
-                      color: FluentTheme.of(context).resources.textFillColorSecondary,
-                    ),
+                          fontSize: 10,
+                          color: FluentTheme.of(context).resources.textFillColorSecondary,
+                        ),
                     overflow: TextOverflow.ellipsis,
                   ),
                 ],
@@ -378,7 +378,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildHorizontalSeriesList(List<Series> series) {
     return SizedBox(
-      height: 220,
+      height: 300,
       child: ValueListenableBuilder(
           valueListenable: KeyboardState.ctrlPressedNotifier,
           builder: (context, isCtrlPressed, _) {
@@ -391,7 +391,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 return Padding(
                   padding: const EdgeInsets.only(right: 12),
                   child: SizedBox(
-                    width: 120, // Made narrower (less wide)
+                    width: 180, // Made narrower (less wide)
                     child: SeriesCard(
                       series: currentSeries,
                       onTap: () => widget.onSeriesSelected(currentSeries.path),

@@ -14,11 +14,13 @@ import 'context_menu/series.dart';
 class SeriesCard extends StatefulWidget {
   final Series series;
   final VoidCallback onTap;
+  final BorderRadius borderRadius;
 
   const SeriesCard({
     super.key,
     required this.series,
     required this.onTap,
+    this.borderRadius = const BorderRadius.all(Radius.circular(8.0)),
   });
 
   @override
@@ -165,11 +167,11 @@ class _SeriesCardState extends State<SeriesCard> {
           onHover: (_) => StatusBarManager().showDelayed(widget.series.name),
           cursor: SystemMouseCursors.click,
           child: ClipRRect(
-            borderRadius: BorderRadius.circular(8.0),
+            borderRadius: widget.borderRadius,
             child: AnimatedContainer(
               duration: getDuration(const Duration(milliseconds: 150)),
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(8.0),
+                borderRadius: widget.borderRadius,
                 color: Colors.transparent,
                 boxShadow: _isHovering
                     ? [
@@ -201,7 +203,7 @@ class _SeriesCardState extends State<SeriesCard> {
                   // ),
                   Card(
                     padding: EdgeInsets.zero,
-                    borderRadius: BorderRadius.circular(8.0),
+                    borderRadius: widget.borderRadius,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -301,11 +303,11 @@ class _SeriesCardState extends State<SeriesCard> {
                           onTap: widget.onTap,
                           splashColor: mainColor.withOpacity(0.1),
                           highlightColor: mainColor.withOpacity(0.05),
-                          borderRadius: BorderRadius.circular(8.0),
+                          borderRadius: widget.borderRadius,
                           child: AnimatedContainer(
                             duration: getDuration(const Duration(milliseconds: 150)),
                             decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(8.0),
+                              borderRadius: widget.borderRadius,
                               color: _isHovering ? mainColor.withOpacity(0.1) : Colors.transparent,
                             ),
                           ),
