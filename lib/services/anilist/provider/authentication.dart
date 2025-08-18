@@ -50,9 +50,23 @@ extension AnilistProviderAuthentication on AnilistProvider {
   }
 
   Future<void> _loadUserLists() async {
-    _userLists = await _anilistService.getUserAnimeLists(userId: _currentUser?.id, userName: _currentUser?.name);
-    notifyListeners();
-    Manager.setState();
+    final newLists = await _anilistService.getUserAnimeLists(userId: _currentUser?.id, userName: _currentUser?.name);
+    
+    // Only update the user lists if we successfully got data
+    // This prevents overriding existing data with empty results on API failure
+    if (newLists.isNotEmpty) {
+      _userLists = newLists;
+      notifyListeners();
+      Manager.setState();
+    } else if (_userLists.isEmpty) {
+      // If we have no existing data and got empty results, still update
+      // (this handles the case where the user truly has no lists)
+      _userLists = newLists;
+      notifyListeners();
+      Manager.setState();
+    } else {
+      logWarn('Failed to load user lists - preserving existing data (${_userLists.length} lists)');
+    }
   }
 
   Future<void> refreshUserData() async {

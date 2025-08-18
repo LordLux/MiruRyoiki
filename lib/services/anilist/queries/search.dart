@@ -66,23 +66,31 @@ extension AnilistServiceSearch on AnilistService {
     ''';
 
     try {
-      final result = await _client!.query(
-        QueryOptions(
-          document: gql(searchQuery),
-          variables: {
-            'search': query,
-            'limit': limit,
-          },
-        ),
+      final result = await RetryUtils.retry<List<AnilistAnime>>(
+        () async {
+          final queryResult = await _client!.query(
+            QueryOptions(
+              document: gql(searchQuery),
+              variables: {
+                'search': query,
+                'limit': limit,
+              },
+            ),
+          );
+
+          if (queryResult.hasException) {
+            throw Exception('Error searching Anilist: ${queryResult.exception}');
+          }
+
+          final List<dynamic> media = queryResult.data?['Page']['media'] ?? [];
+          return media.map((item) => AnilistAnime.fromJson(item)).toList();
+        },
+        maxRetries: 3,
+        retryIf: RetryUtils.shouldRetryAnilistError,
+        operationName: 'searchAnime(query: $query)',
       );
 
-      if (result.hasException) {
-        logErr('Error searching Anilist', result.exception);
-        return [];
-      }
-
-      final List<dynamic> media = result.data?['Page']['media'] ?? [];
-      return media.map((item) => AnilistAnime.fromJson(item)).toList();
+      return result ?? [];
     } catch (e) {
       logErr('Error querying Anilist', e);
       return [];

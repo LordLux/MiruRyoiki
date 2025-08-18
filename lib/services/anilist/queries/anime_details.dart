@@ -63,28 +63,37 @@ extension AnilistServiceAnimeDetails on AnilistService {
     ''';
 
     try {
-      final result = await _client!.query(
-        QueryOptions(
-          document: gql(detailsQuery),
-          variables: {
-            'id': id,
-          },
-        ),
+      final result = await RetryUtils.retry<AnilistAnime?>(
+        () async {
+          final queryResult = await _client!.query(
+            QueryOptions(
+              document: gql(detailsQuery),
+              variables: {
+                'id': id,
+              },
+            ),
+          );
+
+          if (queryResult.hasException) {
+            if (queryResult.exception is OperationException && 
+                queryResult.exception!.linkException is UnknownException && 
+                queryResult.exception!.linkException!.originalException is TimeoutException) {
+              throw TimeoutException('Anilist anime details GET request timed out', const Duration(seconds: 30));
+            }
+            throw Exception('Error getting anime details: ${queryResult.exception}');
+          }
+
+          final media = queryResult.data?['Media'];
+          return media != null ? AnilistAnime.fromJson(media) : null;
+        },
+        maxRetries: 3,
+        retryIf: RetryUtils.shouldRetryAnilistError,
+        operationName: 'getAnimeDetails(id: $id)',
       );
 
-      if (result.hasException) {
-        if (result.exception is OperationException && result.exception!.linkException is UnknownException && result.exception!.linkException!.originalException is TimeoutException) {
-          logWarn('Anilist anime details GET request timed out');
-          return null;
-        }
-        logErr('Error getting anime details', result.exception);
-        return null;
-      }
-
-      final media = result.data?['Media'];
-      return media != null ? AnilistAnime.fromJson(media) : null;
-    } catch (e) {
-      logErr('Error querying Anilist', e);
+      return result;
+    } catch (e, stackTrace) {
+      logErr('Error querying Anilist anime details', e, stackTrace);
       return null;
     }
   }
@@ -153,33 +162,42 @@ extension AnilistServiceAnimeDetails on AnilistService {
     ''';
 
     try {
-      final result = await _client!.query(
-        QueryOptions(
-          document: gql(batchQuery),
-          variables: {
-            'ids': ids,
-          },
-        ),
+      final result = await RetryUtils.retry<Map<int, AnilistAnime>>(
+        () async {
+          final queryResult = await _client!.query(
+            QueryOptions(
+              document: gql(batchQuery),
+              variables: {
+                'ids': ids,
+              },
+            ),
+          );
+
+          if (queryResult.hasException) {
+            if (queryResult.exception is OperationException && 
+                queryResult.exception!.linkException is UnknownException && 
+                queryResult.exception!.linkException!.originalException is TimeoutException) {
+              throw TimeoutException('Anilist animes details GET request timed out', const Duration(seconds: 30));
+            }
+            throw Exception('Error getting anime details: ${queryResult.exception}');
+          }
+
+          final mediaList = queryResult.data?['Page']['media'] as List<dynamic>? ?? [];
+          final Map<int, AnilistAnime> animeMap = {};
+
+          for (final item in mediaList) {
+            final anime = AnilistAnime.fromJson(item);
+            animeMap[anime.id] = anime;
+          }
+
+          return animeMap;
+        },
+        maxRetries: 3,
+        retryIf: RetryUtils.shouldRetryAnilistError,
+        operationName: 'getMultipleAnimesDetails(ids: ${ids.length} items)',
       );
 
-      if (result.hasException) {
-        if (result.exception is OperationException && result.exception!.linkException is UnknownException && result.exception!.linkException!.originalException is TimeoutException) {
-          logWarn('Anilist animes details GET request timed out');
-          return {};
-        }
-        logErr('Error getting anime details', result.exception);
-        return {};
-      }
-
-      final mediaList = result.data?['Page']['media'] as List<dynamic>? ?? [];
-      final Map<int, AnilistAnime> animeMap = {};
-
-      for (final item in mediaList) {
-        final anime = AnilistAnime.fromJson(item);
-        animeMap[anime.id] = anime;
-      }
-
-      return animeMap;
+      return result ?? {};
     } catch (e) {
       logErr('Error querying Anilist', e);
       return {};
@@ -280,102 +298,112 @@ extension AnilistServiceAnimeDetails on AnilistService {
       } else if (userId != null) {
         variables['userId'] = userId;
       }
-      final result = await _client!.query(
-        QueryOptions(
-          document: gql(listsQuery),
-          variables: variables,
-          fetchPolicy: FetchPolicy.noCache,
-        ),
-      );
-
-      if (result.hasException) {
-        if (result.exception is OperationException && result.exception!.linkException is UnknownException && result.exception!.linkException!.originalException is TimeoutException) {
-          logWarn('Anilist anime lists GET request timed out');
-          return {};
-        }
-        logErr('2 | Error getting anime lists', result.exception);
-        return {};
-      }
-
-      final mediaListCollection = result.data?['MediaListCollection'];
-      if (mediaListCollection == null) return {};
-
-      final Map<String, AnilistUserList> lists = {};
-
-      final user = mediaListCollection['user'];
-      final customListNames = user?['mediaListOptions']?['animeList']?['customLists'];
-
-      final standardLists = mediaListCollection['lists'] as List<dynamic>? ?? [];
-      // Standard lists (Watching, Completed, etc.)
-      for (final list in standardLists) {
-        final status = list['status'] as String?;
-        if (status != null) {
-          lists[status] = AnilistUserList.fromJson(
-            {
-              'lists': [list]
-            },
-            StatusStatistic.statusNameToPretty(status),
+      
+      final result = await RetryUtils.retry<Map<String, AnilistUserList>>(
+        () async {
+          final queryResult = await _client!.query(
+            QueryOptions(
+              document: gql(listsQuery),
+              variables: variables,
+              fetchPolicy: FetchPolicy.noCache,
+            ),
           );
-        }
-      }
 
-      // Custom lists
-      if (customListNames != null) {
-        for (final customListName in customListNames) {
-          // Create a custom list with entries that have this custom list
-          final entriesForCustomList = [];
+          if (queryResult.hasException) {
+            if (queryResult.exception is OperationException && 
+                queryResult.exception!.linkException is UnknownException && 
+                queryResult.exception!.linkException!.originalException is TimeoutException) {
+              throw TimeoutException('Anilist anime lists GET request timed out', const Duration(seconds: 30));
+            }
+            throw Exception('2 | Error getting anime lists: ${queryResult.exception}');
+          }
+
+          final mediaListCollection = queryResult.data?['MediaListCollection'];
+          if (mediaListCollection == null) return {};
+
+          final Map<String, AnilistUserList> lists = {};
+
+          final user = mediaListCollection['user'];
+          final customListNames = user?['mediaListOptions']?['animeList']?['customLists'];
+
+          final standardLists = mediaListCollection['lists'] as List<dynamic>? ?? [];
+          // Standard lists (Watching, Completed, etc.)
           for (final list in standardLists) {
-            for (final entry in list['entries'] ?? []) {
-              // Handle the customLists field properly
-              Map<String, dynamic>? entryCustomLists;
+            final status = list['status'] as String?;
+            if (status != null) {
+              lists[status] = AnilistUserList.fromJson(
+                {
+                  'lists': [list]
+                },
+                StatusStatistic.statusNameToPretty(status),
+              );
+            }
+          }
 
-              // Check what type of data we received
-              final customListsData = entry['customLists'];
-              if (customListsData is Map) {
-                // If it's already a Map, use it directly
-                entryCustomLists = Map<String, dynamic>.from(customListsData);
-              } else if (customListsData is String) {
-                try {
-                  // Try to parse as JSON
-                  entryCustomLists = jsonDecode(customListsData) as Map<String, dynamic>?;
-                } catch (e, stackTrace) {
-                  // If JSON parsing fails, the string might not be proper JSON
-                  logErr('Error parsing customLists', e, stackTrace);
-                  logWarn('Raw customLists value: $customListsData');
+          // Custom lists
+          if (customListNames != null) {
+            for (final customListName in customListNames) {
+              // Create a custom list with entries that have this custom list
+              final entriesForCustomList = [];
+              for (final list in standardLists) {
+                for (final entry in list['entries'] ?? []) {
+                  // Handle the customLists field properly
+                  Map<String, dynamic>? entryCustomLists;
 
-                  // Continue to next entry, skip this one
-                  continue;
+                  // Check what type of data we received
+                  final customListsData = entry['customLists'];
+                  if (customListsData is Map) {
+                    // If it's already a Map, use it directly
+                    entryCustomLists = Map<String, dynamic>.from(customListsData);
+                  } else if (customListsData is String) {
+                    try {
+                      // Try to parse as JSON
+                      entryCustomLists = jsonDecode(customListsData) as Map<String, dynamic>?;
+                    } catch (e, stackTrace) {
+                      // If JSON parsing fails, the string might not be proper JSON
+                      logErr('Error parsing customLists', e, stackTrace);
+                      logWarn('Raw customLists value: $customListsData');
+
+                      // Continue to next entry, skip this one
+                      continue;
+                    }
+                  } else if (customListsData != null) {
+                    logErr('Unexpected customLists type: ${customListsData.runtimeType}');
+                    continue;
+                  } else {
+                    // customLists is null
+                    continue;
+                  }
+
+                  // Now check if this entry should be in this custom list
+                  if (entryCustomLists != null && entryCustomLists.containsKey(customListName) && entryCustomLists[customListName] == true) {
+                    entriesForCustomList.add(entry);
+                  }
                 }
-              } else if (customListsData != null) {
-                logErr('Unexpected customLists type: ${customListsData.runtimeType}');
-                continue;
-              } else {
-                // customLists is null
-                continue;
               }
 
-              // Now check if this entry should be in this custom list
-              if (entryCustomLists != null && entryCustomLists.containsKey(customListName) && entryCustomLists[customListName] == true) {
-                entriesForCustomList.add(entry);
+              if (entriesForCustomList.isNotEmpty) {
+                lists['custom_$customListName'] = AnilistUserList.fromJson(
+                  {
+                    'lists': [
+                      {'entries': entriesForCustomList}
+                    ]
+                  },
+                  customListName,
+                  isCustomList: true,
+                );
               }
             }
           }
 
-          if (entriesForCustomList.isNotEmpty) {
-            lists['custom_$customListName'] = AnilistUserList.fromJson(
-              {
-                'lists': [
-                  {'entries': entriesForCustomList}
-                ]
-              },
-              customListName,
-              isCustomList: true,
-            );
-          }
-        }
-      }
+          return lists;
+        },
+        maxRetries: 3,
+        retryIf: RetryUtils.shouldRetryAnilistError,
+        operationName: 'getUserAnimeLists(user: $userName/$userId)',
+      );
 
-      return lists;
+      return result ?? {};
     } catch (e) {
       logErr('Error querying Anilist', e);
       return {};
@@ -406,45 +434,52 @@ extension AnilistServiceAnimeDetails on AnilistService {
     ''';
 
     try {
-      final result = await _client!.query(
-        QueryOptions(
-          document: gql(upcomingEpisodesQuery),
-          variables: {'ids': animeIds},
-          fetchPolicy: FetchPolicy.noCache, // Always get fresh airing data
-        ),
-      );
+      final result = await RetryUtils.retry<Map<int, AiringEpisode?>>(
+        () async {
+          final queryResult = await _client!.query(
+            QueryOptions(
+              document: gql(upcomingEpisodesQuery),
+              variables: {'ids': animeIds},
+              fetchPolicy: FetchPolicy.noCache, // Always get fresh airing data
+            ),
+          );
 
-      if (result.hasException) {
-        if (result.exception is OperationException && 
-            result.exception!.linkException is UnknownException && 
-            result.exception!.linkException!.originalException is TimeoutException) {
-          logWarn('Anilist upcoming episodes GET request timed out');
-          return {};
-        }
-        logErr('Error getting upcoming episodes', result.exception);
-        return {};
-      }
+          if (queryResult.hasException) {
+            if (queryResult.exception is OperationException && 
+                queryResult.exception!.linkException is UnknownException && 
+                queryResult.exception!.linkException!.originalException is TimeoutException) {
+              throw TimeoutException('Anilist upcoming episodes GET request timed out', const Duration(seconds: 30));
+            }
+            throw Exception('Error getting upcoming episodes: ${queryResult.exception}');
+          }
 
-      final Map<int, AiringEpisode?> upcomingEpisodes = {};
-      final mediaList = result.data?['Page']?['media'] as List<dynamic>?;
+          final Map<int, AiringEpisode?> upcomingEpisodes = {};
+          final mediaList = queryResult.data?['Page']?['media'] as List<dynamic>?;
 
-      if (mediaList != null) {
-        for (final media in mediaList) {
-          final int? id = media['id'];
-          final nextAiringData = media['nextAiringEpisode'];
-          
-          if (id != null) {
-            if (nextAiringData != null) {
-              upcomingEpisodes[id] = AiringEpisode.fromJson(nextAiringData);
-            } else {
-              upcomingEpisodes[id] = null; // No upcoming episode
+          if (mediaList != null) {
+            for (final media in mediaList) {
+              final int? id = media['id'];
+              final nextAiringData = media['nextAiringEpisode'];
+              
+              if (id != null) {
+                if (nextAiringData != null) {
+                  upcomingEpisodes[id] = AiringEpisode.fromJson(nextAiringData);
+                } else {
+                  upcomingEpisodes[id] = null; // No upcoming episode
+                }
+              }
             }
           }
-        }
-      }
 
-      logTrace('Found upcoming episodes for ${upcomingEpisodes.length} series');
-      return upcomingEpisodes;
+          logTrace('Found upcoming episodes for ${upcomingEpisodes.length} series');
+          return upcomingEpisodes;
+        },
+        maxRetries: 3,
+        retryIf: RetryUtils.shouldRetryAnilistError,
+        operationName: 'getUpcomingEpisodes(${animeIds.length} anime)',
+      );
+
+      return result ?? {};
     } catch (e) {
       logErr('Error querying upcoming episodes', e);
       return {};

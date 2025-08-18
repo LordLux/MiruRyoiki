@@ -7,6 +7,7 @@ import '../../../main.dart';
 import '../../../manager.dart';
 import '../../../models/anilist/user_data.dart';
 import '../../../utils/logging.dart';
+import '../../../utils/retry_utils.dart';
 import '../auth.dart';
 
 part 'initialization.dart';

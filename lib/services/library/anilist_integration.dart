@@ -133,6 +133,9 @@ extension LibraryAnilistIntegration on Library {
           if (series.primaryAnilistId == anilistId || series.primaryAnilistId == null) {
             series.anilistData = anime;
           }
+        } else {
+          // Failed to fetch anime details - preserve existing data
+          logWarn('Failed to fetch AniList details for ${series.name} (ID: $anilistId) - preserving existing data');
         }
         loaded++;
       }));
@@ -193,6 +196,9 @@ extension LibraryAnilistIntegration on Library {
           if (series.primaryAnilistId == anilistId || series.primaryAnilistId == null) {
             series.anilistData = anime;
           }
+        } else {
+          // Failed to refresh anime details - preserve existing data
+          logWarn('Failed to refresh AniList details for ${series.name} (ID: $anilistId) - preserving existing data');
         }
       }));
 
@@ -320,6 +326,9 @@ extension LibraryAnilistIntegration on Library {
         final anime = animeMap[series.anilistId];
         if (anime != null) {
           series.anilistData = anime;
+        } else {
+          // Failed to fetch data for this series - preserve existing data
+          logWarn('Failed to fetch AniList metadata for ${series.name} (ID: ${series.anilistId}) - preserving existing data');
         }
       }
 

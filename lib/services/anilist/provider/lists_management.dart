@@ -20,8 +20,10 @@ extension AnilistProviderListsManagement on AnilistProvider {
 
       if (isOnline) {
         await _loadUserLists();
-        // Cache after refresh
-        await _saveListsToCache();
+        // Cache after refresh only if we successfully loaded data
+        if (_userLists.isNotEmpty) {
+          await _saveListsToCache();
+        }
       } else {
         // Try loading from cache if offline
         if (!await _loadListsFromCache()) //

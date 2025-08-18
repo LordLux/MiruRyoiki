@@ -163,24 +163,33 @@ extension AnilistServiceUser on AnilistService {
   }
   ''';
     try {
-      final result = await _client!.query(
-        QueryOptions(
-          document: gql(userQuery),
-          fetchPolicy: FetchPolicy.noCache,
-        ),
+      final result = await RetryUtils.retry<AnilistUserData?>(
+        () async {
+          final queryResult = await _client!.query(
+            QueryOptions(
+              document: gql(userQuery),
+              fetchPolicy: FetchPolicy.noCache,
+            ),
+          );
+
+          if (queryResult.hasException) {
+            if (queryResult.exception is OperationException && 
+                queryResult.exception!.linkException is UnknownException && 
+                queryResult.exception!.linkException!.originalException is TimeoutException) {
+              throw TimeoutException('Anilist user info GET request timed out', const Duration(seconds: 30));
+            }
+            throw Exception('Error getting user info data: ${queryResult.exception}');
+          }
+
+          final userData = queryResult.data?['Viewer'];
+          return userData != null ? AnilistUserData.fromJson(userData) : null;
+        },
+        maxRetries: 3,
+        retryIf: RetryUtils.shouldRetryAnilistError,
+        operationName: 'getCurrentUserData',
       );
 
-      if (result.hasException) {
-        if (result.exception is OperationException && result.exception!.linkException is UnknownException && result.exception!.linkException!.originalException is TimeoutException) {
-          logWarn('Anilist user info GET request timed out');
-          return null;
-        }
-        logErr('Error getting user info data', result.exception);
-        return null;
-      }
-
-      final userData = result.data?['Viewer'];
-      return userData != null ? AnilistUserData.fromJson(userData) : null;
+      return result;
     } catch (e) {
       logErr('Error querying Anilist', e);
       return null;
