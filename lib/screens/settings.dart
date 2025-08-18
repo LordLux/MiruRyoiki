@@ -707,7 +707,9 @@ class SettingsScreenState extends State<SettingsScreen> {
 
     return MiruRyoikiHeaderInfoBarPage(
       headerWidget: HeaderWidget(
-        title: (_, __) => PageHeader(title: Text('Settings', style: Manager.titleLargeStyle)),
+        title: (_, __) => PageHeader(title: Transform.translate(
+          offset: Offset(-5, 0),
+          child: Text('Settings', style: Manager.titleLargeStyle))),
         headerPadding: EdgeInsets.zero,
       ),
       infobar: (noHeaderBanner) => _buildInfoBar(noHeaderBanner),

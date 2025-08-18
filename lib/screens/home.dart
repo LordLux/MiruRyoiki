@@ -65,7 +65,7 @@ class _HomeScreenState extends State<HomeScreen> {
           title: 'Continue Watching',
           child: _buildContinueWatchingSection(),
         ),
-        VDiv(16),
+        VDiv(8), // Reduced spacing between sections
         _buildSection(
           title: 'Upcoming Episodes',
           child: _buildUpcomingEpisodesSection(),
@@ -260,12 +260,14 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildUpcomingEpisodesSeriesList(List<Series> series, Map<int, AiringEpisode?> upcomingEpisodesMap) {
-    return SizedBox(
+    return HoverVisibleScrollbar(
       height: 310, // Increased height to accommodate natural series card size + episode info
-      child: ValueListenableBuilder(
+      builder: (context, scrollController) {
+        return ValueListenableBuilder(
           valueListenable: KeyboardState.ctrlPressedNotifier,
           builder: (context, isCtrlPressed, _) {
             return ListView.builder(
+              controller: scrollController,
               physics: isCtrlPressed ? const NeverScrollableScrollPhysics() : null,
               scrollDirection: Axis.horizontal,
               itemCount: series.length,
@@ -287,7 +289,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 );
               },
             );
-          }),
+          },
+        );
+      },
     );
   }
 
@@ -316,41 +320,47 @@ class _HomeScreenState extends State<HomeScreen> {
             bottom: 0,
             left: 0,
             right: 0,
-            child: Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-              decoration: BoxDecoration(
-                color: FluentTheme.of(context).resources.cardBackgroundFillColorDefault,
-                borderRadius: BorderRadius.only(
-                  bottomLeft: Radius.circular(8),
-                  bottomRight: Radius.circular(8),
-                ),
-                border: Border.all(
-                  color: FluentTheme.of(context).resources.cardStrokeColorDefault,
-                  width: 1,
-                ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    'Episode ${upcomingEpisode.episode ?? '?'}',
-                    style: FluentTheme.of(context).typography.caption?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
-                    overflow: TextOverflow.ellipsis,
+            child: Transform.translate(
+              offset: Offset(-0.5, 0),
+              child: Transform.scale(
+                scale: 1.005,
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: FluentTheme.of(context).resources.cardBackgroundFillColorDefault,
+                    borderRadius: BorderRadius.only(
+                      bottomLeft: Radius.circular(8),
+                      bottomRight: Radius.circular(8),
+                    ),
+                    border: Border.all(
+                      color: FluentTheme.of(context).resources.cardStrokeColorDefault,
+                      width: 1,
+                    ),
                   ),
-                  const SizedBox(height: 2),
-                  Text(
-                    _formatAiringTime(upcomingEpisode.airingAt!),
-                    style: FluentTheme.of(context).typography.caption?.copyWith(
-                          fontSize: 10,
-                          color: FluentTheme.of(context).resources.textFillColorSecondary,
-                        ),
-                    overflow: TextOverflow.ellipsis,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'Episode ${upcomingEpisode.episode ?? '?'}',
+                        style: FluentTheme.of(context).typography.caption?.copyWith(
+                              fontWeight: FontWeight.w600,
+                            ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        _formatAiringTime(upcomingEpisode.airingAt!),
+                        style: FluentTheme.of(context).typography.caption?.copyWith(
+                              fontSize: 10,
+                              color: FluentTheme.of(context).resources.textFillColorSecondary,
+                            ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
             ),
           ),
@@ -377,19 +387,22 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildHorizontalSeriesList(List<Series> series) {
-    return SizedBox(
+    return HoverVisibleScrollbar(
       height: 300,
-      child: ValueListenableBuilder(
+      builder: (context, scrollController) {
+        return ValueListenableBuilder(
           valueListenable: KeyboardState.ctrlPressedNotifier,
           builder: (context, isCtrlPressed, _) {
             return ListView.builder(
+              controller: scrollController,
               physics: isCtrlPressed ? const NeverScrollableScrollPhysics() : null,
               scrollDirection: Axis.horizontal,
               itemCount: series.length,
               itemBuilder: (context, index) {
                 final currentSeries = series[index];
+                final bool isLast = index == series.length - 1;
                 return Padding(
-                  padding: const EdgeInsets.only(right: 12),
+                  padding: isLast ? EdgeInsets.zero : const EdgeInsets.only(right: 12),
                   child: SizedBox(
                     width: 180, // Made narrower (less wide)
                     child: SeriesCard(
@@ -400,7 +413,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 );
               },
             );
-          }),
+          },
+        );
+      },
     );
   }
 
@@ -425,6 +440,62 @@ class _HomeScreenState extends State<HomeScreen> {
               textAlign: TextAlign.center,
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+// Custom widget for hover-visible horizontal scrollbars
+class HoverVisibleScrollbar extends StatefulWidget {
+  final double height;
+  final Widget Function(BuildContext context, ScrollController scrollController) builder;
+
+  const HoverVisibleScrollbar({
+    super.key,
+    required this.height,
+    required this.builder,
+  });
+
+  @override
+  State<HoverVisibleScrollbar> createState() => _HoverVisibleScrollbarState();
+}
+
+class _HoverVisibleScrollbarState extends State<HoverVisibleScrollbar> {
+  bool _isHovering = false;
+  final ScrollController _scrollController = ScrollController();
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isHovering = true),
+      onExit: (_) => setState(() => _isHovering = false),
+      child: SizedBox(
+        height: widget.height + 20, // Add extra height for scrollbar padding
+        child: Scrollbar(
+          controller: _scrollController,
+          style: ScrollbarThemeData(
+            scrollbarColor: Colors.white.withOpacity(.25),
+            thickness: 6.0,
+            backgroundColor: Colors.transparent,
+            contractDelay: Duration.zero,
+            hoveringThickness: 6.0,
+            radius: const Radius.circular(4.0),
+          ),
+          thumbVisibility: _isHovering,
+          child: Padding(
+            padding: const EdgeInsets.only(bottom: 20), // Reserve space for scrollbar
+            child: SizedBox(
+              height: widget.height,
+              child: widget.builder(context, _scrollController),
+            ),
+          ),
         ),
       ),
     );
