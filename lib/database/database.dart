@@ -5,11 +5,13 @@ import 'package:drift/native.dart';
 import 'package:miruryoiki/database/converters.dart';
 import '../models/metadata.dart';
 import '../models/mkv_metadata.dart';
+import '../models/notification.dart';
 import '../utils/path_utils.dart';
 import 'tables.dart';
 import 'daos/series_dao.dart';
 import 'daos/episodes_dao.dart';
 import 'daos/watch_dao.dart';
+import 'daos/notifications_dao.dart';
 
 part 'database.g.dart';
 
@@ -20,18 +22,20 @@ part 'database.g.dart';
     EpisodesTable,
     AnilistMappingsTable,
     WatchRecordsTable,
+    NotificationsTable,
   ],
   daos: [
     SeriesDao,
     EpisodesDao,
     WatchDao,
+    NotificationsDao,
   ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? db]) : super(db ?? _openConnection());
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 6;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -67,6 +71,12 @@ class AppDatabase extends _$AppDatabase {
           }
           if (from < 5) {
             await m.alterTable(TableMigration(seriesTable));
+          }
+          if (from < 6) {
+            await m.createTable(notificationsTable);
+            await m.issueCustomQuery('CREATE INDEX IF NOT EXISTS idx_notifications_created_at ON notifications(created_at DESC);');
+            await m.issueCustomQuery('CREATE INDEX IF NOT EXISTS idx_notifications_is_read ON notifications(is_read);');
+            await m.issueCustomQuery('CREATE INDEX IF NOT EXISTS idx_notifications_type ON notifications(type);');
           }
         },
         beforeOpen: (details) async {

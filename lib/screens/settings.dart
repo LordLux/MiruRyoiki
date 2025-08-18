@@ -851,7 +851,7 @@ class SettingsScreenState extends State<SettingsScreen> {
                   LoadingButton(
                     label: 'Scan Library',
                     onPressed: () => library.reloadLibrary(force: true),
-                    isLoading: library.isLoading,
+                    isLoading: library.isScanning,
                     isSmall: true,
                     isAlreadyBig: true,
                   ),

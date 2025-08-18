@@ -274,6 +274,13 @@ class ManagedDialogState extends State<ManagedDialog> {
     });
   }
 
+  /// Position the dialog on screen
+  void positionDialog(Offset offset) {
+    setState(() {
+      // _currentOffset = offset;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Padding(
@@ -295,9 +302,7 @@ class ManagedDialogState extends State<ManagedDialog> {
     );
   }
 
-  void popDialog() {
-    closeDialog(widget.popContext);
-  }
+  void popDialog() => closeDialog(widget.popContext);
 }
 
 // Add this extension to the same file
@@ -310,6 +315,13 @@ extension ManagedDialogExtensions on BuildContext {
     final state = managedDialogState;
     if (state != null) {
       state.resizeDialog(width: width, height: height, constraints: constraints);
+    }
+  }
+
+  void positionManagedDialog(Offset offset) {
+    final state = managedDialogState;
+    if (state != null) {
+      state.positionDialog(offset);
     }
   }
 }

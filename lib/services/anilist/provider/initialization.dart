@@ -54,8 +54,21 @@ extension AnilistProviderInitialization on AnilistProvider {
     final hasCredentials = await _anilistService.initialize();
     if (hasCredentials) {
       await _loadCurrentUserFromCache();
-      if (!await _loadListsFromCache()) {
-        logWarn('   2 | Could not load Anilist lists from cache during offline init.');
+      int retryCount = 0;
+      const maxRetries = 3;
+      bool success = false;
+
+      while (retryCount < maxRetries && !success) {
+        success = await _loadListsFromCache();
+        if (!success) {
+          retryCount++;
+          if (retryCount < maxRetries) {
+            logWarn('   2 | Failed to load Anilist lists from cache (attempt $retryCount/$maxRetries). Retrying...');
+            await Future.delayed(Duration(milliseconds: 500 * retryCount)); // Exponential backoff
+          } else {
+            logWarn('   2 | Could not load Anilist lists from cache after $maxRetries attempts.');
+          }
+        }
       }
     }
 

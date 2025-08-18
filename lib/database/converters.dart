@@ -4,6 +4,7 @@ import 'package:drift/drift.dart';
 import 'package:flutter/material.dart';
 import '../models/metadata.dart';
 import '../models/mkv_metadata.dart';
+import '../models/notification.dart';
 import '../utils/path_utils.dart';
 import '../enums.dart'; // per ImageSource
 
@@ -111,4 +112,53 @@ class JsonMapConverter extends TypeConverter<Map<String, dynamic>?, String?> {
   @override
   String? toSql(Map<String, dynamic>? value) =>
       value == null ? null : jsonEncode(value);
+}
+
+/// -------- NotificationType <-> INTEGER --------
+class NotificationTypeConverter extends TypeConverter<NotificationType, int> {
+  const NotificationTypeConverter();
+
+  @override
+  NotificationType fromSql(int fromDb) {
+    return NotificationType.values[fromDb];
+  }
+
+  @override
+  int toSql(NotificationType value) => value.index;
+}
+
+/// -------- MediaInfo <-> JSON TEXT --------
+class MediaInfoConverter extends TypeConverter<MediaInfo?, String?> {
+  const MediaInfoConverter();
+
+  @override
+  MediaInfo? fromSql(String? sqlValue) {
+    if (sqlValue == null) return null;
+    final map = json.decode(sqlValue) as Map<String, dynamic>;
+    return MediaInfo.fromJson(map);
+  }
+
+  @override
+  String? toSql(MediaInfo? value) {
+    if (value == null) return null;
+    return json.encode(value.toJson());
+  }
+}
+
+/// -------- List<String> <-> JSON TEXT --------
+class StringListConverter extends TypeConverter<List<String>?, String?> {
+  const StringListConverter();
+
+  @override
+  List<String>? fromSql(String? sqlValue) {
+    if (sqlValue == null) return null;
+    final list = json.decode(sqlValue) as List<dynamic>;
+    return list.cast<String>();
+  }
+
+  @override
+  String? toSql(List<String>? value) {
+    if (value == null) return null;
+    return json.encode(value);
+  }
 }

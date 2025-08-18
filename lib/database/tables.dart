@@ -100,3 +100,39 @@ class WatchRecordsTable extends Table {
   RealColumn get duration => real()();
   DateTimeColumn get timestamp => dateTime().withDefault(currentDateAndTime)();
 }
+
+// ------------------ ANILIST NOTIFICATIONS ------------------
+class NotificationsTable extends Table {
+  IntColumn get id => integer()(); // Anilist notification ID
+  IntColumn get type => integer().map(const NotificationTypeConverter())(); // NotificationType enum
+  IntColumn get createdAt => integer()(); // Unix timestamp from Anilist
+  BoolColumn get isRead => boolean().withDefault(const Constant(false))();
+  
+  // AiringNotification specific fields
+  IntColumn get animeId => integer().nullable()();
+  IntColumn get episode => integer().nullable()();
+  TextColumn get contexts => text().map(const StringListConverter()).nullable()(); // JSON array of strings
+  
+  // MediaDataChangeNotification, MediaMergeNotification specific fields
+  IntColumn get mediaId => integer().nullable()();
+  TextColumn get context => text().nullable()();
+  TextColumn get reason => text().nullable()();
+  
+  // MediaMergeNotification specific field
+  TextColumn get deletedMediaTitles => text().map(const StringListConverter()).nullable()(); // JSON array of strings
+  
+  // MediaDeletionNotification specific field
+  TextColumn get deletedMediaTitle => text().nullable()();
+  
+  // Common media info (cached)
+  TextColumn get mediaInfo => text().map(const MediaInfoConverter()).nullable()(); // JSON MediaInfo object
+  
+  DateTimeColumn get localCreatedAt => dateTime().withDefault(currentDateAndTime)();
+  DateTimeColumn get localUpdatedAt => dateTime().withDefault(currentDateAndTime)();
+
+  @override
+  String get tableName => 'notifications';
+  
+  @override
+  Set<Column> get primaryKey => {id};
+}

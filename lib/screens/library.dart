@@ -704,7 +704,7 @@ class LibraryScreenState extends State<LibraryScreen> {
   Widget _buildLibraryView(Library library) {
     List<Series> displayedSeries = _filterSeries(library.series);
 
-    if (library.isLoading) return const Center(child: ProgressRing());
+    if (library.isScanning) return const Center(child: ProgressRing());
 
     if (displayedSeries.isEmpty)
       return Center(

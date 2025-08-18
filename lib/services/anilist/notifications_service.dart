@@ -1,0 +1,374 @@
+part of 'queries/anilist_service.dart';
+
+extension AnilistServiceNotifications on AnilistService {
+
+  // GraphQL query for fetching notifications
+  static const String _notificationsQuery = '''
+    query GetNotifications(\$page: Int = 1, \$perPage: Int = 25, \$type_in: [NotificationType]) {
+      Page(page: \$page, perPage: \$perPage) {
+        pageInfo {
+          total
+          currentPage
+          lastPage
+          hasNextPage
+          perPage
+        }
+        notifications(type_in: \$type_in) {
+          ... on AiringNotification {
+            id
+            type
+            animeId
+            episode
+            contexts
+            createdAt
+            media {
+              id
+              title {
+                romaji
+                english
+                native
+              }
+              coverImage {
+                large
+                medium
+              }
+              type
+              format
+              episodes
+            }
+          }
+          ... on MediaDataChangeNotification {
+            id
+            type
+            mediaId
+            context
+            reason
+            createdAt
+            media {
+              id
+              title {
+                romaji
+                english
+                native
+              }
+              coverImage {
+                large
+                medium
+              }
+              type
+              format
+              episodes
+            }
+          }
+          ... on MediaMergeNotification {
+            id
+            type
+            mediaId
+            deletedMediaTitles
+            context
+            reason
+            createdAt
+            media {
+              id
+              title {
+                romaji
+                english
+                native
+              }
+              coverImage {
+                large
+                medium
+              }
+              type
+              format
+              episodes
+            }
+          }
+          ... on MediaDeletionNotification {
+            id
+            type
+            deletedMediaTitle
+            context
+            reason
+            createdAt
+          }
+        }
+      }
+    }
+  ''';
+
+  // Fetch notifications from Anilist API
+  Future<List<AnilistNotification>> fetchNotifications({
+    int page = 1,
+    int perPage = 25,
+    List<NotificationType>? types,
+  }) async {
+    if (!isLoggedIn) {
+      throw Exception('User is not authenticated with Anilist');
+    }
+
+    // Access the GraphQL client directly since we're an extension
+    final client = _client;
+    if (client == null) {
+      throw Exception('GraphQL client not initialized');
+    }
+
+    final variables = <String, dynamic>{
+      'page': page,
+      'perPage': perPage,
+    };
+
+    // Add type filter if specified
+    if (types != null && types.isNotEmpty) {
+      variables['type_in'] = types.map((type) => type.name.toUpperCase()).toList();
+    }
+
+    try {
+      final result = await RetryUtils.retry<QueryResult>(
+        () async {
+          return await client.query(
+            QueryOptions(
+              document: gql(_notificationsQuery),
+              variables: variables,
+              fetchPolicy: FetchPolicy.noCache,
+            ),
+          );
+        },
+        maxRetries: 3,
+        retryIf: RetryUtils.shouldRetryAnilistError,
+        operationName: 'getNotifications(page: $page, perPage: $perPage)',
+      );
+
+      if (result == null || result.hasException) {
+        throw Exception('Failed to fetch notifications: ${result?.exception}');
+      }
+
+      final notificationsData = result.data?['Page']?['notifications'] as List<dynamic>? ?? [];
+      final notifications = <AnilistNotification>[];
+
+      for (final notificationJson in notificationsData) {
+        final notification = _parseNotification(notificationJson as Map<String, dynamic>);
+        if (notification != null) {
+          notifications.add(notification);
+        }
+      }
+
+      return notifications;
+    } catch (e) {
+      logErr('Error fetching notifications from Anilist', e);
+      throw Exception('Failed to fetch notifications: $e');
+    }
+  }
+
+  // Parse notification JSON from Anilist API
+  AnilistNotification? _parseNotification(Map<String, dynamic> json) {
+    final typeStr = json['type'] as String?;
+    if (typeStr == null) return null;
+
+    final notificationType = _parseNotificationType(typeStr);
+    if (notificationType == null) return null;
+
+    final id = json['id'] as int?;
+    final createdAt = json['createdAt'] as int?;
+
+    if (id == null || createdAt == null) return null;
+
+    // Parse media info if available
+    MediaInfo? mediaInfo;
+    final mediaJson = json['media'] as Map<String, dynamic>?;
+    if (mediaJson != null) {
+      mediaInfo = _parseMediaInfo(mediaJson);
+    }
+
+    switch (notificationType) {
+      case NotificationType.AIRING:
+        final animeId = json['animeId'] as int? ?? 0;
+        final episode = json['episode'] as int? ?? 0;
+        final contexts = (json['contexts'] as List<dynamic>?)
+            ?.cast<String>() ?? [];
+        
+        return AiringNotification(
+          id: id,
+          type: notificationType,
+          createdAt: createdAt,
+          animeId: animeId,
+          episode: episode,
+          contexts: contexts,
+          media: mediaInfo,
+        );
+
+      case NotificationType.MEDIA_DATA_CHANGE:
+        final mediaId = json['mediaId'] as int? ?? 0;
+        final context = json['context'] as String?;
+        final reason = json['reason'] as String?;
+        
+        return MediaDataChangeNotification(
+          id: id,
+          type: notificationType,
+          createdAt: createdAt,
+          mediaId: mediaId,
+          context: context,
+          reason: reason,
+          media: mediaInfo,
+        );
+
+      case NotificationType.MEDIA_MERGE:
+        final mediaId = json['mediaId'] as int? ?? 0;
+        final deletedMediaTitles = (json['deletedMediaTitles'] as List<dynamic>?)
+            ?.cast<String>() ?? [];
+        final context = json['context'] as String?;
+        final reason = json['reason'] as String?;
+        
+        return MediaMergeNotification(
+          id: id,
+          type: notificationType,
+          createdAt: createdAt,
+          mediaId: mediaId,
+          deletedMediaTitles: deletedMediaTitles,
+          context: context,
+          reason: reason,
+          media: mediaInfo,
+        );
+
+      case NotificationType.MEDIA_DELETION:
+        final deletedMediaTitle = json['deletedMediaTitle'] as String?;
+        final context = json['context'] as String?;
+        final reason = json['reason'] as String?;
+        
+        return MediaDeletionNotification(
+          id: id,
+          type: notificationType,
+          createdAt: createdAt,
+          deletedMediaTitle: deletedMediaTitle,
+          context: context,
+          reason: reason,
+        );
+    }
+  }
+
+  // Parse notification type from string
+  NotificationType? _parseNotificationType(String typeStr) {
+    switch (typeStr.toUpperCase()) {
+      case 'AIRING':
+        return NotificationType.AIRING;
+      case 'MEDIA_DATA_CHANGE':
+        return NotificationType.MEDIA_DATA_CHANGE;
+      case 'MEDIA_MERGE':
+        return NotificationType.MEDIA_MERGE;
+      case 'MEDIA_DELETION':
+        return NotificationType.MEDIA_DELETION;
+      default:
+        return null;
+    }
+  }
+
+  // Parse media info from JSON
+  MediaInfo _parseMediaInfo(Map<String, dynamic> json) {
+    final id = json['id'] as int;
+    
+    // Extract title (prefer English, fallback to romaji, then native)
+    final titleJson = json['title'] as Map<String, dynamic>?;
+    String? title;
+    if (titleJson != null) {
+      title = titleJson['english'] as String? ??
+          titleJson['romaji'] as String? ??
+          titleJson['native'] as String?;
+    }
+
+    // Extract cover image
+    final coverImageJson = json['coverImage'] as Map<String, dynamic>?;
+    String? coverImage;
+    if (coverImageJson != null) {
+      coverImage = coverImageJson['large'] as String? ??
+          coverImageJson['medium'] as String?;
+    }
+
+    return MediaInfo(
+      id: id,
+      title: title,
+      coverImage: coverImage,
+      type: json['type'] as String?,
+      format: json['format'] as String?,
+      episodes: json['episodes'] as int?,
+    );
+  }
+
+  // Sync notifications from Anilist and update local database
+  Future<List<AnilistNotification>> syncNotifications({
+    required AppDatabase database,
+    List<NotificationType>? types,
+    int maxPages = 3,
+  }) async {
+    final allNotifications = <AnilistNotification>[];
+    final notificationsDao = database.notificationsDao;
+    
+    // Fetch notifications from multiple pages
+    for (int page = 1; page <= maxPages; page++) {
+      try {
+        final notifications = await fetchNotifications(
+          page: page,
+          perPage: 25,
+          types: types,
+        );
+        
+        if (notifications.isEmpty) break;
+        allNotifications.addAll(notifications);
+        
+        // If we got less than the requested per page, we've reached the end
+        if (notifications.length < 25) break;
+        
+      } catch (e) {
+        // If we fail on a subsequent page, return what we have so far
+        if (page > 1) break;
+        rethrow;
+      }
+    }
+
+    // Update local database
+    if (allNotifications.isNotEmpty) {
+      await notificationsDao.upsertNotifications(allNotifications);
+      
+      // Clean up old notifications to prevent database bloat
+      await notificationsDao.deleteOldNotifications(keepCount: 200);
+    }
+
+    return allNotifications;
+  }
+
+  // Get cached notifications from local database
+  Future<List<AnilistNotification>> getCachedNotifications({
+    required AppDatabase database,
+    int limit = 25,
+  }) async {
+    final notificationsDao = database.notificationsDao;
+    final dataList = await notificationsDao.getRecentNotifications(limit: limit);
+    
+    final notifications = <AnilistNotification>[];
+    for (final data in dataList) {
+      final notification = NotificationsDao.dataToNotification(data);
+      if (notification != null) {
+        notifications.add(notification);
+      }
+    }
+    
+    return notifications;
+  }
+
+  // Get unread notifications count
+  Future<int> getUnreadCount(AppDatabase database) {
+    final notificationsDao = database.notificationsDao;
+    return notificationsDao.getUnreadCount();
+  }
+
+  // Mark notification as read
+  Future<void> markAsRead(AppDatabase database, int notificationId) {
+    final notificationsDao = database.notificationsDao;
+    return notificationsDao.markAsRead(notificationId);
+  }
+
+  // Mark all notifications as read
+  Future<void> markAllAsRead(AppDatabase database) {
+    final notificationsDao = database.notificationsDao;
+    return notificationsDao.markAllAsRead();
+  }
+}

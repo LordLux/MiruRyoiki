@@ -55,7 +55,7 @@ class AnilistLinkMultiDialog extends ManagedDialog {
             },
             onCancel: () => onDialogComplete?.call(null, <AnilistMapping>[]),
           ),
-          actions: (_) => [],
+          // actions: (_) => [],
         );
 }
 

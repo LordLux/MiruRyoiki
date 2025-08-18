@@ -6,6 +6,9 @@ import '../../../../models/anilist/user_list.dart';
 import '../../../main.dart';
 import '../../../manager.dart';
 import '../../../models/anilist/user_data.dart';
+import '../../../models/notification.dart';
+import '../../../database/database.dart';
+import '../../../database/daos/notifications_dao.dart';
 import '../../../utils/logging.dart';
 import '../../../utils/retry_utils.dart';
 import '../auth.dart';
@@ -16,6 +19,7 @@ part 'search.dart';
 part 'user.dart';
 part 'anime_details.dart';
 part 'mutations.dart';
+part '../notifications_service.dart';
 
 class AnilistService {
   // Singleton

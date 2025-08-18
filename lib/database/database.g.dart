@@ -2259,6 +2259,739 @@ class WatchRecordsTableCompanion
   }
 }
 
+class $NotificationsTableTable extends NotificationsTable
+    with TableInfo<$NotificationsTableTable, NotificationsTableData> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $NotificationsTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+      'id', aliasedName, false,
+      type: DriftSqlType.int, requiredDuringInsert: false);
+  @override
+  late final GeneratedColumnWithTypeConverter<NotificationType, int> type =
+      GeneratedColumn<int>('type', aliasedName, false,
+              type: DriftSqlType.int, requiredDuringInsert: true)
+          .withConverter<NotificationType>(
+              $NotificationsTableTable.$convertertype);
+  static const VerificationMeta _createdAtMeta =
+      const VerificationMeta('createdAt');
+  @override
+  late final GeneratedColumn<int> createdAt = GeneratedColumn<int>(
+      'created_at', aliasedName, false,
+      type: DriftSqlType.int, requiredDuringInsert: true);
+  static const VerificationMeta _isReadMeta = const VerificationMeta('isRead');
+  @override
+  late final GeneratedColumn<bool> isRead = GeneratedColumn<bool>(
+      'is_read', aliasedName, false,
+      type: DriftSqlType.bool,
+      requiredDuringInsert: false,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('CHECK ("is_read" IN (0, 1))'),
+      defaultValue: const Constant(false));
+  static const VerificationMeta _animeIdMeta =
+      const VerificationMeta('animeId');
+  @override
+  late final GeneratedColumn<int> animeId = GeneratedColumn<int>(
+      'anime_id', aliasedName, true,
+      type: DriftSqlType.int, requiredDuringInsert: false);
+  static const VerificationMeta _episodeMeta =
+      const VerificationMeta('episode');
+  @override
+  late final GeneratedColumn<int> episode = GeneratedColumn<int>(
+      'episode', aliasedName, true,
+      type: DriftSqlType.int, requiredDuringInsert: false);
+  @override
+  late final GeneratedColumnWithTypeConverter<List<String>?, String> contexts =
+      GeneratedColumn<String>('contexts', aliasedName, true,
+              type: DriftSqlType.string, requiredDuringInsert: false)
+          .withConverter<List<String>?>(
+              $NotificationsTableTable.$convertercontexts);
+  static const VerificationMeta _mediaIdMeta =
+      const VerificationMeta('mediaId');
+  @override
+  late final GeneratedColumn<int> mediaId = GeneratedColumn<int>(
+      'media_id', aliasedName, true,
+      type: DriftSqlType.int, requiredDuringInsert: false);
+  static const VerificationMeta _contextMeta =
+      const VerificationMeta('context');
+  @override
+  late final GeneratedColumn<String> context = GeneratedColumn<String>(
+      'context', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _reasonMeta = const VerificationMeta('reason');
+  @override
+  late final GeneratedColumn<String> reason = GeneratedColumn<String>(
+      'reason', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  @override
+  late final GeneratedColumnWithTypeConverter<List<String>?, String>
+      deletedMediaTitles = GeneratedColumn<String>(
+              'deleted_media_titles', aliasedName, true,
+              type: DriftSqlType.string, requiredDuringInsert: false)
+          .withConverter<List<String>?>(
+              $NotificationsTableTable.$converterdeletedMediaTitles);
+  static const VerificationMeta _deletedMediaTitleMeta =
+      const VerificationMeta('deletedMediaTitle');
+  @override
+  late final GeneratedColumn<String> deletedMediaTitle =
+      GeneratedColumn<String>('deleted_media_title', aliasedName, true,
+          type: DriftSqlType.string, requiredDuringInsert: false);
+  @override
+  late final GeneratedColumnWithTypeConverter<MediaInfo?, String> mediaInfo =
+      GeneratedColumn<String>('media_info', aliasedName, true,
+              type: DriftSqlType.string, requiredDuringInsert: false)
+          .withConverter<MediaInfo?>(
+              $NotificationsTableTable.$convertermediaInfo);
+  static const VerificationMeta _localCreatedAtMeta =
+      const VerificationMeta('localCreatedAt');
+  @override
+  late final GeneratedColumn<DateTime> localCreatedAt =
+      GeneratedColumn<DateTime>('local_created_at', aliasedName, false,
+          type: DriftSqlType.dateTime,
+          requiredDuringInsert: false,
+          defaultValue: currentDateAndTime);
+  static const VerificationMeta _localUpdatedAtMeta =
+      const VerificationMeta('localUpdatedAt');
+  @override
+  late final GeneratedColumn<DateTime> localUpdatedAt =
+      GeneratedColumn<DateTime>('local_updated_at', aliasedName, false,
+          type: DriftSqlType.dateTime,
+          requiredDuringInsert: false,
+          defaultValue: currentDateAndTime);
+  @override
+  List<GeneratedColumn> get $columns => [
+        id,
+        type,
+        createdAt,
+        isRead,
+        animeId,
+        episode,
+        contexts,
+        mediaId,
+        context,
+        reason,
+        deletedMediaTitles,
+        deletedMediaTitle,
+        mediaInfo,
+        localCreatedAt,
+        localUpdatedAt
+      ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'notifications';
+  @override
+  VerificationContext validateIntegrity(
+      Insertable<NotificationsTableData> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(_createdAtMeta,
+          createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('is_read')) {
+      context.handle(_isReadMeta,
+          isRead.isAcceptableOrUnknown(data['is_read']!, _isReadMeta));
+    }
+    if (data.containsKey('anime_id')) {
+      context.handle(_animeIdMeta,
+          animeId.isAcceptableOrUnknown(data['anime_id']!, _animeIdMeta));
+    }
+    if (data.containsKey('episode')) {
+      context.handle(_episodeMeta,
+          episode.isAcceptableOrUnknown(data['episode']!, _episodeMeta));
+    }
+    if (data.containsKey('media_id')) {
+      context.handle(_mediaIdMeta,
+          mediaId.isAcceptableOrUnknown(data['media_id']!, _mediaIdMeta));
+    }
+    if (data.containsKey('context')) {
+      context.handle(_contextMeta,
+          this.context.isAcceptableOrUnknown(data['context']!, _contextMeta));
+    }
+    if (data.containsKey('reason')) {
+      context.handle(_reasonMeta,
+          reason.isAcceptableOrUnknown(data['reason']!, _reasonMeta));
+    }
+    if (data.containsKey('deleted_media_title')) {
+      context.handle(
+          _deletedMediaTitleMeta,
+          deletedMediaTitle.isAcceptableOrUnknown(
+              data['deleted_media_title']!, _deletedMediaTitleMeta));
+    }
+    if (data.containsKey('local_created_at')) {
+      context.handle(
+          _localCreatedAtMeta,
+          localCreatedAt.isAcceptableOrUnknown(
+              data['local_created_at']!, _localCreatedAtMeta));
+    }
+    if (data.containsKey('local_updated_at')) {
+      context.handle(
+          _localUpdatedAtMeta,
+          localUpdatedAt.isAcceptableOrUnknown(
+              data['local_updated_at']!, _localUpdatedAtMeta));
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  NotificationsTableData map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return NotificationsTableData(
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}id'])!,
+      type: $NotificationsTableTable.$convertertype.fromSql(attachedDatabase
+          .typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}type'])!),
+      createdAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}created_at'])!,
+      isRead: attachedDatabase.typeMapping
+          .read(DriftSqlType.bool, data['${effectivePrefix}is_read'])!,
+      animeId: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}anime_id']),
+      episode: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}episode']),
+      contexts: $NotificationsTableTable.$convertercontexts.fromSql(
+          attachedDatabase.typeMapping
+              .read(DriftSqlType.string, data['${effectivePrefix}contexts'])),
+      mediaId: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}media_id']),
+      context: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}context']),
+      reason: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}reason']),
+      deletedMediaTitles: $NotificationsTableTable.$converterdeletedMediaTitles
+          .fromSql(attachedDatabase.typeMapping.read(DriftSqlType.string,
+              data['${effectivePrefix}deleted_media_titles'])),
+      deletedMediaTitle: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}deleted_media_title']),
+      mediaInfo: $NotificationsTableTable.$convertermediaInfo.fromSql(
+          attachedDatabase.typeMapping
+              .read(DriftSqlType.string, data['${effectivePrefix}media_info'])),
+      localCreatedAt: attachedDatabase.typeMapping.read(
+          DriftSqlType.dateTime, data['${effectivePrefix}local_created_at'])!,
+      localUpdatedAt: attachedDatabase.typeMapping.read(
+          DriftSqlType.dateTime, data['${effectivePrefix}local_updated_at'])!,
+    );
+  }
+
+  @override
+  $NotificationsTableTable createAlias(String alias) {
+    return $NotificationsTableTable(attachedDatabase, alias);
+  }
+
+  static TypeConverter<NotificationType, int> $convertertype =
+      const NotificationTypeConverter();
+  static TypeConverter<List<String>?, String?> $convertercontexts =
+      const StringListConverter();
+  static TypeConverter<List<String>?, String?> $converterdeletedMediaTitles =
+      const StringListConverter();
+  static TypeConverter<MediaInfo?, String?> $convertermediaInfo =
+      const MediaInfoConverter();
+}
+
+class NotificationsTableData extends DataClass
+    implements Insertable<NotificationsTableData> {
+  final int id;
+  final NotificationType type;
+  final int createdAt;
+  final bool isRead;
+  final int? animeId;
+  final int? episode;
+  final List<String>? contexts;
+  final int? mediaId;
+  final String? context;
+  final String? reason;
+  final List<String>? deletedMediaTitles;
+  final String? deletedMediaTitle;
+  final MediaInfo? mediaInfo;
+  final DateTime localCreatedAt;
+  final DateTime localUpdatedAt;
+  const NotificationsTableData(
+      {required this.id,
+      required this.type,
+      required this.createdAt,
+      required this.isRead,
+      this.animeId,
+      this.episode,
+      this.contexts,
+      this.mediaId,
+      this.context,
+      this.reason,
+      this.deletedMediaTitles,
+      this.deletedMediaTitle,
+      this.mediaInfo,
+      required this.localCreatedAt,
+      required this.localUpdatedAt});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    {
+      map['type'] =
+          Variable<int>($NotificationsTableTable.$convertertype.toSql(type));
+    }
+    map['created_at'] = Variable<int>(createdAt);
+    map['is_read'] = Variable<bool>(isRead);
+    if (!nullToAbsent || animeId != null) {
+      map['anime_id'] = Variable<int>(animeId);
+    }
+    if (!nullToAbsent || episode != null) {
+      map['episode'] = Variable<int>(episode);
+    }
+    if (!nullToAbsent || contexts != null) {
+      map['contexts'] = Variable<String>(
+          $NotificationsTableTable.$convertercontexts.toSql(contexts));
+    }
+    if (!nullToAbsent || mediaId != null) {
+      map['media_id'] = Variable<int>(mediaId);
+    }
+    if (!nullToAbsent || context != null) {
+      map['context'] = Variable<String>(context);
+    }
+    if (!nullToAbsent || reason != null) {
+      map['reason'] = Variable<String>(reason);
+    }
+    if (!nullToAbsent || deletedMediaTitles != null) {
+      map['deleted_media_titles'] = Variable<String>($NotificationsTableTable
+          .$converterdeletedMediaTitles
+          .toSql(deletedMediaTitles));
+    }
+    if (!nullToAbsent || deletedMediaTitle != null) {
+      map['deleted_media_title'] = Variable<String>(deletedMediaTitle);
+    }
+    if (!nullToAbsent || mediaInfo != null) {
+      map['media_info'] = Variable<String>(
+          $NotificationsTableTable.$convertermediaInfo.toSql(mediaInfo));
+    }
+    map['local_created_at'] = Variable<DateTime>(localCreatedAt);
+    map['local_updated_at'] = Variable<DateTime>(localUpdatedAt);
+    return map;
+  }
+
+  NotificationsTableCompanion toCompanion(bool nullToAbsent) {
+    return NotificationsTableCompanion(
+      id: Value(id),
+      type: Value(type),
+      createdAt: Value(createdAt),
+      isRead: Value(isRead),
+      animeId: animeId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(animeId),
+      episode: episode == null && nullToAbsent
+          ? const Value.absent()
+          : Value(episode),
+      contexts: contexts == null && nullToAbsent
+          ? const Value.absent()
+          : Value(contexts),
+      mediaId: mediaId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(mediaId),
+      context: context == null && nullToAbsent
+          ? const Value.absent()
+          : Value(context),
+      reason:
+          reason == null && nullToAbsent ? const Value.absent() : Value(reason),
+      deletedMediaTitles: deletedMediaTitles == null && nullToAbsent
+          ? const Value.absent()
+          : Value(deletedMediaTitles),
+      deletedMediaTitle: deletedMediaTitle == null && nullToAbsent
+          ? const Value.absent()
+          : Value(deletedMediaTitle),
+      mediaInfo: mediaInfo == null && nullToAbsent
+          ? const Value.absent()
+          : Value(mediaInfo),
+      localCreatedAt: Value(localCreatedAt),
+      localUpdatedAt: Value(localUpdatedAt),
+    );
+  }
+
+  factory NotificationsTableData.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return NotificationsTableData(
+      id: serializer.fromJson<int>(json['id']),
+      type: serializer.fromJson<NotificationType>(json['type']),
+      createdAt: serializer.fromJson<int>(json['createdAt']),
+      isRead: serializer.fromJson<bool>(json['isRead']),
+      animeId: serializer.fromJson<int?>(json['animeId']),
+      episode: serializer.fromJson<int?>(json['episode']),
+      contexts: serializer.fromJson<List<String>?>(json['contexts']),
+      mediaId: serializer.fromJson<int?>(json['mediaId']),
+      context: serializer.fromJson<String?>(json['context']),
+      reason: serializer.fromJson<String?>(json['reason']),
+      deletedMediaTitles:
+          serializer.fromJson<List<String>?>(json['deletedMediaTitles']),
+      deletedMediaTitle:
+          serializer.fromJson<String?>(json['deletedMediaTitle']),
+      mediaInfo: serializer.fromJson<MediaInfo?>(json['mediaInfo']),
+      localCreatedAt: serializer.fromJson<DateTime>(json['localCreatedAt']),
+      localUpdatedAt: serializer.fromJson<DateTime>(json['localUpdatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'type': serializer.toJson<NotificationType>(type),
+      'createdAt': serializer.toJson<int>(createdAt),
+      'isRead': serializer.toJson<bool>(isRead),
+      'animeId': serializer.toJson<int?>(animeId),
+      'episode': serializer.toJson<int?>(episode),
+      'contexts': serializer.toJson<List<String>?>(contexts),
+      'mediaId': serializer.toJson<int?>(mediaId),
+      'context': serializer.toJson<String?>(context),
+      'reason': serializer.toJson<String?>(reason),
+      'deletedMediaTitles':
+          serializer.toJson<List<String>?>(deletedMediaTitles),
+      'deletedMediaTitle': serializer.toJson<String?>(deletedMediaTitle),
+      'mediaInfo': serializer.toJson<MediaInfo?>(mediaInfo),
+      'localCreatedAt': serializer.toJson<DateTime>(localCreatedAt),
+      'localUpdatedAt': serializer.toJson<DateTime>(localUpdatedAt),
+    };
+  }
+
+  NotificationsTableData copyWith(
+          {int? id,
+          NotificationType? type,
+          int? createdAt,
+          bool? isRead,
+          Value<int?> animeId = const Value.absent(),
+          Value<int?> episode = const Value.absent(),
+          Value<List<String>?> contexts = const Value.absent(),
+          Value<int?> mediaId = const Value.absent(),
+          Value<String?> context = const Value.absent(),
+          Value<String?> reason = const Value.absent(),
+          Value<List<String>?> deletedMediaTitles = const Value.absent(),
+          Value<String?> deletedMediaTitle = const Value.absent(),
+          Value<MediaInfo?> mediaInfo = const Value.absent(),
+          DateTime? localCreatedAt,
+          DateTime? localUpdatedAt}) =>
+      NotificationsTableData(
+        id: id ?? this.id,
+        type: type ?? this.type,
+        createdAt: createdAt ?? this.createdAt,
+        isRead: isRead ?? this.isRead,
+        animeId: animeId.present ? animeId.value : this.animeId,
+        episode: episode.present ? episode.value : this.episode,
+        contexts: contexts.present ? contexts.value : this.contexts,
+        mediaId: mediaId.present ? mediaId.value : this.mediaId,
+        context: context.present ? context.value : this.context,
+        reason: reason.present ? reason.value : this.reason,
+        deletedMediaTitles: deletedMediaTitles.present
+            ? deletedMediaTitles.value
+            : this.deletedMediaTitles,
+        deletedMediaTitle: deletedMediaTitle.present
+            ? deletedMediaTitle.value
+            : this.deletedMediaTitle,
+        mediaInfo: mediaInfo.present ? mediaInfo.value : this.mediaInfo,
+        localCreatedAt: localCreatedAt ?? this.localCreatedAt,
+        localUpdatedAt: localUpdatedAt ?? this.localUpdatedAt,
+      );
+  NotificationsTableData copyWithCompanion(NotificationsTableCompanion data) {
+    return NotificationsTableData(
+      id: data.id.present ? data.id.value : this.id,
+      type: data.type.present ? data.type.value : this.type,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      isRead: data.isRead.present ? data.isRead.value : this.isRead,
+      animeId: data.animeId.present ? data.animeId.value : this.animeId,
+      episode: data.episode.present ? data.episode.value : this.episode,
+      contexts: data.contexts.present ? data.contexts.value : this.contexts,
+      mediaId: data.mediaId.present ? data.mediaId.value : this.mediaId,
+      context: data.context.present ? data.context.value : this.context,
+      reason: data.reason.present ? data.reason.value : this.reason,
+      deletedMediaTitles: data.deletedMediaTitles.present
+          ? data.deletedMediaTitles.value
+          : this.deletedMediaTitles,
+      deletedMediaTitle: data.deletedMediaTitle.present
+          ? data.deletedMediaTitle.value
+          : this.deletedMediaTitle,
+      mediaInfo: data.mediaInfo.present ? data.mediaInfo.value : this.mediaInfo,
+      localCreatedAt: data.localCreatedAt.present
+          ? data.localCreatedAt.value
+          : this.localCreatedAt,
+      localUpdatedAt: data.localUpdatedAt.present
+          ? data.localUpdatedAt.value
+          : this.localUpdatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('NotificationsTableData(')
+          ..write('id: $id, ')
+          ..write('type: $type, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('isRead: $isRead, ')
+          ..write('animeId: $animeId, ')
+          ..write('episode: $episode, ')
+          ..write('contexts: $contexts, ')
+          ..write('mediaId: $mediaId, ')
+          ..write('context: $context, ')
+          ..write('reason: $reason, ')
+          ..write('deletedMediaTitles: $deletedMediaTitles, ')
+          ..write('deletedMediaTitle: $deletedMediaTitle, ')
+          ..write('mediaInfo: $mediaInfo, ')
+          ..write('localCreatedAt: $localCreatedAt, ')
+          ..write('localUpdatedAt: $localUpdatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+      id,
+      type,
+      createdAt,
+      isRead,
+      animeId,
+      episode,
+      contexts,
+      mediaId,
+      context,
+      reason,
+      deletedMediaTitles,
+      deletedMediaTitle,
+      mediaInfo,
+      localCreatedAt,
+      localUpdatedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is NotificationsTableData &&
+          other.id == this.id &&
+          other.type == this.type &&
+          other.createdAt == this.createdAt &&
+          other.isRead == this.isRead &&
+          other.animeId == this.animeId &&
+          other.episode == this.episode &&
+          other.contexts == this.contexts &&
+          other.mediaId == this.mediaId &&
+          other.context == this.context &&
+          other.reason == this.reason &&
+          other.deletedMediaTitles == this.deletedMediaTitles &&
+          other.deletedMediaTitle == this.deletedMediaTitle &&
+          other.mediaInfo == this.mediaInfo &&
+          other.localCreatedAt == this.localCreatedAt &&
+          other.localUpdatedAt == this.localUpdatedAt);
+}
+
+class NotificationsTableCompanion
+    extends UpdateCompanion<NotificationsTableData> {
+  final Value<int> id;
+  final Value<NotificationType> type;
+  final Value<int> createdAt;
+  final Value<bool> isRead;
+  final Value<int?> animeId;
+  final Value<int?> episode;
+  final Value<List<String>?> contexts;
+  final Value<int?> mediaId;
+  final Value<String?> context;
+  final Value<String?> reason;
+  final Value<List<String>?> deletedMediaTitles;
+  final Value<String?> deletedMediaTitle;
+  final Value<MediaInfo?> mediaInfo;
+  final Value<DateTime> localCreatedAt;
+  final Value<DateTime> localUpdatedAt;
+  const NotificationsTableCompanion({
+    this.id = const Value.absent(),
+    this.type = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.isRead = const Value.absent(),
+    this.animeId = const Value.absent(),
+    this.episode = const Value.absent(),
+    this.contexts = const Value.absent(),
+    this.mediaId = const Value.absent(),
+    this.context = const Value.absent(),
+    this.reason = const Value.absent(),
+    this.deletedMediaTitles = const Value.absent(),
+    this.deletedMediaTitle = const Value.absent(),
+    this.mediaInfo = const Value.absent(),
+    this.localCreatedAt = const Value.absent(),
+    this.localUpdatedAt = const Value.absent(),
+  });
+  NotificationsTableCompanion.insert({
+    this.id = const Value.absent(),
+    required NotificationType type,
+    required int createdAt,
+    this.isRead = const Value.absent(),
+    this.animeId = const Value.absent(),
+    this.episode = const Value.absent(),
+    this.contexts = const Value.absent(),
+    this.mediaId = const Value.absent(),
+    this.context = const Value.absent(),
+    this.reason = const Value.absent(),
+    this.deletedMediaTitles = const Value.absent(),
+    this.deletedMediaTitle = const Value.absent(),
+    this.mediaInfo = const Value.absent(),
+    this.localCreatedAt = const Value.absent(),
+    this.localUpdatedAt = const Value.absent(),
+  })  : type = Value(type),
+        createdAt = Value(createdAt);
+  static Insertable<NotificationsTableData> custom({
+    Expression<int>? id,
+    Expression<int>? type,
+    Expression<int>? createdAt,
+    Expression<bool>? isRead,
+    Expression<int>? animeId,
+    Expression<int>? episode,
+    Expression<String>? contexts,
+    Expression<int>? mediaId,
+    Expression<String>? context,
+    Expression<String>? reason,
+    Expression<String>? deletedMediaTitles,
+    Expression<String>? deletedMediaTitle,
+    Expression<String>? mediaInfo,
+    Expression<DateTime>? localCreatedAt,
+    Expression<DateTime>? localUpdatedAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (type != null) 'type': type,
+      if (createdAt != null) 'created_at': createdAt,
+      if (isRead != null) 'is_read': isRead,
+      if (animeId != null) 'anime_id': animeId,
+      if (episode != null) 'episode': episode,
+      if (contexts != null) 'contexts': contexts,
+      if (mediaId != null) 'media_id': mediaId,
+      if (context != null) 'context': context,
+      if (reason != null) 'reason': reason,
+      if (deletedMediaTitles != null)
+        'deleted_media_titles': deletedMediaTitles,
+      if (deletedMediaTitle != null) 'deleted_media_title': deletedMediaTitle,
+      if (mediaInfo != null) 'media_info': mediaInfo,
+      if (localCreatedAt != null) 'local_created_at': localCreatedAt,
+      if (localUpdatedAt != null) 'local_updated_at': localUpdatedAt,
+    });
+  }
+
+  NotificationsTableCompanion copyWith(
+      {Value<int>? id,
+      Value<NotificationType>? type,
+      Value<int>? createdAt,
+      Value<bool>? isRead,
+      Value<int?>? animeId,
+      Value<int?>? episode,
+      Value<List<String>?>? contexts,
+      Value<int?>? mediaId,
+      Value<String?>? context,
+      Value<String?>? reason,
+      Value<List<String>?>? deletedMediaTitles,
+      Value<String?>? deletedMediaTitle,
+      Value<MediaInfo?>? mediaInfo,
+      Value<DateTime>? localCreatedAt,
+      Value<DateTime>? localUpdatedAt}) {
+    return NotificationsTableCompanion(
+      id: id ?? this.id,
+      type: type ?? this.type,
+      createdAt: createdAt ?? this.createdAt,
+      isRead: isRead ?? this.isRead,
+      animeId: animeId ?? this.animeId,
+      episode: episode ?? this.episode,
+      contexts: contexts ?? this.contexts,
+      mediaId: mediaId ?? this.mediaId,
+      context: context ?? this.context,
+      reason: reason ?? this.reason,
+      deletedMediaTitles: deletedMediaTitles ?? this.deletedMediaTitles,
+      deletedMediaTitle: deletedMediaTitle ?? this.deletedMediaTitle,
+      mediaInfo: mediaInfo ?? this.mediaInfo,
+      localCreatedAt: localCreatedAt ?? this.localCreatedAt,
+      localUpdatedAt: localUpdatedAt ?? this.localUpdatedAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (type.present) {
+      map['type'] = Variable<int>(
+          $NotificationsTableTable.$convertertype.toSql(type.value));
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<int>(createdAt.value);
+    }
+    if (isRead.present) {
+      map['is_read'] = Variable<bool>(isRead.value);
+    }
+    if (animeId.present) {
+      map['anime_id'] = Variable<int>(animeId.value);
+    }
+    if (episode.present) {
+      map['episode'] = Variable<int>(episode.value);
+    }
+    if (contexts.present) {
+      map['contexts'] = Variable<String>(
+          $NotificationsTableTable.$convertercontexts.toSql(contexts.value));
+    }
+    if (mediaId.present) {
+      map['media_id'] = Variable<int>(mediaId.value);
+    }
+    if (context.present) {
+      map['context'] = Variable<String>(context.value);
+    }
+    if (reason.present) {
+      map['reason'] = Variable<String>(reason.value);
+    }
+    if (deletedMediaTitles.present) {
+      map['deleted_media_titles'] = Variable<String>($NotificationsTableTable
+          .$converterdeletedMediaTitles
+          .toSql(deletedMediaTitles.value));
+    }
+    if (deletedMediaTitle.present) {
+      map['deleted_media_title'] = Variable<String>(deletedMediaTitle.value);
+    }
+    if (mediaInfo.present) {
+      map['media_info'] = Variable<String>(
+          $NotificationsTableTable.$convertermediaInfo.toSql(mediaInfo.value));
+    }
+    if (localCreatedAt.present) {
+      map['local_created_at'] = Variable<DateTime>(localCreatedAt.value);
+    }
+    if (localUpdatedAt.present) {
+      map['local_updated_at'] = Variable<DateTime>(localUpdatedAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('NotificationsTableCompanion(')
+          ..write('id: $id, ')
+          ..write('type: $type, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('isRead: $isRead, ')
+          ..write('animeId: $animeId, ')
+          ..write('episode: $episode, ')
+          ..write('contexts: $contexts, ')
+          ..write('mediaId: $mediaId, ')
+          ..write('context: $context, ')
+          ..write('reason: $reason, ')
+          ..write('deletedMediaTitles: $deletedMediaTitles, ')
+          ..write('deletedMediaTitle: $deletedMediaTitle, ')
+          ..write('mediaInfo: $mediaInfo, ')
+          ..write('localCreatedAt: $localCreatedAt, ')
+          ..write('localUpdatedAt: $localUpdatedAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -2269,9 +3002,13 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       $AnilistMappingsTableTable(this);
   late final $WatchRecordsTableTable watchRecordsTable =
       $WatchRecordsTableTable(this);
+  late final $NotificationsTableTable notificationsTable =
+      $NotificationsTableTable(this);
   late final SeriesDao seriesDao = SeriesDao(this as AppDatabase);
   late final EpisodesDao episodesDao = EpisodesDao(this as AppDatabase);
   late final WatchDao watchDao = WatchDao(this as AppDatabase);
+  late final NotificationsDao notificationsDao =
+      NotificationsDao(this as AppDatabase);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -2281,7 +3018,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         seasonsTable,
         episodesTable,
         anilistMappingsTable,
-        watchRecordsTable
+        watchRecordsTable,
+        notificationsTable
       ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules(
@@ -3984,6 +4722,343 @@ typedef $$WatchRecordsTableTableProcessedTableManager = ProcessedTableManager<
     ),
     WatchRecordsTableData,
     PrefetchHooks Function()>;
+typedef $$NotificationsTableTableCreateCompanionBuilder
+    = NotificationsTableCompanion Function({
+  Value<int> id,
+  required NotificationType type,
+  required int createdAt,
+  Value<bool> isRead,
+  Value<int?> animeId,
+  Value<int?> episode,
+  Value<List<String>?> contexts,
+  Value<int?> mediaId,
+  Value<String?> context,
+  Value<String?> reason,
+  Value<List<String>?> deletedMediaTitles,
+  Value<String?> deletedMediaTitle,
+  Value<MediaInfo?> mediaInfo,
+  Value<DateTime> localCreatedAt,
+  Value<DateTime> localUpdatedAt,
+});
+typedef $$NotificationsTableTableUpdateCompanionBuilder
+    = NotificationsTableCompanion Function({
+  Value<int> id,
+  Value<NotificationType> type,
+  Value<int> createdAt,
+  Value<bool> isRead,
+  Value<int?> animeId,
+  Value<int?> episode,
+  Value<List<String>?> contexts,
+  Value<int?> mediaId,
+  Value<String?> context,
+  Value<String?> reason,
+  Value<List<String>?> deletedMediaTitles,
+  Value<String?> deletedMediaTitle,
+  Value<MediaInfo?> mediaInfo,
+  Value<DateTime> localCreatedAt,
+  Value<DateTime> localUpdatedAt,
+});
+
+class $$NotificationsTableTableFilterComposer
+    extends Composer<_$AppDatabase, $NotificationsTableTable> {
+  $$NotificationsTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnFilters(column));
+
+  ColumnWithTypeConverterFilters<NotificationType, NotificationType, int>
+      get type => $composableBuilder(
+          column: $table.type,
+          builder: (column) => ColumnWithTypeConverterFilters(column));
+
+  ColumnFilters<int> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<bool> get isRead => $composableBuilder(
+      column: $table.isRead, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get animeId => $composableBuilder(
+      column: $table.animeId, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get episode => $composableBuilder(
+      column: $table.episode, builder: (column) => ColumnFilters(column));
+
+  ColumnWithTypeConverterFilters<List<String>?, List<String>, String>
+      get contexts => $composableBuilder(
+          column: $table.contexts,
+          builder: (column) => ColumnWithTypeConverterFilters(column));
+
+  ColumnFilters<int> get mediaId => $composableBuilder(
+      column: $table.mediaId, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get context => $composableBuilder(
+      column: $table.context, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get reason => $composableBuilder(
+      column: $table.reason, builder: (column) => ColumnFilters(column));
+
+  ColumnWithTypeConverterFilters<List<String>?, List<String>, String>
+      get deletedMediaTitles => $composableBuilder(
+          column: $table.deletedMediaTitles,
+          builder: (column) => ColumnWithTypeConverterFilters(column));
+
+  ColumnFilters<String> get deletedMediaTitle => $composableBuilder(
+      column: $table.deletedMediaTitle,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnWithTypeConverterFilters<MediaInfo?, MediaInfo, String> get mediaInfo =>
+      $composableBuilder(
+          column: $table.mediaInfo,
+          builder: (column) => ColumnWithTypeConverterFilters(column));
+
+  ColumnFilters<DateTime> get localCreatedAt => $composableBuilder(
+      column: $table.localCreatedAt,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get localUpdatedAt => $composableBuilder(
+      column: $table.localUpdatedAt,
+      builder: (column) => ColumnFilters(column));
+}
+
+class $$NotificationsTableTableOrderingComposer
+    extends Composer<_$AppDatabase, $NotificationsTableTable> {
+  $$NotificationsTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get type => $composableBuilder(
+      column: $table.type, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<bool> get isRead => $composableBuilder(
+      column: $table.isRead, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get animeId => $composableBuilder(
+      column: $table.animeId, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get episode => $composableBuilder(
+      column: $table.episode, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get contexts => $composableBuilder(
+      column: $table.contexts, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get mediaId => $composableBuilder(
+      column: $table.mediaId, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get context => $composableBuilder(
+      column: $table.context, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get reason => $composableBuilder(
+      column: $table.reason, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get deletedMediaTitles => $composableBuilder(
+      column: $table.deletedMediaTitles,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get deletedMediaTitle => $composableBuilder(
+      column: $table.deletedMediaTitle,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get mediaInfo => $composableBuilder(
+      column: $table.mediaInfo, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get localCreatedAt => $composableBuilder(
+      column: $table.localCreatedAt,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get localUpdatedAt => $composableBuilder(
+      column: $table.localUpdatedAt,
+      builder: (column) => ColumnOrderings(column));
+}
+
+class $$NotificationsTableTableAnnotationComposer
+    extends Composer<_$AppDatabase, $NotificationsTableTable> {
+  $$NotificationsTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<NotificationType, int> get type =>
+      $composableBuilder(column: $table.type, builder: (column) => column);
+
+  GeneratedColumn<int> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<bool> get isRead =>
+      $composableBuilder(column: $table.isRead, builder: (column) => column);
+
+  GeneratedColumn<int> get animeId =>
+      $composableBuilder(column: $table.animeId, builder: (column) => column);
+
+  GeneratedColumn<int> get episode =>
+      $composableBuilder(column: $table.episode, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<List<String>?, String> get contexts =>
+      $composableBuilder(column: $table.contexts, builder: (column) => column);
+
+  GeneratedColumn<int> get mediaId =>
+      $composableBuilder(column: $table.mediaId, builder: (column) => column);
+
+  GeneratedColumn<String> get context =>
+      $composableBuilder(column: $table.context, builder: (column) => column);
+
+  GeneratedColumn<String> get reason =>
+      $composableBuilder(column: $table.reason, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<List<String>?, String>
+      get deletedMediaTitles => $composableBuilder(
+          column: $table.deletedMediaTitles, builder: (column) => column);
+
+  GeneratedColumn<String> get deletedMediaTitle => $composableBuilder(
+      column: $table.deletedMediaTitle, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<MediaInfo?, String> get mediaInfo =>
+      $composableBuilder(column: $table.mediaInfo, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get localCreatedAt => $composableBuilder(
+      column: $table.localCreatedAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get localUpdatedAt => $composableBuilder(
+      column: $table.localUpdatedAt, builder: (column) => column);
+}
+
+class $$NotificationsTableTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $NotificationsTableTable,
+    NotificationsTableData,
+    $$NotificationsTableTableFilterComposer,
+    $$NotificationsTableTableOrderingComposer,
+    $$NotificationsTableTableAnnotationComposer,
+    $$NotificationsTableTableCreateCompanionBuilder,
+    $$NotificationsTableTableUpdateCompanionBuilder,
+    (
+      NotificationsTableData,
+      BaseReferences<_$AppDatabase, $NotificationsTableTable,
+          NotificationsTableData>
+    ),
+    NotificationsTableData,
+    PrefetchHooks Function()> {
+  $$NotificationsTableTableTableManager(
+      _$AppDatabase db, $NotificationsTableTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$NotificationsTableTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$NotificationsTableTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$NotificationsTableTableAnnotationComposer(
+                  $db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<int> id = const Value.absent(),
+            Value<NotificationType> type = const Value.absent(),
+            Value<int> createdAt = const Value.absent(),
+            Value<bool> isRead = const Value.absent(),
+            Value<int?> animeId = const Value.absent(),
+            Value<int?> episode = const Value.absent(),
+            Value<List<String>?> contexts = const Value.absent(),
+            Value<int?> mediaId = const Value.absent(),
+            Value<String?> context = const Value.absent(),
+            Value<String?> reason = const Value.absent(),
+            Value<List<String>?> deletedMediaTitles = const Value.absent(),
+            Value<String?> deletedMediaTitle = const Value.absent(),
+            Value<MediaInfo?> mediaInfo = const Value.absent(),
+            Value<DateTime> localCreatedAt = const Value.absent(),
+            Value<DateTime> localUpdatedAt = const Value.absent(),
+          }) =>
+              NotificationsTableCompanion(
+            id: id,
+            type: type,
+            createdAt: createdAt,
+            isRead: isRead,
+            animeId: animeId,
+            episode: episode,
+            contexts: contexts,
+            mediaId: mediaId,
+            context: context,
+            reason: reason,
+            deletedMediaTitles: deletedMediaTitles,
+            deletedMediaTitle: deletedMediaTitle,
+            mediaInfo: mediaInfo,
+            localCreatedAt: localCreatedAt,
+            localUpdatedAt: localUpdatedAt,
+          ),
+          createCompanionCallback: ({
+            Value<int> id = const Value.absent(),
+            required NotificationType type,
+            required int createdAt,
+            Value<bool> isRead = const Value.absent(),
+            Value<int?> animeId = const Value.absent(),
+            Value<int?> episode = const Value.absent(),
+            Value<List<String>?> contexts = const Value.absent(),
+            Value<int?> mediaId = const Value.absent(),
+            Value<String?> context = const Value.absent(),
+            Value<String?> reason = const Value.absent(),
+            Value<List<String>?> deletedMediaTitles = const Value.absent(),
+            Value<String?> deletedMediaTitle = const Value.absent(),
+            Value<MediaInfo?> mediaInfo = const Value.absent(),
+            Value<DateTime> localCreatedAt = const Value.absent(),
+            Value<DateTime> localUpdatedAt = const Value.absent(),
+          }) =>
+              NotificationsTableCompanion.insert(
+            id: id,
+            type: type,
+            createdAt: createdAt,
+            isRead: isRead,
+            animeId: animeId,
+            episode: episode,
+            contexts: contexts,
+            mediaId: mediaId,
+            context: context,
+            reason: reason,
+            deletedMediaTitles: deletedMediaTitles,
+            deletedMediaTitle: deletedMediaTitle,
+            mediaInfo: mediaInfo,
+            localCreatedAt: localCreatedAt,
+            localUpdatedAt: localUpdatedAt,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ));
+}
+
+typedef $$NotificationsTableTableProcessedTableManager = ProcessedTableManager<
+    _$AppDatabase,
+    $NotificationsTableTable,
+    NotificationsTableData,
+    $$NotificationsTableTableFilterComposer,
+    $$NotificationsTableTableOrderingComposer,
+    $$NotificationsTableTableAnnotationComposer,
+    $$NotificationsTableTableCreateCompanionBuilder,
+    $$NotificationsTableTableUpdateCompanionBuilder,
+    (
+      NotificationsTableData,
+      BaseReferences<_$AppDatabase, $NotificationsTableTable,
+          NotificationsTableData>
+    ),
+    NotificationsTableData,
+    PrefetchHooks Function()>;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -3998,4 +5073,6 @@ class $AppDatabaseManager {
       $$AnilistMappingsTableTableTableManager(_db, _db.anilistMappingsTable);
   $$WatchRecordsTableTableTableManager get watchRecordsTable =>
       $$WatchRecordsTableTableTableManager(_db, _db.watchRecordsTable);
+  $$NotificationsTableTableTableManager get notificationsTable =>
+      $$NotificationsTableTableTableManager(_db, _db.notificationsTable);
 }

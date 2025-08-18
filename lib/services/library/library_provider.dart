@@ -45,7 +45,6 @@ part 'anilist_integration.dart';
 class Library with ChangeNotifier {
   List<Series> _series = [];
   String? _libraryPath;
-  bool _isLoading = false;
   bool _isScanning = false;
   final ValueNotifier<(int, int)?> scanProgress = ValueNotifier(null);
   
@@ -60,8 +59,8 @@ class Library with ChangeNotifier {
   List<Series> get series => List.unmodifiable(_series);
   String? get libraryPath => _libraryPath;
   bool get initialized => _initialized;
-  bool get isLoading => _isLoading;
   bool get isScanning => _isScanning;
+  AppDatabase get database => _db;
 
   static const String settingsFileName = 'settings';
   static const String miruryoikiLibrary = 'library';

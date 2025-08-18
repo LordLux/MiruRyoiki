@@ -73,12 +73,14 @@ dependencies:
   drift: ^2.14.0
   sqlite3_flutter_libs: ^0.5.18
   md5_file_checksum: ^1.1.0
+  json_annotation: ^4.8.1
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   drift_dev: ^2.14.0
   build_runner: ^2.4.6
+  json_serializable: ^6.7.1
     
   flutter_lints: ^5.0.0
   flutter_launcher_icons: ^0.14.3
