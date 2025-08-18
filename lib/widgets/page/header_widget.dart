@@ -14,6 +14,7 @@ class HeaderWidget extends StatefulWidget {
   final List<Widget> children;
   final bool titleLeftAligned;
   final EdgeInsets headerPadding;
+  final double? fixed;
 
   const HeaderWidget({
     super.key,
@@ -23,7 +24,8 @@ class HeaderWidget extends StatefulWidget {
     this.children = const [],
     this.titleLeftAligned = false,
     this.image_widget,
-    this.headerPadding = const EdgeInsets.only(bottom: 0.0),
+    this.headerPadding = EdgeInsets.zero,
+    this.fixed,
   }) : assert(
           !(image != null && image_widget != null),
           'Only one of image or image_widget can be provided',
@@ -41,7 +43,7 @@ class _HeaderWidgetState extends State<HeaderWidget> {
         children: [
           AnimatedContainer(
             duration: shortStickyHeaderDuration,
-            height: ScreenUtils.kMaxHeaderHeight,
+            height: widget.fixed ?? ScreenUtils.kMaxHeaderHeight,
             width: double.infinity,
             // Background image
             decoration: BoxDecoration(

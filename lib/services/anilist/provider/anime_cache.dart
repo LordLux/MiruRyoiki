@@ -92,4 +92,84 @@ extension AnilistProviderAnimeCache on AnilistProvider {
       logErr('Error loading anime cache', e, st);
     }
   }
+
+  /// Get upcoming episodes for a list of anime IDs
+  Future<Map<int, AiringEpisode?>> getUpcomingEpisodes(List<int> animeIds) async {
+    if (!isLoggedIn) return {};
+    
+    // Check if we have cached data and it's still valid
+    final bool hasCachedData = _upcomingEpisodesCache.isNotEmpty;
+    final bool cacheIsValid = _lastUpcomingEpisodesFetch != null &&
+        now.difference(_lastUpcomingEpisodesFetch!) < upcomingEpisodesCacheValidityPeriod;
+    
+    // If cache is valid and contains data for requested IDs, return it
+    if (cacheIsValid && hasCachedData) {
+      final bool hasAllRequestedIds = animeIds.every((id) => _upcomingEpisodesCache.containsKey(id));
+      if (hasAllRequestedIds) {
+        logTrace('Returning cached upcoming episodes data');
+        return Map.fromEntries(
+          animeIds.map((id) => MapEntry(id, _upcomingEpisodesCache[id]))
+        );
+      }
+    }
+    
+    // If offline, return cached data (even if expired)
+    if (_isOffline && hasCachedData) {
+      logTrace('Offline: returning cached upcoming episodes data');
+      return Map.fromEntries(
+        animeIds.map((id) => MapEntry(id, _upcomingEpisodesCache[id]))
+      );
+    }
+    
+    try {
+      logTrace('Fetching fresh upcoming episodes data from API');
+      final freshData = await _anilistService.getUpcomingEpisodes(animeIds);
+      
+      // Update cache with fresh data
+      _upcomingEpisodesCache.addAll(freshData);
+      _lastUpcomingEpisodesFetch = now;
+      
+      // Clean old entries that weren't requested (keep cache size manageable)
+      final requestedIds = animeIds.toSet();
+      _upcomingEpisodesCache.removeWhere((id, _) => !requestedIds.contains(id));
+      
+      return freshData;
+    } catch (e) {
+      logErr('Error fetching upcoming episodes', e);
+      
+      // If we have cached data, return it even if fetch failed
+      if (hasCachedData) {
+        logTrace('API failed: returning cached upcoming episodes data');
+        return Map.fromEntries(
+          animeIds.map((id) => MapEntry(id, _upcomingEpisodesCache[id]))
+        );
+      }
+      
+      return {};
+    }
+  }
+
+  /// Get upcoming episodes with immediate cache return
+  /// Returns cached data immediately and optionally refreshes in background
+  Map<int, AiringEpisode?> getCachedUpcomingEpisodes(List<int> animeIds, {bool refreshInBackground = true}) {
+    final cachedResults = Map<int, AiringEpisode?>.fromEntries(
+      animeIds.map((id) => MapEntry(id, _upcomingEpisodesCache[id]))
+    );
+    
+    // Check if we should refresh in background
+    if (refreshInBackground && isLoggedIn && !_isOffline) {
+      final bool cacheIsStale = _lastUpcomingEpisodesFetch == null ||
+          now.difference(_lastUpcomingEpisodesFetch!) > upcomingEpisodesCacheValidityPeriod;
+      
+      if (cacheIsStale) {
+        // Refresh in background without awaiting
+        getUpcomingEpisodes(animeIds).catchError((e) {
+          logErr('Background refresh of upcoming episodes failed', e);
+          return <int, AiringEpisode?>{};
+        });
+      }
+    }
+    
+    return cachedResults;
+  }
 }

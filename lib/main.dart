@@ -59,10 +59,26 @@ RootIsolateToken? rootIsolateToken;
 final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
 final GlobalKey<_MiruRyoikiState> homeKey = GlobalKey<_MiruRyoikiState>();
 final GlobalKey<SeriesScreenState> seriesScreenKey = GlobalKey<SeriesScreenState>();
+final GlobalKey<SeriesScreenState> librarySeriesScreenKey = GlobalKey<SeriesScreenState>();
 final GlobalKey<LibraryScreenState> libraryScreenKey = GlobalKey<LibraryScreenState>();
 final GlobalKey<AccountsScreenState> accountsKey = GlobalKey<AccountsScreenState>();
 
 final GlobalKey<State<StatefulWidget>> paletteOverlayKey = GlobalKey<State<StatefulWidget>>();
+
+/// Get the currently active SeriesScreenState based on which tab is selected
+SeriesScreenState? getActiveSeriesScreenState() {
+  final miruRyoikiState = homeKey.currentState;
+  if (miruRyoikiState == null) return null;
+  
+  // Check which tab is currently selected
+  if (miruRyoikiState.selectedIndex == _MiruRyoikiState.homeIndex) {
+    return seriesScreenKey.currentState;
+  } else if (miruRyoikiState.selectedIndex == _MiruRyoikiState.libraryIndex) {
+    return librarySeriesScreenKey.currentState;
+  }
+  
+  return null;
+}
 
 void main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -304,6 +320,7 @@ ValueNotifier<int?> previousGridColumnCount = ValueNotifier<int?>(null);
 
 class _MiruRyoikiState extends State<MiruRyoiki> {
   int _selectedIndex = 0;
+  int get selectedIndex => _selectedIndex; // Public getter for helper function
   PathString? _selectedSeriesPath;
   PathString? lastSelectedSeriesPath;
   bool _isSeriesView = false;
@@ -511,7 +528,6 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
                                     child: AbsorbPointer(
                                       absorbing: _isSeriesView,
                                       child: HomeScreen(
-                                        key: seriesScreenKey,
                                         onSeriesSelected: navigateToSeries,
                                         scrollController: _homeMap['controller'] as ScrollController,
                                       ),
@@ -568,7 +584,7 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
                                     child: AbsorbPointer(
                                       absorbing: !_isSeriesView,
                                       child: SeriesScreen(
-                                        key: seriesScreenKey,
+                                        key: librarySeriesScreenKey,
                                         seriesPath: _selectedSeriesPath!,
                                         onBack: exitSeriesView,
                                       ),

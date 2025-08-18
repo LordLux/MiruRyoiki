@@ -48,6 +48,11 @@ class AnilistProvider extends ChangeNotifier with WidgetsBindingObserver {
   List<AnilistMutation> _pendingMutations = [];
   final int maxCachedAnimeCount = 200; // TODO make this configurable
   final Duration animeCacheValidityPeriod = Duration(days: 7); // TODO make this configurable
+  
+  /// Upcoming episodes cache
+  Map<int, AiringEpisode?> _upcomingEpisodesCache = {};
+  DateTime? _lastUpcomingEpisodesFetch;
+  final Duration upcomingEpisodesCacheValidityPeriod = Duration(minutes: 15); // Cache for 15 minutes
   final String lists_cache = 'anilist_lists_cache';
   final String user_cache = 'anilist_user_cache';
   final String anime_cache = 'anilist_anime_cache.json';
@@ -72,7 +77,9 @@ class AnilistProvider extends ChangeNotifier with WidgetsBindingObserver {
   // Connectivity status
   bool get isOffline => _isOffline;
 
-  /// Get the user series lists
+  /// Get the user series lists in the format
+  ///
+  /// { `API Name`: `AUL(Local Name)` }
   Map<String, AnilistUserList> get userLists => _userLists;
 
   // Last time lists were cached

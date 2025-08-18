@@ -381,4 +381,73 @@ extension AnilistServiceAnimeDetails on AnilistService {
       return {};
     }
   }
+
+  /// Get upcoming episodes for a list of anime IDs
+  Future<Map<int, AiringEpisode?>> getUpcomingEpisodes(List<int> animeIds) async {
+    if (_client == null || animeIds.isEmpty) return {};
+
+    logTrace('Fetching upcoming episodes for anime IDs: $animeIds');
+
+    const String upcomingEpisodesQuery = '''
+      query GetUpcomingEpisodes(\$ids: [Int]) {
+        Page(perPage: 50) {
+          media(id_in: \$ids, type: ANIME) {
+            id
+            nextAiringEpisode {
+              airingAt
+              episode
+              timeUntilAiring
+            }
+            status
+            format
+          }
+        }
+      }
+    ''';
+
+    try {
+      final result = await _client!.query(
+        QueryOptions(
+          document: gql(upcomingEpisodesQuery),
+          variables: {'ids': animeIds},
+          fetchPolicy: FetchPolicy.noCache, // Always get fresh airing data
+        ),
+      );
+
+      if (result.hasException) {
+        if (result.exception is OperationException && 
+            result.exception!.linkException is UnknownException && 
+            result.exception!.linkException!.originalException is TimeoutException) {
+          logWarn('Anilist upcoming episodes GET request timed out');
+          return {};
+        }
+        logErr('Error getting upcoming episodes', result.exception);
+        return {};
+      }
+
+      final Map<int, AiringEpisode?> upcomingEpisodes = {};
+      final mediaList = result.data?['Page']?['media'] as List<dynamic>?;
+
+      if (mediaList != null) {
+        for (final media in mediaList) {
+          final int? id = media['id'];
+          final nextAiringData = media['nextAiringEpisode'];
+          
+          if (id != null) {
+            if (nextAiringData != null) {
+              upcomingEpisodes[id] = AiringEpisode.fromJson(nextAiringData);
+            } else {
+              upcomingEpisodes[id] = null; // No upcoming episode
+            }
+          }
+        }
+      }
+
+      logTrace('Found upcoming episodes for ${upcomingEpisodes.length} series');
+      return upcomingEpisodes;
+    } catch (e) {
+      logErr('Error querying upcoming episodes', e);
+      return {};
+    }
+  }
 }

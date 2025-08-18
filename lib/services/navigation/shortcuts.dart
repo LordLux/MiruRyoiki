@@ -214,7 +214,7 @@ class _CustomKeyboardListenerState extends State<CustomKeyboardListener> {
   void _toggleSeason(int season) {
     final homeState = homeKey.currentState;
     if (homeState != null && homeState.mounted && homeState.isSeriesView) {
-      final seriesScreenState = seriesScreenKey.currentState;
+      final seriesScreenState = getActiveSeriesScreenState();
 
       if (seriesScreenState != null) {
         logTrace('Ctrl + $season pressed: Toggling season $season');

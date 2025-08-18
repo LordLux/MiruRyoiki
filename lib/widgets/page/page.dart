@@ -10,20 +10,24 @@ import 'infobar.dart';
 
 class MiruRyoikiHeaderInfoBarPage extends StatefulWidget {
   final HeaderWidget headerWidget;
-  final MiruRyoikiInfobar Function(bool noHeaderBanner) infobar;
+  final MiruRyoikiInfobar Function(bool noHeaderBanner)? infobar;
   final Widget content;
   final Color? backgroundColor;
   final bool hideInfoBar;
   final bool noHeaderBanner;
+  final double? headerMaxHeight;
+  final double? headerMinHeight;
 
   const MiruRyoikiHeaderInfoBarPage({
     super.key,
     required this.headerWidget,
-    required this.infobar,
+    this.infobar,
     required this.content,
     this.backgroundColor,
     this.hideInfoBar = false,
     this.noHeaderBanner = false,
+    this.headerMaxHeight = ScreenUtils.kMaxHeaderHeight,
+    this.headerMinHeight = ScreenUtils.kMinHeaderHeight,
   });
 
   @override
@@ -31,10 +35,19 @@ class MiruRyoikiHeaderInfoBarPage extends StatefulWidget {
 }
 
 class _MiruRyoikiHeaderInfoBarPageState extends State<MiruRyoikiHeaderInfoBarPage> {
-  double _headerHeight = ScreenUtils.kMaxHeaderHeight;
+  late double _headerHeight;
+  late double _minHeaderHeight;
+
+  @override
+  void initState() {
+    _headerHeight = widget.headerMaxHeight ?? ScreenUtils.kMaxHeaderHeight;
+    _minHeaderHeight = widget.headerMinHeight ?? ScreenUtils.kMinHeaderHeight;
+    super.initState();
+  }
 
   @override
   Widget build(BuildContext context) {
+    assert(widget.hideInfoBar || widget.infobar != null, 'infobar must not be null if hideInfoBar is false');
     return AnimatedContainer(
       duration: gradientChangeDuration,
       decoration: BoxDecoration(
@@ -70,7 +83,7 @@ class _MiruRyoikiHeaderInfoBarPageState extends State<MiruRyoikiHeaderInfoBarPag
                       SizedBox(
                         height: double.infinity,
                         width: ScreenUtils.kInfoBarWidth,
-                        child: widget.infobar(widget.noHeaderBanner),
+                        child: widget.infobar!(widget.noHeaderBanner),
                       ),
 
                     // Content area on the right
@@ -90,23 +103,20 @@ class _MiruRyoikiHeaderInfoBarPageState extends State<MiruRyoikiHeaderInfoBarPag
                                 durationMS: 350,
                                 animationCurve: Curves.easeOut,
                                 builder: (context, controller, physics) {
-                                  controller.addListener(() {
-                                    final offset = controller.offset;
-                                    final double newHeight = offset > 0 ? ScreenUtils.kMinHeaderHeight : ScreenUtils.kMaxHeaderHeight;
+                                  if (_headerHeight != _minHeaderHeight) {
+                                    controller.addListener(() {
+                                      final offset = controller.offset;
+                                      final double newHeight = offset > 0 ? _minHeaderHeight : _headerHeight;
 
-                                    if (newHeight != _headerHeight && mounted) //
-                                      setState(() => _headerHeight = newHeight);
-                                  });
+                                      if (newHeight != _headerHeight && mounted) setState(() => _headerHeight = newHeight);
+                                    });
+                                  }
 
                                   // Then use the controller for your scrollable content
                                   return CustomScrollView(
                                     controller: controller,
                                     physics: physics,
-                                    slivers: [
-                                      SliverToBoxAdapter(
-                                        child: widget.content,
-                                      ),
-                                    ],
+                                    slivers: [SliverToBoxAdapter(child: widget.content)],
                                   );
                                 },
                               ),

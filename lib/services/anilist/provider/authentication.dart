@@ -115,6 +115,8 @@ extension AnilistProviderAuthentication on AnilistProvider {
     _currentUser = null;
     _userLists = {};
     _animeCache = {};
+    _upcomingEpisodesCache = {};
+    _lastUpcomingEpisodesFetch = null;
     notifyListeners();
   }
 
