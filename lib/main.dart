@@ -22,7 +22,9 @@ import 'screens/home.dart';
 import 'services/navigation/statusbar/library_scan_statusbar.dart';
 import 'widgets/dialogs/splash/progress.dart';
 import 'widgets/svg.dart';
+import 'widgets/connectivity_indicator.dart';
 import 'services/anilist/provider/anilist_provider.dart';
+import 'services/connectivity/connectivity_service.dart';
 import 'services/navigation/dialogs.dart';
 import 'services/navigation/statusbar/statusbar.dart';
 import 'services/window/service.dart';
@@ -69,14 +71,14 @@ final GlobalKey<State<StatefulWidget>> paletteOverlayKey = GlobalKey<State<State
 SeriesScreenState? getActiveSeriesScreenState() {
   final miruRyoikiState = homeKey.currentState;
   if (miruRyoikiState == null) return null;
-  
+
   // Check which tab is currently selected
   if (miruRyoikiState.selectedIndex == _MiruRyoikiState.homeIndex) {
     return seriesScreenKey.currentState;
   } else if (miruRyoikiState.selectedIndex == _MiruRyoikiState.libraryIndex) {
     return librarySeriesScreenKey.currentState;
   }
-  
+
   return null;
 }
 
@@ -134,6 +136,7 @@ void main(List<String> args) async {
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => Library(_settings), lazy: false),
+        ChangeNotifierProvider(create: (_) => ConnectivityService(), lazy: false),
         ChangeNotifierProvider(create: (_) => AnilistProvider()),
         ChangeNotifierProvider.value(value: _appTheme),
         ChangeNotifierProvider.value(value: _settings),
@@ -350,11 +353,16 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
         offset: const Offset(2.5, 4),
         child: Transform.scale(
           scale: 1.45,
-          child: Stack(
-            children: [
-              if (!offline) anilistLogo,
-              if (offline) offlineLogo,
-            ],
+          child: ValueListenableBuilder<bool>(
+            valueListenable: ConnectivityService().isOnlineNotifier,
+            builder: (context, isOnline, child) {
+              return Stack(
+                children: [
+                  if (isOnline) anilistLogo,
+                  if (!isOnline) offlineLogo,
+                ],
+              );
+            },
           ),
         ),
       ),
@@ -460,6 +468,8 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
                       paneBodyBuilder: (item, body) {
                         return Column(
                           children: [
+                            // Offline banner
+                            const OfflineBanner(),
                             Expanded(child: body!),
                             ValueListenableBuilder(
                               valueListenable: LibraryScanProgressManager().showingNotifier,

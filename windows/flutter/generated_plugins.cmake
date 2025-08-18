@@ -5,6 +5,7 @@
 list(APPEND FLUTTER_PLUGIN_LIST
   app_links
   bitsdojo_window_windows
+  connectivity_plus
   flutter_acrylic
   flutter_custom_cursor
   flutter_desktop_context_menu

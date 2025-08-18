@@ -4,20 +4,15 @@ extension AnilistProviderBackgroundSync on AnilistProvider {
   /// Start the background sync service
   void startBackgroundSync() {
     _syncTimer?.cancel();
-    _connectivityTimer?.cancel();
     _userDataRefreshTimer?.cancel();
 
     // Sync timer
     _syncTimer = Timer.periodic(_syncInterval, (_) => _performBackgroundSync());
 
-    // Connectivity check timer
-    // _connectivityTimer = Timer.periodic(const Duration(seconds: 15), (_) => _checkConnectivityAndNotify());
-
     // Start user data refresh timer with foreground interval
     _startUserDataRefreshTimer(inForeground: true);
 
-    // Perform immediate connectivity check and sync
-    _checkConnectivityAndNotify();
+    // Perform immediate sync
     _performBackgroundSync();
   }
 
@@ -25,9 +20,6 @@ extension AnilistProviderBackgroundSync on AnilistProvider {
   void stopBackgroundSync() {
     _syncTimer?.cancel();
     _syncTimer = null;
-
-    _connectivityTimer?.cancel();
-    _connectivityTimer = null;
 
     _userDataRefreshTimer?.cancel();
     _userDataRefreshTimer = null;
@@ -155,30 +147,6 @@ extension AnilistProviderBackgroundSync on AnilistProvider {
     });
   }
 
-  /// Check connectivity and notify if status changed
-  Future<void> _checkConnectivityAndNotify() async {
-    final wasOffline = _isOffline;
-    final isOnline = await _checkConnectivity();
-
-    // If connectivity status changed from offline to online
-    if (wasOffline && isOnline) {
-      logInfo('Connectivity restored');
-
-      // Immediate data refresh when connection is restored
-      if (isLoggedIn) {
-        refreshUserData();
-        _loadUserLists();
-      }
-
-      notifyListeners();
-    }
-    // If connectivity status changed from online to offline
-    else if (!wasOffline && !isOnline) {
-      logInfo('Connectivity lost');
-      notifyListeners();
-    }
-  }
-
   /// Handle app lifecycle state changes
   void handleAppLifecycleStateChange(AppLifecycleState state) {
     switch (state) {
@@ -191,7 +159,8 @@ extension AnilistProviderBackgroundSync on AnilistProvider {
         if (isLoggedIn && !_isOffline) {
           refreshUserData();
           refreshUserLists(showSnackBar: false);
-          _checkConnectivityAndNotify();
+          // Trigger a manual connectivity check
+          _connectivityService.checkConnectivity();
         }
         break;
 

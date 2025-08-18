@@ -11,6 +11,7 @@ import '../../../utils/time_utils.dart';
 import '../../../utils/path_utils.dart';
 import '../../../utils/logging.dart';
 import '../../navigation/show_info.dart';
+import '../../connectivity/connectivity_service.dart';
 import '../queries/anilist_service.dart';
 
 // Include all the parts
@@ -23,6 +24,7 @@ part 'background_sync.dart';
 
 class AnilistProvider extends ChangeNotifier with WidgetsBindingObserver {
   final AnilistService _anilistService;
+  final ConnectivityService _connectivityService;
 
   AnilistUser? _currentUser;
   Map<String, AnilistUserList> _userLists = {};
@@ -33,9 +35,8 @@ class AnilistProvider extends ChangeNotifier with WidgetsBindingObserver {
   bool _isReady = false;
   bool get isReady => _isReady;
 
-  // Background sync and connectivity
+  // Background sync
   Timer? _syncTimer;
-  Timer? _connectivityTimer;
   Timer? _userDataRefreshTimer;
   final Duration _syncInterval = const Duration(minutes: 30);
   bool _isSyncing = false;
@@ -58,7 +59,9 @@ class AnilistProvider extends ChangeNotifier with WidgetsBindingObserver {
   final String anime_cache = 'anilist_anime_cache.json';
   final String mutations_queue = 'anilist_mutations_queue.json';
 
-  AnilistProvider({AnilistService? anilistService}) : _anilistService = anilistService ?? AnilistService() {
+  AnilistProvider({AnilistService? anilistService}) : 
+    _anilistService = anilistService ?? AnilistService(),
+    _connectivityService = ConnectivityService() {
     WidgetsBinding.instance.addObserver(this);
   }
 
@@ -91,6 +94,7 @@ class AnilistProvider extends ChangeNotifier with WidgetsBindingObserver {
     syncStatusMessage.dispose();
     stopBackgroundSync();
     WidgetsBinding.instance.removeObserver(this);
+    _connectivityService.isOnlineNotifier.removeListener(_onConnectivityChanged);
     super.dispose();
   }
 

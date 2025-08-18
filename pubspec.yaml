@@ -63,6 +63,7 @@ dependencies:
   pie_chart: ^5.4.0
   flexible_wrap: ^1.0.6
   flutter_html: ^3.0.0
+  connectivity_plus: ^6.0.5
   flutter_html_iframe: ^3.0.0
   webview_windows: ^0.4.0
   flutter_html_video: ^3.0.0

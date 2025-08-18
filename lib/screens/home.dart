@@ -488,6 +488,7 @@ class _HoverVisibleScrollbarState extends State<HoverVisibleScrollbar> {
             hoveringThickness: 6.0,
             radius: const Radius.circular(4.0),
           ),
+          timeToFade: const Duration(milliseconds: 100),
           thumbVisibility: _isHovering,
           child: Padding(
             padding: const EdgeInsets.only(bottom: 20), // Reserve space for scrollbar

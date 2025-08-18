@@ -16,7 +16,7 @@ extension AnilistProviderListsManagement on AnilistProvider {
     notifyListeners();
 
     try {
-      final isOnline = await _checkConnectivity();
+      final isOnline = await _connectivityService.getConnectivityStatus();
 
       if (isOnline) {
         await _loadUserLists();
