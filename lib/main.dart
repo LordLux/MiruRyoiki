@@ -1013,6 +1013,7 @@ void setIcon() async {
   }
 }
 
+// TODO use AnimatedContainer for loading statusbar
 // TODO allow cli flags, before preventing a second instance from running
 // TODO fix the fact that HIDDEN series are not fetched from anilist when loading library (probably query asks for lists instead of full library of user)
 // TODO remember collapse/expanded state of seasons in series

@@ -699,7 +699,7 @@ class SettingsScreenState extends State<SettingsScreen> {
       tempColor = settings.accentColor;
     });
   }
-
+  
   @override
   Widget build(BuildContext context) {
     final library = Provider.of<Library>(context);
