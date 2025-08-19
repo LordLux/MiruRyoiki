@@ -325,6 +325,7 @@ ValueNotifier<int?> previousGridColumnCount = ValueNotifier<int?>(null);
 class _MiruRyoikiState extends State<MiruRyoiki> {
   int _selectedIndex = 0;
   int get selectedIndex => _selectedIndex; // Public getter for helper function
+  int _previousIndex = 0;
   PathString? _selectedSeriesPath;
   PathString? lastSelectedSeriesPath;
   bool _isSeriesView = false;
@@ -532,42 +533,9 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
                           buildPaneItem(
                             homeIndex,
                             icon: movedPaneItemIcon(const Icon(FluentIcons.home)),
-                            body: Stack(
-                              children: [
-                                // Always keep LibraryScreen in the tree with Offstage
-                                Offstage(
-                                  offstage: _isSeriesView && _selectedSeriesPath != null && _isFinishedTransitioning,
-                                  child: AnimatedOpacity(
-                                    duration: getDuration(const Duration(milliseconds: 230)),
-                                    opacity: _isSeriesView ? 0.0 : 1.0,
-                                    curve: Curves.easeInOut,
-                                    child: AbsorbPointer(
-                                      absorbing: _isSeriesView,
-                                      child: HomeScreen(
-                                        onSeriesSelected: navigateToSeries,
-                                        scrollController: _homeMap['controller'] as ScrollController,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-
-                                // Animated container for the SeriesScreen
-                                if (_selectedSeriesPath != null)
-                                  AnimatedOpacity(
-                                    duration: getDuration(const Duration(milliseconds: 300)),
-                                    opacity: _isSeriesView ? 1.0 : 0.0,
-                                    curve: Curves.easeInOut,
-                                    onEnd: onEndTransitionToLibrary,
-                                    child: AbsorbPointer(
-                                      absorbing: !_isSeriesView,
-                                      child: SeriesScreen(
-                                        key: seriesScreenKey,
-                                        seriesPath: _selectedSeriesPath!,
-                                        onBack: exitSeriesView,
-                                      ),
-                                    ),
-                                  ),
-                              ],
+                            body: HomeScreen(
+                              onSeriesSelected: navigateToSeries,
+                              scrollController: _homeMap['controller'] as ScrollController,
                             ),
                           ),
                           buildPaneItem(
@@ -892,18 +860,47 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
   }
 
   /// Called immediately when a series is selected from the library or home screen
-  void navigateToSeries(PathString seriesPath) {
+  void navigateToSeries(PathString seriesPath) async {
+    _previousIndex = _selectedIndex;
+    // First, ensure we're on the library pane if not already
+    if (_selectedIndex != libraryIndex || _isSeriesView) {
+      setState(() {
+        _selectedIndex = libraryIndex;
+        lastSelectedSeriesPath = _selectedSeriesPath;
+        _selectedSeriesPath = null;
+        _isSeriesView = false;
+        Manager.currentDominantColor = null;
+
+        // Reset scroll when directly navigating to library
+        _resetScrollPosition(libraryIndex);
+
+        // Register in navigation stack
+        final navManager = Provider.of<NavigationManager>(context, listen: false);
+        navManager.clearStack();
+
+        // Register the library pane
+        final item = _navigationMap[libraryIndex]!;
+        navManager.pushPane(item['id'], item['title']);
+      });
+
+      // Small delay to allow UI to update to library pane first
+      await Future.delayed(const Duration(milliseconds: 50));
+    }
+
     previousGridColumnCount.value = ScreenUtils.crossAxisCount();
 
     final series = Provider.of<Library>(context, listen: false).getSeriesByPath(seriesPath);
     final seriesName = series?.name ?? 'Series';
 
-    // Update navigation stack
+    // Update navigation stack with the series page
     Provider.of<NavigationManager>(context, listen: false).pushPage('series:$seriesPath', seriesName, data: seriesPath);
 
-    _selectedSeriesPath = seriesPath;
-    Manager.currentDominantColor = series?.dominantColor;
-    _isSeriesView = true;
+    setState(() {
+      _selectedSeriesPath = seriesPath;
+      Manager.currentDominantColor = series?.dominantColor;
+      _isSeriesView = true;
+    });
+
     Manager.setState();
   }
 
@@ -916,7 +913,13 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
     if (navManager.currentView?.level == NavigationLevel.page) //
       navManager.goBack();
 
+    if (!Manager.settings.returnToLibraryAfterSeriesScreen) {
+      navManager.navigateToPane(_navigationMap[_previousIndex]!['id']);
+      _selectedIndex = _previousIndex;
+    }
+
     setState(() {
+      Manager.currentDominantColor = null;
       lastSelectedSeriesPath = _selectedSeriesPath ?? lastSelectedSeriesPath;
       _isSeriesView = false;
       _isFinishedTransitioning = false;

@@ -43,6 +43,7 @@ class SettingsManager extends ChangeNotifier {
   bool get disableAnimations => _getBool('disableAnimations', defaultValue: false);
   set disableAnimations(bool value) => _setBool('disableAnimations', value);
 
+
   // Behavior
   bool get autoLoadAnilistPosters => _getBool('autoLoadAnilistPosters', defaultValue: true);
   set autoLoadAnilistPosters(bool value) => _setBool('autoLoadAnilistPosters', value);
@@ -58,6 +59,10 @@ class SettingsManager extends ChangeNotifier {
 
   DominantColorSource get dominantColorSource => DominantColorSourceX.fromString(_getString('dominantColorSource', defaultValue: DominantColorSource.poster.name_));
   set dominantColorSource(DominantColorSource value) => _setString('dominantColorSource', value.name_);
+
+  bool get returnToLibraryAfterSeriesScreen => _getBool('returnToLibraryAfterSeriesScreen', defaultValue: true);
+  set returnToLibraryAfterSeriesScreen(bool value) => _setBool('returnToLibraryAfterSeriesScreen', value);
+
 
   // Logging
   LogLevel get fileLogLevel => LogLevelX.fromString(_getString('fileLogLevel', defaultValue: LogLevel.error.name_));

@@ -1271,7 +1271,7 @@ class SettingsScreenState extends State<SettingsScreen> {
                       ),
                     ],
                   ),
-                  const SizedBox(width: 24),
+                  HDiv(24),
                   Column(
                     children: [
                       Text(
@@ -1287,6 +1287,24 @@ class SettingsScreenState extends State<SettingsScreen> {
                         },
                       ),
                     ],
+                  ),
+                ],
+              ),
+              VDiv(24),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Return to Library after exiting Series Screen from a different Tab',
+                    style: Manager.bodyStyle,
+                  ),
+                  VDiv(12),
+                  ToggleSwitch(
+                    checked: settings.returnToLibraryAfterSeriesScreen,
+                    content: Text(settings.returnToLibraryAfterSeriesScreen ? 'Enabled' : 'Disabled', style: Manager.bodyStyle),
+                    onChanged: (value) {
+                      settings.returnToLibraryAfterSeriesScreen = value;
+                    },
                   ),
                 ],
               ),
