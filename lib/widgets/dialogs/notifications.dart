@@ -2,6 +2,7 @@
 
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:miruryoiki/utils/logging.dart';
+import 'package:miruryoiki/widgets/buttons/button.dart';
 import 'package:provider/provider.dart';
 
 import '../../manager.dart';
@@ -9,6 +10,7 @@ import '../../models/notification.dart';
 import '../../services/anilist/queries/anilist_service.dart';
 import '../../services/library/library_provider.dart';
 import '../../services/navigation/dialogs.dart';
+import '../../utils/color_utils.dart';
 import '../../widgets/buttons/wrapper.dart';
 
 final GlobalKey<NotificationsContentState> notificationsDialogKey = GlobalKey<NotificationsContentState>();
@@ -23,8 +25,8 @@ class NotificationsDialog extends ManagedDialog {
     this.onMorePressed,
     this.position,
   }) : super(
-          title: const Text('Notifications'),
-          constraints: const BoxConstraints(maxWidth: 420, maxHeight: 500),
+          title: null, // Remove the static title
+          constraints: const BoxConstraints(maxWidth: 480, maxHeight: 600),
           contentBuilder: (context, constraints) => _NotificationsContent(
             key: notificationsDialogKey,
             onMorePressed: onMorePressed,
@@ -40,7 +42,7 @@ class _NotificationsDialogState extends ManagedDialogState {
   @override
   void initState() {
     super.initState();
-    
+
     // Position the dialog if position is provided
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final dialog = widget as NotificationsDialog;
@@ -193,18 +195,21 @@ class NotificationsContentState extends State<_NotificationsContent> {
 
       // Update UI
       setState(() {
-        _notifications = _notifications.map((notification) {
-          switch (notification) {
-            case AiringNotification airing:
-              return airing.copyWith(isRead: true);
-            case MediaDataChangeNotification dataChange:
-              return dataChange.copyWith(isRead: true);
-            case MediaMergeNotification merge:
-              return merge.copyWith(isRead: true);
-            case MediaDeletionNotification deletion:
-              return deletion.copyWith(isRead: true);
-          }
-        }).whereType<AnilistNotification>().toList();
+        _notifications = _notifications
+            .map((notification) {
+              switch (notification) {
+                case AiringNotification airing:
+                  return airing.copyWith(isRead: true);
+                case MediaDataChangeNotification dataChange:
+                  return dataChange.copyWith(isRead: true);
+                case MediaMergeNotification merge:
+                  return merge.copyWith(isRead: true);
+                case MediaDeletionNotification deletion:
+                  return deletion.copyWith(isRead: true);
+              }
+            })
+            .whereType<AnilistNotification>()
+            .toList();
         _unreadCount = 0;
       });
     } catch (e) {
@@ -219,7 +224,6 @@ class NotificationsContentState extends State<_NotificationsContent> {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Header
         Padding(
           padding: const EdgeInsets.all(12.0),
           child: Row(
@@ -232,7 +236,7 @@ class NotificationsContentState extends State<_NotificationsContent> {
                       onTap: () => widget.onMorePressed?.call(context),
                       child: Text(
                         'Notifications',
-                        style: FluentTheme.of(context).typography.subtitle,
+                        style: Manager.titleStyle,
                       ),
                     ),
                   ),
@@ -278,14 +282,6 @@ class NotificationsContentState extends State<_NotificationsContent> {
                       onPressed: _isLoading ? null : _syncNotifications,
                     ),
                   ),
-                  if (widget.onMorePressed != null)
-                    Tooltip(
-                      message: 'View release calendar',
-                      child: IconButton(
-                        icon: const Icon(FluentIcons.calendar, size: 12),
-                        onPressed: () => widget.onMorePressed?.call(context),
-                      ),
-                    ),
                 ],
               ),
             ],
@@ -328,6 +324,21 @@ class NotificationsContentState extends State<_NotificationsContent> {
                   },
                 ),
         ),
+        Divider(),
+
+        const SizedBox(height: 8),
+
+        StandardButton(
+          label: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(FluentIcons.calendar, size: 12),
+              const SizedBox(width: 6),
+              Text('View Release Calendar'),
+            ],
+          ),
+          onPressed: () => widget.onMorePressed?.call(context),
+        )
       ],
     );
   }
@@ -356,42 +367,37 @@ class NotificationsContentState extends State<_NotificationsContent> {
   }
 
   Widget _buildNotificationIcon(AnilistNotification notification) {
-    switch (notification) {
-      case AiringNotification airing:
-        return _buildMediaImage(airing.media?.coverImage);
-      case MediaDataChangeNotification dataChange:
-        return _buildMediaImage(dataChange.media?.coverImage);
-      case MediaMergeNotification merge:
-        return _buildMediaImage(merge.media?.coverImage);
-      case MediaDeletionNotification _:
-        return Container(
+    final a = switch (notification) {
+      AiringNotification airing => _buildMediaImage(airing.media?.coverImage),
+      MediaDataChangeNotification dataChange => _buildMediaImage(dataChange.media?.coverImage),
+      MediaMergeNotification merge => _buildMediaImage(merge.media?.coverImage),
+      MediaDeletionNotification _ => Container(
           width: 32,
           height: 24,
-          decoration: BoxDecoration(
-            color: Colors.red.withOpacity(0.7),
-            borderRadius: BorderRadius.circular(3),
-          ),
+          decoration: BoxDecoration(color: Colors.red.withOpacity(0.7), borderRadius: BorderRadius.circular(3)),
           child: const Icon(
             FluentIcons.delete,
             size: 14,
             color: Colors.white,
           ),
-        );
-      default:
-        return Container(
-          width: 32,
-          height: 24,
-          decoration: BoxDecoration(
-            color: Colors.grey.withOpacity(0.3),
-            borderRadius: BorderRadius.circular(3),
-          ),
-          child: const Icon(
-            FluentIcons.ringer,
-            size: 14,
-            color: Colors.white,
-          ),
-        );
-    }
+        ),
+      AnilistNotification() => throw UnimplementedError(),
+    };
+    return Row(children: [
+      Container(
+        decoration: BoxDecoration(
+          color: notification.isRead ? Colors.transparent : lighten(Manager.accentColor.lightest),
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(3),
+            bottomLeft: Radius.circular(3),
+          )
+        ),
+        height: 54,
+        width: 2.5,
+      ),
+      const SizedBox(width: 2.3),
+      a,
+    ]);
   }
 
   Widget _buildMediaImage(String? imageUrl) {

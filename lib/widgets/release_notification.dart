@@ -55,17 +55,19 @@ class _ReleaseNotificationWidgetState extends State<ReleaseNotificationWidget> {
   }
 
   void _showNotificationDialog() async {
+    //TODO fix this, position dialog at top right
+
     // Calculate button position relative to screen
     final RenderBox buttonBox = context.findRenderObject() as RenderBox;
     final buttonPosition = buttonBox.localToGlobal(Offset.zero);
     final buttonSize = buttonBox.size;
-    
+
     // Position dialog near the button (to the right and slightly below)
     final dialogPosition = Offset(
       buttonPosition.dx - 300, // Offset left to fit within screen
       buttonPosition.dy + buttonSize.height + 8, // Below the button
     );
-    
+
     await showManagedDialog(
       context: context,
       id: 'notifications',
@@ -78,7 +80,7 @@ class _ReleaseNotificationWidgetState extends State<ReleaseNotificationWidget> {
         onMorePressed: (context) => widget.onMorePressed?.call(context),
       ),
     );
-    
+
     // Refresh the unread count after the dialog is closed
     await _loadNotifications();
   }

@@ -252,7 +252,7 @@ class _ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
           Expanded(
             flex: 3,
             child: Padding(
-              padding: const EdgeInsets.all(16.0),
+              padding: const EdgeInsets.only(left: 24.0, right: 0.0),
               child: _buildEpisodeList(),
             ),
           ),
@@ -262,102 +262,80 @@ class _ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
   }
 
   Widget _buildCalendar() {
-    return Column(
-      children: [
-        // Calendar header with navigation
-        _buildCalendarHeader(),
-        VDiv(16),
-
-        // Calendar grid
-        _buildCalendarGrid(),
-        VDiv(16),
-
-        // Today button
-        MouseButtonWrapper(
-          child: (_) => Button(
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(FluentIcons.calendar_agenda, size: 16),
-                const SizedBox(width: 8),
-                Text(_showOnlyTodayEpisodes ? 'Show All' : 'Today'),
-              ],
-            ),
-            onPressed: () => setState(
-              () {
-                // If already showing only today's episodes, toggle to show all
-                if (_showOnlyTodayEpisodes) {
-                  _showOnlyTodayEpisodes = false;
-                } else {
-                  // If not showing today's episodes, switch to today and toggle filter
-                  _selectedDate = now;
-                  _focusedMonth = now;
-                  _showOnlyTodayEpisodes = true;
-                }
-              },
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildCalendarHeader() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Padding(
-          padding: const EdgeInsets.only(left: 24.0),
-          child: Button(
-            onPressed: () {
-              setState(() {
-                _focusedMonth = DateTime(_focusedMonth.year, _focusedMonth.month - 1);
-              });
-            },
-            child: const Icon(FluentIcons.chevron_left),
-          ),
-        ),
-        Text(
-          DateFormat.yMMMM().format(_focusedMonth),
-          style: FluentTheme.of(context).typography.subtitle,
-        ),
-        Padding(
-          padding: const EdgeInsets.only(right: 24.0),
-          child: Button(
-            onPressed: () {
-              setState(() {
-                _focusedMonth = DateTime(_focusedMonth.year, _focusedMonth.month + 1);
-              });
-            },
-            child: const Icon(FluentIcons.chevron_right),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildCalendarGrid() {
-    final daysInMonth = DateTime(_focusedMonth.year, _focusedMonth.month + 1, 0).day;
-    final firstDayOfMonth = DateTime(_focusedMonth.year, _focusedMonth.month, 1);
-    final startDay = firstDayOfMonth.weekday % 7; // 0 = Sunday
-
     const double maxCalendarHeight = 466.0;
-    const double minCalendarHeight = 380.0;
+    const double minCalendarWidth = 380.0;
 
     // Calculate calendar height based on ScreenUtils.height:
     // - If screen height > 720, use the maximum calendar height.
     // - If screen height <= 600, use the minimum calendar height (380).
     // - Between 600 and 720, linearly interpolate from min to max.
     final double screenH = ScreenUtils.height;
-    double calendarHeight;
+    double calendarWidth;
     if (screenH > 720.0) {
-      calendarHeight = maxCalendarHeight;
+      calendarWidth = maxCalendarHeight;
     } else if (screenH <= 600.0) {
-      calendarHeight = minCalendarHeight;
+      calendarWidth = minCalendarWidth;
     } else {
       final double t = (screenH - 620.0) / (720.0 - 600.0); // 0..1
-      calendarHeight = minCalendarHeight + t * (maxCalendarHeight - minCalendarHeight);
+      calendarWidth = minCalendarWidth + t * (maxCalendarHeight - minCalendarWidth);
     }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        // Calendar header with navigation
+        _buildCalendarHeader(calendarWidth),
+        VDiv(16),
+
+        // Calendar grid
+        _buildCalendarGrid(calendarWidth),
+      ],
+    );
+  }
+
+  Widget _buildCalendarHeader(double calendarWidth) {
+    return SizedBox(
+      width: calendarWidth,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(left: 6.0),
+            child: Button(
+              style: ButtonStyle(padding: ButtonState.all(const EdgeInsets.all(8))),
+              onPressed: () {
+                setState(() {
+                  _focusedMonth = DateTime(_focusedMonth.year, _focusedMonth.month - 1);
+                });
+              },
+              child: const Icon(FluentIcons.chevron_left),
+            ),
+          ),
+          Text(
+            DateFormat.yMMMM().format(_focusedMonth),
+            style: FluentTheme.of(context).typography.subtitle,
+          ),
+          Padding(
+            padding: const EdgeInsets.only(right: 6.0),
+            child: Button(
+              style: ButtonStyle(padding: ButtonState.all(const EdgeInsets.all(8))),
+              onPressed: () {
+                setState(() {
+                  _focusedMonth = DateTime(_focusedMonth.year, _focusedMonth.month + 1);
+                });
+              },
+              child: const Icon(FluentIcons.chevron_right),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCalendarGrid(double calendarWidth) {
+    final daysInMonth = DateTime(_focusedMonth.year, _focusedMonth.month + 1, 0).day;
+    final firstDayOfMonth = DateTime(_focusedMonth.year, _focusedMonth.month, 1);
+    final startDay = firstDayOfMonth.weekday % 7; // 0 = Sunday
 
     return Expanded(
       child: Column(
@@ -365,7 +343,7 @@ class _ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
         children: [
           // Day headers
           SizedBox(
-            width: calendarHeight,
+            width: calendarWidth,
             child: Row(
               children: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
                   .map((day) => Expanded(
@@ -384,7 +362,7 @@ class _ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
           // Calendar days - Use a container with fixed height instead of Expanded
           Flexible(
             child: SizedBox(
-              width: calendarHeight, // Adjust width based on height
+              width: calendarWidth, // Adjust width based on height
               child: GridView.builder(
                 physics: const NeverScrollableScrollPhysics(),
                 gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
@@ -464,7 +442,7 @@ class _ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
               // Episode dots
               if (episodeCount > 0) ...[
                 VDiv(4),
-                _buildEpisodeDots(episodeCount),
+                _buildEpisodeDots(episodeCount, isSelected),
               ],
             ],
           ),
@@ -473,7 +451,7 @@ class _ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
     );
   }
 
-  Widget _buildEpisodeDots(int count) {
+  Widget _buildEpisodeDots(int count, bool isSelected) {
     if (count == 0) return const SizedBox();
 
     if (count <= 3) {
@@ -486,7 +464,7 @@ class _ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
             height: 4,
             margin: const EdgeInsets.symmetric(horizontal: 1),
             decoration: BoxDecoration(
-              color: Manager.accentColor,
+              color: isSelected ? Colors.white.withOpacity((index + 1) / 3) : Manager.accentColor.swatch.values.toList()[index + 3],
               shape: BoxShape.circle,
             ),
           ),
@@ -543,12 +521,12 @@ class _ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
       );
     }
 
-  // Episodes for selected date
-  final selectedDateKey = DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day);
-  final selectedDayEpisodes = _releaseCache[selectedDateKey] ?? [];
+    // Episodes for selected date
+    final selectedDateKey = DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day);
+    final selectedDayEpisodes = _releaseCache[selectedDateKey] ?? [];
 
-  // All episodes (within cached window)
-  final allEpisodes = _releaseCache.entries.expand((entry) => entry.value).toList();
+    // All episodes (within cached window)
+    final allEpisodes = _releaseCache.entries.expand((entry) => entry.value).toList();
 
     if (allEpisodes.isEmpty) {
       return Column(
@@ -577,10 +555,10 @@ class _ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
           ],
         );
       }
-      episodesByDate = { todayKey : List.of(todaysEpisodes)..sort((a,b)=>a.airingDate.compareTo(b.airingDate)) };
-  } else if (_filterSelectedDate && selectedDayEpisodes.isNotEmpty) {
+      episodesByDate = {todayKey: List.of(todaysEpisodes)..sort((a, b) => a.airingDate.compareTo(b.airingDate))};
+    } else if (_filterSelectedDate && selectedDayEpisodes.isNotEmpty) {
       // Show ONLY selected date
-      episodesByDate = { selectedDateKey : List.of(selectedDayEpisodes)..sort((a,b)=>a.airingDate.compareTo(b.airingDate)) };
+      episodesByDate = {selectedDateKey: List.of(selectedDayEpisodes)..sort((a, b) => a.airingDate.compareTo(b.airingDate))};
     } else {
       // Group all episodes (within cache window)
       allEpisodes.sort((a, b) => a.airingDate.compareTo(b.airingDate));
@@ -607,10 +585,7 @@ class _ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
                 children: [
                   Text(
                     _getRelativeDateLabel(date),
-                    style: Manager.bodyLargeStyle.copyWith(
-                          fontWeight: FontWeight.w600,
-                          color: lighten(Manager.accentColor.lightest)
-                        ),
+                    style: Manager.bodyLargeStyle.copyWith(fontWeight: FontWeight.w600, color: lighten(Manager.accentColor.lightest)),
                   ),
                   const SizedBox(width: 8),
                   Container(
@@ -662,6 +637,7 @@ class _ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
     return Opacity(
       opacity: isUpcoming ? 1.0 : 0.7,
       child: ListTile(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         cursor: SystemMouseCursors.click,
         tileColor: WidgetStateColor.resolveWith((states) {
           if (states.contains(WidgetState.hovered)) return Manager.accentColor.light.withOpacity(0.2);
@@ -670,22 +646,42 @@ class _ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
         onPressed: () {
           widget.onSeriesSelected(episodeInfo.series.path);
         },
-        leading: SizedBox(
-          width: 60,
-          height: 40,
-          child: episodeInfo.series.bannerImage != null
-              ? Image.network(
-                  episodeInfo.series.bannerImage!,
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) => Container(
-                    color: Colors.grey.withOpacity(0.3),
-                    child: const Icon(FluentIcons.photo2),
-                  ),
-                )
-              : Container(
-                  color: Colors.grey.withOpacity(0.3),
-                  child: const Icon(FluentIcons.photo2),
-                ),
+        leading: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              episodeInfo.airingEpisode.episode.toString(),
+              style: Manager.bodyStyle.copyWith(
+                color: lighten(Manager.accentColor.lightest),
+                fontWeight: FontWeight.w900,
+              ),
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            HDivPx(8),
+            SizedBox(
+              width: 70,
+              height: 54,
+              child: episodeInfo.series.bannerImage != null
+                  ? Image.network(
+                      episodeInfo.series.bannerImage!,
+                      fit: BoxFit.cover,
+                      frameBuilder: (context, child, frame, wasSynchronouslyLoaded) => ClipRRect(
+                        borderRadius: BorderRadius.circular(4),
+                        child: child,
+                      ),
+                      errorBuilder: (context, error, stackTrace) => Container(
+                        color: Colors.grey.withOpacity(0.3),
+                        child: const Icon(FluentIcons.photo2),
+                      ),
+                    )
+                  : Container(
+                      color: Colors.grey.withOpacity(0.3),
+                      child: const Icon(FluentIcons.photo2),
+                    ),
+            ),
+          ],
         ),
         title: Text(
           'Episode ${episodeInfo.airingEpisode.episode ?? '?'} - ${episodeInfo.series.displayTitle}',

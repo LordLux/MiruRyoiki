@@ -228,7 +228,7 @@ void closeDialog<T>(BuildContext popContext, {T? result}) {
 }
 
 class ManagedDialog extends StatefulWidget {
-  final Widget title;
+  final Widget? title;
   final Widget Function(BuildContext, BoxConstraints)? contentBuilder;
   final List<Widget> Function(dynamic)? actions;
   final BoxConstraints constraints;

@@ -390,7 +390,7 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
   final Map<int, Map<String, dynamic>> _navigationMap = {
     homeIndex: {'id': 'home', 'title': 'Home', 'controller': null},
     libraryIndex: {'id': 'library', 'title': 'Library', 'controller': null},
-    calendarIndex: {'id': 'calendar', 'title': 'Release Calendar', 'controller': null},
+    calendarIndex: {'id': 'calendar', 'title': 'Releases', 'controller': null},
     accountsIndex: {'id': 'accounts', 'title': 'Account', 'controller': null},
     settingsIndex: {'id': 'settings', 'title': 'Settings', 'controller': null},
   };
