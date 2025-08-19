@@ -1,4 +1,5 @@
 // notifications_dao.dart
+import 'dart:convert';
 import 'package:drift/drift.dart';
 import '../database.dart';
 import '../tables.dart';
@@ -75,14 +76,108 @@ class NotificationsDao extends DatabaseAccessor<AppDatabase> with _$Notification
     await into(notificationsTable).insertOnConflictUpdate(companion);
   }
 
-  // Batch insert/update notifications
+  // Batch insert/update notifications (preserves local read status)
   Future<void> upsertNotifications(List<AnilistNotification> notifications) async {
-    await batch((batch) {
+    // Use custom SQL to preserve read status
+    await transaction(() async {
       for (final notification in notifications) {
-        final companion = _notificationToCompanion(notification);
-        batch.insert(notificationsTable, companion, mode: InsertMode.insertOrReplace);
+        await customStatement(
+          'INSERT OR REPLACE INTO notifications (id, type, created_at, is_read, anime_id, episode, contexts, media_id, context, reason, deleted_media_titles, deleted_media_title, media_info, local_created_at, local_updated_at) '
+          'VALUES (?, ?, ?, COALESCE((SELECT is_read FROM notifications WHERE id = ?), ?), ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime("now"), datetime("now"))',
+          [
+            Variable(notification.id),
+            Variable(notification.type.index), 
+            Variable(notification.createdAt),
+            Variable(notification.id), // For the COALESCE subquery
+            Variable(notification.isRead), // Default value if not exists
+            Variable(_getAnimeId(notification)),
+            Variable(_getEpisode(notification)),
+            Variable(_getContexts(notification)),
+            Variable(_getMediaId(notification)),
+            Variable(_getContext(notification)),
+            Variable(_getReason(notification)),
+            Variable(_getDeletedMediaTitles(notification)),
+            Variable(_getDeletedMediaTitle(notification)),
+            Variable(_getMediaInfo(notification)),
+          ],
+        );
       }
     });
+  }
+
+  // Helper methods to extract fields from notifications
+  int? _getAnimeId(AnilistNotification notification) {
+    return notification is AiringNotification ? notification.animeId : null;
+  }
+
+  int? _getEpisode(AnilistNotification notification) {
+    return notification is AiringNotification ? notification.episode : null;
+  }
+
+  String? _getContexts(AnilistNotification notification) {
+    if (notification is AiringNotification) {
+      return notification.contexts.isEmpty ? null : jsonEncode(notification.contexts);
+    }
+    return null;
+  }
+
+  int? _getMediaId(AnilistNotification notification) {
+    switch (notification) {
+      case MediaDataChangeNotification dataChange:
+        return dataChange.mediaId;
+      case MediaMergeNotification merge:
+        return merge.mediaId;
+      default:
+        return null;
+    }
+  }
+
+  String? _getContext(AnilistNotification notification) {
+    switch (notification) {
+      case MediaDataChangeNotification dataChange:
+        return dataChange.context;
+      case MediaMergeNotification merge:
+        return merge.context;
+      case MediaDeletionNotification deletion:
+        return deletion.context;
+      default:
+        return null;
+    }
+  }
+
+  String? _getReason(AnilistNotification notification) {
+    switch (notification) {
+      case MediaDataChangeNotification dataChange:
+        return dataChange.reason;
+      case MediaMergeNotification merge:
+        return merge.reason;
+      case MediaDeletionNotification deletion:
+        return deletion.reason;
+      default:
+        return null;
+    }
+  }
+
+  String? _getDeletedMediaTitles(AnilistNotification notification) {
+    if (notification is MediaMergeNotification) {
+      return notification.deletedMediaTitles.isEmpty ? null : jsonEncode(notification.deletedMediaTitles);
+    }
+    return null;
+  }
+
+  String? _getDeletedMediaTitle(AnilistNotification notification) {
+    return notification is MediaDeletionNotification ? notification.deletedMediaTitle : null;
+  }
+
+  String? _getMediaInfo(AnilistNotification notification) {
+    final media = switch (notification) {
+      AiringNotification airing => airing.media,
+      MediaDataChangeNotification dataChange => dataChange.media,
+      MediaMergeNotification merge => merge.media,
+      MediaDeletionNotification _ => null,
+      _ => null,
+    };
+    return media != null ? jsonEncode(media.toJson()) : null;
   }
 
   // Delete old notifications (keep only recent N notifications)
@@ -199,8 +294,6 @@ class NotificationsDao extends DatabaseAccessor<AppDatabase> with _$Notification
           context: data.context,
           reason: data.reason,
         );
-      default:
-        return null;
     }
   }
 }

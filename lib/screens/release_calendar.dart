@@ -7,6 +7,7 @@ import '../services/library/library_provider.dart';
 import '../models/series.dart';
 import '../models/anilist/anime.dart';
 import '../services/anilist/provider/anilist_provider.dart';
+import '../utils/color_utils.dart';
 import '../utils/logging.dart';
 import '../utils/path_utils.dart';
 import '../utils/screen_utils.dart';
@@ -38,6 +39,7 @@ class _ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
   Map<DateTime, List<ReleaseEpisodeInfo>> _releaseCache = {};
   bool _isLoading = false;
   String? _errorMessage;
+  bool _showOnlyTodayEpisodes = false; // Track if we're filtering to today only
 
   @override
   void initState() {
@@ -91,59 +93,103 @@ class _ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
       }
 
       if (animeIds.isEmpty) {
-        setState(() => _isLoading = false);
+        setState(() {
+          _errorMessage = 'No anime found with Anilist mappings. Link your anime to Anilist to see release dates.';
+          _isLoading = false;
+        });
         return;
       }
 
-      // Use the existing batch API to get upcoming episodes for all anime at once
-      // This is more efficient than individual requests
-      try {
-        final upcomingEpisodes = await anilistProvider.getUpcomingEpisodes(animeIds.toList());
+      // Use the same approach as homepage - get cached data first, refresh in background
+      final cachedUpcomingEpisodes = anilistProvider.getCachedUpcomingEpisodes(animeIds.toList(), refreshInBackground: true);
 
-        // Process the results
-        for (final series in library.series) {
-          if (series.anilistMappings.isNotEmpty) {
-            for (final mapping in series.anilistMappings) {
-              final airingInfo = upcomingEpisodes[mapping.anilistId];
-              if (airingInfo?.airingAt != null) {
-                final airingDate = DateTime.fromMillisecondsSinceEpoch(airingInfo!.airingAt! * 1000);
-                final dateKey = DateTime(airingDate.year, airingDate.month, airingDate.day);
+      logTrace('Using cached upcoming episodes for ${cachedUpcomingEpisodes.length} anime');
 
-                if (airingDate.isAfter(startDate) && airingDate.isBefore(endDate)) {
-                  final episodeInfo = ReleaseEpisodeInfo(
-                    series: series,
-                    animeData: null, // We don't need full anime data for this
-                    airingEpisode: airingInfo,
-                    airingDate: airingDate,
-                    isWatched: false,
-                    isAvailable: false,
-                  );
+      // Process the cached results first
+      for (final series in library.series) {
+        if (series.anilistMappings.isNotEmpty) {
+          for (final mapping in series.anilistMappings) {
+            final airingInfo = cachedUpcomingEpisodes[mapping.anilistId];
+            if (airingInfo?.airingAt != null) {
+              final airingDate = DateTime.fromMillisecondsSinceEpoch(airingInfo!.airingAt! * 1000);
+              final dateKey = DateTime(airingDate.year, airingDate.month, airingDate.day);
 
-                  releaseMap.putIfAbsent(dateKey, () => []).add(episodeInfo);
-                }
+              if (airingDate.isAfter(startDate) && airingDate.isBefore(endDate)) {
+                final episodeInfo = ReleaseEpisodeInfo(
+                  series: series,
+                  animeData: null, // We don't need full anime data for this
+                  airingEpisode: airingInfo,
+                  airingDate: airingDate,
+                  isWatched: false,
+                  isAvailable: false,
+                );
+
+                releaseMap.putIfAbsent(dateKey, () => []).add(episodeInfo);
               }
             }
           }
         }
-
-        // Sort episodes by airing time within each day
-        for (final dayEpisodes in releaseMap.values) {
-          dayEpisodes.sort((a, b) => a.airingDate.compareTo(b.airingDate));
-        }
-
-        setState(() {
-          _releaseCache = releaseMap;
-          _errorMessage = null;
-          _isLoading = false;
-        });
-      } catch (e) {
-        // If API call fails, show error message
-        logErr('API call failed', e);
-        setState(() {
-          _errorMessage = 'Failed to load episode data. This might be due to Anilist rate limiting.';
-          _isLoading = false;
-        });
       }
+
+      // If no cached data available, try fetching fresh data as fallback
+      if (releaseMap.isEmpty) {
+        try {
+          final upcomingEpisodes = await anilistProvider.getUpcomingEpisodes(animeIds.toList());
+
+          logTrace('Fallback: Loaded upcoming episodes for ${upcomingEpisodes.length} anime');
+
+          // Process the fresh results
+          for (final series in library.series) {
+            if (series.anilistMappings.isNotEmpty) {
+              for (final mapping in series.anilistMappings) {
+                final airingInfo = upcomingEpisodes[mapping.anilistId];
+                if (airingInfo?.airingAt != null) {
+                  final airingDate = DateTime.fromMillisecondsSinceEpoch(airingInfo!.airingAt! * 1000);
+                  final dateKey = DateTime(airingDate.year, airingDate.month, airingDate.day);
+
+                  if (airingDate.isAfter(startDate) && airingDate.isBefore(endDate)) {
+                    final episodeInfo = ReleaseEpisodeInfo(
+                      series: series,
+                      animeData: null, // We don't need full anime data for this
+                      airingEpisode: airingInfo,
+                      airingDate: airingDate,
+                      isWatched: false,
+                      isAvailable: false,
+                    );
+
+                    releaseMap.putIfAbsent(dateKey, () => []).add(episodeInfo);
+                  }
+                }
+              }
+            }
+          }
+        } catch (e) {
+          // If API call fails, show error message only if we have no cached data
+          logErr('API call failed', e);
+          setState(() {
+            _errorMessage = 'Failed to load episode data. This might be due to Anilist rate limiting.';
+            _isLoading = false;
+          });
+          return;
+        }
+      }
+
+      // Sort episodes by airing time within each day
+      for (final dayEpisodes in releaseMap.values) {
+        dayEpisodes.sort((a, b) => a.airingDate.compareTo(b.airingDate));
+      }
+
+      logTrace('Found ${releaseMap.length} days with episodes, total episodes: ${releaseMap.values.expand((x) => x).length}');
+
+      setState(() {
+        _releaseCache = releaseMap;
+        if (releaseMap.isEmpty) {
+          _errorMessage = 'No upcoming episodes found for your anime within the next 2 weeks.';
+        } else {
+          _errorMessage = null;
+        }
+        _isLoading = false;
+      });
     } catch (e) {
       setState(() {
         _errorMessage = 'Error loading release data: ${e.toString()}';
@@ -225,13 +271,20 @@ class _ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
               children: [
                 Icon(FluentIcons.calendar_agenda, size: 16),
                 const SizedBox(width: 8),
-                const Text('Today'),
+                Text(_showOnlyTodayEpisodes ? 'Show All' : 'Today'),
               ],
             ),
             onPressed: () => setState(
               () {
-                _selectedDate = now;
-                _focusedMonth = now;
+                // If already showing only today's episodes, toggle to show all
+                if (_showOnlyTodayEpisodes) {
+                  _showOnlyTodayEpisodes = false;
+                } else {
+                  // If not showing today's episodes, switch to today and toggle filter
+                  _selectedDate = now;
+                  _focusedMonth = now;
+                  _showOnlyTodayEpisodes = true;
+                }
               },
             ),
           ),
@@ -447,66 +500,107 @@ class _ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
   }
 
   Widget _buildEpisodeList() {
-    final selectedDateKey = DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day);
-    final episodesForSelectedDate = _releaseCache[selectedDateKey] ?? [];
+    if (_isLoading) {
+      return const Center(child: ProgressRing());
+    }
 
-    // For weekly view, show all episodes from the past week to next week
-    final allEpisodes = _releaseCache.entries
-        .where((entry) {
-          final daysDifference = entry.key.difference(DateTime.now()).inDays;
-          return daysDifference >= -7 && daysDifference <= 7;
-        })
-        .expand((entry) => entry.value)
-        .toList();
+    if (_errorMessage != null) {
+      return Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(FluentIcons.error, size: 48, color: Colors.red.light),
+          VDiv(16),
+          Text(_errorMessage!, style: FluentTheme.of(context).typography.subtitle),
+          VDiv(16),
+          Button(
+            child: const Text('Retry'),
+            onPressed: _loadReleaseData,
+          ),
+        ],
+      );
+    }
 
+    // Get all episodes from cache
+    final allEpisodes = _releaseCache.entries.expand((entry) => entry.value).toList();
+
+    if (allEpisodes.isEmpty) {
+      return Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(FluentIcons.calendar_day, size: 48, color: FluentTheme.of(context).inactiveColor),
+          VDiv(16),
+          Text('No episodes scheduled', style: FluentTheme.of(context).typography.subtitle),
+        ],
+      );
+    }
+
+    // Sort episodes by date
     allEpisodes.sort((a, b) => a.airingDate.compareTo(b.airingDate));
 
-    final episodesToShow = episodesForSelectedDate.isEmpty ? allEpisodes : episodesForSelectedDate;
+    // Group episodes by date
+    Map<DateTime, List<ReleaseEpisodeInfo>> episodesByDate = {};
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          episodesForSelectedDate.isEmpty ? 'Episodes (Past week to next week)' : 'Episodes for ${DateFormat.yMMMd().format(_selectedDate)}',
-          style: Manager.subtitleStyle,
-        ),
-        VDiv(16),
-        Expanded(
-          child: _isLoading
-              ? const Center(child: ProgressRing())
-              : _errorMessage != null
-                  ? Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(FluentIcons.error, color: Colors.red, size: 48),
-                          VDiv(16),
-                          Text('Error loading episodes'),
-                          VDiv(8),
-                          Text(_errorMessage!, style: FluentTheme.of(context).typography.caption),
-                          VDiv(16),
-                          Button(
-                            onPressed: () {
-                              setState(() => _errorMessage = null);
-                              _loadReleaseData();
-                            },
-                            child: const Text('Retry'),
-                          ),
-                        ],
-                      ),
-                    )
-                  : episodesToShow.isEmpty
-                      ? const Center(
-                          child: Text('No episodes found for this time period'),
-                        )
-                      : ListView.builder(
-                          controller: _episodeListController,
-                          itemCount: episodesToShow.length,
-                          itemBuilder: (context, index) {
-                            return _buildEpisodeItem(episodesToShow[index]);
-                          },
-                        ),
-        ),
+    for (final episode in allEpisodes) {
+      final episodeDate = DateTime(episode.airingDate.year, episode.airingDate.month, episode.airingDate.day);
+
+      // If filtering to today only, skip episodes not on today
+      if (_showOnlyTodayEpisodes) {
+        final today = DateTime.now();
+        final todayDate = DateTime(today.year, today.month, today.day);
+        if (!_isSameDay(episodeDate, todayDate)) {
+          continue;
+        }
+      }
+
+      episodesByDate.putIfAbsent(episodeDate, () => []).add(episode);
+    }
+
+    if (episodesByDate.isEmpty) {
+      return Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(FluentIcons.calendar_day, size: 48, color: FluentTheme.of(context).inactiveColor),
+          VDiv(16),
+          Text(_showOnlyTodayEpisodes ? 'No episodes today' : 'No episodes scheduled', style: FluentTheme.of(context).typography.subtitle),
+        ],
+      );
+    }
+
+    // Sort dates
+    final sortedDates = episodesByDate.keys.toList()..sort();
+
+    return CustomScrollView(
+      controller: _episodeListController,
+      slivers: [
+        for (final date in sortedDates) ...[
+          // Date header
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: 12.0, top: 16.0, left: 4.0),
+              child: Text(
+                _getRelativeDateLabel(date),
+                style: Manager.bodyLargeStyle.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: lighten(Manager.accentColor.lightest)
+                    ),
+              ),
+            ),
+          ),
+
+          // Episodes for this date
+          SliverList(
+            delegate: SliverChildBuilderDelegate(
+              (context, index) {
+                final episode = episodesByDate[date]![index];
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 0.0),
+                  child: _buildEpisodeItem(episode),
+                );
+              },
+              childCount: episodesByDate[date]!.length,
+            ),
+          ),
+        ],
       ],
     );
   }
@@ -516,9 +610,14 @@ class _ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
     final isUpcoming = episodeInfo.airingDate.isAfter(now);
     final timeUntil = episodeInfo.airingDate.difference(now);
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: 8),
+    return Opacity(
+      opacity: isUpcoming ? 1.0 : 0.7,
       child: ListTile(
+        cursor: SystemMouseCursors.click,
+        tileColor: WidgetStateColor.resolveWith((states) {
+          if (states.contains(WidgetState.hovered)) return Manager.accentColor.light.withOpacity(0.2);
+          return Colors.grey.withOpacity(.25);
+        }),
         onPressed: () {
           widget.onSeriesSelected(episodeInfo.series.path);
         },
@@ -540,7 +639,7 @@ class _ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
                 ),
         ),
         title: Text(
-          '${episodeInfo.series.displayTitle} - Episode ${episodeInfo.airingEpisode.episode ?? '?'}',
+          'Episode ${episodeInfo.airingEpisode.episode ?? '?'} - ${episodeInfo.series.displayTitle}',
           style: const TextStyle(fontWeight: FontWeight.w600),
         ),
         subtitle: Column(
@@ -548,13 +647,11 @@ class _ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
           children: [
             Text(
               isUpcoming ? 'Airs in ${_formatDuration(timeUntil)}' : 'Aired ${_formatTimeAgo(timeUntil.abs())}',
-              style: TextStyle(
-                color: isUpcoming ? Manager.accentColor : Colors.grey,
-              ),
+              style: Manager.bodyStyle.copyWith(color: Manager.accentColor.lightest),
             ),
             Text(
               DateFormat.yMMMd().add_jm().format(episodeInfo.airingDate),
-              style: FluentTheme.of(context).typography.caption,
+              style: Manager.captionStyle.copyWith(color: Colors.white.withOpacity(.5)),
             ),
           ],
         ),
@@ -597,6 +694,26 @@ class _ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
       return '${duration.inHours} hour${duration.inHours > 1 ? 's' : ''} ago';
     } else {
       return '${duration.inMinutes} minute${duration.inMinutes > 1 ? 's' : ''} ago';
+    }
+  }
+
+  String _getRelativeDateLabel(DateTime date) {
+    final today = DateTime.now();
+    final todayDate = DateTime(today.year, today.month, today.day);
+    final targetDate = DateTime(date.year, date.month, date.day);
+
+    final difference = targetDate.difference(todayDate).inDays;
+
+    if (difference == 0) {
+      return 'Today';
+    } else if (difference == 1) {
+      return 'Tomorrow';
+    } else if (difference == -1) {
+      return 'Yesterday';
+    } else if (difference > 0) {
+      return 'In $difference days';
+    } else {
+      return '${difference.abs()} days ago';
     }
   }
 

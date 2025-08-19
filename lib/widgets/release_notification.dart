@@ -44,19 +44,17 @@ class _ReleaseNotificationWidgetState extends State<ReleaseNotificationWidget> {
 
     final library = Provider.of<Library>(context, listen: false);
     try {
-      final notifications = await _anilistService!.getCachedNotifications(
-        database: library.database,
-        limit: 10,
-      );
+      // Get the actual unread count from database instead of counting limited cached results
+      final unreadCount = await _anilistService!.getUnreadCount(library.database);
       setState(() {
-        _unreadCount = notifications.where((n) => !n.isRead).length;
+        _unreadCount = unreadCount;
       });
     } catch (e) {
       // Handle error silently
     }
   }
 
-  void _showNotificationDialog() {
+  void _showNotificationDialog() async {
     // Calculate button position relative to screen
     final RenderBox buttonBox = context.findRenderObject() as RenderBox;
     final buttonPosition = buttonBox.localToGlobal(Offset.zero);
@@ -68,7 +66,7 @@ class _ReleaseNotificationWidgetState extends State<ReleaseNotificationWidget> {
       buttonPosition.dy + buttonSize.height + 8, // Below the button
     );
     
-    showManagedDialog(
+    await showManagedDialog(
       context: context,
       id: 'notifications',
       title: 'Notifications',
@@ -80,6 +78,9 @@ class _ReleaseNotificationWidgetState extends State<ReleaseNotificationWidget> {
         onMorePressed: (context) => widget.onMorePressed?.call(context),
       ),
     );
+    
+    // Refresh the unread count after the dialog is closed
+    await _loadNotifications();
   }
 
   @override
