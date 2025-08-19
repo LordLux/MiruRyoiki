@@ -1,4 +1,5 @@
 import 'package:fluent_ui/fluent_ui.dart';
+import 'dart:async';
 import 'package:miruryoiki/models/anilist/user_list.dart';
 import 'package:provider/provider.dart';
 import 'package:recase/recase.dart';
@@ -35,6 +36,21 @@ Color get lessGradientColor => shiftHue(Manager.accentColor.lighter, -60);
 Color get moreGradientColor => shiftHue(Manager.accentColor.lighter, 10);
 
 class _HomeScreenState extends State<HomeScreen> {
+  Timer? _minuteRefreshTimer; // refresh relative times every minute
+
+  @override
+  void initState() {
+    super.initState();
+    _minuteRefreshTimer = Timer.periodic(const Duration(minutes: 1), (_) {
+      if (mounted) setState(() {}); // triggers rebuild to update relative timestamps
+    });
+  }
+
+  @override
+  void dispose() {
+    _minuteRefreshTimer?.cancel();
+    super.dispose();
+  }
   @override
   Widget build(BuildContext context) {
     final library = Provider.of<Library>(context);

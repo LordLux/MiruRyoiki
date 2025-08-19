@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:miruryoiki/widgets/buttons/wrapper.dart';
 import 'package:provider/provider.dart';
@@ -40,18 +41,25 @@ class _ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
   bool _isLoading = false;
   String? _errorMessage;
   bool _showOnlyTodayEpisodes = false; // Track if we're filtering to today only
+  Timer? _minuteRefreshTimer; // periodic UI refresh for relative labels & countdowns
 
   @override
   void initState() {
     super.initState();
+    // Initial load & scroll after first frame
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadReleaseData();
       _scrollToToday();
+    });
+    // Periodic refresh for relative times
+    _minuteRefreshTimer = Timer.periodic(const Duration(minutes: 1), (_) {
+      if (mounted) setState(() {});
     });
   }
 
   @override
   void dispose() {
+    _minuteRefreshTimer?.cancel();
     _episodeListController.dispose();
     super.dispose();
   }
@@ -513,15 +521,19 @@ class _ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
           Text(_errorMessage!, style: FluentTheme.of(context).typography.subtitle),
           VDiv(16),
           Button(
-            child: const Text('Retry'),
             onPressed: _loadReleaseData,
+            child: const Text('Retry'),
           ),
         ],
       );
     }
 
-    // Get all episodes from cache
-    final allEpisodes = _releaseCache.entries.expand((entry) => entry.value).toList();
+  // Episodes for selected date
+  final selectedDateKey = DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day);
+  final selectedDayEpisodes = _releaseCache[selectedDateKey] ?? [];
+
+  // All episodes (within cached window)
+  final allEpisodes = _releaseCache.entries.expand((entry) => entry.value).toList();
 
     if (allEpisodes.isEmpty) {
       return Column(
@@ -534,39 +546,37 @@ class _ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
       );
     }
 
-    // Sort episodes by date
-    allEpisodes.sort((a, b) => a.airingDate.compareTo(b.airingDate));
-
-    // Group episodes by date
-    Map<DateTime, List<ReleaseEpisodeInfo>> episodesByDate = {};
-
-    for (final episode in allEpisodes) {
-      final episodeDate = DateTime(episode.airingDate.year, episode.airingDate.month, episode.airingDate.day);
-
-      // If filtering to today only, skip episodes not on today
-      if (_showOnlyTodayEpisodes) {
-        final today = DateTime.now();
-        final todayDate = DateTime(today.year, today.month, today.day);
-        if (!_isSameDay(episodeDate, todayDate)) {
-          continue;
-        }
+    // Decide mode: today-only, selected-date, or all grouped
+    late Map<DateTime, List<ReleaseEpisodeInfo>> episodesByDate;
+    if (_showOnlyTodayEpisodes) {
+      final today = DateTime.now();
+      final todayKey = DateTime(today.year, today.month, today.day);
+      final todaysEpisodes = _releaseCache[todayKey] ?? [];
+      if (todaysEpisodes.isEmpty) {
+        return Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(FluentIcons.calendar_day, size: 48, color: FluentTheme.of(context).inactiveColor),
+            VDiv(16),
+            Text('No episodes today', style: FluentTheme.of(context).typography.subtitle),
+          ],
+        );
       }
-
-      episodesByDate.putIfAbsent(episodeDate, () => []).add(episode);
+      episodesByDate = { todayKey : List.of(todaysEpisodes)..sort((a,b)=>a.airingDate.compareTo(b.airingDate)) };
+    } else if (selectedDayEpisodes.isNotEmpty) {
+      // Show ONLY selected date
+      episodesByDate = { selectedDateKey : List.of(selectedDayEpisodes)..sort((a,b)=>a.airingDate.compareTo(b.airingDate)) };
+    } else {
+      // Group all episodes (within cache window)
+      allEpisodes.sort((a, b) => a.airingDate.compareTo(b.airingDate));
+      final map = <DateTime, List<ReleaseEpisodeInfo>>{};
+      for (final ep in allEpisodes) {
+        final k = DateTime(ep.airingDate.year, ep.airingDate.month, ep.airingDate.day);
+        map.putIfAbsent(k, () => []).add(ep);
+      }
+      episodesByDate = map;
     }
 
-    if (episodesByDate.isEmpty) {
-      return Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(FluentIcons.calendar_day, size: 48, color: FluentTheme.of(context).inactiveColor),
-          VDiv(16),
-          Text(_showOnlyTodayEpisodes ? 'No episodes today' : 'No episodes scheduled', style: FluentTheme.of(context).typography.subtitle),
-        ],
-      );
-    }
-
-    // Sort dates
     final sortedDates = episodesByDate.keys.toList()..sort();
 
     return CustomScrollView(
