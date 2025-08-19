@@ -17,13 +17,11 @@ final GlobalKey<NotificationsContentState> notificationsDialogKey = GlobalKey<No
 
 class NotificationsDialog extends ManagedDialog {
   final void Function(BuildContext context)? onMorePressed;
-  final Offset? position;
 
   NotificationsDialog({
     super.key,
     required super.popContext,
     this.onMorePressed,
-    this.position,
   }) : super(
           title: null, // Remove the static title
           constraints: const BoxConstraints(maxWidth: 480, maxHeight: 600),
@@ -32,6 +30,7 @@ class NotificationsDialog extends ManagedDialog {
             onMorePressed: onMorePressed,
             constraints: constraints,
           ),
+          alignment: Alignment.topRight,
         );
 
   @override
@@ -43,14 +42,6 @@ class _NotificationsDialogState extends ManagedDialogState {
   void initState() {
     super.initState();
     Manager.canPopDialog = true;
-
-    // Position the dialog if position is provided
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final dialog = widget as NotificationsDialog;
-      if (dialog.position != null) {
-        positionDialog(dialog.position!);
-      }
-    });
   }
 }
 
@@ -108,6 +99,7 @@ class NotificationsContentState extends State<_NotificationsContent> {
       }
     } catch (e) {
       // Silently handle cache loading errors
+      logErr("Error loading cached notifications", e);
     }
   }
 
@@ -147,6 +139,7 @@ class NotificationsContentState extends State<_NotificationsContent> {
       if (mounted) {
         // Could show a subtle error indicator
       }
+      logErr("Error syncing notifications", e);
     } finally {
       if (mounted) {
         setState(() {

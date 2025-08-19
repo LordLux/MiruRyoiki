@@ -1,5 +1,9 @@
 // ignore: file_names
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:miruryoiki/services/navigation/dialogs.dart';
+
+import '../../manager.dart';
+import '../../utils/screen_utils.dart';
 
 /// The default constraints for [ContentDialog]
 const kDefaultContentDialogConstraints = BoxConstraints(
@@ -14,6 +18,8 @@ const kDefaultContentDialogConstraints = BoxConstraints(
 Future<T?> showPaddedDialog<T extends Object?>({
   required BuildContext context,
   required WidgetBuilder builder,
+
+  /// Padding for the barrier, for example to allow interactions on custom titlebar
   EdgeInsetsGeometry barrierPadding = EdgeInsets.zero,
   RouteTransitionsBuilder transitionBuilder = PaddedDialogRoute._defaultTransitionBuilder,
   Duration? transitionDuration,
@@ -21,9 +27,21 @@ Future<T?> showPaddedDialog<T extends Object?>({
   RouteSettings? routeSettings,
   String? barrierLabel,
   Color? barrierColor = const Color(0x8A000000),
+
+  /// Whether to dismiss the dialog when tapping outside of it
   bool barrierDismissible = false,
+
+  /// Whether to allow dialog to be dismissed with Escape key
   bool dismissWithEsc = true,
+
+  /// Whether to close existing dialogs before showing this one
   bool closeExistingDialogs = false,
+
+  /// Whether the barrier should let interactions through or not
+  bool transparentBarrier = false,
+
+  /// Callback to be called when the dialog is dismissed
+  VoidCallback? onDismiss,
 }) async {
   assert(debugCheckHasFluentLocalizations(context));
 
@@ -34,14 +52,14 @@ Future<T?> showPaddedDialog<T extends Object?>({
       rootNavigator: useRootNavigator,
     ).context,
   );
-  
+
   if (closeExistingDialogs) {
     if (Navigator.of(context, rootNavigator: useRootNavigator).canPop()) {
       Navigator.of(context, rootNavigator: useRootNavigator).pop();
       await Future.delayed(const Duration(milliseconds: 100));
     }
   }
-  if (context.mounted)
+
   return Navigator.of(
     context,
     rootNavigator: useRootNavigator,
@@ -54,7 +72,8 @@ Future<T?> showPaddedDialog<T extends Object?>({
     dismissWithEsc: dismissWithEsc,
     settings: routeSettings,
     transitionBuilder: transitionBuilder,
-    barrierPadding: barrierPadding,
+    onDismiss: onDismiss,
+    barrierPadding: transparentBarrier ? null : barrierPadding,
     transitionDuration: transitionDuration ?? FluentTheme.maybeOf(context)?.fastAnimationDuration ?? const Duration(milliseconds: 300),
     themes: themes,
   ));
@@ -62,12 +81,16 @@ Future<T?> showPaddedDialog<T extends Object?>({
 
 /// A dialog route with a barrier that supports padding
 class PaddedDialogRoute<T> extends FluentDialogRoute<T> {
-  final EdgeInsetsGeometry barrierPadding;
+  final EdgeInsetsGeometry? barrierPadding;
+  final VoidCallback? onDismiss;
 
   PaddedDialogRoute({
     required super.builder,
     required super.context,
-    required this.barrierPadding, // Padding for the barrier
+
+    /// Padding for the barrier
+    required this.barrierPadding,
+    this.onDismiss,
     super.themes,
     super.barrierDismissible = true, // default to true
     super.barrierColor,
@@ -75,7 +98,9 @@ class PaddedDialogRoute<T> extends FluentDialogRoute<T> {
     super.transitionDuration,
     super.transitionBuilder,
     super.settings,
-    super.dismissWithEsc = false, // override default behavior
+    super.dismissWithEsc = false,
+
+    /// Recommended false, to override default flutter behavior
   });
 
   static Widget _defaultTransitionBuilder(
@@ -109,9 +134,10 @@ class PaddedDialogRoute<T> extends FluentDialogRoute<T> {
       color: Colors.transparent,
       dismissible: barrierDismissible,
       semanticsLabel: barrierLabel,
+      onDismiss: onDismiss,
     );
 
-    if (barrierPadding != EdgeInsets.zero) {
+    if (barrierPadding != null && barrierPadding != EdgeInsets.zero) {
       return Stack(
         children: [
           AnimatedBuilder(
@@ -119,7 +145,7 @@ class PaddedDialogRoute<T> extends FluentDialogRoute<T> {
             builder: (context, child) {
               final animValue = animation!.value;
               return Padding(
-                padding: barrierPadding,
+                padding: barrierPadding!,
                 child: ShaderMask(
                   shaderCallback: (Rect bounds) {
                     return LinearGradient(
@@ -131,7 +157,7 @@ class PaddedDialogRoute<T> extends FluentDialogRoute<T> {
                   },
                   blendMode: BlendMode.srcIn,
                   child: Container(
-                    color: Colors.black,
+                    color: Colors.black.withOpacity(barrierColor?.opacity ?? 1),
                     child: child,
                   ),
                 ),
@@ -139,13 +165,25 @@ class PaddedDialogRoute<T> extends FluentDialogRoute<T> {
             },
           ),
           Padding(
-            padding: barrierPadding,
+            padding: barrierPadding!,
             child: barrier,
           ),
         ],
       );
     }
 
-    return barrier;
+    return barrierPadding != null
+        ? barrier
+        : Listener(
+            behavior: HitTestBehavior.translucent,
+            onPointerDown: (_) {
+              onDismiss?.call();
+              closeDialog(Manager.context);
+              Navigator.of(Manager.context).maybePop();
+            },
+            child: IgnorePointer(
+              child: Container(),
+            ),
+          );
   }
 }

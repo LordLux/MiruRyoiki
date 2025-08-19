@@ -14,7 +14,9 @@ import 'navigation.dart';
 bool kReturnTrueCallback() => true;
 bool kReturnFalseCallback() => false;
 
-Color getBarrierColor(Color? color) {
+Color getBarrierColor(Color? color, {bool override = false}) {
+  if (override && color != null) return color!;
+
   final Color baseColor = const Color(0xFF000000);
   if (color == null) return baseColor.withAlpha(0x84);
   // If no color is provided, use the default barrier color
@@ -28,10 +30,18 @@ Future<T?> showManagedDialog<T>({
   required String title,
   required ManagedDialog Function(BuildContext) builder,
   Color? barrierColor = const Color(0x8A000000),
+
+  /// Whether to use the exact barrier color or a lerped version of it
+  bool overrideColor = false,
   Object? data,
   bool canUserPopDialog = true,
+
+  /// Whether the barrier should let interactions through or not
+  bool transparentBarrier = false,
   bool Function() dialogDoPopCheck = kReturnFalseCallback,
   bool closeExistingDialogs = false,
+
+  VoidCallback? onDismiss,
 }) async {
   final navManager = Manager.navigation;
 
@@ -41,12 +51,14 @@ Future<T?> showManagedDialog<T>({
   // Show the dialog
   final result = await showPaddedDialog<T>(
     context: rootNavigatorKey.currentContext!,
-    barrierColor: getBarrierColor(barrierColor),
+    barrierColor: getBarrierColor(barrierColor, override: overrideColor),
     useRootNavigator: true,
     dismissWithEsc: false, // DO NOT allow ESC to close the dialog, as esc already triggers normal pop (wtf flutter?)
     barrierDismissible: canUserPopDialog, // allow barrier to dismiss if no check provided
     barrierPadding: EdgeInsets.only(top: ScreenUtils.kTitleBarHeight),
     closeExistingDialogs: closeExistingDialogs,
+    transparentBarrier: transparentBarrier,
+    onDismiss: onDismiss,
     builder: (context) => PopScope(
       canPop: false, // Prevent popping from the dialog itself
       onPopInvoked: (didPop) async {
@@ -234,6 +246,7 @@ class ManagedDialog extends StatefulWidget {
   final Widget Function(BuildContext, BoxConstraints)? contentBuilder;
   final List<Widget> Function(dynamic)? actions;
   final BoxConstraints constraints;
+  final Alignment alignment;
   final ContentDialogThemeData? theme;
   final BuildContext popContext;
 
@@ -244,6 +257,7 @@ class ManagedDialog extends StatefulWidget {
     this.actions,
     this.constraints = const BoxConstraints(maxWidth: 500, minWidth: 300),
     this.theme,
+    this.alignment = Alignment.center,
     required this.popContext,
   });
 
@@ -253,11 +267,13 @@ class ManagedDialog extends StatefulWidget {
 
 class ManagedDialogState extends State<ManagedDialog> {
   late BoxConstraints _currentConstraints;
+  late Alignment alignment;
 
   @override
   void initState() {
     super.initState();
     _currentConstraints = widget.constraints;
+    alignment = widget.alignment;
   }
 
   // Method to resize the dialog
@@ -277,30 +293,80 @@ class ManagedDialogState extends State<ManagedDialog> {
   }
 
   /// Position the dialog on screen
-  void positionDialog(Offset offset) {
+  void positionDialog(Alignment alignment) {
     setState(() {
-      // _currentOffset = offset;
+      this.alignment = alignment;
     });
+  }
+
+  Positioned AlignmentWidget({required Widget child}) {
+    return switch (alignment) {
+      Alignment.topLeft => Positioned(
+          top: 0,
+          left: 0,
+          child: child,
+        ),
+      Alignment.topCenter => Positioned.fill(
+          top: 0,
+          child: child,
+        ),
+      Alignment.topRight => Positioned(
+          top: 0,
+          right: 0,
+          child: child,
+        ),
+      Alignment.centerRight => Positioned.fill(
+          right: 0,
+          child: child,
+        ),
+      Alignment.bottomRight => Positioned(
+          bottom: 0,
+          right: 0,
+          child: child,
+        ),
+      Alignment.bottomCenter => Positioned.fill(
+          bottom: 0,
+          child: child,
+        ),
+      Alignment.bottomLeft => Positioned(
+          bottom: 0,
+          left: 0,
+          child: child,
+        ),
+      Alignment.centerLeft => Positioned.fill(
+          left: 0,
+          child: child,
+        ),
+      _ => Positioned.fill(
+          child: child,
+        ),
+    };
   }
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(top: ScreenUtils.kTitleBarHeight - 5),
-      child: ContentDialog(
-        style: widget.theme,
-        title: widget.title,
-        content: Material(
-          color: Colors.transparent,
-          child: Container(
-            constraints: _currentConstraints,
-            child: widget.contentBuilder != null ? widget.contentBuilder!(context, _currentConstraints) : null,
+    return Stack(
+      children: [
+        AlignmentWidget(
+          child: Padding(
+            padding: const EdgeInsets.only(top: ScreenUtils.kTitleBarHeight - 5),
+            child: ContentDialog(
+              style: widget.theme,
+              title: widget.title,
+              content: Material(
+                color: Colors.transparent,
+                child: Container(
+                  constraints: _currentConstraints,
+                  child: widget.contentBuilder != null ? widget.contentBuilder!(context, _currentConstraints) : null,
+                ),
+              ),
+              // ignore: prefer_null_aware_operators
+              actions: widget.actions != null ? widget.actions!.call(widget.popContext) : null,
+              constraints: _currentConstraints,
+            ),
           ),
         ),
-        // ignore: prefer_null_aware_operators
-        actions: widget.actions != null ? widget.actions!.call(widget.popContext) : null,
-        constraints: _currentConstraints,
-      ),
+      ],
     );
   }
 
@@ -315,16 +381,14 @@ extension ManagedDialogExtensions on BuildContext {
   // Helper to resize the dialog
   void resizeManagedDialog({double? width, double? height, BoxConstraints? constraints}) {
     final state = managedDialogState;
-    if (state != null) {
+    if (state != null) //
       state.resizeDialog(width: width, height: height, constraints: constraints);
-    }
   }
 
-  void positionManagedDialog(Offset offset) {
+  void positionManagedDialog(Alignment alignment) {
     final state = managedDialogState;
-    if (state != null) {
-      state.positionDialog(offset);
-    }
+    if (state != null) //
+      state.positionDialog(alignment);
   }
 }
 

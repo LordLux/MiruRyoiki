@@ -797,7 +797,7 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
         builder: (context, _, __) {
           return AnimatedContainer(
             duration: dimDuration,
-            color: Manager.navigation.hasDialog ? getBarrierColor(Manager.currentDominantColor) : Colors.transparent,
+            color: Manager.navigation.hasDialog && Manager.navigation.currentView?.id != "notifications" ? getBarrierColor(Manager.currentDominantColor) : Colors.transparent,
             child: Stack(
               children: [
                 Positioned.fill(
@@ -858,10 +858,11 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
                           Padding(
                             padding: const EdgeInsets.only(right: 8.0),
                             child: ReleaseNotificationWidget(
-                              onMorePressed: (ctx) {
+                              onMorePressed: (ctx) async {
                                 // Navigate to calendar screen
+                                closeDialog(ctx);
+                                await Future.delayed(const Duration(milliseconds: 100));
                                 setState(() {
-                                  closeDialog(ctx);
                                   if (_isSeriesView && _selectedSeriesPath != null) exitSeriesView();
 
                                   _selectedIndex = calendarIndex;

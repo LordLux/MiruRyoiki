@@ -20,6 +20,7 @@ class Manager {
 
   /// Indicates if the current dialog can be popped, used when dialogs have multiple 'views'
   static bool canPopDialog = true;
+  static bool notificationsPopping = false;
   static Color? currentDominantColor;
 
   static List<String> accounts = [];
@@ -64,6 +65,7 @@ class Manager {
   static SettingsManager get settings => rootNavigatorKey.currentContext != null ? SettingsManager() : Provider.of<SettingsManager>(context, listen: false);
 
   static AppTheme? _cachedAppTheme;
+
   static AppTheme get appTheme {
     if (rootNavigatorKey.currentContext != null) {
       try {
