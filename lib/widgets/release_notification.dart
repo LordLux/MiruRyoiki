@@ -9,8 +9,8 @@ import '../services/navigation/dialogs.dart';
 import 'dialogs/notifications.dart';
 
 class ReleaseNotificationWidget extends StatefulWidget {
-  final VoidCallback? onMorePressed;
-  
+  final void Function(BuildContext context)? onMorePressed;
+
   const ReleaseNotificationWidget({
     super.key,
     this.onMorePressed,
@@ -76,7 +76,7 @@ class _ReleaseNotificationWidgetState extends State<ReleaseNotificationWidget> {
       builder: (context) => NotificationsDialog(
         popContext: context,
         position: dialogPosition,
-        onMorePressed: widget.onMorePressed,
+        onMorePressed: (context) => widget.onMorePressed?.call(context),
       ),
     );
   }

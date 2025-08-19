@@ -858,19 +858,19 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
                           Padding(
                             padding: const EdgeInsets.only(right: 8.0),
                             child: ReleaseNotificationWidget(
-                              onMorePressed: () {
+                              onMorePressed: (ctx) {
                                 // Navigate to calendar screen
                                 setState(() {
-                                  if (_isSeriesView && _selectedSeriesPath != null) {
-                                    exitSeriesView();
-                                  }
+                                  closeDialog(ctx);
+                                  if (_isSeriesView && _selectedSeriesPath != null) exitSeriesView();
+
                                   _selectedIndex = calendarIndex;
                                   _resetScrollPosition(calendarIndex);
 
-                                  final navManager = Provider.of<NavigationManager>(context, listen: false);
-                                  navManager.clearStack();
+                                  final navManager = Manager.navigation;
+
                                   final item = _navigationMap[calendarIndex]!;
-                                  navManager.pushPane(item['id'], item['title']);
+                                  navManager.clearAndPushPane(item['id'], item['title']);
                                 });
                               },
                             ),

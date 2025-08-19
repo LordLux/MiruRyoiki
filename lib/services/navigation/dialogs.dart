@@ -218,7 +218,7 @@ void closeDialog<T>(BuildContext popContext, {T? result}) {
   // First check if Flutter's Navigator has a dialog to pop
   if (Navigator.of(popContext).canPop() && navManager.hasDialog) {
     // Update custom navigation stack if needed
-    // navManager.popDialog();
+    navManager.popDialog();
 
     // Pop the actual dialog
     Navigator.of(popContext).pop(result);

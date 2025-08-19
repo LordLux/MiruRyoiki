@@ -14,7 +14,7 @@ import '../../widgets/buttons/wrapper.dart';
 final GlobalKey<NotificationsContentState> notificationsDialogKey = GlobalKey<NotificationsContentState>();
 
 class NotificationsDialog extends ManagedDialog {
-  final VoidCallback? onMorePressed;
+  final void Function(BuildContext context)? onMorePressed;
   final Offset? position;
 
   NotificationsDialog({
@@ -52,7 +52,7 @@ class _NotificationsDialogState extends ManagedDialogState {
 }
 
 class _NotificationsContent extends StatefulWidget {
-  final VoidCallback? onMorePressed;
+  final void Function(BuildContext context)? onMorePressed;
   final BoxConstraints constraints;
 
   const _NotificationsContent({
@@ -229,7 +229,7 @@ class NotificationsContentState extends State<_NotificationsContent> {
                 children: [
                   MouseButtonWrapper(
                     child: (_) => GestureDetector(
-                      onTap: widget.onMorePressed,
+                      onTap: () => widget.onMorePressed?.call(context),
                       child: Text(
                         'Notifications',
                         style: FluentTheme.of(context).typography.subtitle,
@@ -283,7 +283,7 @@ class NotificationsContentState extends State<_NotificationsContent> {
                       message: 'View release calendar',
                       child: IconButton(
                         icon: const Icon(FluentIcons.calendar, size: 12),
-                        onPressed: widget.onMorePressed,
+                        onPressed: () => widget.onMorePressed?.call(context),
                       ),
                     ),
                 ],
