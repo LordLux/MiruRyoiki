@@ -630,7 +630,6 @@ class _ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
   }
 
   Widget _buildEpisodeItem(ReleaseEpisodeInfo episodeInfo) {
-    final now = DateTime.now();
     final isUpcoming = episodeInfo.airingDate.isAfter(now);
     final timeUntil = episodeInfo.airingDate.difference(now);
 
@@ -659,7 +658,7 @@ class _ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
-            HDivPx(10),
+            HDivPx(12),
             SizedBox(
               width: 70,
               height: 54,
