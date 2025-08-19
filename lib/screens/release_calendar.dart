@@ -42,6 +42,7 @@ class _ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
   String? _errorMessage;
   bool _showOnlyTodayEpisodes = false; // Track if we're filtering to today only
   Timer? _minuteRefreshTimer; // periodic UI refresh for relative labels & countdowns
+  bool _filterSelectedDate = true; // controls whether selected date filter is active
 
   @override
   void initState() {
@@ -421,7 +422,21 @@ class _ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
         child: (isHovering) => Button(
           onPressed: () {
             setState(() {
-              _selectedDate = date;
+              if (isSelected) {
+                // Toggle filter off/on when clicking the same selected date
+                _filterSelectedDate = !_filterSelectedDate;
+                if (!_filterSelectedDate) {
+                  // Clear selection highlight by moving _selectedDate to a non-matching day (keep logical state)
+                  _selectedDate = DateTime(1900); // sentinel: no day in current view will match
+                }
+              } else {
+                _selectedDate = date;
+                _filterSelectedDate = true; // enable filter on new selection
+              }
+              // Turning off today-only if user manually toggles date
+              if (_showOnlyTodayEpisodes && !_filterSelectedDate) {
+                _showOnlyTodayEpisodes = false;
+              }
             });
           },
           style: ButtonStyle(
@@ -563,7 +578,7 @@ class _ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
         );
       }
       episodesByDate = { todayKey : List.of(todaysEpisodes)..sort((a,b)=>a.airingDate.compareTo(b.airingDate)) };
-    } else if (selectedDayEpisodes.isNotEmpty) {
+  } else if (_filterSelectedDate && selectedDayEpisodes.isNotEmpty) {
       // Show ONLY selected date
       episodesByDate = { selectedDateKey : List.of(selectedDayEpisodes)..sort((a,b)=>a.airingDate.compareTo(b.airingDate)) };
     } else {
@@ -587,12 +602,36 @@ class _ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.only(bottom: 12.0, top: 16.0, left: 4.0),
-              child: Text(
-                _getRelativeDateLabel(date),
-                style: Manager.bodyLargeStyle.copyWith(
-                      fontWeight: FontWeight.w600,
-                      color: lighten(Manager.accentColor.lightest)
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Text(
+                    _getRelativeDateLabel(date),
+                    style: Manager.bodyLargeStyle.copyWith(
+                          fontWeight: FontWeight.w600,
+                          color: lighten(Manager.accentColor.lightest)
+                        ),
+                  ),
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: Manager.accentColor.light.withOpacity(0.25),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: Manager.accentColor.light.withOpacity(0.4), width: 1),
                     ),
+                    child: Transform.translate(
+                      offset: const Offset(0, -0.66),
+                      child: Text(
+                        '${episodesByDate[date]!.length}',
+                        style: FluentTheme.of(context).typography.caption?.copyWith(
+                              fontWeight: FontWeight.w600,
+                              color: lighten(Manager.accentColor.lightest),
+                            ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
