@@ -1,5 +1,6 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/material.dart' as mat;
+import 'package:miruryoiki/widgets/buttons/button.dart';
 import 'package:provider/provider.dart';
 
 import '../main.dart';
@@ -56,7 +57,14 @@ class _ReleaseNotificationWidgetState extends State<ReleaseNotificationWidget> {
     }
   }
 
+  bool _isDialogToggling = false;
+
   void _showNotificationDialog() async {
+    if (_isDialogToggling) {
+      print('Dialog is already toggling');
+      return;
+    } // Prevent multiple clicks during toggle
+
     //TODO fix this, position dialog at top right
     //TODO prevent multiple clicks on icon to show this -> toggle open and close
 
@@ -73,11 +81,16 @@ class _ReleaseNotificationWidgetState extends State<ReleaseNotificationWidget> {
 
     final currentDialog = Manager.navigation.currentView;
     if (Navigator.of(context, rootNavigator: true).canPop() && currentDialog?.level == NavigationLevel.dialog) {
+      _isDialogToggling = true;
       //get current top dialog id
       closeDialog(rootNavigatorKey.currentContext!);
-      if (currentDialog?.id == "notifications") return;
+      if (currentDialog?.id == "notifications") {
+        _isDialogToggling = false;
+        return;
+      }
       print('opening dialog');
-      await Future.delayed(const Duration(milliseconds: 100));
+      await Future.delayed(const Duration(milliseconds: 200));
+      _isDialogToggling = false;
     }
 
     await showManagedDialog(
@@ -139,7 +152,7 @@ class _ReleaseNotificationWidgetState extends State<ReleaseNotificationWidget> {
                   ),
               ],
             ),
-            onPressed: isEnabled ? _showNotificationDialog : null,
+            onPressed: isEnabled && !_isDialogToggling ? _showNotificationDialog : null,
           ),
         );
       },

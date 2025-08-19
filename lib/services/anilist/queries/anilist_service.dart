@@ -30,6 +30,15 @@ class AnilistService {
   final AnilistAuthService _authService;
   GraphQLClient? _client;
 
+  // Throttling + cache for notifications
+  DateTime? _lastNotificationsFetchAt;
+  List<AnilistNotification>? _lastNotificationsCache;
+  int? _lastNotificationsPage;
+  int? _lastNotificationsPerPage;
+  List<NotificationType>? _lastNotificationsTypes;
+  DateTime? _lastNotificationsSyncAt; // whole-sync throttle timestamp
+  Completer<List<AnilistNotification>>? _notificationsSyncCompleter; // dedupe concurrent syncs
+
   bool get isLoggedIn => _authService.isAuthenticated;
 
   static final List<String> statusListNamesApi = [

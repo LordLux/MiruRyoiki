@@ -102,9 +102,18 @@ extension AnilistServiceNotifications on AnilistService {
     int page = 1,
     int perPage = 25,
     List<NotificationType>? types,
+    bool force = false, // bypass throttle when true (used by sync/pagination)
   }) async {
     if (!isLoggedIn) {
       throw Exception('User is not authenticated with Anilist');
+    }
+
+    // Throttle: if last fetch within 5s with same parameters, return cached
+    final nowTs = DateTime.now();
+    final withinWindow = _lastNotificationsFetchAt != null && nowTs.difference(_lastNotificationsFetchAt!).inSeconds < 5;
+    final sameParams = _lastNotificationsPage == page && _lastNotificationsPerPage == perPage && _compareNotificationTypeLists(_lastNotificationsTypes, types);
+    if (!force && withinWindow && sameParams && _lastNotificationsCache != null) {
+      return _lastNotificationsCache!;
     }
 
     // Access the GraphQL client directly since we're an extension
@@ -153,11 +162,27 @@ extension AnilistServiceNotifications on AnilistService {
         }
       }
 
+      // Save cache & metadata
+      _lastNotificationsFetchAt = DateTime.now();
+      _lastNotificationsCache = notifications;
+      _lastNotificationsPage = page;
+      _lastNotificationsPerPage = perPage;
+      _lastNotificationsTypes = types == null ? null : List.of(types);
       return notifications;
     } catch (e) {
       logErr('Error fetching notifications from Anilist', e);
       throw Exception('Failed to fetch notifications: $e');
     }
+  }
+
+  bool _compareNotificationTypeLists(List<NotificationType>? a, List<NotificationType>? b) {
+    if (a == null && b == null) return true;
+    if (a == null || b == null) return false;
+    if (a.length != b.length) return false;
+    for (int i = 0; i < a.length; i++) {
+      if (a[i] != b[i]) return false;
+    }
+    return true;
   }
 
   // Parse notification JSON from Anilist API
@@ -299,6 +324,19 @@ extension AnilistServiceNotifications on AnilistService {
     List<NotificationType>? types,
     int maxPages = 3,
   }) async {
+    // If a sync is in progress, return the same future
+    if (_notificationsSyncCompleter != null) {
+      return _notificationsSyncCompleter!.future;
+    }
+
+    // Throttle full syncs: if last completed within 5s, just return cached (if any)
+    final now = DateTime.now();
+    if (_lastNotificationsSyncAt != null && now.difference(_lastNotificationsSyncAt!).inSeconds < 5) {
+      if (_lastNotificationsCache != null) return _lastNotificationsCache!;
+    }
+
+    _notificationsSyncCompleter = Completer<List<AnilistNotification>>();
+
     final allNotifications = <AnilistNotification>[];
     final notificationsDao = database.notificationsDao;
     
@@ -307,9 +345,10 @@ extension AnilistServiceNotifications on AnilistService {
       try {
         final notifications = await fetchNotifications(
           page: page,
-          perPage: 25,
-          types: types,
-        );
+            perPage: 25,
+            types: types,
+            force: true, // ensure paging not blocked by throttle
+          );
         
         if (notifications.isEmpty) break;
         allNotifications.addAll(notifications);
@@ -332,7 +371,11 @@ extension AnilistServiceNotifications on AnilistService {
       await notificationsDao.deleteOldNotifications(keepCount: 200);
     }
 
-    return allNotifications;
+  _lastNotificationsSyncAt = DateTime.now();
+  _lastNotificationsCache = allNotifications; // cache entire result set for popup usage
+  _notificationsSyncCompleter!.complete(allNotifications);
+  _notificationsSyncCompleter = null;
+  return allNotifications;
   }
 
   // Get cached notifications from local database
