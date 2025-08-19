@@ -1,4 +1,5 @@
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:flutter/material.dart' as mat;
 import 'package:provider/provider.dart';
 
 import '../manager.dart';
@@ -95,10 +96,13 @@ class _ReleaseNotificationWidgetState extends State<ReleaseNotificationWidget> {
             icon: Stack(
               clipBehavior: Clip.none,
               children: [
-                Icon(
-                  FluentIcons.ringer,
-                  size: 16,
-                  color: isEnabled ? (hasNotifications ? Manager.accentColor : Colors.grey.withOpacity(0.8)) : Colors.grey.withOpacity(0.4),
+                Transform.scale(
+                  scale: 1.2,
+                  child: Icon(
+                    mat.Icons.notifications,
+                    size: 17,
+                    color: isEnabled ? (hasNotifications ? Manager.accentColor : Colors.white.withOpacity(0.8)) : Colors.white.withOpacity(0.4),
+                  ),
                 ),
                 if (hasNotifications && isEnabled)
                   Positioned(
@@ -108,7 +112,7 @@ class _ReleaseNotificationWidgetState extends State<ReleaseNotificationWidget> {
                       width: 8,
                       height: 8,
                       decoration: BoxDecoration(
-                        color: Colors.red,
+                        color: Colors.white,
                         shape: BoxShape.circle,
                         border: Border.all(
                           color: FluentTheme.of(context).scaffoldBackgroundColor,
