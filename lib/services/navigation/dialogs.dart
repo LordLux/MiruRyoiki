@@ -31,6 +31,7 @@ Future<T?> showManagedDialog<T>({
   Object? data,
   bool canUserPopDialog = true,
   bool Function() dialogDoPopCheck = kReturnFalseCallback,
+  bool closeExistingDialogs = false,
 }) async {
   final navManager = Manager.navigation;
 
@@ -45,6 +46,7 @@ Future<T?> showManagedDialog<T>({
     dismissWithEsc: false, // DO NOT allow ESC to close the dialog, as esc already triggers normal pop (wtf flutter?)
     barrierDismissible: canUserPopDialog, // allow barrier to dismiss if no check provided
     barrierPadding: EdgeInsets.only(top: ScreenUtils.kTitleBarHeight),
+    closeExistingDialogs: closeExistingDialogs,
     builder: (context) => PopScope(
       canPop: false, // Prevent popping from the dialog itself
       onPopInvoked: (didPop) async {
@@ -216,12 +218,12 @@ void closeDialog<T>(BuildContext popContext, {T? result}) {
   final navManager = Provider.of<NavigationManager>(popContext, listen: false);
 
   // First check if Flutter's Navigator has a dialog to pop
-  if (Navigator.of(popContext).canPop() && navManager.hasDialog) {
+  if (Navigator.of(popContext, rootNavigator: true).canPop() && navManager.hasDialog) {
     // Update custom navigation stack if needed
     navManager.popDialog();
 
     // Pop the actual dialog
-    Navigator.of(popContext).pop(result);
+    Navigator.of(popContext, rootNavigator: true).pop(result);
   } else {
     logWarn('No dialog to pop in Flutter Navigator');
   }

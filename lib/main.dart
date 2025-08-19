@@ -2,7 +2,7 @@
 
 import 'dart:io';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart' show Material, MaterialPageRoute, ScaffoldMessenger;
+import 'package:flutter/material.dart' show DialogRoute, Material, MaterialPageRoute, ScaffoldMessenger;
 import 'package:fluent_ui/fluent_ui.dart' hide ColorExtension;
 import 'package:flutter/services.dart';
 import 'package:flutter_acrylic/flutter_acrylic.dart';

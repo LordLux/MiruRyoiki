@@ -2,11 +2,13 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/material.dart' as mat;
 import 'package:provider/provider.dart';
 
+import '../main.dart';
 import '../manager.dart';
 import '../services/anilist/provider/anilist_provider.dart';
 import '../services/anilist/queries/anilist_service.dart';
 import '../services/library/library_provider.dart';
 import '../services/navigation/dialogs.dart';
+import '../services/navigation/navigation.dart';
 import 'dialogs/notifications.dart';
 
 class ReleaseNotificationWidget extends StatefulWidget {
@@ -56,6 +58,7 @@ class _ReleaseNotificationWidgetState extends State<ReleaseNotificationWidget> {
 
   void _showNotificationDialog() async {
     //TODO fix this, position dialog at top right
+    //TODO prevent multiple clicks on icon to show this -> toggle open and close
 
     // Calculate button position relative to screen
     final RenderBox buttonBox = context.findRenderObject() as RenderBox;
@@ -68,16 +71,26 @@ class _ReleaseNotificationWidgetState extends State<ReleaseNotificationWidget> {
       buttonPosition.dy + buttonSize.height + 8, // Below the button
     );
 
+    final currentDialog = Manager.navigation.currentView;
+    if (Navigator.of(context, rootNavigator: true).canPop() && currentDialog?.level == NavigationLevel.dialog) {
+      //get current top dialog id
+      closeDialog(rootNavigatorKey.currentContext!);
+      if (currentDialog?.id == "notifications") return;
+      print('opening dialog');
+      await Future.delayed(const Duration(milliseconds: 100));
+    }
+
     await showManagedDialog(
       context: context,
       id: 'notifications',
       title: 'Notifications',
       canUserPopDialog: true,
       dialogDoPopCheck: () => Manager.canPopDialog,
-      builder: (context) => NotificationsDialog(
-        popContext: context,
+      closeExistingDialogs: false,
+      builder: (ctx) => NotificationsDialog(
+        popContext: ctx,
         position: dialogPosition,
-        onMorePressed: (context) => widget.onMorePressed?.call(context),
+        onMorePressed: (ctx2) => widget.onMorePressed?.call(ctx2),
       ),
     );
 

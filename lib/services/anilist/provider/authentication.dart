@@ -166,7 +166,7 @@ extension AnilistProviderAuthentication on AnilistProvider {
       final file = File('${dir.path}/$user_cache.json');
 
       await file.writeAsString(jsonEncode(_currentUser!.toJson()));
-      logDebug('Anilist user cached successfully');
+      logTrace('Anilist user cached successfully');
     } catch (e) {
       logErr('Error caching Anilist user', e);
     }

@@ -42,6 +42,7 @@ class _NotificationsDialogState extends ManagedDialogState {
   @override
   void initState() {
     super.initState();
+    Manager.canPopDialog = true;
 
     // Position the dialog if position is provided
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -386,12 +387,11 @@ class NotificationsContentState extends State<_NotificationsContent> {
     return Row(children: [
       Container(
         decoration: BoxDecoration(
-          color: notification.isRead ? Colors.transparent : lighten(Manager.accentColor.lightest),
-          borderRadius: BorderRadius.only(
-            topLeft: Radius.circular(3),
-            bottomLeft: Radius.circular(3),
-          )
-        ),
+            color: notification.isRead ? Colors.transparent : lighten(Manager.accentColor.lightest),
+            borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(3),
+              bottomLeft: Radius.circular(3),
+            )),
         height: 54,
         width: 2.5,
       ),

@@ -23,7 +23,8 @@ Future<T?> showPaddedDialog<T extends Object?>({
   Color? barrierColor = const Color(0x8A000000),
   bool barrierDismissible = false,
   bool dismissWithEsc = true,
-}) {
+  bool closeExistingDialogs = false,
+}) async {
   assert(debugCheckHasFluentLocalizations(context));
 
   final themes = InheritedTheme.capture(
@@ -33,7 +34,14 @@ Future<T?> showPaddedDialog<T extends Object?>({
       rootNavigator: useRootNavigator,
     ).context,
   );
-
+  
+  if (closeExistingDialogs) {
+    if (Navigator.of(context, rootNavigator: useRootNavigator).canPop()) {
+      Navigator.of(context, rootNavigator: useRootNavigator).pop();
+      await Future.delayed(const Duration(milliseconds: 100));
+    }
+  }
+  if (context.mounted)
   return Navigator.of(
     context,
     rootNavigator: useRootNavigator,

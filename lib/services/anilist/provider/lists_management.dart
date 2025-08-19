@@ -75,7 +75,7 @@ extension AnilistProviderListsManagement on AnilistProvider {
 
       await file.writeAsString(jsonEncode(cache));
       _lastListsCacheTime = now;
-      logDebug('Anilist lists cached successfully');
+      logTrace('Anilist lists cached successfully');
     } catch (e) {
       logErr('Error caching Anilist lists', e);
     }
