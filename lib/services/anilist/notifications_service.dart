@@ -1,7 +1,6 @@
 part of 'queries/anilist_service.dart';
 
 extension AnilistServiceNotifications on AnilistService {
-
   // GraphQL query for fetching notifications
   static const String _notificationsQuery = '''
     query GetNotifications(\$page: Int = 1, \$perPage: Int = 25, \$type_in: [NotificationType]) {
@@ -109,8 +108,7 @@ extension AnilistServiceNotifications on AnilistService {
     }
 
     // Throttle: if last fetch within 5s with same parameters, return cached
-    final nowTs = DateTime.now();
-    final withinWindow = _lastNotificationsFetchAt != null && nowTs.difference(_lastNotificationsFetchAt!).inSeconds < 5;
+    final withinWindow = _lastNotificationsFetchAt != null && now.difference(_lastNotificationsFetchAt!).inSeconds < 5;
     final sameParams = _lastNotificationsPage == page && _lastNotificationsPerPage == perPage && _compareNotificationTypeLists(_lastNotificationsTypes, types);
     if (!force && withinWindow && sameParams && _lastNotificationsCache != null) {
       return _lastNotificationsCache!;
@@ -118,9 +116,7 @@ extension AnilistServiceNotifications on AnilistService {
 
     // Access the GraphQL client directly since we're an extension
     final client = _client;
-    if (client == null) {
-      throw Exception('GraphQL client not initialized');
-    }
+    if (client == null) throw Exception('GraphQL client not initialized');
 
     final variables = <String, dynamic>{
       'page': page,
@@ -148,9 +144,7 @@ extension AnilistServiceNotifications on AnilistService {
         operationName: 'getNotifications(page: $page, perPage: $perPage)',
       );
 
-      if (result == null || result.hasException) {
-        throw Exception('Failed to fetch notifications: ${result?.exception}');
-      }
+      if (result == null || result.hasException) throw Exception('Failed to fetch notifications: ${result?.exception}');
 
       final notificationsData = result.data?['Page']?['notifications'] as List<dynamic>? ?? [];
       final notifications = <AnilistNotification>[];
@@ -209,9 +203,8 @@ extension AnilistServiceNotifications on AnilistService {
       case NotificationType.AIRING:
         final animeId = json['animeId'] as int? ?? 0;
         final episode = json['episode'] as int? ?? 0;
-        final contexts = (json['contexts'] as List<dynamic>?)
-            ?.cast<String>() ?? [];
-        
+        final contexts = (json['contexts'] as List<dynamic>?)?.cast<String>() ?? [];
+
         return AiringNotification(
           id: id,
           type: notificationType,
@@ -226,7 +219,7 @@ extension AnilistServiceNotifications on AnilistService {
         final mediaId = json['mediaId'] as int? ?? 0;
         final context = json['context'] as String?;
         final reason = json['reason'] as String?;
-        
+
         return MediaDataChangeNotification(
           id: id,
           type: notificationType,
@@ -239,11 +232,10 @@ extension AnilistServiceNotifications on AnilistService {
 
       case NotificationType.MEDIA_MERGE:
         final mediaId = json['mediaId'] as int? ?? 0;
-        final deletedMediaTitles = (json['deletedMediaTitles'] as List<dynamic>?)
-            ?.cast<String>() ?? [];
+        final deletedMediaTitles = (json['deletedMediaTitles'] as List<dynamic>?)?.cast<String>() ?? [];
         final context = json['context'] as String?;
         final reason = json['reason'] as String?;
-        
+
         return MediaMergeNotification(
           id: id,
           type: notificationType,
@@ -259,7 +251,7 @@ extension AnilistServiceNotifications on AnilistService {
         final deletedMediaTitle = json['deletedMediaTitle'] as String?;
         final context = json['context'] as String?;
         final reason = json['reason'] as String?;
-        
+
         return MediaDeletionNotification(
           id: id,
           type: notificationType,
@@ -290,22 +282,19 @@ extension AnilistServiceNotifications on AnilistService {
   // Parse media info from JSON
   MediaInfo _parseMediaInfo(Map<String, dynamic> json) {
     final id = json['id'] as int;
-    
+
     // Extract title (prefer English, fallback to romaji, then native)
     final titleJson = json['title'] as Map<String, dynamic>?;
     String? title;
     if (titleJson != null) {
-      title = titleJson['english'] as String? ??
-          titleJson['romaji'] as String? ??
-          titleJson['native'] as String?;
+      title = titleJson['english'] as String? ?? titleJson['romaji'] as String? ?? titleJson['native'] as String?;
     }
 
     // Extract cover image
     final coverImageJson = json['coverImage'] as Map<String, dynamic>?;
     String? coverImage;
     if (coverImageJson != null) {
-      coverImage = coverImageJson['large'] as String? ??
-          coverImageJson['medium'] as String?;
+      coverImage = coverImageJson['large'] as String? ?? coverImageJson['medium'] as String?;
     }
 
     return MediaInfo(
@@ -330,7 +319,7 @@ extension AnilistServiceNotifications on AnilistService {
     }
 
     // Throttle full syncs: if last completed within 5s, just return cached (if any)
-    final now = DateTime.now();
+
     if (_lastNotificationsSyncAt != null && now.difference(_lastNotificationsSyncAt!).inSeconds < 5) {
       if (_lastNotificationsCache != null) return _lastNotificationsCache!;
     }
@@ -339,23 +328,22 @@ extension AnilistServiceNotifications on AnilistService {
 
     final allNotifications = <AnilistNotification>[];
     final notificationsDao = database.notificationsDao;
-    
+
     // Fetch notifications from multiple pages
     for (int page = 1; page <= maxPages; page++) {
       try {
         final notifications = await fetchNotifications(
           page: page,
-            perPage: 25,
-            types: types,
-            force: true, // ensure paging not blocked by throttle
-          );
-        
+          perPage: 25,
+          types: types,
+          force: true, // ensure paging not blocked by throttle
+        );
+
         if (notifications.isEmpty) break;
         allNotifications.addAll(notifications);
-        
+
         // If we got less than the requested per page, we've reached the end
         if (notifications.length < 25) break;
-        
       } catch (e) {
         // If we fail on a subsequent page, return what we have so far
         if (page > 1) break;
@@ -363,19 +351,35 @@ extension AnilistServiceNotifications on AnilistService {
       }
     }
 
-    // Update local database
+    // Before writing, merge existing read state from DB so we don't regress isRead
     if (allNotifications.isNotEmpty) {
+      final existing = await notificationsDao.getNotificationsByIds(allNotifications.map((n) => n.id).toList());
+      final readIds = existing.where((e) => e.isRead).map((e) => e.id).toSet();
+      for (int i = 0; i < allNotifications.length; i++) {
+        final n = allNotifications[i];
+        if (readIds.contains(n.id) && !n.isRead) {
+          switch (n) {
+            case AiringNotification airing:
+              allNotifications[i] = airing.copyWith(isRead: true);
+            case MediaDataChangeNotification dataChange:
+              allNotifications[i] = dataChange.copyWith(isRead: true);
+            case MediaMergeNotification merge:
+              allNotifications[i] = merge.copyWith(isRead: true);
+            case MediaDeletionNotification deletion:
+              allNotifications[i] = deletion.copyWith(isRead: true);
+          }
+        }
+      }
+
       await notificationsDao.upsertNotifications(allNotifications);
-      
-      // Clean up old notifications to prevent database bloat
-      await notificationsDao.deleteOldNotifications(keepCount: 200);
+      await notificationsDao.deleteOldNotifications(keepCount: 200); // cleanup
     }
 
-  _lastNotificationsSyncAt = DateTime.now();
-  _lastNotificationsCache = allNotifications; // cache entire result set for popup usage
-  _notificationsSyncCompleter!.complete(allNotifications);
-  _notificationsSyncCompleter = null;
-  return allNotifications;
+    _lastNotificationsSyncAt = DateTime.now();
+    _lastNotificationsCache = allNotifications; // cache entire result set for popup usage
+    _notificationsSyncCompleter!.complete(allNotifications);
+    _notificationsSyncCompleter = null;
+    return allNotifications;
   }
 
   // Get cached notifications from local database
@@ -385,7 +389,7 @@ extension AnilistServiceNotifications on AnilistService {
   }) async {
     final notificationsDao = database.notificationsDao;
     final dataList = await notificationsDao.getRecentNotifications(limit: limit);
-    
+
     final notifications = <AnilistNotification>[];
     for (final data in dataList) {
       final notification = NotificationsDao.dataToNotification(data);
@@ -393,7 +397,28 @@ extension AnilistServiceNotifications on AnilistService {
         notifications.add(notification);
       }
     }
-    
+
+    // Also if there is in-memory cache from latest sync, overlay its isRead states (in case user read after cache write)
+    if (_lastNotificationsCache != null && _lastNotificationsCache!.isNotEmpty) {
+      final cacheMap = {for (final n in _lastNotificationsCache!) n.id: n.isRead};
+      for (int i = 0; i < notifications.length; i++) {
+        final current = notifications[i];
+        final cachedRead = cacheMap[current.id];
+        if (cachedRead == true && !current.isRead) {
+          switch (current) {
+            case AiringNotification airing:
+              notifications[i] = airing.copyWith(isRead: true);
+            case MediaDataChangeNotification dataChange:
+              notifications[i] = dataChange.copyWith(isRead: true);
+            case MediaMergeNotification merge:
+              notifications[i] = merge.copyWith(isRead: true);
+            case MediaDeletionNotification deletion:
+              notifications[i] = deletion.copyWith(isRead: true);
+          }
+        }
+      }
+    }
+
     return notifications;
   }
 
@@ -406,12 +431,46 @@ extension AnilistServiceNotifications on AnilistService {
   // Mark notification as read
   Future<void> markAsRead(AppDatabase database, int notificationId) {
     final notificationsDao = database.notificationsDao;
+    // Update in-memory cache immediately
+    if (_lastNotificationsCache != null) {
+      for (int i = 0; i < _lastNotificationsCache!.length; i++) {
+        if (_lastNotificationsCache![i].id == notificationId) {
+          final n = _lastNotificationsCache![i];
+          switch (n) {
+            case AiringNotification airing:
+              _lastNotificationsCache![i] = airing.copyWith(isRead: true);
+            case MediaDataChangeNotification dataChange:
+              _lastNotificationsCache![i] = dataChange.copyWith(isRead: true);
+            case MediaMergeNotification merge:
+              _lastNotificationsCache![i] = merge.copyWith(isRead: true);
+            case MediaDeletionNotification deletion:
+              _lastNotificationsCache![i] = deletion.copyWith(isRead: true);
+          }
+          break;
+        }
+      }
+    }
     return notificationsDao.markAsRead(notificationId);
   }
 
   // Mark all notifications as read
   Future<void> markAllAsRead(AppDatabase database) {
     final notificationsDao = database.notificationsDao;
+    if (_lastNotificationsCache != null) {
+      for (int i = 0; i < _lastNotificationsCache!.length; i++) {
+        final n = _lastNotificationsCache![i];
+        switch (n) {
+          case AiringNotification airing:
+            _lastNotificationsCache![i] = airing.copyWith(isRead: true);
+          case MediaDataChangeNotification dataChange:
+            _lastNotificationsCache![i] = dataChange.copyWith(isRead: true);
+          case MediaMergeNotification merge:
+            _lastNotificationsCache![i] = merge.copyWith(isRead: true);
+          case MediaDeletionNotification deletion:
+            _lastNotificationsCache![i] = deletion.copyWith(isRead: true);
+        }
+      }
+    }
     return notificationsDao.markAllAsRead();
   }
 }

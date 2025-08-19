@@ -198,7 +198,8 @@ extension LibraryScanning on Library {
       logTrace('3 | Updated ${existingSeriesPathsToCheck.length} existing series.');
 
       // --- 3d. Finalize ---
-      _series = updatedSeriesList; // Save the updated series list to memory
+  _series = updatedSeriesList; // Save the updated series list to memory
+  _version++;
       _updateWatchedStatusAndResetThumbnailFetchFailedAttemptsCount();
       await _saveLibrary(); // Save the updated library to database
 

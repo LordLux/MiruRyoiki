@@ -9,11 +9,69 @@ part 'notifications_dao.g.dart';
 
 @DriftAccessor(tables: [NotificationsTable])
 class NotificationsDao extends DatabaseAccessor<AppDatabase> with _$NotificationsDaoMixin {
-  NotificationsDao(AppDatabase db) : super(db);
+  NotificationsDao(super.db);
+
+  static bool _legacyTimestampRepairDone = false;
+
+  Future<void> _repairLegacyCreatedAtIfNeeded() async {
+    if (_legacyTimestampRepairDone) return;
+    try {
+      // First attempt a bulk in-sql conversion for rows stored as text.
+      await customStatement(
+        "UPDATE notifications SET created_at = CAST(strftime('%s', created_at) AS INTEGER) WHERE typeof(created_at)='text' AND created_at LIKE '____-__-__ __:__:__';",
+      );
+
+      // Double-check if any rows still remain as text (malformed / unexpected format) and fix them in Dart.
+      final remaining = await customSelect(
+        'SELECT id, created_at FROM notifications WHERE typeof(created_at) = \"text\"',
+        readsFrom: {notificationsTable},
+      ).get();
+
+      for (final row in remaining) {
+        final id = row.data['id'];
+        final createdAtRaw = row.data['created_at'];
+        if (createdAtRaw is String) {
+          int? epoch;
+          try {
+            // Try common datetime parse.
+            final dt = DateTime.tryParse(createdAtRaw);
+            if (dt != null) {
+              epoch = (dt.millisecondsSinceEpoch / 1000).floor();
+            }
+          } catch (_) {}
+          if (epoch == null) {
+            // As last resort attempt trimming / replacing 'T'
+            final cleaned = createdAtRaw.replaceAll('T', ' ').split('.').first;
+            final dt = DateTime.tryParse(cleaned);
+            if (dt != null) epoch = (dt.millisecondsSinceEpoch / 1000).floor();
+          }
+          if (epoch != null) {
+            await customStatement(
+              'UPDATE notifications SET created_at = ? WHERE id = ?',
+              [epoch, id],
+            );
+          }
+        }
+      }
+
+  // --- Repair local_created_at / local_updated_at (DateTime columns expected as millis since epoch) ---
+  // Convert text timestamps to millis
+  await customStatement("UPDATE notifications SET local_created_at = (strftime('%s', local_created_at)*1000) WHERE typeof(local_created_at)='text' AND local_created_at LIKE '____-__-__ __:__:__';");
+  await customStatement("UPDATE notifications SET local_updated_at = (strftime('%s', local_updated_at)*1000) WHERE typeof(local_updated_at)='text' AND local_updated_at LIKE '____-__-__ __:__:__';");
+  // Convert seconds (too small) to millis
+  await customStatement("UPDATE notifications SET local_created_at = local_created_at*1000 WHERE typeof(local_created_at)='integer' AND local_created_at > 0 AND local_created_at < 100000000000;\n");
+  await customStatement("UPDATE notifications SET local_updated_at = local_updated_at*1000 WHERE typeof(local_updated_at)='integer' AND local_updated_at > 0 AND local_updated_at < 100000000000;\n");
+    } catch (_) {
+      // Ignore repair errors; continue.
+    } finally {
+      _legacyTimestampRepairDone = true; // prevent repeat work every call
+    }
+  }
 
   // Get all notifications, ordered by creation time (newest first)
-  Future<List<NotificationsTableData>> getAllNotifications() {
-    return (select(notificationsTable)
+  Future<List<NotificationsTableData>> getAllNotifications() async {
+  await _repairLegacyCreatedAtIfNeeded();
+  return (select(notificationsTable)
           ..orderBy([
             (t) => OrderingTerm(expression: t.createdAt, mode: OrderingMode.desc),
           ]))
@@ -21,8 +79,9 @@ class NotificationsDao extends DatabaseAccessor<AppDatabase> with _$Notification
   }
 
   // Get recent notifications (last N notifications)
-  Future<List<NotificationsTableData>> getRecentNotifications({int limit = 5}) {
-    return (select(notificationsTable)
+  Future<List<NotificationsTableData>> getRecentNotifications({int limit = 5}) async {
+  await _repairLegacyCreatedAtIfNeeded();
+  return (select(notificationsTable)
           ..orderBy([
             (t) => OrderingTerm(expression: t.createdAt, mode: OrderingMode.desc),
           ])
@@ -32,6 +91,7 @@ class NotificationsDao extends DatabaseAccessor<AppDatabase> with _$Notification
 
   // Get unread notifications count
   Future<int> getUnreadCount() async {
+  await _repairLegacyCreatedAtIfNeeded();
     final countQuery = selectOnly(notificationsTable)
       ..addColumns([notificationsTable.id.count()])
       ..where(notificationsTable.isRead.equals(false));
@@ -41,13 +101,22 @@ class NotificationsDao extends DatabaseAccessor<AppDatabase> with _$Notification
   }
 
   // Get notifications by type
-  Future<List<NotificationsTableData>> getNotificationsByType(NotificationType type) {
-    return (select(notificationsTable)
-          ..where((t) => t.type.equals(type.index))
-          ..orderBy([
-            (t) => OrderingTerm(expression: t.createdAt, mode: OrderingMode.desc),
-          ]))
-        .get();
+  Future<List<NotificationsTableData>> getNotificationsByType(NotificationType type) async {
+    await _repairLegacyCreatedAtIfNeeded();
+    final query = select(notificationsTable)
+      ..where((t) => t.type.equals(type.index))
+      ..orderBy([(t) => OrderingTerm(expression: t.createdAt, mode: OrderingMode.desc)]);
+    return query.get();
+  }
+
+  // Get notifications for specific ids
+  Future<List<NotificationsTableData>> getNotificationsByIds(List<int> ids) async {
+    if (ids.isEmpty) return [];
+    await _repairLegacyCreatedAtIfNeeded();
+    final query = select(notificationsTable)
+      ..where((t) => t.id.isIn(ids))
+      ..orderBy([(t) => OrderingTerm(expression: t.createdAt, mode: OrderingMode.desc)]);
+    return query.get();
   }
 
   // Mark notification as read
@@ -81,24 +150,25 @@ class NotificationsDao extends DatabaseAccessor<AppDatabase> with _$Notification
     // Use custom SQL to preserve read status
     await transaction(() async {
       for (final notification in notifications) {
+        // customStatement expects raw serializable values (no Variable<> wrappers)
         await customStatement(
           'INSERT OR REPLACE INTO notifications (id, type, created_at, is_read, anime_id, episode, contexts, media_id, context, reason, deleted_media_titles, deleted_media_title, media_info, local_created_at, local_updated_at) '
-          'VALUES (?, ?, ?, COALESCE((SELECT is_read FROM notifications WHERE id = ?), ?), ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime("now"), datetime("now"))',
+          'VALUES (?, ?, ?, COALESCE((SELECT is_read FROM notifications WHERE id = ?), ?), ?, ?, ?, ?, ?, ?, ?, ?, ?, (strftime(\'%s\',\'now\')*1000), (strftime(\'%s\',\'now\')*1000))',
           [
-            Variable(notification.id),
-            Variable(notification.type.index), 
-            Variable(notification.createdAt),
-            Variable(notification.id), // For the COALESCE subquery
-            Variable(notification.isRead), // Default value if not exists
-            Variable(_getAnimeId(notification)),
-            Variable(_getEpisode(notification)),
-            Variable(_getContexts(notification)),
-            Variable(_getMediaId(notification)),
-            Variable(_getContext(notification)),
-            Variable(_getReason(notification)),
-            Variable(_getDeletedMediaTitles(notification)),
-            Variable(_getDeletedMediaTitle(notification)),
-            Variable(_getMediaInfo(notification)),
+            notification.id,                      // 1 id
+            notification.type.index,              // 2 type
+            notification.createdAt,               // 3 created_at (unix seconds)
+            notification.id,                      // 4 id again for COALESCE subquery
+            notification.isRead ? 1 : 0,          // 5 preserve existing is_read else default
+            _getAnimeId(notification),            // 6 anime_id
+            _getEpisode(notification),            // 7 episode
+            _getContexts(notification),           // 8 contexts (JSON string or null)
+            _getMediaId(notification),            // 9 media_id
+            _getContext(notification),            // 10 context
+            _getReason(notification),             // 11 reason
+            _getDeletedMediaTitles(notification), // 12 deleted_media_titles (JSON string)
+            _getDeletedMediaTitle(notification),  // 13 deleted_media_title
+            _getMediaInfo(notification),          // 14 media_info (JSON string)
           ],
         );
       }

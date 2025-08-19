@@ -60,6 +60,15 @@ class LibraryScreen extends StatefulWidget {
 }
 
 class LibraryScreenState extends State<LibraryScreen> {
+  // Persistent static caches (survive widget dispose/recreate within app session)
+  static List<Series> _staticSortedUngrouped = [];
+  static Map<String, List<Series>> _staticSortedGrouped = {};
+  static Map<String, List<Series>> _staticGroups = {};
+  static int? _staticLastVersionSorted;
+  static SortOrder? _staticLastSortOrder;
+  static bool? _staticLastSortDescending;
+  static GroupBy? _staticLastGroupBy;
+
   LibraryView _currentView = LibraryView.all;
   SortOrder _sortOrder = SortOrder.alphabetical;
   GroupBy _groupBy = GroupBy.anilistLists;
@@ -78,6 +87,7 @@ class LibraryScreenState extends State<LibraryScreen> {
   bool? _lastAppliedSortDescending;
   bool _needsSort = true;
   bool _isProcessing = false;
+  int? _lastVersionSorted; // library.version at last successful sort
 
   bool _filterHintShowing = false;
   Future<void>? _currentSortOperation;
@@ -92,6 +102,37 @@ class LibraryScreenState extends State<LibraryScreen> {
   LibraryView? _lastAppliedGroupingView;
   List<String>? _lastAppliedListOrder;
   bool? _lastAppliedShowGrouped;
+
+  // On init copy static caches if compatible
+  void _initFromStaticCaches(Library library) {
+    final versionMatches = _staticLastVersionSorted != null && _staticLastVersionSorted == library.version;
+    final sortMatches = _staticLastSortOrder == _sortOrder && _staticLastSortDescending == _sortDescending;
+    final groupMatches = _staticLastGroupBy == _groupBy;
+    if (versionMatches && sortMatches) {
+      if (_groupBy == GroupBy.none) {
+        if (_staticSortedUngrouped.isNotEmpty) {
+          _sortedUngroupedSeries = List.from(_staticSortedUngrouped);
+          _hasAppliedSorting = true;
+          _lastAppliedSortOrder = _sortOrder;
+          _lastAppliedSortDescending = _sortDescending;
+          _lastVersionSorted = _staticLastVersionSorted;
+        }
+      } else if (groupMatches) {
+        if (_staticGroups.isNotEmpty) {
+          _cachedGroups = Map.from(_staticGroups);
+          _sortedGroupedSeries = _staticSortedGrouped.map((k,v) => MapEntry(k, List.from(v)));
+          _hasAppliedGrouping = true;
+          _hasAppliedSorting = true; // grouped lists already sorted
+          _lastAppliedGroupingView = _currentView;
+          _lastAppliedListOrder = List.from(_customListOrder);
+          _lastAppliedShowGrouped = _showGrouped;
+          _lastAppliedSortOrder = _sortOrder;
+          _lastAppliedSortDescending = _sortDescending;
+          _lastVersionSorted = _staticLastVersionSorted;
+        }
+      }
+    }
+  }
 
   Widget get filterIcon {
     IconData icon;
@@ -311,6 +352,8 @@ class LibraryScreenState extends State<LibraryScreen> {
     _loadUserPreferences();
     _lastAppliedSortOrder = _sortOrder;
     _lastAppliedSortDescending = _sortDescending;
+  final library = Provider.of<Library>(context, listen: false);
+  _initFromStaticCaches(library);
   }
 
   double getHeight(int itemCount, double maxWidth) {
@@ -730,10 +773,12 @@ class LibraryScreenState extends State<LibraryScreen> {
         ),
       );
 
-    if (_sortingNeeded(displayedSeries) && !_isProcessing && _currentSortOperation == null) {
+  final libraryVersionChanged = _lastVersionSorted == null || _lastVersionSorted != library.version;
+  if ((_sortingNeeded(displayedSeries) && !_isProcessing && _currentSortOperation == null && libraryVersionChanged) ||
+    (_sortingNeeded(displayedSeries) && libraryVersionChanged)) {
       _needsSort = false;
       _applySortingAsync(displayedSeries);
-    } else if (_hasAppliedSorting) {
+  } else if (_hasAppliedSorting) {
       // Use the already sorted list
       displayedSeries = _sortedUngroupedSeries;
     }
@@ -871,7 +916,7 @@ class LibraryScreenState extends State<LibraryScreen> {
           'sortData': sortData,
         });
 
-        if (mounted) {
+    if (mounted) {
           if (groupName != null) {
             _sortedGroupedSeries[groupName] = sortedSeries;
           } else {
@@ -881,6 +926,9 @@ class LibraryScreenState extends State<LibraryScreen> {
             _lastAppliedSortOrder = _sortOrder;
             _lastAppliedSortDescending = _sortDescending;
             _hasAppliedSorting = true;
+      // Record version after successful sort
+      final lib = context.read<Library>();
+      _lastVersionSorted = lib.version;
           });
         }
       } finally {
@@ -1165,6 +1213,8 @@ class LibraryScreenState extends State<LibraryScreen> {
       _lastAppliedGroupingView = _currentView;
       _lastAppliedListOrder = List.from(_customListOrder);
       _lastAppliedShowGrouped = _showGrouped;
+  // Persist static groups for future mounts
+  _staticGroups = Map.from(_cachedGroups);
     }
 
     // Build the grouped ListView
@@ -1202,7 +1252,8 @@ class LibraryScreenState extends State<LibraryScreen> {
               seriesInGroup = _sortedGroupedSeries[groupName]!;
             }
 
-            if (_sortingNeeded(seriesInGroup) && !_isProcessing && _currentSortOperation == null) {
+            final libraryVersionChanged = context.read<Library>().version != _lastVersionSorted;
+            if ((_sortingNeeded(seriesInGroup) && !_isProcessing && _currentSortOperation == null && libraryVersionChanged)) {
               _needsSort = false;
               _applySortingAsync(seriesInGroup, groupName: groupName);
             }

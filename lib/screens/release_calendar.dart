@@ -659,7 +659,7 @@ class _ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
-            HDivPx(8),
+            HDivPx(10),
             SizedBox(
               width: 70,
               height: 54,

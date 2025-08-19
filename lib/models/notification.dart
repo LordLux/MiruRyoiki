@@ -45,8 +45,7 @@ class AiringNotification extends AnilistNotification {
     this.media,
   });
 
-  factory AiringNotification.fromJson(Map<String, dynamic> json) =>
-      _$AiringNotificationFromJson(json);
+  factory AiringNotification.fromJson(Map<String, dynamic> json) => _$AiringNotificationFromJson(json);
 
   @override
   Map<String, dynamic> toJson() => _$AiringNotificationToJson(this);
@@ -92,8 +91,7 @@ class MediaDataChangeNotification extends AnilistNotification {
     this.media,
   });
 
-  factory MediaDataChangeNotification.fromJson(Map<String, dynamic> json) =>
-      _$MediaDataChangeNotificationFromJson(json);
+  factory MediaDataChangeNotification.fromJson(Map<String, dynamic> json) => _$MediaDataChangeNotificationFromJson(json);
 
   @override
   Map<String, dynamic> toJson() => _$MediaDataChangeNotificationToJson(this);
@@ -141,8 +139,7 @@ class MediaMergeNotification extends AnilistNotification {
     this.media,
   });
 
-  factory MediaMergeNotification.fromJson(Map<String, dynamic> json) =>
-      _$MediaMergeNotificationFromJson(json);
+  factory MediaMergeNotification.fromJson(Map<String, dynamic> json) => _$MediaMergeNotificationFromJson(json);
 
   @override
   Map<String, dynamic> toJson() => _$MediaMergeNotificationToJson(this);
@@ -188,8 +185,7 @@ class MediaDeletionNotification extends AnilistNotification {
     this.reason,
   });
 
-  factory MediaDeletionNotification.fromJson(Map<String, dynamic> json) =>
-      _$MediaDeletionNotificationFromJson(json);
+  factory MediaDeletionNotification.fromJson(Map<String, dynamic> json) => _$MediaDeletionNotificationFromJson(json);
 
   @override
   Map<String, dynamic> toJson() => _$MediaDeletionNotificationToJson(this);
@@ -233,8 +229,7 @@ class MediaInfo {
     this.episodes,
   });
 
-  factory MediaInfo.fromJson(Map<String, dynamic> json) =>
-      _$MediaInfoFromJson(json);
+  factory MediaInfo.fromJson(Map<String, dynamic> json) => _$MediaInfoFromJson(json);
 
   Map<String, dynamic> toJson() => _$MediaInfoToJson(this);
 }

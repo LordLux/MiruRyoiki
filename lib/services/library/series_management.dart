@@ -7,12 +7,14 @@ extension LibrarySeriesManagement on Library {
 
   Future<void> addSeries(Series series) async {
     _series.add(series);
+  _version++;
     await _saveLibrary();
     notifyListeners();
   }
 
   Future<void> removeSeries(Series series) async {
     _series.removeWhere((s) => s.path == series.path);
+  _version++;
     await _saveLibrary();
     notifyListeners();
   }
@@ -39,6 +41,7 @@ extension LibrarySeriesManagement on Library {
 
     // Update the series
     _series[index] = series;
+  _version++;
 
     if (invalidateCache && homeKey.currentState != null) {
       homeKey.currentState!.seriesWasModified = true;
@@ -52,6 +55,7 @@ extension LibrarySeriesManagement on Library {
   Future<void> refreshEpisode(Episode episode) async {
     episode.watchedPercentage = _mpcTracker.getWatchPercentage(episode.path);
     episode.watched = _mpcTracker.isWatched(episode.path);
+  _version++;
     await _saveLibrary();
     notifyListeners();
   }
@@ -67,6 +71,7 @@ extension LibrarySeriesManagement on Library {
       }
 
       _saveLibrary();
+  _version++;
       notifyListeners();
     }
   }
@@ -77,6 +82,7 @@ extension LibrarySeriesManagement on Library {
 
     if (save) {
       _saveLibrary();
+  _version++;
       notifyListeners();
     }
   }
@@ -95,6 +101,7 @@ extension LibrarySeriesManagement on Library {
     }
 
     _saveLibrary();
+  _version++;
     notifyListeners();
   }
 }

@@ -119,9 +119,7 @@ class NotificationTypeConverter extends TypeConverter<NotificationType, int> {
   const NotificationTypeConverter();
 
   @override
-  NotificationType fromSql(int fromDb) {
-    return NotificationType.values[fromDb];
-  }
+  NotificationType fromSql(int fromDb) => NotificationType.values[fromDb];
 
   @override
   int toSql(NotificationType value) => value.index;
@@ -145,6 +143,7 @@ class MediaInfoConverter extends TypeConverter<MediaInfo?, String?> {
   }
 }
 
+// ignore: unintended_html_in_doc_comment
 /// -------- List<String> <-> JSON TEXT --------
 class StringListConverter extends TypeConverter<List<String>?, String?> {
   const StringListConverter();
