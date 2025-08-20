@@ -22,11 +22,24 @@ import 'episode.dart';
 import '../enums.dart';
 
 class Season {
+  /// Database ID
+  final int? id;
+
+  /// Database ID for parent Series
+  final int? seriesId;
+
+  /// Name of the season
   final String name;
+
+  /// Path for the season from the File System
   final PathString path;
+
+  /// List of Episodes for the season
   final List<Episode> episodes;
 
   Season({
+    this.id,
+    this.seriesId,
     required this.name,
     required this.path,
     required this.episodes,
@@ -87,6 +100,8 @@ class Season {
   // For JSON serialization
   Map<String, dynamic> toJson() {
     return {
+      'id': id, // Database ID
+      'seriesId': seriesId, // Parent series ID
       'name': name,
       'path': path.path, // not nullable
       'episodes': episodes.map((e) => e.toJson()).toList(),
@@ -97,15 +112,44 @@ class Season {
   // For JSON deserialization
   factory Season.fromJson(Map<String, dynamic> json) {
     return Season(
+      id: json['id'], // Database ID
+      seriesId: json['seriesId'], // Parent series ID
       name: json['name'],
       path: PathString.fromJson(json['path'])!,
       episodes: (json['episodes'] as List).map((e) => Episode.fromJson(e)).toList(),
       metadata: json['metadata'] != null ? Metadata.fromJson(json['metadata']) : null,
     );
   }
+
+  Season copyWith({
+    int? id,
+    int? seriesId,
+    String? name,
+    PathString? path,
+    List<Episode>? episodes,
+    Metadata? metadata,
+  }) {
+    return Season(
+      id: id ?? this.id,
+      seriesId: seriesId ?? this.seriesId,
+      name: name ?? this.name,
+      path: path ?? this.path,
+      episodes: episodes ?? this.episodes,
+      metadata: metadata ?? this.metadata,
+    );
+  }
+
+  /// Get episode by ID within this season
+  Episode? getEpisodeById(int episodeId) => episodes.firstWhereOrNull((episode) => episode.id == episodeId);
+
+  /// Get episode by number within this season
+  Episode? getEpisodeByNumber(int episodeNumber) => episodes.firstWhereOrNull((episode) => episode.resolvedEpisodeNumber == episodeNumber);
 }
 
 class Series {
+  /// Database ID
+  final int? id;
+
   /// Name of the series from the File System
   final String name;
 
@@ -151,7 +195,9 @@ class Series {
   /// Whether the series is hidden from the library (only when not linked to Anilist)
   bool isHidden = false;
 
+  /// Constructor for Series
   Series({
+    this.id,
     required this.name,
     required this.path,
     this.folderPosterPath,
@@ -175,7 +221,9 @@ class Series {
         _primaryAnilistId = primaryAnilistId ?? anilistMappings.firstOrNull?.anilistId,
         _metadata = metadata;
 
+  /// Create a copy of the series with modified fields
   Series copyWith({
+    int? id,
     String? name,
     PathString? path,
     PathString? folderPosterPath,
@@ -194,6 +242,7 @@ class Series {
     Metadata? metadata,
   }) {
     return Series(
+      id: id ?? this.id,
       name: name ?? this.name,
       path: path ?? this.path,
       folderPosterPath: folderPosterPath ?? this.folderPosterPath,
@@ -216,6 +265,7 @@ class Series {
   /// JSON serialization
   Map<String, dynamic> toJson() {
     return {
+      'id': id,
       'name': name,
       'path': path.path, //not nullable
       'posterPath': folderPosterPath?.pathMaybe, // nullable
@@ -351,6 +401,7 @@ class Series {
 
       // Create the Series instance
       final series = Series(
+        id: json['id'] as int?,
         name: name,
         path: path,
         folderPosterPath: PathString.fromJson(json['posterPath']),
@@ -414,6 +465,7 @@ class Series {
       // If anything fails critically, create a minimal valid series
       logErr('Critical error parsing Series.fromJson', e, st);
       return Series(
+        id: json['id'] as int?,
         name: json['name'] as String? ?? 'Unknown Series',
         path: PathString.fromJson(json['path'])!,
         seasons: [],
@@ -422,6 +474,7 @@ class Series {
   }
 
   factory Series.fromValues({
+    int? id,
     required String name,
     required PathString path,
     PathString? folderPosterPath,
@@ -440,6 +493,7 @@ class Series {
     Metadata? metadata,
   }) {
     final series = Series(
+      id: id,
       name: name,
       path: path,
       folderPosterPath: folderPosterPath,
@@ -479,19 +533,23 @@ class Series {
 )''';
   }
 
+  /// Short representation of the series
   String toStringMini() => '''Series(${name.substring(0, min(30, name.length))}...)''';
 
-  // Getter and setter for primaryAnilistId
+  /// Getter and setter for primaryAnilistId
   int? get primaryAnilistId => _primaryAnilistId ?? anilistId; // Fall back to the first mapping
 
+  /// Set the primary Anilist ID
   set primaryAnilistId(int? value) {
     if (value != null && anilistMappings.any((m) => m.anilistId == value)) {
       _primaryAnilistId = value;
     }
   }
 
+  /// Get the Anilist data for the series
   AnilistAnime? get anilistData => _anilistData;
 
+  /// Set the Anilist data for the series
   set anilistData(AnilistAnime? value) {
     _anilistData = value;
     _anilistPosterUrl = value?.posterImage;
@@ -500,9 +558,10 @@ class Series {
     _dataVersion++;
   }
 
-  // Backwards compatibility for older versions
+  /// Get primary Anilist ID
   int? get anilistId => isLinked ? anilistMappings.firstOrNull?.anilistId : null;
 
+  /// Set the Anilist ID for the series
   set anilistId(int? value) {
     if (value == null) {
       anilistMappings.clear();
@@ -540,24 +599,16 @@ class Series {
     return null;
   }
 
+  /// Data version for the series
   int _dataVersion = 0;
 
-  // Include in the key for SeriesCard
+  /// Include in the key for SeriesCard
   int get dataVersion => _dataVersion;
 
-  // Get Anilist ID for an episode
+  /// Get Anilist ID for an episode
   int? getAnilistIdForEpisode(Episode episode) => getMappingForPath(episode.path)?.anilistId;
 
-  /// Total number of episodes across all seasons and related media
-  int get totalEpisodes => seasons.fold(0, (sum, season) => sum + season.episodes.length) + relatedMedia.length;
-
-  /// Total watched episodes across all seasons and related media
-  int get watchedEpisodes => seasons.fold(0, (sum, season) => sum + season.watchedCount) + relatedMedia.where((e) => e.watched).length;
-
-  /// Percentage of watched episodes
-  double get watchedPercentage => totalEpisodes > 0 ? watchedEpisodes / totalEpisodes : 0.0;
-
-  /// Primary color from the series poster image
+  /// Get primary color from the series poster image
   Color? get dominantColor {
     // Always prioritize locally calculated color which respects DominantColorSource
     if (_dominantColor != null) {
@@ -575,8 +626,10 @@ class Series {
     return null;
   }
 
-  // Add getters
+  /// Get the Anilist poster URL
   String? get anilistPosterUrl => _anilistPosterUrl ?? _anilistData?.posterImage;
+
+  /// Get the Anilist banner URL
   String? get anilistBannerUrl => _anilistBannerUrl ?? _anilistData?.bannerImage;
 
   /// Calculate and cache the dominant color from the image
@@ -628,10 +681,11 @@ class Series {
       }
     }
 
-    return await extractColorFromPath(imagePath) ?? _dominantColor;
+    return await _extractColorFromPath(imagePath) ?? _dominantColor;
   }
 
-  Future<Color?> extractColorFromPath(String imagePath) async {
+  /// Extract dominant color from an image file
+  Future<Color?> _extractColorFromPath(String imagePath) async {
     // Calculate color using compute to avoid UI blocking
     try {
       // Use compute to process on a background thread
@@ -661,7 +715,7 @@ class Series {
     return null;
   }
 
-  // Helper method to get cached Anilist images
+  /// Helper method to get cached Anilist images
   Future<String?> _getAnilistCachedImagePath() async {
     if (anilistData == null) return null;
 
@@ -682,7 +736,7 @@ class Series {
     return null;
   }
 
-  // Static method to run in isolate
+  /// Entry point for extracting color in an isolate
   static Future<Color?> _isolateExtractColor((ByteData, int, int) data) async {
     try {
       final byteData = data.$1;
@@ -700,13 +754,16 @@ class Series {
     }
   }
 
+  /// Media list entries for the series
   Map<int, AnilistMediaListEntry?>? _mediaListEntries;
 
-  // Cached info for quick access
+  /// Cached info for quick access
   (AnilistMediaListEntry?, int?, int?, DateTime?, DateTime?, int?, DateTime?, DateTime?, int?)? _cachedSeriesInfo;
 
+  /// Get media list entries for the series
   Map<int, AnilistMediaListEntry?> get mediaListEntries => _mediaListEntries ?? getMediaListEntries(Provider.of<AnilistProvider>(Manager.context, listen: false));
 
+  /// Get media list entries for the series
   Map<int, AnilistMediaListEntry?> getMediaListEntries(AnilistProvider anilistProvider) {
     if (!isLinked) return {};
 
@@ -737,7 +794,7 @@ class Series {
     return _mediaListEntries!;
   }
 
-  // Get the best entry values from all user's list entries for this series
+  /// Get the best entry values from all user's list entries for this series
   (AnilistMediaListEntry?, int?, int?, DateTime?, DateTime?, int?, DateTime?, DateTime?, int?)? getSeriesInfoFromMediaListEntry(AnilistProvider anilistProvider) {
     if (!isLinked) return null;
 
@@ -902,6 +959,36 @@ class Series {
   }
 
   /// Getters for seasons and episodes
+
+  /// Get episode by database ID (searches all seasons and related media)
+  Episode? getEpisodeById(int episodeId) {
+    // Search seasons
+    for (final season in seasons) {
+      final episode = season.getEpisodeById(episodeId);
+      if (episode != null) return episode;
+    }
+
+    // Search related media
+    return relatedMedia.firstWhereOrNull((episode) => episode.id == episodeId);
+  }
+
+  /// Get episode by number (searches all seasons and related media)
+  Episode? getEpisodeByNumber(int episodeNumber, {int? seasonNumber}) {
+    if (seasonNumber != null) {
+      // Search specific season
+      return seasons.elementAtOrNull(seasonNumber - 1)?.getEpisodeByNumber(episodeNumber);
+    }
+
+    // Search all seasons
+    for (final season in seasons) {
+      final episode = season.getEpisodeByNumber(episodeNumber);
+      if (episode != null) return episode;
+    }
+
+    // Search related media
+    return relatedMedia.firstWhereOrNull((e) => e.resolvedEpisodeNumber == episodeNumber);
+  }
+
   List<Episode> getEpisodesForSeason([int i = 1]) {
     // TODO check if series has global episodes numbering or not
     if (i < 1 || i > seasons.length) //
@@ -932,7 +1019,8 @@ class Series {
     return _anilistData;
   }
 
-  // Anilist Getters
+  // ANILIST GETTERS
+  /// Check if the series is linked to Anilist
   bool get isLinked => anilistMappings.isNotEmpty;
 
   /// Banner image from Anilist
@@ -965,10 +1053,7 @@ class Series {
       return result;
     }
 
-    final title = (currentAnilistData?.title.userPreferred ??
-        currentAnilistData?.title.english ??
-        currentAnilistData?.title.romaji ??
-        name);
+    final title = (currentAnilistData?.title.userPreferred ?? currentAnilistData?.title.english ?? currentAnilistData?.title.romaji ?? name);
 
     return removeSeasonIndicators(title);
   }
@@ -1158,6 +1243,68 @@ class Series {
     );
 
     return _metadata;
+  }
+
+  /// DEPRECATED: Use Manager.episodeNavigator.getEpisodeInSeries instead
+  @Deprecated('Use Manager.episodeNavigator.getEpisodeInSeries')
+  Episode? getEpisode(int episodeNumber, {int season = 1}) => getEpisodeByNumber(episodeNumber, seasonNumber: season);
+
+  /// DEPRECATED: Use Manager.anilistProgress.getNextEpisodeToWatch instead
+  @Deprecated('Use Manager.anilistProgress.getNextEpisodeToWatch')
+  (int, int)? get getNextEpisodeNumber {
+    final provider = Provider.of<AnilistProvider>(Manager.context, listen: false);
+    final nextNumber = Manager.anilistProgress.getNextEpisodeToWatch(this, provider);
+    if (nextNumber == null) return null;
+
+    // Find which season this episode belongs to
+    final episode = Manager.episodeNavigator.getEpisodeInSeries(this, nextNumber);
+    if (episode == null) return null;
+
+    final season = Manager.episodeNavigator.findSeasonForEpisode(episode, this);
+    final seasonIndex = seasons.indexOf(season!);
+
+    return (seasonIndex + 1, nextNumber);
+  }
+
+  /// DEPRECATED: Use Manager.anilistProgress.getLastWatchedEpisode instead
+  @Deprecated('Use Manager.anilistProgress.getLastWatchedEpisode')
+  Episode? get getLastWatchedEpisode {
+    final provider = Provider.of<AnilistProvider>(Manager.context, listen: false);
+    return Manager.anilistProgress.getLastWatchedEpisode(this, provider);
+  }
+
+  /// DEPRECATED: Use Manager.anilistProgress.getNextEpisodeToWatchEpisode instead
+  @Deprecated('Use Manager.anilistProgress.getNextEpisodeToWatchEpisode')
+  Episode? get getNextEpisode {
+    final provider = Provider.of<AnilistProvider>(Manager.context, listen: false);
+    return Manager.anilistProgress.getNextEpisodeToWatchEpisode(this, provider);
+  }
+
+  // Update existing progress getters to use Anilist data
+  int get totalEpisodes {
+    if (isLinked) {
+      return Manager.anilistProgress.getTotalEpisodesFromAnilist(this);
+    }
+    // Fallback to local count
+    return seasons.fold(0, (sum, season) => sum + season.episodes.length) + relatedMedia.length;
+  }
+
+  int get watchedEpisodes {
+    if (isLinked) {
+      final provider = Provider.of<AnilistProvider>(Manager.context, listen: false);
+      return Manager.anilistProgress.getWatchedEpisodesFromAnilist(this, provider);
+    }
+    // Fallback to local count
+    return seasons.fold(0, (sum, season) => sum + season.watchedCount) + relatedMedia.where((e) => e.watched).length;
+  }
+
+  double get watchedPercentage {
+    if (isLinked) {
+      final provider = Provider.of<AnilistProvider>(Manager.context, listen: false);
+      return Manager.anilistProgress.getSeriesProgress(this, provider);
+    }
+    // Fallback to local calculation
+    return totalEpisodes > 0 ? watchedEpisodes / totalEpisodes : 0.0;
   }
 }
 

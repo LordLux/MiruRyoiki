@@ -7,6 +7,8 @@ import 'package:provider/provider.dart';
 import 'package:args/args.dart';
 
 import 'enums.dart';
+import 'services/episode_navigation/anilist_progress_manager.dart';
+import 'services/episode_navigation/episode_navigator.dart';
 import 'services/navigation/shortcuts.dart';
 import 'settings.dart';
 import 'theme.dart';
@@ -63,6 +65,10 @@ class Manager {
   static NavigationManager get navigation => Provider.of<NavigationManager>(context, listen: false);
 
   static SettingsManager get settings => rootNavigatorKey.currentContext != null ? SettingsManager() : Provider.of<SettingsManager>(context, listen: false);
+  
+  static EpisodeNavigator get episodeNavigator => EpisodeNavigator.instance;
+  
+  static AnilistProgressManager get anilistProgress => AnilistProgressManager.instance;
 
   static AppTheme? _cachedAppTheme;
 

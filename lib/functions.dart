@@ -10,21 +10,22 @@ import 'package:provider/provider.dart';
 
 import 'services/navigation/show_info.dart';
 import 'utils/logging.dart';
+import 'utils/path_utils.dart';
 
 void copyToClipboard(String text) {
   Clipboard.setData(ClipboardData(text: text));
 }
 
-void openFile(String path) async {
-  if (path.isEmpty) {
+void openFile(PathString path) async {
+  if (path.pathMaybe == null || path.path.isEmpty) {
     snackBar('Nessun file selezionato', severity: InfoBarSeverity.warning);
     return;
   }
-  if (!File(path).existsSync()) {
+  if (!File(path.path).existsSync()) {
     snackBar('Il file selezionato non esiste', severity: InfoBarSeverity.error);
     return;
   }
-  await Future.microtask(() => OpenFile.open(path));
+  await Future.microtask(() => OpenFile.open(path.path));
 }
 
 Widget NoImage([Widget? child]) {

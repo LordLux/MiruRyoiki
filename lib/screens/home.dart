@@ -1,9 +1,11 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'dart:async';
 import 'package:miruryoiki/models/anilist/user_list.dart';
+import 'package:miruryoiki/widgets/buttons/button.dart';
 import 'package:provider/provider.dart';
 import 'package:recase/recase.dart';
 
+import '../models/episode.dart';
 import '../services/library/library_provider.dart';
 import '../models/series.dart';
 import '../models/anilist/anime.dart';
@@ -13,6 +15,8 @@ import '../settings.dart';
 import '../utils/color_utils.dart';
 import '../utils/path_utils.dart';
 import '../utils/screen_utils.dart';
+import '../utils/time_utils.dart';
+import '../widgets/continue_episode_card.dart';
 import '../widgets/page/header_widget.dart';
 import '../widgets/page/page.dart';
 import '../widgets/series_card.dart';
@@ -53,6 +57,27 @@ class _HomeScreenState extends State<HomeScreen> {
     super.dispose();
   }
 
+  void _selectRandomEntry(List<Series> series) {
+    if (series.isEmpty) return;
+
+    // Select a random series from the list
+    final randomSeries = series[now.millisecondsSinceEpoch % series.length];
+
+    final anilistProvider = Provider.of<AnilistProvider>(context, listen: false);
+    final nextEpisode = Manager.anilistProgress.getNextEpisodeToWatchEpisode(randomSeries, anilistProvider);
+
+    // Trigger the onSeriesSelected callback with the selected series path
+    _openEpisode(randomSeries, nextEpisode!);
+  }
+
+  void _openEpisode(Series currentSeries, Episode nextEpisode) async {
+    widget.onSeriesSelected(currentSeries.path);
+    final library = Provider.of<Library>(context, listen: false);
+
+    await Future.delayed(const Duration(milliseconds: 100));
+    library.playEpisode(nextEpisode);
+  }
+
   @override
   Widget build(BuildContext context) {
     final library = Provider.of<Library>(context);
@@ -80,7 +105,7 @@ class _HomeScreenState extends State<HomeScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildSection(
-          title: 'Continue Watching',
+          title: 'Next Up',
           child: _buildContinueWatchingSection(),
         ),
         VDiv(8), // Reduced spacing between sections
@@ -110,9 +135,7 @@ class _HomeScreenState extends State<HomeScreen> {
     // Get the "Watching" list from Anilist user lists
     final watchingList = anilistProvider.userLists[AnilistListApiStatus.CURRENT.name_];
 
-    if (watchingList == null) {
-      return _buildEmptyState('No watching list found', 'Unable to find your watching list from Anilist');
-    }
+    if (watchingList == null) return _buildEmptyState('No watching list found', 'Unable to find your watching list from Anilist');
 
     // Filter to get only series that are in "Watching" list and in library
     final watchingSeries = library.series.where((series) {
@@ -125,9 +148,7 @@ class _HomeScreenState extends State<HomeScreen> {
       });
     }).toList();
 
-    if (watchingSeries.isEmpty) {
-      return _buildEmptyState('No series in your watching list', 'Link your series with Anilist and add them to your watching list');
-    }
+    if (watchingSeries.isEmpty) return _buildEmptyState('No series in your watching list', 'Link your series with Anilist and add them to your watching list');
 
     // Sort by most recently updated first, then by progress percentage (higher first)
     watchingSeries.sort((a, b) {
@@ -146,7 +167,7 @@ class _HomeScreenState extends State<HomeScreen> {
       return bProgress.compareTo(aProgress);
     });
 
-    return _buildHorizontalSeriesList(watchingSeries);
+    return _buildContinueWatchingList(watchingSeries);
   }
 
   Widget _buildUpcomingEpisodesSection() {
@@ -296,7 +317,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: SizedBox(
                     width: 260,
                     height: 170,
-                    child: UpcomingEpisodeCard(series: currentSeries, airingEpisode: nextEpisode!)),
+                    child: UpcomingEpisodeCard(series: currentSeries, airingEpisode: nextEpisode!),
+                  ),
                 );
               },
             );
@@ -306,34 +328,69 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildHorizontalSeriesList(List<Series> series) {
-    return HoverVisibleScrollbar(
-      height: 300,
-      builder: (context, scrollController) {
-        return ValueListenableBuilder(
-          valueListenable: KeyboardState.ctrlPressedNotifier,
-          builder: (context, isCtrlPressed, _) {
-            return ListView.builder(
-              controller: scrollController,
-              physics: isCtrlPressed ? const NeverScrollableScrollPhysics() : null,
-              scrollDirection: Axis.horizontal,
-              itemCount: series.length,
-              itemBuilder: (context, index) {
-                final currentSeries = series[index];
-                final bool isLast = index == series.length - 1;
-                return Padding(
-                  padding: isLast ? EdgeInsets.zero : const EdgeInsets.only(right: 12),
-                  child: SizedBox(
-                    width: 180, // Made narrower (less wide)
-                    child: SeriesCard(
-                      series: currentSeries,
-                      onTap: () => widget.onSeriesSelected(currentSeries.path),
-                    ),
-                  ),
-                );
-              },
-            );
-          },
+  Widget _buildContinueWatchingList(List<Series> series) {
+    //TODO add an optional section 'Continue Watching' where there will be listed the last of the started but not completed episodes
+    return Consumer<AnilistProvider>(
+      builder: (context, anilistProvider, _) {
+        final onlySeriesWithNextEpisodes = series.where((s) {
+          // Use the new progress manager to check if series has next episode
+          final nextEpisode = Manager.anilistProgress.getNextEpisodeToWatchEpisode(s, anilistProvider);
+          return nextEpisode != null;
+        }).toList();
+
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(
+              width: 50,
+              height: 280,
+              child: RotatedBox(
+                quarterTurns: -1,
+                child: StandardButton(
+                  label: const Text('Random Entry'),
+                  onPressed: () => _selectRandomEntry(onlySeriesWithNextEpisodes),
+                ),
+              ),
+            ),
+            HDiv(12),
+            Expanded(
+              child: HoverVisibleScrollbar(
+                height: 280,
+                builder: (context, scrollController) {
+                  return ValueListenableBuilder(
+                    valueListenable: KeyboardState.ctrlPressedNotifier,
+                    builder: (context, isCtrlPressed, _) {
+                      return ListView.builder(
+                        controller: scrollController,
+                        physics: isCtrlPressed ? const NeverScrollableScrollPhysics() : null,
+                        scrollDirection: Axis.horizontal,
+                        itemCount: onlySeriesWithNextEpisodes.length,
+                        itemBuilder: (context, index) {
+                          final currentSeries = onlySeriesWithNextEpisodes[index];
+                          final bool isLast = index == onlySeriesWithNextEpisodes.length - 1;
+                          // Use the new progress manager to get next episode
+                          final nextEpisode = Manager.anilistProgress.getNextEpisodeToWatchEpisode(currentSeries, anilistProvider);
+                          if (nextEpisode == null) return const SizedBox.shrink();
+
+                          return Padding(
+                            padding: isLast ? EdgeInsets.zero : const EdgeInsets.only(right: 12),
+                            child: SizedBox(
+                              width: 200,
+                              child: ContinueEpisodeCard(
+                                series: currentSeries,
+                                episode: nextEpisode,
+                                onTap: () => _openEpisode(currentSeries, nextEpisode),
+                              ),
+                            ),
+                          );
+                        },
+                      );
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
         );
       },
     );
@@ -397,7 +454,7 @@ class _HoverVisibleScrollbarState extends State<HoverVisibleScrollbar> {
       onEnter: (_) => setState(() => _isHovering = true),
       onExit: (_) => setState(() => _isHovering = false),
       child: SizedBox(
-        height: widget.height + 20, // Add extra height for scrollbar padding
+        height: widget.height + 20, // Extra height for scrollbar padding
         child: Scrollbar(
           controller: _scrollController,
           style: ScrollbarThemeData(
@@ -411,7 +468,7 @@ class _HoverVisibleScrollbarState extends State<HoverVisibleScrollbar> {
           timeToFade: const Duration(milliseconds: 100),
           thumbVisibility: _isHovering,
           child: Padding(
-            padding: const EdgeInsets.only(bottom: 20), // Reserve space for scrollbar
+            padding: const EdgeInsets.only(bottom: 20), // Space for scrollbar
             child: SizedBox(
               height: widget.height,
               child: widget.builder(context, _scrollController),

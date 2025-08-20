@@ -35,7 +35,7 @@ class SeriesDao extends DatabaseAccessor<AppDatabase> with _$SeriesDaoMixin {
   Future<bool> updateSeriesRow(int id, SeriesTableCompanion comp) async => (await (update(seriesTable)..where((t) => t.id.equals(id))).write(comp)) > 0;
 
   Future<int> deleteSeriesRow(int id) => (delete(seriesTable)..where((t) => t.id.equals(id))).go();
-  
+
   Future<int> getIdByPath(PathString path) async {
     final row = await getSeriesRowByPath(path);
     return row?.id ?? -1; // Return -1 if not found
@@ -344,11 +344,14 @@ class SeriesDao extends DatabaseAccessor<AppDatabase> with _$SeriesDaoMixin {
 
   Series _rowToSeries(SeriesTableData row, List<Season> seasons, List<AnilistMapping> mappings) {
     return Series(
+      id: row.id,
       name: row.name,
       path: row.path,
       folderPosterPath: row.folderPosterPath,
       folderBannerPath: row.folderBannerPath,
-      seasons: seasons,
+      seasons: seasons.map((season) => season.copyWith(
+      seriesId: row.id,           // NEW: Set parent ID
+    )).toList(),
       relatedMedia: const [], // gestisci se necessario come season speciale
       anilistMappings: mappings,
       dominantColor: const ColorJsonConverter().fromSql(row.dominantColor),
