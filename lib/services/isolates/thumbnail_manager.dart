@@ -2,20 +2,21 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:isolate';
 
-import 'package:flutter/services.dart';
 import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
 import 'package:video_data_utils/video_data_utils.dart';
 
 import '../../utils/path_utils.dart';
 import '../../utils/logging.dart';
-import 'isolate_manager.dart';
 
 /// Manager for handling thumbnail extraction in a controlled manner.
 class ThumbnailManager {
   static final ThumbnailManager _instance = ThumbnailManager._();
   factory ThumbnailManager() => _instance;
   ThumbnailManager._();
+
+  // ignore: constant_identifier_names
+  static const String miruryoiki_thumbnails = 'miruryoiki_thumbnails';
 
   final _thumbnailIsolate = ThumbnailIsolateManager();
 
@@ -87,11 +88,65 @@ class ThumbnailManager {
 
   void resetAllFailedAttempts() => _failedAttempts.clear();
 
-  static Future<PathString> generateThumbnailPath(PathString videoPath) async {
+  /// Clear thumbnail cache for a specific series by deleting all thumbnails that match the series path
+  Future<void> clearThumbnailCacheForSeries(String seriesPath) async {
+    try {
+      final thumbnailsDir = Directory(await thumbnailDirectoryPath);
+
+      if (!await thumbnailsDir.exists()) return;
+
+      final pathHash = seriesPath.hashCode.toString().replaceAll('-', '_');
+      final files = await thumbnailsDir.list().toList();
+
+      for (final file in files) {
+        if (file is File && path.basename(file.path).startsWith(pathHash)) {
+          try {
+            await file.delete();
+            logTrace('Deleted thumbnail cache: ${file.path}');
+          } catch (e) {
+            logErr('Failed to delete thumbnail cache for file: ${file.path}', e);
+          }
+        }
+      }
+
+      // Also reset failed attempts for this series
+      _failedAttempts.removeWhere((videoPath, _) => videoPath.path.startsWith(seriesPath));
+
+      logDebug('Cleared thumbnail cache for series: $seriesPath');
+    } catch (e, stack) {
+      logErr('Error clearing thumbnail cache for series: $seriesPath', e, stack);
+    }
+  }
+
+  /// Clear all thumbnail cache by deleting the entire thumbnails directory
+  Future<void> clearAllThumbnailCache() async {
+    try {
+      final thumbnailsDir = Directory(await thumbnailDirectoryPath);
+
+      if (await thumbnailsDir.exists()) {
+        await thumbnailsDir.delete(recursive: true);
+        logDebug('Deleted entire thumbnail cache directory');
+      }
+
+      // Reset all failed attempts
+      _failedAttempts.clear();
+
+      logDebug('Cleared all thumbnail cache');
+    } catch (e, stack) {
+      logErr('Error clearing all thumbnail cache', e, stack);
+    }
+  }
+
+  static Future<String> get thumbnailDirectoryPath async {
     final tempDir = await getTemporaryDirectory();
+    return path.join(tempDir.path, miruryoiki_thumbnails);
+  }
+
+  static Future<PathString> generateThumbnailPath(PathString videoPath) async {
+    final thumbDir = await thumbnailDirectoryPath;
     final String filename = path.basenameWithoutExtension(videoPath.path);
     final String pathHash = path.dirname(videoPath.path).hashCode.toString().replaceAll('-', '_');
-    final String thumbnailPath = path.join(tempDir.path, 'miruryoiki_thumbnails', '${pathHash}_$filename.png');
+    final String thumbnailPath = path.join(thumbDir, '${pathHash}_$filename.png');
 
     final directory = Directory(path.dirname(thumbnailPath));
     if (!await directory.exists()) //

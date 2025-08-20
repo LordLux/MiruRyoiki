@@ -104,4 +104,63 @@ extension LibrarySeriesManagement on Library {
   _version++;
     notifyListeners();
   }
+
+  /// Clear thumbnail cache for a specific series and reset episode thumbnail statuses
+  Future<void> clearThumbnailCacheForSeries(PathString seriesPath) async {
+    final series = getSeriesByPath(seriesPath);
+    if (series == null) return;
+
+    // Clear the thumbnail cache for this series
+    await ThumbnailManager().clearThumbnailCacheForSeries(seriesPath.path);
+
+    // Reset thumbnail statuses for all episodes in this series
+    for (final season in series.seasons) {
+      for (final episode in season.episodes) {
+        episode.resetThumbnailStatus();
+        episode.thumbnailPath = null; // Clear the cached path so it will be regenerated
+      }
+    }
+
+    // Also reset for related media episodes
+    for (final episode in series.relatedMedia) {
+      episode.resetThumbnailStatus();
+      episode.thumbnailPath = null;
+    }
+
+    _version++;
+    await _saveLibrary();
+    notifyListeners();
+
+    logDebug('Cleared thumbnail cache and reset statuses for series: ${series.name}');
+  }
+
+  /// Clear all thumbnail cache and reset all episode thumbnail statuses
+  Future<void> clearAllThumbnailCache() async {
+    // Clear all thumbnail caches
+    await ThumbnailManager().clearAllThumbnailCache();
+    await ImageCacheService().clearCache();
+
+    // Reset all episode thumbnail statuses
+    for (final series in _series) {
+      for (final season in series.seasons) {
+        for (final episode in season.episodes) {
+          episode.resetThumbnailStatus();
+          episode.thumbnailPath = null;
+        }
+      }
+      for (final episode in series.relatedMedia) {
+        episode.resetThumbnailStatus();
+        episode.thumbnailPath = null;
+      }
+    }
+
+    // Reset all failed attempts in ThumbnailManager
+    Episode.resetAllFailedAttempts();
+
+    _version++;
+    await _saveLibrary();
+    notifyListeners();
+
+    logDebug('Cleared all thumbnail cache and reset all episode thumbnail statuses');
+  }
 }

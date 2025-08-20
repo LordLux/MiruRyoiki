@@ -117,4 +117,18 @@ class ImageCacheService {
         await file.delete();
     }
   }
+
+  // Get cache directory size in bytes
+  Future<int> getCacheSize() async {
+    if (!_initialized) await init();
+    
+    int totalSize = 0;
+    final files = await _cacheDir!.list().toList();
+    for (final file in files) {
+      if (file is File) {
+        totalSize += await file.length();
+      }
+    }
+    return totalSize;
+  }
 }

@@ -83,6 +83,7 @@ class SettingsScreenState extends State<SettingsScreen> {
   double prevPos = 0;
 
   bool _isSelectingFolder = false;
+  bool _isClearingThumbnailCache = false;
 
   final FocusNode fontSizeFocusNode = FocusNode();
 
@@ -851,7 +852,7 @@ class SettingsScreenState extends State<SettingsScreen> {
                   LoadingButton(
                     label: 'Scan Library',
                     onPressed: () => library.reloadLibrary(force: true),
-                    isLoading: library.isScanning,
+                    isLoading: library.isIndexing,
                     isSmall: true,
                     isAlreadyBig: true,
                   ),
@@ -872,6 +873,31 @@ class SettingsScreenState extends State<SettingsScreen> {
                       setState(() => _isSelectingFolder = false);
 
                       if (result != null) library.setLibraryPath(result);
+                    },
+                  ),
+                  const SizedBox(width: 6),
+                  NormalButton(
+                    label: 'Clear Thumbnails',
+                    tooltip: 'Clear all thumbnail cache to regenerate episode thumbnails',
+                    isSmall: true,
+                    isLoading: _isClearingThumbnailCache,
+                    onPressed: () async {
+                      setState(() => _isClearingThumbnailCache = true);
+                      
+                      try {
+                        // Clear all thumbnail cache using library method
+                        await library.clearAllThumbnailCache();
+                        
+                        // Also clear Flutter's image cache
+                        imageCache.clear();
+                        imageCache.clearLiveImages();
+                        
+                        snackBar('Thumbnail cache cleared successfully', severity: InfoBarSeverity.success);
+                      } catch (e, st) {
+                        snackBar('Error clearing thumbnail cache: $e', severity: InfoBarSeverity.error, exception: e, stackTrace: st);
+                      } finally {
+                        setState(() => _isClearingThumbnailCache = false);
+                      }
                     },
                   ),
                 ],

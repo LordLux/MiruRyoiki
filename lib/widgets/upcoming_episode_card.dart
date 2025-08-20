@@ -156,168 +156,163 @@ class _UpcomingEpisodeCardState extends State<UpcomingEpisodeCard> {
     }
     return KeyedSubtree(
       key: ValueKey('${widget.series.path}-${widget.series.dominantColor?.value ?? 0}'),
-      child: SeriesContextMenu(
-        key: _contextMenuKey,
-        series: widget.series,
-        context: context,
-        child: MouseRegion(
-          onEnter: (_) => setState(() => _isHovering = true),
-          onExit: (_) {
-            StatusBarManager().hide();
-            setState(() => _isHovering = false);
-          },
-          onHover: (_) => StatusBarManager().showDelayed("Episode ${widget.airingEpisode.episode ?? '?'} - ${widget.series.name}"),
-          cursor: SystemMouseCursors.click,
-          child: ClipRRect(
-            borderRadius: const BorderRadius.all(Radius.circular(8.02)),
-            child: AnimatedContainer(
-              duration: getDuration(const Duration(milliseconds: 150)),
-              decoration: BoxDecoration(
-                borderRadius: const BorderRadius.all(Radius.circular(8.02)),
-                color: Colors.transparent,
-                boxShadow: _isHovering
-                    ? [
-                        BoxShadow(
-                          color: mainColor.withOpacity(0.05),
-                          blurRadius: 8,
-                          spreadRadius: 1,
-                        )
-                      ]
-                    : null,
-              ),
-              child: Stack(
-                children: [
-                  // Poster image
-                  Positioned.fill(
-                    
-                    child: Container(
-                      child: _getSeriesImage(),
-                    ),
+      child: MouseRegion(
+        onEnter: (_) => setState(() => _isHovering = true),
+        onExit: (_) {
+          StatusBarManager().hide();
+          setState(() => _isHovering = false);
+        },
+        onHover: (_) => StatusBarManager().showDelayed("Episode ${widget.airingEpisode.episode ?? '?'} - ${widget.series.name}"),
+        cursor: SystemMouseCursors.click,
+        child: ClipRRect(
+          borderRadius: const BorderRadius.all(Radius.circular(8.02)),
+          child: AnimatedContainer(
+            duration: getDuration(const Duration(milliseconds: 150)),
+            decoration: BoxDecoration(
+              borderRadius: const BorderRadius.all(Radius.circular(8.02)),
+              color: Colors.transparent,
+              boxShadow: _isHovering
+                  ? [
+                      BoxShadow(
+                        color: mainColor.withOpacity(0.05),
+                        blurRadius: 8,
+                        spreadRadius: 1,
+                      )
+                    ]
+                  : null,
+            ),
+            child: Stack(
+              children: [
+                // Poster image
+                Positioned.fill(
+                  
+                  child: Container(
+                    child: _getSeriesImage(),
                   ),
-                  // to fix visual glitch
-                  // Positioned(
-                  //   bottom: 0,
-                  //   child: Container(
-                  //     color: Colors.black,
-                  //     height: 1,
-                  //     width: 1000,
-                  //   ),
-                  // ),
-                  Card(
-                    padding: EdgeInsets.zero,
-                    borderRadius: const BorderRadius.all(Radius.circular(8.0)),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Poster image
-                        Expanded(child: SizedBox.shrink()),
-
-                        // Series info
-                        Builder(builder: (context) {
-                          final double value = widget.series.isAnilistPoster ? .76 : .9;
-                          final Color nicerColor = mainColor.lerpWith(Colors.grey, value);
-
-                          Widget child = Padding(
-                            padding: const EdgeInsets.all(12.0),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  widget.series.name,
-                                  maxLines: 3,
-                                  style: Manager.bodyStrongStyle.copyWith(fontWeight: FontWeight.w600),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                Row(
-                                  // mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Text(
-                                      _formatAiringTime(widget.airingEpisode.airingAt!),
-                                      style: FluentTheme.of(context).typography.caption?.copyWith(
-                                            
-                                            color: widget.series.dominantColor ?? FluentTheme.of(context).resources.textFillColorSecondary,
-                                          ),
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                    const Spacer(),
-                                    Text(
-                                      'Episode ${widget.airingEpisode.episode ?? '?'}',
-                                      style: FluentTheme.of(context).typography.caption?.copyWith(
-                                            fontWeight: FontWeight.w600,
-                                            color: lighten(widget.series.dominantColor ?? FluentTheme.of(context).resources.textFillColorSecondary, .4),
-                                          ),
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ],
-                                ),
-                              ],
+                ),
+                // to fix visual glitch
+                // Positioned(
+                //   bottom: 0,
+                //   child: Container(
+                //     color: Colors.black,
+                //     height: 1,
+                //     width: 1000,
+                //   ),
+                // ),
+                Card(
+                  padding: EdgeInsets.zero,
+                  borderRadius: const BorderRadius.all(Radius.circular(8.0)),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Poster image
+                      Expanded(child: SizedBox.shrink()),
+      
+                      // Series info
+                      Builder(builder: (context) {
+                        final double value = widget.series.isAnilistPoster ? .76 : .9;
+                        final Color nicerColor = mainColor.lerpWith(Colors.grey, value);
+      
+                        Widget child = Padding(
+                          padding: const EdgeInsets.all(12.0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                widget.series.name,
+                                maxLines: 3,
+                                style: Manager.bodyStrongStyle.copyWith(fontWeight: FontWeight.w600),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              Row(
+                                // mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    _formatAiringTime(widget.airingEpisode.airingAt!),
+                                    style: FluentTheme.of(context).typography.caption?.copyWith(
+                                          
+                                          color: widget.series.dominantColor ?? FluentTheme.of(context).resources.textFillColorSecondary,
+                                        ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  const Spacer(),
+                                  Text(
+                                    'Episode ${widget.airingEpisode.episode ?? '?'}',
+                                    style: FluentTheme.of(context).typography.caption?.copyWith(
+                                          fontWeight: FontWeight.w600,
+                                          color: lighten(widget.series.dominantColor ?? FluentTheme.of(context).resources.textFillColorSecondary, .4),
+                                        ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        );
+                        if (widget.series.isAnilistPoster) {
+                          return Transform.scale(
+                            scale: 1.02,
+                            child: Transform.translate(
+                              offset: Offset(0, 1),
+                              child: Acrylic(
+                                blurAmount: 5,
+                                tint: nicerColor,
+                                elevation: 0.5,
+                                tintAlpha: 0.5,
+                                luminosityAlpha: 0.8,
+                                child: child,
+                              ),
                             ),
                           );
-                          if (widget.series.isAnilistPoster) {
-                            return Transform.scale(
-                              scale: 1.02,
-                              child: Transform.translate(
-                                offset: Offset(0, 1),
-                                child: Acrylic(
-                                  blurAmount: 5,
-                                  tint: nicerColor,
-                                  elevation: 0.5,
-                                  tintAlpha: 0.5,
-                                  luminosityAlpha: 0.8,
-                                  child: child,
-                                ),
-                              ),
-                            );
-                          }
-                          return Container(color: nicerColor, child: child);
-                        }),
-                      ],
-                    ),
-                  ), // Add the hidden indicator
-                  if (widget.series.shouldBeHidden)
-                    Positioned(
-                      top: 12,
-                      left: 12,
-                      child: Container(
-                        padding: EdgeInsets.all(4),
-                        decoration: BoxDecoration(
-                          color: Colors.black.withOpacity(0.7),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Tooltip(
-                          message: 'Hidden from Anilist status lists',
-                          child: Icon(
-                            FluentIcons.hide, // or use FluentIcons.hide2 or FluentIcons.eye_hide
-                            size: 18,
-                            color: Colors.white,
-                          ),
+                        }
+                        return Container(color: nicerColor, child: child);
+                      }),
+                    ],
+                  ),
+                ), // Add the hidden indicator
+                if (widget.series.shouldBeHidden)
+                  Positioned(
+                    top: 12,
+                    left: 12,
+                    child: Container(
+                      padding: EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.7),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Tooltip(
+                        message: 'Hidden from Anilist status lists',
+                        child: Icon(
+                          FluentIcons.hide, // or use FluentIcons.hide2 or FluentIcons.eye_hide
+                          size: 18,
+                          color: Colors.white,
                         ),
                       ),
                     ),
-                  // Hover overlay
-                  Positioned.fill(
-                    child: Material(
-                      color: Colors.transparent,
-                      child: GestureDetector(
-                        onSecondaryTapDown: (_) => _contextMenuKey.currentState?.openMenu(),
-                        child: InkWell(
-                          onTap: null,
-                          splashColor: mainColor.withOpacity(0.1),
-                          highlightColor: mainColor.withOpacity(0.05),
-                          borderRadius: const BorderRadius.all(Radius.circular(8.0)),
-                          child: AnimatedContainer(
-                            duration: getDuration(const Duration(milliseconds: 150)),
-                            decoration: BoxDecoration(
-                              borderRadius: const BorderRadius.all(Radius.circular(8.0)),
-                              color: _isHovering ? mainColor.withOpacity(0.1) : Colors.transparent,
-                            ),
+                  ),
+                // Hover overlay
+                Positioned.fill(
+                  child: Material(
+                    color: Colors.transparent,
+                    child: GestureDetector(
+                      onSecondaryTapDown: (_) => _contextMenuKey.currentState?.openMenu(),
+                      child: InkWell(
+                        onTap: null,
+                        splashColor: mainColor.withOpacity(0.1),
+                        highlightColor: mainColor.withOpacity(0.05),
+                        borderRadius: const BorderRadius.all(Radius.circular(8.0)),
+                        child: AnimatedContainer(
+                          duration: getDuration(const Duration(milliseconds: 150)),
+                          decoration: BoxDecoration(
+                            borderRadius: const BorderRadius.all(Radius.circular(8.0)),
+                            color: _isHovering ? mainColor.withOpacity(0.1) : Colors.transparent,
                           ),
                         ),
                       ),
                     ),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         ),

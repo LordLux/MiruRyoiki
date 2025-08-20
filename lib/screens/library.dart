@@ -61,7 +61,9 @@ class LibraryScreen extends StatefulWidget {
 
 class LibraryScreenState extends State<LibraryScreen> {
   // Persistent static caches (survive widget dispose/recreate within app session)
+  // ignore: prefer_final_fields
   static List<Series> _staticSortedUngrouped = [];
+  // ignore: prefer_final_fields
   static Map<String, List<Series>> _staticSortedGrouped = {};
   static Map<String, List<Series>> _staticGroups = {};
   static int? _staticLastVersionSorted;
@@ -120,7 +122,7 @@ class LibraryScreenState extends State<LibraryScreen> {
       } else if (groupMatches) {
         if (_staticGroups.isNotEmpty) {
           _cachedGroups = Map.from(_staticGroups);
-          _sortedGroupedSeries = _staticSortedGrouped.map((k,v) => MapEntry(k, List.from(v)));
+          _sortedGroupedSeries = _staticSortedGrouped.map((k, v) => MapEntry(k, List.from(v)));
           _hasAppliedGrouping = true;
           _hasAppliedSorting = true; // grouped lists already sorted
           _lastAppliedGroupingView = _currentView;
@@ -352,8 +354,8 @@ class LibraryScreenState extends State<LibraryScreen> {
     _loadUserPreferences();
     _lastAppliedSortOrder = _sortOrder;
     _lastAppliedSortDescending = _sortDescending;
-  final library = Provider.of<Library>(context, listen: false);
-  _initFromStaticCaches(library);
+    final library = Provider.of<Library>(context, listen: false);
+    _initFromStaticCaches(library);
   }
 
   double getHeight(int itemCount, double maxWidth) {
@@ -747,7 +749,7 @@ class LibraryScreenState extends State<LibraryScreen> {
   Widget _buildLibraryView(Library library) {
     List<Series> displayedSeries = _filterSeries(library.series);
 
-    if (library.isScanning) return const Center(child: ProgressRing());
+    if (library.isIndexing) {}
 
     if (displayedSeries.isEmpty)
       return Center(
@@ -773,30 +775,51 @@ class LibraryScreenState extends State<LibraryScreen> {
         ),
       );
 
-  final libraryVersionChanged = _lastVersionSorted == null || _lastVersionSorted != library.version;
-  if ((_sortingNeeded(displayedSeries) && !_isProcessing && _currentSortOperation == null && libraryVersionChanged) ||
-    (_sortingNeeded(displayedSeries) && libraryVersionChanged)) {
+    final libraryVersionChanged = _lastVersionSorted == null || _lastVersionSorted != library.version;
+    if ((_sortingNeeded(displayedSeries) && !_isProcessing && _currentSortOperation == null && libraryVersionChanged) || (_sortingNeeded(displayedSeries) && libraryVersionChanged)) {
       _needsSort = false;
       _applySortingAsync(displayedSeries);
-  } else if (_hasAppliedSorting) {
+    } else if (_hasAppliedSorting) {
       // Use the already sorted list
       displayedSeries = _sortedUngroupedSeries;
     }
 
     return LayoutBuilder(builder: (context, constraints) {
+      final bool hideLibrary = _isProcessing || library.isIndexing;
       return Stack(
         children: [
-          Opacity(
-            opacity: _isProcessing ? 0 : 1,
-            child: FadingEdgeScrollView(
-              fadeEdges: const EdgeInsets.symmetric(vertical: 10),
-              child: _buildSeriesGrid(displayedSeries, constraints.maxWidth),
+          IgnorePointer(
+            ignoring: hideLibrary,
+            child: Opacity(
+              opacity: hideLibrary ? 0 : 1,
+              child: FadingEdgeScrollView(
+                fadeEdges: const EdgeInsets.symmetric(vertical: 10),
+                child: _buildSeriesGrid(displayedSeries, constraints.maxWidth),
+              ),
             ),
           ),
-          if (_isProcessing)
+          if (hideLibrary)
             Positioned.fill(
-              child: const Center(child: ProgressRing()),
-            ),
+              child: Builder(builder: (context) {
+                String msg = "";
+                if (library.isIndexing) msg = 'Please wait while the Library is being indexed...';
+
+                return Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      ProgressRing(),
+                      if (msg.isNotEmpty) ...[
+                        VDiv(16),
+                        Text(msg),
+                        // VDiv(16),
+                        // TODO maybe image
+                      ],
+                    ],
+                  ),
+                );
+              }),
+            )
           // Positioned.fill(
           //   child: Padding(
           //     padding: EdgeInsets.only(right:12),
@@ -916,7 +939,7 @@ class LibraryScreenState extends State<LibraryScreen> {
           'sortData': sortData,
         });
 
-    if (mounted) {
+        if (mounted) {
           if (groupName != null) {
             _sortedGroupedSeries[groupName] = sortedSeries;
           } else {
@@ -926,9 +949,9 @@ class LibraryScreenState extends State<LibraryScreen> {
             _lastAppliedSortOrder = _sortOrder;
             _lastAppliedSortDescending = _sortDescending;
             _hasAppliedSorting = true;
-      // Record version after successful sort
-      final lib = context.read<Library>();
-      _lastVersionSorted = lib.version;
+            // Record version after successful sort
+            final lib = context.read<Library>();
+            _lastVersionSorted = lib.version;
           });
         }
       } finally {
@@ -1213,8 +1236,8 @@ class LibraryScreenState extends State<LibraryScreen> {
       _lastAppliedGroupingView = _currentView;
       _lastAppliedListOrder = List.from(_customListOrder);
       _lastAppliedShowGrouped = _showGrouped;
-  // Persist static groups for future mounts
-  _staticGroups = Map.from(_cachedGroups);
+      // Persist static groups for future mounts
+      _staticGroups = Map.from(_cachedGroups);
     }
 
     // Build the grouped ListView

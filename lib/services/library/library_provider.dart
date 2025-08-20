@@ -34,6 +34,7 @@ import '../../utils/logging.dart';
 import '../../utils/path_utils.dart';
 import '../../utils/time_utils.dart';
 import '../isolates/isolate_manager.dart';
+import '../isolates/thumbnail_manager.dart';
 
 // Include all the parts
 part 'initialization.dart';
@@ -61,7 +62,7 @@ class Library with ChangeNotifier {
   List<Series> get series => List.unmodifiable(_series);
   String? get libraryPath => _libraryPath;
   bool get initialized => _initialized;
-  bool get isScanning => _isScanning;
+  bool get isIndexing => _isScanning;
   AppDatabase get database => _db;
   int get version => _version;
 

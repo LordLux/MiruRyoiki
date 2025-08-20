@@ -1074,7 +1074,9 @@ void setIcon() async {
   }
 }
 
-// TODO use AnimatedContainer for loading statusbar
+// TODO fix library screen reloading of cached grouped/sorted series after setting as watched an episode a series
+// TODO fix library screen NOT reloading of cached grouped/sorted series after changing image
+// TODO fix image picker, if previously chosen local image, anilist image not showing
 // TODO allow cli flags, before preventing a second instance from running
 // TODO fix the fact that HIDDEN series are not fetched from anilist when loading library (probably query asks for lists instead of full library of user)
 // TODO remember collapse/expanded state of seasons in series

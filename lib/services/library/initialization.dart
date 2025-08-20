@@ -42,12 +42,12 @@ extension LibraryInitialization on Library {
 
   // DISPOSE IN MAIN
 
-  Future<void> reloadLibrary({bool force = false}) async {
+  Future<void> reloadLibrary({bool force = false, bool showSnackBar = true}) async {
     if (_libraryPath == null) return;
     if (!force && _isScanning) return;
     logDebug('Reloading Library...');
 
-    snackBar('Reloading Library...', severity: InfoBarSeverity.info);
+    if (showSnackBar) snackBar('Reloading Library...', severity: InfoBarSeverity.info);
     await scanLocalLibrary();
 
     await _mpcTracker.ensureInitialized();
@@ -62,7 +62,7 @@ extension LibraryInitialization on Library {
     });
 
     logDebug('Finished Reloading Library');
-    snackBar('Library Reloaded', severity: InfoBarSeverity.success);
+    if (showSnackBar) snackBar('Library Reloaded', severity: InfoBarSeverity.success);
     notifyListeners();
     Manager.setState();
   }
