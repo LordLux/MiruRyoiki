@@ -106,11 +106,11 @@ class _HomeScreenState extends State<HomeScreen> {
       children: [
         _buildSection(
           title: 'Continue Watching',
-          child: _buildContinueWatchingSection(false),
+          child: _buildContinueWatchingSection(true),
         ),
         _buildSection(
           title: 'Next Up',
-          child: _buildContinueWatchingSection(true),
+          child: _buildContinueWatchingSection(false),
         ),
         VDiv(8), // Reduced spacing between sections
         _buildSection(
@@ -409,6 +409,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 series: currentSeries,
                                 episode: nextEpisode,
                                 onTap: () => _openEpisode(currentSeries, nextEpisode),
+                                progress: onlyStarted ? nextEpisode.progress : null, // Show progress only if this is "Continue Watching"
                               ),
                             ),
                           );
