@@ -17,6 +17,7 @@ import '../widgets/page/header_widget.dart';
 import '../widgets/page/page.dart';
 import '../widgets/series_card.dart';
 import '../manager.dart';
+import '../widgets/upcoming_episode_card.dart';
 
 class HomeScreen extends StatefulWidget {
   final Function(PathString) onSeriesSelected;
@@ -51,6 +52,7 @@ class _HomeScreenState extends State<HomeScreen> {
     _minuteRefreshTimer?.cancel();
     super.dispose();
   }
+
   @override
   Widget build(BuildContext context) {
     final library = Provider.of<Library>(context);
@@ -86,11 +88,6 @@ class _HomeScreenState extends State<HomeScreen> {
           title: 'Upcoming Episodes',
           child: _buildUpcomingEpisodesSection(),
         ),
-        // VDiv(16),
-        // _buildSection(
-        //   title: 'Recently Added',
-        //   child: _buildRecentlyAddedSection(),
-        // ),
       ],
     );
   }
@@ -159,9 +156,7 @@ class _HomeScreenState extends State<HomeScreen> {
     // Get the "Watching" list from Anilist user lists
     final watchingList = anilistProvider.userLists[AnilistListApiStatus.CURRENT.name_];
 
-    if (watchingList == null) {
-      return _buildEmptyState('No watching list found', 'Unable to find your watching list from Anilist');
-    }
+    if (watchingList == null) return _buildEmptyState('No watching list found', 'Unable to find your watching list from Anilist');
 
     // Filter to get only series that are in "Watching" list, linked, and in library
     final watchingSeries = library.series.where((series) {
@@ -174,9 +169,7 @@ class _HomeScreenState extends State<HomeScreen> {
       });
     }).toList();
 
-    if (watchingSeries.isEmpty) {
-      return _buildEmptyState('No series in your watching list', 'Link your series with Anilist and add them to your watching list');
-    }
+    if (watchingSeries.isEmpty) return _buildEmptyState('No series in your watching list', 'Link your series with Anilist and add them to your watching list');
 
     // Use StreamBuilder approach with cached data for immediate display
     return _buildUpcomingEpisodesWithCache(watchingSeries, anilistProvider);
@@ -220,9 +213,7 @@ class _HomeScreenState extends State<HomeScreen> {
             );
           }
 
-          if (snapshot.hasError) {
-            return _buildEmptyState('Error loading upcoming episodes', 'Failed to fetch airing information from Anilist');
-          }
+          if (snapshot.hasError) return _buildEmptyState('Error loading upcoming episodes', 'Failed to fetch airing information from Anilist');
 
           final freshUpcomingEpisodes = snapshot.data ?? <int, AiringEpisode?>{};
 
@@ -233,9 +224,7 @@ class _HomeScreenState extends State<HomeScreen> {
             });
           }).toList();
 
-          if (freshSeriesWithUpcomingEpisodes.isEmpty) {
-            return _buildEmptyState('No upcoming episodes', 'None of your watched series have upcoming episodes scheduled');
-          }
+          if (freshSeriesWithUpcomingEpisodes.isEmpty) return _buildEmptyState('No upcoming episodes', 'None of your watched series have upcoming episodes scheduled');
 
           return _buildSortedUpcomingEpisodesList(freshSeriesWithUpcomingEpisodes, freshUpcomingEpisodes);
         },
@@ -276,8 +265,11 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildUpcomingEpisodesSeriesList(List<Series> series, Map<int, AiringEpisode?> upcomingEpisodesMap) {
+    final onlyUpcomingEpisodes = series.where((s) {
+      return s.anilistMappings.any((mapping) => upcomingEpisodesMap[mapping.anilistId]?.airingAt != null);
+    }).toList();
     return HoverVisibleScrollbar(
-      height: 310, // Increased height to accommodate natural series card size + episode info
+      height: 170,
       builder: (context, scrollController) {
         return ValueListenableBuilder(
           valueListenable: KeyboardState.ctrlPressedNotifier,
@@ -286,9 +278,9 @@ class _HomeScreenState extends State<HomeScreen> {
               controller: scrollController,
               physics: isCtrlPressed ? const NeverScrollableScrollPhysics() : null,
               scrollDirection: Axis.horizontal,
-              itemCount: series.length,
+              itemCount: onlyUpcomingEpisodes.length,
               itemBuilder: (context, index) {
-                final currentSeries = series[index];
+                final currentSeries = onlyUpcomingEpisodes[index];
 
                 // Get the upcoming episode info for this series
                 AiringEpisode? nextEpisode;
@@ -300,8 +292,11 @@ class _HomeScreenState extends State<HomeScreen> {
                 }
 
                 return Padding(
-                  padding: const EdgeInsets.only(right: 12),
-                  child: _buildUpcomingEpisodeCard(currentSeries, nextEpisode),
+                  padding: index != onlyUpcomingEpisodes.length - 1 ? const EdgeInsets.only(right: 12) : EdgeInsets.zero,
+                  child: SizedBox(
+                    width: 260,
+                    height: 170,
+                    child: UpcomingEpisodeCard(series: currentSeries, airingEpisode: nextEpisode!)),
                 );
               },
             );
@@ -309,97 +304,6 @@ class _HomeScreenState extends State<HomeScreen> {
         );
       },
     );
-  }
-
-  Widget _buildUpcomingEpisodeCard(Series series, AiringEpisode? upcomingEpisode) {
-    final double width = 180;
-    final double cardHeight = 260; // Height for the series card
-    return Stack(
-      children: [
-        // Series card with its natural aspect ratio
-        SizedBox(
-          width: width,
-          height: cardHeight,
-          child: SeriesCard(
-            series: series,
-            onTap: () => widget.onSeriesSelected(series.path),
-            borderRadius: BorderRadius.only(
-              topLeft: Radius.circular(8),
-              topRight: Radius.circular(8),
-            ),
-          ),
-        ),
-    
-        // Upcoming episode info positioned below the series card
-        if (upcomingEpisode != null && upcomingEpisode.airingAt != null)
-          Positioned(
-            bottom: 0,
-            left: 0,
-            right: 0,
-            child: Transform.translate(
-              offset: Offset(-0.5, 0),
-              child: Transform.scale(
-                scale: 1.005,
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: FluentTheme.of(context).resources.cardBackgroundFillColorDefault,
-                    borderRadius: BorderRadius.only(
-                      bottomLeft: Radius.circular(8),
-                      bottomRight: Radius.circular(8),
-                    ),
-                    border: Border.all(
-                      color: FluentTheme.of(context).resources.cardStrokeColorDefault,
-                      width: 1,
-                    ),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        'Episode ${upcomingEpisode.episode ?? '?'}',
-                        style: FluentTheme.of(context).typography.caption?.copyWith(
-                              fontWeight: FontWeight.w600,
-                            ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        _formatAiringTime(upcomingEpisode.airingAt!),
-                        style: FluentTheme.of(context).typography.caption?.copyWith(
-                              fontSize: 10,
-                              color: FluentTheme.of(context).resources.textFillColorSecondary,
-                            ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-      ],
-    );
-  }
-
-  String _formatAiringTime(int airingAt) {
-    final airingDate = DateTime.fromMillisecondsSinceEpoch(airingAt * 1000);
-    final now = DateTime.now();
-    final difference = airingDate.difference(now);
-
-    if (difference.isNegative) {
-      return 'Aired';
-    } else if (difference.inDays > 0) {
-      return 'in ${difference.inDays}d';
-    } else if (difference.inHours > 0) {
-      return 'in ${difference.inHours}h';
-    } else if (difference.inMinutes > 0) {
-      return 'in ${difference.inMinutes}m';
-    } else {
-      return 'Soon';
-    }
   }
 
   Widget _buildHorizontalSeriesList(List<Series> series) {

@@ -32,10 +32,10 @@ class ReleaseCalendarScreen extends StatefulWidget {
   });
 
   @override
-  State<ReleaseCalendarScreen> createState() => _ReleaseCalendarScreenState();
+  State<ReleaseCalendarScreen> createState() => ReleaseCalendarScreenState();
 }
 
-class _ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
+class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
   DateTime _selectedDate = now;
   DateTime _focusedMonth = now;
   final ItemPositionsListener _itemPositionsListener = ItemPositionsListener.create();
@@ -60,7 +60,7 @@ class _ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
     nextFrame(() {
       _loadReleaseData();
       _itemPositionsListener.itemPositions.addListener(_updateSpacerHeight);
-      nextFrame(() => _scrollToToday());
+      nextFrame(() => scrollToToday());
     });
     // Periodic refresh for relative times
     _minuteRefreshTimer = Timer.periodic(const Duration(minutes: 1), (_) {
@@ -73,6 +73,21 @@ class _ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
     _minuteRefreshTimer?.cancel();
     _itemPositionsListener.itemPositions.removeListener(_updateSpacerHeight);
     super.dispose();
+  }
+
+  void focusToday() {
+    setState(() {
+      _focusedMonth = DateTime(now.year, now.month, 1);
+      _selectedDate = now; // Reset selection to today
+      _filterSelectedDate = true; // Enable filter for today
+    });
+    nextFrame(() => scrollToToday(animated: false)); // Scroll immediately without animation
+  }
+
+  void toggleFilter([bool? value]) {
+    setState(() {
+      _showOnlyTodayEpisodes = value ?? !_showOnlyTodayEpisodes;
+    });
   }
 
   void _updateSpacerHeight() {
@@ -109,14 +124,14 @@ class _ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
     }
   }
 
-  void _scrollToToday() {
+  void scrollToToday({bool animated = true}) {
     // Find today's position in the calendar entries and scroll to it
     if (!mounted || _calendarCache.isEmpty) return;
 
     // Scroll to position, but don't exceed the max scroll extent
     _episodeListController.scrollTo(
       index: _firstUpcomingItemIndex,
-      duration: const Duration(milliseconds: 300),
+      duration: animated ? const Duration(milliseconds: 300) : Duration(microseconds: 1),
       curve: Curves.easeInOut,
     );
   }
@@ -496,16 +511,14 @@ class _ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
         child: (isHovering) => Button(
           onPressed: () {
             setState(() {
+              // Toggle filter off/on when clicking the same selected date
               if (isSelected) {
-                // Toggle filter off/on when clicking the same selected date
-                _filterSelectedDate = !_filterSelectedDate;
-                if (!_filterSelectedDate) {
-                  // Clear selection highlight by moving _selectedDate to a non-matching day (keep logical state)
-                  _selectedDate = DateTime(1900); // sentinel: no day in current view will match
-                }
+                // DISABLE FILTER
+                focusToday();
               } else {
+                // ENABLE FILTER
                 _selectedDate = date;
-                _filterSelectedDate = true; // enable filter on new selection
+                _filterSelectedDate = true;
               }
               // Turning off today-only if user manually toggles date
               if (_showOnlyTodayEpisodes && !_filterSelectedDate) {

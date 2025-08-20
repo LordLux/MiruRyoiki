@@ -1,33 +1,35 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/material.dart' show InkWell, Material;
+import 'package:miruryoiki/models/anilist/anime.dart';
 import 'package:transparent_image/transparent_image.dart';
 import '../enums.dart';
 import '../manager.dart';
 
 import '../models/series.dart';
 import '../services/navigation/statusbar/statusbar.dart';
+import '../utils/color_utils.dart';
 import '../utils/logging.dart';
 import '../utils/screen_utils.dart';
 import '../utils/time_utils.dart';
 import 'context_menu/series.dart';
 
-class SeriesCard extends StatefulWidget {
+class UpcomingEpisodeCard extends StatefulWidget {
   final Series series;
-  final VoidCallback onTap;
-  final BorderRadius borderRadius;
+  final AiringEpisode airingEpisode;
+  final Alignment posterAlignment;
 
-  const SeriesCard({
+  const UpcomingEpisodeCard({
     super.key,
     required this.series,
-    required this.onTap,
-    this.borderRadius = const BorderRadius.all(Radius.circular(8.0)),
+    required this.airingEpisode,
+    this.posterAlignment = Alignment.center,
   });
 
   @override
-  State<SeriesCard> createState() => _SeriesCardState();
+  State<UpcomingEpisodeCard> createState() => _UpcomingEpisodeCardState();
 }
 
-class _SeriesCardState extends State<SeriesCard> {
+class _UpcomingEpisodeCardState extends State<UpcomingEpisodeCard> {
   bool _isHovering = false;
   bool _loading = true;
   bool _hasError = false;
@@ -50,7 +52,7 @@ class _SeriesCardState extends State<SeriesCard> {
   }
 
   @override
-  void didUpdateWidget(SeriesCard oldWidget) {
+  void didUpdateWidget(UpcomingEpisodeCard oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.series != widget.series) _loadImage();
   }
@@ -94,7 +96,7 @@ class _SeriesCardState extends State<SeriesCard> {
 
     Widget noImageWidget = LayoutBuilder(
       builder: (context, constraints) => Align(
-        alignment: Alignment.topCenter,
+        alignment: widget.posterAlignment,
         child: SizedBox(
           width: constraints.maxWidth,
           height: constraints.maxWidth * 1.05,
@@ -110,7 +112,7 @@ class _SeriesCardState extends State<SeriesCard> {
         placeholder: MemoryImage(kTransparentImage),
         image: _posterImageProvider!,
         fit: BoxFit.fitWidth,
-        alignment: Alignment.topCenter,
+        alignment: widget.posterAlignment,
         fadeInDuration: getDuration(const Duration(milliseconds: 250)),
         fadeInCurve: Curves.easeIn,
         imageErrorBuilder: (context, error, stackTrace) => noImageWidget,
@@ -125,7 +127,7 @@ class _SeriesCardState extends State<SeriesCard> {
       placeholder: MemoryImage(kTransparentImage),
       image: _posterImageProvider!,
       fit: BoxFit.fitWidth,
-      alignment: Alignment.topCenter,
+      alignment: widget.posterAlignment,
       fadeInDuration: getDuration(const Duration(milliseconds: 250)),
       fadeInCurve: Curves.easeIn,
       imageErrorBuilder: (context, error, stackTrace) => noImageWidget,
@@ -164,14 +166,14 @@ class _SeriesCardState extends State<SeriesCard> {
             StatusBarManager().hide();
             setState(() => _isHovering = false);
           },
-          onHover: (_) => StatusBarManager().showDelayed(widget.series.name),
+          onHover: (_) => StatusBarManager().showDelayed("Episode ${widget.airingEpisode.episode ?? '?'} - ${widget.series.name}"),
           cursor: SystemMouseCursors.click,
           child: ClipRRect(
-            borderRadius: widget.borderRadius,
+            borderRadius: const BorderRadius.all(Radius.circular(8.02)),
             child: AnimatedContainer(
               duration: getDuration(const Duration(milliseconds: 150)),
               decoration: BoxDecoration(
-                borderRadius: widget.borderRadius,
+                borderRadius: const BorderRadius.all(Radius.circular(8.02)),
                 color: Colors.transparent,
                 boxShadow: _isHovering
                     ? [
@@ -187,7 +189,7 @@ class _SeriesCardState extends State<SeriesCard> {
                 children: [
                   // Poster image
                   Positioned.fill(
-                    top: 0,
+                    
                     child: Container(
                       child: _getSeriesImage(),
                     ),
@@ -203,7 +205,7 @@ class _SeriesCardState extends State<SeriesCard> {
                   // ),
                   Card(
                     padding: EdgeInsets.zero,
-                    borderRadius: widget.borderRadius,
+                    borderRadius: const BorderRadius.all(Radius.circular(8.0)),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -222,33 +224,31 @@ class _SeriesCardState extends State<SeriesCard> {
                               children: [
                                 Text(
                                   widget.series.name,
-                                  style: Manager.bodyStrongStyle.copyWith(fontSize: 12),
                                   maxLines: 3,
+                                  style: Manager.bodyStrongStyle.copyWith(fontWeight: FontWeight.w600),
                                   overflow: TextOverflow.ellipsis,
                                 ),
-                                VDiv(4),
                                 Row(
+                                  // mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                   children: [
                                     Text(
-                                      '${widget.series.totalEpisodes} episodes',
-                                      style: Manager.captionStyle.copyWith(fontSize: 10),
+                                      _formatAiringTime(widget.airingEpisode.airingAt!),
+                                      style: FluentTheme.of(context).typography.caption?.copyWith(
+                                            
+                                            color: widget.series.dominantColor ?? FluentTheme.of(context).resources.textFillColorSecondary,
+                                          ),
+                                      overflow: TextOverflow.ellipsis,
                                     ),
                                     const Spacer(),
                                     Text(
-                                      '${(widget.series.watchedPercentage * 100).round()}%',
-                                      style: Manager.captionStyle.copyWith(fontSize: 10),
+                                      'Episode ${widget.airingEpisode.episode ?? '?'}',
+                                      style: FluentTheme.of(context).typography.caption?.copyWith(
+                                            fontWeight: FontWeight.w600,
+                                            color: lighten(widget.series.dominantColor ?? FluentTheme.of(context).resources.textFillColorSecondary, .4),
+                                          ),
+                                      overflow: TextOverflow.ellipsis,
                                     ),
                                   ],
-                                ),
-                                VDiv(8),
-                                SizedBox(
-                                  width: 200,
-                                  child: ProgressBar(
-                                    strokeWidth: 3.5,
-                                    value: widget.series.watchedPercentage * 100,
-                                    activeColor: widget.series.watchedPercentage == 0 ? Colors.transparent : widget.series.dominantColor,
-                                    backgroundColor: Color.lerp(Colors.black.withOpacity(0.2), widget.series.dominantColor, 0),
-                                  ),
                                 ),
                               ],
                             ),
@@ -301,14 +301,14 @@ class _SeriesCardState extends State<SeriesCard> {
                       child: GestureDetector(
                         onSecondaryTapDown: (_) => _contextMenuKey.currentState?.openMenu(),
                         child: InkWell(
-                          onTap: widget.onTap,
+                          onTap: null,
                           splashColor: mainColor.withOpacity(0.1),
                           highlightColor: mainColor.withOpacity(0.05),
-                          borderRadius: widget.borderRadius,
+                          borderRadius: const BorderRadius.all(Radius.circular(8.0)),
                           child: AnimatedContainer(
                             duration: getDuration(const Duration(milliseconds: 150)),
                             decoration: BoxDecoration(
-                              borderRadius: widget.borderRadius,
+                              borderRadius: const BorderRadius.all(Radius.circular(8.0)),
                               color: _isHovering ? mainColor.withOpacity(0.1) : Colors.transparent,
                             ),
                           ),
@@ -323,5 +323,23 @@ class _SeriesCardState extends State<SeriesCard> {
         ),
       ),
     );
+  }
+
+  String _formatAiringTime(int airingAt) {
+    final airingDate = DateTime.fromMillisecondsSinceEpoch(airingAt * 1000);
+    final now = DateTime.now();
+    final difference = airingDate.difference(now);
+
+    if (difference.isNegative) {
+      return 'Aired';
+    } else if (difference.inDays > 0) {
+      return 'Airs in ${difference.inDays}d';
+    } else if (difference.inHours > 0) {
+      return 'Airs in ${difference.inHours}h';
+    } else if (difference.inMinutes > 0) {
+      return 'Airs in ${difference.inMinutes}m';
+    } else {
+      return 'Soon';
+    }
   }
 }

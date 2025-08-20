@@ -64,6 +64,7 @@ final GlobalKey<_MiruRyoikiState> homeKey = GlobalKey<_MiruRyoikiState>();
 final GlobalKey<SeriesScreenState> seriesScreenKey = GlobalKey<SeriesScreenState>();
 final GlobalKey<SeriesScreenState> librarySeriesScreenKey = GlobalKey<SeriesScreenState>();
 final GlobalKey<LibraryScreenState> libraryScreenKey = GlobalKey<LibraryScreenState>();
+final GlobalKey<ReleaseCalendarScreenState> releaseCalendarScreenKey = GlobalKey<ReleaseCalendarScreenState>();
 final GlobalKey<AccountsScreenState> accountsKey = GlobalKey<AccountsScreenState>();
 
 final GlobalKey<State<StatefulWidget>> paletteOverlayKey = GlobalKey<State<StatefulWidget>>();
@@ -502,6 +503,8 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
                           if (_selectedIndex == index) {
                             // If clicking the same tab, reset its scroll position
                             _resetScrollPosition(index, animate: true);
+                            releaseCalendarScreenKey.currentState?.toggleFilter(false);
+                            releaseCalendarScreenKey.currentState?.focusToday();
                           }
                         },
                         onChanged: (index) => setState(() {
@@ -523,6 +526,10 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
                           // Register the selected pane
                           final item = _navigationMap[index]!;
                           navManager.pushPane(item['id'], item['title']);
+
+                          if (index == calendarIndex) {
+                            nextFrame(() => releaseCalendarScreenKey.currentState?.scrollToToday(animated: false));
+                          }
                         }),
                         displayMode: _isSeriesView ? PaneDisplayMode.compact : PaneDisplayMode.auto,
                         indicator: AnimatedNavigationIndicator(
@@ -581,6 +588,7 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
                             calendarIndex,
                             icon: movedPaneItemIcon(const Icon(FluentIcons.calendar)),
                             body: ReleaseCalendarScreen(
+                              key: releaseCalendarScreenKey,
                               onSeriesSelected: navigateToSeries,
                               scrollController: _calendarMap['controller'] as ScrollController,
                             ),
