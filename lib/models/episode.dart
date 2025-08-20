@@ -1,6 +1,5 @@
 import 'dart:io';
 
-import 'package:fluent_ui/fluent_ui.dart';
 
 import '../services/isolates/thumbnail_manager.dart';
 import '../utils/path_utils.dart';

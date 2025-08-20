@@ -6,12 +6,10 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart' as mat;
 import 'package:flutter_acrylic/window_effect.dart';
 import 'package:material_symbols_icons/symbols.dart';
-import 'package:miruryoiki/widgets/gradient_mask.dart';
 import 'package:miruryoiki/widgets/buttons/loading_button.dart';
 import 'package:miruryoiki/widgets/page/infobar.dart';
 import 'package:provider/provider.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:smooth_scroll_multiplatform/smooth_scroll_multiplatform.dart';
 import 'package:toggle_switch/toggle_switch.dart' as toggle;
 import 'dart:io';
 
@@ -21,7 +19,6 @@ import '../main.dart';
 import '../manager.dart';
 import '../models/formatter/action.dart';
 import '../models/series.dart';
-import '../services/anilist/provider/anilist_provider.dart';
 import '../services/navigation/dialogs.dart';
 import '../services/navigation/shortcuts.dart';
 import '../services/navigation/show_info.dart';
@@ -620,7 +617,7 @@ class SettingsScreenState extends State<SettingsScreen> {
           // Action buttons
           Row(
             children: [
-              // TODO
+              // TODO make this button UI better
               MouseButtonWrapper(
                 tooltip: 'View Series',
                 child: (_) => IconButton(

@@ -23,6 +23,7 @@ class NotificationsDao extends DatabaseAccessor<AppDatabase> with _$Notification
 
       // Double-check if any rows still remain as text (malformed / unexpected format) and fix them in Dart.
       final remaining = await customSelect(
+        // ignore: unnecessary_string_escapes
         'SELECT id, created_at FROM notifications WHERE typeof(created_at) = \"text\"',
         readsFrom: {notificationsTable},
       ).get();

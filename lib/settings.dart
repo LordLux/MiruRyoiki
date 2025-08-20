@@ -86,6 +86,7 @@ class SettingsManager extends ChangeNotifier {
     return defaultValue;
   }
 
+  // ignore: unused_element
   double _getDouble(String key, {required double defaultValue}) {
     if (!_settings.containsKey(key)) {
       // logTrace('Key $key not found in settings, returning default value: $defaultValue');

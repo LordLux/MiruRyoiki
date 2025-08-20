@@ -1,6 +1,5 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/gestures.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:miruryoiki/services/navigation/dialogs.dart';
 import 'package:miruryoiki/services/navigation/show_info.dart';
@@ -13,7 +12,7 @@ import '../../manager.dart';
 import '../library/library_provider.dart';
 import '../../utils/logging.dart';
 import '../../utils/screen_utils.dart';
-import 'statusbar/statusbar.dart';
+import 'statusbar.dart';
 
 class KeyboardState {
   static final ValueNotifier<bool> ctrlPressedNotifier = ValueNotifier<bool>(false);

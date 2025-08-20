@@ -18,7 +18,6 @@ import '../../../services/window/service.dart';
 import '../../../utils/path_utils.dart';
 import '../../../utils/screen_utils.dart';
 import '../../../utils/time_utils.dart';
-import 'progress.dart';
 
 class EasySplashScreen extends StatefulWidget {
   /// Actual Content of the splash

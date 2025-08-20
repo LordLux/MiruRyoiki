@@ -1,13 +1,11 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:miruryoiki/services/file_system/media_info.dart';
 import 'package:miruryoiki/utils/logging.dart';
 import 'package:path/path.dart';
 import 'package:video_data_utils/video_data_utils.dart';
 import 'package:win32/win32.dart';
 import 'package:win32_registry/win32_registry.dart';
 
-import '../../manager.dart';
 import '../../utils/path_utils.dart';
 import '../../utils/registry_utils.dart';
 
@@ -217,10 +215,10 @@ class MPCHCTracker with ChangeNotifier {
           final completedVideos = _checkForRemovedButCompleteVideos();
 
           // final changedFiles = await checkForUpdates(fullReindex: false);
-          //
+          
           // final allChanges = Map<String, double>.from(changedFiles);
           // allChanges.addAll(completedVideos);
-          // 
+          
           // if (allChanges.isNotEmpty) {
           //   log('Updated watch status for ${allChanges.length} episodes');
           //   if (onWatchStatusChanged != null) {

@@ -16,8 +16,6 @@ import 'utils/logging.dart';
 import 'utils/screen_utils.dart';
 
 class Manager {
-  static const int dynMouseScrollDuration = 150;
-  static const double dynMouseScrollScrollSpeed = 2;
   static const String appTitle = "MiruRyoiki";
 
   /// Indicates if the current dialog can be popped, used when dialogs have multiple 'views'

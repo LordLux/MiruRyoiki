@@ -15,7 +15,7 @@ bool kReturnTrueCallback() => true;
 bool kReturnFalseCallback() => false;
 
 Color getBarrierColor(Color? color, {bool override = false}) {
-  if (override && color != null) return color!;
+  if (override && color != null) return color;
 
   final Color baseColor = const Color(0xFF000000);
   if (color == null) return baseColor.withAlpha(0x84);

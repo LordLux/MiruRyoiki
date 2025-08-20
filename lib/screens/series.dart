@@ -1,21 +1,17 @@
 import 'dart:async';
-import 'dart:math' as math;
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/material.dart' as mat;
 import 'package:provider/provider.dart';
-import 'package:smooth_scroll_multiplatform/smooth_scroll_multiplatform.dart';
 import 'package:defer_pointer/defer_pointer.dart';
 
 import '../main.dart';
 import '../services/library/library_provider.dart';
 import '../services/navigation/show_info.dart';
-import '../services/navigation/statusbar/statusbar.dart';
-import '../utils/color_utils.dart';
+import '../services/navigation/statusbar.dart';
 import '../utils/path_utils.dart';
 import '../utils/text_utils.dart';
 import '../widgets/buttons/button.dart';
 import '../services/anilist/provider/anilist_provider.dart';
-import '../widgets/buttons/hyperlink.dart';
 import '../widgets/buttons/wrapper.dart';
 import '../widgets/dialogs/link_anilist_multi.dart';
 import '../widgets/dialogs/poster_select.dart';
@@ -27,12 +23,10 @@ import '../models/episode.dart';
 import '../services/anilist/linking.dart';
 import '../services/navigation/dialogs.dart';
 import '../services/navigation/shortcuts.dart';
-import '../utils/image_utils.dart';
 import '../utils/logging.dart';
 import '../utils/screen_utils.dart';
 import '../utils/time_utils.dart';
 import '../widgets/episode_grid.dart';
-import '../widgets/gradient_mask.dart';
 import '../widgets/page/header_widget.dart';
 import '../widgets/page/infobar.dart';
 import '../widgets/page/page.dart';
@@ -244,14 +238,6 @@ class SeriesScreenState extends State<SeriesScreen> {
         );
       },
     );
-  }
-
-  String _getDisplayPath(PathString path, PathString seriesPath) {
-    if (path == seriesPath) return 'Main Series Folder';
-    if (path.path.startsWith(seriesPath.path)) {
-      return path.path.substring(seriesPath.path.length + 1);
-    }
-    return path.path;
   }
 
   HeaderWidget _buildHeader(BuildContext context, Series series) {
@@ -576,7 +562,7 @@ class SeriesScreenState extends State<SeriesScreen> {
   }
 
   Widget _buildInfoBarContent(Series series) {
-    final libraryProvider = Provider.of<Library>(context, listen: false);
+    Provider.of<Library>(context, listen: false);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [

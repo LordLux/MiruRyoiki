@@ -2,7 +2,7 @@
 
 import 'dart:io';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart' show DialogRoute, Material, MaterialPageRoute, ScaffoldMessenger;
+import 'package:flutter/material.dart' show Material, MaterialPageRoute, ScaffoldMessenger;
 import 'package:fluent_ui/fluent_ui.dart' hide ColorExtension;
 import 'package:flutter/services.dart';
 import 'package:flutter_acrylic/flutter_acrylic.dart';
@@ -27,7 +27,7 @@ import 'widgets/connectivity_indicator.dart';
 import 'services/anilist/provider/anilist_provider.dart';
 import 'services/connectivity/connectivity_service.dart';
 import 'services/navigation/dialogs.dart';
-import 'services/navigation/statusbar/statusbar.dart';
+import 'services/navigation/statusbar.dart';
 import 'services/window/service.dart';
 import 'settings.dart';
 import 'widgets/dialogs/splash/splash_screen.dart';

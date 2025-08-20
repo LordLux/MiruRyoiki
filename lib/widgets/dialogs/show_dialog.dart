@@ -1,9 +1,10 @@
 // ignore: file_names
+// ignore_for_file: use_build_context_synchronously
+
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:miruryoiki/services/navigation/dialogs.dart';
 
 import '../../manager.dart';
-import '../../utils/screen_utils.dart';
 
 /// The default constraints for [ContentDialog]
 const kDefaultContentDialogConstraints = BoxConstraints(
@@ -59,6 +60,8 @@ Future<T?> showPaddedDialog<T extends Object?>({
       await Future.delayed(const Duration(milliseconds: 100));
     }
   }
+
+  if (!context.mounted) return null;
 
   return Navigator.of(
     context,

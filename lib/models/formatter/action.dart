@@ -767,24 +767,6 @@ Future<List<File>> _getVideoFilesInDir(Directory dir, List<String> extensions) a
   return files;
 }
 
-Future<bool> _hasRelatedMedia(String seriesPath, FormatterConfig config) async {
-  try {
-    final dir = Directory(seriesPath);
-
-    await for (final entity in dir.list(recursive: true)) {
-      if (entity is File && _isVideoFile(entity.path, config.videoExtensions)) {
-        final info = _analyzeFile(entity.path);
-        if (info.isRelatedMedia) //
-          return true;
-      }
-    }
-  } catch (e) {
-    logErr('Error checking for related media', e);
-  }
-
-  return false;
-}
-
 /// Cleans up a string by removing unwanted characters and reducing multiple spaces
 String cleanedString(String input) {
   // Remove unwanted characters and reduce multiple spaces

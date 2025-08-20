@@ -1,7 +1,8 @@
+// ignore_for_file: use_build_context_synchronously
+
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/material.dart' as mat;
 import 'package:material_symbols_icons/material_symbols_icons.dart';
-import 'package:miruryoiki/widgets/buttons/button.dart';
 import 'package:provider/provider.dart';
 
 import '../main.dart';
@@ -62,10 +63,8 @@ class _ReleaseNotificationWidgetState extends State<ReleaseNotificationWidget> {
   bool _isDialogToggling = false;
 
   void _showNotificationDialog() async {
-    if (_isDialogToggling || Manager.notificationsPopping) {
-      print('Dialog is already toggling');
-      return;
-    } // Prevent multiple clicks during toggle
+    // Prevent multiple clicks during toggle
+    if (_isDialogToggling || Manager.notificationsPopping) return;
 
     final currentDialog = Manager.navigation.currentView;
     if (Navigator.of(context, rootNavigator: true).canPop() && currentDialog?.level == NavigationLevel.dialog) {
@@ -76,12 +75,13 @@ class _ReleaseNotificationWidgetState extends State<ReleaseNotificationWidget> {
         _isDialogToggling = false;
         return;
       }
-      print('opening dialog');
       await Future.delayed(const Duration(milliseconds: 200));
       _isDialogToggling = false;
     }
     _notificationsOpen = true;
-
+    
+    if (!context.mounted) return;
+    
     await showManagedDialog(
       context: context,
       id: 'notifications',

@@ -19,7 +19,6 @@ import '../utils/time_utils.dart';
 import '../widgets/continue_episode_card.dart';
 import '../widgets/page/header_widget.dart';
 import '../widgets/page/page.dart';
-import '../widgets/series_card.dart';
 import '../manager.dart';
 import '../widgets/upcoming_episode_card.dart';
 

@@ -205,35 +205,6 @@ class SeriesDao extends DatabaseAccessor<AppDatabase> with _$SeriesDaoMixin {
     );
   }
 
-  Future<void> _saveMappings(int seriesId, List<AnilistMapping> mappings) async {
-    // Current in DB
-    final current = await (select(anilistMappingsTable) //
-          ..where((t) => t.seriesId.equals(seriesId))) //
-        .get();
-
-    final Map<int, AnilistMappingsTableData> byAniId = {
-      for (var m in current) m.anilistId: m //
-    };
-
-    for (final mapModel in mappings) {
-      final existing = byAniId[mapModel.anilistId];
-      final comp = AnilistMappingsTableCompanion(
-        seriesId: Value(seriesId),
-        localPath: Value(mapModel.localPath),
-        anilistId: Value(mapModel.anilistId),
-        title: Value(mapModel.title),
-        lastSynced: Value(mapModel.lastSynced),
-        anilistData: Value(mapModel.anilistData != null ? jsonEncode(mapModel.anilistData!.toJson()) : null),
-      );
-
-      if (existing == null) {
-        await into(anilistMappingsTable).insert(comp);
-      } else {
-        await (update(anilistMappingsTable)..where((t) => t.id.equals(existing.id))) //
-            .write(comp);
-      }
-    }
-  }
 
   // ---------- UPDATE HELPERS ----------
   Future<bool> updateSingleEpisode(Episode episode, int seasonId) async {

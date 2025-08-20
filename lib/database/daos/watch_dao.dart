@@ -7,7 +7,7 @@ part 'watch_dao.g.dart';
 
 @DriftAccessor(tables: [WatchRecordsTable])
 class WatchDao extends DatabaseAccessor<AppDatabase> with _$WatchDaoMixin {
-  WatchDao(AppDatabase db) : super(db);
+  WatchDao(super.db);
 
   Future<int> recordWatchEvent(
     String filePath,

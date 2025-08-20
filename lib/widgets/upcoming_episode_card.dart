@@ -6,10 +6,9 @@ import '../enums.dart';
 import '../manager.dart';
 
 import '../models/series.dart';
-import '../services/navigation/statusbar/statusbar.dart';
+import '../services/navigation/statusbar.dart';
 import '../utils/color_utils.dart';
 import '../utils/logging.dart';
-import '../utils/screen_utils.dart';
 import '../utils/time_utils.dart';
 import 'context_menu/series.dart';
 
@@ -322,15 +321,14 @@ class _UpcomingEpisodeCardState extends State<UpcomingEpisodeCard> {
 
   String _formatAiringTime(int airingAt) {
     final airingDate = DateTime.fromMillisecondsSinceEpoch(airingAt * 1000);
-    final now = DateTime.now();
     final difference = airingDate.difference(now);
 
     if (difference.isNegative) {
       return 'Aired';
     } else if (difference.inDays > 0) {
-      return 'Airs in ${difference.inDays}d';
+      return 'Airs in ${difference.inDays}d${difference.inHours % 24 > 0 ? ' ${difference.inHours % 24}h' : ''}';
     } else if (difference.inHours > 0) {
-      return 'Airs in ${difference.inHours}h';
+      return 'Airs in ${difference.inHours}h${difference.inMinutes % 60 > 0 ? ' ${difference.inMinutes % 60}m' : ''}';
     } else if (difference.inMinutes > 0) {
       return 'Airs in ${difference.inMinutes}m';
     } else {

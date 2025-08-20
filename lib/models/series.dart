@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'dart:math' show min;
 import 'dart:ui';
 
 import 'package:flutter/foundation.dart';
@@ -532,10 +531,7 @@ class Series {
   Hidden:                   $isHidden,
 )''';
   }
-
-  /// Short representation of the series
-  String toStringMini() => '''Series(${name.substring(0, min(30, name.length))}...)''';
-
+  
   /// Getter and setter for primaryAnilistId
   int? get primaryAnilistId => _primaryAnilistId ?? anilistId; // Fall back to the first mapping
 
@@ -939,7 +935,7 @@ class Series {
   }
 
   // Helper method to get specific media list entry for a given path
-  AnilistMediaListEntry? _getMediaListEntry(AnilistProvider anilistProvider) {
+  AnilistMediaListEntry? getMediaListEntry(AnilistProvider anilistProvider) {
     if (!isLinked) return null;
 
     // Make sure entries are populated

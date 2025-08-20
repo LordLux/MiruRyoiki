@@ -25,17 +25,15 @@ ColorScheme generateColorScheme(Color baseColor, {Brightness brightness = Bright
   }
 
   // For light theme
-  else {
-    final HSLColor hsl = HSLColor.fromColor(baseColor);
-    final adjustedColor = hsl.withSaturation((hsl.saturation * 0.9).clamp(0.0, 1.0)).withLightness((hsl.lightness * 1.2).clamp(0.0, 1.0)).toColor();
+  final HSLColor hsl = HSLColor.fromColor(baseColor);
+  final adjustedColor = hsl.withSaturation((hsl.saturation * 0.9).clamp(0.0, 1.0)).withLightness((hsl.lightness * 1.2).clamp(0.0, 1.0)).toColor();
 
-    return ColorScheme.light(
-      primary: baseColor,
-      secondary: adjustedColor,
-      surface: Color.lerp(Colors.white, baseColor, 0.1) ?? Colors.white,
-      background: Color.lerp(Colors.white, baseColor, 0.05) ?? Colors.white,
-    );
-  }
+  return ColorScheme.light(
+    primary: baseColor,
+    secondary: adjustedColor,
+    surface: Color.lerp(Colors.white, baseColor, 0.1) ?? Colors.white,
+    background: Color.lerp(Colors.white, baseColor, 0.05) ?? Colors.white,
+  );
 }
 
 Color darken(Color color, [double amount = 0.1]) {

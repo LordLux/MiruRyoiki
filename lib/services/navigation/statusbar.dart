@@ -4,7 +4,7 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:miruryoiki/utils/time_utils.dart';
 import 'package:miruryoiki/widgets/dialogs/splash/progress.dart';
 
-import '../../../manager.dart';
+import '../../manager.dart';
 
 /// Defines the visual style of the status bar
 class StatusBarStyle {

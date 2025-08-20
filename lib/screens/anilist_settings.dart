@@ -132,72 +132,69 @@ class AnilistAccountScreen extends StatelessWidget {
   Widget _buildUserInfo(BuildContext context, AnilistProvider provider) {
     final user = provider.currentUser!;
 
-    return Container(
-      
-      child: Column(
-        children: [
-          Row(
-            children: [
-              if (user.avatar != null)
-                Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    image: DecorationImage(
-                      image: CachedNetworkImageProvider(
-                        user.avatar!,
-                        errorListener: (error) {
-                          logWarn('Failed to load Anilist avatar image: $error');
-                        },
-                      ),
-                      fit: BoxFit.cover,
+    return Column(
+      children: [
+        Row(
+          children: [
+            if (user.avatar != null)
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  image: DecorationImage(
+                    image: CachedNetworkImageProvider(
+                      user.avatar!,
+                      errorListener: (error) {
+                        logWarn('Failed to load Anilist avatar image: $error');
+                      },
                     ),
-                  ),
-                )
-              else
-                Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Manager.accentColor.lighter,
-                  ),
-                  child: const Center(
-                    child: Icon(FluentIcons.contact, color: Colors.white),
+                    fit: BoxFit.cover,
                   ),
                 ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      user.name,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 18,
-                      ),
-                    ),
-                    Text('Anilist ID: ${user.id}'),
-                  ],
+              )
+            else
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Manager.accentColor.lighter,
+                ),
+                child: const Center(
+                  child: Icon(FluentIcons.contact, color: Colors.white),
                 ),
               ),
-            ],
-          ),
-          VDiv(16),
-          LoadingButton(
-            label: 'Logout',
-            isLoading: false,
-            isAlreadyBig: true,
-            onPressed: () async {
-              await provider.logout();
-              onLogout.call();
-              logInfo('Logged out of Anilist');
-            },
-          ),
-        ],
-      ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    user.name,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                    ),
+                  ),
+                  Text('Anilist ID: ${user.id}'),
+                ],
+              ),
+            ),
+          ],
+        ),
+        VDiv(16),
+        LoadingButton(
+          label: 'Logout',
+          isLoading: false,
+          isAlreadyBig: true,
+          onPressed: () async {
+            await provider.logout();
+            onLogout.call();
+            logInfo('Logged out of Anilist');
+          },
+        ),
+      ],
     );
   }
 

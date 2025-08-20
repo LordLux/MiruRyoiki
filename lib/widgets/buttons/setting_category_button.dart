@@ -3,7 +3,6 @@ import 'package:miruryoiki/widgets/buttons/button.dart';
 
 import '../../manager.dart';
 import '../../screens/settings.dart';
-import '../../utils/color_utils.dart';
 import '../cutout.dart';
 
 class SettingCategoryButton extends StandardButton {

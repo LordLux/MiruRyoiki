@@ -1,15 +1,12 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/material.dart' show InkWell, Material;
-import 'package:miruryoiki/models/anilist/anime.dart';
-import 'package:provider/provider.dart';
 import 'package:transparent_image/transparent_image.dart';
 import '../enums.dart';
 import '../manager.dart';
 
 import '../models/episode.dart';
 import '../models/series.dart';
-import '../services/library/library_provider.dart';
-import '../services/navigation/statusbar/statusbar.dart';
+import '../services/navigation/statusbar.dart';
 import '../utils/color_utils.dart';
 import '../utils/logging.dart';
 import '../utils/screen_utils.dart';
@@ -333,23 +330,5 @@ class _ContinueEpisodeCardState extends State<ContinueEpisodeCard> {
         ),
       ),
     );
-  }
-
-  String _formatAiringTime(int airingAt) {
-    final airingDate = DateTime.fromMillisecondsSinceEpoch(airingAt * 1000);
-    final now = DateTime.now();
-    final difference = airingDate.difference(now);
-
-    if (difference.isNegative) {
-      return 'Aired';
-    } else if (difference.inDays > 0) {
-      return 'Airs in ${difference.inDays}d';
-    } else if (difference.inHours > 0) {
-      return 'Airs in ${difference.inHours}h';
-    } else if (difference.inMinutes > 0) {
-      return 'Airs in ${difference.inMinutes}m';
-    } else {
-      return 'Soon';
-    }
   }
 }

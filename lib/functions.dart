@@ -28,13 +28,6 @@ void openFile(PathString path) async {
   await Future.microtask(() => OpenFile.open(path.path));
 }
 
-Widget NoImage([Widget? child]) {
-  return Container(
-    color: Colors.grey.withOpacity(0),
-    child: child ?? const Center(child: Text('No Image')),
-  );
-}
-
 void printHiddenSeries([String message = '', List<Series>? series]) {
   final library = Provider.of<Library>(Manager.context, listen: false);
   for (final series in series ?? library.series) {

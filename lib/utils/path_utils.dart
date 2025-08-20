@@ -24,16 +24,6 @@ class PathUtils {
     return p.relative(path, from: from);
   }
 
-  /// Check if a file exists
-  static Future<bool> fileExists(String path) async {
-    return await File(path).exists();
-  }
-
-  /// Check if a directory exists
-  static Future<bool> directoryExists(String path) async {
-    return await Directory(path).exists();
-  }
-
   static String? getFileName(String? path) {
     if (path == null || path.isEmpty) return null;
     return p.basename(path);

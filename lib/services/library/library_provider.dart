@@ -7,7 +7,6 @@ import 'package:collection/collection.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/foundation.dart';
 import 'package:miruryoiki/functions.dart';
-import 'package:open_app_file/open_app_file.dart';
 import 'package:path/path.dart' as p;
 import 'package:provider/provider.dart';
 

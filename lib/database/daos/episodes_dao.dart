@@ -9,7 +9,7 @@ part 'episodes_dao.g.dart';
 
 @DriftAccessor(tables: [EpisodesTable, SeasonsTable])
 class EpisodesDao extends DatabaseAccessor<AppDatabase> with _$EpisodesDaoMixin {
-  EpisodesDao(AppDatabase db) : super(db);
+  EpisodesDao(super.db);
 
   Future<List<EpisodesTableData>> getEpisodesForSeason(int seasonId) => (select(episodesTable) //
         ..where((t) => t.seasonId.equals(seasonId))) //

@@ -47,7 +47,7 @@ class AnilistProvider extends ChangeNotifier with WidgetsBindingObserver {
   DateTime? _lastListsCacheTime;
   Map<int, AnilistAnime> _animeCache = {};
   List<AnilistMutation> _pendingMutations = [];
-  final int maxCachedAnimeCount = 200; // TODO make this configurable
+  final int maxCachedAnimeCount = 250; // TODO make this configurable
   final Duration animeCacheValidityPeriod = Duration(days: 7); // TODO make this configurable
   
   /// Upcoming episodes cache
