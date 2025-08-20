@@ -14,7 +14,7 @@ import 'package:system_theme/system_theme.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:bitsdojo_window/bitsdojo_window.dart';
 import 'package:window_manager/window_manager.dart';
-import 'package:windows_single_instance/windows_single_instance.dart';
+import 'package:flutter_single_instance/flutter_single_instance.dart';
 import 'package:material_symbols_icons/material_symbols_icons.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
@@ -87,30 +87,27 @@ SeriesScreenState? getActiveSeriesScreenState() {
 void main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await WindowsSingleInstance.ensureSingleInstance(
-    Manager.parsedArgs(args).arguments,
-    "miruryoiki",
-    onSecondWindow: (secondInstanceArgs) {
-      log("Second instance args: $secondInstanceArgs");
-    },
-  );
+  // Ensures there's only one instance of the program
+  _ensureSingleInstance();
 
-  rootIsolateToken = ServicesBinding.rootIsolateToken;
+  // Only run on Windows and MacOS
+  if (!(Platform.isWindows || Platform.isMacOS)) throw UnimplementedError('This app is only supported on Windows (for now).');
 
-  // Only run on Windows
-  if (!Platform.isWindows) throw UnimplementedError('This app is only supported on Windows (for now).');
-
-  // Load custom mouse cursors
-  await initSystemMouseCursor();
-  await disposeSystemMouseCursor();
-  await initSystemMouseCursor();
-
-  await initializeMiruRyoiokiSaveDirectory();
+  // Initializes the MiruRyoiki save directory
+  await initializeMiruRyoikiSaveDirectory();
 
   // Initialize session-based error logging
   await initializeLoggingSession();
 
   Manager.parseArgs();
+
+  // Gets the root isolate token
+  rootIsolateToken = ServicesBinding.rootIsolateToken;
+
+  // Load custom mouse cursors
+  await initSystemMouseCursor();
+  await disposeSystemMouseCursor();
+  await initSystemMouseCursor();
 
   // Load environment variables
   await dotenv.load(fileName: '.env');
@@ -1071,6 +1068,17 @@ void setIcon() async {
     await windowManager.setIcon(iconPath);
   } else {
     logDebug('Icon file does not exist: $iconPath');
+  }
+}
+
+void _ensureSingleInstance() async {
+  if (!(await FlutterSingleInstance().isFirstInstance())) {
+    print("App is already running");
+
+    final err = await FlutterSingleInstance().focus();
+
+    if (err != null) print("Error focusing running instance: $err");
+    exit(0);
   }
 }
 

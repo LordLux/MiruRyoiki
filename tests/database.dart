@@ -11,7 +11,7 @@ import 'package:miruryoiki/utils/path_utils.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  initializeMiruRyoiokiSaveDirectory();
+  initializeMiruRyoikiSaveDirectory();
   late AppDatabase db;
   late SeriesDao dao;
 

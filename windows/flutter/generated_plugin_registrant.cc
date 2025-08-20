@@ -20,7 +20,6 @@
 #include <webview_windows/webview_windows_plugin.h>
 #include <window_manager/window_manager_plugin.h>
 #include <window_size/window_size_plugin.h>
-#include <windows_single_instance/windows_single_instance_plugin.h>
 
 void RegisterPlugins(flutter::PluginRegistry* registry) {
   AppLinksPluginCApiRegisterWithRegistrar(
@@ -51,6 +50,4 @@ void RegisterPlugins(flutter::PluginRegistry* registry) {
       registry->GetRegistrarForPlugin("WindowManagerPlugin"));
   WindowSizePluginRegisterWithRegistrar(
       registry->GetRegistrarForPlugin("WindowSizePlugin"));
-  WindowsSingleInstancePluginRegisterWithRegistrar(
-      registry->GetRegistrarForPlugin("WindowsSingleInstancePlugin"));
 }

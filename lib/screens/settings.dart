@@ -58,11 +58,19 @@ List<WindowEffect> _WindowsWindowEffects = [
   if (Manager.isWin11) WindowEffect.mica,
 ];
 
+List<WindowEffect> _MacOsWindowEffects = [
+  WindowEffect.disabled,
+  WindowEffect.solid,
+  WindowEffect.titlebar, // macOS translucent titlebar
+  WindowEffect.sidebar, // Finder-like sidebar effect
+  WindowEffect.windowBackground, // Native macOS window background
+  WindowEffect.contentBackground, // Content area background
+];
+
 // ignore: non_constant_identifier_names
 List<WindowEffect> get _PlatformWindowEffects => switch (defaultTargetPlatform) {
       TargetPlatform.windows => _WindowsWindowEffects,
-      TargetPlatform.macOS => [WindowEffect.disabled, WindowEffect.solid],
-      TargetPlatform.linux => [WindowEffect.disabled],
+      TargetPlatform.macOS => _MacOsWindowEffects,
       _ => [WindowEffect.disabled],
     };
 
@@ -697,7 +705,7 @@ class SettingsScreenState extends State<SettingsScreen> {
       tempColor = settings.accentColor;
     });
   }
-  
+
   @override
   Widget build(BuildContext context) {
     final library = Provider.of<Library>(context);
@@ -705,9 +713,7 @@ class SettingsScreenState extends State<SettingsScreen> {
 
     return MiruRyoikiHeaderInfoBarPage(
       headerWidget: HeaderWidget(
-        title: (_, __) => PageHeader(title: Transform.translate(
-          offset: Offset(-5, 0),
-          child: Text('Settings', style: Manager.titleLargeStyle))),
+        title: (_, __) => PageHeader(title: Transform.translate(offset: Offset(-5, 0), child: Text('Settings', style: Manager.titleLargeStyle))),
         headerPadding: EdgeInsets.zero,
       ),
       infobar: (noHeaderBanner) => _buildInfoBar(noHeaderBanner),
@@ -880,15 +886,15 @@ class SettingsScreenState extends State<SettingsScreen> {
                     isLoading: _isClearingThumbnailCache,
                     onPressed: () async {
                       setState(() => _isClearingThumbnailCache = true);
-                      
+
                       try {
                         // Clear all thumbnail cache using library method
                         await library.clearAllThumbnailCache();
-                        
+
                         // Also clear Flutter's image cache
                         imageCache.clear();
                         imageCache.clearLiveImages();
-                        
+
                         snackBar('Thumbnail cache cleared successfully', severity: InfoBarSeverity.success);
                       } catch (e, st) {
                         snackBar('Error clearing thumbnail cache: $e', severity: InfoBarSeverity.error, exception: e, stackTrace: st);

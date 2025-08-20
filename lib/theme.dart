@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter_acrylic/window.dart';
 import 'package:flutter_acrylic/window_effect.dart';
@@ -15,7 +17,7 @@ class AppTheme extends ChangeNotifier {
     _color = color;
     notifyListeners();
   }
-  
+
   ThemeMode _mode = ThemeMode.system;
   ThemeMode get mode => _mode;
   set mode(ThemeMode mode) {
@@ -53,14 +55,22 @@ class AppTheme extends ChangeNotifier {
 
   void setEffect(WindowEffect effect, BuildContext context) {
     windowEffect = effect;
+
+    Color effectColor = Colors.transparent;
+
+    //Windows
+    if (Platform.isWindows && [WindowEffect.solid, WindowEffect.acrylic].contains(effect)) {
+      effectColor = FluentTheme.maybeOf(context)?.micaBackgroundColor.withOpacity(0.05) ?? Colors.transparent;
+    } else
+    
+    // TODO MacOS
+    if (Platform.isMacOS && effect == WindowEffect.titlebar) {
+      effectColor = Colors.transparent;
+    }
+
     Window.setEffect(
       effect: effect,
-      color: [
-        WindowEffect.solid,
-        WindowEffect.acrylic,
-      ].contains(effect)
-          ? FluentTheme.maybeOf(context)?.micaBackgroundColor.withOpacity(0.05) ?? Colors.transparent
-          : Colors.transparent,
+      color: effectColor,
       dark: FluentTheme.maybeOf(context)?.brightness.isDark ?? false,
     );
   }

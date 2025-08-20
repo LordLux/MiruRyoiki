@@ -32,7 +32,7 @@ Future<void> initializeLoggingSession() async {
     _sessionId = '${sessionStart.year}${sessionStart.month.toString().padLeft(2, '0')}${sessionStart.day.toString().padLeft(2, '0')}_${sessionStart.hour.toString().padLeft(2, '0')}${sessionStart.minute.toString().padLeft(2, '0')}${sessionStart.second.toString().padLeft(2, '0')}';
 
     // Ensure MiruRyoiki directory exists
-    await initializeMiruRyoiokiSaveDirectory();
+    await initializeMiruRyoikiSaveDirectory();
 
     // Create logs subdirectory
     final logsDir = Directory(p.join(miruRyoikiSaveDirectory.path, 'logs'));
