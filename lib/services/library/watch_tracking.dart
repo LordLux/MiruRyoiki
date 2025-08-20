@@ -70,8 +70,8 @@ extension LibraryWatchTracking on Library {
     final newPct = newPercentage ?? _mpcTracker.getWatchPercentage(episode.path);
     final wasWatched = episode.watched;
 
-    if (episode.watchedPercentage != newPct) {
-      episode.watchedPercentage = newPct;
+    if (episode.progress != newPct) {
+      episode.progress = newPct;
 
       if (newPct >= MPCHCTracker.watchedThreshold && !wasWatched)
         episode.watched = true;

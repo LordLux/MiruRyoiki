@@ -1074,6 +1074,7 @@ void setIcon() async {
   }
 }
 
+// TODO if view Only Linked Series is enabled, series in unlinked go to watching
 // TODO fix library screen reloading of cached grouped/sorted series after setting as watched an episode a series
 // TODO fix library screen NOT reloading of cached grouped/sorted series after changing image
 // TODO fix image picker, if previously chosen local image, anilist image not showing

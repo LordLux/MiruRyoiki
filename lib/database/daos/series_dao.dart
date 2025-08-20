@@ -320,7 +320,7 @@ class SeriesDao extends DatabaseAccessor<AppDatabase> with _$SeriesDaoMixin {
   }
 
   EpisodesTableCompanion _episodeToCompanion(Episode e, int seasonId) {
-    return EpisodesTableCompanion(seasonId: Value(seasonId), name: Value(e.name), path: Value(e.path), thumbnailPath: e.thumbnailPath == null ? const Value.absent() : Value(e.thumbnailPath!), watched: Value(e.watched), watchedPercentage: Value(e.watchedPercentage), thumbnailUnavailable: Value(e.thumbnailUnavailable), metadata: e.metadata == null ? const Value.absent() : Value(e.metadata), mkvMetadata: e.mkvMetadata == null ? const Value.absent() : Value(e.mkvMetadata));
+    return EpisodesTableCompanion(seasonId: Value(seasonId), name: Value(e.name), path: Value(e.path), thumbnailPath: e.thumbnailPath == null ? const Value.absent() : Value(e.thumbnailPath!), watched: Value(e.watched), watchedPercentage: Value(e.progress), thumbnailUnavailable: Value(e.thumbnailUnavailable), metadata: e.metadata == null ? const Value.absent() : Value(e.metadata), mkvMetadata: e.mkvMetadata == null ? const Value.absent() : Value(e.mkvMetadata));
   }
 
   Episode _tableToEpisode(EpisodesTableData d) => Episode(
@@ -328,7 +328,7 @@ class SeriesDao extends DatabaseAccessor<AppDatabase> with _$SeriesDaoMixin {
         name: d.name,
         thumbnailPath: d.thumbnailPath,
         watched: d.watched,
-        watchedPercentage: d.watchedPercentage,
+        progress: d.watchedPercentage,
         thumbnailUnavailable: d.thumbnailUnavailable,
         metadata: d.metadata,
         mkvMetadata: d.mkvMetadata,

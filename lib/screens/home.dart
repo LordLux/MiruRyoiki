@@ -105,8 +105,12 @@ class _HomeScreenState extends State<HomeScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildSection(
+          title: 'Continue Watching',
+          child: _buildContinueWatchingSection(false),
+        ),
+        _buildSection(
           title: 'Next Up',
-          child: _buildContinueWatchingSection(),
+          child: _buildContinueWatchingSection(true),
         ),
         VDiv(8), // Reduced spacing between sections
         _buildSection(
@@ -128,7 +132,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildContinueWatchingSection() {
+  Widget _buildContinueWatchingSection(bool isNextUp) {
     final anilistProvider = Provider.of<AnilistProvider>(context);
     final library = Provider.of<Library>(context);
 
@@ -167,7 +171,7 @@ class _HomeScreenState extends State<HomeScreen> {
       return bProgress.compareTo(aProgress);
     });
 
-    return _buildContinueWatchingList(watchingSeries);
+    return _buildContinueWatchingList(watchingSeries, onlyStarted: isNextUp);
   }
 
   Widget _buildUpcomingEpisodesSection() {
@@ -328,15 +332,40 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildContinueWatchingList(List<Series> series) {
-    //TODO add an optional section 'Continue Watching' where there will be listed the last of the started but not completed episodes
+  Widget _buildContinueWatchingList(List<Series> series, {bool onlyStarted = false}) {
     return Consumer<AnilistProvider>(
       builder: (context, anilistProvider, _) {
         final onlySeriesWithNextEpisodes = series.where((s) {
           // Use the new progress manager to check if series has next episode
           final nextEpisode = Manager.anilistProgress.getNextEpisodeToWatchEpisode(s, anilistProvider);
-          return nextEpisode != null;
+          if (nextEpisode == null) return false;
+
+          // Filter based on onlyStarted parameter
+          if (onlyStarted) {
+            // Show only episodes that have been started (progress > 0)
+            return nextEpisode.progress > 0;
+          }
+          // Show only episodes that haven't been started (progress == 0)
+          return nextEpisode.progress == 0;
         }).toList();
+
+        // If this is the "Continue Watching" section (onlyStarted = true) and it's empty, don't show anything
+        if (onlyStarted && onlySeriesWithNextEpisodes.isEmpty) return const SizedBox.shrink();
+
+        // If this is the "Next Up" section (onlyStarted = false) and it's empty
+        if (!onlyStarted && onlySeriesWithNextEpisodes.isEmpty) {
+          // Check if "Continue Watching" has content
+          final startedSeries = series.where((s) {
+            final nextEpisode = Manager.anilistProgress.getNextEpisodeToWatchEpisode(s, anilistProvider);
+            return nextEpisode != null && nextEpisode.progress > 0;
+          }).toList();
+
+          // If "Continue Watching" is not empty, don't show "Next Up" section at all
+          if (startedSeries.isNotEmpty) return const SizedBox.shrink();
+
+          // If both sections would be empty, show empty state
+          return _buildEmptyState('No series to continue', 'Start watching some series from your library');
+        }
 
         return Row(
           crossAxisAlignment: CrossAxisAlignment.start,

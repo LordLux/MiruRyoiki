@@ -985,7 +985,7 @@ class LibraryScreenState extends State<LibraryScreen> {
           return aScore.compareTo(bScore);
         };
 
-      // Progress percentage from Local TODO prefer anilist
+      // Progress percentage from Local
       case SortOrder.progress:
         comparator = (a, b) => a.watchedPercentage.compareTo(b.watchedPercentage);
 

@@ -136,7 +136,7 @@ extension LibraryInitialization on Library {
           // Update watch percentages from tracker
           final trackerPercentage = _mpcTracker.getWatchPercentage(episode.path);
           if (trackerPercentage > 0.0) {
-            _series[seriesIndex].seasons[seasonIndex].episodes[episodeIndex].watchedPercentage = trackerPercentage;
+            _series[seriesIndex].seasons[seasonIndex].episodes[episodeIndex].progress = trackerPercentage;
             _series[seriesIndex].seasons[seasonIndex].episodes[episodeIndex].watched = _mpcTracker.isWatched(episode.path);
           }
           _series[seriesIndex].seasons[seasonIndex].episodes[episodeIndex].resetThumbnailStatus();
@@ -148,7 +148,7 @@ extension LibraryInitialization on Library {
         final episodeIndex = series.relatedMedia.indexOf(episode);
         final trackerPercentage = _mpcTracker.getWatchPercentage(episode.path);
         if (trackerPercentage > 0.0) {
-          _series[seriesIndex].relatedMedia[episodeIndex].watchedPercentage = trackerPercentage;
+          _series[seriesIndex].relatedMedia[episodeIndex].progress = trackerPercentage;
           _series[seriesIndex].relatedMedia[episodeIndex].watched = _mpcTracker.isWatched(episode.path);
         }
         _series[seriesIndex].relatedMedia[episodeIndex].resetThumbnailStatus();

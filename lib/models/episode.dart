@@ -12,7 +12,7 @@ class Episode {
   final int? episodeNumber;
   PathString? thumbnailPath;
   bool watched;
-  double watchedPercentage;
+  double progress;
   bool thumbnailUnavailable;
   Metadata? metadata;
   MkvMetadata? mkvMetadata;
@@ -24,7 +24,7 @@ class Episode {
     this.episodeNumber,
     this.thumbnailPath,
     this.watched = false,
-    this.watchedPercentage = 0.0,
+    this.progress = 0.0,
     this.thumbnailUnavailable = false,
     this.metadata,
     this.mkvMetadata,
@@ -114,7 +114,7 @@ class Episode {
       'episodeNumber': episodeNumber, // nullable
       'thumbnailPath': thumbnailPath?.pathMaybe, // nullable
       'watched': watched,
-      'watchedPercentage': watchedPercentage,
+      'watchedPercentage': progress,
       'thumbnailUnavailable': thumbnailUnavailable,
       'metadata': metadata?.toJson(),
       'mkvMetadata': mkvMetadata?.toJson(),
@@ -130,7 +130,7 @@ class Episode {
       episodeNumber: json['episodeNumber'],
       thumbnailPath: PathString.fromJson(json['thumbnailPath']),
       watched: json['watched'] ?? false,
-      watchedPercentage: json['watchedPercentage'] ?? 0.0,
+      progress: json['watchedPercentage'] ?? 0.0,
       thumbnailUnavailable: json['thumbnailUnavailable'] ?? false,
       metadata: json['metadata'] != null ? Metadata.fromJson(json['metadata']) : null,
       mkvMetadata: json['mkvMetadata'] != null ? MkvMetadata.fromJson(json['mkvMetadata']) : null,
@@ -185,7 +185,7 @@ class Episode {
       episodeNumber: episodeNumber ?? this.episodeNumber,
       thumbnailPath: thumbnailPath ?? this.thumbnailPath,
       watched: watched ?? this.watched,
-      watchedPercentage: watchedPercentage ?? this.watchedPercentage,
+      progress: watchedPercentage ?? this.progress,
       thumbnailUnavailable: thumbnailUnavailable ?? this.thumbnailUnavailable,
       metadata: metadata ?? this.metadata,
       mkvMetadata: mkvMetadata ?? this.mkvMetadata,

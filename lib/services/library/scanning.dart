@@ -282,7 +282,7 @@ extension LibraryScanning on Library {
       name: _cleanEpisodeName(p.basenameWithoutExtension(path.path)),
       metadata: metadata,
       watched: false,
-      watchedPercentage: 0.0,
+      progress: 0.0,
       thumbnailUnavailable: false,
     );
   }

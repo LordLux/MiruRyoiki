@@ -53,7 +53,7 @@ extension LibrarySeriesManagement on Library {
   }
 
   Future<void> refreshEpisode(Episode episode) async {
-    episode.watchedPercentage = _mpcTracker.getWatchPercentage(episode.path);
+    episode.progress = _mpcTracker.getWatchPercentage(episode.path);
     episode.watched = _mpcTracker.isWatched(episode.path);
   _version++;
     await _saveLibrary();
@@ -62,7 +62,7 @@ extension LibrarySeriesManagement on Library {
 
   void markEpisodeWatched(Episode episode, {bool watched = true, bool save = true}) {
     episode.watched = watched;
-    episode.watchedPercentage = watched ? 1.0 : 0.0;
+    episode.progress = watched ? 1.0 : 0.0;
 
     if (save) {
       // Set the flag indicating a series was modified

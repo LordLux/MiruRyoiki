@@ -128,7 +128,7 @@ class _HoverableEpisodeTileState extends State<HoverableEpisodeTile> {
                       ),
 
                       // Progress indicator
-                      if (widget.episode.watchedPercentage > 0)
+                      if (widget.episode.progress > 0)
                         Positioned(
                           left: 0,
                           right: 0,
@@ -149,7 +149,7 @@ class _HoverableEpisodeTileState extends State<HoverableEpisodeTile> {
                                     color: widget.series.dominantColor,
                                   ),
                                   height: 3.5,
-                                  width: (widget.episode.watchedPercentage > MPCHCTracker.watchedThreshold ? 1 : widget.episode.watchedPercentage) * constraints.maxWidth,
+                                  width: (widget.episode.progress > MPCHCTracker.watchedThreshold ? 1 : widget.episode.progress) * constraints.maxWidth,
                                 ),
                               ),
                             );
