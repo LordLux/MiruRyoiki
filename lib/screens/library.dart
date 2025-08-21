@@ -1,14 +1,14 @@
 import 'dart:convert';
+import 'dart:isolate';
 
 import 'package:fluent_ui/fluent_ui.dart';
-import 'package:flutter/foundation.dart';
 import 'package:miruryoiki/manager.dart';
 import 'package:provider/provider.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:smooth_scroll_multiplatform/smooth_scroll_multiplatform.dart';
 
 import '../main.dart';
-import '../models/anilist/anime.dart';
+import '../enums.dart';
 import '../models/anilist/user_data.dart';
 import '../models/anilist/user_list.dart';
 import '../services/anilist/queries/anilist_service.dart';
@@ -27,23 +27,7 @@ import '../widgets/buttons/switch_button.dart';
 import '../widgets/buttons/wrapper.dart';
 import '../widgets/gradient_mask.dart';
 import '../widgets/series_card.dart';
-
-enum LibraryView { all, linked }
-
-enum SortOrder {
-  alphabetical,
-  score,
-  progress,
-  lastModified,
-  dateAdded,
-  startDate,
-  completedDate,
-  averageScore,
-  releaseDate,
-  popularity,
-}
-
-enum GroupBy { none, anilistLists }
+import '../services/isolates/isolate_manager.dart';
 
 class LibraryScreen extends StatefulWidget {
   final ScrollController scrollController;
@@ -916,8 +900,10 @@ class LibraryScreenState extends State<LibraryScreen> {
     });
 
     final sortData = <int, Map<String, dynamic>>{};
+    final progressData = <int, double>{};
 
-    // Pre-fetch any provider-dependent data
+    // Pre-fetch any provider-dependent data including progress
+    final anilistProvider = context.read<AnilistProvider>();
     for (final series in series) {
       sortData[series.hashCode] = {
         'updatedAt': series.latestUpdatedAt, //        updatedAt    - list updated timestamp
@@ -928,16 +914,35 @@ class LibraryScreenState extends State<LibraryScreen> {
         'startDate': series.earliestReleaseDate, //    startDate    - release date
         'popularity': series.highestPopularity, //     popularity   - popularity
       };
+      
+      // Pre-calculate progress to avoid context access in isolate
+      if (series.isLinked) {
+        progressData[series.hashCode] = Manager.anilistProgress.getSeriesProgress(series, anilistProvider);
+      } else {
+        progressData[series.hashCode] = series.totalEpisodes > 0 ? series.watchedEpisodes / series.totalEpisodes : 0.0;
+      }
     }
 
     _currentSortOperation = Future.microtask(() async {
       try {
-        final sortedSeries = await compute(_sortSeriesInBackground, {
-          'series': series,
-          'sortOrder': _sortOrder.index,
-          'sortDescending': _sortDescending,
-          'sortData': sortData,
-        });
+        final isolateManager = IsolateManager();
+        
+        // Convert series to JSON for serialization across isolate boundary
+        final serializedSeries = series.map((s) => s.toJson()).toList();
+        
+        final sortParams = SortSeriesParams(
+          serializedSeries: serializedSeries,
+          sortOrderIndex: _sortOrder.index,
+          sortDescending: _sortDescending,
+          sortData: sortData,
+          progressData: progressData,
+          replyPort: ReceivePort().sendPort, // Will be replaced by isolate manager
+        );
+
+        final sortedSeries = await isolateManager.runIsolateWithProgress<SortSeriesParams, List<Series>>(
+          task: sortSeriesIsolate,
+          params: sortParams,
+        );
 
         if (mounted) {
           if (groupName != null) {
@@ -959,124 +964,6 @@ class LibraryScreenState extends State<LibraryScreen> {
         if (mounted) setState(() => _isProcessing = false);
       }
     });
-  }
-
-  static List<Series> _sortSeriesInBackground(Map<String, dynamic> params) {
-    final series = params['series'] as List<Series>;
-    final sortOrderIndex = params['sortOrder'] as int;
-    final sortDescending = params['sortDescending'] as bool;
-    final sortData = params['sortData'] as Map<int, Map<String, dynamic>>;
-    final sortOrder = SortOrder.values[sortOrderIndex];
-
-    final List<Series> seriesCopy = List.from(series);
-
-    Comparator<Series> comparator;
-
-    switch (sortOrder) {
-      // Alphabetical order by title
-      case SortOrder.alphabetical:
-        comparator = (a, b) => a.name.compareTo(b.name);
-
-      // Median score from Anilist
-      case SortOrder.score:
-        comparator = (a, b) {
-          final aScore = a.meanScore ?? 0;
-          final bScore = b.meanScore ?? 0;
-          return aScore.compareTo(bScore);
-        };
-
-      // Progress percentage from Local
-      case SortOrder.progress:
-        comparator = (a, b) => a.watchedPercentage.compareTo(b.watchedPercentage);
-
-      // Date the List Entry was last modified
-      case SortOrder.lastModified:
-        // Use timestamp from Anilist's updatedAt field
-        comparator = (a, b) {
-          final aUpdated = a.currentAnilistData?.updatedAt ?? 0;
-          final bUpdated = b.currentAnilistData?.updatedAt ?? 0;
-          return aUpdated.compareTo(bUpdated);
-        };
-
-      // Date the user added the series to their list
-      case SortOrder.dateAdded:
-        // Use timestamp from when the user added the series to their list
-        comparator = (a, b) {
-          final aCreated = sortData[a.hashCode]?['createdAt'] ?? 0;
-          final bCreated = sortData[b.hashCode]?['createdAt'] ?? 0;
-          return aCreated.compareTo(bCreated);
-        };
-
-      // Date the user started watching the series
-      case SortOrder.startDate:
-        comparator = (a, b) {
-          final aStarted = sortData[a.hashCode]?['startedAt'];
-          final bStarted = sortData[b.hashCode]?['startedAt'];
-
-          final aDate = aStarted != null ? DateValue.fromJson(aStarted).toDateTime() : null;
-          final bDate = bStarted != null ? DateValue.fromJson(bStarted).toDateTime() : null;
-
-          if (aDate == null && bDate == null) return 0;
-          if (aDate == null) return 1;
-          if (bDate == null) return -1;
-
-          return aDate.compareTo(bDate);
-        };
-
-      // Date the user completed watching the series
-      case SortOrder.completedDate:
-        comparator = (a, b) {
-          final aCompleted = sortData[a.hashCode]?['completedAt'];
-          final bCompleted = sortData[b.hashCode]?['completedAt'];
-
-          final aDate = aCompleted != null ? DateValue.fromJson(aCompleted).toDateTime() : null;
-          final bDate = bCompleted != null ? DateValue.fromJson(bCompleted).toDateTime() : null;
-
-          if (aDate == null && bDate == null) return 0;
-          if (aDate == null) return 1;
-          if (bDate == null) return -1;
-
-          return aDate.compareTo(bDate);
-        };
-
-      // Average score from Anilist
-      case SortOrder.averageScore:
-        comparator = (a, b) {
-          final aScore = a.currentAnilistData?.averageScore ?? 0;
-          final bScore = b.currentAnilistData?.averageScore ?? 0;
-          return aScore.compareTo(bScore);
-        };
-
-      // Release date from Anilist
-      case SortOrder.releaseDate:
-        comparator = (a, b) {
-          // Try to get release date from Anilist data
-          final aDate = a.currentAnilistData?.startDate?.toDateTime();
-          final bDate = b.currentAnilistData?.startDate?.toDateTime();
-
-          if (aDate == null && bDate == null) return 0;
-          if (aDate == null) return 1;
-          if (bDate == null) return -1;
-
-          return aDate.compareTo(bDate);
-        };
-
-      // Popularity from Anilist
-      case SortOrder.popularity:
-        comparator = (a, b) {
-          final aPopularity = a.currentAnilistData?.popularity ?? 0;
-          final bPopularity = b.currentAnilistData?.popularity ?? 0;
-          return aPopularity.compareTo(bPopularity);
-        };
-    }
-
-    // Apply the sorting direction
-    if (sortDescending)
-      seriesCopy.sort((a, b) => comparator(b, a)); // Reverse the comparison
-    else
-      seriesCopy.sort(comparator);
-
-    return seriesCopy;
   }
 
   Widget _buildGroupedView(

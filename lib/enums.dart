@@ -259,6 +259,23 @@ extension DurationX on Duration {
   }
 }
 
+enum LibraryView { all, linked }
+
+enum SortOrder {
+  alphabetical,
+  score,
+  progress,
+  lastModified,
+  dateAdded,
+  startDate,
+  completedDate,
+  averageScore,
+  releaseDate,
+  popularity,
+}
+
+enum GroupBy { none, anilistLists }
+
 extension DateTimeX on DateTime? {
   String pretty() {
     if (this == null) return 'null';

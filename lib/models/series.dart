@@ -1287,8 +1287,13 @@ class Series {
 
   int get watchedEpisodes {
     if (isLinked) {
-      final provider = Provider.of<AnilistProvider>(Manager.context, listen: false);
-      return Manager.anilistProgress.getWatchedEpisodesFromAnilist(this, provider);
+      try {
+        final provider = Provider.of<AnilistProvider>(Manager.context, listen: false);
+        return Manager.anilistProgress.getWatchedEpisodesFromAnilist(this, provider);
+      } catch (e) {
+        // Context not available in isolate
+        return seasons.fold(0, (sum, season) => sum + season.watchedCount) + relatedMedia.where((e) => e.watched).length;
+      }
     }
     // Fallback to local count
     return seasons.fold(0, (sum, season) => sum + season.watchedCount) + relatedMedia.where((e) => e.watched).length;
@@ -1296,8 +1301,13 @@ class Series {
 
   double get watchedPercentage {
     if (isLinked) {
-      final provider = Provider.of<AnilistProvider>(Manager.context, listen: false);
-      return Manager.anilistProgress.getSeriesProgress(this, provider);
+      try {
+        final provider = Provider.of<AnilistProvider>(Manager.context, listen: false);
+        return Manager.anilistProgress.getSeriesProgress(this, provider);
+      } catch (e) {
+        // Context not available in isolate
+        return totalEpisodes > 0 ? watchedEpisodes / totalEpisodes : 0.0;
+      }
     }
     // Fallback to local calculation
     return totalEpisodes > 0 ? watchedEpisodes / totalEpisodes : 0.0;
