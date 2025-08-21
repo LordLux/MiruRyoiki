@@ -27,7 +27,6 @@ import '../../widgets/dialogs/splash/progress.dart';
 import '../anilist/provider/anilist_provider.dart';
 import '../anilist/queries/anilist_service.dart';
 import '../file_system/cache.dart';
-import '../../services/player_trackers/mpchc.dart';
 import '../../services/navigation/show_info.dart';
 import '../../utils/logging.dart';
 import '../../utils/path_utils.dart';
@@ -49,7 +48,6 @@ class Library with ChangeNotifier {
   bool _isScanning = false;
   final ValueNotifier<(int, int)?> scanProgress = ValueNotifier(null);
   
-  late final MPCHCTracker _mpcTracker;
   final SettingsManager _settings;
   late final AppDatabase _db = AppDatabase();
   late final SeriesDao seriesDao = SeriesDao(_db);
@@ -68,14 +66,10 @@ class Library with ChangeNotifier {
   static const String settingsFileName = 'settings';
   static const String miruryoikiLibrary = 'library';
 
-  Library(this._settings) {
-    _mpcTracker = MPCHCTracker();
-    _mpcTracker.onWatchStatusChanged = _updateSpecificEpisodes;
-  }
+  Library(this._settings);
 
   @override
   void dispose() {
-    _mpcTracker.dispose();
     scanProgress.dispose();
     super.dispose();
   }

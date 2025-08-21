@@ -1483,7 +1483,7 @@ class SettingsScreenState extends State<SettingsScreen> {
               VDiv(12),
               Text(
                 '${Manager.appTitle} is a video tracking application that integrates with '
-                'Media Player Classic: Home Cinema to track your watched videos.',
+                'various media players to track your watched videos.',
                 style: Manager.bodyStyle,
               ),
               VDiv(24),
@@ -1492,8 +1492,8 @@ class SettingsScreenState extends State<SettingsScreen> {
                 content: Padding(
                   padding: EdgeInsets.only(right: 8.0),
                   child: Text(
-                    'This app reads data from the Windows Registry to detect videos played in MPC-HC. '
-                    'Please ensure MPC-HC is installed and configured properly.',
+                    'This app listens for playback events from various media players to track your watched videos. '
+                    'Please ensure your media player is installed and the Web Interface is enabled and configured properly.',
                     style: Manager.bodyStyle,
                   ),
                 ),

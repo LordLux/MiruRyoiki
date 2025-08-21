@@ -12,7 +12,6 @@ import 'services/episode_navigation/episode_navigator.dart';
 import 'services/navigation/shortcuts.dart';
 import 'settings.dart';
 import 'theme.dart';
-import 'utils/logging.dart';
 import 'utils/screen_utils.dart';
 
 class Manager {
@@ -26,11 +25,9 @@ class Manager {
   static List<String> accounts = [];
 
   static Uri? initialDeepLink;
-  static bool skipRegistryIndexing = false;
 
   static ArgParser parser = ArgParser()
-    ..addFlag('help', abbr: 'h', help: 'Show this help message.', negatable: false)
-    ..addFlag('skip-registry-indexing', defaultsTo: false, help: 'Skip indexing the registry on startup to look for changed keys.', negatable: false);
+    ..addFlag('help', abbr: 'h', help: 'Show this help message.', negatable: false);
   static ArgResults? _args;
   static ArgResults parsedArgs(List<String> args) {
     _args = parser.parse(args);
@@ -48,11 +45,6 @@ class Manager {
       // ignore: avoid_print
       print(parser.usage);
       exit(0);
-    }
-
-    if (args.wasParsed('skip-registry-indexing')) {
-      skipRegistryIndexing = true;
-      log('Skipping registry indexing on startup as requested.');
     }
   }
 

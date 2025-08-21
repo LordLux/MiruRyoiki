@@ -4,7 +4,6 @@ import 'dart:ui';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/material.dart' show InkWell, Material;
 import 'package:miruryoiki/services/navigation/statusbar.dart';
-import 'package:miruryoiki/services/player_trackers/mpchc.dart';
 
 import '../manager.dart';
 import '../models/episode.dart';
@@ -149,7 +148,7 @@ class _HoverableEpisodeTileState extends State<HoverableEpisodeTile> {
                                     color: widget.series.dominantColor,
                                   ),
                                   height: 3.5,
-                                  width: (widget.episode.progress > MPCHCTracker.watchedThreshold ? 1 : widget.episode.progress) * constraints.maxWidth,
+                                  width: (widget.episode.progress > 0.95 ? 1 : widget.episode.progress) * constraints.maxWidth,
                                 ),
                               ),
                             );

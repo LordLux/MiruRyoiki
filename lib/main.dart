@@ -1090,7 +1090,6 @@ void _ensureSingleInstance() async {
 // TODO fix the fact that HIDDEN series are not fetched from anilist when loading library (probably query asks for lists instead of full library of user)
 // TODO remember collapse/expanded state of seasons in series
 // TODO cache anime info
-// TODO add setting to choose whether user prefers to manually rescan registry with library or if automatic (current)
 // TODO add Anilist sync status and internet connection status to the status bar
 // TODO edit view options for library to separate sort and view (grid, list etc) from filters
 // TODO homepage title inside header like in library + view options to choose what to show on homepage

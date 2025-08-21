@@ -51,11 +51,23 @@ extension LibrarySeriesManagement on Library {
     await _saveLibrary();
     notifyListeners();
   }
+  
+  Future<void> playEpisode(Episode episode) async {
+    try {
+      openFile(episode.path);
+    } catch (e, stackTrace) {
+      snackBar(
+        'Could not play episode: ${episode.path}',
+        severity: InfoBarSeverity.error,
+        exception: e,
+        stackTrace: stackTrace,
+      );
+    }
+  }
 
   Future<void> refreshEpisode(Episode episode) async {
-    episode.progress = _mpcTracker.getWatchPercentage(episode.path);
-    episode.watched = _mpcTracker.isWatched(episode.path);
-  _version++;
+    // TODO get watched percentage and watched status from player
+    _version++;
     await _saveLibrary();
     notifyListeners();
   }

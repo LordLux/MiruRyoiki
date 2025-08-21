@@ -25,9 +25,6 @@ extension LibraryInitialization on Library {
     // 2. Initialize Anilist online features (only runs after scan is complete)
     await anilistProvider.initializeOnlineFeatures();
 
-    // Initialize MPC Tracker
-    if (!Manager.skipRegistryIndexing && !kDebugMode) await _mpcTracker.ensureInitialized();
-
     // 3. Validate Cache
     await ensureCacheValidated();
 
@@ -49,8 +46,6 @@ extension LibraryInitialization on Library {
 
     if (showSnackBar) snackBar('Reloading Library...', severity: InfoBarSeverity.info);
     await scanLocalLibrary();
-
-    await _mpcTracker.ensureInitialized();
 
     await ensureCacheValidated();
 
@@ -120,41 +115,5 @@ extension LibraryInitialization on Library {
 
   Future<void> ensureCacheValidated() async {
     if (!_cacheValidated) await cacheValidation();
-  }
-
-  void _updateWatchedStatusAndResetThumbnailFetchFailedAttemptsCount() {
-    if (!_mpcTracker.isInitialized) return;
-    logTrace('3 | Getting watched status for all series and resetting thumbnail fetch attempts');
-
-    for (final series in _series) {
-      // Update seasons/episodes
-      final seriesIndex = _series.indexOf(series);
-      for (final season in series.seasons) {
-        final seasonIndex = series.seasons.indexOf(season);
-        for (final episode in season.episodes) {
-          final episodeIndex = season.episodes.indexOf(episode);
-          // Update watch percentages from tracker
-          final trackerPercentage = _mpcTracker.getWatchPercentage(episode.path);
-          if (trackerPercentage > 0.0) {
-            _series[seriesIndex].seasons[seasonIndex].episodes[episodeIndex].progress = trackerPercentage;
-            _series[seriesIndex].seasons[seasonIndex].episodes[episodeIndex].watched = _mpcTracker.isWatched(episode.path);
-          }
-          _series[seriesIndex].seasons[seasonIndex].episodes[episodeIndex].resetThumbnailStatus();
-        }
-      }
-
-      // Update related media
-      for (final episode in series.relatedMedia) {
-        final episodeIndex = series.relatedMedia.indexOf(episode);
-        final trackerPercentage = _mpcTracker.getWatchPercentage(episode.path);
-        if (trackerPercentage > 0.0) {
-          _series[seriesIndex].relatedMedia[episodeIndex].progress = trackerPercentage;
-          _series[seriesIndex].relatedMedia[episodeIndex].watched = _mpcTracker.isWatched(episode.path);
-        }
-        _series[seriesIndex].relatedMedia[episodeIndex].resetThumbnailStatus();
-      }
-    }
-
-    Episode.resetAllFailedAttempts();
   }
 }
