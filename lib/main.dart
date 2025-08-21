@@ -17,6 +17,7 @@ import 'package:window_manager/window_manager.dart';
 import 'package:flutter_single_instance/flutter_single_instance.dart';
 import 'package:material_symbols_icons/material_symbols_icons.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:win32_registry/win32_registry.dart';
 
 import 'screens/home.dart';
 import 'screens/release_calendar.dart';
@@ -41,7 +42,6 @@ import 'screens/settings.dart';
 import 'services/anilist/auth.dart';
 import 'services/file_system/cache.dart';
 import 'services/navigation/navigation.dart';
-import 'services/file_system/registry.dart' as registry;
 import 'services/navigation/shortcuts.dart';
 import 'services/window/listener.dart';
 import 'theme.dart';
@@ -113,7 +113,7 @@ void main(List<String> args) async {
   await dotenv.load(fileName: '.env');
 
   // Register custom URL scheme for deep linking
-  await registry.register(mRyoikiAnilistScheme);
+  await _registerUrlScheme(mRyoikiAnilistScheme);
 
   // Load system theme color
   if (!kIsWeb && defaultTargetPlatform == TargetPlatform.windows) SystemTheme.accentColor.load();
@@ -581,15 +581,16 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
                               ],
                             ),
                           ),
-                          if (anilistProvider.isLoggedIn) buildPaneItem(
-                            calendarIndex,
-                            icon: movedPaneItemIcon(const Icon(FluentIcons.calendar)),
-                            body: ReleaseCalendarScreen(
-                              key: releaseCalendarScreenKey,
-                              onSeriesSelected: navigateToSeries,
-                              scrollController: _calendarMap['controller'] as ScrollController,
+                          if (anilistProvider.isLoggedIn)
+                            buildPaneItem(
+                              calendarIndex,
+                              icon: movedPaneItemIcon(const Icon(FluentIcons.calendar)),
+                              body: ReleaseCalendarScreen(
+                                key: releaseCalendarScreenKey,
+                                onSeriesSelected: navigateToSeries,
+                                scrollController: _calendarMap['controller'] as ScrollController,
+                              ),
                             ),
-                          ),
                         ],
                         footerItems: [
                           PaneItemSeparator(),
@@ -1079,6 +1080,32 @@ void _ensureSingleInstance() async {
 
     if (err != null) print("Error focusing running instance: $err");
     exit(0);
+  }
+}
+
+/// Registers a custom URL scheme for deep linking
+/// - Windows: Registers in Windows Registry
+/// - macOS: Handled by Info.plist (no runtime registration needed)
+/// - Other platforms: No-op
+Future<void> _registerUrlScheme(String scheme) async {
+  if (Platform.isWindows) await _registerWindowsUrlScheme(scheme);
+  // MacOS URL schemes are registered via Info.plist
+}
+
+Future<void> _registerWindowsUrlScheme(String scheme) async {
+  try {
+    String appPath = Platform.resolvedExecutable;
+    String protocolRegKey = 'Software\\Classes\\$scheme';
+
+    RegistryValue protocolRegValue = RegistryValue.string('URL Protocol', '');
+    String protocolCmdRegKey = 'shell\\open\\command';
+    RegistryValue protocolCmdRegValue = RegistryValue.string('', '"$appPath" "%1"');
+
+    final regKey = Registry.currentUser.createKey(protocolRegKey);
+    regKey.createValue(protocolRegValue);
+    regKey.createKey(protocolCmdRegKey).createValue(protocolCmdRegValue);
+  } catch (e) {
+    logErr('Warning: Could not register URL scheme: $e');
   }
 }
 

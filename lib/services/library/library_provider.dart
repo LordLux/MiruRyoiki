@@ -39,7 +39,6 @@ part 'initialization.dart';
 part 'persistence.dart';
 part 'scanning.dart';
 part 'series_management.dart';
-part 'watch_tracking.dart';
 part 'anilist_integration.dart';
 
 class Library with ChangeNotifier {

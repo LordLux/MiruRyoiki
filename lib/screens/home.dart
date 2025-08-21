@@ -100,23 +100,75 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildContent(Library library, SettingsManager settings) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildSection(
-          title: 'Continue Watching',
-          child: _buildContinueWatchingSection(true),
-        ),
-        _buildSection(
-          title: 'Next Up',
-          child: _buildContinueWatchingSection(false),
-        ),
-        VDiv(8), // Reduced spacing between sections
-        _buildSection(
-          title: 'Upcoming Episodes',
-          child: _buildUpcomingEpisodesSection(),
-        ),
-      ],
+    return Consumer<AnilistProvider>(
+      builder: (context, anilistProvider, _) {
+        // Get the base watching series data
+        final watchingSeries = _getWatchingSeries(anilistProvider, library);
+        
+        if (watchingSeries == null) {
+          // No watching list found - show error state
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildSection(
+                title: 'Continue Watching',
+                child: _buildEmptyState('No watching list found', 'Unable to find your watching list from Anilist'),
+              ),
+            ],
+          );
+        }
+        
+        if (watchingSeries.isEmpty) {
+          // No series in watching list - show empty state
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildSection(
+                title: 'Continue Watching',
+                child: _buildEmptyState('No series in your watching list', 'Link your series with Anilist and add them to your watching list'),
+              ),
+            ],
+          );
+        }
+
+        // Get series for each section
+        final continueWatchingSeries = _getSeriesForSection(watchingSeries, anilistProvider, onlyStarted: true);
+        final nextUpSeries = _getSeriesForSection(watchingSeries, anilistProvider, onlyStarted: false);
+
+        // Apply visibility rules
+        final showContinueWatching = continueWatchingSeries.isNotEmpty;
+        final showNextUp = nextUpSeries.isNotEmpty && !showContinueWatching;
+        final showEmptyState = !showContinueWatching && nextUpSeries.isEmpty;
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Continue Watching section
+            if (showContinueWatching) _buildSection(
+              title: 'Continue Watching',
+              child: _buildContinueWatchingList(continueWatchingSeries, anilistProvider, onlyStarted: true),
+            ),
+            
+            // Next Up section
+            if (showNextUp) _buildSection(
+              title: 'Next Up',
+              child: _buildContinueWatchingList(nextUpSeries, anilistProvider, onlyStarted: false),
+            ),
+            
+            // Empty state when both sections are empty
+            if (showEmptyState) _buildSection(
+              title: 'Continue Watching',
+              child: _buildEmptyState('No series to continue', 'Start watching some series from your library'),
+            ),
+
+            VDiv(8), // Reduced spacing between sections
+            _buildSection(
+              title: 'Upcoming Episodes',
+              child: _buildUpcomingEpisodesSection(),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -131,14 +183,12 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildContinueWatchingSection(bool isNextUp) {
-    final anilistProvider = Provider.of<AnilistProvider>(context);
-    final library = Provider.of<Library>(context);
-
+  /// Gets the base watching series from Anilist and library
+  List<Series>? _getWatchingSeries(AnilistProvider anilistProvider, Library library) {
     // Get the "Watching" list from Anilist user lists
     final watchingList = anilistProvider.userLists[AnilistListApiStatus.CURRENT.name_];
 
-    if (watchingList == null) return _buildEmptyState('No watching list found', 'Unable to find your watching list from Anilist');
+    if (watchingList == null) return null;
 
     // Filter to get only series that are in "Watching" list and in library
     final watchingSeries = library.series.where((series) {
@@ -150,8 +200,6 @@ class _HomeScreenState extends State<HomeScreen> {
         return watchingList.entries.any((entry) => entry.media.id == mapping.anilistId);
       });
     }).toList();
-
-    if (watchingSeries.isEmpty) return _buildEmptyState('No series in your watching list', 'Link your series with Anilist and add them to your watching list');
 
     // Sort by most recently updated first, then by progress percentage (higher first)
     watchingSeries.sort((a, b) {
@@ -170,7 +218,82 @@ class _HomeScreenState extends State<HomeScreen> {
       return bProgress.compareTo(aProgress);
     });
 
-    return _buildContinueWatchingList(watchingSeries, onlyStarted: isNextUp);
+    return watchingSeries;
+  }
+
+  /// Filters series for a specific section based on episode progress
+  List<Series> _getSeriesForSection(List<Series> watchingSeries, AnilistProvider anilistProvider, {required bool onlyStarted}) {
+    return watchingSeries.where((s) {
+      // Use the new progress manager to check if series has next episode
+      final nextEpisode = Manager.anilistProgress.getNextEpisodeToWatchEpisode(s, anilistProvider);
+      if (nextEpisode == null) return false;
+
+      // Filter based on onlyStarted parameter
+      if (onlyStarted) {
+        // Show only episodes that have been started (progress > 0)
+        return nextEpisode.progress > 0;
+      }
+      // Show only episodes that haven't been started (progress == 0)
+      return nextEpisode.progress == 0;
+    }).toList();
+  }
+
+  Widget _buildContinueWatchingList(List<Series> series, AnilistProvider anilistProvider, {required bool onlyStarted}) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: 50,
+          height: 280,
+          child: RotatedBox(
+            quarterTurns: -1,
+            child: StandardButton(
+              label: const Text('Random Entry'),
+              onPressed: () => _selectRandomEntry(series),
+            ),
+          ),
+        ),
+        HDiv(12),
+        Expanded(
+          child: HoverVisibleScrollbar(
+            height: 280,
+            builder: (context, scrollController) {
+              return ValueListenableBuilder(
+                valueListenable: KeyboardState.ctrlPressedNotifier,
+                builder: (context, isCtrlPressed, _) {
+                  return ListView.builder(
+                    controller: scrollController,
+                    physics: isCtrlPressed ? const NeverScrollableScrollPhysics() : null,
+                    scrollDirection: Axis.horizontal,
+                    itemCount: series.length,
+                    itemBuilder: (context, index) {
+                      final currentSeries = series[index];
+                      final bool isLast = index == series.length - 1;
+                      // Use the new progress manager to get next episode
+                      final nextEpisode = Manager.anilistProgress.getNextEpisodeToWatchEpisode(currentSeries, anilistProvider);
+                      if (nextEpisode == null) return const SizedBox.shrink();
+
+                      return Padding(
+                        padding: isLast ? EdgeInsets.zero : const EdgeInsets.only(right: 12),
+                        child: SizedBox(
+                          width: 200,
+                          child: ContinueEpisodeCard(
+                            series: currentSeries,
+                            episode: nextEpisode,
+                            onTap: () => _openEpisode(currentSeries, nextEpisode),
+                            progress: onlyStarted ? nextEpisode.progress : null, // Show progress only if this is "Continue Watching"
+                          ),
+                        ),
+                      );
+                    },
+                  );
+                },
+              );
+            },
+          ),
+        ),
+      ],
+    );
   }
 
   Widget _buildUpcomingEpisodesSection() {
@@ -326,100 +449,6 @@ class _HomeScreenState extends State<HomeScreen> {
               },
             );
           },
-        );
-      },
-    );
-  }
-
-  Widget _buildContinueWatchingList(List<Series> series, {bool onlyStarted = false}) {
-    return Consumer<AnilistProvider>(
-      builder: (context, anilistProvider, _) {
-        final onlySeriesWithNextEpisodes = series.where((s) {
-          // Use the new progress manager to check if series has next episode
-          final nextEpisode = Manager.anilistProgress.getNextEpisodeToWatchEpisode(s, anilistProvider);
-          if (nextEpisode == null) return false;
-
-          // Filter based on onlyStarted parameter
-          if (onlyStarted) {
-            // Show only episodes that have been started (progress > 0)
-            return nextEpisode.progress > 0;
-          }
-          // Show only episodes that haven't been started (progress == 0)
-          return nextEpisode.progress == 0;
-        }).toList();
-
-        // If this is the "Continue Watching" section (onlyStarted = true) and it's empty, don't show anything
-        if (onlyStarted && onlySeriesWithNextEpisodes.isEmpty) return const SizedBox.shrink();
-
-        // If this is the "Next Up" section (onlyStarted = false) and it's empty
-        if (!onlyStarted && onlySeriesWithNextEpisodes.isEmpty) {
-          // Check if "Continue Watching" has content
-          final startedSeries = series.where((s) {
-            final nextEpisode = Manager.anilistProgress.getNextEpisodeToWatchEpisode(s, anilistProvider);
-            return nextEpisode != null && nextEpisode.progress > 0;
-          }).toList();
-
-          // If "Continue Watching" is not empty, don't show "Next Up" section at all
-          if (startedSeries.isNotEmpty) return const SizedBox.shrink();
-
-          // If both sections would be empty, show empty state
-          return _buildEmptyState('No series to continue', 'Start watching some series from your library');
-        }
-
-        return Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            SizedBox(
-              width: 50,
-              height: 280,
-              child: RotatedBox(
-                quarterTurns: -1,
-                child: StandardButton(
-                  label: const Text('Random Entry'),
-                  onPressed: () => _selectRandomEntry(onlySeriesWithNextEpisodes),
-                ),
-              ),
-            ),
-            HDiv(12),
-            Expanded(
-              child: HoverVisibleScrollbar(
-                height: 280,
-                builder: (context, scrollController) {
-                  return ValueListenableBuilder(
-                    valueListenable: KeyboardState.ctrlPressedNotifier,
-                    builder: (context, isCtrlPressed, _) {
-                      return ListView.builder(
-                        controller: scrollController,
-                        physics: isCtrlPressed ? const NeverScrollableScrollPhysics() : null,
-                        scrollDirection: Axis.horizontal,
-                        itemCount: onlySeriesWithNextEpisodes.length,
-                        itemBuilder: (context, index) {
-                          final currentSeries = onlySeriesWithNextEpisodes[index];
-                          final bool isLast = index == onlySeriesWithNextEpisodes.length - 1;
-                          // Use the new progress manager to get next episode
-                          final nextEpisode = Manager.anilistProgress.getNextEpisodeToWatchEpisode(currentSeries, anilistProvider);
-                          if (nextEpisode == null) return const SizedBox.shrink();
-
-                          return Padding(
-                            padding: isLast ? EdgeInsets.zero : const EdgeInsets.only(right: 12),
-                            child: SizedBox(
-                              width: 200,
-                              child: ContinueEpisodeCard(
-                                series: currentSeries,
-                                episode: nextEpisode,
-                                onTap: () => _openEpisode(currentSeries, nextEpisode),
-                                progress: onlyStarted ? nextEpisode.progress : null, // Show progress only if this is "Continue Watching"
-                              ),
-                            ),
-                          );
-                        },
-                      );
-                    },
-                  );
-                },
-              ),
-            ),
-          ],
         );
       },
     );

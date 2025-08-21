@@ -123,24 +123,6 @@ class _CustomKeyboardListenerState extends State<CustomKeyboardListener> {
           final library = Provider.of<Library>(context, listen: false);
 
           if (library.initialized && !library.isIndexing) {
-            // Check if we're in series view and clear thumbnails for that series
-            final homeState = homeKey.currentState;
-            if (homeState != null && homeState.mounted && homeState.isSeriesView) {
-              final seriesScreenState = getActiveSeriesScreenState();
-              if (seriesScreenState != null && seriesScreenState.widget.seriesPath.pathMaybe != null) {
-                // Clear thumbnails for this specific series (don't await, do it in background)
-                library.clearThumbnailCacheForSeries(seriesScreenState.widget.seriesPath).then((_) {
-                  logTrace('Cleared thumbnail cache for series: ${seriesScreenState.widget.seriesPath.path}');
-
-                  // Also clear Flutter's image cache
-                  imageCache.clear();
-                  imageCache.clearLiveImages();
-                }).catchError((error) {
-                  logErr('Error clearing thumbnail cache for series: ${seriesScreenState.widget.seriesPath.path}', error);
-                });
-              }
-            }
-
             library.reloadLibrary(force: true);
           } else {
             if (!library.initialized) snackBar('Library is not initialized', severity: InfoBarSeverity.warning);
@@ -148,7 +130,7 @@ class _CustomKeyboardListenerState extends State<CustomKeyboardListener> {
           }
         } else
         //
-        // Reload + Clearing all Cache
+        // Reload + Clearing all Cache (Ctrl + Alt + Shift + R)
         if (isCtrlPressed && isShiftPressed && event.logicalKey == LogicalKeyboardKey.keyR && HardwareKeyboard.instance.isAltPressed) {
           final library = Provider.of<Library>(context, listen: false);
 
@@ -156,18 +138,34 @@ class _CustomKeyboardListenerState extends State<CustomKeyboardListener> {
             // Check if we're in series view and clear thumbnails for that series
             final homeState = homeKey.currentState;
             if (homeState != null && homeState.mounted) {
-              library.clearAllThumbnailCache().then((_) {
-                logTrace('Cleared all thumbnail cache');
+              if (homeState.isSeriesView) {
+                final seriesScreenState = getActiveSeriesScreenState();
+                if (seriesScreenState != null && seriesScreenState.widget.seriesPath.pathMaybe != null) {
+                  // Clear thumbnails for this specific series (don't await, do it in background)
+                  library.clearThumbnailCacheForSeries(seriesScreenState.widget.seriesPath).then((_) {
+                    logTrace('Cleared thumbnail cache for series: ${seriesScreenState.widget.seriesPath.path}');
 
-                // Also clear Flutter's image cache
-                imageCache.clear();
-                imageCache.clearLiveImages();
-              }).catchError((error) {
-                logErr('Error clearing all thumbnail cache', error);
-              });
+                    // Also clear Flutter's image cache
+                    imageCache.clear();
+                    imageCache.clearLiveImages();
+                  }).catchError((error) {
+                    logErr('Error clearing thumbnail cache for series: ${seriesScreenState.widget.seriesPath.path}', error);
+                  });
+                }
+              } else {
+                library.clearAllThumbnailCache().then((_) {
+                  logTrace('Cleared all thumbnail cache');
+
+                  // Also clear Flutter's image cache
+                  imageCache.clear();
+                  imageCache.clearLiveImages();
+                }).catchError((error) {
+                  logErr('Error clearing all thumbnail cache', error);
+                });
+              }
             }
 
-            library.reloadLibrary(force: true).then((_) => snackBar('Reloaded clearing Thumbnail Cache', severity: InfoBarSeverity.success));
+            library.reloadLibrary(force: true, showSnackBar: false).then((_) => snackBar('Reloaded clearing Thumbnail Cache', severity: InfoBarSeverity.success));
           } else {
             if (!library.initialized) snackBar('Library is not initialized', severity: InfoBarSeverity.warning);
             if (library.isIndexing) snackBar('Library is currently scanning\nPlease wait before reloading', severity: InfoBarSeverity.warning);
