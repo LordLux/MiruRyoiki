@@ -424,7 +424,7 @@ class Series {
           series._primaryAnilistId = json['primaryAnilistId'] as int?;
           // Validate that the primary ID exists in mappings
           if (series._primaryAnilistId != null && !mappings.any((m) => m.anilistId == series._primaryAnilistId)) {
-            logWarn('primaryAnilistId ${series._primaryAnilistId} not found in mappings');
+            logWarn('primaryAnilistId ${series._primaryAnilistId} not found in mappings for ${series.name}');
           }
         }
       } catch (e, st) {
@@ -808,10 +808,16 @@ class Series {
     int? earliestCreatedAt; //          createdAt    - added to list timestamp
     DateTime? earliestStartedAt; //     startedAt    - user started entry timestamp
     DateTime? latestCompletionDate; //  completedAt  - user completion date
-    int? highestUserScore; //           averageScore - user score
+    int? averageUserScore; //           averageScore - user score
     DateTime? earliestReleaseDate; //   startDate    - official release date
     DateTime? latestEndDate; //         endDate      - official end date
-    int? highestPopularity; //          popularity   - popularity
+    int? averagePopularity; //          popularity   - popularity
+
+    // Variables for calculating averages
+    int totalUserScore = 0;
+    int userScoreCount = 0;
+    int totalPopularity = 0;
+    int popularityCount = 0;
 
     // Process each mapping's media list entry
     for (final anilistId in entries.keys) {
@@ -842,9 +848,10 @@ class Series {
           bestEntry = entry;
         }
 
-        // User score - take the highest
-        if (entry.score != null && (highestUserScore == null || entry.score! > highestUserScore)) {
-          highestUserScore = entry.score;
+        // User score - collect for average calculation
+        if (entry.score != null) {
+          totalUserScore += entry.score!;
+          userScoreCount++;
         }
       }
 
@@ -863,12 +870,22 @@ class Series {
           latestEndDate = endDate;
         }
 
-        // Popularity - take the highest
-        if (animeData.popularity != null && (highestPopularity == null || animeData.popularity! > highestPopularity)) {
-          highestPopularity = animeData.popularity;
+        // Popularity - collect for average calculation
+        if (animeData.popularity != null) {
+          totalPopularity += animeData.popularity!;
+          popularityCount++;
         }
       }
     }
+
+    // Calculate averages
+    if (userScoreCount > 0) 
+      averageUserScore = int.parse((totalUserScore / userScoreCount).round().toString());
+    
+
+    if (popularityCount > 0) 
+      averagePopularity = int.parse((totalPopularity / popularityCount).round().toString());
+    
 
     // Cache the results
     _cachedSeriesInfo = (
@@ -877,10 +894,10 @@ class Series {
       earliestCreatedAt, //$3
       earliestStartedAt, //$4
       latestCompletionDate, //$5
-      highestUserScore, //$6
+      averageUserScore, //$6
       earliestReleaseDate, //$7
       latestEndDate, //$8
-      highestPopularity, //$9
+      averagePopularity, //$9
     );
 
     return _cachedSeriesInfo;

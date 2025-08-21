@@ -166,7 +166,7 @@ class LibraryScreenState extends State<LibraryScreen> {
     }
 
     // Notify widgets to rebuild
-    setState(() {});
+    Manager.setState();
   }
 
   /// Invalidate the sort cache, forcing a re-evaluation of the sorting.
@@ -896,7 +896,7 @@ class LibraryScreenState extends State<LibraryScreen> {
 
     _isProcessing = true;
     nextFrame(() {
-      if (mounted) setState(() {});
+      if (mounted) Manager.setState();
     });
 
     final sortData = <int, Map<String, dynamic>>{};
@@ -914,7 +914,7 @@ class LibraryScreenState extends State<LibraryScreen> {
         'startDate': series.earliestReleaseDate, //    startDate    - release date
         'popularity': series.highestPopularity, //     popularity   - popularity
       };
-      
+
       // Pre-calculate progress to avoid context access in isolate
       if (series.isLinked) {
         progressData[series.hashCode] = Manager.anilistProgress.getSeriesProgress(series, anilistProvider);
@@ -923,47 +923,58 @@ class LibraryScreenState extends State<LibraryScreen> {
       }
     }
 
-    _currentSortOperation = Future.microtask(() async {
-      try {
-        final isolateManager = IsolateManager();
-        
-        // Convert series to JSON for serialization across isolate boundary
-        final serializedSeries = series.map((s) => s.toJson()).toList();
-        
-        final sortParams = SortSeriesParams(
-          serializedSeries: serializedSeries,
-          sortOrderIndex: _sortOrder.index,
-          sortDescending: _sortDescending,
-          sortData: sortData,
-          progressData: progressData,
-          replyPort: ReceivePort().sendPort, // Will be replaced by isolate manager
-        );
+    _currentSortOperation = _applySortingWithIsolate(series, sortData, progressData, groupName);
+  }
 
-        final sortedSeries = await isolateManager.runIsolateWithProgress<SortSeriesParams, List<Series>>(
-          task: sortSeriesIsolate,
-          params: sortParams,
-        );
+  Future<void> _applySortingWithIsolate(
+    List<Series> series, 
+    Map<int, Map<String, dynamic>> sortData, 
+    Map<int, double> progressData, 
+    String? groupName
+  ) async {
+    try {
+      final isolateManager = IsolateManager();
 
-        if (mounted) {
-          if (groupName != null) {
-            _sortedGroupedSeries[groupName] = sortedSeries;
-          } else {
-            _sortedUngroupedSeries = sortedSeries;
-          }
-          setState(() {
-            _lastAppliedSortOrder = _sortOrder;
-            _lastAppliedSortDescending = _sortDescending;
-            _hasAppliedSorting = true;
-            // Record version after successful sort
-            final lib = context.read<Library>();
-            _lastVersionSorted = lib.version;
-          });
+      // Convert series to JSON for serialization across isolate boundary
+      final serializedSeries = series.map((s) => s.toJson()).toList();
+
+      final sortParams = SortSeriesParams(
+        serializedSeries: serializedSeries,
+        sortOrderIndex: _sortOrder.index,
+        sortDescending: _sortDescending,
+        sortData: sortData,
+        progressData: progressData,
+        replyPort: ReceivePort().sendPort, // Will be replaced by isolate manager
+      );
+
+      final sortedSeries = await isolateManager.runIsolateWithProgress<SortSeriesParams, List<Series>>(
+        task: sortSeriesIsolate,
+        params: sortParams,
+        onProgress: (processed, total) {
+          // Series sorting is a single operation, but we could add progress updates
+          // if the sorting algorithm becomes more complex in the future
+        },
+      );
+
+      if (mounted) {
+        if (groupName != null) {
+          _sortedGroupedSeries[groupName] = sortedSeries;
+        } else {
+          _sortedUngroupedSeries = sortedSeries;
         }
-      } finally {
-        _currentSortOperation = null;
-        if (mounted) setState(() => _isProcessing = false);
+        Manager.setState(() {
+          _lastAppliedSortOrder = _sortOrder;
+          _lastAppliedSortDescending = _sortDescending;
+          _hasAppliedSorting = true;
+          // Record version after successful sort
+          final lib = context.read<Library>();
+          _lastVersionSorted = lib.version;
+        });
       }
-    });
+    } finally {
+      _currentSortOperation = null;
+      Manager.setState(() => _isProcessing = false);
+    }
   }
 
   Widget _buildGroupedView(
