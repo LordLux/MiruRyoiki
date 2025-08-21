@@ -581,7 +581,7 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
                               ],
                             ),
                           ),
-                          buildPaneItem(
+                          if (anilistProvider.isLoggedIn) buildPaneItem(
                             calendarIndex,
                             icon: movedPaneItemIcon(const Icon(FluentIcons.calendar)),
                             body: ReleaseCalendarScreen(

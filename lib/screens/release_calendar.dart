@@ -51,7 +51,7 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
   String? _errorMessage;
   bool _showOnlyTodayEpisodes = false; // Track if we're filtering to today only
   Timer? _minuteRefreshTimer; // periodic UI refresh for relative labels & countdowns
-  bool _filterSelectedDate = true; // controls whether selected date filter is active
+  bool _filterSelectedDate = false; // controls whether selected date filter is active
 
   @override
   void initState() {
@@ -79,7 +79,7 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
     setState(() {
       _focusedMonth = DateTime(now.year, now.month, 1);
       _selectedDate = now; // Reset selection to today
-      _filterSelectedDate = true; // Enable filter for today
+      _filterSelectedDate = false; // Disable filter to show all episodes
     });
     nextFrame(() => scrollToToday(animated: false)); // Scroll immediately without animation
   }
@@ -513,10 +513,10 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
             setState(() {
               // Toggle filter off/on when clicking the same selected date
               if (isSelected) {
-                // DISABLE FILTER
-                focusToday();
+                // DISABLE FILTER - show all episodes when clicking the already selected date
+                _filterSelectedDate = false;
               } else {
-                // ENABLE FILTER
+                // ENABLE FILTER - show only this date's episodes when clicking a different date
                 _selectedDate = date;
                 _filterSelectedDate = true;
               }
@@ -524,6 +524,7 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
               if (_showOnlyTodayEpisodes && !_filterSelectedDate) {
                 _showOnlyTodayEpisodes = false;
               }
+              nextFrame(() => scrollToToday());
             });
           },
           style: ButtonStyle(
