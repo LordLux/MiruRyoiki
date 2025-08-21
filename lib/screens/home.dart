@@ -41,6 +41,8 @@ Color get moreGradientColor => shiftHue(Manager.accentColor.lighter, 10);
 
 class _HomeScreenState extends State<HomeScreen> {
   Timer? _minuteRefreshTimer; // refresh relative times every minute
+  Future<Map<int, AiringEpisode?>>? _cachedUpcomingEpisodesFuture;
+  List<int>? _lastRequestedAnimeIds;
 
   @override
   void initState() {
@@ -54,6 +56,14 @@ class _HomeScreenState extends State<HomeScreen> {
   void dispose() {
     _minuteRefreshTimer?.cancel();
     super.dispose();
+  }
+
+  bool _listsEqual<T>(List<T> a, List<T> b) {
+    if (a.length != b.length) return false;
+    for (int i = 0; i < a.length; i++) {
+      if (a[i] != b[i]) return false;
+    }
+    return true;
   }
 
   void _selectRandomEntry(List<Series> series) {
@@ -343,9 +353,18 @@ class _HomeScreenState extends State<HomeScreen> {
     }).toList();
 
     if (seriesWithUpcomingEpisodes.isEmpty) {
+      // Check if we need to create or reuse the cached future
+      final currentAnimeIds = animeIds.toList();
+      if (_cachedUpcomingEpisodesFuture == null || 
+          _lastRequestedAnimeIds == null ||
+          !_listsEqual(_lastRequestedAnimeIds!, currentAnimeIds)) {
+        _lastRequestedAnimeIds = currentAnimeIds;
+        _cachedUpcomingEpisodesFuture = anilistProvider.getUpcomingEpisodes(currentAnimeIds);
+      }
+      
       // If no cached data, try to fetch fresh data
       return FutureBuilder<Map<int, AiringEpisode?>>(
-        future: anilistProvider.getUpcomingEpisodes(animeIds.toList()),
+        future: _cachedUpcomingEpisodesFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return Container(

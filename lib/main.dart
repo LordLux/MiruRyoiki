@@ -460,7 +460,7 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
                   duration: shortDuration,
                   padding: EdgeInsets.only(
                     top: _isSecondaryTitleBarVisible ? ScreenUtils.kTitleBarHeight : getTitleBarHeight(isFullscreen),
-                    bottom: anilistProvider.isOffline ? 0 : 0,
+                    bottom: 0,
                   ),
                   child: AnimatedContainer(
                     duration: dimDuration,
@@ -474,8 +474,8 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
                         return Column(
                           children: [
                             // Offline banner
-                            const OfflineBanner(),
                             Expanded(child: body!),
+                            const OfflineBanner(),
                             ValueListenableBuilder(
                               valueListenable: LibraryScanProgressManager().showingNotifier,
                               builder: (context, isShowing, child) {
@@ -759,9 +759,7 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
     );
   }
 
-  double getTitleBarHeight(bool isFullscreen) {
-    return isFullscreen ? 0.0 : ScreenUtils.kTitleBarHeight;
-  }
+  double getTitleBarHeight(bool isFullscreen) => isFullscreen ? 0.0 : ScreenUtils.kTitleBarHeight;
 
   /// Custom title bar with menu bar and window buttons
   Widget _buildTitleBar({bool isSecondary = false}) {
@@ -831,23 +829,27 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
                         children: [
                           Padding(
                             padding: const EdgeInsets.only(right: 8.0),
-                            child: ReleaseNotificationWidget(
-                              onMorePressed: (ctx) async {
-                                // Navigate to calendar screen
-                                closeDialog(ctx);
-                                await Future.delayed(const Duration(milliseconds: 100));
-                                setState(() {
-                                  if (_isSeriesView && _selectedSeriesPath != null) exitSeriesView();
-
-                                  _selectedIndex = calendarIndex;
-                                  _resetScrollPosition(calendarIndex);
-
-                                  final navManager = Manager.navigation;
-
-                                  final item = _navigationMap[calendarIndex]!;
-                                  navManager.clearAndPushPane(item['id'], item['title']);
-                                });
-                              },
+                            child: AnimatedSlide(
+                              duration: shortDuration,
+                              offset: _isSecondaryTitleBarVisible ? const Offset(1.5, 0) : const Offset(0, 0),
+                              child: ReleaseNotificationWidget(
+                                onMorePressed: (ctx) async {
+                                  // Navigate to calendar screen
+                                  closeDialog(ctx);
+                                  await Future.delayed(const Duration(milliseconds: 100));
+                                  setState(() {
+                                    if (_isSeriesView && _selectedSeriesPath != null) exitSeriesView();
+                            
+                                    _selectedIndex = calendarIndex;
+                                    _resetScrollPosition(calendarIndex);
+                            
+                                    final navManager = Manager.navigation;
+                            
+                                    final item = _navigationMap[calendarIndex]!;
+                                    navManager.clearAndPushPane(item['id'], item['title']);
+                                  });
+                                },
+                              ),
                             ),
                           ),
                           SizedBox(

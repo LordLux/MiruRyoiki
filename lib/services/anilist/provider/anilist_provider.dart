@@ -54,6 +54,9 @@ class AnilistProvider extends ChangeNotifier with WidgetsBindingObserver {
   Map<int, AiringEpisode?> _upcomingEpisodesCache = {};
   DateTime? _lastUpcomingEpisodesFetch;
   final Duration upcomingEpisodesCacheValidityPeriod = Duration(minutes: 15); // Cache for 15 minutes
+  
+  // Prevent duplicate requests
+  Future<Map<int, AiringEpisode?>>? _currentUpcomingEpisodesRequest;
   final String lists_cache = 'anilist_lists_cache';
   final String user_cache = 'anilist_user_cache';
   final String anime_cache = 'anilist_anime_cache.json';

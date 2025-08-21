@@ -97,6 +97,12 @@ extension AnilistProviderAnimeCache on AnilistProvider {
   Future<Map<int, AiringEpisode?>> getUpcomingEpisodes(List<int> animeIds) async {
     if (!isLoggedIn) return {};
     
+    // If there's already a request in progress, wait for it instead of making a new one
+    if (_currentUpcomingEpisodesRequest != null) {
+      logTrace('Waiting for existing upcoming episodes request to complete');
+      return await _currentUpcomingEpisodesRequest!;
+    }
+    
     // Check if we have cached data and it's still valid
     final bool hasCachedData = _upcomingEpisodesCache.isNotEmpty;
     final bool cacheIsValid = _lastUpcomingEpisodesFetch != null &&
@@ -123,7 +129,10 @@ extension AnilistProviderAnimeCache on AnilistProvider {
     
     try {
       logTrace('Fetching fresh upcoming episodes data from API');
-      final freshData = await _anilistService.getUpcomingEpisodes(animeIds);
+      
+      // Create and store the request to prevent duplicates
+      _currentUpcomingEpisodesRequest = _anilistService.getUpcomingEpisodes(animeIds);
+      final freshData = await _currentUpcomingEpisodesRequest!;
       
       // Update cache with fresh data
       _upcomingEpisodesCache.addAll(freshData);
@@ -146,6 +155,9 @@ extension AnilistProviderAnimeCache on AnilistProvider {
       }
       
       return {};
+    } finally {
+      // Clear the current request to allow new ones
+      _currentUpcomingEpisodesRequest = null;
     }
   }
 
@@ -157,7 +169,7 @@ extension AnilistProviderAnimeCache on AnilistProvider {
     );
     
     // Check if we should refresh in background
-    if (refreshInBackground && isLoggedIn && !_isOffline) {
+    if (refreshInBackground && isLoggedIn && !_isOffline && _currentUpcomingEpisodesRequest == null) {
       final bool cacheIsStale = _lastUpcomingEpisodesFetch == null ||
           now.difference(_lastUpcomingEpisodesFetch!) > upcomingEpisodesCacheValidityPeriod;
       

@@ -204,12 +204,14 @@ class _WindowCaptionState extends State<WindowCaption> with WindowListener {
   @override
   void onWindowMaximize() {
     WindowStateService.saveWindowState();
+    WindowStateService.toggleFullScreen(false);
     setState(() {});
   }
 
   @override
   void onWindowUnmaximize() {
     WindowStateService.saveWindowState();
+    WindowStateService.toggleFullScreen(false);
     setState(() {});
   }
 }
