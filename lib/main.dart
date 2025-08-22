@@ -525,7 +525,11 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
                           navManager.pushPane(item['id'], item['title']);
 
                           if (index == calendarIndex) {
-                            nextFrame(() => releaseCalendarScreenKey.currentState?.scrollToToday(animated: false));
+                            nextFrame(() {
+                              releaseCalendarScreenKey.currentState?.scrollToToday(animated: false);
+                              // Refresh notifications and release data when navigating to calendar
+                              releaseCalendarScreenKey.currentState?.loadReleaseData();
+                            });
                           }
                         }),
                         displayMode: _isSeriesView ? PaneDisplayMode.compact : PaneDisplayMode.auto,
@@ -847,6 +851,11 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
                             
                                     final item = _navigationMap[calendarIndex]!;
                                     navManager.clearAndPushPane(item['id'], item['title']);
+                                  });
+                                  
+                                  // Refresh the release calendar after navigation
+                                  nextFrame(() {
+                                    releaseCalendarScreenKey.currentState?.loadReleaseData();
                                   });
                                 },
                               ),

@@ -58,7 +58,7 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
     super.initState();
     // Initial load & scroll after first frame
     nextFrame(() {
-      _loadReleaseData();
+      loadReleaseData();
       _itemPositionsListener.itemPositions.addListener(_updateSpacerHeight);
       nextFrame(() => scrollToToday());
     });
@@ -136,7 +136,7 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
     );
   }
 
-  Future<void> _loadReleaseData() async {
+  Future<void> loadReleaseData() async {
     if (_isLoading) return;
 
     setState(() => _isLoading = true);
@@ -149,6 +149,19 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
       if (!anilistProvider.isLoggedIn || anilistProvider.isOffline) {
         setState(() => _isLoading = false);
         return;
+      }
+
+      // Sync notifications to get the latest data before loading
+      try {
+        final anilistService = AnilistService();
+        await anilistService.syncNotifications(
+          database: library.database,
+          types: [NotificationType.AIRING, NotificationType.MEDIA_DATA_CHANGE],
+          maxPages: 2,
+        );
+      } catch (e) {
+        // Log but don't fail - we can still show cached notifications
+        logErr('Failed to sync notifications for release calendar', e);
       }
 
       // Get date range (±2 weeks from today for wider view)
@@ -624,7 +637,7 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
           Text(_errorMessage!, style: FluentTheme.of(context).typography.subtitle),
           VDiv(16),
           Button(
-            onPressed: _loadReleaseData,
+            onPressed: loadReleaseData,
             child: const Text('Retry'),
           ),
         ],

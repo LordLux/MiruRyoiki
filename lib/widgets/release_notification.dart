@@ -1,5 +1,6 @@
 // ignore_for_file: use_build_context_synchronously
 
+import 'dart:async';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/material.dart' as mat;
 import 'package:material_symbols_icons/material_symbols_icons.dart';
@@ -7,11 +8,13 @@ import 'package:provider/provider.dart';
 
 import '../main.dart';
 import '../manager.dart';
+import '../models/notification.dart';
 import '../services/anilist/provider/anilist_provider.dart';
 import '../services/anilist/queries/anilist_service.dart';
 import '../services/library/library_provider.dart';
 import '../services/navigation/dialogs.dart';
 import '../services/navigation/navigation.dart';
+import '../utils/logging.dart';
 import 'dialogs/notifications.dart';
 
 class ReleaseNotificationWidget extends StatefulWidget {
@@ -30,6 +33,7 @@ class _ReleaseNotificationWidgetState extends State<ReleaseNotificationWidget> {
   AnilistService? _anilistService;
   bool _notificationsOpen = false;
   int _unreadCount = 0;
+  Timer? _refreshTimer;
 
   @override
   void initState() {
@@ -37,11 +41,26 @@ class _ReleaseNotificationWidgetState extends State<ReleaseNotificationWidget> {
     _initializeService();
   }
 
+  @override
+  void dispose() {
+    _refreshTimer?.cancel();
+    super.dispose();
+  }
+
   Future<void> _initializeService() async {
     final anilistProvider = Provider.of<AnilistProvider>(context, listen: false);
     if (anilistProvider.isLoggedIn) {
       _anilistService = AnilistService();
       await _loadNotifications();
+      
+      // Set up a periodic refresh for notifications
+      _refreshTimer = Timer.periodic(const Duration(minutes: 5), (timer) {
+        if (mounted && _anilistService != null) {
+          _loadNotifications();
+        } else {
+          timer.cancel();
+        }
+      });
     }
   }
 
@@ -50,7 +69,19 @@ class _ReleaseNotificationWidgetState extends State<ReleaseNotificationWidget> {
 
     final library = Provider.of<Library>(context, listen: false);
     try {
-      // Get the actual unread count from database instead of counting limited cached results
+      // First, try to sync fresh notifications from the API
+      try {
+        await _anilistService!.syncNotifications(
+          database: library.database,
+          types: [NotificationType.AIRING, NotificationType.MEDIA_DATA_CHANGE],
+          maxPages: 2,
+        );
+      } catch (e) {
+        // If sync fails, we'll still get cached notifications below
+        logErr('Failed to sync notifications in notification widget', e);
+      }
+
+      // Get the actual unread count from database
       final unreadCount = await _anilistService!.getUnreadCount(library.database);
       setState(() {
         _unreadCount = unreadCount;
@@ -65,6 +96,9 @@ class _ReleaseNotificationWidgetState extends State<ReleaseNotificationWidget> {
   void _showNotificationDialog() async {
     // Prevent multiple clicks during toggle
     if (_isDialogToggling || Manager.notificationsPopping) return;
+
+    // Refresh notifications before showing dialog
+    await _loadNotifications();
 
     final currentDialog = Manager.navigation.currentView;
     if (Navigator.of(context, rootNavigator: true).canPop() && currentDialog?.level == NavigationLevel.dialog) {

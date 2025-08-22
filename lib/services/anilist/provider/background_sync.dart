@@ -160,7 +160,10 @@ extension AnilistProviderBackgroundSync on AnilistProvider {
           refreshUserData();
           refreshUserLists(showSnackBar: false);
           // Trigger a manual connectivity check
-          _connectivityService.checkConnectivity();
+          // _connectivityService.checkConnectivity(); already done inside refreshUserLists
+          
+          // Also refresh notifications when app comes to foreground
+          _refreshNotifications();
         }
         break;
 
@@ -173,6 +176,34 @@ extension AnilistProviderBackgroundSync on AnilistProvider {
       default:
         // No action needed for other states
         break;
+    }
+  }
+
+  /// Refresh notifications in the background
+  Future<void> _refreshNotifications() async {
+    if (!isLoggedIn || _isOffline) return;
+    
+    // Don't refresh too frequently
+    if (_lastNotificationRefresh != null && now.difference(_lastNotificationRefresh!).inMinutes < 10) {
+      return;
+    }
+    _lastNotificationRefresh = now;
+    
+    try {
+      // We can't access the context here, but the notification widgets will 
+      // refresh themselves when they're shown, so we'll just trigger a refresh
+      // on the release notification widget if it exists
+      final context = rootNavigatorKey.currentContext;
+      if (context != null) {
+        final library = Provider.of<Library>(context, listen: false);
+        await _anilistService.syncNotifications(
+          database: library.database,
+          types: [NotificationType.AIRING, NotificationType.MEDIA_DATA_CHANGE],
+          maxPages: 2,
+        );
+      }
+    } catch (e) {
+      logErr('Background notification refresh failed', e);
     }
   }
 }

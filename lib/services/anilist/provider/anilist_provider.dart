@@ -2,14 +2,18 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:provider/provider.dart';
 
 import '../../../../models/anilist/user_list.dart';
 import '../../../../models/anilist/anime.dart';
+import '../../../main.dart';
 import '../../../manager.dart';
 import '../../../models/anilist/mutation.dart';
+import '../../../models/notification.dart';
 import '../../../utils/time_utils.dart';
 import '../../../utils/path_utils.dart';
 import '../../../utils/logging.dart';
+import '../../library/library_provider.dart';
 import '../../navigation/show_info.dart';
 import '../../connectivity/connectivity_service.dart';
 import '../queries/anilist_service.dart';
@@ -42,6 +46,7 @@ class AnilistProvider extends ChangeNotifier with WidgetsBindingObserver {
   bool _isSyncing = false;
   ValueNotifier<String?> syncStatusMessage = ValueNotifier(null);
   DateTime? _lastUserDataRefreshTime;
+  DateTime? _lastNotificationRefresh;
 
   /// Cache
   DateTime? _lastListsCacheTime;
