@@ -263,8 +263,17 @@ void _thumbnailIsolateEntryPoint(SendPort sendPort) {
         final directory = Directory(path.dirname(message.outputPath.path));
         if (!await directory.exists()) await directory.create(recursive: true);
 
+        final String videoPath;
+        final prefix = "\\\\?\\";
+        if (message.videoPath.path.startsWith(prefix)) {
+          // Remove the "\\?\" prefix if it exists
+          videoPath = message.videoPath.path.substring(prefix.length);
+        } else {
+          videoPath = message.videoPath.path;
+        }
+
         final bool success = await videoDataUtils.extractCachedThumbnail(
-          videoPath: message.videoPath.path,
+          videoPath: videoPath,
           outputPath: message.outputPath.path,
           size: 256,
         );

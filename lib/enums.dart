@@ -6,6 +6,7 @@ import 'package:recase/recase.dart';
 import 'package:intl/intl.dart';
 
 import 'models/anilist/user_list.dart';
+import 'models/series.dart';
 
 // ENUMS
 enum Dim { dimmed, normal, brightened }
@@ -197,13 +198,13 @@ extension HexColor on Color {
       '${blue.toRadixString(16).padLeft(2, '0')}';
 
   int toHexInt() => int.parse(toHex().replaceAll('#', ''), radix: 16);
-  
+
   Color shiftHue(double amount) {
     final hsl = HSLColor.fromColor(this);
     final shiftedHsl = hsl.withHue((hsl.hue + amount * 360) % 360);
     return shiftedHsl.toColor();
   }
-  
+
   Color lighten([double amount = 0.1]) {
     final hsl = HSLColor.fromColor(this);
     final lightenedHsl = hsl.withLightness((hsl.lightness + amount).clamp(0.0, 1.0));
@@ -283,4 +284,11 @@ extension DateTimeX on DateTime? {
   }
 
   static DateTime get epoch => DateTime.fromMillisecondsSinceEpoch(0);
+}
+
+extension ListSeries on List<String> {
+  bool equals(List<String> other) {
+    if (length != other.length) return false;
+    return Set.from(this).difference(Set.from(other)).isEmpty;
+  }
 }

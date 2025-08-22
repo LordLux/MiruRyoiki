@@ -199,7 +199,6 @@ extension LibraryScanning on Library {
 
       // --- 3d. Finalize ---
       _series = updatedSeriesList; // Save the updated series list to memory
-      _version++;
       
       await _saveLibrary(); // Save the updated library to database
 

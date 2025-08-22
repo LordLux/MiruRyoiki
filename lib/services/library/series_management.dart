@@ -7,14 +7,12 @@ extension LibrarySeriesManagement on Library {
 
   Future<void> addSeries(Series series) async {
     _series.add(series);
-  _version++;
     await _saveLibrary();
     notifyListeners();
   }
 
   Future<void> removeSeries(Series series) async {
     _series.removeWhere((s) => s.path == series.path);
-  _version++;
     await _saveLibrary();
     notifyListeners();
   }
@@ -41,7 +39,6 @@ extension LibrarySeriesManagement on Library {
 
     // Update the series
     _series[index] = series;
-  _version++;
 
     if (invalidateCache && homeKey.currentState != null) {
       homeKey.currentState!.seriesWasModified = true;
@@ -67,7 +64,6 @@ extension LibrarySeriesManagement on Library {
 
   Future<void> refreshEpisode(Episode episode) async {
     // TODO get watched percentage and watched status from player
-    _version++;
     await _saveLibrary();
     notifyListeners();
   }
@@ -83,7 +79,6 @@ extension LibrarySeriesManagement on Library {
       }
 
       _saveLibrary();
-  _version++;
       notifyListeners();
     }
   }
@@ -94,7 +89,6 @@ extension LibrarySeriesManagement on Library {
 
     if (save) {
       _saveLibrary();
-  _version++;
       notifyListeners();
     }
   }
@@ -113,7 +107,6 @@ extension LibrarySeriesManagement on Library {
     }
 
     _saveLibrary();
-  _version++;
     notifyListeners();
   }
 
@@ -139,7 +132,6 @@ extension LibrarySeriesManagement on Library {
       episode.thumbnailPath = null;
     }
 
-    _version++;
     await _saveLibrary();
     notifyListeners();
 
@@ -169,7 +161,6 @@ extension LibrarySeriesManagement on Library {
     // Reset all failed attempts in ThumbnailManager
     Episode.resetAllFailedAttempts();
 
-    _version++;
     await _saveLibrary();
     notifyListeners();
 

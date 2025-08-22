@@ -52,7 +52,7 @@ dependencies:
   video_data_utils:
     path: M:/Projects/video_data_utils/
     # git:
-    #   url: https://github.com/LordLux/video_data_utils.git
+      # url: https://github.com/LordLux/video_data_utils.git
   flutter_desktop_context_menu:
     path: M:/Projects/flutter_desktop_context_menu/
     # git:
@@ -75,6 +75,7 @@ dependencies:
   json_annotation: ^4.8.1
   scrollable_positioned_list: ^0.3.8
   flutter_single_instance: ^1.6.0 # TODO https://pub.dev/packages/flutter_single_instance#macos
+  shimmer_animation: ^2.1.0
 
 dev_dependencies:
   flutter_test:

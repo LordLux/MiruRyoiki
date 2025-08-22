@@ -1,11 +1,11 @@
 import 'dart:convert';
-import 'dart:isolate';
 
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:miruryoiki/manager.dart';
 import 'package:provider/provider.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:smooth_scroll_multiplatform/smooth_scroll_multiplatform.dart';
+import 'package:shimmer_animation/shimmer_animation.dart';
 
 import '../main.dart';
 import '../enums.dart';
@@ -17,7 +17,6 @@ import '../models/series.dart';
 import '../services/anilist/provider/anilist_provider.dart';
 import '../services/navigation/shortcuts.dart';
 import '../utils/color_utils.dart';
-import '../utils/logging.dart';
 import '../utils/path_utils.dart';
 import '../utils/screen_utils.dart';
 import '../utils/time_utils.dart';
@@ -27,7 +26,60 @@ import '../widgets/buttons/switch_button.dart';
 import '../widgets/buttons/wrapper.dart';
 import '../widgets/gradient_mask.dart';
 import '../widgets/series_card.dart';
-import '../services/isolates/isolate_manager.dart';
+
+// Cache parameters to track when cache needs invalidation
+class _CacheParameters {
+  final LibraryView currentView;
+  final SortOrder sortOrder;
+  final GroupBy groupBy;
+  final bool sortDescending;
+  final bool showGrouped;
+  final bool showHiddenSeries;
+  final List<String> customListOrder;
+
+  _CacheParameters({
+    required this.currentView,
+    required this.sortOrder,
+    required this.groupBy,
+    required this.sortDescending,
+    required this.showGrouped,
+    required this.showHiddenSeries,
+    required this.customListOrder,
+  });
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is _CacheParameters &&
+          runtimeType == other.runtimeType &&
+          currentView == other.currentView &&
+          sortOrder == other.sortOrder &&
+          groupBy == other.groupBy &&
+          sortDescending == other.sortDescending &&
+          showGrouped == other.showGrouped &&
+          showHiddenSeries == other.showHiddenSeries &&
+          _listEquals(customListOrder, other.customListOrder);
+
+  @override
+  int get hashCode =>
+      currentView.hashCode ^
+      sortOrder.hashCode ^
+      groupBy.hashCode ^
+      sortDescending.hashCode ^
+      showGrouped.hashCode ^
+      showHiddenSeries.hashCode ^
+      customListOrder.hashCode;
+
+  static bool _listEquals<T>(List<T>? a, List<T>? b) {
+    if (a == null) return b == null;
+    if (b == null) return false;
+    if (a.length != b.length) return false;
+    for (int index = 0; index < a.length; index++) {
+      if (a[index] != b[index]) return false;
+    }
+    return true;
+  }
+}
 
 class LibraryScreen extends StatefulWidget {
   final ScrollController scrollController;
@@ -44,80 +96,301 @@ class LibraryScreen extends StatefulWidget {
 }
 
 class LibraryScreenState extends State<LibraryScreen> {
-  // Persistent static caches (survive widget dispose/recreate within app session)
-  // ignore: prefer_final_fields
-  static List<Series> _staticSortedUngrouped = [];
-  // ignore: prefer_final_fields
-  static Map<String, List<Series>> _staticSortedGrouped = {};
-  static Map<String, List<Series>> _staticGroups = {};
-  static int? _staticLastVersionSorted;
-  static SortOrder? _staticLastSortOrder;
-  static bool? _staticLastSortDescending;
-  static GroupBy? _staticLastGroupBy;
-
   LibraryView _currentView = LibraryView.all;
   SortOrder _sortOrder = SortOrder.alphabetical;
   GroupBy _groupBy = GroupBy.anilistLists;
 
-  List<String> _customListOrder = [];
-  // ignore: prefer_final_fields
-  Map<String, List<Series>> _sortedGroupedSeries = {};
-  List<Series> _sortedUngroupedSeries = [];
-  SortOrder? _lastAppliedSortOrder;
-
+  bool _sortDescending = false;
   bool _showGrouped = false;
   bool _showFilters = false;
-  bool _sortDescending = false;
-
-  bool _hasAppliedSorting = false;
-  bool? _lastAppliedSortDescending;
-  bool _needsSort = true;
-  bool _isProcessing = false;
-  int? _lastVersionSorted; // library.version at last successful sort
 
   bool _filterHintShowing = false;
-  Future<void>? _currentSortOperation;
-
-  bool _isReordering = false;
   final GlobalKey firstCardKey = GlobalKey();
-
   bool _isSelectingFolder = false;
+  bool _isReordering = false;
 
-  Map<String, List<Series>> _cachedGroups = {};
-  bool _hasAppliedGrouping = false;
-  LibraryView? _lastAppliedGroupingView;
-  List<String>? _lastAppliedListOrder;
-  bool? _lastAppliedShowGrouped;
+  List<String> _customListOrder = [];
+  List<Series> displayedSeries = [];
 
-  // On init copy static caches if compatible
-  void _initFromStaticCaches(Library library) {
-    final versionMatches = _staticLastVersionSorted != null && _staticLastVersionSorted == library.version;
-    final sortMatches = _staticLastSortOrder == _sortOrder && _staticLastSortDescending == _sortDescending;
-    final groupMatches = _staticLastGroupBy == _groupBy;
-    if (versionMatches && sortMatches) {
-      if (_groupBy == GroupBy.none) {
-        if (_staticSortedUngrouped.isNotEmpty) {
-          _sortedUngroupedSeries = List.from(_staticSortedUngrouped);
-          _hasAppliedSorting = true;
-          _lastAppliedSortOrder = _sortOrder;
-          _lastAppliedSortDescending = _sortDescending;
-          _lastVersionSorted = _staticLastVersionSorted;
+  // Cache system
+  List<Series>? _sortedSeriesCache;
+  Map<String, List<Series>>? _groupedDataCache;
+  _CacheParameters? _cacheParameters;
+
+  /// Check if the current cache is valid by comparing parameters
+  bool _isCacheValid() {
+    if (_cacheParameters == null) return false;
+    
+    final currentParams = _CacheParameters(
+      currentView: _currentView,
+      sortOrder: _sortOrder,
+      groupBy: _groupBy,
+      sortDescending: _sortDescending,
+      showGrouped: _showGrouped,
+      showHiddenSeries: Manager.settings.showHiddenSeries,
+      customListOrder: List.from(_customListOrder),
+    );
+    
+    return _cacheParameters == currentParams;
+  }
+
+  /// Sort series using the same logic as isolate_manager.dart but in main thread
+  List<Series> _sortSeries(List<Series> series, Library library) {
+    final List<Series> seriesCopy = List.from(series);
+
+    Comparator<Series> comparator;
+
+    switch (_sortOrder) {
+      // Alphabetical order by title
+      case SortOrder.alphabetical:
+        comparator = (a, b) => a.name.compareTo(b.name);
+
+      // Median score from Anilist
+      case SortOrder.score:
+        comparator = (a, b) {
+          final aScore = a.meanScore ?? 0;
+          final bScore = b.meanScore ?? 0;
+          return aScore.compareTo(bScore);
+        };
+
+      // Progress percentage
+      case SortOrder.progress:
+        comparator = (a, b) {
+          // Use the Series watchedPercentage getter
+          final aProgress = a.watchedPercentage;
+          final bProgress = b.watchedPercentage;
+          return aProgress.compareTo(bProgress);
+        };
+
+      // Date the List Entry was last modified
+      case SortOrder.lastModified:
+        comparator = (a, b) {
+          final aUpdated = a.currentAnilistData?.updatedAt ?? 0;
+          final bUpdated = b.currentAnilistData?.updatedAt ?? 0;
+          return aUpdated.compareTo(bUpdated);
+        };
+
+      // Date the user added the series to their list
+      case SortOrder.dateAdded:
+        comparator = (a, b) {
+          // For this we'd need the user list entry creation time, which isn't readily available
+          // Fall back to alphabetical for now
+          return a.name.compareTo(b.name);
+        };
+
+      // Date the user started watching the series
+      case SortOrder.startDate:
+        comparator = (a, b) {
+          final aStarted = a.currentAnilistData?.startedAt;
+          final bStarted = b.currentAnilistData?.startedAt;
+
+          final aDate = aStarted?.toDateTime();
+          final bDate = bStarted?.toDateTime();
+
+          if (aDate == null && bDate == null) return 0;
+          if (aDate == null) return 1;
+          if (bDate == null) return -1;
+
+          return aDate.compareTo(bDate);
+        };
+
+      // Date the user completed watching the series
+      case SortOrder.completedDate:
+        comparator = (a, b) {
+          final aCompleted = a.currentAnilistData?.completedAt;
+          final bCompleted = b.currentAnilistData?.completedAt;
+
+          final aDate = aCompleted?.toDateTime();
+          final bDate = bCompleted?.toDateTime();
+
+          if (aDate == null && bDate == null) return 0;
+          if (aDate == null) return 1;
+          if (bDate == null) return -1;
+
+          return aDate.compareTo(bDate);
+        };
+
+      // Average score from Anilist
+      case SortOrder.averageScore:
+        comparator = (a, b) {
+          final aScore = a.currentAnilistData?.averageScore ?? 0;
+          final bScore = b.currentAnilistData?.averageScore ?? 0;
+          return aScore.compareTo(bScore);
+        };
+
+      // Release date from Anilist
+      case SortOrder.releaseDate:
+        comparator = (a, b) {
+          final aDate = a.currentAnilistData?.startDate?.toDateTime();
+          final bDate = b.currentAnilistData?.startDate?.toDateTime();
+
+          if (aDate == null && bDate == null) return 0;
+          if (aDate == null) return 1;
+          if (bDate == null) return -1;
+
+          return aDate.compareTo(bDate);
+        };
+
+      // Popularity from Anilist
+      case SortOrder.popularity:
+        comparator = (a, b) {
+          final aPopularity = a.currentAnilistData?.popularity ?? 0;
+          final bPopularity = b.currentAnilistData?.popularity ?? 0;
+          return aPopularity.compareTo(bPopularity);
+        };
+    }
+
+    // Apply the sorting direction
+    if (_sortDescending) {
+      seriesCopy.sort((a, b) => comparator(b, a)); // Reverse the comparison
+    } else {
+      seriesCopy.sort(comparator);
+    }
+
+    return seriesCopy;
+  }
+
+  /// Build or refresh the cache with current parameters
+  void _buildCache(Library library) {
+    final rawSeries = library.series;
+    final filteredSeries = _filterSeries(rawSeries);
+    final sortedSeries = _sortSeries(filteredSeries, library);
+    
+    // Cache the sorted series
+    _sortedSeriesCache = sortedSeries;
+    
+    // Build grouped cache if needed
+    if (_showGrouped && _groupBy != GroupBy.none) {
+      _groupedDataCache = _buildGroupedData(sortedSeries);
+    } else {
+      _groupedDataCache = null;
+    }
+    
+    // Store current parameters
+    _cacheParameters = _CacheParameters(
+      currentView: _currentView,
+      sortOrder: _sortOrder,
+      groupBy: _groupBy,
+      sortDescending: _sortDescending,
+      showGrouped: _showGrouped,
+      showHiddenSeries: Manager.settings.showHiddenSeries,
+      customListOrder: List.from(_customListOrder),
+    );
+  }
+
+  /// Build the grouped data structure
+  Map<String, List<Series>> _buildGroupedData(List<Series> allSeries) {
+    final anilistProvider = Provider.of<AnilistProvider>(context, listen: false);
+    final groups = <String, List<Series>>{};
+
+    // Initialize groups based on custom list order
+    for (final listName in _customListOrder) {
+      groups[_getDisplayName(listName)] = [];
+    }
+
+    // Sort series into groups (using existing grouping logic)
+    for (final series in allSeries) {
+      if (series.isLinked) {
+        if (series.anilistMappings.isNotEmpty) {
+          bool allCompleted = true;
+          final completedList = anilistProvider.userLists[AnilistListApiStatus.COMPLETED.name_];
+
+          if (completedList != null) {
+            for (final mapping in series.anilistMappings) {
+              final isCompleted = completedList.entries.any((entry) => entry.media.id == mapping.anilistId);
+              if (!isCompleted) {
+                allCompleted = false;
+                break;
+              }
+            }
+
+            if (allCompleted) {
+              final completedKey = StatusStatistic.statusNameToPretty(AnilistListApiStatus.COMPLETED.name_);
+              if (groups.containsKey(completedKey)) {
+                groups[completedKey]?.add(series);
+                continue;
+              }
+            }
+          }
+
+          // Priority order for lists
+          final listPriority = [
+            AnilistListApiStatus.CURRENT.name_,
+            AnilistListApiStatus.REPEATING.name_,
+            AnilistListApiStatus.PAUSED.name_,
+            AnilistListApiStatus.PLANNING.name_,
+            AnilistListApiStatus.DROPPED.name_,
+            AnilistListApiStatus.COMPLETED.name_,
+          ];
+
+          final seriesLists = <String>{};
+
+          for (final mapping in series.anilistMappings) {
+            for (final entry in anilistProvider.userLists.entries) {
+              final listName = entry.key;
+              if (listName.startsWith('custom_')) continue;
+
+              final list = entry.value;
+              final isInList = list.entries.any((listEntry) => listEntry.media.id == mapping.anilistId);
+
+              if (isInList) {
+                seriesLists.add(listName);
+                break;
+              }
+            }
+          }
+
+          String? highestPriorityList;
+          for (final listName in listPriority) {
+            if (seriesLists.contains(listName)) {
+              highestPriorityList = listName;
+              break;
+            }
+          }
+
+          if (highestPriorityList != null) {
+            final displayName = StatusStatistic.statusNameToPretty(highestPriorityList);
+            if (groups.containsKey(displayName)) {
+              groups[displayName]?.add(series);
+              continue;
+            }
+          }
+
+          // Check custom lists
+          bool foundInCustomList = false;
+          for (final mapping in series.anilistMappings) {
+            for (final entry in anilistProvider.userLists.entries) {
+              final listName = entry.key;
+              if (!listName.startsWith('custom_')) continue;
+
+              final list = entry.value;
+              if (list.entries.any((listEntry) => listEntry.media.id == mapping.anilistId)) {
+                groups[StatusStatistic.statusNameToPretty(listName)]?.add(series);
+                foundInCustomList = true;
+                break;
+              }
+            }
+            if (foundInCustomList) break;
+          }
+
+          if (foundInCustomList) continue;
+
+          // Add to Unlinked if not found
+          final unlinkedKey = groups.keys.firstWhere(
+            (k) => k == 'Unlinked',
+            orElse: () => groups.keys.first,
+          );
+          groups[unlinkedKey]?.add(series);
         }
-      } else if (groupMatches) {
-        if (_staticGroups.isNotEmpty) {
-          _cachedGroups = Map.from(_staticGroups);
-          _sortedGroupedSeries = _staticSortedGrouped.map((k, v) => MapEntry(k, List.from(v)));
-          _hasAppliedGrouping = true;
-          _hasAppliedSorting = true; // grouped lists already sorted
-          _lastAppliedGroupingView = _currentView;
-          _lastAppliedListOrder = List.from(_customListOrder);
-          _lastAppliedShowGrouped = _showGrouped;
-          _lastAppliedSortOrder = _sortOrder;
-          _lastAppliedSortDescending = _sortDescending;
-          _lastVersionSorted = _staticLastVersionSorted;
-        }
+      } else {
+        // Unlinked series
+        groups['Unlinked']?.add(series);
       }
     }
+
+    // Remove empty groups
+    groups.removeWhere((_, series) => series.isEmpty);
+    return groups;
   }
 
   Widget get filterIcon {
@@ -130,76 +403,81 @@ class LibraryScreenState extends State<LibraryScreen> {
     return Icon(icon);
   }
 
-  bool _areListsEqual(List<String> list1, List<String> list2) {
-    if (list1.length != list2.length) return false;
-    final set1 = Set.from(list1);
-    final set2 = Set.from(list2);
-    return set1.difference(set2).isEmpty;
+  double getHeight(int itemCount, double maxWidth) {
+    // Use the stored column count if available, otherwise calculate based on width
+    final int columns = previousGridColumnCount.value ?? ScreenUtils.crossAxisCount(maxWidth);
+
+    // Calculate how many rows we need based on the fixed column count
+    final int rowCount = (itemCount / columns).ceil();
+
+    // Calculate the card width based on the fixed column count
+    final double effectiveCardWidth = (maxWidth - ((columns - 1) * ScreenUtils.cardPadding)) / columns;
+
+    // Calculate card height using the aspect ratio (ScreenUtils.kDefaultAspectRatio)
+    final double effectiveCardHeight = effectiveCardWidth / ScreenUtils.kDefaultAspectRatio;
+
+    // Total height includes cards plus padding between rows (but not at the bottom)
+    final double totalHeight = (effectiveCardHeight * rowCount) + (rowCount > 1 ? (rowCount - 1) * ScreenUtils.cardPadding : 0);
+
+    return totalHeight;
   }
 
-  void toggleFiltersSidebar({bool? value}) {
-    setState(() {
-      _showFilters = value ?? !_showFilters;
-      _filterHintShowing = false;
-    });
-  }
+  /// Filter the series in Hidden, Linked
+  List<Series> _filterSeries(List<Series> series) {
+    // Start with basic filtering (existing code)
+    List<Series> filteredSeries = series;
 
-  /// Update a dominantColor of a series in the cache when the series' dominantColor is changed
-  void updateSeriesInSortCache(Series updatedSeries) {
-    // Update in ungrouped series cache
-    for (int i = 0; i < _sortedUngroupedSeries.length; i++) {
-      if (_sortedUngroupedSeries[i].path == updatedSeries.path) {
-        _sortedUngroupedSeries[i] = updatedSeries;
-        break;
-      }
+    // Add filter for hidden series
+    if (!Manager.settings.showHiddenSeries) {
+      filteredSeries = filteredSeries.where((s) => !s.shouldBeHidden).toList();
     }
 
-    // Update in grouped series cache
-    for (final groupName in _sortedGroupedSeries.keys) {
-      final groupList = _sortedGroupedSeries[groupName]!;
-      for (int i = 0; i < groupList.length; i++) {
-        if (groupList[i].path == updatedSeries.path) {
-          groupList[i] = updatedSeries;
-          break;
-        }
-      }
+    // Add filter for unlinked series if view is set to linked only
+    if (_currentView == LibraryView.linked) {
+      filteredSeries = filteredSeries.where((s) => s.isLinked).toList();
     }
 
-    // Notify widgets to rebuild
-    Manager.setState();
+    return filteredSeries;
   }
 
-  /// Invalidate the sort cache, forcing a re-evaluation of the sorting.
-  void invalidateSortCache() {
-    setState(() {
-      _lastAppliedSortOrder = null;
-      _lastAppliedSortDescending = null;
-      _hasAppliedSorting = false;
-      _sortedGroupedSeries.clear();
-      _sortedUngroupedSeries.clear();
-      invalidateGroupingCache();
-    });
+  String _getDisplayName(String listName) => listName == '__unlinked' ? 'Unlinked' : StatusStatistic.statusNameToPretty(listName);
+  String _getApiName(String listName) => listName == 'Unlinked' ? '__unlinked' : StatusStatistic.statusNameToApi(listName);
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserPreferences();
   }
 
-  void invalidateGroupingCache() {
-    setState(() {
-      _hasAppliedGrouping = false;
-      _lastAppliedGroupingView = null;
-      _lastAppliedListOrder = null;
-      _lastAppliedShowGrouped = null;
-      _cachedGroups.clear();
-    });
+  void _selectLibraryFolder() async {
+    setState(() => _isSelectingFolder = true);
+
+    final String? selectedDirectory = await FilePicker.platform.getDirectoryPath(
+      dialogTitle: 'Select Media Library Folder',
+    );
+
+    setState(() => _isSelectingFolder = false);
+
+    if (selectedDirectory != null) {
+      // ignore: use_build_context_synchronously
+      final library = context.read<Library>();
+      await library.setLibraryPath(selectedDirectory);
+    }
+  }
+
+  void _navigateToSeries(Series series) {
+    widget.onSeriesSelected(series.path);
   }
 
   /// Save preferences
   void _saveUserPreferences() {
-    final manager = Manager.settings;
-    manager.set('library_view', _currentView.toString());
-    manager.set('library_sort_order', _sortOrder.toString());
-    manager.set('library_sort_descending', _sortDescending);
-    manager.set('library_group_by', _groupBy.toString());
-    manager.set('library_show_grouped', _showGrouped);
-    manager.set('library_list_order', json.encode(_customListOrder));
+    final settings = Manager.settings;
+    settings.set('library_view', _currentView.toString());
+    settings.set('library_sort_order', _sortOrder.toString());
+    settings.set('library_sort_descending', _sortDescending);
+    settings.set('library_group_by', _groupBy.toString());
+    settings.set('library_show_grouped', _showGrouped);
+    settings.set('library_list_order', json.encode(_customListOrder));
   }
 
   /// Load preferences
@@ -236,129 +514,104 @@ class LibraryScreenState extends State<LibraryScreen> {
 
       // Load list order
       final listOrderString = manager.get('library_list_order', defaultValue: '[]');
+      
       try {
         final decoded = json.decode(listOrderString);
-        if (decoded is List) {
-          _customListOrder = List<String>.from(decoded);
-        }
+        if (decoded is List) _customListOrder = List<String>.from(decoded);
       } catch (_) {
         _customListOrder = [];
       }
     });
   }
 
-  bool _sortingNeeded(List<Series> series) {
-    if (_hasAppliedSorting && //
-        _lastAppliedSortOrder == _sortOrder &&
-        _lastAppliedSortDescending == _sortDescending) {
-      return false;
-    }
-
-    if (_needsSort ||
-        _lastAppliedSortOrder != _sortOrder || //
-        _lastAppliedSortDescending != _sortDescending) {
-      return true;
-    }
-    return false;
-  }
-
-  bool _groupingNeeded(List<Series> series) {
-    if (!_hasAppliedGrouping || _lastAppliedGroupingView != _currentView || _lastAppliedShowGrouped != _showGrouped || _cachedGroups.isEmpty) {
-      return true;
-    }
-
-    // Check if list order has changed
-    if (_lastAppliedListOrder == null || !_areListsEqual(_lastAppliedListOrder!, _customListOrder)) {
-      return true;
-    }
-
-    return false;
-  }
-
-  List<Series> _filterSeries(List<Series> series) {
-    // Start with basic filtering (existing code)
-    List<Series> filteredSeries = series;
-
-    // Add filter for hidden series
-    if (!Manager.settings.showHiddenSeries) {
-      filteredSeries = filteredSeries.where((s) => !s.shouldBeHidden).toList();
-    }
-
-    // Add filter for unlinked series if view is set to linked only
-    if (_currentView == LibraryView.linked) {
-      filteredSeries = filteredSeries.where((s) => s.isLinked).toList();
-    }
-
-    return filteredSeries;
+  void toggleFiltersSidebar({bool? value}) {
+    setState(() {
+      _showFilters = value ?? !_showFilters;
+      _filterHintShowing = false;
+    });
   }
 
   void _onViewChanged(LibraryView? value) {
     if (value != null && value != _currentView) {
-      setState(() {
-        _currentView = value;
-        _needsSort = true;
-        _hasAppliedSorting = false;
-        _sortedGroupedSeries.clear();
-        _sortedUngroupedSeries.clear();
-
-        _hasAppliedGrouping = false;
-        _cachedGroups.clear();
-      });
+      invalidateSortCache(); // Invalidate cache when view changes
+      setState(() => _currentView = value);
       _saveUserPreferences();
     }
   }
 
   void _onSortOrderChanged(SortOrder? value) {
     if (value != null && value != _sortOrder) {
-      setState(() {
-        _sortOrder = value;
-        _needsSort = true;
-        _hasAppliedSorting = false;
-        _sortedGroupedSeries.clear();
-        _sortedUngroupedSeries.clear();
-      });
+      invalidateSortCache(); // Invalidate cache when sort order changes
+      setState(() => _sortOrder = value);
       _saveUserPreferences();
     }
   }
 
   void _onSortDirectionChanged() {
-    setState(() {
-      _sortDescending = !_sortDescending;
-      _needsSort = true;
-      _hasAppliedSorting = false;
-      _sortedGroupedSeries.clear();
-      _sortedUngroupedSeries.clear();
-    });
+    invalidateSortCache(); // Invalidate cache when sort direction changes
+    setState(() => _sortDescending = !_sortDescending);
     _saveUserPreferences();
   }
 
-  @override
-  void initState() {
-    super.initState();
-    _loadUserPreferences();
-    _lastAppliedSortOrder = _sortOrder;
-    _lastAppliedSortDescending = _sortDescending;
-    final library = Provider.of<Library>(context, listen: false);
-    _initFromStaticCaches(library);
+  void _measureFirstCard() {
+    if (!(firstCardKey.currentContext?.mounted ?? true)) return;
+
+    final RenderBox? renderBox = firstCardKey.currentContext?.findRenderObject() as RenderBox?;
+    if (renderBox != null && renderBox.hasSize) {
+      final Size actualSize = renderBox.size;
+
+      if (ScreenUtils.cardSize == null || ScreenUtils.cardSize!.width != actualSize.width || ScreenUtils.cardSize!.height != actualSize.height) {
+        setState(() {
+          ScreenUtils.cardSize = actualSize;
+        });
+      }
+    }
+  }
+  
+  void invalidateSortCache() {
+    _sortedSeriesCache = null;
+    _groupedDataCache = null;
+    _cacheParameters = null;
   }
 
-  double getHeight(int itemCount, double maxWidth) {
-    // Use the stored column count if available, otherwise calculate based on width
-    final int columns = previousGridColumnCount.value ?? ScreenUtils.crossAxisCount(maxWidth);
+  /// Update or add a series to the sort cache
+  void updateSeriesInSortCache(Series series) {
+    if (_sortedSeriesCache == null) {
+      // Cache doesn't exist, nothing to update
+      return;
+    }
 
-    // Calculate how many rows we need based on the fixed column count
-    final int rowCount = (itemCount / columns).ceil();
+    // Remove existing series with same path if it exists
+    _sortedSeriesCache!.removeWhere((s) => s.path == series.path);
+    
+    // Add the updated series
+    _sortedSeriesCache!.add(series);
+    
+    // Re-sort the cache since we added a new item
+    final library = Provider.of<Library>(context, listen: false);
+    _sortedSeriesCache = _sortSeries(_sortedSeriesCache!, library);
+    
+    // If grouped cache exists, rebuild it
+    if (_groupedDataCache != null && _showGrouped && _groupBy != GroupBy.none) {
+      _groupedDataCache = _buildGroupedData(_sortedSeriesCache!);
+    }
+  }
 
-    // Calculate the card width based on the fixed column count
-    final double effectiveCardWidth = (maxWidth - ((columns - 1) * ScreenUtils.cardPadding)) / columns;
-
-    // Calculate card height using the aspect ratio (ScreenUtils.kDefaultAspectRatio)
-    final double effectiveCardHeight = effectiveCardWidth / ScreenUtils.kDefaultAspectRatio;
-
-    // Total height includes cards plus padding between rows (but not at the bottom)
-    final double totalHeight = (effectiveCardHeight * rowCount) + (rowCount > 1 ? (rowCount - 1) * ScreenUtils.cardPadding : 0);
-
-    return totalHeight;
+  /// Remove a hidden series from the cache without invalidating the entire cache
+  void removeHiddenSeriesWithoutInvalidatingCache(Series series) {
+    if (_sortedSeriesCache == null) return;
+    
+    // Remove from sorted cache
+    _sortedSeriesCache!.removeWhere((s) => s.path == series.path);
+    
+    // Remove from grouped cache if it exists
+    if (_groupedDataCache != null) {
+      for (final entry in _groupedDataCache!.entries) {
+        entry.value.removeWhere((s) => s.path == series.path);
+      }
+      // Remove empty groups
+      _groupedDataCache!.removeWhere((_, seriesList) => seriesList.isEmpty);
+    }
   }
 
   @override
@@ -482,7 +735,6 @@ class LibraryScreenState extends State<LibraryScreen> {
                       InfoLabel(
                         label: 'View',
                         child: MouseButtonWrapper(
-                          isLoading: _currentSortOperation != null,
                           child: (_) => ComboBox<LibraryView>(
                             value: _currentView,
                             items: [
@@ -504,6 +756,7 @@ class LibraryScreenState extends State<LibraryScreen> {
                             setState(() {
                               _showGrouped = value;
                               _groupBy = value ? GroupBy.anilistLists : GroupBy.none;
+                              invalidateSortCache(); // Invalidate cache when grouping changes
                               _saveUserPreferences();
                             });
                           },
@@ -523,7 +776,6 @@ class LibraryScreenState extends State<LibraryScreen> {
                         child: Row(
                           children: [
                             MouseButtonWrapper(
-                              isLoading: _currentSortOperation != null,
                               child: (_) => ComboBox<SortOrder>(
                                 value: _sortOrder,
                                 items: SortOrder.values.map((order) => ComboBoxItem(value: order, child: Text(_getSortText(order)))).toList(),
@@ -532,7 +784,6 @@ class LibraryScreenState extends State<LibraryScreen> {
                             ),
                             const SizedBox(width: 8),
                             MouseButtonWrapper(
-                              isLoading: _currentSortOperation != null,
                               child: (_) => IconButton(
                                 icon: AnimatedRotation(
                                   duration: shortStickyHeaderDuration,
@@ -603,7 +854,7 @@ class LibraryScreenState extends State<LibraryScreen> {
     if (_currentView == LibraryView.all) allLists.add('__unlinked');
 
     // If _customListOrder is empty or outdated, initialize with default order
-    if (_customListOrder.isEmpty || !_areListsEqual(_customListOrder, allLists)) //
+    if (_customListOrder.isEmpty || _customListOrder.equals(allLists)) //
       _customListOrder = List.from(allLists);
 
     final double childHeight = 45;
@@ -619,9 +870,8 @@ class LibraryScreenState extends State<LibraryScreen> {
               buildDefaultDragHandles: false,
               clipBehavior: Clip.none,
               proxyDecorator: (child, index, animation) {
-                _isReordering = true;
                 final listName = _customListOrder[index];
-                final displayName = listName == '__unlinked' ? 'Unlinked' : StatusStatistic.statusNameToPretty(listName);
+                final displayName = _getDisplayName(listName);
 
                 return AnimatedReorderableTile(
                   key: ValueKey('${listName}_dragging'),
@@ -637,18 +887,18 @@ class LibraryScreenState extends State<LibraryScreen> {
               onReorderEnd: (_) => setState(() => _isReordering = false),
               onReorder: (oldIndex, newIndex) {
                 setState(() {
-                  if (oldIndex < newIndex) {
-                    newIndex -= 1;
-                  }
+                  if (oldIndex < newIndex) newIndex -= 1;
+
                   final item = _customListOrder.removeAt(oldIndex);
                   _customListOrder.insert(newIndex, item);
+                  invalidateSortCache(); // Invalidate cache when list order changes
                   _saveUserPreferences();
                 });
               },
               prototypeItem: SizedBox(height: childHeight),
               itemBuilder: (context, index) {
                 final listName = _customListOrder[index];
-                final displayName = listName == '__unlinked' ? 'Unlinked' : StatusStatistic.statusNameToPretty(listName);
+                final displayName = _getDisplayName(listName);
 
                 return AnimatedReorderableTile(
                   key: ValueKey(listName),
@@ -731,9 +981,22 @@ class LibraryScreenState extends State<LibraryScreen> {
   }
 
   Widget _buildLibraryView(Library library) {
-    List<Series> displayedSeries = _filterSeries(library.series);
+    // Check if cache is valid and exists
+    List<Series> seriesToDisplay;
+    Map<String, List<Series>>? groupedData;
 
-    if (library.isIndexing) {}
+    if (_isCacheValid() && _sortedSeriesCache != null) {
+      // Use cached data
+      seriesToDisplay = _sortedSeriesCache!;
+      groupedData = _groupedDataCache;
+    } else {
+      // Build cache
+      _buildCache(library);
+      seriesToDisplay = _sortedSeriesCache!;
+      groupedData = _groupedDataCache;
+    }
+
+    displayedSeries = seriesToDisplay;
 
     if (displayedSeries.isEmpty)
       return Center(
@@ -759,17 +1022,9 @@ class LibraryScreenState extends State<LibraryScreen> {
         ),
       );
 
-    final libraryVersionChanged = _lastVersionSorted == null || _lastVersionSorted != library.version;
-    if ((_sortingNeeded(displayedSeries) && !_isProcessing && _currentSortOperation == null && libraryVersionChanged) || (_sortingNeeded(displayedSeries) && libraryVersionChanged)) {
-      _needsSort = false;
-      _applySortingAsync(displayedSeries);
-    } else if (_hasAppliedSorting) {
-      // Use the already sorted list
-      displayedSeries = _sortedUngroupedSeries;
-    }
-
     return LayoutBuilder(builder: (context, constraints) {
-      final bool hideLibrary = _isProcessing || library.isIndexing;
+      final bool hideLibrary = library.isIndexing;
+
       return Stack(
         children: [
           IgnorePointer(
@@ -778,52 +1033,45 @@ class LibraryScreenState extends State<LibraryScreen> {
               opacity: hideLibrary ? 0 : 1,
               child: FadingEdgeScrollView(
                 fadeEdges: const EdgeInsets.symmetric(vertical: 10),
-                child: _buildSeriesGrid(displayedSeries, constraints.maxWidth),
+                child: _buildSeriesGrid(displayedSeries, constraints.maxWidth, groupedData: groupedData, shimmer: false),
               ),
             ),
           ),
-          if (hideLibrary)
+          if (hideLibrary) ...[
             Positioned.fill(
-              child: Builder(builder: (context) {
-                String msg = "";
-                if (library.isIndexing) msg = 'Please wait while the Library is being indexed...';
-
-                return Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      ProgressRing(),
-                      if (msg.isNotEmpty) ...[
-                        VDiv(16),
-                        Text(msg),
-                        // VDiv(16),
-                        // TODO maybe image
-                      ],
-                    ],
-                  ),
-                );
-              }),
-            )
-          // Positioned.fill(
-          //   child: Padding(
-          //     padding: EdgeInsets.only(right:12),
-          //     child: Container(
-          //       color: Colors.green.withOpacity(.25),
-          //     ),
-          //   ),
-          // )
+              child: _buildSeriesGrid(displayedSeries, constraints.maxWidth, groupedData: groupedData, shimmer: true),
+            ),
+            Positioned.fill(
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    ProgressRing(),
+                    VDiv(16),
+                    Text('Please wait while the Library is being indexed...'),
+                    // VDiv(16),
+                    // TODO maybe image
+                  ],
+                ),
+              ),
+            ),
+          ],
         ],
       );
     });
   }
 
-  Widget _buildSeriesGrid(List<Series> series, double maxWidth) {
-    Widget episodesGrid(List<Series> list, ScrollController controller, ScrollPhysics physics, bool includePadding, {bool allowMeasurement = false}) {
+  Widget _buildSeriesGrid(List<Series> series, double maxWidth, {Map<String, List<Series>>? groupedData, bool shimmer = false}) {
+    Widget episodesGrid(List<Series> list, ScrollController? controller, ScrollPhysics? physics, bool includePadding, {bool allowMeasurement = false, bool shimmer = false}) {
+      assert(shimmer || (controller != null && physics != null));
       return ValueListenableBuilder(
         valueListenable: previousGridColumnCount,
         builder: (context, columns, __) {
           final List<Widget> children = List.generate(list.length, (index) {
+            if (shimmer) return Shimmer(child: Container());
+
             final Series series_ = list[index % list.length];
+
             return SeriesCard(
               key: (index == 0 && allowMeasurement) ? firstCardKey : ValueKey('${series_.path}:${series_.effectivePosterPath ?? 'none'}'),
               series: series_,
@@ -831,7 +1079,7 @@ class LibraryScreenState extends State<LibraryScreen> {
             );
           });
 
-          if (list.isNotEmpty && allowMeasurement) {
+          if (!shimmer && list.isNotEmpty && allowMeasurement) {
             WidgetsBinding.instance.addPostFrameCallback((_) {
               _measureFirstCard();
             });
@@ -854,8 +1102,12 @@ class LibraryScreenState extends State<LibraryScreen> {
       );
     }
 
-    // If grouping is enabled, show grouped view
-    if (_groupBy != GroupBy.none) return _buildGroupedView(series, maxWidth, episodesGrid);
+    if (shimmer) return episodesGrid(series, null, null, true, allowMeasurement: false, shimmer: true);
+
+    // If grouping is enabled and we have grouped data, show grouped view
+    if (_groupBy != GroupBy.none && groupedData != null && _showGrouped) {
+      return _buildGroupedViewFromCache(groupedData, maxWidth, episodesGrid);
+    }
 
     return DynMouseScroll(
       stopScroll: KeyboardState.ctrlPressedNotifier,
@@ -868,277 +1120,12 @@ class LibraryScreenState extends State<LibraryScreen> {
     );
   }
 
-  void _measureFirstCard() {
-    if (!(firstCardKey.currentContext?.mounted ?? true)) return;
-
-    final RenderBox? renderBox = firstCardKey.currentContext?.findRenderObject() as RenderBox?;
-    if (renderBox != null && renderBox.hasSize) {
-      final Size actualSize = renderBox.size;
-
-      if (ScreenUtils.cardSize == null || ScreenUtils.cardSize!.width != actualSize.width || ScreenUtils.cardSize!.height != actualSize.height) {
-        setState(() {
-          ScreenUtils.cardSize = actualSize;
-        });
-      }
-    }
-  }
-
-  Future<void> _applySortingAsync(List<Series> series, {String? groupName}) async {
-    if (!mounted) return;
-    if (_currentSortOperation != null) return _currentSortOperation;
-    // logInfo('Applying sorting for group: $groupName');
-
-    if (_hasAppliedSorting && //
-        _lastAppliedSortOrder == _sortOrder && //
-        _lastAppliedSortDescending == _sortDescending) {
-      return Future.value();
-    }
-
-    _isProcessing = true;
-    nextFrame(() {
-      if (mounted) Manager.setState();
-    });
-
-    final sortData = <int, Map<String, dynamic>>{};
-    final progressData = <int, double>{};
-
-    // Pre-fetch any provider-dependent data including progress
-    final anilistProvider = context.read<AnilistProvider>();
-    for (final series in series) {
-      sortData[series.hashCode] = {
-        'updatedAt': series.latestUpdatedAt, //        updatedAt    - list updated timestamp
-        'createdAt': series.earliestCreatedAt, //      createdAt    - added to list timestamp
-        'startedAt': series.earliestStartedAt, //      startedAt    - user started entry timestamp
-        'completedAt': series.latestCompletionDate, // completedAt  - user completion date
-        'averageScore': series.highestUserScore, //    averageScore - user score
-        'startDate': series.earliestReleaseDate, //    startDate    - release date
-        'popularity': series.highestPopularity, //     popularity   - popularity
-      };
-
-      // Pre-calculate progress to avoid context access in isolate
-      if (series.isLinked) {
-        progressData[series.hashCode] = Manager.anilistProgress.getSeriesProgress(series, anilistProvider);
-      } else {
-        progressData[series.hashCode] = series.totalEpisodes > 0 ? series.watchedEpisodes / series.totalEpisodes : 0.0;
-      }
-    }
-
-    _currentSortOperation = _applySortingWithIsolate(series, sortData, progressData, groupName);
-  }
-
-  Future<void> _applySortingWithIsolate(
-    List<Series> series, 
-    Map<int, Map<String, dynamic>> sortData, 
-    Map<int, double> progressData, 
-    String? groupName
-  ) async {
-    try {
-      final isolateManager = IsolateManager();
-
-      // Convert series to JSON for serialization across isolate boundary
-      final serializedSeries = series.map((s) => s.toJson()).toList();
-
-      final sortParams = SortSeriesParams(
-        serializedSeries: serializedSeries,
-        sortOrderIndex: _sortOrder.index,
-        sortDescending: _sortDescending,
-        sortData: sortData,
-        progressData: progressData,
-        replyPort: ReceivePort().sendPort, // Will be replaced by isolate manager
-      );
-
-      final sortedSeries = await isolateManager.runIsolateWithProgress<SortSeriesParams, List<Series>>(
-        task: sortSeriesIsolate,
-        params: sortParams,
-        onProgress: (processed, total) {
-          // Series sorting is a single operation, but we could add progress updates
-          // if the sorting algorithm becomes more complex in the future
-        },
-      );
-
-      if (mounted) {
-        if (groupName != null) {
-          _sortedGroupedSeries[groupName] = sortedSeries;
-        } else {
-          _sortedUngroupedSeries = sortedSeries;
-        }
-        Manager.setState(() {
-          _lastAppliedSortOrder = _sortOrder;
-          _lastAppliedSortDescending = _sortDescending;
-          _hasAppliedSorting = true;
-          // Record version after successful sort
-          final lib = context.read<Library>();
-          _lastVersionSorted = lib.version;
-        });
-      }
-    } finally {
-      _currentSortOperation = null;
-      Manager.setState(() => _isProcessing = false);
-    }
-  }
-
-  Widget _buildGroupedView(
-    List<Series> allSeries,
+  /// Build grouped view using cached grouped data
+  Widget _buildGroupedViewFromCache(
+    Map<String, List<Series>> groupedData,
     double maxWidth,
     Widget Function(List<Series>, ScrollController, ScrollPhysics, bool, {bool allowMeasurement}) episodesGrid,
   ) {
-    logTrace("---------------------------------------------------------------");
-    logTrace("-------------------- Starting Grouping ------------------------");
-    logTrace("---------------------------------------------------------------");
-    // Create the groupings based on selected grouping type
-    Map<String, List<Series>> groups = _cachedGroups;
-
-    if (_groupingNeeded(allSeries)) {
-      // Create the groupings based on selected grouping type
-      groups = {};
-
-      // Get all Anilist lists
-      final anilistProvider = Provider.of<AnilistProvider>(context, listen: false);
-
-      // sort them to have CURRENT, PLAN TO WATCH, ON HOLD, COMPLETED, DROPPED
-      for (final listName in _customListOrder) {
-        groups[listName == '__unlinked' ? 'Unlinked' : StatusStatistic.statusNameToPretty(listName)] = [];
-      }
-
-      // Sort series into groups
-      for (final series in allSeries) {
-        if (series.isLinked) {
-          logTrace('----\nProcessing series: ${series.name}', splitLines: true);
-          if (series.anilistMappings.isNotEmpty) {
-            bool allCompleted = true;
-            final completedList = anilistProvider.userLists[AnilistListApiStatus.COMPLETED.name_];
-
-            if (completedList != null) {
-              for (final mapping in series.anilistMappings) {
-                final isCompleted = completedList.entries.any((entry) => entry.media.id == mapping.anilistId);
-                if (!isCompleted) {
-                  allCompleted = false;
-                  break;
-                }
-              }
-
-              if (allCompleted) {
-                logTrace('  ADDING TO ALL COMPLETED GROUP');
-                final completedKey = StatusStatistic.statusNameToPretty(AnilistListApiStatus.COMPLETED.name_); // Completed
-                if (groups.containsKey(completedKey)) {
-                  groups[completedKey]?.add(series);
-                  continue; // Skip to next series
-                }
-              }
-            }
-
-            // For series that aren't all completed, check all mappings and prioritize lists
-            // Define list priority order (highest to lowest)
-            final listPriority = [
-              AnilistListApiStatus.CURRENT.name_, //   CURRENT
-              AnilistListApiStatus.REPEATING.name_, // REPEATING
-              AnilistListApiStatus.PAUSED.name_, //    PAUSED
-              AnilistListApiStatus.PLANNING.name_, //  PLANNING
-              AnilistListApiStatus.DROPPED.name_, //   DROPPED
-              AnilistListApiStatus.COMPLETED.name_, // COMPLETED
-            ];
-
-            // Collect all lists this series appears in
-            final seriesLists = <String>{};
-
-            for (final mapping in series.anilistMappings) {
-              logTrace('  Checking lists for mapping: ${mapping.title} (ID: ${mapping.anilistId})');
-
-              // Check if mapping is completed
-              final bool isCompleted = completedList?.entries.any((entry) => entry.media.id == mapping.anilistId) ?? false;
-              if (isCompleted) {
-                logTrace('  --${mapping.title} is COMPLETED');
-              } else {
-                logTrace('  --${mapping.title} is NOT COMPLETED');
-              }
-
-              // Check all standard lists
-              bool foundInAnyList = false;
-              for (final entry in anilistProvider.userLists.entries) {
-                final listName = entry.key;
-                if (listName.startsWith('custom_')) continue; // Handle custom lists separately
-
-                final list = entry.value;
-                final isInList = list.entries.any((listEntry) => listEntry.media.id == mapping.anilistId);
-
-                if (isInList) {
-                  logTrace('  ---${mapping.title} found in list: $listName');
-                  seriesLists.add(listName);
-                  foundInAnyList = true;
-                  break; // Stop checking other standard lists for this mapping
-                }
-              }
-
-              if (!foundInAnyList) {
-                logWarn('  ---${mapping.title} not found in any standard list!\nCheck if you have added it to Anilist, dummy!');
-              }
-            }
-
-            String? highestPriorityList;
-            for (final listName in listPriority) {
-              if (seriesLists.contains(listName)) {
-                highestPriorityList = listName;
-                logTrace('  Highest priority list: $highestPriorityList');
-                break;
-              }
-            }
-
-            // Add to the highest priority list if found
-            if (highestPriorityList != null) {
-              final displayName = StatusStatistic.statusNameToPretty(highestPriorityList);
-              logTrace('  ADDING TO GROUP: $displayName');
-              if (groups.containsKey(displayName)) {
-                groups[displayName]?.add(series);
-                continue; // Skip to next series
-              }
-            }
-
-            // Check custom lists
-            bool foundInCustomList = false;
-            for (final mapping in series.anilistMappings) {
-              for (final entry in anilistProvider.userLists.entries) {
-                final listName = entry.key;
-                if (!listName.startsWith('custom_')) continue; // Only check custom lists
-
-                final list = entry.value;
-                if (list.entries.any((listEntry) => listEntry.media.id == mapping.anilistId)) {
-                  groups[StatusStatistic.statusNameToPretty(listName)]?.add(series);
-                  foundInCustomList = true;
-                  break;
-                }
-              }
-              if (foundInCustomList) break;
-            }
-
-            if (foundInCustomList) continue; // Skip to next series
-
-            // If not found in any list, add to "Unlinked"
-            final unlinkedKey = groups.keys.firstWhere(
-              (k) => k == 'Unlinked',
-              orElse: () => groups.keys.first,
-            );
-            groups[unlinkedKey]?.add(series);
-          }
-        } else {
-          // Unlinked series go to "Unlinked" group
-          groups['Unlinked']?.add(series);
-        }
-      }
-
-      // Remove empty groups
-      groups.removeWhere((_, series) => series.isEmpty);
-
-      // Cache the groups
-      _cachedGroups = Map.from(groups);
-      _hasAppliedGrouping = true;
-      _lastAppliedGroupingView = _currentView;
-      _lastAppliedListOrder = List.from(_customListOrder);
-      _lastAppliedShowGrouped = _showGrouped;
-      // Persist static groups for future mounts
-      _staticGroups = Map.from(_cachedGroups);
-    }
-
-    // Build the grouped ListView
     return Padding(
       padding: const EdgeInsets.only(top: 16),
       child: DynMouseScroll(
@@ -1153,11 +1140,11 @@ class LibraryScreenState extends State<LibraryScreen> {
           final List<Widget> groupWidgets = [];
 
           // Use the _customListOrder to determine display order
-          final displayOrder = groups.keys.toList();
+          final displayOrder = groupedData.keys.toList();
           displayOrder.sort((a, b) {
             // Get the original position in _customListOrder
-            final aIndex = _customListOrder.indexOf(a == 'Unlinked' ? '__unlinked' : StatusStatistic.statusNameToApi(a));
-            final bIndex = _customListOrder.indexOf(b == 'Unlinked' ? '__unlinked' : StatusStatistic.statusNameToApi(b));
+            final aIndex = _customListOrder.indexOf(_getApiName(a));
+            final bIndex = _customListOrder.indexOf(_getApiName(b));
 
             // If one is not found, put it at the end
             if (aIndex == -1) return 1;
@@ -1166,18 +1153,9 @@ class LibraryScreenState extends State<LibraryScreen> {
             // Otherwise use the custom order
             return aIndex.compareTo(bIndex);
           });
+          
           for (final groupName in displayOrder) {
-            List<Series> seriesInGroup = groups[groupName]!;
-
-            if (_sortedGroupedSeries.containsKey(groupName)) {
-              seriesInGroup = _sortedGroupedSeries[groupName]!;
-            }
-
-            final libraryVersionChanged = context.read<Library>().version != _lastVersionSorted;
-            if ((_sortingNeeded(seriesInGroup) && !_isProcessing && _currentSortOperation == null && libraryVersionChanged)) {
-              _needsSort = false;
-              _applySortingAsync(seriesInGroup, groupName: groupName);
-            }
+            List<Series> seriesInGroup = groupedData[groupName]!;
 
             groupWidgets.add(Expander(
               initiallyExpanded: true,
@@ -1232,38 +1210,5 @@ class LibraryScreenState extends State<LibraryScreen> {
       case SortOrder.popularity:
         return 'Popularity';
     }
-  }
-
-  void _selectLibraryFolder() async {
-    setState(() => _isSelectingFolder = true);
-
-    final String? selectedDirectory = await FilePicker.platform.getDirectoryPath(
-      dialogTitle: 'Select Media Library Folder',
-    );
-
-    setState(() => _isSelectingFolder = false);
-
-    if (selectedDirectory != null) {
-      // ignore: use_build_context_synchronously
-      final library = context.read<Library>();
-      await library.setLibraryPath(selectedDirectory);
-    }
-  }
-
-  void _navigateToSeries(Series series) {
-    widget.onSeriesSelected(series.path);
-  }
-
-  void removeHiddenSeriesWithoutInvalidatingCache(Series series) {
-    if (Manager.settings.showHiddenSeries) return; // Don't remove if hidden series are shown
-
-    // Go through all cached lists and remove the series with the same path
-    _cachedGroups.forEach((key, value) {
-      value.removeWhere((s) => s.path == series.path);
-    });
-    _sortedGroupedSeries.removeWhere((key, value) => value.any((s) => s.path == series.path));
-    _sortedUngroupedSeries.removeWhere((s) => s.path == series.path);
-
-    Manager.setState();
   }
 }

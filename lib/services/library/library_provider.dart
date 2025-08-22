@@ -53,14 +53,12 @@ class Library with ChangeNotifier {
 
   bool _initialized = false;
   bool _cacheValidated = false;
-  int _version = 0; // increments on any library content mutation
 
   List<Series> get series => List.unmodifiable(_series);
   String? get libraryPath => _libraryPath;
   bool get initialized => _initialized;
   bool get isIndexing => _isScanning;
   AppDatabase get database => _db;
-  int get version => _version;
 
   static const String settingsFileName = 'settings';
   static const String miruryoikiLibrary = 'library';

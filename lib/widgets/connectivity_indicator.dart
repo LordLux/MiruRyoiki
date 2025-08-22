@@ -71,48 +71,45 @@ class OfflineBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final connectivityService = Provider.of<ConnectivityService>(context);
-    return SizedBox(
-      height: 30,
-      child: ValueListenableBuilder<bool>(
-        valueListenable: connectivityService.isOnlineNotifier,
-        builder: (context, isOnline, child) {
-          if (isOnline) return const SizedBox.shrink();
-      
-          return Container(
-            width: double.infinity,
-            color: Colors.orange.shade600,
-            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-            child: Row(
-              children: [
-                const Icon(
-                  Symbols.wifi_off,
+    return ValueListenableBuilder<bool>(
+      valueListenable: connectivityService.isOnlineNotifier,
+      builder: (context, isOnline, child) {
+        if (isOnline) return const SizedBox.shrink();
+    
+        return Container(
+          width: double.infinity,
+          color: Colors.orange.shade600,
+          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+          child: Row(
+            children: [
+              const Icon(
+                Symbols.wifi_off,
+                color: Colors.white,
+                size: 16,
+              ),
+              const SizedBox(width: 8),
+              const Expanded(
+                child: Text(
+                  'You are currently offline. Some features may be limited.',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+              fluent.IconButton(
+                onPressed: () => connectivityService.checkConnectivity(),
+                icon: const Icon(
+                  fluent.FluentIcons.refresh,
                   color: Colors.white,
                   size: 16,
                 ),
-                const SizedBox(width: 8),
-                const Expanded(
-                  child: Text(
-                    'You are currently offline. Some features may be limited.',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
-                fluent.IconButton(
-                  onPressed: () => connectivityService.checkConnectivity(),
-                  icon: const Icon(
-                    fluent.FluentIcons.refresh,
-                    color: Colors.white,
-                    size: 16,
-                  ),
-                ),
-              ],
-            ),
-          );
-        },
-      ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }
