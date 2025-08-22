@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 
 import '../../manager.dart';
 import '../../models/notification.dart';
+import '../../models/series.dart';
 import '../../services/anilist/queries/anilist_service.dart';
 import '../../services/library/library_provider.dart';
 import '../../services/navigation/dialogs.dart';
@@ -361,10 +362,24 @@ class NotificationsContentState extends State<_NotificationsContent> {
   }
 
   Widget _buildNotificationIcon(AnilistNotification notification) {
+    // Find the associated series for this notification
+    final library = Provider.of<Library>(context, listen: false);
+    Series? associatedSeries;
+    
+    if (notification is AiringNotification) {
+      // Look for a series with matching anilist ID
+      for (final series in library.series) {
+        if (series.anilistMappings.any((mapping) => mapping.anilistId == notification.animeId)) {
+          associatedSeries = series;
+          break;
+        }
+      }
+    }
+
     final a = switch (notification) {
-      AiringNotification airing => _buildMediaImage(airing.media?.coverImage),
-      MediaDataChangeNotification dataChange => _buildMediaImage(dataChange.media?.coverImage),
-      MediaMergeNotification merge => _buildMediaImage(merge.media?.coverImage),
+      AiringNotification airing => _buildMediaImage(airing.media?.coverImage, associatedSeries),
+      MediaDataChangeNotification dataChange => _buildMediaImage(dataChange.media?.coverImage, associatedSeries),
+      MediaMergeNotification merge => _buildMediaImage(merge.media?.coverImage, associatedSeries),
       MediaDeletionNotification _ => Container(
           width: 32,
           height: 24,
@@ -393,42 +408,101 @@ class NotificationsContentState extends State<_NotificationsContent> {
     ]);
   }
 
-  Widget _buildMediaImage(String? imageUrl) {
+  Widget _buildMediaImage(String? imageUrl, Series? associatedSeries) {
     return SizedBox(
       width: 54 * 0.71,
       height: 54,
-      child: imageUrl != null
+      child: associatedSeries != null
           ? ClipRRect(
               borderRadius: BorderRadius.circular(3),
-              child: Image.network(
-                imageUrl,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) {
-                  return Container(
-                    decoration: BoxDecoration(
-                      color: Colors.grey.withOpacity(0.3),
-                      borderRadius: BorderRadius.circular(3),
-                    ),
-                    child: const Icon(
-                      FluentIcons.image_pixel,
-                      size: 14,
-                      color: Colors.white,
-                    ),
-                  );
+              child: FutureBuilder<ImageProvider?>(
+                future: associatedSeries.getPosterImage(),
+                builder: (context, snapshot) {
+                  if (snapshot.hasData && snapshot.data != null) {
+                    return Image(
+                      image: snapshot.data!,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        return Container(
+                          decoration: BoxDecoration(
+                            color: Colors.grey.withOpacity(0.3),
+                            borderRadius: BorderRadius.circular(3),
+                          ),
+                          child: const Icon(
+                            FluentIcons.image_pixel,
+                            size: 14,
+                            color: Colors.white,
+                          ),
+                        );
+                      },
+                    );
+                  } else if (snapshot.hasError || imageUrl == null) {
+                    return Container(
+                      decoration: BoxDecoration(
+                        color: Colors.grey.withOpacity(0.3),
+                        borderRadius: BorderRadius.circular(3),
+                      ),
+                      child: const Icon(
+                        FluentIcons.image_pixel,
+                        size: 14,
+                        color: Colors.white,
+                      ),
+                    );
+                  } else {
+                    // Fallback to Anilist cover image while loading
+                    return Image.network(
+                      imageUrl,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        return Container(
+                          decoration: BoxDecoration(
+                            color: Colors.grey.withOpacity(0.3),
+                            borderRadius: BorderRadius.circular(3),
+                          ),
+                          child: const Icon(
+                            FluentIcons.image_pixel,
+                            size: 14,
+                            color: Colors.white,
+                          ),
+                        );
+                      },
+                    );
+                  }
                 },
               ),
             )
-          : Container(
-              decoration: BoxDecoration(
-                color: Colors.grey.withOpacity(0.3),
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: const Icon(
-                FluentIcons.image_pixel,
-                size: 14,
-                color: Colors.white,
-              ),
-            ),
+          : imageUrl != null
+              ? ClipRRect(
+                  borderRadius: BorderRadius.circular(3),
+                  child: Image.network(
+                    imageUrl,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) {
+                      return Container(
+                        decoration: BoxDecoration(
+                          color: Colors.grey.withOpacity(0.3),
+                          borderRadius: BorderRadius.circular(3),
+                        ),
+                        child: const Icon(
+                          FluentIcons.image_pixel,
+                          size: 14,
+                          color: Colors.white,
+                        ),
+                      );
+                    },
+                  ),
+                )
+              : Container(
+                  decoration: BoxDecoration(
+                    color: Colors.grey.withOpacity(0.3),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: const Icon(
+                    FluentIcons.image_pixel,
+                    size: 14,
+                    color: Colors.white,
+                  ),
+                ),
     );
   }
 

@@ -114,7 +114,7 @@ class _HomeScreenState extends State<HomeScreen> {
       builder: (context, anilistProvider, _) {
         // Get the base watching series data
         final watchingSeries = _getWatchingSeries(anilistProvider, library);
-        
+
         if (watchingSeries == null) {
           // No watching list found - show error state
           return Column(
@@ -127,7 +127,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ],
           );
         }
-        
+
         if (watchingSeries.isEmpty) {
           // No series in watching list - show empty state
           return Column(
@@ -144,32 +144,46 @@ class _HomeScreenState extends State<HomeScreen> {
         // Get series for each section
         final continueWatchingSeries = _getSeriesForSection(watchingSeries, anilistProvider, onlyStarted: true);
         final nextUpSeries = _getSeriesForSection(watchingSeries, anilistProvider, onlyStarted: false);
+        final releasedSeries = List<Series>.from(watchingSeries);
 
         // Apply visibility rules
         final showContinueWatching = continueWatchingSeries.isNotEmpty;
         final showNextUp = nextUpSeries.isNotEmpty && !showContinueWatching;
         final showEmptyState = !showContinueWatching && nextUpSeries.isEmpty;
 
+        final releasedEpisodes = _getReleasedEpisodes();
+
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Continue Watching section
-            if (showContinueWatching) _buildSection(
-              title: 'Continue Watching',
-              child: _buildContinueWatchingList(continueWatchingSeries, anilistProvider, onlyStarted: true),
-            ),
-            
+            if (showContinueWatching)
+              _buildSection(
+                title: 'Continue Watching',
+                child: _buildContinueWatchingList(continueWatchingSeries, anilistProvider, onlyStarted: true),
+              ),
+
             // Next Up section
-            if (showNextUp) _buildSection(
-              title: 'Next Up',
-              child: _buildContinueWatchingList(nextUpSeries, anilistProvider, onlyStarted: false),
-            ),
-            
+            if (showNextUp)
+              _buildSection(
+                title: 'Next Up',
+                child: _buildContinueWatchingList(nextUpSeries, anilistProvider, onlyStarted: false),
+              ),
+
             // Empty state when both sections are empty
-            if (showEmptyState) _buildSection(
-              title: 'Continue Watching',
-              child: _buildEmptyState('No series to continue', 'Start watching some series from your library'),
-            ),
+            if (showEmptyState)
+              _buildSection(
+                title: 'Continue Watching',
+                child: _buildEmptyState('No series to continue', 'Start watching some series from your library'),
+              ),
+
+            if (releasedEpisodes.isNotEmpty) ...[
+              VDiv(8), // Reduced spacing between sections
+              _buildSection(
+                title: 'Release Episodes to Download',
+                child: _buildReleasedEpisodesSection(releasedEpisodes),
+              ),
+            ],
 
             VDiv(8), // Reduced spacing between sections
             _buildSection(
@@ -306,6 +320,37 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  List<Episode> _getReleasedEpisodes() {
+    return [];
+  }
+
+  Widget _buildReleasedEpisodesSection(List<Episode> releasedEpisodes) {
+    // show a list of episodes that have been already aired but not that we still don't have in our library
+    final anilistProvider = Provider.of<AnilistProvider>(context);
+    final library = Provider.of<Library>(context);
+
+    if (releasedEpisodes.isEmpty) {
+      return _buildEmptyState('No released episodes found', 'All released episodes are already in your library');
+    }
+
+    return ListView.builder(
+      itemCount: releasedEpisodes.length,
+      itemBuilder: (context, index) {
+        final episode = releasedEpisodes[index];
+        return ListTile(
+          title: Text(episode.name),
+          subtitle: Text('Released on: '),
+          trailing: IconButton(
+            icon: Icon(FluentIcons.add),
+            onPressed: () {
+              print('TODO in the future, bring user to torrent pane');
+            },
+          ),
+        );
+      },
+    );
+  }
+
   Widget _buildUpcomingEpisodesSection() {
     final anilistProvider = Provider.of<AnilistProvider>(context);
     final library = Provider.of<Library>(context);
@@ -355,13 +400,11 @@ class _HomeScreenState extends State<HomeScreen> {
     if (seriesWithUpcomingEpisodes.isEmpty) {
       // Check if we need to create or reuse the cached future
       final currentAnimeIds = animeIds.toList();
-      if (_cachedUpcomingEpisodesFuture == null || 
-          _lastRequestedAnimeIds == null ||
-          !_listsEqual(_lastRequestedAnimeIds!, currentAnimeIds)) {
+      if (_cachedUpcomingEpisodesFuture == null || _lastRequestedAnimeIds == null || !_listsEqual(_lastRequestedAnimeIds!, currentAnimeIds)) {
         _lastRequestedAnimeIds = currentAnimeIds;
         _cachedUpcomingEpisodesFuture = anilistProvider.getUpcomingEpisodes(currentAnimeIds);
       }
-      
+
       // If no cached data, try to fetch fresh data
       return FutureBuilder<Map<int, AiringEpisode?>>(
         future: _cachedUpcomingEpisodesFuture,

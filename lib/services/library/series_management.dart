@@ -1,9 +1,9 @@
 part of 'library_provider.dart';
 
 extension LibrarySeriesManagement on Library {
-  Series? getSeriesByPath(PathString path) {
-    return _series.firstWhereOrNull((s) => s.path == path);
-  }
+  Series? getSeriesByPath(PathString path) => _series.firstWhereOrNull((s) => s.path == path);
+  
+  Series? getSeriesById(int anilistId) => _series.firstWhereOrNull((s) => s.primaryAnilistId == anilistId);
 
   Future<void> addSeries(Series series) async {
     _series.add(series);

@@ -75,8 +75,8 @@ extension AnilistServiceAnimeDetails on AnilistService {
           );
 
           if (queryResult.hasException) {
-            if (queryResult.exception is OperationException && 
-                queryResult.exception!.linkException is UnknownException && 
+            if (queryResult.exception is OperationException && //
+                queryResult.exception!.linkException is UnknownException &&
                 queryResult.exception!.linkException!.originalException is TimeoutException) {
               throw TimeoutException('Anilist anime details GET request timed out', const Duration(seconds: 30));
             }
@@ -174,8 +174,8 @@ extension AnilistServiceAnimeDetails on AnilistService {
           );
 
           if (queryResult.hasException) {
-            if (queryResult.exception is OperationException && 
-                queryResult.exception!.linkException is UnknownException && 
+            if (queryResult.exception is OperationException && //
+                queryResult.exception!.linkException is UnknownException &&
                 queryResult.exception!.linkException!.originalException is TimeoutException) {
               throw TimeoutException('Anilist animes details GET request timed out', const Duration(seconds: 30));
             }
@@ -298,7 +298,7 @@ extension AnilistServiceAnimeDetails on AnilistService {
       } else if (userId != null) {
         variables['userId'] = userId;
       }
-      
+
       final result = await RetryUtils.retry<Map<String, AnilistUserList>>(
         () async {
           final queryResult = await _client!.query(
@@ -310,8 +310,8 @@ extension AnilistServiceAnimeDetails on AnilistService {
           );
 
           if (queryResult.hasException) {
-            if (queryResult.exception is OperationException && 
-                queryResult.exception!.linkException is UnknownException && 
+            if (queryResult.exception is OperationException && //
+                queryResult.exception!.linkException is UnknownException &&
                 queryResult.exception!.linkException!.originalException is TimeoutException) {
               throw TimeoutException('Anilist anime lists GET request timed out', const Duration(seconds: 30));
             }
@@ -428,6 +428,7 @@ extension AnilistServiceAnimeDetails on AnilistService {
             }
             status
             format
+            episodes
           }
         }
       }
@@ -445,8 +446,8 @@ extension AnilistServiceAnimeDetails on AnilistService {
           );
 
           if (queryResult.hasException) {
-            if (queryResult.exception is OperationException && 
-                queryResult.exception!.linkException is UnknownException && 
+            if (queryResult.exception is OperationException && //
+                queryResult.exception!.linkException is UnknownException &&
                 queryResult.exception!.linkException!.originalException is TimeoutException) {
               throw TimeoutException('Anilist upcoming episodes GET request timed out', const Duration(seconds: 30));
             }
@@ -460,7 +461,7 @@ extension AnilistServiceAnimeDetails on AnilistService {
             for (final media in mediaList) {
               final int? id = media['id'];
               final nextAiringData = media['nextAiringEpisode'];
-              
+
               if (id != null) {
                 if (nextAiringData != null) {
                   upcomingEpisodes[id] = AiringEpisode.fromJson(nextAiringData);
