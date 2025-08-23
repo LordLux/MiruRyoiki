@@ -4,14 +4,15 @@ import 'dart:ui';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart' show Colors;
 import 'package:flutter/widgets.dart' hide Image;
-import 'package:miruryoiki/models/metadata.dart';
 import 'package:palette_generator/palette_generator.dart';
+import 'package:miruryoiki/models/metadata.dart';
 import 'package:collection/collection.dart';
 import 'package:provider/provider.dart';
 
 import '../manager.dart';
 import '../services/anilist/provider/anilist_provider.dart';
 import '../services/file_system/cache.dart';
+import '../utils/color_utils.dart' as colorUtils;
 import '../utils/logging.dart';
 import '../utils/path_utils.dart';
 import 'anilist/anime.dart';
@@ -510,14 +511,12 @@ class Series {
     if (_dominantColor != null) return _dominantColor;
 
     // Fall back to Anilist color if locally calculated color is not available
-    if (anilistData?.dominantColor != null) {
-      try {
-        return anilistData!.dominantColor!.fromHex();
-      } catch (e) {
-        return null;
-      }
-    }
-    return null;
+    return anilistData?.dominantColor?.fromHex();
+  }
+
+  Future<void> calculateDominantColor({bool forceRecalculate = false}) async {
+    final result = await colorUtils.calculateDominantColor(this, forceRecalculate: forceRecalculate);
+    if (result.$2 == true) _dominantColor = result.$1;
   }
 
   /// Get the Anilist poster URL
@@ -525,127 +524,6 @@ class Series {
 
   /// Get the Anilist banner URL
   String? get anilistBannerUrl => _anilistBannerUrl ?? anilistData?.bannerImage;
-
-  /// Calculate and cache the dominant color from the image
-  Future<Color?> calculateDominantColor({bool forceRecalculate = false}) async {
-    // If color already calculated and not forced, return cached color
-    if (_dominantColor != null && !forceRecalculate) {
-      logTrace('   No need to extract color, using cached dominant color for ${substringSafe(name, 0, 20, '"')}: ${_dominantColor!.toHex()}!');
-      return _dominantColor;
-    }
-
-    // Skip if binding not initialized or no poster path
-    if (!WidgetsBinding.instance.isRootWidgetAttached) {
-      logDebug('   WidgetsBinding not initialized, initializing...');
-      WidgetsFlutterBinding.ensureInitialized();
-    }
-
-    logTrace('  Calculating dominant color for $name...');
-    // Get source type
-    final DominantColorSource sourceType = Manager.dominantColorSource;
-    String? imagePath;
-
-    // Use the existing logic from effectivePosterPath/effectiveBannerPath
-    if (sourceType == DominantColorSource.poster) {
-      // For poster source, use the effectivePosterPath
-      imagePath = effectivePosterPath;
-      if (imagePath != null) {
-        logTrace(isAnilistPoster ? '   Using Anilist poster for dominant color calculation' : '   Using local poster for dominant color calculation: "$imagePath"');
-      }
-    } else {
-      // For banner source, use the effectiveBannerPath
-      imagePath = effectiveBannerPath;
-      if (imagePath != null) {
-        logTrace(isAnilistBanner ? '   Using Anilist banner for dominant color calculation' : '   Using local banner for dominant color calculation: "$imagePath"');
-      }
-    }
-
-    // If no image path found, return null
-    if (imagePath == null) {
-      logTrace('   No image available for dominant color extraction');
-      return null;
-    }
-
-    // For Anilist images, we need to get the cached path
-    if ((sourceType == DominantColorSource.poster && isAnilistPoster) || (sourceType == DominantColorSource.banner && isAnilistBanner)) {
-      imagePath = await _getAnilistCachedImagePath();
-      if (imagePath == null) {
-        logTrace('   Failed to get cached Anilist image');
-        return null;
-      }
-    }
-
-    return await _extractColorFromPath(imagePath) ?? _dominantColor;
-  }
-
-  /// Extract dominant color from an image file
-  Future<Color?> _extractColorFromPath(String imagePath) async {
-    // Calculate color using compute to avoid UI blocking
-    try {
-      // Use compute to process on a background thread
-      final imageFile = File(imagePath);
-      if (await imageFile.exists()) {
-        final Uint8List imageBytes = await imageFile.readAsBytes();
-        final Image image = (await decodeImageFromList(imageBytes));
-        final ByteData byteData = (await image.toByteData())!;
-
-        // Force UI update by using a separate isolate
-        final Color? newColor = await compute(_isolateExtractColor, (byteData, image.width, image.height));
-        logMulti([
-          ['   Dominant color calculated: '],
-          [newColor?.toHex() ?? 'None', newColor ?? Colors.yellow, newColor == null ? Colors.red : Colors.transparent],
-        ]);
-
-        // Only update if the color actually changed
-        if (newColor != null && (_dominantColor?.value != newColor.value)) {
-          _dominantColor = newColor;
-        }
-        return _dominantColor;
-      }
-    } catch (e) {
-      logErr('Error extracting dominant color', e);
-    }
-    return null;
-  }
-
-  /// Helper method to get cached Anilist images
-  Future<String?> _getAnilistCachedImagePath() async {
-    if (anilistData == null) return null;
-
-    final imageCache = ImageCacheService();
-    await imageCache.init();
-
-    // Try poster first
-    if (anilistData?.posterImage != null) {
-      final path = await imageCache.getCachedImagePath(anilistData!.posterImage!);
-      if (path != null) return path;
-    }
-
-    // Try banner next
-    if (anilistData?.bannerImage != null) {
-      return await imageCache.getCachedImagePath(anilistData!.bannerImage!);
-    }
-
-    return null;
-  }
-
-  /// Entry point for extracting color in an isolate
-  static Future<Color?> _isolateExtractColor((ByteData, int, int) data) async {
-    try {
-      final byteData = data.$1;
-      final width = data.$2;
-      final height = data.$3;
-      final EncodedImage encoded_image = EncodedImage(byteData, height: height, width: width);
-
-      final paletteGenerator = await PaletteGenerator.fromByteData(encoded_image);
-
-      // Try vibrant color first, fall back to dominant
-      return paletteGenerator.vibrantColor?.color ?? paletteGenerator.dominantColor?.color;
-    } catch (e) {
-      logErr('Error extracting color from image', e);
-      return null;
-    }
-  }
 
   /// Media list entries for the series
   Map<int, AnilistMediaListEntry?>? _mediaListEntries;
