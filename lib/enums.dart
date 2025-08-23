@@ -6,7 +6,6 @@ import 'package:recase/recase.dart';
 import 'package:intl/intl.dart';
 
 import 'models/anilist/user_list.dart';
-import 'models/series.dart';
 
 // ENUMS
 enum Dim { dimmed, normal, brightened }

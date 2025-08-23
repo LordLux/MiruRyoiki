@@ -191,6 +191,9 @@ class Series {
   /// Whether the series is hidden from the library (only when not linked to Anilist)
   bool isHidden = false;
 
+  /// Metadata for the series
+  Metadata? _metadata;
+
   /// Constructor for Series
   Series({
     this.id,
@@ -269,7 +272,6 @@ class Series {
       'relatedMedia': relatedMedia.map((e) => e.toJson()).toList(),
       'anilistMappings': anilistMappings.map((m) => m.toJson()).toList(),
       'dominantColor': _dominantColor?.value, // nullable
-      'dataVersion': _dataVersion,
       'primaryAnilistId': _primaryAnilistId,
       'anilistPosterUrl': _anilistPosterUrl ?? anilistData?.posterImage, // nullable
       'anilistBannerUrl': _anilistBannerUrl ?? anilistData?.bannerImage, // nullable
@@ -312,13 +314,6 @@ class Series {
             }
           }
         }
-        // // Support legacy format with single anilistId
-        // else if (json.containsKey('anilistId') && json['anilistId'] != null) {
-        //   mappings.add(AnilistMapping(
-        //     localPath: path,
-        //     anilistId: json['anilistId'] as int,
-        //   ));
-        // }
       } catch (e, st) {
         logErr('Error processing Anilist mappings', e, st);
       }
@@ -468,48 +463,6 @@ class Series {
     }
   }
 
-  factory Series.fromValues({
-    int? id,
-    required String name,
-    required PathString path,
-    PathString? folderPosterPath,
-    PathString? folderBannerPath,
-    required List<Season> seasons,
-    List<Episode> relatedMedia = const [],
-    List<AnilistMapping> anilistMappings = const [],
-    int? primaryAnilistId,
-    AnilistAnime? anilistData,
-    ImageSource? preferredPosterSource,
-    ImageSource? preferredBannerSource,
-    Color? dominantColor,
-    String? anilistPoster,
-    String? anilistBanner,
-    bool isHidden = false,
-    Metadata? metadata,
-  }) {
-    final series = Series(
-      id: id,
-      name: name,
-      path: path,
-      folderPosterPath: folderPosterPath,
-      folderBannerPath: folderBannerPath,
-      seasons: seasons,
-      relatedMedia: relatedMedia,
-      anilistMappings: anilistMappings,
-      dominantColor: dominantColor,
-      preferredPosterSource: preferredPosterSource,
-      preferredBannerSource: preferredBannerSource,
-      anilistData: anilistData,
-      primaryAnilistId: primaryAnilistId,
-      anilistBanner: anilistBanner,
-      anilistPoster: anilistPoster,
-      isHidden: isHidden,
-      metadata: metadata,
-    );
-
-    return series;
-  }
-
   @override
   String toString() {
     return '''\nSeries(
@@ -530,11 +483,12 @@ class Series {
 
   /// Getter and setter for primaryAnilistId
   int? get primaryAnilistId => _primaryAnilistId ?? (isLinked ? anilistMappings.firstOrNull?.anilistId : null); // Fall back to the first mapping
-
   /// Set the primary Anilist ID
   set primaryAnilistId(int? value) {
     if (value != null && anilistMappings.any((m) => m.anilistId == value)) {
       _primaryAnilistId = value;
+    } else {
+      logWarn('Invalid primaryAnilistId: $value');
     }
   }
 
@@ -548,63 +502,12 @@ class Series {
 
     _anilistPosterUrl = value?.posterImage;
     _anilistBannerUrl = value?.bannerImage;
-
-    _dataVersion++;
   }
-
-  /// Set the Anilist ID for the series
-  set anilistId(int? value) {
-    if (value == null) {
-      anilistMappings.clear();
-    } else if (!isLinked) {
-      anilistMappings.add(AnilistMapping(
-        localPath: path,
-        anilistId: value,
-      ));
-    } else {
-      anilistMappings[0] = AnilistMapping(
-        localPath: path,
-        anilistId: value,
-        title: anilistMappings[0].title,
-        lastSynced: anilistMappings[0].lastSynced,
-      );
-    }
-  }
-
-  // Helper to find mapping for a path
-  AnilistMapping? getMappingForPath(PathString path) {
-    // Exact match
-    for (var mapping in anilistMappings) {
-      if (mapping.localPath == path) {
-        return mapping;
-      }
-    }
-
-    // Parent folder match (for nested files)
-    for (var mapping in anilistMappings) {
-      if (path.path.startsWith(mapping.localPath.path)) {
-        return mapping;
-      }
-    }
-
-    return null;
-  }
-
-  /// Data version for the series
-  int _dataVersion = 0;
-
-  /// Include in the key for SeriesCard
-  int get dataVersion => _dataVersion;
-
-  /// Get Anilist ID for an episode
-  int? getAnilistIdForEpisode(Episode episode) => getMappingForPath(episode.path)?.anilistId;
 
   /// Get primary color from the series poster image
   Color? get dominantColor {
     // Always prioritize locally calculated color which respects DominantColorSource
-    if (_dominantColor != null) {
-      return _dominantColor;
-    }
+    if (_dominantColor != null) return _dominantColor;
 
     // Fall back to Anilist color if locally calculated color is not available
     if (anilistData?.dominantColor != null) {
@@ -696,7 +599,6 @@ class Series {
         // Only update if the color actually changed
         if (newColor != null && (_dominantColor?.value != newColor.value)) {
           _dominantColor = newColor;
-          _dataVersion++;
         }
         return _dominantColor;
       }
@@ -1184,14 +1086,11 @@ class Series {
     return null;
   }
 
-  Metadata? _metadata;
-
   Metadata? get metadata => _metadata ?? _getMetadata();
 
   set metadata(Metadata? metadata) {
     if (metadata == null) logWarn('Setting metadata for series $name to null');
     _metadata = metadata;
-    _dataVersion++;
   }
 
   void setMetadataFromValues({
@@ -1215,7 +1114,6 @@ class Series {
           lastModified: lastModified,
           lastAccessed: lastAccessed,
         );
-    _dataVersion++;
   }
 
   Metadata? _getMetadata() {

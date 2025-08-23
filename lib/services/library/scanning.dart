@@ -270,7 +270,7 @@ extension LibraryScanning on Library {
         .whereNotNull()
         .toList();
 
-    final series = Series.fromValues(name: name, path: seriesPath, seasons: [], folderPosterPath: posterPath, folderBannerPath: bannerPath);
+  final series = Series(name: name, path: seriesPath, seasons: [], folderPosterPath: posterPath, folderBannerPath: bannerPath);
     return _organizeEpisodesIntoSeasons(series, episodes);
   }
 
