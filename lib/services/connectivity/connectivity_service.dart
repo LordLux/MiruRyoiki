@@ -24,6 +24,7 @@ class ConnectivityService extends ChangeNotifier {
 
   /// ValueNotifier for real-time UI updates
   final ValueNotifier<bool> isOnlineNotifier = ValueNotifier<bool>(true);
+  bool isCheckingConnectivity = false;
 
   /// Last connectivity check time
   DateTime? _lastConnectivityCheck;
@@ -72,10 +73,7 @@ class ConnectivityService extends ChangeNotifier {
 
   /// Returns true if any active connection type is present
   bool _hasActiveConnection(List<ConnectivityResult> results) {
-    return results.contains(ConnectivityResult.mobile) ||
-        results.contains(ConnectivityResult.wifi) ||
-        results.contains(ConnectivityResult.ethernet) ||
-        results.contains(ConnectivityResult.vpn);
+    return results.contains(ConnectivityResult.mobile) || results.contains(ConnectivityResult.wifi) || results.contains(ConnectivityResult.ethernet) || results.contains(ConnectivityResult.vpn);
   }
 
   /// Start timer for periodic internet connectivity checks
@@ -127,6 +125,8 @@ class ConnectivityService extends ChangeNotifier {
     } catch (e) {
       logErr('Error checking internet connectivity: $e');
       _updateConnectivityStatus(false, 'Connectivity check failed: $e');
+    } finally {
+      isCheckingConnectivity = false;
     }
   }
 
@@ -151,6 +151,8 @@ class ConnectivityService extends ChangeNotifier {
   /// Manually trigger a connectivity check
   Future<void> checkConnectivity() async {
     logTrace('Manual connectivity check requested');
+    log('test');
+    isCheckingConnectivity = true;
     await _checkInternetConnectivity();
   }
 

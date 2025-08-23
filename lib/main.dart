@@ -483,6 +483,9 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
                                   duration: shortDuration,
                                   color: getDimmableWhite(context),
                                   height: !isShowing ? 0 : ScreenUtils.kStatusBarHeight,
+                                  child: GestureDetector(
+                                    onTap: () => print('test!!'),
+                                  ),
                                 );
                               },
                             )

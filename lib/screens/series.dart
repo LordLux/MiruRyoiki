@@ -94,7 +94,7 @@ class SeriesScreenState extends State<SeriesScreen> {
         isBanner: isBanner,
       ),
     ).then((source) {
-      if (source != null && mounted) Manager.setState();
+      if (source != null && mounted) setState(() {});
     });
   }
 
@@ -104,7 +104,7 @@ class SeriesScreenState extends State<SeriesScreen> {
     if (!series!.isLinked) {
       // Clear any Anilist data references to ensure UI updates
       series!.anilistData = null;
-      if (homeKey.currentContext?.mounted ?? false) Manager.setState();
+      if (homeKey.currentContext?.mounted ?? false) setState(() {});
       return;
     }
 
@@ -124,7 +124,7 @@ class SeriesScreenState extends State<SeriesScreen> {
       // Store the original dominant color to check if it changes
       final Color? originalDominantColor = series!.dominantColor;
 
-      Manager.setState(() {
+      setState(() {
         // Find the mapping with this ID
         for (var i = 0; i < series!.anilistMappings.length; i++) {
           if (series!.anilistMappings[i].anilistId == anilistId) {
@@ -601,9 +601,10 @@ class SeriesScreenState extends State<SeriesScreen> {
 
                   if (libraryScreenKey.currentState != null) libraryScreenKey.currentState!.updateSeriesInSortCache(series);
                   // Fetch and load Anilist data
-                  await _loadAnilistData(value);
+                  setState(() {
+                    _loadAnilistData(value);
+                  });
                 }
-                Manager.setState();
               },
             ),
           ),
@@ -900,7 +901,7 @@ void linkWithAnilist(BuildContext context, Series? series, Future<void> Function
 
         // Update the series with the new mappings
         Manager.currentDominantColor = series.dominantColor;
-        Manager.setState();
+        setState(() {});
       },
     ),
   );
