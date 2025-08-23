@@ -155,12 +155,6 @@ class Series {
   /// Path for the series from the File System
   final PathString path;
 
-  /// Poster path for the series from the File System
-  PathString? folderPosterPath;
-
-  /// Poster path for the series from the File System
-  PathString? folderBannerPath;
-
   /// List of seasons for the series from the File System
   final List<Season> seasons;
 
@@ -170,14 +164,11 @@ class Series {
   /// Anilist IDs for the series
   List<AnilistMapping> anilistMappings;
 
-  /// Anilist data for the series
-  AnilistAnime? _anilistData;
+  /// The currently selected Anilist ID for display purposes
+  int? _primaryAnilistId;
 
   /// Cached dominant color from poster image
   Color? _dominantColor;
-
-  // The currently selected Anilist ID for display purposes
-  int? _primaryAnilistId;
 
   /// Preferred source for the Poster
   ImageSource? preferredPosterSource;
@@ -190,6 +181,12 @@ class Series {
 
   /// Cached URL for Anilist Banner
   String? _anilistBannerUrl;
+
+  /// Poster path for the series from the File System
+  PathString? folderPosterPath;
+
+  /// Poster path for the series from the File System
+  PathString? folderBannerPath;
 
   /// Whether the series is hidden from the library (only when not linked to Anilist)
   bool isHidden = false;
@@ -213,8 +210,7 @@ class Series {
     int? primaryAnilistId,
     this.isHidden = false,
     Metadata? metadata,
-  })  : _anilistData = anilistData,
-        _dominantColor = dominantColor,
+  })  : _dominantColor = dominantColor,
         _anilistPosterUrl = anilistPoster,
         _anilistBannerUrl = anilistBanner,
         _primaryAnilistId = primaryAnilistId ?? anilistMappings.firstOrNull?.anilistId,
@@ -249,7 +245,7 @@ class Series {
       seasons: seasons ?? this.seasons,
       relatedMedia: relatedMedia ?? this.relatedMedia,
       anilistMappings: anilistMappings ?? this.anilistMappings,
-      anilistData: anilistData ?? _anilistData,
+      anilistData: anilistData ?? anilistData,
       dominantColor: dominantColor ?? _dominantColor,
       preferredPosterSource: preferredPosterSource ?? this.preferredPosterSource,
       preferredBannerSource: preferredBannerSource ?? this.preferredBannerSource,
@@ -275,8 +271,8 @@ class Series {
       'dominantColor': _dominantColor?.value, // nullable
       'dataVersion': _dataVersion,
       'primaryAnilistId': _primaryAnilistId,
-      'anilistPosterUrl': _anilistPosterUrl ?? _anilistData?.posterImage, // nullable
-      'anilistBannerUrl': _anilistBannerUrl ?? _anilistData?.bannerImage, // nullable
+      'anilistPosterUrl': _anilistPosterUrl ?? anilistData?.posterImage, // nullable
+      'anilistBannerUrl': _anilistBannerUrl ?? anilistData?.bannerImage, // nullable
       'preferredPosterSource': preferredPosterSource?.name_, // nullable
       'preferredBannerSource': preferredBannerSource?.name_, // nullable
       'isHidden': isHidden,
@@ -531,9 +527,9 @@ class Series {
   Hidden:                   $isHidden,
 )''';
   }
-  
+
   /// Getter and setter for primaryAnilistId
-  int? get primaryAnilistId => _primaryAnilistId ?? anilistId; // Fall back to the first mapping
+  int? get primaryAnilistId => _primaryAnilistId ?? (isLinked ? anilistMappings.firstOrNull?.anilistId : null); // Fall back to the first mapping
 
   /// Set the primary Anilist ID
   set primaryAnilistId(int? value) {
@@ -542,20 +538,19 @@ class Series {
     }
   }
 
-  /// Get the Anilist data for the series
-  AnilistAnime? get anilistData => _anilistData;
+  /// Anilist data for the series
+  AnilistAnime? get anilistData => anilistMappings.firstWhereOrNull((m) => m.anilistId == _primaryAnilistId)?.anilistData;
 
   /// Set the Anilist data for the series
   set anilistData(AnilistAnime? value) {
-    _anilistData = value;
+    final mapping = anilistMappings.firstWhereOrNull((m) => m.anilistId == _primaryAnilistId);
+    if (mapping != null) mapping.anilistData = value;
+
     _anilistPosterUrl = value?.posterImage;
     _anilistBannerUrl = value?.bannerImage;
 
     _dataVersion++;
   }
-
-  /// Get primary Anilist ID
-  int? get anilistId => isLinked ? anilistMappings.firstOrNull?.anilistId : null;
 
   /// Set the Anilist ID for the series
   set anilistId(int? value) {
@@ -612,9 +607,9 @@ class Series {
     }
 
     // Fall back to Anilist color if locally calculated color is not available
-    if (_anilistData?.dominantColor != null) {
+    if (anilistData?.dominantColor != null) {
       try {
-        return _anilistData!.dominantColor!.fromHex();
+        return anilistData!.dominantColor!.fromHex();
       } catch (e) {
         return null;
       }
@@ -623,10 +618,10 @@ class Series {
   }
 
   /// Get the Anilist poster URL
-  String? get anilistPosterUrl => _anilistPosterUrl ?? _anilistData?.posterImage;
+  String? get anilistPosterUrl => _anilistPosterUrl ?? anilistData?.posterImage;
 
   /// Get the Anilist banner URL
-  String? get anilistBannerUrl => _anilistBannerUrl ?? _anilistData?.bannerImage;
+  String? get anilistBannerUrl => _anilistBannerUrl ?? anilistData?.bannerImage;
 
   /// Calculate and cache the dominant color from the image
   Future<Color?> calculateDominantColor({bool forceRecalculate = false}) async {
@@ -879,13 +874,9 @@ class Series {
     }
 
     // Calculate averages
-    if (userScoreCount > 0) 
-      averageUserScore = int.parse((totalUserScore / userScoreCount).round().toString());
-    
+    if (userScoreCount > 0) averageUserScore = int.parse((totalUserScore / userScoreCount).round().toString());
 
-    if (popularityCount > 0) 
-      averagePopularity = int.parse((totalPopularity / popularityCount).round().toString());
-    
+    if (popularityCount > 0) averagePopularity = int.parse((totalPopularity / popularityCount).round().toString());
 
     // Cache the results
     _cachedSeriesInfo = (
@@ -1018,7 +1009,7 @@ class Series {
 
   /// Get the current Anilist data based on the primary Anilist ID
   AnilistAnime? get currentAnilistData {
-    if (_primaryAnilistId == null) return _anilistData;
+    if (_primaryAnilistId == null) return anilistData;
 
     // Find mapping with the primary ID
     final mapping = anilistMappings.firstWhereOrNull((m) => m.anilistId == _primaryAnilistId);
@@ -1029,7 +1020,7 @@ class Series {
     }
 
     // Fall back to the first mapping's data
-    return _anilistData;
+    return anilistData;
   }
 
   // ANILIST GETTERS

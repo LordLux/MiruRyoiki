@@ -24,7 +24,7 @@ class SeriesLinkService {
     try {
       final anime = await _anilistService.getAnimeDetails(anilistId);
       if (anime != null) {
-        series.anilistId = anilistId;
+        series.primaryAnilistId = anilistId;
         series.anilistData = anime;
         return true;
       }
@@ -56,10 +56,10 @@ class SeriesLinkService {
 
   /// Refresh metadata for a linked series
   Future<bool> refreshMetadata(Series series) async {
-    if (series.anilistId == null) return false;
+    if (series.primaryAnilistId == null) return false;
 
     try {
-      final anime = await _anilistService.getAnimeDetails(series.anilistId!);
+      final anime = await _anilistService.getAnimeDetails(series.primaryAnilistId!);
       if (anime != null) {
         series.anilistData = anime;
         return true;

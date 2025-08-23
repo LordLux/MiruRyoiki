@@ -307,7 +307,7 @@ extension LibraryAnilistIntegration on Library {
     final startTime = DateTime.now().millisecondsSinceEpoch;
 
     final anilistService = AnilistService();
-    final linkedSeries = _series.where((s) => s.anilistId != null).toList();
+    final linkedSeries = _series.where((s) => s.primaryAnilistId != null).toList();
 
     final int perPage = 50;
     // Process in batches
@@ -316,19 +316,19 @@ extension LibraryAnilistIntegration on Library {
       final batch = linkedSeries.sublist(i, batchEnd);
 
       // Extract IDs for this batch
-      final ids = batch.map((s) => s.anilistId!).toList();
+      final ids = batch.map((s) => s.primaryAnilistId!).toList();
 
       // Fetch details for all anime in this batch with a single API call
       final animeMap = await anilistService.getMultipleAnimesDetails(ids);
 
       // Update series with fetched data
       for (final series in batch) {
-        final anime = animeMap[series.anilistId];
+        final anime = animeMap[series.primaryAnilistId];
         if (anime != null) {
           series.anilistData = anime;
         } else {
           // Failed to fetch data for this series - preserve existing data
-          logWarn('Failed to fetch AniList metadata for ${series.name} (ID: ${series.anilistId}) - preserving existing data');
+          logWarn('Failed to fetch AniList metadata for ${series.name} (ID: ${series.primaryAnilistId}) - preserving existing data');
         }
       }
 

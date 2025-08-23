@@ -392,10 +392,10 @@ class SeriesScreenState extends State<SeriesScreen> {
                               )
                           : null,
                       Icon(
-                        series.anilistId != null ? FluentIcons.link : FluentIcons.add_link,
+                        series.primaryAnilistId != null ? FluentIcons.link : FluentIcons.add_link,
                         color: Colors.white,
                       ),
-                      series.anilistId != null ? 'Update Anilist Link' : 'Link with Anilist',
+                      series.primaryAnilistId != null ? 'Update Anilist Link' : 'Link with Anilist',
                     ),
                 ],
               )
