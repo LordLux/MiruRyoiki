@@ -58,9 +58,9 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
   void initState() {
     super.initState();
     // Initial load & scroll after first frame
-    nextFrame(() {
-      loadReleaseData();
+    nextFrame(() async {
       _itemPositionsListener.itemPositions.addListener(_updateSpacerHeight);
+      await loadReleaseData();
       nextFrame(() => scrollToToday());
     });
     // Periodic refresh for relative times
