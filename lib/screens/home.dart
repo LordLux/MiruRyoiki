@@ -142,13 +142,12 @@ class _HomeScreenState extends State<HomeScreen> {
         }
 
         // Get series for each section
-        final continueWatchingSeries = _getSeriesForSection(watchingSeries, anilistProvider, onlyStarted: true);
-        final nextUpSeries = _getSeriesForSection(watchingSeries, anilistProvider, onlyStarted: false);
-        final releasedSeries = List<Series>.from(watchingSeries);
+        final (continueWatchingSeries, nextUpSeries) = _getSeriesForSection(watchingSeries, anilistProvider); // $1: started, $2: not started
+        final releasedSeries = List<Series>.from(watchingSeries); // series with aired but not downloaded episodes
 
         // Apply visibility rules
         final showContinueWatching = continueWatchingSeries.isNotEmpty;
-        final showNextUp = nextUpSeries.isNotEmpty && !showContinueWatching;
+        final showNextUp = nextUpSeries.isNotEmpty/* && !showContinueWatching*/;
         final showEmptyState = !showContinueWatching && nextUpSeries.isEmpty;
 
         final releasedEpisodes = _getReleasedEpisodes();
@@ -246,20 +245,28 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   /// Filters series for a specific section based on episode progress
-  List<Series> _getSeriesForSection(List<Series> watchingSeries, AnilistProvider anilistProvider, {required bool onlyStarted}) {
-    return watchingSeries.where((s) {
+  /// 
+  /// $1 contains only series whose first non-finished has progress > 0
+  /// $2 contains only series whose first non-finished has progress == 0
+  (List<Series>, List<Series>) _getSeriesForSection(List<Series> watchingSeries, AnilistProvider anilistProvider) {
+    final startedSeries = <Series>[];
+    final notStartedSeries = <Series>[];
+
+    for (final s in watchingSeries) {
       // Use the new progress manager to check if series has next episode
       final nextEpisode = Manager.anilistProgress.getNextEpisodeToWatchEpisode(s, anilistProvider);
-      if (nextEpisode == null) return false;
+      if (nextEpisode == null) continue; // Skip series with no next episode
 
       // Filter based on onlyStarted parameter
-      if (onlyStarted) {
+      if (nextEpisode.progress > 0 && nextEpisode.progress < Library.progressThreshold && !nextEpisode.watched) {
         // Show only episodes that have been started (progress > 0)
-        return nextEpisode.progress > 0;
+        startedSeries.add(s);
+      } else {
+        notStartedSeries.add(s);
       }
-      // Show only episodes that haven't been started (progress == 0)
-      return nextEpisode.progress == 0;
-    }).toList();
+    }
+
+    return (startedSeries, notStartedSeries);
   }
 
   Widget _buildContinueWatchingList(List<Series> series, AnilistProvider anilistProvider, {required bool onlyStarted}) {

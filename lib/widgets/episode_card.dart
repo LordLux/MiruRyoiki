@@ -8,6 +8,7 @@ import 'package:miruryoiki/services/navigation/statusbar.dart';
 import '../manager.dart';
 import '../models/episode.dart';
 import '../models/series.dart';
+import '../services/library/library_provider.dart';
 import '../utils/logging.dart';
 import '../utils/path_utils.dart';
 import '../utils/screen_utils.dart';
@@ -148,7 +149,7 @@ class _HoverableEpisodeTileState extends State<HoverableEpisodeTile> {
                                     color: widget.series.dominantColor,
                                   ),
                                   height: 3.5,
-                                  width: (widget.episode.progress > 0.95 ? 1 : widget.episode.progress) * constraints.maxWidth,
+                                  width: (widget.episode.progress > Library.progressThreshold ? 1 : widget.episode.progress) * constraints.maxWidth,
                                 ),
                               ),
                             );

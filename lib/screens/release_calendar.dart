@@ -60,8 +60,9 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
     // Initial load & scroll after first frame
     nextFrame(() async {
       _itemPositionsListener.itemPositions.addListener(_updateSpacerHeight);
-      await loadReleaseData();
-      nextFrame(() => scrollToToday());
+      loadReleaseData().then((_) {
+        nextFrame(delay: 5, () => scrollToToday());
+      });
     });
     // Periodic refresh for relative times
     _minuteRefreshTimer = Timer.periodic(const Duration(minutes: 1), (_) {

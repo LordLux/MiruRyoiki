@@ -97,9 +97,6 @@ class _ReleaseNotificationWidgetState extends State<ReleaseNotificationWidget> {
     // Prevent multiple clicks during toggle
     if (_isDialogToggling || Manager.notificationsPopping) return;
 
-    // Refresh notifications before showing dialog
-    await _loadNotifications();
-
     final currentDialog = Manager.navigation.currentView;
     if (Navigator.of(context, rootNavigator: true).canPop() && currentDialog?.level == NavigationLevel.dialog) {
       _isDialogToggling = true;

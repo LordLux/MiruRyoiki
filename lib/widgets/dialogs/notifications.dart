@@ -1,6 +1,8 @@
 // ignore_for_file: invalid_use_of_protected_member
 
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:flutter/material.dart' as mat;
+import 'package:miruryoiki/services/navigation/show_info.dart';
 import 'package:miruryoiki/utils/logging.dart';
 import 'package:miruryoiki/widgets/buttons/button.dart';
 import 'package:provider/provider.dart';
@@ -12,7 +14,9 @@ import '../../services/anilist/queries/anilist_service.dart';
 import '../../services/library/library_provider.dart';
 import '../../services/navigation/dialogs.dart';
 import '../../utils/color_utils.dart';
+import '../../utils/time_utils.dart';
 import '../../widgets/buttons/wrapper.dart';
+import '../buttons/rotating_loading_button.dart';
 
 final GlobalKey<NotificationsContentState> notificationsDialogKey = GlobalKey<NotificationsContentState>();
 
@@ -64,7 +68,7 @@ class NotificationsContentState extends State<_NotificationsContent> {
   AnilistService? _anilistService;
   List<AnilistNotification> _notifications = [];
   int _unreadCount = 0;
-  bool _isLoading = false;
+  bool _isRefreshing = false;
   DateTime? _lastSync;
 
   @override
@@ -110,13 +114,10 @@ class NotificationsContentState extends State<_NotificationsContent> {
     final library = Provider.of<Library>(context, listen: false);
 
     // Don't sync too frequently
-    if (_lastSync != null && DateTime.now().difference(_lastSync!).inMinutes < 5) {
+    if (_lastSync != null && now.difference(_lastSync!).inSeconds < 5) //
       return;
-    }
 
-    setState(() {
-      _isLoading = true;
-    });
+    setState(() => _isRefreshing = true);
 
     try {
       // Focus on airing notifications primarily, with some media change notifications
@@ -132,23 +133,21 @@ class NotificationsContentState extends State<_NotificationsContent> {
         setState(() {
           _notifications = notifications.take(5).toList();
           _unreadCount = unreadCount;
-          _lastSync = DateTime.now();
+          _lastSync = now;
         });
       }
     } catch (e) {
-      // Handle sync errors - maybe show a small indicator
-      if (mounted) {
-        // Could show a subtle error indicator
-      }
-      logErr("Error syncing notifications", e);
+      snackBar("Failed to refresh notifications", exception: e, severity: InfoBarSeverity.error);
     } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
+      if (mounted) setState(() => _isRefreshing = false);
     }
   }
+
+  // Public method to force refresh notifications
+  void refreshNotifications() => _syncNotifications();
+
+  // Getter to check if currently refreshing
+  bool get isRefreshing => _isRefreshing;
 
   Future<void> _markAsRead(int notificationId) async {
     if (_anilistService == null) return;
@@ -229,10 +228,7 @@ class NotificationsContentState extends State<_NotificationsContent> {
                   MouseButtonWrapper(
                     child: (_) => GestureDetector(
                       onTap: () => widget.onMorePressed?.call(context),
-                      child: Text(
-                        'Notifications',
-                        style: Manager.titleStyle,
-                      ),
+                      child: Text('Notifications', style: Manager.titleStyle),
                     ),
                   ),
                   if (_unreadCount > 0)
@@ -264,26 +260,24 @@ class NotificationsContentState extends State<_NotificationsContent> {
                         onPressed: _markAllAsRead,
                       ),
                     ),
-                  Tooltip(
-                    message: 'Refresh notifications',
-                    child: IconButton(
-                      icon: _isLoading
-                          ? const SizedBox(
-                              width: 12,
-                              height: 12,
-                              child: ProgressRing(strokeWidth: 1.5),
-                            )
-                          : const Icon(FluentIcons.refresh, size: 12),
-                      onPressed: _isLoading ? null : _syncNotifications,
-                    ),
-                  ),
+                  RotatingLoadingButton(
+                    icon: const Icon(FluentIcons.refresh, size: 12),
+                    isLoading: _isRefreshing,
+                    onPressed: () => _syncNotifications(),
+                  )
                 ],
               ),
             ],
           ),
         ),
 
-        const Divider(),
+        AnimatedSwitcher(
+          duration: const Duration(milliseconds: 500),
+          transitionBuilder: (child, animation) => FadeTransition(opacity: animation, child: child),
+          child: _isRefreshing //
+              ? mat.LinearProgressIndicator(color: Manager.currentDominantColor, minHeight: 2)
+              : Container(height: 2, decoration: DividerTheme.of(context).decoration),
+        ),
 
         // Notification list
         Flexible(
@@ -365,7 +359,7 @@ class NotificationsContentState extends State<_NotificationsContent> {
     // Find the associated series for this notification
     final library = Provider.of<Library>(context, listen: false);
     Series? associatedSeries;
-    
+
     if (notification is AiringNotification) {
       // Look for a series with matching anilist ID
       for (final series in library.series) {

@@ -63,6 +63,8 @@ class Library with ChangeNotifier {
   static const String settingsFileName = 'settings';
   static const String miruryoikiLibrary = 'library';
 
+  static double progressThreshold = 0.95;
+
   Library(this._settings);
 
   @override
