@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:math' show min;
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:provider/provider.dart';
 
@@ -188,14 +189,18 @@ class _ImageSelectionContentState extends State<_ImageSelectionContent> {
     if (widget.isBanner) {
       if (widget.series.isAnilistBanner) {
         final anilistImageProvider = await widget.series.getBannerImage();
-        if (anilistImageProvider != null) //
-          _anilistImageProvider = anilistImageProvider;
+        _anilistImageProvider = anilistImageProvider ?? (widget.series.effectiveBannerPath != null ? CachedNetworkImageProvider(widget.series.effectiveBannerPath!) : null);
+      } else {
+        final url = widget.series.anilistData?.bannerImage;
+        if (url != null) _anilistImageProvider = CachedNetworkImageProvider(url);
       }
     } else {
       if (widget.series.isAnilistPoster) {
         final anilistImageProvider = await widget.series.getPosterImage();
-        if (anilistImageProvider != null) //
-          _anilistImageProvider = anilistImageProvider;
+        _anilistImageProvider = anilistImageProvider ?? (widget.series.effectivePosterPath != null ? CachedNetworkImageProvider(widget.series.effectivePosterPath!) : null);
+      } else {
+        final url = widget.series.anilistData?.posterImage;
+        if (url != null) _anilistImageProvider = CachedNetworkImageProvider(url);
       }
     }
 
@@ -396,6 +401,7 @@ class _ImageSelectionContentState extends State<_ImageSelectionContent> {
   }) {
     final needsAnilistLink = source == ImageSource.anilist && widget.series.primaryAnilistId == null;
     final isSelected = _selectedSource == source;
+    log("posterProvider: ${posterProvider == null}, isAvailable: $isAvailable");
 
     return GestureDetector(
       onTap: posterProvider != null && isAvailable
@@ -432,6 +438,7 @@ class _ImageSelectionContentState extends State<_ImageSelectionContent> {
                             fit: BoxFit.contain,
                             fadeInDuration: const Duration(milliseconds: 300),
                             fadeInCurve: Curves.easeIn,
+                            errorWidget: Text('test'),
                             skipLoadingIndicator: true,
                           ),
                         )
