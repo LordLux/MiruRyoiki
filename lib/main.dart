@@ -1113,9 +1113,7 @@ Future<void> _registerWindowsUrlScheme(String scheme) async {
   }
 }
 
-// TODO fix image picker, if previously chosen local image, anilist image not showing
-// TODO allow cli flags, before preventing a second instance from running
-// TODO fix the fact that HIDDEN series are not fetched from anilist when loading library (probably query asks for lists instead of full library of user)
+// TODO fix the fact that HIDDEN series are not fetched from anilist when loading library (probably query asks for 'public' lists instead of full library of logged user)
 // TODO remember collapse/expanded state of seasons in series
 // TODO cache anime info
 // TODO add Anilist sync status and internet connection status to the status bar
