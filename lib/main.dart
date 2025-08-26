@@ -664,7 +664,7 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
                   child: AnimatedOpacity(
                     duration: shortDuration,
                     opacity: isFullscreen ? 0 : 1,
-                    child: _buildTitleBar(), //TODO maybe try to make it into a single widget with isSecondary parameter
+                    child: _buildTitleBar(),
                   ),
                 ),
               ),
@@ -1077,10 +1077,11 @@ void setIcon() async {
 
 void _ensureSingleInstance() async {
   if (!(await FlutterSingleInstance().isFirstInstance())) {
-    print("App is already running");
+    if (kDebugMode) print("App is already running");
 
     final err = await FlutterSingleInstance().focus();
 
+    // ignore: avoid_print
     if (err != null) print("Error focusing running instance: $err");
     exit(0);
   }
