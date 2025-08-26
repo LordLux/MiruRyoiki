@@ -483,9 +483,6 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
                                   duration: shortDuration,
                                   color: getDimmableWhite(context),
                                   height: !isShowing ? 0 : ScreenUtils.kStatusBarHeight,
-                                  child: GestureDetector(
-                                    onTap: () => print('test!!'),
-                                  ),
                                 );
                               },
                             )
@@ -691,7 +688,11 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
                 left: 0,
                 right: 0,
                 child: SizedBox(
-                  height: _isSecondaryTitleBarVisible ? ScreenUtils.kTitleBarHeight - getTitleBarHeight(isFullscreen) : 5,
+                  height: _isSecondaryTitleBarVisible
+                      ? ScreenUtils.kTitleBarHeight - getTitleBarHeight(isFullscreen)
+                      : isFullscreen
+                          ? 5
+                          : 0,
                   child: MouseRegion(
                     hitTestBehavior: HitTestBehavior.translucent,
                     onEnter: (_) => setState(() => _isSecondaryTitleBarVisible = true),
@@ -701,22 +702,6 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
               ),
               const StatusBarWidget(),
               const LibraryScanProgressIndicator(),
-              //TODO add timer for when we are back online, to hide this after a few seconds
-              // AnimatedPositioned(
-              //   duration: dimDuration,
-              //   bottom: offline ? 0 : -20,
-              //   child: Container(
-              //     height: ScreenUtils.kOfflineBarMaxHeight,
-              //     width: _paneKey.currentState?.displayMode == PaneDisplayMode.compact ? 50 : 320,
-              //     color: (offline ? Colors.red : Colors.green).withOpacity(.5),
-              //     child: Center(
-              //       child: Text(
-              //         offline ? 'Offline' : 'Online',
-              //         style: Manager.bodyStyle,
-              //       ),
-              //     ),
-              //   ),
-              // ),
             ],
           ),
         );
@@ -836,33 +821,37 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
                         children: [
                           Padding(
                             padding: const EdgeInsets.only(right: 8.0),
-                            child: AnimatedSlide(
-                              duration: shortDuration,
-                              offset: _isSecondaryTitleBarVisible ? const Offset(1.5, 0) : const Offset(0, 0),
-                              child: ReleaseNotificationWidget(
-                                onMorePressed: (ctx) async {
-                                  // Navigate to calendar screen
-                                  closeDialog(ctx);
-                                  await Future.delayed(const Duration(milliseconds: 100));
-                                  setState(() {
-                                    if (_isSeriesView && _selectedSeriesPath != null) exitSeriesView();
-                            
-                                    _selectedIndex = calendarIndex;
-                                    _resetScrollPosition(calendarIndex);
-                            
-                                    final navManager = Manager.navigation;
-                            
-                                    final item = _navigationMap[calendarIndex]!;
-                                    navManager.clearAndPushPane(item['id'], item['title']);
-                                  });
-                                  
-                                  // Refresh the release calendar after navigation
-                                  nextFrame(() {
-                                    releaseCalendarScreenKey.currentState?.loadReleaseData();
-                                  });
-                                },
-                              ),
-                            ),
+                            child: ValueListenableBuilder(
+                                valueListenable: WindowStateService.isFullscreenNotifier,
+                                builder: (context, isFullscreen, child) {
+                                  return AnimatedSlide(
+                                    duration: shortDuration,
+                                    offset: isFullscreen ? const Offset(1.5, 0) : const Offset(0, 0),
+                                    child: ReleaseNotificationWidget(
+                                      onMorePressed: (ctx) async {
+                                        // Navigate to calendar screen
+                                        closeDialog(ctx);
+                                        await Future.delayed(const Duration(milliseconds: 100));
+                                        setState(() {
+                                          if (_isSeriesView && _selectedSeriesPath != null) exitSeriesView();
+
+                                          _selectedIndex = calendarIndex;
+                                          _resetScrollPosition(calendarIndex);
+
+                                          final navManager = Manager.navigation;
+
+                                          final item = _navigationMap[calendarIndex]!;
+                                          navManager.clearAndPushPane(item['id'], item['title']);
+                                        });
+
+                                        // Refresh the release calendar after navigation
+                                        nextFrame(() {
+                                          releaseCalendarScreenKey.currentState?.loadReleaseData();
+                                        });
+                                      },
+                                    ),
+                                  );
+                                }),
                           ),
                           SizedBox(
                             height: ScreenUtils.kTitleBarHeight,
@@ -1123,7 +1112,6 @@ Future<void> _registerWindowsUrlScheme(String scheme) async {
   }
 }
 
-// TODO if view Only Linked Series is enabled, series in unlinked go to watching
 // TODO fix image picker, if previously chosen local image, anilist image not showing
 // TODO allow cli flags, before preventing a second instance from running
 // TODO fix the fact that HIDDEN series are not fetched from anilist when loading library (probably query asks for lists instead of full library of user)
