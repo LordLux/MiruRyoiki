@@ -40,8 +40,12 @@ class AnilistService {
   DateTime? _lastNotificationsSyncAt; // whole-sync throttle timestamp
   Completer<List<AnilistNotification>>? _notificationsSyncCompleter; // dedupe concurrent syncs
 
+  /// Whether the user is logged in.
   bool get isLoggedIn => _authService.isAuthenticated;
 
+  /// API status names for user-defined lists.
+  /// 
+  /// [`CURRENT`, `PLANNING`, `COMPLETED`, `DROPPED`, `PAUSED`, `REPEATING`]
   static final List<String> statusListNamesApi = [
     AnilistListApiStatus.CURRENT.name_,
     AnilistListApiStatus.PLANNING.name_,
@@ -51,6 +55,19 @@ class AnilistService {
     AnilistListApiStatus.REPEATING.name_,
   ];
 
+  /// Special status name for unlinked series.
+  /// 
+  /// `__unlinked`
+  static const String statusListNameUnlinked = '__unlinked';
+
+  /// Custom status prefix for user-defined lists.
+  ///
+  /// `custom_`
+  static const String statusListPrefixCustom = 'custom_';
+
+  /// Pretty status names for display purposes.
+  /// 
+  /// [`Watching`, `Plan to Watch`, `Completed`, `Dropped`, `On Hold`, `Rewatching`]
   static const List<String> statusListNamesPretty = [
     "Watching",
     "Plan to Watch",
@@ -59,6 +76,19 @@ class AnilistService {
     "On Hold",
     "Rewatching",
   ];
+
+  /// Maps pretty status names to API status names.
+  /// ```dart
+  /// {
+  ///   "Watching": CURRENT, 
+  ///   "Plan to Watch": PLANNING, 
+  ///   "Completed": COMPLETED, 
+  ///   "Dropped": DROPPED, 
+  ///   "On Hold": PAUSED, 
+  ///   "Rewatching": REPEATING
+  /// }
+  /// ```
+  static Map<String, String> get statusListNamesPrettyToApiMap => Map.fromIterables(statusListNamesPretty, statusListNamesApi);
 
   static String printAllStatuses() => statusListNamesApi.map((status) => StatusStatistic.statusNameToPretty(status)).join(', ');
 }

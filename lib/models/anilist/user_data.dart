@@ -630,8 +630,8 @@ class StatusStatistic {
     if (listName == AnilistService.statusListNamesPretty[3]) return AnilistService.statusListNamesApi[3]; // Dropped -> DROPPED
     if (listName == AnilistService.statusListNamesPretty[4]) return AnilistService.statusListNamesApi[4]; // On Hold -> PAUSED
     if (listName == AnilistService.statusListNamesPretty[5]) return AnilistService.statusListNamesApi[5]; // Rewatching -> REPEATING
-    if (listName == 'Unlinked') return '__unlinked';
-    if (listName.startsWith('custom_')) return listName.substring(7); // Remove 'custom_' prefix
+    if (listName == 'Unlinked') return AnilistService.statusListNameUnlinked;
+    if (listName.startsWith(AnilistService.statusListPrefixCustom)) return listName.substring(7); // Remove 'custom_' prefix
     return listName;
   }
 
@@ -642,11 +642,11 @@ class StatusStatistic {
     if (displayName == AnilistService.statusListNamesApi[3]) return AnilistService.statusListNamesPretty[3]; // DROPPED -> Dropped
     if (displayName == AnilistService.statusListNamesApi[4]) return AnilistService.statusListNamesPretty[4]; // PAUSED -> On Hold
     if (displayName == AnilistService.statusListNamesApi[5]) return AnilistService.statusListNamesPretty[5]; // REPEATING -> Rewatching
-    if (displayName == '__unlinked') return 'Unlinked';
-    if (displayName.startsWith('custom_')) return displayName.substring(7); // Remove 'custom_' prefix
+    if (displayName == AnilistService.statusListNameUnlinked) return 'Unlinked';
+    if (displayName.startsWith(AnilistService.statusListPrefixCustom)) return displayName.substring(7); // Remove 'custom_' prefix
 
     // Check if it might be a custom list
-    final customLists = Provider.of<AnilistProvider>(Manager.context, listen: false).userLists.keys.where((k) => k.startsWith('custom_'));
+    final customLists = Provider.of<AnilistProvider>(Manager.context, listen: false).userLists.keys.where((k) => k.startsWith(AnilistService.statusListPrefixCustom));
     for (final customList in customLists) {
       if (statusNameToApi(customList) == displayName) return customList;
     }

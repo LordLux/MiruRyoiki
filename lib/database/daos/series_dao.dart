@@ -280,6 +280,7 @@ class SeriesDao extends DatabaseAccessor<AppDatabase> with _$SeriesDaoMixin {
       folderBannerPath: Value(s.folderBannerPath),
       primaryAnilistId: Value(s.primaryAnilistId),
       isHidden: Value(s.isHidden),
+      customListName: Value(s.customListName),
       dominantColor: Value(const ColorJsonConverter().toSql(s.dominantColor)),
       preferredPosterSource: Value(s.preferredPosterSource?.name),
       preferredBannerSource: Value(s.preferredBannerSource?.name),
@@ -332,6 +333,7 @@ class SeriesDao extends DatabaseAccessor<AppDatabase> with _$SeriesDaoMixin {
       anilistBanner: row.anilistBannerUrl,
       primaryAnilistId: row.primaryAnilistId,
       isHidden: row.isHidden,
+      customListName: row.customListName,
     );
   }
 }

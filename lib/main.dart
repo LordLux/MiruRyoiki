@@ -1123,7 +1123,6 @@ Future<void> _registerWindowsUrlScheme(String scheme) async {
   }
 }
 
-// TODO notification fix notification popup waiting for api results before showing data instead of showing cache and then updating after api data return
 // TODO if view Only Linked Series is enabled, series in unlinked go to watching
 // TODO fix image picker, if previously chosen local image, anilist image not showing
 // TODO allow cli flags, before preventing a second instance from running

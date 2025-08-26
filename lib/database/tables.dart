@@ -15,6 +15,9 @@ class SeriesTable extends Table {
   IntColumn get primaryAnilistId => integer().nullable()();
   BoolColumn get isHidden => boolean().withDefault(const Constant(false))();
 
+  /// Custom list name for unlinked series
+  TextColumn get customListName => text().nullable()();
+
   // JSON color
   TextColumn get dominantColor => text().nullable()();
 

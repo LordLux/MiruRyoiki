@@ -57,9 +57,7 @@ class RotatingLoadingButtonState extends State<RotatingLoadingButton> with Singl
     }
   }
 
-  void _startLoading() {
-    _controller.repeat();
-  }
+  void _startLoading() => _controller.repeat();
 
   void _stopLoading() {
     // Calculate how much rotation is needed to complete the current cycle

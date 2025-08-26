@@ -291,3 +291,10 @@ extension ListSeries on List<String> {
     return Set.from(this).difference(Set.from(other)).isEmpty;
   }
 }
+
+extension MapSwitch on Map<String, String> {
+  /// Swaps keys and values in the map.
+  Map<String, String> get swap {
+    return Map.fromEntries(entries.map((e) => MapEntry(e.value, e.key)));
+  }
+}

@@ -7,7 +7,11 @@ import 'package:flutter_desktop_context_menu/flutter_desktop_context_menu.dart';
 import 'package:provider/provider.dart';
 import '../../main.dart';
 import '../../manager.dart';
+import '../../models/anilist/user_data.dart';
+import '../../models/anilist/user_list.dart';
 import '../../models/series.dart';
+import '../../services/anilist/provider/anilist_provider.dart';
+import '../../services/anilist/queries/anilist_service.dart';
 import '../../services/library/library_provider.dart';
 import '../../services/navigation/dialogs.dart';
 import '../../services/navigation/show_info.dart';
@@ -68,18 +72,25 @@ class SeriesContextMenuState extends State<SeriesContextMenu> {
           shortcutModifiers: ShortcutModifiers(control: Platform.isWindows, meta: Platform.isMacOS),
           onClick: (_) => _changeBannerImage(context),
         ),
-        MenuItem(
-          label: 'Update from Anilist',
-          shortcutKey: 'a',
-          icon: icons.anilist,
-          shortcutModifiers: ShortcutModifiers(control: Platform.isWindows, meta: Platform.isMacOS),
-          onClick: (_) => _updateFromAnilist(context),
-        ),
+        if (series.isLinked)
+          MenuItem(
+            label: 'Update from Anilist',
+            shortcutKey: 'a',
+            icon: icons.anilist,
+            shortcutModifiers: ShortcutModifiers(control: Platform.isWindows, meta: Platform.isMacOS),
+            onClick: (_) => _updateFromAnilist(context),
+          ),
         if (!series.isLinked)
           MenuItem(
             label: series.isHidden ? 'Stop Hiding Series' : 'Hide Series',
             icon: series.isHidden ? icons.unhide : icons.hide,
             onClick: (_) => _toggleHiddenStatus(context),
+          ),
+        if (!series.isLinked)
+          MenuItem.submenu(
+            label: 'Change List',
+            sublabel: 'Change the custom list for this series',
+            submenu: _buildMenuFromLists(),
           ),
         MenuItem.separator(),
         MenuItem(
@@ -185,12 +196,67 @@ class SeriesContextMenuState extends State<SeriesContextMenu> {
     library.markSeriesWatched(widget.series, watched: true);
     snackBar('Marked all episodes as watched', severity: InfoBarSeverity.success);
   }
+
   //TODO ask confirmation dialog before marking all as watched/unwatched
 
   void _markAllAsUnwatched(BuildContext context) {
     final library = Provider.of<Library>(context, listen: false);
     library.markSeriesWatched(widget.series, watched: false);
     snackBar('Marked all episodes as unwatched', severity: InfoBarSeverity.success);
+  }
+
+  Future<void> _changeCustomList(BuildContext context, String apiName, String displayName) async {
+    final library = Provider.of<Library>(context, listen: false);
+
+    // Update the series with the new custom list name (use API name)
+    final updatedSeries = widget.series;
+    updatedSeries.customListName = apiName == AnilistService.statusListNameUnlinked ? null : apiName;
+
+    library.updateSeries(updatedSeries, invalidateCache: true);
+    
+    if (libraryScreenKey.currentState != null) {
+      libraryScreenKey.currentState!.updateSeriesInSortCache(updatedSeries);
+      libraryScreenKey.currentState!.setState(() {});
+    }
+    snackBar('Changed list for "${widget.series.name}" to $displayName', severity: InfoBarSeverity.success);
+  }
+
+  Menu _buildMenuFromLists() {
+    final anilistProvider = Provider.of<AnilistProvider>(context, listen: false);
+    final Map<String, AnilistUserList> allLists = anilistProvider.userLists;
+
+    final availableLists = <String, String>{}; // API name -> Display name
+
+    // Add default unlinked option
+    availableLists[AnilistService.statusListNameUnlinked] = 'Unlinked';
+
+    // Add standard AniList lists if logged in
+    if (anilistProvider.isLoggedIn) {
+      // Swap the map to get API names as keys and Pretty names as values
+      final swappedMap = <String, String>{};
+      AnilistService.statusListNamesPrettyToApiMap.forEach((prettyName, apiName) {
+        swappedMap[apiName] = prettyName;
+      });
+      availableLists.addAll(swappedMap);
+
+      // Add custom lists
+      final customLists = allLists.entries.where((entry) => entry.key.startsWith(AnilistService.statusListPrefixCustom));
+      for (final entry in customLists) {
+        final apiName = entry.key; // e.g., "custom_MyList"
+        final displayName = StatusStatistic.statusNameToPretty(apiName); // e.g., "MyList"
+        availableLists[apiName] = displayName;
+      }
+    }
+
+    return Menu(
+      items: availableLists.entries
+          .map((entry) => MenuItem.checkbox(
+                checked: widget.series.customListName == entry.key || (widget.series.customListName == null && entry.key == AnilistService.statusListNameUnlinked),
+                label: entry.value, // Display name
+                onClick: (item) => _changeCustomList(context, entry.key, entry.value), // Pass API name and display name
+              ))
+          .toList(),
+    );
   }
 
   @override

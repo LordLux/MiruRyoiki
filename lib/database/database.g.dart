@@ -58,6 +58,12 @@ class $SeriesTableTable extends SeriesTable
       defaultConstraints:
           GeneratedColumn.constraintIsAlways('CHECK ("is_hidden" IN (0, 1))'),
       defaultValue: const Constant(false));
+  static const VerificationMeta _customListNameMeta =
+      const VerificationMeta('customListName');
+  @override
+  late final GeneratedColumn<String> customListName = GeneratedColumn<String>(
+      'custom_list_name', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
   static const VerificationMeta _dominantColorMeta =
       const VerificationMeta('dominantColor');
   @override
@@ -121,6 +127,7 @@ class $SeriesTableTable extends SeriesTable
         folderBannerPath,
         primaryAnilistId,
         isHidden,
+        customListName,
         dominantColor,
         preferredPosterSource,
         preferredBannerSource,
@@ -158,6 +165,12 @@ class $SeriesTableTable extends SeriesTable
     if (data.containsKey('is_hidden')) {
       context.handle(_isHiddenMeta,
           isHidden.isAcceptableOrUnknown(data['is_hidden']!, _isHiddenMeta));
+    }
+    if (data.containsKey('custom_list_name')) {
+      context.handle(
+          _customListNameMeta,
+          customListName.isAcceptableOrUnknown(
+              data['custom_list_name']!, _customListNameMeta));
     }
     if (data.containsKey('dominant_color')) {
       context.handle(
@@ -229,6 +242,8 @@ class $SeriesTableTable extends SeriesTable
           .read(DriftSqlType.int, data['${effectivePrefix}primary_anilist_id']),
       isHidden: attachedDatabase.typeMapping
           .read(DriftSqlType.bool, data['${effectivePrefix}is_hidden'])!,
+      customListName: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}custom_list_name']),
       dominantColor: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}dominant_color']),
       preferredPosterSource: attachedDatabase.typeMapping.read(
@@ -275,6 +290,9 @@ class SeriesTableData extends DataClass implements Insertable<SeriesTableData> {
   final PathString? folderBannerPath;
   final int? primaryAnilistId;
   final bool isHidden;
+
+  /// Custom list name for unlinked series
+  final String? customListName;
   final String? dominantColor;
   final String? preferredPosterSource;
   final String? preferredBannerSource;
@@ -291,6 +309,7 @@ class SeriesTableData extends DataClass implements Insertable<SeriesTableData> {
       this.folderBannerPath,
       this.primaryAnilistId,
       required this.isHidden,
+      this.customListName,
       this.dominantColor,
       this.preferredPosterSource,
       this.preferredBannerSource,
@@ -322,6 +341,9 @@ class SeriesTableData extends DataClass implements Insertable<SeriesTableData> {
       map['primary_anilist_id'] = Variable<int>(primaryAnilistId);
     }
     map['is_hidden'] = Variable<bool>(isHidden);
+    if (!nullToAbsent || customListName != null) {
+      map['custom_list_name'] = Variable<String>(customListName);
+    }
     if (!nullToAbsent || dominantColor != null) {
       map['dominant_color'] = Variable<String>(dominantColor);
     }
@@ -358,6 +380,9 @@ class SeriesTableData extends DataClass implements Insertable<SeriesTableData> {
           ? const Value.absent()
           : Value(primaryAnilistId),
       isHidden: Value(isHidden),
+      customListName: customListName == null && nullToAbsent
+          ? const Value.absent()
+          : Value(customListName),
       dominantColor: dominantColor == null && nullToAbsent
           ? const Value.absent()
           : Value(dominantColor),
@@ -392,6 +417,7 @@ class SeriesTableData extends DataClass implements Insertable<SeriesTableData> {
           serializer.fromJson<PathString?>(json['folderBannerPath']),
       primaryAnilistId: serializer.fromJson<int?>(json['primaryAnilistId']),
       isHidden: serializer.fromJson<bool>(json['isHidden']),
+      customListName: serializer.fromJson<String?>(json['customListName']),
       dominantColor: serializer.fromJson<String?>(json['dominantColor']),
       preferredPosterSource:
           serializer.fromJson<String?>(json['preferredPosterSource']),
@@ -415,6 +441,7 @@ class SeriesTableData extends DataClass implements Insertable<SeriesTableData> {
       'folderBannerPath': serializer.toJson<PathString?>(folderBannerPath),
       'primaryAnilistId': serializer.toJson<int?>(primaryAnilistId),
       'isHidden': serializer.toJson<bool>(isHidden),
+      'customListName': serializer.toJson<String?>(customListName),
       'dominantColor': serializer.toJson<String?>(dominantColor),
       'preferredPosterSource':
           serializer.toJson<String?>(preferredPosterSource),
@@ -436,6 +463,7 @@ class SeriesTableData extends DataClass implements Insertable<SeriesTableData> {
           Value<PathString?> folderBannerPath = const Value.absent(),
           Value<int?> primaryAnilistId = const Value.absent(),
           bool? isHidden,
+          Value<String?> customListName = const Value.absent(),
           Value<String?> dominantColor = const Value.absent(),
           Value<String?> preferredPosterSource = const Value.absent(),
           Value<String?> preferredBannerSource = const Value.absent(),
@@ -458,6 +486,8 @@ class SeriesTableData extends DataClass implements Insertable<SeriesTableData> {
             ? primaryAnilistId.value
             : this.primaryAnilistId,
         isHidden: isHidden ?? this.isHidden,
+        customListName:
+            customListName.present ? customListName.value : this.customListName,
         dominantColor:
             dominantColor.present ? dominantColor.value : this.dominantColor,
         preferredPosterSource: preferredPosterSource.present
@@ -491,6 +521,9 @@ class SeriesTableData extends DataClass implements Insertable<SeriesTableData> {
           ? data.primaryAnilistId.value
           : this.primaryAnilistId,
       isHidden: data.isHidden.present ? data.isHidden.value : this.isHidden,
+      customListName: data.customListName.present
+          ? data.customListName.value
+          : this.customListName,
       dominantColor: data.dominantColor.present
           ? data.dominantColor.value
           : this.dominantColor,
@@ -524,6 +557,7 @@ class SeriesTableData extends DataClass implements Insertable<SeriesTableData> {
           ..write('folderBannerPath: $folderBannerPath, ')
           ..write('primaryAnilistId: $primaryAnilistId, ')
           ..write('isHidden: $isHidden, ')
+          ..write('customListName: $customListName, ')
           ..write('dominantColor: $dominantColor, ')
           ..write('preferredPosterSource: $preferredPosterSource, ')
           ..write('preferredBannerSource: $preferredBannerSource, ')
@@ -545,6 +579,7 @@ class SeriesTableData extends DataClass implements Insertable<SeriesTableData> {
       folderBannerPath,
       primaryAnilistId,
       isHidden,
+      customListName,
       dominantColor,
       preferredPosterSource,
       preferredBannerSource,
@@ -564,6 +599,7 @@ class SeriesTableData extends DataClass implements Insertable<SeriesTableData> {
           other.folderBannerPath == this.folderBannerPath &&
           other.primaryAnilistId == this.primaryAnilistId &&
           other.isHidden == this.isHidden &&
+          other.customListName == this.customListName &&
           other.dominantColor == this.dominantColor &&
           other.preferredPosterSource == this.preferredPosterSource &&
           other.preferredBannerSource == this.preferredBannerSource &&
@@ -582,6 +618,7 @@ class SeriesTableCompanion extends UpdateCompanion<SeriesTableData> {
   final Value<PathString?> folderBannerPath;
   final Value<int?> primaryAnilistId;
   final Value<bool> isHidden;
+  final Value<String?> customListName;
   final Value<String?> dominantColor;
   final Value<String?> preferredPosterSource;
   final Value<String?> preferredBannerSource;
@@ -598,6 +635,7 @@ class SeriesTableCompanion extends UpdateCompanion<SeriesTableData> {
     this.folderBannerPath = const Value.absent(),
     this.primaryAnilistId = const Value.absent(),
     this.isHidden = const Value.absent(),
+    this.customListName = const Value.absent(),
     this.dominantColor = const Value.absent(),
     this.preferredPosterSource = const Value.absent(),
     this.preferredBannerSource = const Value.absent(),
@@ -615,6 +653,7 @@ class SeriesTableCompanion extends UpdateCompanion<SeriesTableData> {
     this.folderBannerPath = const Value.absent(),
     this.primaryAnilistId = const Value.absent(),
     this.isHidden = const Value.absent(),
+    this.customListName = const Value.absent(),
     this.dominantColor = const Value.absent(),
     this.preferredPosterSource = const Value.absent(),
     this.preferredBannerSource = const Value.absent(),
@@ -633,6 +672,7 @@ class SeriesTableCompanion extends UpdateCompanion<SeriesTableData> {
     Expression<String>? folderBannerPath,
     Expression<int>? primaryAnilistId,
     Expression<bool>? isHidden,
+    Expression<String>? customListName,
     Expression<String>? dominantColor,
     Expression<String>? preferredPosterSource,
     Expression<String>? preferredBannerSource,
@@ -650,6 +690,7 @@ class SeriesTableCompanion extends UpdateCompanion<SeriesTableData> {
       if (folderBannerPath != null) 'folder_banner_path': folderBannerPath,
       if (primaryAnilistId != null) 'primary_anilist_id': primaryAnilistId,
       if (isHidden != null) 'is_hidden': isHidden,
+      if (customListName != null) 'custom_list_name': customListName,
       if (dominantColor != null) 'dominant_color': dominantColor,
       if (preferredPosterSource != null)
         'preferred_poster_source': preferredPosterSource,
@@ -671,6 +712,7 @@ class SeriesTableCompanion extends UpdateCompanion<SeriesTableData> {
       Value<PathString?>? folderBannerPath,
       Value<int?>? primaryAnilistId,
       Value<bool>? isHidden,
+      Value<String?>? customListName,
       Value<String?>? dominantColor,
       Value<String?>? preferredPosterSource,
       Value<String?>? preferredBannerSource,
@@ -687,6 +729,7 @@ class SeriesTableCompanion extends UpdateCompanion<SeriesTableData> {
       folderBannerPath: folderBannerPath ?? this.folderBannerPath,
       primaryAnilistId: primaryAnilistId ?? this.primaryAnilistId,
       isHidden: isHidden ?? this.isHidden,
+      customListName: customListName ?? this.customListName,
       dominantColor: dominantColor ?? this.dominantColor,
       preferredPosterSource:
           preferredPosterSource ?? this.preferredPosterSource,
@@ -729,6 +772,9 @@ class SeriesTableCompanion extends UpdateCompanion<SeriesTableData> {
     if (isHidden.present) {
       map['is_hidden'] = Variable<bool>(isHidden.value);
     }
+    if (customListName.present) {
+      map['custom_list_name'] = Variable<String>(customListName.value);
+    }
     if (dominantColor.present) {
       map['dominant_color'] = Variable<String>(dominantColor.value);
     }
@@ -768,6 +814,7 @@ class SeriesTableCompanion extends UpdateCompanion<SeriesTableData> {
           ..write('folderBannerPath: $folderBannerPath, ')
           ..write('primaryAnilistId: $primaryAnilistId, ')
           ..write('isHidden: $isHidden, ')
+          ..write('customListName: $customListName, ')
           ..write('dominantColor: $dominantColor, ')
           ..write('preferredPosterSource: $preferredPosterSource, ')
           ..write('preferredBannerSource: $preferredBannerSource, ')
@@ -3058,6 +3105,7 @@ typedef $$SeriesTableTableCreateCompanionBuilder = SeriesTableCompanion
   Value<PathString?> folderBannerPath,
   Value<int?> primaryAnilistId,
   Value<bool> isHidden,
+  Value<String?> customListName,
   Value<String?> dominantColor,
   Value<String?> preferredPosterSource,
   Value<String?> preferredBannerSource,
@@ -3076,6 +3124,7 @@ typedef $$SeriesTableTableUpdateCompanionBuilder = SeriesTableCompanion
   Value<PathString?> folderBannerPath,
   Value<int?> primaryAnilistId,
   Value<bool> isHidden,
+  Value<String?> customListName,
   Value<String?> dominantColor,
   Value<String?> preferredPosterSource,
   Value<String?> preferredBannerSource,
@@ -3161,6 +3210,10 @@ class $$SeriesTableTableFilterComposer
 
   ColumnFilters<bool> get isHidden => $composableBuilder(
       column: $table.isHidden, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get customListName => $composableBuilder(
+      column: $table.customListName,
+      builder: (column) => ColumnFilters(column));
 
   ColumnFilters<String> get dominantColor => $composableBuilder(
       column: $table.dominantColor, builder: (column) => ColumnFilters(column));
@@ -3268,6 +3321,10 @@ class $$SeriesTableTableOrderingComposer
   ColumnOrderings<bool> get isHidden => $composableBuilder(
       column: $table.isHidden, builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<String> get customListName => $composableBuilder(
+      column: $table.customListName,
+      builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<String> get dominantColor => $composableBuilder(
       column: $table.dominantColor,
       builder: (column) => ColumnOrderings(column));
@@ -3330,6 +3387,9 @@ class $$SeriesTableTableAnnotationComposer
 
   GeneratedColumn<bool> get isHidden =>
       $composableBuilder(column: $table.isHidden, builder: (column) => column);
+
+  GeneratedColumn<String> get customListName => $composableBuilder(
+      column: $table.customListName, builder: (column) => column);
 
   GeneratedColumn<String> get dominantColor => $composableBuilder(
       column: $table.dominantColor, builder: (column) => column);
@@ -3431,6 +3491,7 @@ class $$SeriesTableTableTableManager extends RootTableManager<
             Value<PathString?> folderBannerPath = const Value.absent(),
             Value<int?> primaryAnilistId = const Value.absent(),
             Value<bool> isHidden = const Value.absent(),
+            Value<String?> customListName = const Value.absent(),
             Value<String?> dominantColor = const Value.absent(),
             Value<String?> preferredPosterSource = const Value.absent(),
             Value<String?> preferredBannerSource = const Value.absent(),
@@ -3448,6 +3509,7 @@ class $$SeriesTableTableTableManager extends RootTableManager<
             folderBannerPath: folderBannerPath,
             primaryAnilistId: primaryAnilistId,
             isHidden: isHidden,
+            customListName: customListName,
             dominantColor: dominantColor,
             preferredPosterSource: preferredPosterSource,
             preferredBannerSource: preferredBannerSource,
@@ -3465,6 +3527,7 @@ class $$SeriesTableTableTableManager extends RootTableManager<
             Value<PathString?> folderBannerPath = const Value.absent(),
             Value<int?> primaryAnilistId = const Value.absent(),
             Value<bool> isHidden = const Value.absent(),
+            Value<String?> customListName = const Value.absent(),
             Value<String?> dominantColor = const Value.absent(),
             Value<String?> preferredPosterSource = const Value.absent(),
             Value<String?> preferredBannerSource = const Value.absent(),
@@ -3482,6 +3545,7 @@ class $$SeriesTableTableTableManager extends RootTableManager<
             folderBannerPath: folderBannerPath,
             primaryAnilistId: primaryAnilistId,
             isHidden: isHidden,
+            customListName: customListName,
             dominantColor: dominantColor,
             preferredPosterSource: preferredPosterSource,
             preferredBannerSource: preferredBannerSource,

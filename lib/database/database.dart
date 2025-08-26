@@ -35,7 +35,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? db]) : super(db ?? _openConnection());
 
   @override
-  int get schemaVersion => 6;
+  int get schemaVersion => 7;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -77,6 +77,10 @@ class AppDatabase extends _$AppDatabase {
             await m.issueCustomQuery('CREATE INDEX IF NOT EXISTS idx_notifications_created_at ON notifications(created_at DESC);');
             await m.issueCustomQuery('CREATE INDEX IF NOT EXISTS idx_notifications_is_read ON notifications(is_read);');
             await m.issueCustomQuery('CREATE INDEX IF NOT EXISTS idx_notifications_type ON notifications(type);');
+          }
+          if (from < 7) {
+            // Add customListName column for unlinked series custom list selection
+            await m.issueCustomQuery('ALTER TABLE series_table ADD COLUMN custom_list_name TEXT;');
           }
         },
         beforeOpen: (details) async {

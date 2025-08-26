@@ -1,16 +1,14 @@
 import 'dart:io';
 import 'dart:ui';
 
-import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart' show Colors;
 import 'package:flutter/widgets.dart' hide Image;
-import 'package:palette_generator/palette_generator.dart';
 import 'package:miruryoiki/models/metadata.dart';
 import 'package:collection/collection.dart';
 import 'package:provider/provider.dart';
 
 import '../manager.dart';
 import '../services/anilist/provider/anilist_provider.dart';
+import '../services/anilist/queries/anilist_service.dart';
 import '../services/file_system/cache.dart';
 import '../utils/color_utils.dart' as colorUtils;
 import '../utils/logging.dart';
@@ -192,6 +190,27 @@ class Series {
   /// Whether the series is hidden from the library (only when not linked to Anilist)
   bool isHidden = false;
 
+  /// Custom list name for unlinked series (null -> default to 'Unlinked')
+  /// ignored if linked
+  String? customListName;
+
+  /// Get the effective list name for this unlinked series, with validation and fallback
+  String getEffectiveListName(List<String> availableListNames) {
+    // For linked series, this method shouldn't be used as AniList API is source of truth
+    if (isLinked) return AnilistService.statusListNameUnlinked; // fallback, but this shouldn't be called for linked series
+
+    // If no custom list name is set, use default
+    if (customListName == null || customListName!.isEmpty) return AnilistService.statusListNameUnlinked;
+
+    // Check if the list name or custom list name exists in available lists
+    final customApiName = customListName!.startsWith(AnilistService.statusListPrefixCustom) ? customListName! : '${AnilistService.statusListPrefixCustom}$customListName';
+    if (availableListNames.contains(customApiName) || availableListNames.contains(customListName!)) //
+      return customListName!;
+
+    // Fallback to default if custom list doesn't exist
+    return AnilistService.statusListNameUnlinked;
+  }
+
   /// Metadata for the series
   Metadata? _metadata;
 
@@ -213,6 +232,7 @@ class Series {
     String? anilistBanner,
     int? primaryAnilistId,
     this.isHidden = false,
+    this.customListName,
     Metadata? metadata,
   })  : _dominantColor = dominantColor,
         _anilistPosterUrl = anilistPoster,
@@ -238,6 +258,7 @@ class Series {
     String? anilistPoster,
     String? anilistBanner,
     bool? isHidden,
+    String? customListName,
     Metadata? metadata,
   }) {
     return Series(
@@ -257,6 +278,7 @@ class Series {
       anilistPoster: anilistPoster ?? _anilistPosterUrl,
       anilistBanner: anilistBanner ?? _anilistBannerUrl,
       isHidden: isHidden ?? this.isHidden,
+      customListName: customListName ?? this.customListName,
       metadata: metadata ?? _metadata,
     );
   }
@@ -279,6 +301,7 @@ class Series {
       'preferredPosterSource': preferredPosterSource?.name_, // nullable
       'preferredBannerSource': preferredBannerSource?.name_, // nullable
       'isHidden': isHidden,
+      'customListName': customListName, // nullable
       'metadata': _metadata?.toJson(), // nullable
     };
   }
@@ -409,6 +432,13 @@ class Series {
         // are null by default to be set by the settings
       );
       series.isHidden = (json['isHidden'] as bool? ?? false) == true;
+
+      // Set custom list name if available (only used for unlinked series)
+      try {
+        series.customListName = json['customListName'] as String?;
+      } catch (e, st) {
+        logErr('Error setting customListName', e, st);
+      }
 
       // Set primary Anilist ID if available
       try {

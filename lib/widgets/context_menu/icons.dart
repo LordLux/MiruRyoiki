@@ -11,5 +11,6 @@ String get play => PathString("$iconsfolder/play.ico").path;
 String get folderInfo => PathString("$iconsfolder/folder_info.ico").path;
 String get anilist => PathString("$iconsfolder/anilist.png").path;
 String get series => PathString("$iconsfolder/series.png").path;
+String get list => PathString("$iconsfolder/list.png").path;
 String get hide => PathString("$iconsfolder/hide.ico").path;
 String get unhide => watch; // Reusing watch icon for unhide

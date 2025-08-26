@@ -49,8 +49,8 @@ class _CacheParameters {
 
   @override
   bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is _CacheParameters &&
+      identical(this, other) || //
+      other is _CacheParameters && //
           runtimeType == other.runtimeType &&
           currentView == other.currentView &&
           sortOrder == other.sortOrder &&
@@ -62,7 +62,7 @@ class _CacheParameters {
 
   @override
   int get hashCode =>
-      currentView.hashCode ^
+      currentView.hashCode ^ //
       sortOrder.hashCode ^
       groupBy.hashCode ^
       sortDescending.hashCode ^
@@ -120,7 +120,7 @@ class LibraryScreenState extends State<LibraryScreen> {
   /// Check if the current cache is valid by comparing parameters
   bool _isCacheValid() {
     if (_cacheParameters == null) return false;
-    
+
     final currentParams = _CacheParameters(
       currentView: _currentView,
       sortOrder: _sortOrder,
@@ -130,7 +130,7 @@ class LibraryScreenState extends State<LibraryScreen> {
       showHiddenSeries: Manager.settings.showHiddenSeries,
       customListOrder: List.from(_customListOrder),
     );
-    
+
     return _cacheParameters == currentParams;
   }
 
@@ -255,17 +255,17 @@ class LibraryScreenState extends State<LibraryScreen> {
     final rawSeries = library.series;
     final filteredSeries = _filterSeries(rawSeries);
     final sortedSeries = _sortSeries(filteredSeries, library);
-    
+
     // Cache the sorted series
     _sortedSeriesCache = sortedSeries;
-    
+
     // Build grouped cache if needed
     if (_showGrouped && _groupBy != GroupBy.none) {
       _groupedDataCache = _buildGroupedData(sortedSeries);
     } else {
       _groupedDataCache = null;
     }
-    
+
     // Store current parameters
     _cacheParameters = _CacheParameters(
       currentView: _currentView,
@@ -383,8 +383,16 @@ class LibraryScreenState extends State<LibraryScreen> {
           groups[unlinkedKey]?.add(series);
         }
       } else {
-        // Unlinked series
-        groups['Unlinked']?.add(series);
+        // Unlinked series - use custom list name if specified and exists, otherwise use 'Unlinked'
+        final availableListNames = anilistProvider.userLists.keys.toList()..add(AnilistService.statusListNameUnlinked);
+        final effectiveListName = series.getEffectiveListName(availableListNames);
+        final targetListName = _getDisplayName(effectiveListName);
+
+        // Ensure the target group exists
+        if (!groups.containsKey(targetListName)) //
+          groups[targetListName] = [];
+
+        groups[targetListName]?.add(series);
       }
     }
 
@@ -514,7 +522,7 @@ class LibraryScreenState extends State<LibraryScreen> {
 
       // Load list order
       final listOrderString = manager.get('library_list_order', defaultValue: '[]');
-      
+
       try {
         final decoded = json.decode(listOrderString);
         if (decoded is List) _customListOrder = List<String>.from(decoded);
@@ -567,7 +575,7 @@ class LibraryScreenState extends State<LibraryScreen> {
       }
     }
   }
-  
+
   void invalidateSortCache() {
     _sortedSeriesCache = null;
     _groupedDataCache = null;
@@ -583,14 +591,14 @@ class LibraryScreenState extends State<LibraryScreen> {
 
     // Remove existing series with same path if it exists
     _sortedSeriesCache!.removeWhere((s) => s.path == series.path);
-    
+
     // Add the updated series
     _sortedSeriesCache!.add(series);
-    
+
     // Re-sort the cache since we added a new item
     final library = Provider.of<Library>(context, listen: false);
     _sortedSeriesCache = _sortSeries(_sortedSeriesCache!, library);
-    
+
     // If grouped cache exists, rebuild it
     if (_groupedDataCache != null && _showGrouped && _groupBy != GroupBy.none) {
       _groupedDataCache = _buildGroupedData(_sortedSeriesCache!);
@@ -600,10 +608,10 @@ class LibraryScreenState extends State<LibraryScreen> {
   /// Remove a hidden series from the cache without invalidating the entire cache
   void removeHiddenSeriesWithoutInvalidatingCache(Series series) {
     if (_sortedSeriesCache == null) return;
-    
+
     // Remove from sorted cache
     _sortedSeriesCache!.removeWhere((s) => s.path == series.path);
-    
+
     // Remove from grouped cache if it exists
     if (_groupedDataCache != null) {
       for (final entry in _groupedDataCache!.entries) {
@@ -1153,7 +1161,7 @@ class LibraryScreenState extends State<LibraryScreen> {
             // Otherwise use the custom order
             return aIndex.compareTo(bIndex);
           });
-          
+
           for (final groupName in displayOrder) {
             List<Series> seriesInGroup = groupedData[groupName]!;
 
