@@ -31,7 +31,7 @@ void openFile(PathString path) async {
 void printHiddenSeries([String message = '', List<Series>? series]) {
   final library = Provider.of<Library>(Manager.context, listen: false);
   for (final series in series ?? library.series) {
-    if (series.isHidden) {
+    if (series.isForcedHidden) {
       logSuccess('Hidden series: ${series.name} $message');
     }
   }

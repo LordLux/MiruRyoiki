@@ -35,6 +35,7 @@ class _CacheParameters {
   final bool sortDescending;
   final bool showGrouped;
   final bool showHiddenSeries;
+  final bool showAnilistHiddenSeries;
   final List<String> customListOrder;
 
   _CacheParameters({
@@ -44,6 +45,7 @@ class _CacheParameters {
     required this.sortDescending,
     required this.showGrouped,
     required this.showHiddenSeries,
+    required this.showAnilistHiddenSeries,
     required this.customListOrder,
   });
 
@@ -58,6 +60,7 @@ class _CacheParameters {
           sortDescending == other.sortDescending &&
           showGrouped == other.showGrouped &&
           showHiddenSeries == other.showHiddenSeries &&
+          showAnilistHiddenSeries == other.showAnilistHiddenSeries &&
           _listEquals(customListOrder, other.customListOrder);
 
   @override
@@ -68,6 +71,7 @@ class _CacheParameters {
       sortDescending.hashCode ^
       showGrouped.hashCode ^
       showHiddenSeries.hashCode ^
+      showAnilistHiddenSeries.hashCode ^
       customListOrder.hashCode;
 
   static bool _listEquals<T>(List<T>? a, List<T>? b) {
@@ -128,6 +132,7 @@ class LibraryScreenState extends State<LibraryScreen> {
       sortDescending: _sortDescending,
       showGrouped: _showGrouped,
       showHiddenSeries: Manager.settings.showHiddenSeries,
+      showAnilistHiddenSeries: Manager.settings.showAnilistHiddenSeries,
       customListOrder: List.from(_customListOrder),
     );
 
@@ -274,6 +279,7 @@ class LibraryScreenState extends State<LibraryScreen> {
       sortDescending: _sortDescending,
       showGrouped: _showGrouped,
       showHiddenSeries: Manager.settings.showHiddenSeries,
+      showAnilistHiddenSeries: Manager.settings.showAnilistHiddenSeries,
       customListOrder: List.from(_customListOrder),
     );
   }
@@ -436,14 +442,16 @@ class LibraryScreenState extends State<LibraryScreen> {
     List<Series> filteredSeries = series;
 
     // Add filter for hidden series
-    if (!Manager.settings.showHiddenSeries) {
-      filteredSeries = filteredSeries.where((s) => !s.shouldBeHidden).toList();
-    }
+    final bool showHidden = Manager.settings.showHiddenSeries;
+    final bool showAnilistHidden = Manager.settings.showAnilistHiddenSeries;
+    final bool onlyLinked = _currentView == LibraryView.linked;
 
-    // Add filter for unlinked series if view is set to linked only
-    if (_currentView == LibraryView.linked) {
-      filteredSeries = filteredSeries.where((s) => s.isLinked).toList();
-    }
+    filteredSeries = filteredSeries.where((s) {
+      if (!showHidden && s.isForcedHidden) return false;
+      if (!showAnilistHidden && s.isAnilistHidden) return false;
+      if (onlyLinked && !s.isLinked) return false;
+      return true;
+    }).toList();
 
     return filteredSeries;
   }
@@ -607,6 +615,7 @@ class LibraryScreenState extends State<LibraryScreen> {
 
   /// Remove a hidden series from the cache without invalidating the entire cache
   void removeHiddenSeriesWithoutInvalidatingCache(Series series) {
+    if (Manager.settings.showHiddenSeries) return; // No need to remove if hidden series are shown
     if (_sortedSeriesCache == null) return;
 
     // Remove from sorted cache

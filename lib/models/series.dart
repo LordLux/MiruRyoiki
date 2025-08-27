@@ -1,5 +1,6 @@
+// ignore_for_file: library_prefixes, unnecessary_this
+
 import 'dart:io';
-import 'dart:ui';
 
 import 'package:flutter/widgets.dart' hide Image;
 import 'package:miruryoiki/models/metadata.dart';
@@ -188,7 +189,7 @@ class Series {
   PathString? folderBannerPath;
 
   /// Whether the series is hidden from the library (only when not linked to Anilist)
-  bool isHidden = false;
+  bool isForcedHidden;
 
   /// Custom list name for unlinked series (null -> default to 'Unlinked')
   /// ignored if linked
@@ -231,10 +232,11 @@ class Series {
     String? anilistPoster,
     String? anilistBanner,
     int? primaryAnilistId,
-    this.isHidden = false,
+    bool isHidden = false,
     this.customListName,
     Metadata? metadata,
-  })  : _dominantColor = dominantColor,
+  })  : isForcedHidden = isHidden,
+        _dominantColor = dominantColor,
         _anilistPosterUrl = anilistPoster,
         _anilistBannerUrl = anilistBanner,
         _primaryAnilistId = primaryAnilistId ?? anilistMappings.firstOrNull?.anilistId,
@@ -277,7 +279,7 @@ class Series {
       primaryAnilistId: primaryAnilistId ?? _primaryAnilistId,
       anilistPoster: anilistPoster ?? _anilistPosterUrl,
       anilistBanner: anilistBanner ?? _anilistBannerUrl,
-      isHidden: isHidden ?? this.isHidden,
+      isHidden: isHidden ?? this.isForcedHidden,
       customListName: customListName ?? this.customListName,
       metadata: metadata ?? _metadata,
     );
@@ -300,7 +302,7 @@ class Series {
       'anilistBannerUrl': _anilistBannerUrl ?? anilistData?.bannerImage, // nullable
       'preferredPosterSource': preferredPosterSource?.name_, // nullable
       'preferredBannerSource': preferredBannerSource?.name_, // nullable
-      'isHidden': isHidden,
+      'isHidden': isForcedHidden,
       'customListName': customListName, // nullable
       'metadata': _metadata?.toJson(), // nullable
     };
@@ -431,7 +433,7 @@ class Series {
         // preferredPosterSource and preferredBannerSource
         // are null by default to be set by the settings
       );
-      series.isHidden = (json['isHidden'] as bool? ?? false) == true;
+      series.isForcedHidden = (json['isHidden'] as bool? ?? false) == true;
 
       // Set custom list name if available (only used for unlinked series)
       try {
@@ -508,7 +510,7 @@ class Series {
   Highest User Score:   $highestUserScore,
   Highest Popularity:    $highestPopularity,
   Dominant Color:        ${dominantColor?.toHex()},
-  Hidden:                   $isHidden,
+  Hidden:                   $isForcedHidden,
 )''';
   }
 
@@ -894,13 +896,7 @@ class Series {
   int? get seasonYear => currentAnilistData?.seasonYear;
 
   /// Checks if any Anilist mapping has the "hide from status lists" flag set
-  bool get shouldBeHidden {
-    if (isLinked && anilistMappings.isNotEmpty) {
-      return mediaListEntries.values.any((entry) => entry?.hiddenFromStatusLists == true);
-    }
-
-    return isHidden; // if not linked, use the local isHidden flag
-  }
+  bool get isAnilistHidden => isLinked && mediaListEntries.values.any((entry) => entry?.hiddenFromStatusLists == true);
 
   /// Getter to check if the poster is from Anilist
   String? get effectivePosterPath {

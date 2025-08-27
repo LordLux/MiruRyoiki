@@ -279,7 +279,7 @@ class SeriesDao extends DatabaseAccessor<AppDatabase> with _$SeriesDaoMixin {
       folderPosterPath: Value(s.folderPosterPath),
       folderBannerPath: Value(s.folderBannerPath),
       primaryAnilistId: Value(s.primaryAnilistId),
-      isHidden: Value(s.isHidden),
+      isHidden: Value(s.isForcedHidden),
       customListName: Value(s.customListName),
       dominantColor: Value(const ColorJsonConverter().toSql(s.dominantColor)),
       preferredPosterSource: Value(s.preferredPosterSource?.name),

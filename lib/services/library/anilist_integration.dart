@@ -254,7 +254,6 @@ extension LibraryAnilistIntegration on Library {
 
   /// Unlink a series from Anilist
   Future<bool> updateSeriesMappings(Series series, List<AnilistMapping> mappings) async {
-    final originalIsHidden = series.isHidden;
     series.anilistMappings = mappings;
 
     if (mappings.isEmpty) {
@@ -266,26 +265,7 @@ extension LibraryAnilistIntegration on Library {
       // Set primaryAnilistId if needed
       series.primaryAnilistId ??= mappings.first.anilistId;
 
-      // Handle isHidden property only once - for all linked series
-      if (series.isLinked) {
-        bool foundExplicitHiddenValue = false;
-
-        // Check all mappings for explicit hidden status
-        for (final mapping in mappings) {
-          if (mapping.anilistData != null && mapping.anilistData?.hiddenFromStatusLists != null) {
-            series.isHidden = mapping.anilistData!.hiddenFromStatusLists!;
-            foundExplicitHiddenValue = true;
-            if (series.isHidden) logDebug('Found explicit hidden value of TRUE for ${series.name}!');
-            break;
-          }
-        }
-
-        // If no explicit value, keep original setting
-        if (!foundExplicitHiddenValue) {
-          series.isHidden = originalIsHidden;
-          logDebug('No explicit hidden value for ${series.name}, keeping original: ${series.isHidden}');
-        }
-      }
+      // NO NEED TO UPDATE isHidden, AS IT'S USER-CHOICE FIRST
     }
 
     // Set the flag indicating a series was modified

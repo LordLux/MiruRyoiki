@@ -12,6 +12,8 @@ import '../utils/logging.dart';
 import '../utils/screen_utils.dart';
 import '../utils/time_utils.dart';
 import 'context_menu/series.dart';
+import 'hidden.dart';
+import 'upcoming_episode_card.dart';
 
 class ContinueEpisodeCard extends StatefulWidget {
   final Series series;
@@ -280,27 +282,13 @@ class _ContinueEpisodeCardState extends State<ContinueEpisodeCard> {
                         }),
                       ],
                     ),
-                  ), // Add the hidden indicator
-                  if (widget.series.shouldBeHidden)
-                    Positioned(
-                      top: 12,
-                      left: 12,
-                      child: Container(
-                        padding: EdgeInsets.all(4),
-                        decoration: BoxDecoration(
-                          color: Colors.black.withOpacity(0.7),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Tooltip(
-                          message: 'Hidden from Anilist status lists',
-                          child: Icon(
-                            FluentIcons.hide, // or use FluentIcons.hide2 or FluentIcons.eye_hide
-                            size: 18,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ),
-                    ),
+                  ),
+
+                  // Anilist hidden indicator
+                  if (widget.series.isAnilistHidden) const AnilistHidden(),
+                  // LOCAL hidden indicator
+                  if (widget.series.isForcedHidden) const LocalHidden(),
+
                   // Hover overlay
                   Positioned.fill(
                     child: Material(

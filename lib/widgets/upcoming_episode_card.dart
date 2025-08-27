@@ -11,6 +11,7 @@ import '../utils/color_utils.dart';
 import '../utils/logging.dart';
 import '../utils/time_utils.dart';
 import 'context_menu/series.dart';
+import 'hidden.dart';
 
 class UpcomingEpisodeCard extends StatefulWidget {
   final Series series;
@@ -184,7 +185,6 @@ class _UpcomingEpisodeCardState extends State<UpcomingEpisodeCard> {
               children: [
                 // Poster image
                 Positioned.fill(
-                  
                   child: Container(
                     child: _getSeriesImage(),
                   ),
@@ -206,12 +206,12 @@ class _UpcomingEpisodeCardState extends State<UpcomingEpisodeCard> {
                     children: [
                       // Poster image
                       Expanded(child: SizedBox.shrink()),
-      
+
                       // Series info
                       Builder(builder: (context) {
                         final double value = widget.series.isAnilistPoster ? .76 : .9;
                         final Color nicerColor = mainColor.lerpWith(Colors.grey, value);
-      
+
                         Widget child = Padding(
                           padding: const EdgeInsets.all(12.0),
                           child: Column(
@@ -229,7 +229,6 @@ class _UpcomingEpisodeCardState extends State<UpcomingEpisodeCard> {
                                   Text(
                                     _formatAiringTime(widget.airingEpisode.airingAt!),
                                     style: FluentTheme.of(context).typography.caption?.copyWith(
-                                          
                                           color: widget.series.dominantColor ?? FluentTheme.of(context).resources.textFillColorSecondary,
                                         ),
                                     overflow: TextOverflow.ellipsis,
@@ -268,27 +267,13 @@ class _UpcomingEpisodeCardState extends State<UpcomingEpisodeCard> {
                       }),
                     ],
                   ),
-                ), // Add the hidden indicator
-                if (widget.series.shouldBeHidden)
-                  Positioned(
-                    top: 12,
-                    left: 12,
-                    child: Container(
-                      padding: EdgeInsets.all(4),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.7),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Tooltip(
-                        message: 'Hidden from Anilist status lists',
-                        child: Icon(
-                          FluentIcons.hide, // or use FluentIcons.hide2 or FluentIcons.eye_hide
-                          size: 18,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                  ),
+                ),
+
+                // Anilist hidden indicator
+                if (widget.series.isAnilistHidden) const AnilistHidden(),
+                // LOCAL hidden indicator
+                if (widget.series.isForcedHidden) const LocalHidden(),
+
                 // Hover overlay
                 Positioned.fill(
                   child: Material(

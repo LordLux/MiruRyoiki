@@ -13,6 +13,7 @@ import '../services/anilist/provider/anilist_provider.dart';
 import '../services/navigation/shortcuts.dart';
 import '../settings.dart';
 import '../utils/color_utils.dart';
+import '../utils/logging.dart';
 import '../utils/path_utils.dart';
 import '../utils/screen_utils.dart';
 import '../utils/time_utils.dart';
@@ -144,7 +145,9 @@ class _HomeScreenState extends State<HomeScreen> {
         // Get series for each section
         final (continueWatchingSeries, nextUpSeries) = _getSeriesForSection(watchingSeries, anilistProvider); // $1: started, $2: not started
         final releasedSeries = List<Series>.from(watchingSeries); // series with aired but not downloaded episodes
-
+        
+        // TODO filter hidden if 'show hidden' setting is not enabled
+        
         // Apply visibility rules
         final showContinueWatching = continueWatchingSeries.isNotEmpty;
         final showNextUp = nextUpSeries.isNotEmpty/* && !showContinueWatching*/;
@@ -333,9 +336,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildReleasedEpisodesSection(List<Episode> releasedEpisodes) {
     // show a list of episodes that have been already aired but not that we still don't have in our library
-    final anilistProvider = Provider.of<AnilistProvider>(context);
-    final library = Provider.of<Library>(context);
-
     if (releasedEpisodes.isEmpty) {
       return _buildEmptyState('No released episodes found', 'All released episodes are already in your library');
     }
@@ -350,7 +350,8 @@ class _HomeScreenState extends State<HomeScreen> {
           trailing: IconButton(
             icon: Icon(FluentIcons.add),
             onPressed: () {
-              print('TODO in the future, bring user to torrent pane');
+              // TODO in the future, bring user to torrent pane
+              log('TODO in the future, bring user to torrent pane');
             },
           ),
         );

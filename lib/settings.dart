@@ -74,6 +74,9 @@ class SettingsManager extends ChangeNotifier {
   bool get showHiddenSeries => _getBool('showHiddenSeries', defaultValue: false);
   set showHiddenSeries(bool value) => _setBool('showHiddenSeries', value);
 
+  bool get showAnilistHiddenSeries => _getBool('showAnilistHiddenSeries', defaultValue: false);
+  set showAnilistHiddenSeries(bool value) => _setBool('showAnilistHiddenSeries', value);
+
   // // Generic getters with type safety
   bool _getBool(String key, {required bool defaultValue}) {
     if (!_settings.containsKey(key)) {

@@ -13,6 +13,8 @@ extension AnilistProviderAuthentication on AnilistProvider {
   Future<bool> handleAuthCallback(Uri callbackUri) async {
     _isLoading = true;
     notifyListeners();
+    
+    logInfo('Handling Anilist auth callback: $callbackUri');
 
     final success = await _anilistService.handleAuthCallback(callbackUri);
 

@@ -16,6 +16,7 @@ import '../../services/library/library_provider.dart';
 import '../../services/navigation/dialogs.dart';
 import '../../services/navigation/show_info.dart';
 import '../../screens/series.dart';
+import '../../utils/logging.dart';
 import '../../utils/shell_utils.dart';
 import '../dialogs/poster_select.dart';
 import 'icons.dart' as icons;
@@ -80,12 +81,11 @@ class SeriesContextMenuState extends State<SeriesContextMenu> {
             shortcutModifiers: ShortcutModifiers(control: Platform.isWindows, meta: Platform.isMacOS),
             onClick: (_) => _updateFromAnilist(context),
           ),
-        if (!series.isLinked)
-          MenuItem(
-            label: series.isHidden ? 'Stop Hiding Series' : 'Hide Series',
-            icon: series.isHidden ? icons.unhide : icons.hide,
-            onClick: (_) => _toggleHiddenStatus(context),
-          ),
+        MenuItem(
+          label: series.isForcedHidden ? 'Stop Hiding Series' : 'Hide Series',
+          icon: series.isForcedHidden ? icons.unhide : icons.hide,
+          onClick: (_) => _toggleHiddenStatus(context),
+        ),
         if (!series.isLinked)
           MenuItem.submenu(
             label: 'Change List',
@@ -167,19 +167,23 @@ class SeriesContextMenuState extends State<SeriesContextMenu> {
     final series = widget.series;
 
     // Toggle hidden status
-    series.isHidden = !series.isHidden;
+    series.isForcedHidden = !series.isForcedHidden;
 
     // Update the series in the library
     library.updateSeries(series, invalidateCache: true);
 
     if (libraryScreenKey.currentState != null) {
-      libraryScreenKey.currentState!.removeHiddenSeriesWithoutInvalidatingCache(series);
+      if (series.isForcedHidden)
+        libraryScreenKey.currentState!.removeHiddenSeriesWithoutInvalidatingCache(series);
+      else
+        libraryScreenKey.currentState!.updateSeriesInSortCache(series);
+
       libraryScreenKey.currentState!.setState(() {});
     }
 
     // Show confirmation
     snackBar(
-      series.isHidden ? 'Series is now hidden' : 'Series is now visible',
+      series.isForcedHidden ? 'Series is now hidden' : 'Series is now visible',
       severity: InfoBarSeverity.success,
     );
 
@@ -213,7 +217,7 @@ class SeriesContextMenuState extends State<SeriesContextMenu> {
     updatedSeries.customListName = apiName == AnilistService.statusListNameUnlinked ? null : apiName;
 
     library.updateSeries(updatedSeries, invalidateCache: true);
-    
+
     if (libraryScreenKey.currentState != null) {
       libraryScreenKey.currentState!.updateSeriesInSortCache(updatedSeries);
       libraryScreenKey.currentState!.setState(() {});

@@ -61,6 +61,7 @@ class AccountsScreenState extends State<AccountsScreen> {
   bool _aboutExpanded = false;
 
   bool _showHiddenSeries = false;
+  bool _showAnilistHiddenSeries = false;
   bool _enableAutoTimeout = false;
   int _timeoutDuration = 5; // minutes
   Timer? _autoHideTimer;
@@ -69,6 +70,7 @@ class AccountsScreenState extends State<AccountsScreen> {
   void initState() {
     super.initState();
     _showHiddenSeries = Manager.settings.showHiddenSeries;
+    _showAnilistHiddenSeries = Manager.settings.showAnilistHiddenSeries;
     _loadUserData();
   }
 
@@ -378,6 +380,23 @@ class AccountsScreenState extends State<AccountsScreen> {
                 ],
               )
             : SizedBox.shrink(),
+      ),
+
+      // Toggle for showing hidden series
+      NormalSwitch(
+        tooltip: 'Show series hidden from status lists (these will only be visible in custom lists)',
+        toggleSwitch: ToggleSwitch(
+          checked: _showAnilistHiddenSeries,
+          content: Flexible(
+            child: Text('Show series hidden from status lists', style: Manager.bodyStyle),
+          ),
+          onChanged: (value) {
+            setState(() {
+              _showAnilistHiddenSeries = value;
+              Manager.settings.showAnilistHiddenSeries = value;
+            });
+          },
+        ),
       ),
     ];
   }
