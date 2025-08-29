@@ -334,7 +334,7 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return MiruRyoikiHeaderInfoBarPage(
+    return MiruRyoikiTemplatePage(
       headerWidget: HeaderWidget(
         title: (_, __) => const PageHeader(title: Text('Release Calendar')),
         titleLeftAligned: true,

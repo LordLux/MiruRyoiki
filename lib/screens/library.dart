@@ -1,11 +1,12 @@
 import 'dart:convert';
+import 'dart:math' as math;
 
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:material_symbols_icons/symbols.dart';
 import 'package:miruryoiki/manager.dart';
 import 'package:provider/provider.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:smooth_scroll_multiplatform/smooth_scroll_multiplatform.dart';
-import 'package:shimmer_animation/shimmer_animation.dart';
+import 'package:shimmer/shimmer.dart';
 
 import '../main.dart';
 import '../enums.dart';
@@ -16,21 +17,20 @@ import '../services/library/library_provider.dart';
 import '../models/series.dart';
 import '../services/anilist/provider/anilist_provider.dart';
 import '../services/navigation/shortcuts.dart';
-import '../utils/color_utils.dart';
 import '../utils/path_utils.dart';
 import '../utils/screen_utils.dart';
 import '../utils/time_utils.dart';
 import '../widgets/animated_order_tile.dart';
-import '../widgets/buttons/button.dart';
-import '../widgets/buttons/switch_button.dart';
 import '../widgets/buttons/wrapper.dart';
-import '../widgets/gradient_mask.dart';
+import '../widgets/page/header_widget.dart';
+import '../widgets/page/infobar.dart';
+import '../widgets/page/page.dart';
 import '../widgets/series_card.dart';
 
 // Cache parameters to track when cache needs invalidation
 class _CacheParameters {
   final LibraryView currentView;
-  final SortOrder sortOrder;
+  final SortOrder? sortOrder;
   final GroupBy groupBy;
   final bool sortDescending;
   final bool showGrouped;
@@ -101,14 +101,15 @@ class LibraryScreen extends StatefulWidget {
 
 class LibraryScreenState extends State<LibraryScreen> {
   LibraryView _currentView = LibraryView.all;
-  SortOrder _sortOrder = SortOrder.alphabetical;
+  SortOrder? _sortOrder;
   GroupBy _groupBy = GroupBy.anilistLists;
 
   bool _sortDescending = false;
   bool _showGrouped = false;
-  bool _showFilters = false;
 
-  bool _filterHintShowing = false;
+  bool _editListsEnabled = false;
+  List<String> _previousCustomListOrder = [];
+
   final GlobalKey firstCardKey = GlobalKey();
   bool _isSelectingFolder = false;
   bool _isReordering = false;
@@ -147,6 +148,7 @@ class LibraryScreenState extends State<LibraryScreen> {
 
     switch (_sortOrder) {
       // Alphabetical order by title
+      case null:
       case SortOrder.alphabetical:
         comparator = (a, b) => a.name.compareTo(b.name);
 
@@ -407,16 +409,6 @@ class LibraryScreenState extends State<LibraryScreen> {
     return groups;
   }
 
-  Widget get filterIcon {
-    IconData icon;
-    if (_showFilters)
-      icon = FluentIcons.filter_solid;
-    else
-      icon = FluentIcons.filter;
-
-    return Icon(icon);
-  }
-
   double getHeight(int itemCount, double maxWidth) {
     // Use the stored column count if available, otherwise calculate based on width
     final int columns = previousGridColumnCount.value ?? ScreenUtils.crossAxisCount(maxWidth);
@@ -507,7 +499,7 @@ class LibraryScreenState extends State<LibraryScreen> {
       // Load sort order
       final sortOrderString = manager.get('library_sort_order', defaultValue: SortOrder.alphabetical.toString());
       for (final order in SortOrder.values) {
-        if (order.toString() == sortOrderString) {
+        if (order.toString() == sortOrderString && order.toString() != SortOrder.alphabetical.name) {
           _sortOrder = order;
           break;
         }
@@ -537,13 +529,6 @@ class LibraryScreenState extends State<LibraryScreen> {
       } catch (_) {
         _customListOrder = [];
       }
-    });
-  }
-
-  void toggleFiltersSidebar({bool? value}) {
-    setState(() {
-      _showFilters = value ?? !_showFilters;
-      _filterHintShowing = false;
     });
   }
 
@@ -637,211 +622,140 @@ class LibraryScreenState extends State<LibraryScreen> {
 
     if (library.libraryPath == null) return _buildLibrarySelector();
 
-    const double filterAngle = -0.01;
-    const double width = 350;
-    final double headerHeight = 63 * Manager.fontSizeMultiplier;
-
-    return Column(
-      children: [
-        Expanded(
-          child: Stack(
-            children: [
-              Positioned.fill(
-                top: 0,
-                child: GestureDetector(
-                  onTap: () => toggleFiltersSidebar(value: false),
-                  behavior: HitTestBehavior.translucent,
-                  child: Padding(
-                    padding: const EdgeInsets.only(top: 16.0, left: 6.0),
-                    child: SizedBox(height: headerHeight, child: _buildHeader(library)),
-                  ),
-                ),
-              ),
-              // Library entries
-              Positioned.fill(
-                child: GestureDetector(
-                  onTap: () => toggleFiltersSidebar(value: false),
-                  behavior: HitTestBehavior.deferToChild,
-                  child: Padding(
-                    padding: EdgeInsets.only(right: 6.0, top: headerHeight + 16.0, left: 6.0),
-                    child: _buildLibraryView(library),
-                  ),
-                ),
-              ),
-
-              // Library filters sidebar
-              AnimatedPositioned(
-                duration: shortStickyHeaderDuration,
-                top: headerHeight + 16,
-                right: _showFilters
-                    ? -0
-                    : _filterHintShowing
-                        ? -(width - 50)
-                        : -width,
-                child: AnimatedRotation(
-                  duration: shortStickyHeaderDuration,
-                  turns: _filterHintShowing ? filterAngle : 0,
-                  child: GestureDetector(
-                    onTapDown: (_) => _filterHintShowing ? toggleFiltersSidebar() : null,
-                    child: SizedBox(
-                      height: ScreenUtils.height - headerHeight - 16 - ScreenUtils.kTitleBarHeight,
-                      width: width,
-                      child: Acrylic(
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.only(topLeft: Radius.circular(8), bottomLeft: Radius.circular(8))),
-                        blurAmount: 12,
-                        elevation: 0,
-                        luminosityAlpha: .4,
-                        tint: darken(Manager.accentColor.lightest, .95),
-                        child: _buildFiltersSidebar(),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              // Mouse detection
-              if (!_showFilters)
-                AnimatedPositioned(
-                  duration: shortStickyHeaderDuration,
-                  right: _filterHintShowing ? -84 : -95,
-                  child: AnimatedRotation(
-                    duration: shortStickyHeaderDuration,
-                    turns: _filterHintShowing ? filterAngle : 0,
-                    child: SizedBox(
-                      width: 100,
-                      height: 2000,
-                      child: MouseRegion(
-                        onEnter: (event) => setState(() => _filterHintShowing = true),
-                        onExit: (event) => setState(() => _filterHintShowing = false),
-                        hitTestBehavior: HitTestBehavior.translucent,
-                      ),
-                    ),
-                  ),
-                ),
-            ],
-          ),
-        ),
-      ],
+    return MiruRyoikiTemplatePage(
+      headerWidget: _buildHeader(library),
+      content: _buildLibraryView(library),
+      infobar: (_) => _buildFiltersSidebar(),
+      headerMaxHeight: ScreenUtils.kMinHeaderHeight,
+      headerMinHeight: ScreenUtils.kMinHeaderHeight,
+      noHeaderBanner: true,
+      scrollableContent: true,
+      contentExtraHeaderPadding: true,
     );
   }
 
-  Widget _buildFiltersSidebar() {
-    return MouseRegion(
-      cursor: _filterHintShowing ? SystemMouseCursors.click : MouseCursor.defer,
-      child: Stack(
-        alignment: Alignment.topLeft,
+  MiruRyoikiInfobar _buildFiltersSidebar() {
+    return MiruRyoikiInfobar(
+      content: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          AbsorbPointer(
-            absorbing: _filterHintShowing,
-            child: AnimatedOpacity(
-              opacity: _filterHintShowing || !_showFilters ? 0.0 : 1.0,
-              duration: shortStickyHeaderDuration,
-              child: Padding(
-                padding: const EdgeInsets.only(left: 32.0, right: 16.0, top: 32.0, bottom: 16.0),
-                child: SingleChildScrollView(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        'Display Options',
-                        style: FluentTheme.of(context).typography.subtitle,
-                      ),
-                      VDiv(16),
+          Text(
+            'Display Options',
+            style: FluentTheme.of(context).typography.subtitle,
+          ),
+          VDiv(16),
 
-                      // Library View Switch
-                      InfoLabel(
-                        label: 'View',
-                        child: MouseButtonWrapper(
-                          child: (_) => ComboBox<LibraryView>(
-                            value: _currentView,
-                            items: [
-                              ComboBoxItem(value: LibraryView.all, child: Text('All Series')),
-                              ComboBoxItem(value: LibraryView.linked, child: Text('Linked Series Only')),
-                            ],
-                            onChanged: _onViewChanged,
-                          ),
-                        ),
-                      ),
-                      VDiv(16),
+          // Library View Switch
+          InfoLabel(
+            label: 'View',
+            child: MouseButtonWrapper(
+              child: (_) => ComboBox<LibraryView>(
+                value: _currentView,
+                items: [
+                  ComboBoxItem(value: LibraryView.all, child: Text('All Series')),
+                  ComboBoxItem(value: LibraryView.linked, child: Text('Linked Series Only')),
+                ],
+                onChanged: _onViewChanged,
+              ),
+            ),
+          ),
+          VDiv(16),
 
-                      // Grouping Toggle
-                      MouseButtonWrapper(
-                        child: (_) => ToggleSwitch(
-                          checked: _showGrouped,
-                          content: Text('Group by AniList Lists'),
-                          onChanged: (value) {
-                            setState(() {
-                              _showGrouped = value;
-                              _groupBy = value ? GroupBy.anilistLists : GroupBy.none;
-                              invalidateSortCache(); // Invalidate cache when grouping changes
-                              _saveUserPreferences();
-                            });
-                          },
-                        ),
-                      ),
+          // Grouping Toggle
+          MouseButtonWrapper(
+            child: (_) => ToggleSwitch(
+              checked: _showGrouped,
+              content: Text('Group by AniList Lists'),
+              onChanged: (value) {
+                setState(() {
+                  _showGrouped = value;
+                  _groupBy = value ? GroupBy.anilistLists : GroupBy.none;
+                  _saveUserPreferences();
+                  invalidateSortCache(); // Invalidate cache when grouping changes
+                });
+              },
+            ),
+          ),
 
-                      VDiv(24),
-                      Text(
-                        'Sort Options',
-                        style: FluentTheme.of(context).typography.subtitle,
-                      ),
-                      VDiv(16),
+          VDiv(24),
+          Text(
+            'Sort Options',
+            style: FluentTheme.of(context).typography.subtitle,
+          ),
+          VDiv(16),
 
-                      // Sort Order
-                      InfoLabel(
-                        label: 'Sort by',
-                        child: Row(
-                          children: [
-                            MouseButtonWrapper(
-                              child: (_) => ComboBox<SortOrder>(
-                                value: _sortOrder,
-                                items: SortOrder.values.map((order) => ComboBoxItem(value: order, child: Text(_getSortText(order)))).toList(),
-                                onChanged: _onSortOrderChanged,
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            MouseButtonWrapper(
-                              child: (_) => IconButton(
-                                icon: AnimatedRotation(
-                                  duration: shortStickyHeaderDuration,
-                                  turns: _sortDescending ? 0 : 1,
-                                  child: Icon(_sortDescending ? FluentIcons.sort_lines : FluentIcons.sort_lines_ascending),
-                                ),
-                                onPressed: _onSortDirectionChanged,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      VDiv(12),
-
-                      // Only show list order UI when grouping is enabled
-                      if (_showGrouped) ...[
-                        VDiv(24),
-                        Text(
-                          'List Order',
-                          style: FluentTheme.of(context).typography.subtitle,
-                        ),
-                        VDiv(16),
-                        _buildListOrderUI(),
-                      ],
-                    ],
+          // Sort Order
+          InfoLabel(
+            label: 'Sort by',
+            child: Row(
+              children: [
+                MouseButtonWrapper(
+                  child: (_) => IconButton(
+                    icon: AnimatedRotation(
+                      duration: shortStickyHeaderDuration,
+                      turns: _sortDescending ? 0 : 1,
+                      child: Icon(_sortDescending ? FluentIcons.sort_lines : FluentIcons.sort_lines_ascending),
+                    ),
+                    onPressed: _onSortDirectionChanged,
                   ),
                 ),
-              ),
+                const SizedBox(width: 8),
+                MouseButtonWrapper(
+                  child: (_) => ComboBox<SortOrder>(
+                    value: _sortOrder,
+                    placeholder: const Text('Sort By'),
+                    items: SortOrder.values.map((order) => ComboBoxItem(value: order, child: Text(_getSortText(order)))).toList(),
+                    onChanged: _onSortOrderChanged,
+                  ),
+                ),
+              ],
             ),
           ),
-          AnimatedOpacity(
-            opacity: _filterHintShowing ? 1.0 : 0.0,
-            duration: shortStickyHeaderDuration,
-            child: RotatedBox(
-              quarterTurns: 1,
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Text('Filters', style: FluentTheme.of(context).typography.title),
-              ),
+          VDiv(12),
+
+          // Only show list order UI when grouping is enabled
+          if (_showGrouped) ...[
+            VDiv(24),
+            Row(
+              children: [
+                Text(
+                  'Lists',
+                  style: FluentTheme.of(context).typography.subtitle,
+                ),
+                const SizedBox(width: 8),
+                MouseButtonWrapper(
+                  tooltip: _editListsEnabled ? 'Save Changes' : 'Edit List Order',
+                  child: (_) => IconButton(
+                    icon: _editListsEnabled ? Icon(FluentIcons.check_mark) : Icon(FluentIcons.edit),
+                    onPressed: () {
+                      setState(() => _editListsEnabled = !_editListsEnabled);
+                      if (_editListsEnabled) {
+                        _previousCustomListOrder = List.from(_customListOrder);
+                      }
+                    },
+                  ),
+                ),
+                if (_editListsEnabled) ... [
+                  const SizedBox(width: 8),
+                  MouseButtonWrapper(
+                    tooltip: 'Cancel Changes',
+                    child: (_) => IconButton(
+                      icon: Icon(Symbols.rotate_left),
+                      onPressed: () {
+                        setState(() {
+                          _customListOrder = List.from(_previousCustomListOrder);
+                          // _editListsEnabled = false;
+                        });
+                      },
+                    ),
+                  ),
+                ]
+              ],
             ),
-          ),
+            VDiv(16),
+            _buildListOrderUI(),
+          ],
         ],
       ),
     );
@@ -870,48 +784,32 @@ class LibraryScreenState extends State<LibraryScreen> {
     // Add "Unlinked" pseudo-list
     if (_currentView == LibraryView.all) allLists.add('__unlinked');
 
-    // If _customListOrder is empty or outdated, initialize with default order
-    if (_customListOrder.isEmpty || _customListOrder.equals(allLists)) //
+    // If _customListOrder is empty, initialize with default order
+    if (_customListOrder.isEmpty) {
       _customListOrder = List.from(allLists);
+    } else {
+      // Ensure all current lists are present in _customListOrder, add missing ones at the end
+      for (final listName in allLists) {
+        if (!_customListOrder.contains(listName)) {
+          _customListOrder.add(listName);
+        }
+      }
+      // Remove any lists that no longer exist
+      _customListOrder.removeWhere((listName) => !allLists.contains(listName));
+    }
 
-    final double childHeight = 45;
+    final double childHeight = 40;
 
     return SizedBox(
       height: _customListOrder.length * childHeight,
       child: ValueListenableBuilder(
-          valueListenable: KeyboardState.ctrlPressedNotifier,
-          builder: (context, isCtrlPressed, _) {
-            return ReorderableListView.builder(
-              physics: isCtrlPressed ? const NeverScrollableScrollPhysics() : null,
+        valueListenable: KeyboardState.ctrlPressedNotifier,
+        builder: (context, isCtrlPressed, _) {
+          // Non-reorderable view when editing is disabled
+          if (!_editListsEnabled) {
+            return ListView.builder(
+              physics: const NeverScrollableScrollPhysics(),
               itemCount: _customListOrder.length,
-              buildDefaultDragHandles: false,
-              clipBehavior: Clip.none,
-              proxyDecorator: (child, index, animation) {
-                final listName = _customListOrder[index];
-                final displayName = _getDisplayName(listName);
-
-                return AnimatedReorderableTile(
-                  key: ValueKey('${listName}_dragging'),
-                  listName: listName,
-                  displayName: displayName,
-                  index: index,
-                  selected: true,
-                  initialAnimation: true,
-                  isReordering: true,
-                );
-              },
-              onReorderStart: (_) => setState(() => _isReordering = true),
-              onReorderEnd: (_) => setState(() => _isReordering = false),
-              onReorder: (oldIndex, newIndex) {
-                setState(() {
-                  if (oldIndex < newIndex) newIndex -= 1;
-
-                  final item = _customListOrder.removeAt(oldIndex);
-                  _customListOrder.insert(newIndex, item);
-                  invalidateSortCache(); // Invalidate cache when list order changes
-                  _saveUserPreferences();
-                });
-              },
               prototypeItem: SizedBox(height: childHeight),
               itemBuilder: (context, index) {
                 final listName = _customListOrder[index];
@@ -923,55 +821,71 @@ class LibraryScreenState extends State<LibraryScreen> {
                   displayName: displayName,
                   index: index,
                   selected: false,
-                  isReordering: _isReordering,
+                  isReordering: false,
+                  reorderable: false,
                 );
               },
             );
-          }),
+          }
+
+          // Reorderable view when editing is enabled
+          return ReorderableListView.builder(
+            physics: isCtrlPressed ? const NeverScrollableScrollPhysics() : null,
+            itemCount: _customListOrder.length,
+            buildDefaultDragHandles: false,
+            clipBehavior: Clip.none,
+            proxyDecorator: (child, index, animation) {
+              final listName = _customListOrder[index];
+              final displayName = _getDisplayName(listName);
+
+              return AnimatedReorderableTile(
+                key: ValueKey('${listName}_dragging'),
+                listName: listName,
+                displayName: displayName,
+                index: index,
+                selected: true,
+                initialAnimation: true,
+                isReordering: true,
+                reorderable: true,
+              );
+            },
+            onReorderStart: (_) => setState(() => _isReordering = true),
+            onReorderEnd: (_) => setState(() => _isReordering = false),
+            onReorder: (oldIndex, newIndex) {
+              setState(() {
+                if (oldIndex < newIndex) newIndex -= 1;
+
+                final item = _customListOrder.removeAt(oldIndex);
+                _customListOrder.insert(newIndex, item);
+                invalidateSortCache(); // Invalidate cache when list order changes
+                print('New list order: $_customListOrder');
+                _saveUserPreferences();
+              });
+            },
+            prototypeItem: SizedBox(height: childHeight),
+            itemBuilder: (context, index) {
+              final listName = _customListOrder[index];
+              final displayName = _getDisplayName(listName);
+
+              return AnimatedReorderableTile(
+                key: ValueKey(listName),
+                listName: listName,
+                displayName: displayName,
+                index: index,
+                selected: false,
+                isReordering: _isReordering,
+              );
+            },
+          );
+        },
+      ),
     );
   }
 
-  Widget _buildHeader(Library library) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.only(left: 20.0, top: 6.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Your Media Library', style: FluentTheme.of(context).typography.title),
-              Text('Path: ${library.libraryPath}', style: FluentTheme.of(context).typography.caption),
-            ],
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.only(right: 8.0, top: 8.0),
-          child: Row(
-            children: [
-              NormalButton(
-                tooltip: 'Refresh the library',
-                label: 'Refresh',
-                onPressed: () => library.reloadLibrary(force: true),
-              ),
-              SizedBox(width: 8),
-              SwitchButton(
-                labelWidget: (textStyle) => Row(
-                  children: [
-                    filterIcon,
-                    HDivPx(4),
-                    Text('Filter & Display', style: textStyle),
-                  ],
-                ),
-                isPressed: _showFilters,
-                isFilled: true,
-                onPressed: () => toggleFiltersSidebar(),
-              ),
-            ],
-          ),
-        ),
-      ],
+  HeaderWidget _buildHeader(Library library) {
+    return HeaderWidget(
+      title: (style, _) => Text('Your Media Library', style: style),
+      children: [Text('Path: ${library.libraryPath}')],
     );
   }
 
@@ -1044,20 +958,17 @@ class LibraryScreenState extends State<LibraryScreen> {
 
       return Stack(
         children: [
+          // CONTENT
           IgnorePointer(
             ignoring: hideLibrary,
             child: Opacity(
               opacity: hideLibrary ? 0 : 1,
-              child: FadingEdgeScrollView(
-                fadeEdges: const EdgeInsets.symmetric(vertical: 10),
-                child: _buildSeriesGrid(displayedSeries, constraints.maxWidth, groupedData: groupedData, shimmer: false),
-              ),
+              child: _buildSeriesGrid(displayedSeries, constraints.maxWidth, groupedData: groupedData, shimmer: false),
             ),
           ),
+          // LOADING
           if (hideLibrary) ...[
-            Positioned.fill(
-              child: _buildSeriesGrid(displayedSeries, constraints.maxWidth, groupedData: groupedData, shimmer: true),
-            ),
+            Positioned.fill(child: _buildSeriesGrid(displayedSeries, constraints.maxWidth, groupedData: groupedData, shimmer: true)),
             Positioned.fill(
               child: Center(
                 child: Column(
@@ -1085,7 +996,16 @@ class LibraryScreenState extends State<LibraryScreen> {
         valueListenable: previousGridColumnCount,
         builder: (context, columns, __) {
           final List<Widget> children = List.generate(list.length, (index) {
-            if (shimmer) return Shimmer(child: Container());
+            if (shimmer)
+              return ClipRRect(
+                borderRadius: BorderRadius.circular(ScreenUtils.kStatCardBorderRadius),
+                child: Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(ScreenUtils.kStatCardBorderRadius),
+                    color: Colors.white.withOpacity(0.15),
+                  ),
+                ),
+              );
 
             final Series series_ = list[index % list.length];
 
@@ -1103,7 +1023,7 @@ class LibraryScreenState extends State<LibraryScreen> {
           }
 
           return GridView(
-            padding: includePadding ? const EdgeInsets.only(top: 16, bottom: 8, right: 12) : EdgeInsets.zero,
+            padding: includePadding ? const EdgeInsets.only(bottom: 8, right: 12) : EdgeInsets.zero,
             cacheExtent: (ScreenUtils.cardHeight ?? 200) * 5,
             gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: columns ?? ScreenUtils.crossAxisCount(maxWidth),
@@ -1112,29 +1032,37 @@ class LibraryScreenState extends State<LibraryScreen> {
               mainAxisSpacing: ScreenUtils.cardPadding,
             ),
             controller: controller,
-            physics: physics,
+            physics: shimmer ? NeverScrollableScrollPhysics() : physics,
             children: children,
           );
         },
       );
     }
 
-    if (shimmer) return episodesGrid(series, null, null, true, allowMeasurement: false, shimmer: true);
+    // Shimmer view (loading)
+    if (shimmer) //
+      return LayoutBuilder(builder: (context, constraints) {
+        return SizedBox(
+          height: math.min(constraints.maxHeight, ScreenUtils.height - ScreenUtils.kMinHeaderHeight - ScreenUtils.kTitleBarHeight - 32),
+          child: Shimmer.fromColors(
+            baseColor: Colors.white.withOpacity(0.15),
+            highlightColor: Colors.white,
+            child: episodesGrid(series, null, null, true, allowMeasurement: false, shimmer: true),
+          ),
+        );
+      });
 
-    // If grouping is enabled and we have grouped data, show grouped view
-    if (_groupBy != GroupBy.none && groupedData != null && _showGrouped) {
+    // Grouped View
+    if (_groupBy != GroupBy.none && groupedData != null && _showGrouped) //
       return _buildGroupedViewFromCache(groupedData, maxWidth, episodesGrid);
-    }
 
-    return DynMouseScroll(
-      stopScroll: KeyboardState.ctrlPressedNotifier,
-      enableSmoothScroll: Manager.animationsEnabled,
-      scrollAmount: ScreenUtils.paddedCardHeight,
-      controller: widget.scrollController,
-      durationMS: 300,
-      animationCurve: Curves.ease,
-      builder: (context, controller, physics) => episodesGrid(series, controller, physics, true, allowMeasurement: true),
-    );
+    // Ungrouped view
+    return LayoutBuilder(builder: (context, constraints) {
+      return SizedBox(
+        height: math.min(constraints.maxHeight, ScreenUtils.height - ScreenUtils.kMinHeaderHeight - ScreenUtils.kTitleBarHeight - 32),
+        child: episodesGrid(series, ScrollController(), ScrollPhysics(), true, allowMeasurement: true),
+      );
+    });
   }
 
   /// Build grouped view using cached grouped data
@@ -1143,69 +1071,58 @@ class LibraryScreenState extends State<LibraryScreen> {
     double maxWidth,
     Widget Function(List<Series>, ScrollController, ScrollPhysics, bool, {bool allowMeasurement}) episodesGrid,
   ) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 16),
-      child: DynMouseScroll(
-        stopScroll: KeyboardState.ctrlPressedNotifier,
-        enableSmoothScroll: Manager.animationsEnabled,
-        scrollAmount: ScreenUtils.paddedCardHeight,
-        controller: widget.scrollController,
-        durationMS: 300,
-        animationCurve: Curves.ease,
-        builder: (context, controller, physics) {
-          // Pre-build all group widgets
-          final List<Widget> groupWidgets = [];
+    return Builder(
+      builder: (context) {
+        // Pre-build all group widgets
+        final List<Widget> groupWidgets = [];
 
-          // Use the _customListOrder to determine display order
-          final displayOrder = groupedData.keys.toList();
-          displayOrder.sort((a, b) {
-            // Get the original position in _customListOrder
-            final aIndex = _customListOrder.indexOf(_getApiName(a));
-            final bIndex = _customListOrder.indexOf(_getApiName(b));
+        // Use the _customListOrder to determine display order
+        final displayOrder = groupedData.keys.toList();
+        displayOrder.sort((a, b) {
+          // Get the original position in _customListOrder
+          final aIndex = _customListOrder.indexOf(_getApiName(a));
+          final bIndex = _customListOrder.indexOf(_getApiName(b));
 
-            // If one is not found, put it at the end
-            if (aIndex == -1) return 1;
-            if (bIndex == -1) return -1;
+          // If one is not found, put it at the end
+          if (aIndex == -1) return 1;
+          if (bIndex == -1) return -1;
 
-            // Otherwise use the custom order
-            return aIndex.compareTo(bIndex);
-          });
+          // Otherwise use the custom order
+          return aIndex.compareTo(bIndex);
+        });
 
-          for (final groupName in displayOrder) {
-            List<Series> seriesInGroup = groupedData[groupName]!;
+        for (final groupName in displayOrder) {
+          List<Series> seriesInGroup = groupedData[groupName]!;
 
-            groupWidgets.add(Expander(
-              initiallyExpanded: true,
-              headerBackgroundColor: WidgetStatePropertyAll(FluentTheme.of(context).resources.cardBackgroundFillColorDefault.withOpacity(0.025)),
-              contentBackgroundColor: FluentTheme.of(context).resources.cardBackgroundFillColorSecondary.withOpacity(0),
-              header: Text(groupName, style: FluentTheme.of(context).typography.subtitle),
-              trailing: Text('${seriesInGroup.length} series'),
-              content: SizedBox(
-                height: getHeight(seriesInGroup.length, maxWidth),
-                child: episodesGrid(
-                  seriesInGroup,
-                  ScrollController(),
-                  NeverScrollableScrollPhysics(),
-                  false,
-                  allowMeasurement: groupName == displayOrder.first, // Only measure the first group for card size
-                ),
+          groupWidgets.add(Expander(
+            contentPadding: EdgeInsets.only(top: 8.0, bottom: 16.0),
+            initiallyExpanded: true,
+            headerBackgroundColor: WidgetStatePropertyAll(FluentTheme.of(context).resources.cardBackgroundFillColorDefault.withOpacity(0.025)),
+            contentBackgroundColor: FluentTheme.of(context).resources.cardBackgroundFillColorSecondary.withOpacity(0),
+            header: Text(groupName, style: FluentTheme.of(context).typography.subtitle),
+            trailing: Text('${seriesInGroup.length} series'),
+            content: SizedBox(
+              height: getHeight(seriesInGroup.length, maxWidth),
+              child: episodesGrid(
+                seriesInGroup,
+                ScrollController(),
+                NeverScrollableScrollPhysics(),
+                false,
+                allowMeasurement: groupName == displayOrder.first, // Only measure the first group for card size
               ),
-            ));
-          }
+            ),
+          ));
+        }
 
-          return ListView(
-            padding: EdgeInsets.only(right: 16),
-            controller: controller,
-            physics: physics,
-            children: groupWidgets,
-          );
-        },
-      ),
+        return Column(children: groupWidgets);
+      },
     );
   }
 
-  String _getSortText(SortOrder order) {
+  String _getSortText(SortOrder? order) {
     switch (order) {
+      case null:
+        return 'Sort by';
       case SortOrder.alphabetical:
         return 'Title (A-Z)';
       case SortOrder.score:

@@ -75,7 +75,7 @@ dependencies:
   json_annotation: ^4.8.1
   scrollable_positioned_list: ^0.3.8
   flutter_single_instance: ^1.6.0 # TODO https://pub.dev/packages/flutter_single_instance#macos
-  shimmer_animation: ^2.1.0
+  shimmer: ^3.0.0
 
 dev_dependencies:
   flutter_test:

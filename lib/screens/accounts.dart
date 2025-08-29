@@ -222,7 +222,7 @@ class AccountsScreenState extends State<AccountsScreen> {
     return TooltipTheme(
       data: TooltipThemeData(waitDuration: const Duration(milliseconds: 100)),
       child: DeferredPointerHandler(
-        child: MiruRyoikiHeaderInfoBarPage(
+        child: MiruRyoikiTemplatePage(
           headerWidget: header(anilistProvider: anilistProvider, isLoggedIn: isLoggedIn),
           infobar: (_) => infoBar(anilistProvider: anilistProvider),
           content: buildMainContent(anilistProvider),

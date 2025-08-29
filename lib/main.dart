@@ -938,6 +938,7 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
       // Use the key to access the library screen state
       libraryScreenKey.currentState?.invalidateSortCache();
       seriesWasModified = false;
+      Manager.setState();
     }
   }
 
@@ -954,7 +955,6 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
   // Add this helper method
   bool handleBackNavigation({bool isEsc = false}) {
     final navManager = Provider.of<NavigationManager>(context, listen: false);
-    libraryScreenKey.currentState?.toggleFiltersSidebar(value: false);
 
     if (navManager.hasDialog && !isEsc) {
       logTrace('$nowFormatted | Back Mouse Button Pressed: Closing dialog');

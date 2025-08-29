@@ -711,7 +711,7 @@ class SettingsScreenState extends State<SettingsScreen> {
     final library = Provider.of<Library>(context);
     final settings = Provider.of<SettingsManager>(context);
 
-    return MiruRyoikiHeaderInfoBarPage(
+    return MiruRyoikiTemplatePage(
       headerWidget: HeaderWidget(
         title: (_, __) => PageHeader(title: Transform.translate(offset: Offset(-5, 0), child: Text('Settings', style: Manager.titleLargeStyle))),
         headerPadding: EdgeInsets.zero,

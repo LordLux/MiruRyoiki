@@ -93,7 +93,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final library = Provider.of<Library>(context);
     final settings = Provider.of<SettingsManager>(context);
 
-    return MiruRyoikiHeaderInfoBarPage(
+    return MiruRyoikiTemplatePage(
       headerWidget: HeaderWidget(
         title: (_, __) => PageHeader(title: WelcomeWidget()),
         titleLeftAligned: true,

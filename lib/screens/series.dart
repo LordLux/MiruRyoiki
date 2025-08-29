@@ -229,7 +229,7 @@ class SeriesScreenState extends State<SeriesScreen> {
         return DeferredPointerHandler(
           key: ValueKey(series.path),
           link: deferredPointerLink,
-          child: MiruRyoikiHeaderInfoBarPage(
+          child: MiruRyoikiTemplatePage(
             headerWidget: _buildHeader(context, series),
             infobar: (_) => _buildInfoBar(context, series),
             content: _buildEpisodesList(context),

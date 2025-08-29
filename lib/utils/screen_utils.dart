@@ -6,7 +6,7 @@ class ScreenUtils {
   static const double kDefaultAspectRatio = 0.71; // 7:10 aspect ratio
   static const double kDefaultCardAspectRatio = 0.65388983532; // 7:10 aspect ratio
   static const double kDefaultCardPadding = 14.0;
-  static const double kDefaultCardWidth = 200.0;
+  static const double kDefaultCardWidth = 170.0;
   static const double kDefaultCardHeight = 200.0 * kDefaultCardAspectRatio;
 
   static const double kDefaultSplashScreenWidth = 500.0;

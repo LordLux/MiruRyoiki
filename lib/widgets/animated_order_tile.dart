@@ -13,6 +13,7 @@ class AnimatedReorderableTile extends StatefulWidget {
   final bool selected;
   final bool isReordering;
   final bool initialAnimation;
+  final bool reorderable;
 
   const AnimatedReorderableTile({
     required super.key,
@@ -22,6 +23,7 @@ class AnimatedReorderableTile extends StatefulWidget {
     required this.selected,
     required this.isReordering,
     this.initialAnimation = false,
+    this.reorderable = true,
   });
 
   @override
@@ -82,7 +84,7 @@ class _AnimatedReorderableTileState extends State<AnimatedReorderableTile> with 
     return ReorderableDragStartListener(
       index: widget.index,
       child: MouseRegion(
-        cursor: FlutterCustomMemoryImageCursor(key: widget.isReordering ? systemMouseCursorGrabbing : systemMouseCursorGrab),
+        cursor: widget.reorderable ? FlutterCustomMemoryImageCursor(key: widget.isReordering ? systemMouseCursorGrabbing : systemMouseCursorGrab) : SystemMouseCursors.click,
         child: AnimatedBuilder(
           animation: _animationController,
           builder: (context, child) {
@@ -96,7 +98,8 @@ class _AnimatedReorderableTileState extends State<AnimatedReorderableTile> with 
             return ListTile(
               tileColor: WidgetStatePropertyAll(tileColor),
               title: Text(widget.displayName),
-              leading: Icon(!widget.selected ? Icons.drag_handle : FluentIcons.drag_object),
+              leading: widget.reorderable ? Icon(!widget.selected ? Icons.drag_handle : FluentIcons.drag_object) : null,
+              contentPadding: widget.reorderable ? kDefaultListTilePadding : EdgeInsets.symmetric(horizontal: 6),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(4),
               ),

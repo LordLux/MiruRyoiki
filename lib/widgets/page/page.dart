@@ -8,7 +8,7 @@ import '../../utils/time_utils.dart';
 import 'header_widget.dart';
 import 'infobar.dart';
 
-class MiruRyoikiHeaderInfoBarPage extends StatefulWidget {
+class MiruRyoikiTemplatePage extends StatefulWidget {
   final HeaderWidget headerWidget;
   final MiruRyoikiInfobar Function(bool noHeaderBanner)? infobar;
   final Widget content;
@@ -18,8 +18,9 @@ class MiruRyoikiHeaderInfoBarPage extends StatefulWidget {
   final double? headerMaxHeight;
   final double? headerMinHeight;
   final bool scrollableContent;
+  final bool contentExtraHeaderPadding;
 
-  const MiruRyoikiHeaderInfoBarPage({
+  const MiruRyoikiTemplatePage({
     super.key,
     required this.headerWidget,
     this.infobar,
@@ -30,13 +31,14 @@ class MiruRyoikiHeaderInfoBarPage extends StatefulWidget {
     this.headerMaxHeight = ScreenUtils.kMaxHeaderHeight,
     this.headerMinHeight = ScreenUtils.kMinHeaderHeight,
     this.scrollableContent = true,
+    this.contentExtraHeaderPadding = false,
   });
 
   @override
-  State<MiruRyoikiHeaderInfoBarPage> createState() => _MiruRyoikiHeaderInfoBarPageState();
+  State<MiruRyoikiTemplatePage> createState() => _MiruRyoikiTemplatePageState();
 }
 
-class _MiruRyoikiHeaderInfoBarPageState extends State<MiruRyoikiHeaderInfoBarPage> {
+class _MiruRyoikiTemplatePageState extends State<MiruRyoikiTemplatePage> {
   late double _headerHeight;
   late double _maxHeaderHeight;
   late double _minHeaderHeight;
@@ -95,7 +97,7 @@ class _MiruRyoikiHeaderInfoBarPageState extends State<MiruRyoikiHeaderInfoBarPag
                       child: Align(
                         alignment: Alignment.topCenter,
                         child: Padding(
-                          padding: EdgeInsets.only(left: 16.0 * Manager.fontSizeMultiplier, top: widget.noHeaderBanner ? 0.0 : 16.0, right: 16.0),
+                          padding: EdgeInsets.only(left: 16.0 * Manager.fontSizeMultiplier, top: widget.noHeaderBanner && !widget.contentExtraHeaderPadding ? 0.0 : 16.0, right: 16.0),
                           child: ClipRRect(
                             borderRadius: BorderRadius.circular(ScreenUtils.kStatCardBorderRadius),
                             child: Builder(builder: (context) {
