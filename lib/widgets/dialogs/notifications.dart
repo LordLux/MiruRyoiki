@@ -275,7 +275,11 @@ class NotificationsContentState extends State<_NotificationsContent> {
           duration: const Duration(milliseconds: 500),
           transitionBuilder: (child, animation) => FadeTransition(opacity: animation, child: child),
           child: _isRefreshing //
-              ? mat.LinearProgressIndicator(color: Manager.currentDominantColor, minHeight: 2)
+              ? mat.LinearProgressIndicator(
+                  color: Manager.currentDominantColor ?? Manager.accentColor,
+                  backgroundColor: Color(0xFF484848),
+                  minHeight: 2,
+                )
               : Container(height: 2, decoration: DividerTheme.of(context).decoration),
         ),
 

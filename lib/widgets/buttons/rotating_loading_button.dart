@@ -11,6 +11,7 @@ class RotatingLoadingButton extends StatefulWidget {
   final String? tooltip;
   final Widget? tooltipWidget;
   final ButtonStyle style;
+  final double rps;
 
   const RotatingLoadingButton({
     super.key,
@@ -22,6 +23,7 @@ class RotatingLoadingButton extends StatefulWidget {
     this.tooltip,
     this.tooltipWidget,
     this.style = const ButtonStyle(),
+    this.rps = 1.25,
   });
 
   @override
@@ -36,7 +38,7 @@ class RotatingLoadingButtonState extends State<RotatingLoadingButton> with Singl
     super.initState();
     // Initialize the animation controller with a 1-second duration for one full rotation
     _controller = AnimationController(
-      duration: const Duration(milliseconds: 400),
+      duration: Duration(milliseconds: (1000 / widget.rps).round()),
       vsync: this,
     );
 

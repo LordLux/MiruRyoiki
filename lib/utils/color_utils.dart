@@ -48,7 +48,7 @@ ColorScheme generateColorScheme(Color baseColor, {Brightness brightness = Bright
 
 Color darken(Color color, [double amount = 0.1]) {
   assert(amount >= 0 && amount <= 1, 'Amount must be between 0 and 1');
-  return _changeLighting(color, amount);
+  return _changeLighting(color, -amount);
 }
 
 Color _changeLighting(Color color, double amount) {

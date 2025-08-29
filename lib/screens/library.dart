@@ -857,8 +857,7 @@ class LibraryScreenState extends State<LibraryScreen> {
 
                 final item = _customListOrder.removeAt(oldIndex);
                 _customListOrder.insert(newIndex, item);
-                invalidateSortCache(); // Invalidate cache when list order changes
-                print('New list order: $_customListOrder');
+                invalidateSortCache();
                 _saveUserPreferences();
               });
             },
