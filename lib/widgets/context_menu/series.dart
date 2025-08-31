@@ -21,10 +21,15 @@ import '../../utils/shell_utils.dart';
 import '../dialogs/poster_select.dart';
 import 'icons.dart' as icons;
 
+typedef LastListChange = ({Series series, String previousListName});
+
 class SeriesContextMenu extends StatefulWidget {
   final Series series;
   final Widget child;
   final BuildContext context;
+
+  static int? lastSeriesId_watched; //
+  static LastListChange? lastSeriesList_changeLists;
 
   const SeriesContextMenu({
     super.key,
@@ -52,6 +57,8 @@ class SeriesContextMenuState extends State<SeriesContextMenu> {
     required final BuildContext context,
     required final Series series,
   }) {
+    final library = Provider.of<Library>(context, listen: false);
+    final shouldDisable = library.isIndexing;
     return Menu(
       items: [
         MenuItem(
@@ -64,12 +71,14 @@ class SeriesContextMenuState extends State<SeriesContextMenu> {
         MenuItem(
           label: 'Change Poster Image',
           shortcutKey: 'p',
+          disabled: shouldDisable,
           shortcutModifiers: ShortcutModifiers(control: Platform.isWindows, meta: Platform.isMacOS),
           onClick: (_) => _changePosterImage(context),
         ),
         MenuItem(
           label: 'Change Banner Image',
           shortcutKey: 'b',
+          disabled: shouldDisable,
           shortcutModifiers: ShortcutModifiers(control: Platform.isWindows, meta: Platform.isMacOS),
           onClick: (_) => _changeBannerImage(context),
         ),
@@ -78,22 +87,26 @@ class SeriesContextMenuState extends State<SeriesContextMenu> {
             label: 'Update from Anilist',
             shortcutKey: 'a',
             icon: icons.anilist,
+            disabled: shouldDisable,
             shortcutModifiers: ShortcutModifiers(control: Platform.isWindows, meta: Platform.isMacOS),
             onClick: (_) => _updateFromAnilist(context),
           ),
         MenuItem(
           label: series.isForcedHidden ? 'Stop Hiding Series' : 'Hide Series',
           icon: series.isForcedHidden ? icons.unhide : icons.hide,
-          onClick: (_) => _toggleHiddenStatus(context),
+          disabled: shouldDisable,
+          onClick: (_) => _toggleHiddenStatus(context, series),
         ),
         if (!series.isLinked)
           MenuItem.submenu(
             label: 'Change List',
+            disabled: shouldDisable,
             sublabel: 'Change the custom list for this series',
             submenu: _buildMenuFromLists(),
           ),
         MenuItem.separator(),
         MenuItem(
+          disabled: shouldDisable,
           label: widget.series.watchedPercentage == 1.0 ? 'Mark All as Unwatched' : 'Mark All as Watched',
           toolTip: widget.series.watchedPercentage == 1.0 ? 'Unmark as watched' : 'Mark as watched',
           icon: widget.series.watchedPercentage == 1.0 ? icons.unwatch : icons.watch,
@@ -162,9 +175,22 @@ class SeriesContextMenuState extends State<SeriesContextMenu> {
     Manager.setState();
   }
 
-  void _toggleHiddenStatus(BuildContext context) {
+  static void _undoToggleHiddenStatus(BuildContext context) {
+    try {
+      // Use the global navigator context to avoid deactivated widget issues
+      final globalContext = rootNavigatorKey.currentContext!;
+      final library = Provider.of<Library>(globalContext, listen: false);
+      final series = library.getSeriesById(SeriesContextMenu.lastSeriesId_watched!)!;
+
+      _toggleHiddenStatus(globalContext, series);
+    } catch (e) {
+      logErr('Error occurred while toggling hidden status', e);
+    }
+  }
+
+  static void _toggleHiddenStatus(BuildContext context, Series series) {
     final library = Provider.of<Library>(context, listen: false);
-    final series = widget.series;
+    SeriesContextMenu.lastSeriesId_watched = series.id;
 
     // Toggle hidden status
     series.isForcedHidden = !series.isForcedHidden;
@@ -185,6 +211,7 @@ class SeriesContextMenuState extends State<SeriesContextMenu> {
     snackBar(
       series.isForcedHidden ? 'Series is now hidden' : 'Series is now visible',
       severity: InfoBarSeverity.success,
+      action: series.isForcedHidden ? UndoButton(() => _undoToggleHiddenStatus(context)) : null,
     );
 
     Manager.setState();
@@ -209,11 +236,30 @@ class SeriesContextMenuState extends State<SeriesContextMenu> {
     snackBar('Marked all episodes as unwatched', severity: InfoBarSeverity.success);
   }
 
-  Future<void> _changeCustomList(BuildContext context, String apiName, String displayName) async {
+  static void _undoChangeCustomList() {
+    try {
+      final globalContext = rootNavigatorKey.currentContext!;
+      final library = Provider.of<Library>(globalContext, listen: false);
+      final series = library.getSeriesById(SeriesContextMenu.lastSeriesList_changeLists!.series.id!)!;
+      final previousApiName = SeriesContextMenu.lastSeriesList_changeLists!.previousListName;
+
+      _changeCustomList(globalContext, series, previousApiName, undoing: true);
+    } catch (e) {
+      logErr('Error occurred while changing custom list', e);
+      rethrow;
+    }
+  }
+
+  static void _changeCustomList(BuildContext context, Series series, String apiName, {bool undoing = false}) {
     final library = Provider.of<Library>(context, listen: false);
 
     // Update the series with the new custom list name (use API name)
-    final updatedSeries = widget.series;
+    final updatedSeries = series;
+
+    // Only store the previous state if this is not an undo operation
+    if (!undoing) //
+      SeriesContextMenu.lastSeriesList_changeLists = (series: updatedSeries, previousListName: updatedSeries.customListName ?? AnilistService.statusListNameUnlinked);
+
     updatedSeries.customListName = apiName == AnilistService.statusListNameUnlinked ? null : apiName;
 
     library.updateSeries(updatedSeries, invalidateCache: true);
@@ -222,7 +268,14 @@ class SeriesContextMenuState extends State<SeriesContextMenu> {
       libraryScreenKey.currentState!.updateSeriesInSortCache(updatedSeries);
       libraryScreenKey.currentState!.setState(() {});
     }
-    snackBar('Changed list for "${widget.series.name}" to $displayName', severity: InfoBarSeverity.success);
+
+    final prettyName = StatusStatistic.statusNameToPretty(apiName);
+
+    snackBar(
+      !undoing ? 'Changed list for "${series.name}" to $prettyName' : 'Reverted list change for "${series.name}"',
+      severity: InfoBarSeverity.success,
+      action: !undoing ? UndoButton(() => _undoChangeCustomList()) : null,
+    );
   }
 
   Menu _buildMenuFromLists() {
@@ -257,7 +310,7 @@ class SeriesContextMenuState extends State<SeriesContextMenu> {
           .map((entry) => MenuItem.checkbox(
                 checked: widget.series.customListName == entry.key || (widget.series.customListName == null && entry.key == AnilistService.statusListNameUnlinked),
                 label: entry.value, // Display name
-                onClick: (item) => _changeCustomList(context, entry.key, entry.value), // Pass API name and display name
+                onClick: (item) => _changeCustomList(context, widget.series, entry.key), // Pass API name
               ))
           .toList(),
     );
@@ -265,4 +318,11 @@ class SeriesContextMenuState extends State<SeriesContextMenu> {
 
   @override
   Widget build(BuildContext context) => widget.child;
+
+  static Button UndoButton(VoidCallback onPressed) {
+    return Button(
+      child: Text('Undo', style: Manager.bodyStyle.copyWith(decoration: TextDecoration.underline)),
+      onPressed: onPressed,
+    );
+  }
 }

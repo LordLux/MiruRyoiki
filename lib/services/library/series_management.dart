@@ -3,7 +3,9 @@ part of 'library_provider.dart';
 extension LibrarySeriesManagement on Library {
   Series? getSeriesByPath(PathString path) => _series.firstWhereOrNull((s) => s.path == path);
   
-  Series? getSeriesById(int anilistId) => _series.firstWhereOrNull((s) => s.primaryAnilistId == anilistId);
+  Series? getSeriesByAnilistId(int anilistId) => _series.firstWhereOrNull((s) => s.primaryAnilistId == anilistId);
+
+  Series? getSeriesById(int id) => _series.firstWhereOrNull((s) => s.id == id);
 
   Future<void> addSeries(Series series) async {
     _series.add(series);

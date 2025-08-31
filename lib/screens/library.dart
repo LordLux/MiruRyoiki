@@ -691,6 +691,15 @@ class LibraryScreenState extends State<LibraryScreen> {
             child: Row(
               children: [
                 MouseButtonWrapper(
+                  child: (_) => ComboBox<SortOrder>(
+                    value: _sortOrder,
+                    placeholder: const Text('Sort By'),
+                    items: SortOrder.values.map((order) => ComboBoxItem(value: order, child: Text(_getSortText(order)))).toList(),
+                    onChanged: _onSortOrderChanged,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                MouseButtonWrapper(
                   child: (_) => IconButton(
                     icon: AnimatedRotation(
                       duration: shortStickyHeaderDuration,
@@ -698,15 +707,6 @@ class LibraryScreenState extends State<LibraryScreen> {
                       child: Icon(_sortDescending ? FluentIcons.sort_lines : FluentIcons.sort_lines_ascending),
                     ),
                     onPressed: _onSortDirectionChanged,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                MouseButtonWrapper(
-                  child: (_) => ComboBox<SortOrder>(
-                    value: _sortOrder,
-                    placeholder: const Text('Sort By'),
-                    items: SortOrder.values.map((order) => ComboBoxItem(value: order, child: Text(_getSortText(order)))).toList(),
-                    onChanged: _onSortOrderChanged,
                   ),
                 ),
               ],

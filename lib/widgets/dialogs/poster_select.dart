@@ -401,7 +401,7 @@ class _ImageSelectionContentState extends State<_ImageSelectionContent> {
   }) {
     final needsAnilistLink = source == ImageSource.anilist && widget.series.primaryAnilistId == null;
     final isSelected = _selectedSource == source;
-    log("posterProvider: ${posterProvider == null}, isAvailable: $isAvailable");
+    log("${unavailableMessage.toLowerCase().contains("anilist") ? 'Anilist:' : 'Local: '} posterProvider: ${posterProvider == null}, isAvailable: $isAvailable");
 
     return GestureDetector(
       onTap: posterProvider != null && isAvailable
