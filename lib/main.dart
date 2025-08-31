@@ -1113,9 +1113,10 @@ Future<void> _registerWindowsUrlScheme(String scheme) async {
   }
 }
 
-// TODO cache anime info
+// TODO fix 'locked' number of elements per row in series grid in library with the new scale
 // TODO edit view options for library to separate sort and view (grid, list etc) from filters
-// TODO homepage title inside header like in library + view options to choose what to show on homepage
+// TODO cache anime info
+// TODO view settings to choose what to show on homepage
 
 // TODO cache Anilist lists to be able to work offline
 // TODO anilist grouping for 'About to Watch'
