@@ -14,7 +14,7 @@ import '../widgets/buttons/button.dart';
 import '../services/anilist/provider/anilist_provider.dart';
 import '../widgets/buttons/wrapper.dart';
 import '../widgets/dialogs/link_anilist_multi.dart';
-import '../widgets/dialogs/poster_select.dart';
+import '../widgets/dialogs/image_select.dart';
 import '../enums.dart';
 import '../manager.dart';
 import '../models/anilist/mapping.dart';
@@ -82,7 +82,7 @@ class SeriesScreenState extends State<SeriesScreen> {
         0, 0, 0, 1, 0,
       ]);
 
-  void selectImage(BuildContext context, bool isBanner) {
+  void selectImage(BuildContext context, {required bool isBanner}) {
     showManagedDialog<ImageSource?>(
       context: context,
       id: isBanner ? 'bannerSelection:${series!.path}' : 'posterSelection:${series!.path}',
@@ -251,7 +251,7 @@ class SeriesScreenState extends State<SeriesScreen> {
               ShiftClickableHover(
                 series: series,
                 enabled: _isBannerHovering && !bannerChangeDisabled,
-                onTap: (context) => selectImage(context, true),
+                onTap: (context) => selectImage(context, isBanner: true),
                 onEnter: bannerChangeDisabled ? () {} : () => setState(() => _isBannerHovering = true),
                 onExit: () {
                   StatusBarManager().hide();
@@ -470,7 +470,7 @@ class SeriesScreenState extends State<SeriesScreen> {
             child: ShiftClickableHover(
               series: series,
               enabled: _isPosterHovering && !posterChangeDisabled,
-              onTap: (context) => selectImage(context, false),
+              onTap: (context) => selectImage(context, isBanner: false),
               onEnter: posterChangeDisabled ? () {} : () => setState(() => _isPosterHovering = true),
               onExit: () {
                 setState(() => _isPosterHovering = false);
@@ -831,6 +831,7 @@ void linkWithAnilist(BuildContext context, Series? series, Future<void> Function
     data: series.path,
     barrierColor: series.dominantColor?.withOpacity(0.5),
     canUserPopDialog: true,
+    closeExistingDialogs: true,
     dialogDoPopCheck: () => Manager.canPopDialog, // Allow popping only when in view mode
     builder: (context) => AnilistLinkMultiDialog(
       constraints: const BoxConstraints(

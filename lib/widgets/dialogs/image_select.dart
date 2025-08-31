@@ -221,6 +221,14 @@ class _ImageSelectionContentState extends State<_ImageSelectionContent> {
 
   @override
   Widget build(BuildContext context) {
+    final s = widget.series;
+    final bool isAvailable;
+    
+    if (widget.isBanner)
+      isAvailable = s.isAnilistBanner ? s.effectiveBannerPath != null : false; // Only available if linked to Anilist and actually has a banner on Anilist
+    else
+      isAvailable = s.isAnilistPoster ? s.effectivePosterPath != null : false; // Only available if linked to Anilist and actually has a poster on Anilist
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -252,7 +260,7 @@ class _ImageSelectionContentState extends State<_ImageSelectionContent> {
               Expanded(
                 child: _buildPosterOption(
                   title: 'Anilist Image',
-                  isAvailable: widget.series.anilistData?.posterImage != null,
+                  isAvailable: isAvailable,
                   isLoading: _anilistImageLoading,
                   posterProvider: _anilistImageProvider,
                   source: ImageSource.anilist,
@@ -395,13 +403,14 @@ class _ImageSelectionContentState extends State<_ImageSelectionContent> {
     required bool isAvailable,
     required bool isLoading,
     required ImageProvider? posterProvider,
+    Future<ImageProvider?>? posterProviderFuture,
     required ImageSource source,
     required String unavailableMessage,
     VoidCallback? linkToAnilistAction,
   }) {
     final needsAnilistLink = source == ImageSource.anilist && widget.series.primaryAnilistId == null;
     final isSelected = _selectedSource == source;
-    log("${unavailableMessage.toLowerCase().contains("anilist") ? 'Anilist:' : 'Local: '} posterProvider: ${posterProvider == null}, isAvailable: $isAvailable");
+    // log("${unavailableMessage.toLowerCase().contains("anilist") ? 'Anilist:' : 'Local: '} posterProvider: ${posterProvider == null}, isAvailable: $isAvailable");
 
     return GestureDetector(
       onTap: posterProvider != null && isAvailable
@@ -434,11 +443,11 @@ class _ImageSelectionContentState extends State<_ImageSelectionContent> {
                       ? ClipRRect(
                           borderRadius: BorderRadius.circular(4),
                           child: SeriesImageBuilder(
-                            imageProviderFuture: Future.value(posterProvider),
+                            imageProviderFuture: posterProviderFuture ?? Future.value(posterProvider),
                             fit: BoxFit.contain,
                             fadeInDuration: const Duration(milliseconds: 300),
                             fadeInCurve: Curves.easeIn,
-                            errorWidget: Text('test'),
+                            errorWidget: Text('Failed to load image', style: FluentTheme.of(context).typography.body),
                             skipLoadingIndicator: true,
                           ),
                         )

@@ -18,7 +18,7 @@ import '../../services/navigation/show_info.dart';
 import '../../screens/series.dart';
 import '../../utils/logging.dart';
 import '../../utils/shell_utils.dart';
-import '../dialogs/poster_select.dart';
+import '../dialogs/image_select.dart';
 import 'icons.dart' as icons;
 
 typedef LastListChange = ({Series series, String previousListName});
@@ -135,7 +135,7 @@ class SeriesContextMenuState extends State<SeriesContextMenu> {
 
     if (seriesScreenState != null) {
       // Use the existing method if we're on the series screen
-      seriesScreenState.selectImage(context, false);
+      seriesScreenState.selectImage(context, isBanner: false);
     } else {
       // Otherwise show a standalone dialog
       showManagedDialog(
@@ -158,7 +158,7 @@ class SeriesContextMenuState extends State<SeriesContextMenu> {
     final seriesScreenState = context.findAncestorStateOfType<SeriesScreenState>();
 
     if (seriesScreenState != null) {
-      seriesScreenState.selectImage(context, true);
+      seriesScreenState.selectImage(context, isBanner: true);
     } else {
       showManagedDialog(
         context: context,
