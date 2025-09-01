@@ -3,11 +3,18 @@ import 'package:fluent_ui/fluent_ui.dart';
 import '../manager.dart';
 
 class ScreenUtils {
+  static const int _kcrossAxisCountMax = 10;
+  
   static const double kDefaultAspectRatio = 0.71; // 7:10 aspect ratio
   static const double kDefaultCardAspectRatio = 0.65388983532; // 7:10 aspect ratio
   static const double kDefaultCardPadding = 14.0;
   static const double kDefaultCardWidth = 170.0;
   static const double kDefaultCardHeight = 200.0 * kDefaultCardAspectRatio;
+
+  static const double kMinStatCardWidth = 130.0;
+  static const double kMaxStatCardWidth = 200.0;
+  static const double kMinDistrCardWidth = 430.0;
+  static const double kMaxDistrCardWidth = 900.0;
 
   static const double kDefaultSplashScreenWidth = 500.0;
   static const double kDefaultSplashScreenHeight = 300.0;
@@ -32,13 +39,6 @@ class ScreenUtils {
   static const double kStatCardBorderRadius = 8.0;
   static const double kProfilePictureSize = 150.0;
   static const double kProfilePictureBorderRadius = 6.0;
-
-  static const int _kcrossAxisCountMax = 10;
-
-  static const double kMinStatCardWidth = 130.0;
-  static const double kMaxStatCardWidth = 200.0;
-  static const double kMinDistrCardWidth = 430.0;
-  static const double kMaxDistrCardWidth = 900.0;
 
   static Size? cardSize;
 
