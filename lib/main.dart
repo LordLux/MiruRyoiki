@@ -327,6 +327,7 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
   PathString? _selectedSeriesPath;
   PathString? lastSelectedSeriesPath;
   bool _isSeriesView = false;
+  bool isStartedTransitioning = false;
   bool _isFinishedTransitioning = false;
   bool _isSecondaryTitleBarVisible = false;
   bool seriesWasModified = false;
@@ -896,7 +897,9 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
       await Future.delayed(const Duration(milliseconds: 50));
     }
 
-    previousGridColumnCount.value = ScreenUtils.crossAxisCount();
+    isStartedTransitioning = true;
+
+    previousGridColumnCount.value = ScreenUtils.crossAxisCount(ScreenUtils.libraryContentWidthWithoutPadding);
 
     final series = Provider.of<Library>(context, listen: false).getSeriesByPath(seriesPath);
     final seriesName = series?.name ?? 'Series';
@@ -915,7 +918,7 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
 
   /// Called immediately when exiting the series view
   void exitSeriesView() {
-    previousGridColumnCount.value = ScreenUtils.crossAxisCount();
+    previousGridColumnCount.value = ScreenUtils.crossAxisCount(ScreenUtils.libraryContentWidthWithoutPadding);
 
     final navManager = Provider.of<NavigationManager>(context, listen: false);
 
@@ -946,6 +949,7 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
   void onEndTransitionToLibrary() {
     setState(() {
       if (_isSeriesView) _isFinishedTransitioning = true;
+      isStartedTransitioning = false;
       _selectedSeriesPath = null;
       previousGridColumnCount.value = null;
       Manager.currentDominantColor = null;

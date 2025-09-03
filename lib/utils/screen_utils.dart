@@ -1,10 +1,11 @@
 import 'package:fluent_ui/fluent_ui.dart';
 
 import '../manager.dart';
+import 'logging.dart';
 
 class ScreenUtils {
   static const int _kcrossAxisCountMax = 10;
-  
+
   static const double kDefaultAspectRatio = 0.71; // 7:10 aspect ratio
   static const double kDefaultCardAspectRatio = 0.65388983532; // 7:10 aspect ratio
   static const double kDefaultCardPadding = 14.0;
@@ -40,6 +41,8 @@ class ScreenUtils {
   static const double kProfilePictureSize = 150.0;
   static const double kProfilePictureBorderRadius = 6.0;
 
+  static double libraryContentWidthWithoutPadding = 0.0;
+
   static MediaQueryData get _mediaQuery => MediaQueryData.fromWindow(WidgetsBinding.instance.window);
   static double get width => _mediaQuery.size.width;
   static double get height => _mediaQuery.size.height;
@@ -50,13 +53,19 @@ class ScreenUtils {
   static double get cardPadding => Manager.fontSizeMultiplier * kDefaultCardPadding;
   static double get paddedCardHeight => kDefaultCardHeight + cardPadding;
 
-  static int crossAxisCount([double? maxConstrainedWidth]) => //
-      ((maxConstrainedWidth ?? fallbackWidth) ~/ (maxCardWidth + cardPadding)) //
-          .clamp(1, _kcrossAxisCountMax);
+  static int crossAxisCount(double? maxConstrainedWidth) {
+    final width = (maxConstrainedWidth ?? fallbackWidth);
+    final size = (maxCardWidth + cardPadding);
+    final nCards = (width ~/ size);
+    final clamped = nCards.clamp(1, _kcrossAxisCountMax);
+    // if (clamped != nCards) print("clamped: $clamped");
+    return clamped;
+  }
 
-  static int mainAxisCount(int cardNumber) => //
-      ((cardNumber / crossAxisCount()).ceil()) //
-          .clamp(1, _kcrossAxisCountMax);
+  static int mainAxisCount(int cardNumber) {
+    return ((cardNumber / crossAxisCount(libraryContentWidthWithoutPadding)).ceil()) //
+        .clamp(1, _kcrossAxisCountMax);
+  }
 }
 
 /// Creates a horizontal divider with a fixed width based on the current font size multiplier

@@ -48,7 +48,7 @@ class ImageSelectionDialog extends ManagedDialog {
 
               final seriesScreenState = getActiveSeriesScreenState();
               if (seriesScreenState != null) {
-                log('Disabling poster/banner change buttons');
+                // log('Disabling poster/banner change buttons');
                 seriesScreenState.posterChangeDisabled = !isBanner;
                 seriesScreenState.bannerChangeDisabled = isBanner;
               }
@@ -67,7 +67,7 @@ class ImageSelectionDialog extends ManagedDialog {
                 );
                 final seriesScreenState = getActiveSeriesScreenState();
                 if (seriesScreenState != null) {
-                  log('Enabling poster/banner change buttons');
+                  // log('Enabling poster/banner change buttons');
                   seriesScreenState.posterChangeDisabled = false;
                   seriesScreenState.bannerChangeDisabled = false;
                 }

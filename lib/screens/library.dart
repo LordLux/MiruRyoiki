@@ -583,7 +583,7 @@ class LibraryScreenState extends State<LibraryScreen> {
       _groupedDataCache!.removeWhere((_, seriesList) => seriesList.isEmpty);
     }
   }
-
+  
   @override
   Widget build(BuildContext context) {
     final library = context.watch<Library>();
@@ -922,6 +922,10 @@ class LibraryScreenState extends State<LibraryScreen> {
 
     return LayoutBuilder(builder: (context, constraints) {
       final bool hideLibrary = library.isIndexing;
+      if (homeKey.currentState?.isStartedTransitioning == false) {
+        ScreenUtils.libraryContentWidthWithoutPadding = constraints.maxWidth; // account for right padding
+        // log('updated contentWidth: ${ScreenUtils.libraryContentWidthWithoutPadding}');
+      }
 
       return Stack(
         children: [
@@ -1132,7 +1136,7 @@ class LibraryScreenState extends State<LibraryScreen> {
                       valueListenable: previousGridColumnCount,
                       builder: (context, columns, __) {
                         final crossAxisCount = columns ?? ScreenUtils.crossAxisCount(maxWidth);
-                                        
+
                         return GridView.builder(
                           padding: const EdgeInsets.only(bottom: 16.0, left: 0.3, right: 0.3),
                           physics: const NeverScrollableScrollPhysics(),
@@ -1146,14 +1150,14 @@ class LibraryScreenState extends State<LibraryScreen> {
                           itemCount: seriesInGroup.length,
                           itemBuilder: (context, seriesIndex) {
                             final series = seriesInGroup[seriesIndex];
-                                        
+
                             // Add measurement capability for first card
                             Widget seriesCard = SeriesCard(
                               key: (seriesIndex == 0 && isFirstGroup) ? firstCardKey : ValueKey('${series.path}:${series.effectivePosterPath ?? 'none'}'),
                               series: series,
                               onTap: () => _navigateToSeries(series),
                             );
-                                        
+
                             return seriesCard;
                           },
                         );

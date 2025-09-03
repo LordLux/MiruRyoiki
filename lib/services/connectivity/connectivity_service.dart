@@ -151,7 +151,6 @@ class ConnectivityService extends ChangeNotifier {
   /// Manually trigger a connectivity check
   Future<void> checkConnectivity() async {
     logTrace('Manual connectivity check requested');
-    log('test');
     isCheckingConnectivity = true;
     await _checkInternetConnectivity();
   }
