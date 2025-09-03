@@ -40,8 +40,6 @@ class ScreenUtils {
   static const double kProfilePictureSize = 150.0;
   static const double kProfilePictureBorderRadius = 6.0;
 
-  static Size? cardSize;
-
   static MediaQueryData get _mediaQuery => MediaQueryData.fromWindow(WidgetsBinding.instance.window);
   static double get width => _mediaQuery.size.width;
   static double get height => _mediaQuery.size.height;
@@ -50,9 +48,7 @@ class ScreenUtils {
   static double get fallbackWidth => (width - kNavigationBarWidth - 32 /*padding*/);
   static double get maxCardWidth => Manager.fontSizeMultiplier * kDefaultCardWidth;
   static double get cardPadding => Manager.fontSizeMultiplier * kDefaultCardPadding;
-  static double? get cardWidth => cardSize?.width;
-  static double? get cardHeight => cardSize?.height;
-  static double get paddedCardHeight => (cardHeight ?? kDefaultCardHeight) + cardPadding;
+  static double get paddedCardHeight => kDefaultCardHeight + cardPadding;
 
   static int crossAxisCount([double? maxConstrainedWidth]) => //
       ((maxConstrainedWidth ?? fallbackWidth) ~/ (maxCardWidth + cardPadding)) //
