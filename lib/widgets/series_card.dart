@@ -10,8 +10,7 @@ import '../utils/logging.dart';
 import '../utils/screen_utils.dart';
 import '../utils/time_utils.dart';
 import 'context_menu/series.dart';
-import 'hidden.dart';
-import 'upcoming_episode_card.dart';
+import 'series_card_indicators.dart';
 
 class SeriesCard extends StatefulWidget {
   final Series series;
@@ -212,47 +211,76 @@ class _SeriesCardState extends State<SeriesCard> {
                         // Poster image
                         Expanded(child: SizedBox.shrink()),
 
+                        LayoutBuilder(builder: (context, constraints) {
+                          return Transform.scale(
+                            scale: 1.01,
+                            child: Transform.translate(
+                              offset: Offset(0, .5),
+                              child: Container(
+                                width: constraints.maxWidth,
+                                height: 4,
+                                color: Color.lerp(Colors.black.withOpacity(0.2), widget.series.dominantColor, .4),
+                                child: Align(
+                                  alignment: Alignment.topLeft,
+                                  child: Container(
+                                    color: widget.series.watchedPercentage == 0 ? Colors.transparent : widget.series.dominantColor,
+                                    width: constraints.maxWidth * widget.series.watchedPercentage,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          );
+                        }),
+
                         // Series info
                         Builder(builder: (context) {
                           final double value = widget.series.isAnilistPoster ? .76 : .9;
                           final Color nicerColor = mainColor.lerpWith(Colors.grey, value);
 
-                          Widget child = Padding(
-                            padding: const EdgeInsets.all(12.0),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  widget.series.name,
-                                  style: Manager.bodyStrongStyle.copyWith(fontSize: 12),
-                                  maxLines: 3,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                VDiv(4),
-                                Row(
+                          Widget child = Container(
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [
+                                  Colors.black.withOpacity(.3),
+                                  Colors.transparent,
+                                  Colors.transparent,
+                                  Colors.transparent,
+                                ],
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                              ),
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.all(12.0),
+                              child: Container(
+                                constraints: const BoxConstraints(minHeight: 42),
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      '${widget.series.totalEpisodes} episodes',
-                                      style: Manager.captionStyle.copyWith(fontSize: 10),
+                                      widget.series.name,
+                                      style: Manager.bodyStrongStyle.copyWith(fontSize: 12 * Manager.fontSizeMultiplier),
+                                      maxLines: 3,
+                                      overflow: TextOverflow.ellipsis,
                                     ),
-                                    const Spacer(),
-                                    Text(
-                                      '${(widget.series.watchedPercentage * 100).round()}%',
-                                      style: Manager.captionStyle.copyWith(fontSize: 10),
+                                    VDiv(4),
+                                    Row(
+                                      children: [
+                                        Text(
+                                          '${widget.series.watchedEpisodes} / ${widget.series.totalEpisodes} Episodes',
+                                          style: Manager.miniBodyStyle.copyWith(color: Color.lerp(widget.series.dominantColor, Colors.white, .7)),
+                                        ),
+                                        const Spacer(),
+                                        Text(
+                                          '${(widget.series.watchedPercentage * 100).round()}%',
+                                          style: Manager.miniBodyStyle.copyWith(color: Color.lerp(widget.series.dominantColor, Colors.white, .7)),
+                                        ),
+                                      ],
                                     ),
                                   ],
                                 ),
-                                VDiv(8),
-                                SizedBox(
-                                  width: 200,
-                                  child: ProgressBar(
-                                    strokeWidth: 3.5,
-                                    value: widget.series.watchedPercentage * 100,
-                                    activeColor: widget.series.watchedPercentage == 0 ? Colors.transparent : widget.series.dominantColor,
-                                    backgroundColor: Color.lerp(Colors.black.withOpacity(0.2), widget.series.dominantColor, 0),
-                                  ),
-                                ),
-                              ],
+                              ),
                             ),
                           );
                           if (widget.series.isAnilistPoster) {
@@ -261,8 +289,8 @@ class _SeriesCardState extends State<SeriesCard> {
                               child: Transform.translate(
                                 offset: Offset(0, 1),
                                 child: Acrylic(
-                                  blurAmount: 5,
-                                  tint: nicerColor,
+                                  blurAmount: 2,
+                                  tint: nicerColor.lerpWith(Colors.grey, 0.2),
                                   elevation: 0.5,
                                   tintAlpha: 0.5,
                                   luminosityAlpha: 0.8,
@@ -277,12 +305,9 @@ class _SeriesCardState extends State<SeriesCard> {
                     ),
                   ),
 
-                  // Anilist hidden indicator
-                  if (widget.series.isAnilistHidden)
-                    const AnilistHidden(),
-                  // LOCAL hidden indicator
-                  if (widget.series.isForcedHidden)
-                    const LocalHidden(),
+                  CardIndicators(series: widget.series),
+
+                  AiringIndicator(series: widget.series, isHovered: _isHovering),
 
                   // Hover overlay
                   Positioned.fill(

@@ -583,7 +583,7 @@ class LibraryScreenState extends State<LibraryScreen> {
       _groupedDataCache!.removeWhere((_, seriesList) => seriesList.isEmpty);
     }
   }
-  
+
   @override
   Widget build(BuildContext context) {
     final library = context.watch<Library>();
@@ -603,20 +603,17 @@ class LibraryScreenState extends State<LibraryScreen> {
   }
 
   MiruRyoikiInfobar _buildFiltersSidebar() {
+    final bool isResetDisabled = _listEquals(_customListOrder, _previousCustomListOrder);
+
     return MiruRyoikiInfobar(
       content: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(
-            'Display Options',
-            style: FluentTheme.of(context).typography.subtitle,
-          ),
-          VDiv(16),
-
           // Library View Switch
           InfoLabel(
             label: 'View',
+            labelStyle: Manager.smallSubtitleStyle.copyWith(color: Manager.pastelDominantColor),
             child: MouseButtonWrapper(
               child: (_) => ComboBox<LibraryView>(
                 value: _currentView,
@@ -647,15 +644,11 @@ class LibraryScreenState extends State<LibraryScreen> {
           ),
 
           VDiv(24),
-          Text(
-            'Sort Options',
-            style: FluentTheme.of(context).typography.subtitle,
-          ),
-          VDiv(16),
 
           // Sort Order
           InfoLabel(
             label: 'Sort by',
+            labelStyle: Manager.smallSubtitleStyle.copyWith(color: Manager.pastelDominantColor),
             child: Row(
               children: [
                 MouseButtonWrapper(
@@ -672,7 +665,7 @@ class LibraryScreenState extends State<LibraryScreen> {
                     icon: AnimatedRotation(
                       duration: shortStickyHeaderDuration,
                       turns: _sortDescending ? 0 : 1,
-                      child: Icon(_sortDescending ? FluentIcons.sort_lines : FluentIcons.sort_lines_ascending),
+                      child: Icon(_sortDescending ? FluentIcons.sort_lines : FluentIcons.sort_lines_ascending, color: Manager.pastelDominantColor),
                     ),
                     onPressed: _onSortDirectionChanged,
                   ),
@@ -689,33 +682,50 @@ class LibraryScreenState extends State<LibraryScreen> {
               children: [
                 Text(
                   'Lists',
-                  style: FluentTheme.of(context).typography.subtitle,
+                  style: Manager.smallSubtitleStyle.copyWith(color: Manager.pastelDominantColor),
                 ),
-                const SizedBox(width: 8),
-                MouseButtonWrapper(
-                  tooltip: _editListsEnabled ? 'Save Changes' : 'Edit List Order',
-                  child: (_) => IconButton(
-                    icon: _editListsEnabled ? Icon(FluentIcons.check_mark) : Icon(FluentIcons.edit),
-                    onPressed: () {
-                      setState(() => _editListsEnabled = !_editListsEnabled);
-                      if (_editListsEnabled) {
-                        _previousCustomListOrder = List.from(_customListOrder);
-                      }
-                    },
+                const SizedBox(width: 4),
+                Transform.translate(
+                  offset: const Offset(0, 1.5),
+                  child: SizedBox(
+                    height: 22,
+                    width: 22,
+                    child: MouseButtonWrapper(
+                      tooltipWaitDuration: const Duration(milliseconds: 250),
+                      tooltip: _editListsEnabled ? 'Save Changes' : 'Edit List Order',
+                      child: (_) => IconButton(
+                        icon: Icon(_editListsEnabled ? FluentIcons.check_mark : FluentIcons.edit, size: 11, color: Manager.pastelDominantColor),
+                        onPressed: () {
+                          setState(() => _editListsEnabled = !_editListsEnabled);
+                          if (_editListsEnabled) _previousCustomListOrder = List.from(_customListOrder);
+                        },
+                      ),
+                    ),
                   ),
                 ),
-                if (_editListsEnabled) ...[
-                  const SizedBox(width: 8),
-                  MouseButtonWrapper(
-                    tooltip: 'Cancel Changes',
-                    child: (_) => IconButton(
-                      icon: Icon(Symbols.rotate_left),
-                      onPressed: () {
-                        setState(() {
-                          _customListOrder = List.from(_previousCustomListOrder);
-                          // _editListsEnabled = false;
-                        });
-                      },
+                if (_editListsEnabled && !isResetDisabled) ...[
+                  const SizedBox(width: 4),
+                  Transform.translate(
+                    offset: const Offset(0, 1.5),
+                    child: SizedBox(
+                      height: 22,
+                      width: 22,
+                      child: MouseButtonWrapper(
+                        isButtonDisabled: isResetDisabled,
+                        tooltipWaitDuration: const Duration(milliseconds: 250),
+                        tooltip: 'Cancel Changes',
+                        child: (_) => IconButton(
+                          icon: Icon(Symbols.rotate_left, size: 11, color: Manager.pastelDominantColor),
+                          onPressed: isResetDisabled
+                              ? null
+                              : () {
+                                  setState(() {
+                                    _customListOrder = List.from(_previousCustomListOrder);
+                                    // _editListsEnabled = false;
+                                  });
+                                },
+                        ),
+                      ),
                     ),
                   ),
                 ]
@@ -852,6 +862,7 @@ class LibraryScreenState extends State<LibraryScreen> {
   HeaderWidget _buildHeader(Library library) {
     return HeaderWidget(
       title: (style, _) => Text('Your Media Library', style: style),
+      titleLeftAligned: true,
       children: [Text('Path: ${library.libraryPath}')],
     );
   }
@@ -1112,22 +1123,26 @@ class LibraryScreenState extends State<LibraryScreen> {
                   return StickyHeader(
                     header: Transform.translate(
                       offset: const Offset(0, -1),
-                      child: Acrylic(
-                        luminosityAlpha: 1,
-                        child: Container(
-                          decoration: BoxDecoration(
-                            borderRadius: const BorderRadius.only(
-                              topLeft: Radius.circular(ScreenUtils.kStatCardBorderRadius),
-                              topRight: Radius.circular(ScreenUtils.kStatCardBorderRadius),
+                      child: ClipRRect(
+                        borderRadius: const BorderRadius.all(Radius.circular(ScreenUtils.kStatCardBorderRadius)),
+                        child: Acrylic(
+                          luminosityAlpha: 1,
+                          child: Container(
+                            decoration: BoxDecoration(
+                              borderRadius: const BorderRadius.only(
+                                topLeft: Radius.circular(ScreenUtils.kStatCardBorderRadius),
+                                topRight: Radius.circular(ScreenUtils.kStatCardBorderRadius),
+                              ),
+                              color: Colors.white.withOpacity(0.05),
                             ),
-                          ),
-                          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(groupName, style: Manager.subtitleStyle),
-                              Text('${seriesInGroup.length} series', style: Manager.captionStyle),
-                            ],
+                            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(groupName, style: Manager.subtitleStyle),
+                                Text('${seriesInGroup.length} Series', style: Manager.captionStyle),
+                              ],
+                            ),
                           ),
                         ),
                       ),
@@ -1138,7 +1153,7 @@ class LibraryScreenState extends State<LibraryScreen> {
                         final crossAxisCount = columns ?? ScreenUtils.crossAxisCount(maxWidth);
 
                         return GridView.builder(
-                          padding: const EdgeInsets.only(bottom: 16.0, left: 0.3, right: 0.3),
+                          padding: const EdgeInsets.only(bottom: 16.0, left: 0.3, right: 0.3, top: 8.0),
                           physics: const NeverScrollableScrollPhysics(),
                           shrinkWrap: true,
                           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
@@ -1198,5 +1213,11 @@ class LibraryScreenState extends State<LibraryScreen> {
       case SortOrder.popularity:
         return 'Popularity';
     }
+  }
+
+  bool _listEquals(List<String> customListOrder, List<String> previousCustomListOrder) {
+    if (customListOrder.length != previousCustomListOrder.length) return false;
+    for (int i = 0; i < customListOrder.length; i++) if (customListOrder[i] != previousCustomListOrder[i]) return false;
+    return true;
   }
 }

@@ -26,14 +26,13 @@ class Manager {
 
   static Uri? initialDeepLink;
 
-  static ArgParser parser = ArgParser()
-    ..addFlag('help', abbr: 'h', help: 'Show this help message.', negatable: false);
+  static ArgParser parser = ArgParser()..addFlag('help', abbr: 'h', help: 'Show this help message.', negatable: false);
   static ArgResults? _args;
   static ArgResults parsedArgs(List<String> args) {
     _args = parser.parse(args);
     return _args!;
   }
-  
+
   static List<String> get args => _args?.arguments ?? [];
 
   static void parseArgs() {
@@ -55,9 +54,9 @@ class Manager {
   static NavigationManager get navigation => Provider.of<NavigationManager>(context, listen: false);
 
   static SettingsManager get settings => rootNavigatorKey.currentContext != null ? SettingsManager() : Provider.of<SettingsManager>(context, listen: false);
-  
+
   static EpisodeNavigator get episodeNavigator => EpisodeNavigator.instance;
-  
+
   static AnilistProgressManager get anilistProgress => AnilistProgressManager.instance;
 
   static AppTheme? _cachedAppTheme;
@@ -78,8 +77,9 @@ class Manager {
   }
 
   static AccentColor get accentColor => settings.accentColor.toAccentColor();
-
   static Color get genericGray => FluentTheme.of(context).acrylicBackgroundColor.lerpWith(const Color.fromARGB(255, 21, 35, 35), 0.5);
+  static Color get pastelDominantColor => Color.lerp(currentDominantColor ?? accentColor, Colors.white, .8)!;
+  static Color get pastelAccentColor => Color.lerp(accentColor, Colors.white, .8)!;
 
   static ImageSource get defaultPosterSource => settings.defaultPosterSource;
 
@@ -108,4 +108,6 @@ class Manager {
   static TextStyle get subtitleStyle => FluentTheme.of(context).typography.subtitle!;
   static TextStyle get titleStyle => FluentTheme.of(context).typography.title!;
   static TextStyle get titleLargeStyle => FluentTheme.of(context).typography.titleLarge!;
+  static TextStyle get miniBodyStyle => FluentTheme.of(context).typography.body!.copyWith(fontSize: 10 * fontSizeMultiplier);
+  static TextStyle get smallSubtitleStyle => FluentTheme.of(context).typography.subtitle!.copyWith(fontSize: 16 * Manager.fontSizeMultiplier);
 }
