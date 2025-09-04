@@ -118,6 +118,21 @@ class _CustomKeyboardListenerState extends State<CustomKeyboardListener> {
           logTrace('Ctrl + f pressed: Search');
         } else
         //
+        // Toggle hidden series
+        if (isCtrlPressed && event.logicalKey == LogicalKeyboardKey.keyH) {
+          final library = Provider.of<Library>(context, listen: false);
+          if (library.initialized && !library.isIndexing && libraryScreenKey.currentState?.mounted == true && homeKey.currentState?.isSeriesView == false) {
+            Manager.settings.showHiddenSeries = !Manager.settings.showHiddenSeries;
+            snackBar(
+              Manager.settings.showHiddenSeries ? 'Hidden series are now visible' : 'Hidden series are now hidden',
+              severity: InfoBarSeverity.info,
+            );
+            libraryScreenKey.currentState!.setState(() {
+              libraryScreenKey.currentState!.invalidateSortCache();
+            });
+          }
+        } else
+        //
         // Reload
         if (isCtrlPressed && !isShiftPressed && event.logicalKey == LogicalKeyboardKey.keyR && !HardwareKeyboard.instance.isAltPressed) {
           final library = Provider.of<Library>(context, listen: false);

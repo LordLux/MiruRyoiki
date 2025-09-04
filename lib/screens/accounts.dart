@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:cached_network_image/cached_network_image.dart';
@@ -62,9 +61,6 @@ class AccountsScreenState extends State<AccountsScreen> {
 
   bool _showHiddenSeries = false;
   bool _showAnilistHiddenSeries = false;
-  bool _enableAutoTimeout = false;
-  int _timeoutDuration = 5; // minutes
-  Timer? _autoHideTimer;
 
   @override
   void initState() {
@@ -72,25 +68,6 @@ class AccountsScreenState extends State<AccountsScreen> {
     _showHiddenSeries = Manager.settings.showHiddenSeries;
     _showAnilistHiddenSeries = Manager.settings.showAnilistHiddenSeries;
     _loadUserData();
-  }
-
-  @override
-  void dispose() {
-    _autoHideTimer?.cancel();
-    super.dispose();
-  }
-
-  void _startAutoHideTimer() {
-    _autoHideTimer?.cancel();
-    if (_enableAutoTimeout && _showHiddenSeries) {
-      _autoHideTimer = Timer(Duration(minutes: _timeoutDuration), () {
-        setState(() {
-          _showHiddenSeries = false;
-          Manager.settings.showHiddenSeries = false;
-        });
-        snackBar('Hidden series are now hidden again', severity: InfoBarSeverity.info);
-      });
-    }
   }
 
   Future<void> _loadUserData() async {
@@ -297,89 +274,9 @@ class AccountsScreenState extends State<AccountsScreen> {
             setState(() {
               _showHiddenSeries = value;
               Manager.settings.showHiddenSeries = value;
-
-              if (value && _enableAutoTimeout) {
-                _startAutoHideTimer();
-              } else {
-                _autoHideTimer?.cancel();
-              }
             });
           },
         ),
-      ),
-
-      // Auto-timeout settings
-      AnimatedSize(
-        duration: shortDuration,
-        child: _showHiddenSeries
-            ? Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  VDiv(8),
-                  Padding(
-                    padding: const EdgeInsets.only(left: 24.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        NormalSwitch(
-                          toggleSwitch: ToggleSwitch(
-                            checked: _enableAutoTimeout,
-                            content: Flexible(
-                              child: Text('Auto-hide after timeout', style: Manager.bodyStyle),
-                            ),
-                            onChanged: (value) {
-                              setState(() {
-                                _enableAutoTimeout = value;
-                                if (value && _showHiddenSeries) {
-                                  _startAutoHideTimer();
-                                } else {
-                                  _autoHideTimer?.cancel();
-                                }
-                              });
-                            },
-                          ),
-                        ),
-
-                        // Timeout duration input
-                        AnimatedSize(
-                          duration: shortDuration,
-                          child: _enableAutoTimeout
-                              ? Padding(
-                                  padding: const EdgeInsets.only(left: 24.0, top: 8.0),
-                                  child: Row(
-                                    children: [
-                                      Text('Timeout after: ', style: Manager.bodyStyle),
-                                      SizedBox(
-                                        width: 60,
-                                        child: NumberBox(
-                                          value: _timeoutDuration,
-                                          min: 1,
-                                          max: 60,
-                                          onChanged: (value) {
-                                            if (value != null) {
-                                              setState(() {
-                                                _timeoutDuration = value;
-                                                if (_enableAutoTimeout && _showHiddenSeries) {
-                                                  _startAutoHideTimer();
-                                                }
-                                              });
-                                            }
-                                          },
-                                        ),
-                                      ),
-                                      SizedBox(width: 8),
-                                      Text('minutes', style: Manager.bodyStyle),
-                                    ],
-                                  ),
-                                )
-                              : SizedBox.shrink(),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              )
-            : SizedBox.shrink(),
       ),
 
       // Toggle for showing hidden series

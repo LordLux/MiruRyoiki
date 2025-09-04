@@ -92,7 +92,7 @@ class SeriesContextMenuState extends State<SeriesContextMenu> {
             onClick: (_) => _updateFromAnilist(context),
           ),
         MenuItem(
-          label: series.isForcedHidden ? 'Stop Hiding Series' : 'Hide Series',
+          label: series.isForcedHidden ? 'Stop Hiding' : 'Hide',
           icon: series.isForcedHidden ? icons.unhide : icons.hide,
           disabled: shouldDisable,
           onClick: (_) => _toggleHiddenStatus(context, series),
@@ -107,8 +107,8 @@ class SeriesContextMenuState extends State<SeriesContextMenu> {
         MenuItem.separator(),
         MenuItem(
           disabled: shouldDisable,
-          label: widget.series.watchedPercentage == 1.0 ? 'Mark All as Unwatched' : 'Mark All as Watched',
-          toolTip: widget.series.watchedPercentage == 1.0 ? 'Unmark as watched' : 'Mark as watched',
+          label: widget.series.watchedPercentage == 1.0 ? 'Mark as Unwatched' : 'Mark as Watched',
+          toolTip: widget.series.watchedPercentage == 1.0 ? 'Mark all Episodes from this Series as Unwatched' : 'Mark all Episodes from this Series as Watched',
           icon: widget.series.watchedPercentage == 1.0 ? icons.unwatch : icons.watch,
           onClick: (_) => widget.series.watchedPercentage == 1.0 ? _markAllAsUnwatched(context) : _markAllAsWatched(context),
         ),

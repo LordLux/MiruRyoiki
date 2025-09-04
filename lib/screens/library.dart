@@ -1113,6 +1113,7 @@ class LibraryScreenState extends State<LibraryScreen> {
             builder: (context, isCtrlPressed, _) {
               return ListView.builder(
                 controller: controller,
+                cacheExtent: 1000,
                 physics: physics,
                 itemCount: displayOrder.length,
                 itemBuilder: (context, index) {

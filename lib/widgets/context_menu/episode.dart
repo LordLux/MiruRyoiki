@@ -52,7 +52,7 @@ class EpisodeContextMenuState extends State<EpisodeContextMenu> {
       items: [
         MenuItem(
           label: 'Play',
-          // icon: r"C:\Users\LordLux\Pictures\Icons\Win11VideoScriptss.ico".replaceAll("\\", ps),
+          icon: icons.play,
           shortcutKey: 'p',
           shortcutModifiers: ShortcutModifiers(control: Platform.isWindows, meta: Platform.isMacOS),
           onClick: (_) => _playEpisode(context),
