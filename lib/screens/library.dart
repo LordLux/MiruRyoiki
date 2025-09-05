@@ -105,6 +105,7 @@ class LibraryScreen extends StatefulWidget {
 
 class LibraryScreenState extends State<LibraryScreen> {
   LibraryView _currentView = LibraryView.all;
+  ViewType _viewType = ViewType.grid;
   SortOrder? _sortOrder;
   GroupBy _groupBy = GroupBy.anilistLists;
 
@@ -466,6 +467,7 @@ class LibraryScreenState extends State<LibraryScreen> {
   void _saveUserPreferences() {
     final settings = Manager.settings;
     settings.set('library_view', _currentView.toString());
+    settings.set('library_view_type', _viewType.toString());
     settings.set('library_sort_order', _sortOrder.toString());
     settings.set('library_sort_descending', _sortDescending);
     settings.set('library_group_by', _groupBy.toString());
@@ -480,6 +482,15 @@ class LibraryScreenState extends State<LibraryScreen> {
       // Load view
       final viewString = manager.get('library_view', defaultValue: LibraryView.all.toString());
       _currentView = viewString == LibraryView.linked.toString() ? LibraryView.linked : LibraryView.all;
+
+      // Load view type
+      final viewTypeString = manager.get('library_view_type', defaultValue: ViewType.grid.toString());
+      for (final viewType in ViewType.values) {
+        if (viewType.toString() == viewTypeString) {
+          _viewType = viewType;
+          break;
+        }
+      }
 
       // Load sort order
       final sortOrderString = manager.get('library_sort_order', defaultValue: SortOrder.alphabetical.toString());
@@ -646,8 +657,14 @@ class LibraryScreenState extends State<LibraryScreen> {
                 },
               ),
             ),
-            VDiv(16),
-            Text('temp view type (grid, list, detailed list)', style: Manager.miniBodyStyle),
+            VDiv(24),
+
+            // View Type Selector
+            InfoLabel(
+              label: 'Display',
+              labelStyle: Manager.smallSubtitleStyle.copyWith(color: Manager.pastelDominantColor),
+              child: _buildViewTypePills(),
+            ),
 
             VDiv(24),
 
@@ -679,7 +696,6 @@ class LibraryScreenState extends State<LibraryScreen> {
                 ],
               ),
             ),
-            VDiv(12),
 
             // Only show list order UI when grouping is enabled
             if (_showGrouped) ...[
@@ -700,7 +716,7 @@ class LibraryScreenState extends State<LibraryScreen> {
                         tooltipWaitDuration: const Duration(milliseconds: 250),
                         tooltip: _editListsEnabled ? 'Save Changes' : 'Edit List Order',
                         child: (_) => IconButton(
-                          icon: Icon(_editListsEnabled ? FluentIcons.check_mark : FluentIcons.edit, size: 11, color: Manager.pastelDominantColor),
+                          icon: Icon(_editListsEnabled ? FluentIcons.check_mark : FluentIcons.edit, size: 11 * Manager.fontSizeMultiplier, color: Manager.pastelDominantColor),
                           onPressed: () {
                             setState(() => _editListsEnabled = !_editListsEnabled);
                             if (_editListsEnabled) _previousCustomListOrder = List.from(_customListOrder);
@@ -864,6 +880,106 @@ class LibraryScreenState extends State<LibraryScreen> {
         },
       ),
     );
+  }
+
+  Widget _buildViewTypePills() {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: ViewType.values.map((viewType) {
+        final isSelected = _viewType == viewType;
+        
+        return Padding(
+          padding: EdgeInsets.only(
+            right: viewType == ViewType.values.last ? 0 : 6,
+          ),
+          child: MouseButtonWrapper(
+            tooltip: _getViewTypeTooltip(viewType),
+            tooltipWaitDuration: const Duration(milliseconds: 350),
+            child: (_) => GestureDetector(
+              onTap: () => _onViewTypeChanged(viewType),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 150),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                decoration: BoxDecoration(
+                  color: isSelected 
+                    ? Manager.accentColor.withOpacity(0.8)
+                    : Colors.white.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(
+                    color: isSelected 
+                      ? Manager.accentColor 
+                      : Colors.white.withOpacity(0.2),
+                    width: 1,
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      _getViewTypeIcon(viewType),
+                      size: 14,
+                      color: isSelected 
+                        ? Colors.white 
+                        : Manager.pastelDominantColor,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      _getViewTypeLabel(viewType),
+                      style: Manager.captionStyle.copyWith(
+                        color: isSelected 
+                          ? Colors.white 
+                          : Manager.pastelDominantColor,
+                        fontSize: 11 * Manager.fontSizeMultiplier,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  void _onViewTypeChanged(ViewType viewType) {
+    setState(() {
+      _viewType = viewType;
+    });
+    _saveUserPreferences();
+  }
+
+  String _getViewTypeLabel(ViewType viewType) {
+    switch (viewType) {
+      case ViewType.grid:
+        return 'Grid';
+      case ViewType.list:
+        return 'List';
+      case ViewType.detailedList:
+        return 'Detailed';
+    }
+  }
+
+  IconData _getViewTypeIcon(ViewType viewType) {
+    switch (viewType) {
+      case ViewType.grid:
+        return FluentIcons.grid_view_medium;
+      case ViewType.list:
+        return FluentIcons.list;
+      case ViewType.detailedList:
+        return FluentIcons.view_list;
+    }
+  }
+
+  String _getViewTypeTooltip(ViewType viewType) {
+    switch (viewType) {
+      case ViewType.grid:
+        return 'Display series as cards in a grid';
+      case ViewType.list:
+        return 'Display series in a compact list';
+      case ViewType.detailedList:
+        return 'Display series with additional information';
+    }
   }
 
   HeaderWidget _buildHeader(Library library) {

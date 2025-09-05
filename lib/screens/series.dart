@@ -696,15 +696,15 @@ class SeriesScreenState extends State<SeriesScreen> {
             ),
             InfoLabel(
               label: 'Size',
-              child: Text(series.metadata!.fileSize()),
+              child: Text(series.metadata!.fileSize(), style: Manager.captionStyle),
             ),
             InfoLabel(
               label: 'First Downloaded',
-              child: Text(series.metadata!.creationTime.pretty()),
+              child: Text(series.metadata!.creationTime.pretty(), style: Manager.captionStyle),
             ),
             InfoLabel(
               label: 'Last Modified',
-              child: Text(series.metadata!.lastModified.pretty()),
+              child: Text(series.metadata!.lastModified.pretty(), style: Manager.captionStyle),
             ),
           ]),
           VDiv(16),

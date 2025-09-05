@@ -261,6 +261,12 @@ extension DurationX on Duration {
 
 enum LibraryView { all, linked }
 
+enum ViewType { 
+  grid, 
+  list, 
+  detailedList 
+}
+
 enum SortOrder {
   alphabetical,
   score,

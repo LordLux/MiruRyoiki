@@ -98,12 +98,10 @@ class _AnimatedReorderableTileState extends State<AnimatedReorderableTile> with 
             return ListTile(
               margin: EdgeInsets.only(top: 4),
               tileColor: WidgetStatePropertyAll(tileColor),
-              title: Text(widget.displayName),
-              leading: widget.reorderable ? Icon(!widget.selected ? Icons.drag_handle : FluentIcons.drag_object) : null,
+              title: Text(widget.displayName, style: Manager.bodyStyle),
+              leading: widget.reorderable ? Icon(!widget.selected ? Icons.drag_handle : FluentIcons.drag_object, size: 12 * Manager.fontSizeMultiplier) : null,
               contentPadding: widget.reorderable ? kDefaultListTilePadding : EdgeInsets.symmetric(horizontal: 6),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(4),
-              ),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
             );
           },
         ),

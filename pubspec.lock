@@ -369,6 +369,13 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.0.2"
+  drag_select:
+    dependency: "direct main"
+    description:
+      path: "M:\\Projects\\drag_select"
+      relative: false
+    source: path
+    version: "0.1.0"
   drift:
     dependency: "direct main"
     description:

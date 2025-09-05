@@ -1122,7 +1122,6 @@ Future<void> _registerWindowsUrlScheme(String scheme) async {
 // TODO cache Anilist lists to be able to work offline
 // TODO anilist grouping for 'About to Watch'
 // TODO Local 'Unlinked' auto connect to Anilist 'About to Watch' (allow custom name to search for)
-// TODO add folder/file metadata to series
 // TODO create autolinker
 // TODO change FORMATTER format for specials (allow specials inside season, OVA/ONAs in separate folder if not alone)
 // TODO fix back mouse button navigation
