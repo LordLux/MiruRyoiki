@@ -5,6 +5,7 @@ import 'package:miruryoiki/services/navigation/dialogs.dart';
 import 'package:miruryoiki/services/navigation/show_info.dart';
 import 'package:miruryoiki/services/window/service.dart';
 import 'package:miruryoiki/theme.dart';
+import 'package:miruryoiki/utils/time_utils.dart';
 import 'package:provider/provider.dart';
 
 import '../../main.dart';
@@ -16,6 +17,7 @@ import 'statusbar.dart';
 
 class KeyboardState {
   static final ValueNotifier<bool> ctrlPressedNotifier = ValueNotifier<bool>(false);
+  static final ValueNotifier<bool> zoomReleaseNotifier = ValueNotifier<bool>(false);
   static final ValueNotifier<bool> shiftPressedNotifier = ValueNotifier<bool>(false);
 }
 
@@ -39,33 +41,35 @@ class _CustomKeyboardListenerState extends State<CustomKeyboardListener> {
 
   BuildContext get ctx => homeKey.currentContext ?? rootNavigatorKey.currentContext ?? context;
 
+  void _zoom(bool zoomIn) {
+    final appTheme = Provider.of<AppTheme>(context, listen: false);
+    double newFontSize = appTheme.fontSize;
+    newFontSize = zoomIn //
+        ? (newFontSize + 2).clamp(ScreenUtils.kMinFontSize, ScreenUtils.kMaxFontSize)
+        : (newFontSize - 2).clamp(ScreenUtils.kMinFontSize, ScreenUtils.kMaxFontSize);
+
+    // Snap zoom to nearest allowed value
+    final zoomRaw = ScreenUtils.textScaleFactor * (newFontSize / kDefaultFontSize);
+    double zoom = calculateZoom(zoomRaw);
+    StatusBarManager().show("${(zoom * 100).toInt().toString()}%", autoHideDuration: const Duration(seconds: 1));
+
+    // Only update if changed
+    if (newFontSize != appTheme.fontSize) {
+      // Update settings
+      appTheme.fontSize = newFontSize;
+    }
+    Manager.setState(() {});
+  }
+
   void _handleScrollSignal(PointerSignalEvent event) {
     if (event is PointerScrollEvent && isCtrlPressed) {
       // Scrolling up has negative delta.dy, scrolling down has positive
       final bool isScrollingUp = event.scrollDelta.dy < 0;
 
-      // Get current font size from settings
-      final appTheme = Provider.of<AppTheme>(context, listen: false);
-      double newFontSize = appTheme.fontSize;
-
       // Adjust font size
-      if (isScrollingUp)
-        newFontSize = (newFontSize + 2).clamp(ScreenUtils.kMinFontSize, ScreenUtils.kMaxFontSize); // Increase (limit to max 24)
-      else
-        newFontSize = (newFontSize - 2).clamp(ScreenUtils.kMinFontSize, ScreenUtils.kMaxFontSize); // Decrease (limit to min 10)
+      _zoom(isScrollingUp);
 
-      // Snap zoom to nearest allowed value
-      final zoomRaw = ScreenUtils.textScaleFactor * (newFontSize / kDefaultFontSize);
-      double zoom = calculateZoom(zoomRaw);
-      StatusBarManager().show("${(zoom * 100).toInt().toString()}%", autoHideDuration: const Duration(seconds: 1));
-
-      // Only update if changed
-      if (newFontSize != appTheme.fontSize) {
-        // Update settings
-        appTheme.fontSize = newFontSize;
-
-        Manager.setState();
-      }
+      KeyboardState.zoomReleaseNotifier.value = !KeyboardState.zoomReleaseNotifier.value;
     }
   }
 
@@ -101,6 +105,7 @@ class _CustomKeyboardListenerState extends State<CustomKeyboardListener> {
         if (isSuperPressed(event)) {
           isCtrlPressed = true;
           KeyboardState.ctrlPressedNotifier.value = true;
+          KeyboardState.zoomReleaseNotifier.value = !KeyboardState.zoomReleaseNotifier.value;
         }
         if (event.logicalKey == LogicalKeyboardKey.shiftLeft || event.logicalKey == LogicalKeyboardKey.shiftRight) {
           isShiftPressed = true;
@@ -116,6 +121,20 @@ class _CustomKeyboardListenerState extends State<CustomKeyboardListener> {
         // Open search Palette
         if (isCtrlPressed && event.logicalKey == LogicalKeyboardKey.keyF) {
           logTrace('Ctrl + f pressed: Search');
+        } else
+        //
+        // Zoom in
+        if (isCtrlPressed && (event.logicalKey == LogicalKeyboardKey.equal || event.logicalKey == LogicalKeyboardKey.numpadAdd || event.logicalKey == LogicalKeyboardKey.add)) {
+          logTrace('Ctrl + + pressed: Zoom in');
+          _zoom(true);
+          KeyboardState.zoomReleaseNotifier.value = !KeyboardState.zoomReleaseNotifier.value;
+        } else
+        //
+        // Zoom out
+        if (isCtrlPressed && (event.logicalKey == LogicalKeyboardKey.minus || event.logicalKey == LogicalKeyboardKey.numpadSubtract)) {
+          logTrace('Ctrl + - pressed: Zoom out');
+          _zoom(false);
+          KeyboardState.zoomReleaseNotifier.value = !KeyboardState.zoomReleaseNotifier.value;
         } else
         //
         // Toggle hidden series

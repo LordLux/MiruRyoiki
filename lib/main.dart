@@ -152,19 +152,17 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final appTheme = context.watch<AppTheme>();
-    return CustomKeyboardListener(
-      child: ScaffoldMessenger(
-        child: FluentApp(
-          navigatorKey: rootNavigatorKey,
-          title: Manager.appTitle,
-          theme: FluentThemeData(accentColor: appTheme.color, brightness: Brightness.light),
-          darkTheme: FluentThemeData(accentColor: appTheme.color, brightness: Brightness.dark),
-          color: appTheme.color,
-          themeMode: appTheme.mode,
-          home: AppContainer(),
-          builder: (context, child) => _rootBuilder(context, child, appTheme),
-          debugShowCheckedModeBanner: false,
-        ),
+    return ScaffoldMessenger(
+      child: FluentApp(
+        navigatorKey: rootNavigatorKey,
+        title: Manager.appTitle,
+        theme: FluentThemeData(accentColor: appTheme.color, brightness: Brightness.light),
+        darkTheme: FluentThemeData(accentColor: appTheme.color, brightness: Brightness.dark),
+        color: appTheme.color,
+        themeMode: appTheme.mode,
+        home: AppContainer(),
+        builder: (context, child) => _rootBuilder(context, child, appTheme),
+        debugShowCheckedModeBanner: false,
       ),
     );
   }
@@ -308,7 +306,7 @@ class _MiruRyoikiRootState extends State<MiruRyoikiRoot> {
   }
 
   @override
-  Widget build(BuildContext context) => MiruRyoiki(key: homeKey);
+  Widget build(BuildContext context) => CustomKeyboardListener(child: MiruRyoiki(key: homeKey));
 }
 
 class MiruRyoiki extends StatefulWidget {

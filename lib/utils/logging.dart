@@ -61,7 +61,7 @@ Future<void> initializeLoggingSession() async {
     await _writeToLogFile('===========================================\n');
   } catch (e) {
     // Fallback logging to console if file operations fail
-    developer.log('Failed to initialize logging session: $e');
+    _log(LogLevel.error, 'Failed to initialize logging session', error: e);
   }
 }
 
@@ -70,7 +70,7 @@ Future<void> _cleanupOldLogs(Directory logsDir) async {
   try {
     final retentionDays = _getLogRetentionDays();
     if (retentionDays <= 0) {
-      developer.log('Log retention is disabled (0 days), skipping cleanup.');
+      _log(LogLevel.none, 'Log retention is disabled (0 days), skipping cleanup.');
       return;
     }
 
@@ -82,16 +82,16 @@ Future<void> _cleanupOldLogs(Directory logsDir) async {
           final stat = await entity.stat();
           if (stat.modified.isBefore(cutoffDate)) {
             await entity.delete();
-            developer.log('Deleted old log file: ${p.basename(entity.path)}');
+            _log(LogLevel.none, 'Deleted old log file: ${p.basename(entity.path)}');
           }
         } catch (e) {
           // Skip files that can't be accessed
-          developer.log('Could not check/delete log file ${entity.path}: $e');
+          _log(LogLevel.error, 'Could not check/delete log file ${entity.path}', error: e);
         }
       }
     }
   } catch (e) {
-    developer.log('Error during log cleanup: $e');
+    _log(LogLevel.error, 'Error during log cleanup', error: e);
   }
 }
 
@@ -116,20 +116,26 @@ int _getLogRetentionDays() {
   }
 }
 
+void _log(LogLevel level, String msg, {Object? error, StackTrace? stackTrace, DateTime? time}) {
+  switch (level) {
+    case LogLevel.none:
+    case LogLevel.trace:
+    case LogLevel.debug:
+    case LogLevel.info:
+    case LogLevel.warning:
+      developer.log(msg);
+    case LogLevel.error:
+      logger.e(msg, error: error, stackTrace: stackTrace, time: time);
+  }
+}
+
 /// Logs a message with an optional text color and background color.
 /// Normally used for very quick debugging purposes.
 ///
 /// The `msg` parameter is the message to be logged.
 /// The `color` parameter is the text color of the message (default is [Colors.purpleAccent] to make it more noticeable).
 /// The `bgColor` parameter is the background color of the message (default is [Colors.transparent]).
-void log(
-  final dynamic msg, {
-  final Color color = Colors.purpleAccent,
-  final Color bgColor = Colors.transparent,
-  Object? error,
-  StackTrace? stackTrace,
-  bool? splitLines = false,
-}) {
+void log(final dynamic msg, {final Color color = Colors.purpleAccent, final Color bgColor = Colors.transparent, Object? error, StackTrace? stackTrace, bool? splitLines = false, LogLevel level = LogLevel.none}) {
   if (!doLogRelease && !kDebugMode) return;
   String escapeCode = getColorEscapeCode(color);
   String bgEscapeCode = getColorEscapeCodeBg(bgColor);
@@ -145,7 +151,7 @@ void log(
       } else {
         lineMsg = '$escapeCode$bgEscapeCode$line\x1B[0m';
       }
-      developer.log(lineMsg, error: error, stackTrace: stackTrace, time: now);
+      _log(level, lineMsg, error: error, stackTrace: stackTrace, time: now);
       if (!kDebugMode) print(line);
     }
     return;
@@ -165,7 +171,7 @@ void log(
   else
     formattedMsg = '$escapeCode$bgEscapeCode$formattedMsg\x1B[0m';
 
-  developer.log(formattedMsg, error: error, stackTrace: stackTrace, time: now);
+  _log(level, formattedMsg, error: error, stackTrace: stackTrace, time: now);
   if (!kDebugMode) print(msg);
 }
 
@@ -180,7 +186,7 @@ void _logWithLevel(
   bool? splitLines = false,
 }) {
   // Always do console logging with existing logic
-  log(msg, color: color, bgColor: bgColor, error: error, stackTrace: stackTrace, splitLines: splitLines);
+  log(msg, color: color, bgColor: bgColor, error: error, stackTrace: stackTrace, splitLines: splitLines, level: level);
 
   // Check if we should write to file
   final currentFileLevel = _getCurrentFileLogLevel();
@@ -212,7 +218,7 @@ void _writeLogToSessionFile(LogLevel level, dynamic msg, Object? error, StackTra
   // Write asynchronously without blocking the main thread
   _writeToLogFile(logContent.toString()).catchError((e) {
     // Silent catch to prevent infinite error loops
-    developer.log('Failed to write ${level.name_} to session log: $e');
+    _log(LogLevel.error, 'Failed to write ${level.name_} to session log', error: e);
   });
 }
 
@@ -237,14 +243,14 @@ Future<void> _writeToLogFile(String content) async {
     await _sessionLogFile!.writeAsString('$content\n', mode: FileMode.append, flush: true);
   } catch (e) {
     // Fallback to console logging if file write fails
-    developer.log('Failed to write to log file: $e');
+    _log(LogLevel.error, 'Failed to write to log file', error: e);
   }
 }
 
 /// Logs an error message with the specified [msg] and sets the text color to Red.
 void logErr(final dynamic msg, [Object? error, StackTrace? stackTrace]) {
   final actualStackTrace = stackTrace ?? StackTrace.current;
-  logger.e(msg, error: error, stackTrace: actualStackTrace, time: now);
+  // logger.e(msg, error: error, stackTrace: actualStackTrace, time: now);
   if (!kDebugMode) print(msg); // print error to terminal in release mode
   if (doLogComplexError) log(msg, color: Colors.red, bgColor: Colors.transparent, error: error, stackTrace: actualStackTrace);
 
@@ -321,5 +327,5 @@ void logMulti(List<List<dynamic>> messages, {bool showTime = true}) {
     logMessage += '$escapeCode$bgEscapeCode$msg';
   }
   if (showTime) logMessage = '$nowFormatted | $logMessage';
-  developer.log(logMessage);
+  _log(LogLevel.none, logMessage);
 }

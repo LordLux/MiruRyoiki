@@ -80,6 +80,12 @@ extension AnilistServiceAnimeDetails on AnilistService {
                 queryResult.exception!.linkException!.originalException is TimeoutException) {
               throw TimeoutException('Anilist anime details GET request timed out', const Duration(seconds: 30));
             }
+            if (queryResult.exception is OperationException && //
+                queryResult.exception!.linkException is ServerException &&
+                queryResult.exception!.linkException!.originalException is HandshakeException ||
+                queryResult.exception!.linkException!.originalException is ClientException) {
+              throw HandshakeException('Anilist anime details GET request no internet connection');
+            }
             throw Exception('Error getting anime details: ${queryResult.exception}');
           }
 
@@ -178,6 +184,12 @@ extension AnilistServiceAnimeDetails on AnilistService {
                 queryResult.exception!.linkException is UnknownException &&
                 queryResult.exception!.linkException!.originalException is TimeoutException) {
               throw TimeoutException('Anilist animes details GET request timed out', const Duration(seconds: 30));
+            }
+            if (queryResult.exception is OperationException && //
+                queryResult.exception!.linkException is ServerException &&
+                queryResult.exception!.linkException!.originalException is HandshakeException ||
+                queryResult.exception!.linkException!.originalException is ClientException) {
+              throw HandshakeException('Anilist animes details GET request no internet connection');
             }
             throw Exception('Error getting anime details: ${queryResult.exception}');
           }
@@ -315,6 +327,12 @@ extension AnilistServiceAnimeDetails on AnilistService {
                 queryResult.exception!.linkException!.originalException is TimeoutException) {
               throw TimeoutException('Anilist anime lists GET request timed out', const Duration(seconds: 30));
             }
+            if (queryResult.exception is OperationException && //
+                queryResult.exception!.linkException is ServerException &&
+                queryResult.exception!.linkException!.originalException is HandshakeException ||
+                queryResult.exception!.linkException!.originalException is ClientException) {
+              throw HandshakeException('Anilist anime lists GET request no internet connection');
+            }
             throw Exception('2 | Error getting anime lists: ${queryResult.exception}');
           }
 
@@ -450,6 +468,12 @@ extension AnilistServiceAnimeDetails on AnilistService {
                 queryResult.exception!.linkException is UnknownException &&
                 queryResult.exception!.linkException!.originalException is TimeoutException) {
               throw TimeoutException('Anilist upcoming episodes GET request timed out', const Duration(seconds: 30));
+            }
+            if (queryResult.exception is OperationException && //
+                queryResult.exception!.linkException is ServerException &&
+                queryResult.exception!.linkException!.originalException is HandshakeException ||
+                queryResult.exception!.linkException!.originalException is ClientException) {
+              throw HandshakeException('Anilist upcoming episodes GET request no internet connection');
             }
             throw Exception('Error getting upcoming episodes: ${queryResult.exception}');
           }

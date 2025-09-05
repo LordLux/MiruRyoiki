@@ -96,6 +96,7 @@ class _AnimatedReorderableTileState extends State<AnimatedReorderableTile> with 
                     : _colorAnimation.value!;
 
             return ListTile(
+              margin: EdgeInsets.only(top: 4),
               tileColor: WidgetStatePropertyAll(tileColor),
               title: Text(widget.displayName),
               leading: widget.reorderable ? Icon(!widget.selected ? Icons.drag_handle : FluentIcons.drag_object) : null,

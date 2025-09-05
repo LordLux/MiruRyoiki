@@ -100,8 +100,8 @@ class _HeaderWidgetState extends State<HeaderWidget> {
                 SizedBox(
                   width: math.min(ScreenUtils.kMaxContentWidth, constraints.maxWidth - 16 /*right padding*/) - ScreenUtils.kInfoBarWidth - 32,
                   child: widget.title(
-                    const TextStyle(
-                      fontSize: 32,
+                    Manager.bodyLargeStyle.copyWith(
+                      fontSize: 32 * Manager.fontSizeMultiplier,
                       fontWeight: FontWeight.bold,
                       color: Colors.white,
                     ),

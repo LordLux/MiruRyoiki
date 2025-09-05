@@ -253,7 +253,7 @@ class _SeriesCardState extends State<SeriesCard> {
                             child: Padding(
                               padding: const EdgeInsets.all(12.0),
                               child: Container(
-                                constraints: const BoxConstraints(minHeight: 42),
+                                constraints: BoxConstraints(minHeight: 42 * Manager.fontSizeMultiplier),
                                 child: Column(
                                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                   crossAxisAlignment: CrossAxisAlignment.start,

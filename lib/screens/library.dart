@@ -1,7 +1,9 @@
 import 'dart:convert';
 import 'dart:math' as math;
+import 'dart:ui';
 
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:flutter/foundation.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:miruryoiki/manager.dart';
 import 'package:provider/provider.dart';
@@ -606,104 +608,88 @@ class LibraryScreenState extends State<LibraryScreen> {
     final bool isResetDisabled = _listEquals(_customListOrder, _previousCustomListOrder);
 
     return MiruRyoikiInfobar(
-      content: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Library View Switch
-          InfoLabel(
-            label: 'View',
-            labelStyle: Manager.smallSubtitleStyle.copyWith(color: Manager.pastelDominantColor),
-            child: MouseButtonWrapper(
-              child: (_) => ComboBox<LibraryView>(
-                value: _currentView,
-                items: [
-                  ComboBoxItem(value: LibraryView.all, child: Text('All Series')),
-                  ComboBoxItem(value: LibraryView.linked, child: Text('Linked Series Only')),
-                ],
-                onChanged: _onViewChanged,
+      content: ValueListenableBuilder(
+        valueListenable: KeyboardState.zoomReleaseNotifier,
+        builder: (context, _, __) => Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Library View Switch
+            InfoLabel(
+              label: 'View',
+              labelStyle: Manager.smallSubtitleStyle.copyWith(color: Manager.pastelDominantColor),
+              child: MouseButtonWrapper(
+                child: (_) => ComboBox<LibraryView>(
+                  value: _currentView,
+                  items: [
+                    ComboBoxItem(value: LibraryView.all, child: Text('All Series')),
+                    ComboBoxItem(value: LibraryView.linked, child: Text('Linked Series Only')),
+                  ],
+                  onChanged: _onViewChanged,
+                ),
               ),
             ),
-          ),
-          VDiv(16),
+            VDiv(16),
 
-          // Grouping Toggle
-          MouseButtonWrapper(
-            child: (_) => ToggleSwitch(
-              checked: _showGrouped,
-              content: Text('Group by AniList Lists'),
-              onChanged: (value) {
-                setState(() {
-                  _showGrouped = value;
-                  _groupBy = value ? GroupBy.anilistLists : GroupBy.none;
-                  _saveUserPreferences();
-                  invalidateSortCache(); // Invalidate cache when grouping changes
-                });
-              },
+            // Grouping Toggle
+            MouseButtonWrapper(
+              child: (_) => ToggleSwitch(
+                checked: _showGrouped,
+                content: Text('Group by AniList Lists', style: Manager.bodyStyle),
+                onChanged: (value) {
+                  setState(() {
+                    _showGrouped = value;
+                    _groupBy = value ? GroupBy.anilistLists : GroupBy.none;
+                    _saveUserPreferences();
+                    invalidateSortCache(); // Invalidate cache when grouping changes
+                  });
+                },
+              ),
             ),
-          ),
+            VDiv(16),
+            Text('temp view type (grid, list, detailed list)', style: Manager.miniBodyStyle),
 
-          VDiv(24),
-
-          // Sort Order
-          InfoLabel(
-            label: 'Sort by',
-            labelStyle: Manager.smallSubtitleStyle.copyWith(color: Manager.pastelDominantColor),
-            child: Row(
-              children: [
-                MouseButtonWrapper(
-                  child: (_) => ComboBox<SortOrder>(
-                    value: _sortOrder,
-                    placeholder: const Text('Sort By'),
-                    items: SortOrder.values.map((order) => ComboBoxItem(value: order, child: Text(_getSortText(order)))).toList(),
-                    onChanged: _onSortOrderChanged,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                MouseButtonWrapper(
-                  child: (_) => IconButton(
-                    icon: AnimatedRotation(
-                      duration: shortStickyHeaderDuration,
-                      turns: _sortDescending ? 0 : 1,
-                      child: Icon(_sortDescending ? FluentIcons.sort_lines : FluentIcons.sort_lines_ascending, color: Manager.pastelDominantColor),
-                    ),
-                    onPressed: _onSortDirectionChanged,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          VDiv(12),
-
-          // Only show list order UI when grouping is enabled
-          if (_showGrouped) ...[
             VDiv(24),
-            Row(
-              children: [
-                Text(
-                  'Lists',
-                  style: Manager.smallSubtitleStyle.copyWith(color: Manager.pastelDominantColor),
-                ),
-                const SizedBox(width: 4),
-                Transform.translate(
-                  offset: const Offset(0, 1.5),
-                  child: SizedBox(
-                    height: 22,
-                    width: 22,
-                    child: MouseButtonWrapper(
-                      tooltipWaitDuration: const Duration(milliseconds: 250),
-                      tooltip: _editListsEnabled ? 'Save Changes' : 'Edit List Order',
-                      child: (_) => IconButton(
-                        icon: Icon(_editListsEnabled ? FluentIcons.check_mark : FluentIcons.edit, size: 11, color: Manager.pastelDominantColor),
-                        onPressed: () {
-                          setState(() => _editListsEnabled = !_editListsEnabled);
-                          if (_editListsEnabled) _previousCustomListOrder = List.from(_customListOrder);
-                        },
-                      ),
+
+            // Sort Order
+            InfoLabel(
+              label: 'Sort by',
+              labelStyle: Manager.smallSubtitleStyle.copyWith(color: Manager.pastelDominantColor),
+              child: Row(
+                children: [
+                  MouseButtonWrapper(
+                    child: (_) => ComboBox<SortOrder>(
+                      value: _sortOrder,
+                      placeholder: const Text('Sort By'),
+                      items: SortOrder.values.map((order) => ComboBoxItem(value: order, child: Text(_getSortText(order)))).toList(),
+                      onChanged: _onSortOrderChanged,
                     ),
                   ),
-                ),
-                if (_editListsEnabled && !isResetDisabled) ...[
+                  const SizedBox(width: 8),
+                  MouseButtonWrapper(
+                    child: (_) => IconButton(
+                      icon: AnimatedRotation(
+                        duration: shortStickyHeaderDuration,
+                        turns: _sortDescending ? 0 : 1,
+                        child: Icon(_sortDescending ? FluentIcons.sort_lines : FluentIcons.sort_lines_ascending, color: Manager.pastelDominantColor),
+                      ),
+                      onPressed: _onSortDirectionChanged,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            VDiv(12),
+
+            // Only show list order UI when grouping is enabled
+            if (_showGrouped) ...[
+              VDiv(24),
+              Row(
+                children: [
+                  Text(
+                    'Lists',
+                    style: Manager.smallSubtitleStyle.copyWith(color: Manager.pastelDominantColor),
+                  ),
                   const SizedBox(width: 4),
                   Transform.translate(
                     offset: const Offset(0, 1.5),
@@ -711,30 +697,51 @@ class LibraryScreenState extends State<LibraryScreen> {
                       height: 22,
                       width: 22,
                       child: MouseButtonWrapper(
-                        isButtonDisabled: isResetDisabled,
                         tooltipWaitDuration: const Duration(milliseconds: 250),
-                        tooltip: 'Cancel Changes',
+                        tooltip: _editListsEnabled ? 'Save Changes' : 'Edit List Order',
                         child: (_) => IconButton(
-                          icon: Icon(Symbols.rotate_left, size: 11, color: Manager.pastelDominantColor),
-                          onPressed: isResetDisabled
-                              ? null
-                              : () {
-                                  setState(() {
-                                    _customListOrder = List.from(_previousCustomListOrder);
-                                    // _editListsEnabled = false;
-                                  });
-                                },
+                          icon: Icon(_editListsEnabled ? FluentIcons.check_mark : FluentIcons.edit, size: 11, color: Manager.pastelDominantColor),
+                          onPressed: () {
+                            setState(() => _editListsEnabled = !_editListsEnabled);
+                            if (_editListsEnabled) _previousCustomListOrder = List.from(_customListOrder);
+                          },
                         ),
                       ),
                     ),
                   ),
-                ]
-              ],
-            ),
-            VDiv(16),
-            _buildListOrderUI(),
+                  if (_editListsEnabled && !isResetDisabled) ...[
+                    const SizedBox(width: 4),
+                    Transform.translate(
+                      offset: const Offset(0, 1.5),
+                      child: SizedBox(
+                        height: 22,
+                        width: 22,
+                        child: MouseButtonWrapper(
+                          isButtonDisabled: isResetDisabled,
+                          tooltipWaitDuration: const Duration(milliseconds: 250),
+                          tooltip: 'Cancel Changes',
+                          child: (_) => IconButton(
+                            icon: Icon(Symbols.rotate_left, size: 11, color: Manager.pastelDominantColor),
+                            onPressed: isResetDisabled
+                                ? null
+                                : () {
+                                    setState(() {
+                                      _customListOrder = List.from(_previousCustomListOrder);
+                                      // _editListsEnabled = false;
+                                    });
+                                  },
+                          ),
+                        ),
+                      ),
+                    ),
+                  ]
+                ],
+              ),
+              VDiv(3),
+              _buildListOrderUI(),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }
@@ -861,9 +868,27 @@ class LibraryScreenState extends State<LibraryScreen> {
 
   HeaderWidget _buildHeader(Library library) {
     return HeaderWidget(
-      title: (style, _) => Text('Your Media Library', style: style),
+      title: (_, __) => ValueListenableBuilder(
+        valueListenable: KeyboardState.zoomReleaseNotifier,
+        builder: (context, _, __) => Text(
+          'Your Media Library',
+          style: Manager.titleLargeStyle.copyWith(
+            fontSize: 32 * Manager.fontSizeMultiplier,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ),
       titleLeftAligned: true,
-      children: [Text('Path: ${library.libraryPath}')],
+      children: <Widget>[
+        ValueListenableBuilder(
+          valueListenable: KeyboardState.zoomReleaseNotifier,
+          builder: (context, _, __) => Text('Path: ${library.libraryPath}',
+              style: Manager.bodyStyle.copyWith(
+                fontSize: 14 * Manager.fontSizeMultiplier,
+                color: Colors.white.withOpacity(.5),
+              )),
+        )
+      ],
     );
   }
 
@@ -956,7 +981,7 @@ class LibraryScreenState extends State<LibraryScreen> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    ProgressRing(),
+                    ProgressRing(), // TODO use actual line loading indicator from statusbar and hide statusbar while on library screen while indexing
                     VDiv(16),
                     Text('Please wait while the Library is being indexed...'),
                     // VDiv(16),
@@ -1100,84 +1125,93 @@ class LibraryScreenState extends State<LibraryScreen> {
     });
 
     return ScrollConfiguration(
-      behavior: ScrollConfiguration.of(context).copyWith(overscroll: true, platform: TargetPlatform.windows, scrollbars: false),
+      behavior: ScrollConfiguration.of(context).copyWith(overscroll: false, platform: TargetPlatform.windows, scrollbars: true),
       child: DynMouseScroll(
-        stopScroll: KeyboardState.ctrlPressedNotifier,
+        controller: widget.scrollController,
+        stopScroll: KeyboardState.zoomReleaseNotifier,
         scrollSpeed: 1.0,
         enableSmoothScroll: Manager.animationsEnabled,
         durationMS: 350,
         animationCurve: Curves.easeOutQuint,
         builder: (context, controller, physics) {
           return ValueListenableBuilder(
-            valueListenable: KeyboardState.ctrlPressedNotifier,
-            builder: (context, isCtrlPressed, _) {
+            valueListenable: KeyboardState.zoomReleaseNotifier,
+            builder: (context, _, __) {
               return ListView.builder(
                 controller: controller,
-                cacheExtent: 1000,
+                cacheExtent: kDebugMode ? null : 1000,
                 physics: physics,
+                padding: const EdgeInsets.only(right: 12),
                 itemCount: displayOrder.length,
                 itemBuilder: (context, index) {
                   final groupName = displayOrder[index];
                   final seriesInGroup = groupedData[groupName]!;
                   final isFirstGroup = index == 0;
 
-                  return StickyHeader(
-                    header: Transform.translate(
-                      offset: const Offset(0, -1),
-                      child: ClipRRect(
-                        borderRadius: const BorderRadius.all(Radius.circular(ScreenUtils.kStatCardBorderRadius)),
-                        child: Acrylic(
-                          luminosityAlpha: 1,
-                          child: Container(
-                            decoration: BoxDecoration(
-                              borderRadius: const BorderRadius.only(
-                                topLeft: Radius.circular(ScreenUtils.kStatCardBorderRadius),
-                                topRight: Radius.circular(ScreenUtils.kStatCardBorderRadius),
+                  return ClipRRect(
+                    clipBehavior: Clip.antiAlias,
+                    borderRadius: const BorderRadius.all(Radius.circular(ScreenUtils.kStatCardBorderRadius)),
+                    child: StickyHeader(
+                      header: Transform.translate(
+                        offset: const Offset(0, -1),
+                        child: ClipRRect(
+                          borderRadius: const BorderRadius.all(Radius.circular(ScreenUtils.kStatCardBorderRadius)),
+                          child: Acrylic(
+                            luminosityAlpha: 1,
+                            child: Container(
+                              decoration: BoxDecoration(
+                                borderRadius: const BorderRadius.only(
+                                  topLeft: Radius.circular(ScreenUtils.kStatCardBorderRadius),
+                                  topRight: Radius.circular(ScreenUtils.kStatCardBorderRadius),
+                                ),
+                                color: Colors.white.withOpacity(0.05),
                               ),
-                              color: Colors.white.withOpacity(0.05),
-                            ),
-                            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(groupName, style: Manager.subtitleStyle),
-                                Text('${seriesInGroup.length} Series', style: Manager.captionStyle),
-                              ],
+                              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(groupName, style: Manager.subtitleStyle),
+                                  Text('${seriesInGroup.length} Series', style: Manager.captionStyle),
+                                ],
+                              ),
                             ),
                           ),
                         ),
                       ),
-                    ),
-                    content: ValueListenableBuilder(
-                      valueListenable: previousGridColumnCount,
-                      builder: (context, columns, __) {
-                        final crossAxisCount = columns ?? ScreenUtils.crossAxisCount(maxWidth);
+                      content: ClipRRect(
+                        borderRadius: BorderRadius.only(topRight: Radius.circular(ScreenUtils.kStatCardBorderRadius)),
+                        child: ValueListenableBuilder(
+                          valueListenable: previousGridColumnCount,
+                          builder: (context, columns, __) {
+                            final crossAxisCount = columns ?? ScreenUtils.crossAxisCount(maxWidth);
 
-                        return GridView.builder(
-                          padding: const EdgeInsets.only(bottom: 16.0, left: 0.3, right: 0.3, top: 8.0),
-                          physics: const NeverScrollableScrollPhysics(),
-                          shrinkWrap: true,
-                          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: crossAxisCount,
-                            childAspectRatio: ScreenUtils.kDefaultAspectRatio,
-                            crossAxisSpacing: ScreenUtils.cardPadding,
-                            mainAxisSpacing: ScreenUtils.cardPadding,
-                          ),
-                          itemCount: seriesInGroup.length,
-                          itemBuilder: (context, seriesIndex) {
-                            final series = seriesInGroup[seriesIndex];
+                            return GridView.builder(
+                              padding: const EdgeInsets.only(bottom: 16.0, left: 0.3, right: 0.3, top: 8.0),
+                              physics: const NeverScrollableScrollPhysics(),
+                              shrinkWrap: true,
+                              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: crossAxisCount,
+                                childAspectRatio: ScreenUtils.kDefaultAspectRatio,
+                                crossAxisSpacing: ScreenUtils.cardPadding,
+                                mainAxisSpacing: ScreenUtils.cardPadding,
+                              ),
+                              itemCount: seriesInGroup.length,
+                              itemBuilder: (context, seriesIndex) {
+                                final series = seriesInGroup[seriesIndex];
 
-                            // Add measurement capability for first card
-                            Widget seriesCard = SeriesCard(
-                              key: (seriesIndex == 0 && isFirstGroup) ? firstCardKey : ValueKey('${series.path}:${series.effectivePosterPath ?? 'none'}'),
-                              series: series,
-                              onTap: () => _navigateToSeries(series),
+                                // Add measurement capability for first card
+                                Widget seriesCard = SeriesCard(
+                                  key: (seriesIndex == 0 && isFirstGroup) ? firstCardKey : ValueKey('${series.path}:${series.effectivePosterPath ?? 'none'}'),
+                                  series: series,
+                                  onTap: () => _navigateToSeries(series),
+                                );
+
+                                return seriesCard;
+                              },
                             );
-
-                            return seriesCard;
                           },
-                        );
-                      },
+                        ),
+                      ),
                     ),
                   );
                 },
