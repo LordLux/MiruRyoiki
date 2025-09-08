@@ -1115,7 +1115,9 @@ Future<void> _registerWindowsUrlScheme(String scheme) async {
   }
 }
 
-// TODO edit view options for library to separate sort and view (grid, list etc) from filters
+// TODO fix controller attached to multiple scroll views error on library screen
+// TODO add actual shimmer to list view
+// TODO add click and hover on lists in infobar
 // TODO cache anime info
 // TODO view settings to choose what to show on homepage
 

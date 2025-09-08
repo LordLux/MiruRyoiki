@@ -1,4 +1,5 @@
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:miruryoiki/utils/screen_utils.dart';
 import 'package:miruryoiki/utils/time_utils.dart';
 
 import '../manager.dart';
@@ -7,42 +8,66 @@ import 'hidden.dart';
 
 class CardIndicators extends StatelessWidget {
   final Series series;
+  final bool isListView;
 
-  const CardIndicators({super.key, required this.series});
+  const CardIndicators({
+    super.key,
+    required this.series,
+    this.isListView = false,
+  });
 
-  static List<Widget> indicators(Series series) => [
+  static List<Widget> indicators(Series series, {bool isListView = false}) => [
         // Anilist hidden indicator
-        if (series.isAnilistHidden) const AnilistHidden(),
+        if (series.isAnilistHidden) AnilistHidden(),
         // LOCAL hidden indicator
-        if (series.isForcedHidden) const LocalHidden(),
+        if (series.isForcedHidden) LocalHidden(),
       ];
 
   @override
   Widget build(BuildContext context) {
-    return Positioned.fill(
-      child: Padding(
-        padding: const EdgeInsets.all(8.0),
-        child: LayoutBuilder(builder: (context, constraints) {
-          final indicatorsList = indicators(series);
-          final indicatorSize = 25.0;
+    final indicatorsList = indicators(series);
+    if (indicatorsList.isEmpty) return SizedBox.shrink();
 
-          return Directionality(
-            textDirection: TextDirection.rtl,
-            child: GridView.builder(
-              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: (constraints.maxWidth / (indicatorSize + 8)).floor(),
-                mainAxisSpacing: 8,
-                crossAxisSpacing: 8,
-                childAspectRatio: 1,
-              ),
-              itemCount: indicatorsList.length,
-              itemBuilder: (context, index) => indicatorsList[index],
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-            ),
-          );
-        }),
-      ),
+    return Padding(
+      padding: isListView ? EdgeInsets.all(12.0) : const EdgeInsets.all(16.0),
+      child: LayoutBuilder(builder: (context, constraints) {
+        final indicatorSize = isListView ? 28.0 : 25.0;
+        final padding = 6.0;
+
+        return Directionality(
+          textDirection: TextDirection.rtl,
+          child: isListView
+              ? SizedBox(
+                  height: indicatorSize,
+                  width: indicatorsList.length * (indicatorSize + padding) - padding,
+                  child: ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: indicatorsList.length,
+                    itemBuilder: (context, index) => Padding(
+                      padding: EdgeInsets.only(left: indicatorsList.length - 1 == index ? 0 : padding),
+                      child: SizedBox(
+                        width: indicatorSize,
+                        child: indicatorsList[index],
+                      ),
+                    ),
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                  ),
+                )
+              : GridView.builder(
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: (constraints.maxWidth.isInfinite || constraints.maxWidth.isNaN ? ScreenUtils.width - ScreenUtils.kInfoBarWidth - 32 : constraints.maxWidth / (indicatorSize + 8)).floor(),
+                    mainAxisSpacing: 8,
+                    crossAxisSpacing: 8,
+                    childAspectRatio: 1,
+                  ),
+                  itemCount: indicatorsList.length,
+                  itemBuilder: (context, index) => indicatorsList[index],
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                ),
+        );
+      }),
     );
   }
 }

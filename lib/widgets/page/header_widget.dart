@@ -98,7 +98,7 @@ class _HeaderWidgetState extends State<HeaderWidget> {
               children: [
                 // Series title
                 SizedBox(
-                  width: math.min(ScreenUtils.kMaxContentWidth, constraints.maxWidth - 16 /*right padding*/) - ScreenUtils.kInfoBarWidth - 32,
+                  width: math.min(ScreenUtils.kMaxContentWidth, constraints.maxWidth - 16 /*right padding*/) - (widget.titleLeftAligned ? 0 : ScreenUtils.kInfoBarWidth) - 32,
                   child: widget.title(
                     Manager.bodyLargeStyle.copyWith(
                       fontSize: 32 * Manager.fontSizeMultiplier,

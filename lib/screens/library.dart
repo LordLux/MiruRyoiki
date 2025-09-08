@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'dart:math' as math;
-import 'dart:ui';
 
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/foundation.dart';
@@ -30,6 +29,7 @@ import '../widgets/page/header_widget.dart';
 import '../widgets/page/infobar.dart';
 import '../widgets/page/page.dart';
 import '../widgets/series_card.dart';
+import '../widgets/series_list_tile.dart';
 
 // Cache parameters to track when cache needs invalidation
 class _CacheParameters {
@@ -631,6 +631,7 @@ class LibraryScreenState extends State<LibraryScreen> {
               labelStyle: Manager.smallSubtitleStyle.copyWith(color: Manager.pastelDominantColor),
               child: MouseButtonWrapper(
                 child: (_) => ComboBox<LibraryView>(
+                  isExpanded: true,
                   value: _currentView,
                   items: [
                     ComboBoxItem(value: LibraryView.all, child: Text('All Series')),
@@ -646,7 +647,7 @@ class LibraryScreenState extends State<LibraryScreen> {
             MouseButtonWrapper(
               child: (_) => ToggleSwitch(
                 checked: _showGrouped,
-                content: Text('Group by AniList Lists', style: Manager.bodyStyle),
+                content: Expanded(child: Text('Group by AniList Lists', style: Manager.bodyStyle, maxLines: 2, overflow: TextOverflow.ellipsis)),
                 onChanged: (value) {
                   setState(() {
                     _showGrouped = value;
@@ -674,23 +675,44 @@ class LibraryScreenState extends State<LibraryScreen> {
               labelStyle: Manager.smallSubtitleStyle.copyWith(color: Manager.pastelDominantColor),
               child: Row(
                 children: [
-                  MouseButtonWrapper(
-                    child: (_) => ComboBox<SortOrder>(
-                      value: _sortOrder,
-                      placeholder: const Text('Sort By'),
-                      items: SortOrder.values.map((order) => ComboBoxItem(value: order, child: Text(_getSortText(order)))).toList(),
-                      onChanged: _onSortOrderChanged,
+                  Expanded(
+                    child: MouseButtonWrapper(
+                      child: (_) => ComboBox<SortOrder>(
+                        isExpanded: true,
+                        value: _sortOrder,
+                        placeholder: const Text('Sort By'),
+                        items: SortOrder.values.map((order) => ComboBoxItem(value: order, child: Text(_getSortText(order)))).toList(),
+                        onChanged: _onSortOrderChanged,
+                      ),
                     ),
                   ),
                   const SizedBox(width: 8),
-                  MouseButtonWrapper(
-                    child: (_) => IconButton(
-                      icon: AnimatedRotation(
-                        duration: shortStickyHeaderDuration,
-                        turns: _sortDescending ? 0 : 1,
-                        child: Icon(_sortDescending ? FluentIcons.sort_lines : FluentIcons.sort_lines_ascending, color: Manager.pastelDominantColor),
+                  SizedBox(
+                    height: 34,
+                    width: 34,
+                    child: MouseButtonWrapper(
+                      child: (_) => Acrylic(
+                        blurAmount: 50,
+                        luminosityAlpha: .1,
+                        shape: const RoundedRectangleBorder(borderRadius: BorderRadius.all(kComboBoxRadius)),
+                        child: IconButton(
+                          style: ButtonStyle(
+                            backgroundColor: WidgetStateColor.resolveWith((states) => states.contains(WidgetState.hovered) //
+                                ? Colors.white.withOpacity(.1)
+                                : Colors.transparent),
+                            shape: ButtonState.all(RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(4),
+                              side: BorderSide(color: Colors.white.withOpacity(0.1)),
+                            )),
+                          ),
+                          icon: AnimatedRotation(
+                            duration: shortStickyHeaderDuration,
+                            turns: _sortDescending ? 0 : 1,
+                            child: Icon(_sortDescending ? FluentIcons.sort_lines : FluentIcons.sort_lines_ascending, color: Manager.pastelDominantColor),
+                          ),
+                          onPressed: _onSortDirectionChanged,
+                        ),
                       ),
-                      onPressed: _onSortDirectionChanged,
                     ),
                   ),
                 ],
@@ -887,7 +909,7 @@ class LibraryScreenState extends State<LibraryScreen> {
       mainAxisSize: MainAxisSize.min,
       children: ViewType.values.map((viewType) {
         final isSelected = _viewType == viewType;
-        
+
         return Padding(
           padding: EdgeInsets.only(
             right: viewType == ViewType.values.last ? 0 : 6,
@@ -901,14 +923,10 @@ class LibraryScreenState extends State<LibraryScreen> {
                 duration: const Duration(milliseconds: 150),
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
                 decoration: BoxDecoration(
-                  color: isSelected 
-                    ? Manager.accentColor.withOpacity(0.8)
-                    : Colors.white.withOpacity(0.1),
+                  color: isSelected ? Manager.accentColor.withOpacity(0.8) : Colors.white.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(6),
                   border: Border.all(
-                    color: isSelected 
-                      ? Manager.accentColor 
-                      : Colors.white.withOpacity(0.2),
+                    color: isSelected ? Manager.accentColor : Colors.white.withOpacity(0.2),
                     width: 1,
                   ),
                 ),
@@ -918,17 +936,13 @@ class LibraryScreenState extends State<LibraryScreen> {
                     Icon(
                       _getViewTypeIcon(viewType),
                       size: 14,
-                      color: isSelected 
-                        ? Colors.white 
-                        : Manager.pastelDominantColor,
+                      color: isSelected ? Colors.white : Manager.pastelDominantColor,
                     ),
                     const SizedBox(width: 4),
                     Text(
                       _getViewTypeLabel(viewType),
                       style: Manager.captionStyle.copyWith(
-                        color: isSelected 
-                          ? Colors.white 
-                          : Manager.pastelDominantColor,
+                        color: isSelected ? Colors.white : Manager.pastelDominantColor,
                         fontSize: 11 * Manager.fontSizeMultiplier,
                       ),
                     ),
@@ -953,10 +967,8 @@ class LibraryScreenState extends State<LibraryScreen> {
     switch (viewType) {
       case ViewType.grid:
         return 'Grid';
-      case ViewType.list:
-        return 'List';
       case ViewType.detailedList:
-        return 'Detailed';
+        return 'List';
     }
   }
 
@@ -964,10 +976,8 @@ class LibraryScreenState extends State<LibraryScreen> {
     switch (viewType) {
       case ViewType.grid:
         return FluentIcons.grid_view_medium;
-      case ViewType.list:
-        return FluentIcons.list;
       case ViewType.detailedList:
-        return FluentIcons.view_list;
+        return FluentIcons.list;
     }
   }
 
@@ -975,10 +985,8 @@ class LibraryScreenState extends State<LibraryScreen> {
     switch (viewType) {
       case ViewType.grid:
         return 'Display series as cards in a grid';
-      case ViewType.list:
-        return 'Display series in a compact list';
       case ViewType.detailedList:
-        return 'Display series with additional information';
+        return 'Display series in a list';
     }
   }
 
@@ -1113,6 +1121,15 @@ class LibraryScreenState extends State<LibraryScreen> {
   }
 
   Widget _buildSeriesGrid(List<Series> series, double maxWidth, {Map<String, List<Series>>? groupedData, bool shimmer = false}) {
+    if (_viewType == ViewType.grid) {
+      // Existing grid implementation
+      return _buildGridView(series, maxWidth, groupedData: groupedData, shimmer: shimmer);
+    }
+    // List view implementation
+    return Container(child: _buildListView(series, maxWidth, groupedData: groupedData, shimmer: shimmer));
+  }
+
+  Widget _buildGridView(List<Series> series, double maxWidth, {Map<String, List<Series>>? groupedData, bool shimmer = false}) {
     Widget episodesGrid(List<Series> list, ScrollController? controller, ScrollPhysics? physics, bool includePadding, {bool allowMeasurement = false, bool shimmer = false}) {
       assert(shimmer || (controller != null && physics != null));
       return ValueListenableBuilder(
@@ -1219,6 +1236,248 @@ class LibraryScreenState extends State<LibraryScreen> {
     );
   }
 
+  Widget _buildListView(List<Series> series, double maxWidth, {Map<String, List<Series>>? groupedData, bool shimmer = false}) {
+    Widget buildListContent(List<Series> list, ScrollController? controller, ScrollPhysics? physics, bool includePadding) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Column headers
+          Container(
+            height: 32,
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            decoration: BoxDecoration(
+              color: Manager.genericGray.withOpacity(0.1),
+              border: Border(
+                bottom: BorderSide(
+                  color: Manager.genericGray.withOpacity(0.2),
+                  width: 1,
+                ),
+              ),
+            ),
+            child: Row(
+              children: [
+                const SizedBox(width: 47), // Space for image
+
+                Expanded(
+                  child: Text(
+                    'Name',
+                    style: Manager.bodyStyle.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: Manager.bodyStyle.color?.withOpacity(0.8),
+                    ),
+                  ),
+                ),
+
+                SizedBox(
+                  width: 100,
+                  child: Text(
+                    'Progress',
+                    style: Manager.bodyStyle.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: Manager.bodyStyle.color?.withOpacity(0.8),
+                    ),
+                    textAlign: TextAlign.right,
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // Series list
+          Expanded(
+            child: shimmer
+                ? _buildShimmerList()
+                : ListView.builder(
+                    controller: controller,
+                    physics: physics,
+                    padding: includePadding ? const EdgeInsets.all(12) : EdgeInsets.zero,
+                    itemCount: list.length,
+                    itemBuilder: (context, index) {
+                      final series = list[index];
+                      return Padding(
+                        padding: EdgeInsets.only(bottom: 2.5, top: index == 0 ? 2.5 : 0),
+                        child: SeriesListTile(
+                          series: series,
+                          onTap: () => _navigateToSeries(series),
+                        ),
+                      );
+                    },
+                  ),
+          ),
+        ],
+      );
+    }
+
+    return ScrollConfiguration(
+      behavior: ScrollConfiguration.of(context).copyWith(overscroll: false, platform: TargetPlatform.windows, scrollbars: !shimmer), // show only when not shimmer
+      child: DynMouseScroll(
+        controller: widget.scrollController,
+        stopScroll: KeyboardState.zoomReleaseNotifier,
+        scrollSpeed: 1.0,
+        enableSmoothScroll: Manager.animationsEnabled,
+        durationMS: 350,
+        animationCurve: Curves.easeOutQuint,
+        builder: (context, controller, physics) {
+          return ValueListenableBuilder(
+            valueListenable: KeyboardState.zoomReleaseNotifier,
+            builder: (context, _, __) {
+              // Grouped View with Sticky Headers
+              if (groupedData != null && _showGrouped) {
+                // Use the _customListOrder to determine display order
+                final displayOrder = groupedData.keys.toList();
+                displayOrder.sort((a, b) {
+                  // Get the original position in _customListOrder
+                  final aIndex = _customListOrder.indexOf(_getApiName(a));
+                  final bIndex = _customListOrder.indexOf(_getApiName(b));
+
+                  // If one is not found, put it at the end
+                  if (aIndex == -1) return 1;
+                  if (bIndex == -1) return -1;
+
+                  // Otherwise use the custom order
+                  return aIndex.compareTo(bIndex);
+                });
+
+                return ListView.builder(
+                  controller: controller,
+                  physics: physics,
+                  padding: const EdgeInsets.only(right: 12.0),
+                  itemCount: displayOrder.length,
+                  itemBuilder: (context, index) {
+                    final groupName = displayOrder[index];
+                    final seriesList = groupedData[groupName] ?? [];
+                    final isFirstGroup = index == 0;
+
+                    if (seriesList.isEmpty) return const SizedBox.shrink();
+
+                    return Padding(
+                      padding: EdgeInsets.only(top: isFirstGroup ? 0 : 8.0),
+                      child: StickyHeader(
+                        header: ClipRRect(
+                          borderRadius: const BorderRadius.all(Radius.circular(ScreenUtils.kStatCardBorderRadius)),
+                          child: Acrylic(
+                            luminosityAlpha: 1,
+                            child: Container(
+                              constraints: const BoxConstraints(minHeight: 50.0),
+                              decoration: BoxDecoration(
+                                borderRadius: const BorderRadius.only(
+                                  topLeft: Radius.circular(ScreenUtils.kStatCardBorderRadius),
+                                  topRight: Radius.circular(ScreenUtils.kStatCardBorderRadius),
+                                ),
+                                color: Colors.white.withOpacity(0.05),
+                              ),
+                              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  if (shimmer) ...[
+                                    Expanded(
+                                      child: Container(
+                                        height: 12,
+                                        decoration: BoxDecoration(
+                                          color: Colors.white.withOpacity(0.2),
+                                          borderRadius: BorderRadius.circular(6),
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Container(
+                                      height: 12,
+                                      width: 80,
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withOpacity(0.2),
+                                        borderRadius: BorderRadius.circular(6),
+                                      ),
+                                    ),
+                                  ],
+                                  if (!shimmer) ...[
+                                    Text(groupName, style: Manager.subtitleStyle),
+                                    Text('${seriesList.length} Series', style: Manager.captionStyle),
+                                  ],
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        content: Column(
+                          children: [
+                            const SizedBox(height: 8),
+
+                            // Group content with headers and list
+                            Container(
+                              decoration: BoxDecoration(
+                                border: Border.all(color: Manager.genericGray.withOpacity(0.2)),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: SizedBox(
+                                height: 53.5 * seriesList.length + 33 + 2, // +33 for header
+                                child: buildListContent(seriesList, null, const NeverScrollableScrollPhysics(), false),
+                              ),
+                            ),
+
+                            // Spacing between groups
+                            if (index != displayOrder.length - 1) const SizedBox(height: 12),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                );
+              }
+
+              // Ungrouped list view
+              return buildListContent(series, controller, physics, true);
+            },
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildShimmerList() {
+    return ListView.builder(
+      padding: EdgeInsets.zero,
+      itemCount: 12,
+      itemBuilder: (context, index) {
+        return Container(
+          height: 53.7,
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          child: Row(
+            children: [
+              Container(
+                width: 35,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: Manager.genericGray.withOpacity(0.3),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Container(
+                  height: 12,
+                  decoration: BoxDecoration(
+                    color: Manager.genericGray.withOpacity(0.3),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Container(
+                width: 80,
+                height: 8,
+                decoration: BoxDecoration(
+                  color: Manager.genericGray.withOpacity(0.3),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   /// Build grouped view using cached grouped data with sticky headers
   Widget _buildGroupedViewFromCache(
     Map<String, List<Series>> groupedData,
@@ -1257,7 +1516,6 @@ class LibraryScreenState extends State<LibraryScreen> {
                 controller: controller,
                 cacheExtent: kDebugMode ? null : 1000,
                 physics: physics,
-                padding: const EdgeInsets.only(right: 12),
                 itemCount: displayOrder.length,
                 itemBuilder: (context, index) {
                   final groupName = displayOrder[index];
@@ -1267,65 +1525,69 @@ class LibraryScreenState extends State<LibraryScreen> {
                   return ClipRRect(
                     clipBehavior: Clip.antiAlias,
                     borderRadius: const BorderRadius.all(Radius.circular(ScreenUtils.kStatCardBorderRadius)),
-                    child: StickyHeader(
-                      header: Transform.translate(
-                        offset: const Offset(0, -1),
-                        child: ClipRRect(
-                          borderRadius: const BorderRadius.all(Radius.circular(ScreenUtils.kStatCardBorderRadius)),
-                          child: Acrylic(
-                            luminosityAlpha: 1,
-                            child: Container(
-                              decoration: BoxDecoration(
-                                borderRadius: const BorderRadius.only(
-                                  topLeft: Radius.circular(ScreenUtils.kStatCardBorderRadius),
-                                  topRight: Radius.circular(ScreenUtils.kStatCardBorderRadius),
+                    child: Padding(
+                      padding: EdgeInsets.only(top: isFirstGroup ? 0 : 8.0),
+                      child: StickyHeader(
+                        header: Transform.translate(
+                          offset: const Offset(0, -1),
+                          child: ClipRRect(
+                            borderRadius: const BorderRadius.all(Radius.circular(ScreenUtils.kStatCardBorderRadius)),
+                            child: Acrylic(
+                              luminosityAlpha: 1,
+                              child: Container(
+                                constraints: const BoxConstraints(minHeight: 50.0),
+                                decoration: BoxDecoration(
+                                  borderRadius: const BorderRadius.only(
+                                    topLeft: Radius.circular(ScreenUtils.kStatCardBorderRadius),
+                                    topRight: Radius.circular(ScreenUtils.kStatCardBorderRadius),
+                                  ),
+                                  color: Colors.white.withOpacity(0.05),
                                 ),
-                                color: Colors.white.withOpacity(0.05),
-                              ),
-                              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text(groupName, style: Manager.subtitleStyle),
-                                  Text('${seriesInGroup.length} Series', style: Manager.captionStyle),
-                                ],
+                                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(groupName, style: Manager.subtitleStyle),
+                                    Text('${seriesInGroup.length} Series', style: Manager.captionStyle),
+                                  ],
+                                ),
                               ),
                             ),
                           ),
                         ),
-                      ),
-                      content: ClipRRect(
-                        borderRadius: BorderRadius.only(topRight: Radius.circular(ScreenUtils.kStatCardBorderRadius)),
-                        child: ValueListenableBuilder(
-                          valueListenable: previousGridColumnCount,
-                          builder: (context, columns, __) {
-                            final crossAxisCount = columns ?? ScreenUtils.crossAxisCount(maxWidth);
+                        content: ClipRRect(
+                          borderRadius: BorderRadius.only(topRight: Radius.circular(ScreenUtils.kStatCardBorderRadius)),
+                          child: ValueListenableBuilder(
+                            valueListenable: previousGridColumnCount,
+                            builder: (context, columns, __) {
+                              final crossAxisCount = columns ?? ScreenUtils.crossAxisCount(maxWidth);
 
-                            return GridView.builder(
-                              padding: const EdgeInsets.only(bottom: 16.0, left: 0.3, right: 0.3, top: 8.0),
-                              physics: const NeverScrollableScrollPhysics(),
-                              shrinkWrap: true,
-                              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                                crossAxisCount: crossAxisCount,
-                                childAspectRatio: ScreenUtils.kDefaultAspectRatio,
-                                crossAxisSpacing: ScreenUtils.cardPadding,
-                                mainAxisSpacing: ScreenUtils.cardPadding,
-                              ),
-                              itemCount: seriesInGroup.length,
-                              itemBuilder: (context, seriesIndex) {
-                                final series = seriesInGroup[seriesIndex];
+                              return GridView.builder(
+                                padding: const EdgeInsets.only(bottom: 8.0, left: 0.3, right: 0.3, top: 8.0),
+                                physics: const NeverScrollableScrollPhysics(),
+                                shrinkWrap: true,
+                                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                                  crossAxisCount: crossAxisCount,
+                                  childAspectRatio: ScreenUtils.kDefaultAspectRatio,
+                                  crossAxisSpacing: ScreenUtils.cardPadding,
+                                  mainAxisSpacing: ScreenUtils.cardPadding,
+                                ),
+                                itemCount: seriesInGroup.length,
+                                itemBuilder: (context, seriesIndex) {
+                                  final series = seriesInGroup[seriesIndex];
 
-                                // Add measurement capability for first card
-                                Widget seriesCard = SeriesCard(
-                                  key: (seriesIndex == 0 && isFirstGroup) ? firstCardKey : ValueKey('${series.path}:${series.effectivePosterPath ?? 'none'}'),
-                                  series: series,
-                                  onTap: () => _navigateToSeries(series),
-                                );
+                                  // Add measurement capability for first card
+                                  Widget seriesCard = SeriesCard(
+                                    key: (seriesIndex == 0 && isFirstGroup) ? firstCardKey : ValueKey('${series.path}:${series.effectivePosterPath ?? 'none'}'),
+                                    series: series,
+                                    onTap: () => _navigateToSeries(series),
+                                  );
 
-                                return seriesCard;
-                              },
-                            );
-                          },
+                                  return seriesCard;
+                                },
+                              );
+                            },
+                          ),
                         ),
                       ),
                     ),

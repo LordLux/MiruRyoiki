@@ -10,7 +10,6 @@ import '../utils/logging.dart';
 import '../utils/screen_utils.dart';
 import '../utils/time_utils.dart';
 import 'context_menu/series.dart';
-import 'series_card_indicators.dart';
 
 class SeriesCard extends StatefulWidget {
   final Series series;
@@ -305,9 +304,9 @@ class _SeriesCardState extends State<SeriesCard> {
                     ),
                   ),
 
-                  CardIndicators(series: widget.series),
+                  // Positioned.fill(child: CardIndicators(series: widget.series)),
 
-                  AiringIndicator(series: widget.series, isHovered: _isHovering),
+                  // AiringIndicator(series: widget.series, isHovered: _isHovering),
 
                   // Hover overlay
                   Positioned.fill(

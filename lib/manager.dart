@@ -77,7 +77,7 @@ class Manager {
   }
 
   static AccentColor get accentColor => settings.accentColor.toAccentColor();
-  static Color get genericGray => FluentTheme.of(context).acrylicBackgroundColor.lerpWith(const Color.fromARGB(255, 21, 35, 35), 0.5);
+  static Color get genericGray => FluentTheme.of(context).acrylicBackgroundColor.lerpWith(const Color.fromARGB(255, 35, 35, 35), 0.5);
   static Color get pastelDominantColor => Color.lerp(currentDominantColor ?? accentColor, Colors.white, .8)!;
   static Color get pastelAccentColor => Color.lerp(accentColor, Colors.white, .8)!;
 
