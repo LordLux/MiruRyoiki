@@ -106,6 +106,7 @@ class _MiruRyoikiInfobarState extends State<MiruRyoikiInfobar> {
                     getInfoBarOffset = math.max(posterHeight - squareSize - 16, 0);
                   }
                 }
+                print('width: $posterWidth, height: $posterHeight, offset: $getInfoBarOffset');
 
                 final double squareness = (getInfoBarOffset / 31);
                 return child(squareness, posterWidth, posterHeight, imageProvider, getInfoBarOffset);
@@ -221,6 +222,7 @@ class _MiruRyoikiInfobarState extends State<MiruRyoikiInfobar> {
               getInfoBarOffset: 0,
             );
           } else {
+            // Dynamic poster size based on image aspect ratio
             return fb((squareness, posterWidth, posterHeight, imageProvider, getInfoBarOffset) {
               return child(
                 squareness: squareness,

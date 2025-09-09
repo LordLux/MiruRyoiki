@@ -527,7 +527,7 @@ class SeriesScreenState extends State<SeriesScreen> {
                           height: height,
                           duration: shortStickyHeaderDuration,
                           decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(8.0),
+                            borderRadius: BorderRadius.circular(ScreenUtils.kEpisodeCardBorderRadius),
                             gradient: RadialGradient(
                               colors: [
                                 Colors.black.withOpacity(.95),

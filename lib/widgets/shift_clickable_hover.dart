@@ -1,6 +1,7 @@
 
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/material.dart' as mat;
+import 'package:miruryoiki/utils/screen_utils.dart';
 
 import '../manager.dart';
 import '../models/series.dart';
@@ -93,21 +94,18 @@ class _ShiftClickableHoverState extends State<ShiftClickableHover> {
         child: mat.InkWell(
           onTap: isShiftPressed && widget.enabled ? () => widget.onTap?.call(context) : null,
           splashColor: (widget.series.dominantColor ?? Manager.accentColor).withOpacity(1),
-          borderRadius: BorderRadius.circular(8.0),
+          borderRadius: BorderRadius.circular(ScreenUtils.kEpisodeCardBorderRadius),
           child: AnimatedContainer(
             duration: shortStickyHeaderDuration,
             decoration: BoxDecoration(
               color: (widget.series.dominantColor ?? Manager.accentColor).withOpacity(
                 isShiftPressed && widget.enabled ? .15 : 0,
               ),
-              borderRadius: BorderRadius.circular(8.0),
+              borderRadius: BorderRadius.circular(ScreenUtils.kEpisodeCardBorderRadius),
             ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(3.0),
-              child: widget.finalChild(
-                context,
-                isShiftPressed && widget.enabled,
-              ),
+            child: widget.finalChild(
+              context,
+              isShiftPressed && widget.enabled,
             ),
           ),
         ),

@@ -1,5 +1,6 @@
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
+import 'package:miruryoiki/utils/screen_utils.dart';
 
 /// A widget that displays an image with a shadow effect considering the image's transparency and shape.
 class ShadowedImage extends StatelessWidget {
@@ -67,26 +68,29 @@ class ShadowedImage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      clipBehavior: Clip.none,
-      children: [
-        // 1) blurred, black-tinted silhouette
-        Transform.translate(
-          offset: shadowOffset,
-          child: Builder(builder: (context) {
-            if (shadowColor == null) return _getImageShadow();
-            
-            return ColorFiltered(
-              // Tint the image black
-              colorFilter: ColorFilter.mode(shadowColor!, BlendMode.srcATop),
-              child: _getImageShadow(),
-            );
-          }),
-        ),
-
-        // 2) your actual image on top
-        _buildFilteredImage(),
-      ],
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(ScreenUtils.kEpisodeCardBorderRadius),
+      child: Stack(
+        clipBehavior: Clip.antiAlias,
+        children: [
+          // 1) blurred, black-tinted silhouette
+          Transform.translate(
+            offset: shadowOffset,
+            child: Builder(builder: (context) {
+              if (shadowColor == null) return _getImageShadow();
+              
+              return ColorFiltered(
+                // Tint the image black
+                colorFilter: ColorFilter.mode(shadowColor!, BlendMode.srcATop),
+                child: _getImageShadow(),
+              );
+            }),
+          ),
+      
+          // 2) your actual image on top
+          _buildFilteredImage(),
+        ],
+      ),
     );
   }
 }

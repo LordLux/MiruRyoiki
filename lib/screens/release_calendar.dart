@@ -1021,7 +1021,7 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
   }
 
   String _getRelativeDateLabel(DateTime date) {
-    final today = DateTime.now();
+    final today = now;
     final todayDate = DateTime(today.year, today.month, today.day);
     final targetDate = DateTime(date.year, date.month, date.day);
 
