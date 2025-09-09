@@ -74,7 +74,11 @@ class ThumbnailManager {
         _pendingExtractions[videoPath]?.complete(null); // failed
       }
     } catch (e, stack) {
-      logErr('Error extracting thumbnail for $videoPath', e, stack);
+      if (e is ThumbnailIsolateException)
+        logErr('Thumbnail isolate error for $videoPath: ${e.message}', e, stack);
+      else
+        logErr('Unexpected error during thumbnail extraction for $videoPath', e, stack);
+
       _failedAttempts[videoPath] = (_failedAttempts[videoPath] ?? 0) + 1;
       _pendingExtractions[videoPath]?.completeError(e, stack);
     } finally {
@@ -228,7 +232,7 @@ class ThumbnailIsolateManager {
 
   Future<PathString?> generateThumbnail(PathString videoPath, PathString outputPath) async {
     if (!_isInitialized) await _init();
-    if (_sendPort == null) throw Exception('Thumbnail isolate not initialized');
+    if (_sendPort == null) throw ThumbnailIsolateException('Thumbnail isolate not initialized');
 
     final id = '${DateTime.now().millisecondsSinceEpoch}_${videoPath.hashCode}';
     final job = ThumbnailJob(id, videoPath, outputPath);
@@ -288,4 +292,12 @@ void _thumbnailIsolateEntryPoint(SendPort sendPort) {
       }
     }
   });
+}
+
+class ThumbnailIsolateException implements Exception {
+  final String message;
+  ThumbnailIsolateException(this.message);
+
+  @override
+  String toString() => 'ThumbnailIsolateException: $message';
 }

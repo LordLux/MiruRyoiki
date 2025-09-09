@@ -6,19 +6,19 @@ import 'package:miruryoiki/utils/screen_utils.dart';
 class ShadowedImage extends StatelessWidget {
   /// The image to display. This is the image that will be blurred and tinted.
   final ImageProvider imageProvider;
-  
+
   /// The fit of the image. This is the fit of the image itself.
   final BoxFit fit;
-  
+
   /// The color filter to apply to the image. This is the color filter applied to the image itself.
   final ColorFilter? colorFilter;
-  
+
   /// The amount of blur to apply to the shadow. This is the amount of blur applied to the shadow image.
   final double blurSigma;
-  
+
   /// The offset of the shadow. This is the offset of the shadow relative to the image.
   final Offset shadowOffset;
-  
+
   /// The opacity of the shadow color. 0 = `shadowColor` fully opaque, 1 = black.
   final double shadowColorOpacity;
 
@@ -37,10 +37,15 @@ class ShadowedImage extends StatelessWidget {
   });
 
   Widget _buildFilteredImage() {
-    Widget img = Image(
-      image: imageProvider,
-      fit: fit,
+    Widget img = Container(
+      decoration: BoxDecoration(
+        image: DecorationImage(
+          image: imageProvider,
+          fit: fit,
+        ),
+      ),
     );
+
     if (colorFilter != null) {
       img = ColorFiltered(
         colorFilter: colorFilter!,
@@ -78,7 +83,7 @@ class ShadowedImage extends StatelessWidget {
             offset: shadowOffset,
             child: Builder(builder: (context) {
               if (shadowColor == null) return _getImageShadow();
-              
+
               return ColorFiltered(
                 // Tint the image black
                 colorFilter: ColorFilter.mode(shadowColor!, BlendMode.srcATop),
@@ -86,7 +91,7 @@ class ShadowedImage extends StatelessWidget {
               );
             }),
           ),
-      
+
           // 2) your actual image on top
           _buildFilteredImage(),
         ],
