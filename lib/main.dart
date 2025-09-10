@@ -1124,8 +1124,10 @@ Future<void> _registerWindowsUrlScheme(String scheme) async {
 }
 
 // TODO fix controller attached to multiple scroll views error on library screen
-// TODO add actual shimmer to list view
+// TODO 'correct' dominant color from series if too dark
 // TODO add click and hover on lists in infobar
+// TODO move hidden series switches to settings
+// TODO add ctrl + tab navigation
 // TODO cache anime info
 // TODO view settings to choose what to show on homepage
 

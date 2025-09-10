@@ -1497,15 +1497,15 @@ class SettingsScreenState extends State<SettingsScreen> {
             children: [
               Text(settingsList[4]["title"], style: Manager.subtitleStyle),
               VDiv(12),
-              Text('Version: ${Manager.appVersion})', style: Manager.bodyStyle),
+              Text('Version: ${Manager.appVersion}', style: Manager.bodyStyle),
               GestureDetector(
                 onTap: () => a(),
                 child: Text('Build Number: ${Manager.buildNumber}', style: Manager.bodyStyle),
               ),
               if (_buildUnlocked) Text(' Carpaccio Sardo', style: Manager.bodyStyle.copyWith(color: Colors.red)),
               VDiv(6),
-              Text('Last Update: ${Manager.lastUpdate}', style: Manager.bodyStyle),
-              VDiv(12),
+              Text('Last Update: ${Manager.lastUpdate.pretty()}', style: Manager.bodyStyle),
+              VDiv(24),
               Text(
                 '${Manager.appTitle} is a video tracking application that integrates with '
                 'various media players to track your watched videos.',
