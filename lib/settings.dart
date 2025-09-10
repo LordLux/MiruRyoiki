@@ -62,6 +62,9 @@ class SettingsManager extends ChangeNotifier {
 
   bool get returnToLibraryAfterSeriesScreen => _getBool('returnToLibraryAfterSeriesScreen', defaultValue: true);
   set returnToLibraryAfterSeriesScreen(bool value) => _setBool('returnToLibraryAfterSeriesScreen', value);
+  
+  bool get confirmClearAllThumbnails => _getBool('confirmClearAllThumbnails', defaultValue: false);
+  set confirmClearAllThumbnails(bool value) => _setBool('confirmClearAllThumbnails', value);
 
 
   // Logging

@@ -147,6 +147,8 @@ extension LibrarySeriesManagement on Library {
     // Clear all thumbnail caches
     await ThumbnailManager().clearAllThumbnailCache();
     await ImageCacheService().clearCache();
+    notifyListeners();
+    Manager.setState();
 
     // Reset all episode thumbnail statuses
     for (final series in _series) {

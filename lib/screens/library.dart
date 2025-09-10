@@ -1601,7 +1601,7 @@ class LibraryScreenState extends State<LibraryScreen> {
       case SortOrder.progress:
         return 'Progress';
       case SortOrder.lastModified:
-        return 'Last Local Change';
+        return 'Last Modified';
       case SortOrder.dateAdded:
         return 'Date Added';
       case SortOrder.startDate:

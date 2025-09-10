@@ -99,101 +99,106 @@ class _CustomKeyboardListenerState extends State<CustomKeyboardListener> {
     return zoom;
   }
 
-  void _handleKeyPress(RawKeyEvent event) {
-    setState(() {
-      if (event is RawKeyDownEvent) {
-        if (isSuperPressed(event)) {
-          isCtrlPressed = true;
-          KeyboardState.ctrlPressedNotifier.value = true;
-          KeyboardState.zoomReleaseNotifier.value = !KeyboardState.zoomReleaseNotifier.value;
+  void _handleKeyPress(RawKeyEvent event) async {
+    if (event is RawKeyDownEvent) {
+      if (isSuperPressed(event)) {
+        isCtrlPressed = true;
+        KeyboardState.ctrlPressedNotifier.value = true;
+        KeyboardState.zoomReleaseNotifier.value = !KeyboardState.zoomReleaseNotifier.value;
+      }
+      if (event.logicalKey == LogicalKeyboardKey.shiftLeft || event.logicalKey == LogicalKeyboardKey.shiftRight) {
+        isShiftPressed = true;
+        KeyboardState.shiftPressedNotifier.value = true;
+      }
+
+      /// Handle specific key combinations
+      // Open settings
+      if (isCtrlPressed && event.logicalKey == LogicalKeyboardKey.comma) {
+        logTrace('Ctrl + , pressed: Open settings');
+        if (homeKey.currentState != null && homeKey.currentState!.mounted) {
+          homeKey.currentState!.openSettings();
         }
-        if (event.logicalKey == LogicalKeyboardKey.shiftLeft || event.logicalKey == LogicalKeyboardKey.shiftRight) {
-          isShiftPressed = true;
-          KeyboardState.shiftPressedNotifier.value = true;
+      } else
+      //
+      // Open search Palette
+      if (isCtrlPressed && event.logicalKey == LogicalKeyboardKey.keyF) {
+        logTrace('Ctrl + f pressed: Search');
+      } else
+      //
+      // Zoom in
+      if (isCtrlPressed && (event.logicalKey == LogicalKeyboardKey.equal || event.logicalKey == LogicalKeyboardKey.numpadAdd || event.logicalKey == LogicalKeyboardKey.add)) {
+        logTrace('Ctrl + + pressed: Zoom in');
+        _zoom(true);
+        KeyboardState.zoomReleaseNotifier.value = !KeyboardState.zoomReleaseNotifier.value;
+      } else
+      //
+      // Zoom out
+      if (isCtrlPressed && (event.logicalKey == LogicalKeyboardKey.minus || event.logicalKey == LogicalKeyboardKey.numpadSubtract)) {
+        logTrace('Ctrl + - pressed: Zoom out');
+        _zoom(false);
+        KeyboardState.zoomReleaseNotifier.value = !KeyboardState.zoomReleaseNotifier.value;
+      } else
+      //
+      // Toggle hidden series
+      if (isCtrlPressed && event.logicalKey == LogicalKeyboardKey.keyH) {
+        final library = Provider.of<Library>(context, listen: false);
+        if (library.initialized && !library.isIndexing && libraryScreenKey.currentState?.mounted == true && homeKey.currentState?.isSeriesView == false) {
+          Manager.settings.showHiddenSeries = !Manager.settings.showHiddenSeries;
+          snackBar(
+            Manager.settings.showHiddenSeries ? 'Hidden series are now visible' : 'Hidden series are now hidden',
+            severity: InfoBarSeverity.info,
+          );
+          libraryScreenKey.currentState!.setState(() {
+            libraryScreenKey.currentState!.invalidateSortCache();
+          });
         }
+      } else
+      //
+      // Reload
+      if (isCtrlPressed && !isShiftPressed && event.logicalKey == LogicalKeyboardKey.keyR && !HardwareKeyboard.instance.isAltPressed) {
+        final library = Provider.of<Library>(context, listen: false);
 
-        /// Handle specific key combinations
-        // Open settings
-        if (isCtrlPressed && event.logicalKey == LogicalKeyboardKey.comma) {
-          logTrace('Ctrl + , pressed: Open settings');
-          if (homeKey.currentState != null && homeKey.currentState!.mounted) {
-            homeKey.currentState!.openSettings();
-          }
-        } else
-        //
-        // Open search Palette
-        if (isCtrlPressed && event.logicalKey == LogicalKeyboardKey.keyF) {
-          logTrace('Ctrl + f pressed: Search');
-        } else
-        //
-        // Zoom in
-        if (isCtrlPressed && (event.logicalKey == LogicalKeyboardKey.equal || event.logicalKey == LogicalKeyboardKey.numpadAdd || event.logicalKey == LogicalKeyboardKey.add)) {
-          logTrace('Ctrl + + pressed: Zoom in');
-          _zoom(true);
-          KeyboardState.zoomReleaseNotifier.value = !KeyboardState.zoomReleaseNotifier.value;
-        } else
-        //
-        // Zoom out
-        if (isCtrlPressed && (event.logicalKey == LogicalKeyboardKey.minus || event.logicalKey == LogicalKeyboardKey.numpadSubtract)) {
-          logTrace('Ctrl + - pressed: Zoom out');
-          _zoom(false);
-          KeyboardState.zoomReleaseNotifier.value = !KeyboardState.zoomReleaseNotifier.value;
-        } else
-        //
-        // Toggle hidden series
-        if (isCtrlPressed && event.logicalKey == LogicalKeyboardKey.keyH) {
-          final library = Provider.of<Library>(context, listen: false);
-          if (library.initialized && !library.isIndexing && libraryScreenKey.currentState?.mounted == true && homeKey.currentState?.isSeriesView == false) {
-            Manager.settings.showHiddenSeries = !Manager.settings.showHiddenSeries;
-            snackBar(
-              Manager.settings.showHiddenSeries ? 'Hidden series are now visible' : 'Hidden series are now hidden',
-              severity: InfoBarSeverity.info,
-            );
-            libraryScreenKey.currentState!.setState(() {
-              libraryScreenKey.currentState!.invalidateSortCache();
-            });
-          }
-        } else
-        //
-        // Reload
-        if (isCtrlPressed && !isShiftPressed && event.logicalKey == LogicalKeyboardKey.keyR && !HardwareKeyboard.instance.isAltPressed) {
-          final library = Provider.of<Library>(context, listen: false);
+        if (library.initialized && !library.isIndexing) {
+          library.reloadLibrary(force: true);
+        } else {
+          if (!library.initialized) snackBar('Library is not initialized', severity: InfoBarSeverity.warning);
+          if (library.isIndexing) snackBar('Library is currently scanning\nPlease wait before reloading', severity: InfoBarSeverity.warning);
+        }
+      } else
+      //
+      // Reload + Clearing all Cache (Ctrl + Alt + Shift + R)
+      if (isCtrlPressed && isShiftPressed && event.logicalKey == LogicalKeyboardKey.keyR && HardwareKeyboard.instance.isAltPressed) {
+        final library = Provider.of<Library>(context, listen: false);
 
-          if (library.initialized && !library.isIndexing) {
-            library.reloadLibrary(force: true);
-          } else {
-            if (!library.initialized) snackBar('Library is not initialized', severity: InfoBarSeverity.warning);
-            if (library.isIndexing) snackBar('Library is currently scanning\nPlease wait before reloading', severity: InfoBarSeverity.warning);
-          }
-        } else
-        //
-        // Reload + Clearing all Cache (Ctrl + Alt + Shift + R)
-        if (isCtrlPressed && isShiftPressed && event.logicalKey == LogicalKeyboardKey.keyR && HardwareKeyboard.instance.isAltPressed) {
-          final library = Provider.of<Library>(context, listen: false);
+        if (library.initialized && !library.isIndexing) {
+          // Check if we're in series view and clear thumbnails for that series
+          final homeState = homeKey.currentState;
 
-          if (library.initialized && !library.isIndexing) {
-            // Check if we're in series view and clear thumbnails for that series
-            final homeState = homeKey.currentState;
-            bool operationSuccessful = true;
+          if (homeState != null && homeState.mounted) {
+            if (homeState.isSeriesView) {
+              final seriesScreenState = getActiveSeriesScreenState();
+              snackBar('Clearing Series thumbnail cache...', severity: InfoBarSeverity.info);
 
-            if (homeState != null && homeState.mounted) {
-              if (homeState.isSeriesView) {
-                final seriesScreenState = getActiveSeriesScreenState();
-                snackBar('Clearing thumbnail cache...', severity: InfoBarSeverity.info);
-                if (seriesScreenState != null && seriesScreenState.widget.seriesPath.pathMaybe != null) {
-                  // Clear thumbnails for this specific series (don't await, do it in background)
-                  library.clearThumbnailCacheForSeries(seriesScreenState.widget.seriesPath).then((_) {
-                    logTrace('Cleared thumbnail cache for series: ${seriesScreenState.widget.seriesPath.path}');
+              // Clear thumbnails for the current series if possible
+              if (seriesScreenState != null && seriesScreenState.widget.seriesPath.pathMaybe != null) {
+                // Clear thumbnails for this specific series (don't await, do it in background)
+                library.clearThumbnailCacheForSeries(seriesScreenState.widget.seriesPath).then((_) {
+                  logTrace('Cleared thumbnail cache for series: ${seriesScreenState.widget.seriesPath.path}');
 
-                    // Also clear Flutter's image cache
-                    imageCache.clear();
-                    imageCache.clearLiveImages();
-                  }).catchError((error) {
-                    logErr('Error clearing thumbnail cache for series: ${seriesScreenState.widget.seriesPath.path}', error);
-                  });
-                }
-              } else {
-                if (operationSuccessful) library.clearAllThumbnailCache().then((_) {
+                  // Also clear Flutter's image cache
+                  imageCache.clear();
+                  imageCache.clearLiveImages();
+                }).catchError((error) {
+                  logErr('Error clearing thumbnail cache for series: ${seriesScreenState.widget.seriesPath.path}', error);
+                });
+
+                library.reloadLibrary(force: true, showSnackBar: false).then((_) => snackBar('Cleared Series thumbnail cache and Reloaded!', severity: InfoBarSeverity.success));
+              }
+            } else {
+              void clearAllThumbnailCache() {
+                snackBar('Clearing ALL thumbnail cache...', severity: InfoBarSeverity.info);
+
+                library.clearAllThumbnailCache().then((_) {
                   logTrace('Cleared all thumbnail cache');
 
                   // Also clear Flutter's image cache
@@ -202,81 +207,101 @@ class _CustomKeyboardListenerState extends State<CustomKeyboardListener> {
                 }).catchError((error) {
                   logErr('Error clearing all thumbnail cache', error);
                 });
-              }
-            }
 
-            if (operationSuccessful) {
-              library.reloadLibrary(force: true, showSnackBar: false).then((_) => snackBar('Reloaded and Cleared thumbnail cache!', severity: InfoBarSeverity.success));
-              Manager.setState();
+                library.reloadLibrary(force: true, showSnackBar: false).then((_) => snackBar('Cleared thumbnail cache and Reloaded!', severity: InfoBarSeverity.success));
+              }
+
+              if (Manager.settings.confirmClearAllThumbnails)
+                clearAllThumbnailCache();
+              else
+                // Confirm before clearing all thumbnails if the setting is not enabled
+                await showSimpleTickboxManagedDialog<bool>(
+                  context: context,
+                  id: 'confirm_clear_all_thumbnails',
+                  title: 'Clear All Thumbnails?',
+                  body: 'Are you sure you want to clear ALL thumbnail caches?\nThis will clear the cached thumbnails for all Series in your Library and they will be fetched again when you open a Series.',
+                  isPositiveButtonPrimary: true,
+                  hideTitle: false,
+                  positiveButtonText: 'Clear All Thumbnails',
+                  negativeButtonText: 'Cancel',
+                  tickboxLabel: 'Do not show this again',
+                  onPositive: (bool tickbox) {
+                    setState(() => Manager.settings.confirmClearAllThumbnails = tickbox);
+                    clearAllThumbnailCache();
+                  },
+                );
             }
-          } else {
-            if (!library.initialized) snackBar('Library is not initialized', severity: InfoBarSeverity.warning);
-            if (library.isIndexing) snackBar('Library is currently scanning\nPlease wait before reloading', severity: InfoBarSeverity.warning);
           }
-        } else
-        //
-        // Esc
-        if (event.logicalKey == LogicalKeyboardKey.escape) {
-          _handleBackNavigation(isEsc: true);
-        } else
-        //
-        //
-        if (event.logicalKey == LogicalKeyboardKey.enter) {
-          logTrace('Enter pressed');
-        } else
-        //
-        // Debug
-        if (event.logicalKey == LogicalKeyboardKey.f1) {
-          logTrace('F1 pressed: Debug');
-          showDebugDialog(ctx);
-        } else
-        //
-        // Rename
-        if (event.logicalKey == LogicalKeyboardKey.f2) {
-          logTrace('F2 pressed: Rename');
-        } else
-        //
-        // Modify path
-        if (event.logicalKey == LogicalKeyboardKey.f4) {
-          logTrace('F4 pressed: Modify path');
-        } else
-        //
-        // ctrl + N to expand/collapse Nth season
-        if (isCtrlPressed && event.logicalKey == LogicalKeyboardKey.digit1) {
-          _toggleSeason(1);
-        } else if (isCtrlPressed && event.logicalKey == LogicalKeyboardKey.digit2) {
-          _toggleSeason(2);
-        } else if (isCtrlPressed && event.logicalKey == LogicalKeyboardKey.digit3) {
-          _toggleSeason(3);
-        } else if (isCtrlPressed && event.logicalKey == LogicalKeyboardKey.digit4) {
-          _toggleSeason(4);
-        } else if (isCtrlPressed && event.logicalKey == LogicalKeyboardKey.digit5) {
-          _toggleSeason(5);
-        } else if (isCtrlPressed && event.logicalKey == LogicalKeyboardKey.digit6) {
-          _toggleSeason(6);
-        } else if (isCtrlPressed && event.logicalKey == LogicalKeyboardKey.digit7) {
-          _toggleSeason(7);
-        } else if (isCtrlPressed && event.logicalKey == LogicalKeyboardKey.digit8) {
-          _toggleSeason(8);
-        } else if (isCtrlPressed && event.logicalKey == LogicalKeyboardKey.digit9) {
-          _toggleSeason(9);
-        } else if (isCtrlPressed && event.logicalKey == LogicalKeyboardKey.digit0) {
-          _toggleSeason(0);
-        } else if (event.logicalKey == LogicalKeyboardKey.f11) {
-          WindowStateService.toggleFullScreen();
+
+          Manager.setState();
+        } else {
+          if (!library.initialized) snackBar('Library is not initialized', severity: InfoBarSeverity.warning);
+          if (library.isIndexing) snackBar('Library is currently scanning\nPlease wait before reloading', severity: InfoBarSeverity.warning);
         }
-      } else if (event is RawKeyUpEvent) {
-        // Update key states on key release
-        if (event.logicalKey == LogicalKeyboardKey.controlLeft || event.logicalKey == LogicalKeyboardKey.controlRight) {
-          isCtrlPressed = false;
-          KeyboardState.ctrlPressedNotifier.value = false;
-        }
-        if (event.logicalKey == LogicalKeyboardKey.shiftLeft || event.logicalKey == LogicalKeyboardKey.shiftRight) {
-          isShiftPressed = false;
-          KeyboardState.shiftPressedNotifier.value = false;
-        }
+      } else
+      //
+      // Esc
+      if (event.logicalKey == LogicalKeyboardKey.escape) {
+        _handleBackNavigation(isEsc: true);
+      } else
+      //
+      //
+      if (event.logicalKey == LogicalKeyboardKey.enter) {
+        logTrace('Enter pressed');
+      } else
+      //
+      // Debug
+      if (event.logicalKey == LogicalKeyboardKey.f1) {
+        logTrace('F1 pressed: Debug');
+        showDebugDialog(ctx);
+      } else
+      //
+      // Rename
+      if (event.logicalKey == LogicalKeyboardKey.f2) {
+        logTrace('F2 pressed: Rename');
+      } else
+      //
+      // Modify path
+      if (event.logicalKey == LogicalKeyboardKey.f4) {
+        logTrace('F4 pressed: Modify path');
+      } else
+      //
+      // ctrl + N to expand/collapse Nth season
+      if (isCtrlPressed && event.logicalKey == LogicalKeyboardKey.digit1) {
+        _toggleSeason(1);
+      } else if (isCtrlPressed && event.logicalKey == LogicalKeyboardKey.digit2) {
+        _toggleSeason(2);
+      } else if (isCtrlPressed && event.logicalKey == LogicalKeyboardKey.digit3) {
+        _toggleSeason(3);
+      } else if (isCtrlPressed && event.logicalKey == LogicalKeyboardKey.digit4) {
+        _toggleSeason(4);
+      } else if (isCtrlPressed && event.logicalKey == LogicalKeyboardKey.digit5) {
+        _toggleSeason(5);
+      } else if (isCtrlPressed && event.logicalKey == LogicalKeyboardKey.digit6) {
+        _toggleSeason(6);
+      } else if (isCtrlPressed && event.logicalKey == LogicalKeyboardKey.digit7) {
+        _toggleSeason(7);
+      } else if (isCtrlPressed && event.logicalKey == LogicalKeyboardKey.digit8) {
+        _toggleSeason(8);
+      } else if (isCtrlPressed && event.logicalKey == LogicalKeyboardKey.digit9) {
+        _toggleSeason(9);
+      } else if (isCtrlPressed && event.logicalKey == LogicalKeyboardKey.digit0) {
+        _toggleSeason(0);
+      } else if (event.logicalKey == LogicalKeyboardKey.f11) {
+        WindowStateService.toggleFullScreen();
       }
-    });
+    } else if (event is RawKeyUpEvent) {
+      // Update key states on key release
+      if (event.logicalKey == LogicalKeyboardKey.controlLeft || event.logicalKey == LogicalKeyboardKey.controlRight) {
+        isCtrlPressed = false;
+        KeyboardState.ctrlPressedNotifier.value = false;
+      }
+      if (event.logicalKey == LogicalKeyboardKey.shiftLeft || event.logicalKey == LogicalKeyboardKey.shiftRight) {
+        isShiftPressed = false;
+        KeyboardState.shiftPressedNotifier.value = false;
+      }
+    }
+    setState(() {});
   }
 
   void _handlePointerSignal(PointerDownEvent event) {

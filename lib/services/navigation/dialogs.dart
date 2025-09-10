@@ -1,13 +1,13 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/material.dart' show Material;
-import 'package:miruryoiki/main.dart';
-import 'package:miruryoiki/utils/screen_utils.dart';
 import 'package:provider/provider.dart';
+import '../../utils/screen_utils.dart';
 import '../../manager.dart';
 import '../../utils/logging.dart';
 import '../../utils/time_utils.dart';
 import '../../widgets/buttons/wrapper.dart';
 import '../../widgets/dialogs/show_dialog.dart';
+import '../../main.dart';
 import 'debug.dart';
 import 'navigation.dart';
 
@@ -40,7 +40,6 @@ Future<T?> showManagedDialog<T>({
   bool transparentBarrier = false,
   bool Function() dialogDoPopCheck = kReturnFalseCallback,
   bool closeExistingDialogs = false,
-
   VoidCallback? onDismiss,
 }) async {
   final navManager = Manager.navigation;
@@ -94,6 +93,10 @@ Future<T?> showSimpleManagedDialog<T>({
   String positiveButtonText = 'OK',
   String negativeButtonText = 'Cancel',
   bool isPositiveButtonPrimary = false,
+  bool hideTitle = false,
+
+  /// Optional custom title widget, overrides the title string if provided
+  Widget? titleWidget,
 
   /// Callback for the positive button, automatically closes the dialog
   Function()? onPositive,
@@ -113,7 +116,7 @@ Future<T?> showSimpleManagedDialog<T>({
     builder: (context) {
       return ManagedDialog(
         popContext: context,
-        title: Text(title),
+        title: hideTitle ? null : titleWidget ?? Text(title),
         contentBuilder: (context, __) => builder != null ? builder(context) : Text(body),
         constraints: constraints ??
             const BoxConstraints(
@@ -134,6 +137,103 @@ Future<T?> showSimpleManagedDialog<T>({
             text: positiveButtonText,
             onPressed: () {
               onPositive?.call();
+            },
+          ),
+        ],
+      );
+    },
+  );
+}
+
+Future<T?> showSimpleTickboxManagedDialog<T>({
+  required BuildContext context,
+  required String id,
+  required String title,
+
+  /// Body text of the dialog, if not provided, builder will be used
+  String body = '',
+  BoxConstraints? constraints,
+
+  /// Builder for the dialog content, if not provided, defaults to a Text widget
+  Widget Function(BuildContext)? builder,
+  String positiveButtonText = 'OK',
+  String negativeButtonText = 'Cancel',
+  bool isPositiveButtonPrimary = false,
+  bool hideTitle = false,
+  bool tickboxValue = false,
+
+  /// Callback when the tickbox value changes
+  ValueChanged<bool>? onTickboxChanged,
+  String tickboxLabel = 'Do not show this again',
+
+  /// Optional custom title widget, overrides the title string if provided
+  Widget? titleWidget,
+
+  /// Callback for the positive button, automatically closes the dialog
+  Function(bool tickboxValue)? onPositive,
+
+  /// Callback for the negative button, automatically closes the dialog
+  Function()? onNegative,
+}) async {
+  assert(
+    body.isNotEmpty || builder != null,
+    'Either body or builder must be provided for the dialog content',
+  );
+  bool localTickboxValue = tickboxValue;
+  return showManagedDialog(
+    context: context,
+    id: id,
+    title: title,
+    dialogDoPopCheck: () => true,
+    builder: (context) {
+      return ManagedDialog(
+        popContext: context,
+        title: hideTitle ? null : titleWidget ?? Text(title, style: Manager.subtitleStyle),
+        contentBuilder: (context, __) => Column(mainAxisSize: MainAxisSize.min, children: [
+          builder != null ? builder(context) : Text(body, style: Manager.bodyStyle),
+          const SizedBox(height: 24),
+          StatefulBuilder(
+            builder: (context, setState) {
+              return Align(
+                alignment: Alignment.centerLeft,
+                child: SizedBox(
+                  height: 20,
+                  child: Checkbox(
+                    checked: localTickboxValue,
+                    onChanged: (value) {
+                      if (value != null) {
+                        onTickboxChanged?.call(value);
+                        setState(() {
+                          localTickboxValue = value;
+                        });
+                      }
+                    },
+                    content: Text(tickboxLabel, style: Manager.bodyStyle),
+                  ),
+                ),
+              );
+            }
+          ),
+        ]),
+        constraints: constraints ??
+            const BoxConstraints(
+              maxWidth: 500,
+              minWidth: 300,
+            ),
+        actions: (popContext) => [
+          ManagedDialogButton(
+            popContext: popContext,
+            text: negativeButtonText,
+            onPressed: () {
+              onNegative?.call();
+            },
+          ),
+          ManagedDialogButton(
+            isPrimary: isPositiveButtonPrimary,
+            popContext: popContext,
+            text: positiveButtonText,
+            onPressed: () {
+              onPositive?.call(localTickboxValue);
             },
           ),
         ],
