@@ -1,6 +1,8 @@
 // import 'package:flutter/material.dart';
 // ignore_for_file: use_build_context_synchronously
 
+import 'dart:async';
+
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart' as mat;
@@ -78,6 +80,10 @@ class SettingsScreenState extends State<SettingsScreen> {
   FlyoutController controller = FlyoutController();
   Color tempColor = Colors.transparent;
   List<SeriesFormatPreview> _issuesPreview = [];
+  
+  int _buildClicks = 0;
+  Timer? _buildClickTimer;
+  bool _buildUnlocked = false;
 
   // ignore: unused_field
   bool _isFormatting = false;
@@ -695,7 +701,20 @@ class SettingsScreenState extends State<SettingsScreen> {
       );
     }
   }
-
+  
+  void a() {
+    _buildClicks++;
+    if (_buildClicks == 1) {
+      _buildClickTimer = Timer(Duration(seconds: 1), () {
+        _buildClicks = 0;
+      });
+    } else if (_buildClicks >= 5) {
+      _buildClickTimer?.cancel();
+      _buildClicks = 0;
+      snackBar('Carpaccio Sardo!', severity: InfoBarSeverity.info);
+    }
+  }
+  
   @override
   void initState() {
     super.initState();
@@ -1476,10 +1495,16 @@ class SettingsScreenState extends State<SettingsScreen> {
       4 => [
           SettingsCard(
             children: [
-              Text(
-                settingsList[4]["title"],
-                style: Manager.subtitleStyle,
+              Text(settingsList[4]["title"], style: Manager.subtitleStyle),
+              VDiv(12),
+              Text('Version: ${Manager.appVersion})', style: Manager.bodyStyle),
+              GestureDetector(
+                onTap: () => a(),
+                child: Text('Build Number: ${Manager.buildNumber}', style: Manager.bodyStyle),
               ),
+              if (_buildUnlocked) Text(' Carpaccio Sardo', style: Manager.bodyStyle.copyWith(color: Colors.red)),
+              VDiv(6),
+              Text('Last Update: ${Manager.lastUpdate}', style: Manager.bodyStyle),
               VDiv(12),
               Text(
                 '${Manager.appTitle} is a video tracking application that integrates with '

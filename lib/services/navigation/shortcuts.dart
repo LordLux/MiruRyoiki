@@ -116,6 +116,9 @@ class _CustomKeyboardListenerState extends State<CustomKeyboardListener> {
         // Open settings
         if (isCtrlPressed && event.logicalKey == LogicalKeyboardKey.comma) {
           logTrace('Ctrl + , pressed: Open settings');
+          if (homeKey.currentState != null && homeKey.currentState!.mounted) {
+            homeKey.currentState!.openSettings();
+          }
         } else
         //
         // Open search Palette

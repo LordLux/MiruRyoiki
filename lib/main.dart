@@ -99,6 +99,8 @@ void main(List<String> args) async {
   // Initialize session-based error logging
   await initializeLoggingSession();
 
+  Manager.init();
+
   Manager.parseArgs();
 
   // Gets the root isolate token
@@ -412,6 +414,39 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
     }
   }
 
+  void openSettings() => _onChanged(settingsIndex);
+
+  void _onChanged(int index) {
+    setState(() {
+      _selectedIndex = index;
+      lastSelectedSeriesPath = _selectedSeriesPath;
+      _selectedSeriesPath = null;
+      _isSeriesView = false;
+      Manager.currentDominantColor = null;
+
+      // Reset scroll when directly navigating to library
+      _resetScrollPosition(index);
+
+      // Register in navigation stack - add this code
+      final navManager = Provider.of<NavigationManager>(context, listen: false);
+
+      // Clear everything before adding a new pane
+      navManager.clearStack();
+
+      // Register the selected pane
+      final item = _navigationMap[index]!;
+      navManager.pushPane(item['id'], item['title']);
+
+      if (index == calendarIndex) {
+        nextFrame(() {
+          releaseCalendarScreenKey.currentState?.scrollToToday(animated: false);
+          // Refresh notifications and release data when navigating to calendar
+          releaseCalendarScreenKey.currentState?.loadReleaseData();
+        });
+      }
+    });
+  }
+
   @override
   void initState() {
     super.initState();
@@ -503,34 +538,7 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
                             releaseCalendarScreenKey.currentState?.focusToday();
                           }
                         },
-                        onChanged: (index) => setState(() {
-                          _selectedIndex = index;
-                          lastSelectedSeriesPath = _selectedSeriesPath;
-                          _selectedSeriesPath = null;
-                          _isSeriesView = false;
-                          Manager.currentDominantColor = null;
-
-                          // Reset scroll when directly navigating to library
-                          _resetScrollPosition(index);
-
-                          // Register in navigation stack - add this code
-                          final navManager = Provider.of<NavigationManager>(context, listen: false);
-
-                          // Clear everything before adding a new pane
-                          navManager.clearStack();
-
-                          // Register the selected pane
-                          final item = _navigationMap[index]!;
-                          navManager.pushPane(item['id'], item['title']);
-
-                          if (index == calendarIndex) {
-                            nextFrame(() {
-                              releaseCalendarScreenKey.currentState?.scrollToToday(animated: false);
-                              // Refresh notifications and release data when navigating to calendar
-                              releaseCalendarScreenKey.currentState?.loadReleaseData();
-                            });
-                          }
-                        }),
+                        onChanged: _onChanged,
                         displayMode: _isSeriesView ? PaneDisplayMode.compact : PaneDisplayMode.auto,
                         indicator: AnimatedNavigationIndicator(
                           targetColor: Manager.currentDominantColor,

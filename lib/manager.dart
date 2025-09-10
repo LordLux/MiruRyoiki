@@ -5,6 +5,7 @@ import 'package:miruryoiki/main.dart';
 import 'package:miruryoiki/services/navigation/navigation.dart';
 import 'package:provider/provider.dart';
 import 'package:args/args.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 import 'enums.dart';
 import 'services/episode_navigation/anilist_progress_manager.dart';
@@ -15,7 +16,16 @@ import 'theme.dart';
 import 'utils/screen_utils.dart';
 
 class Manager {
+  static void init() async {
+    PackageInfo packageInfo = await PackageInfo.fromPlatform();
+    appVersion = packageInfo.version;
+    buildNumber = packageInfo.buildNumber;
+    lastUpdate = packageInfo.updateTime;
+  }
   static const String appTitle = "MiruRyoiki";
+  static late final String appVersion;
+  static late final String buildNumber;
+  static late final DateTime? lastUpdate;
 
   /// Indicates if the current dialog can be popped, used when dialogs have multiple 'views'
   static bool canPopDialog = true;
