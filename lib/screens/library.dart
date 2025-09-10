@@ -24,6 +24,7 @@ import '../utils/path_utils.dart';
 import '../utils/screen_utils.dart';
 import '../utils/time_utils.dart';
 import '../widgets/animated_order_tile.dart';
+import '../widgets/buttons/button.dart';
 import '../widgets/buttons/wrapper.dart';
 import '../widgets/page/header_widget.dart';
 import '../widgets/page/infobar.dart';
@@ -688,33 +689,21 @@ class LibraryScreenState extends State<LibraryScreen> {
                   ),
                   const SizedBox(width: 8),
                   SizedBox(
-                    height: 34,
-                    width: 34,
-                    child: MouseButtonWrapper(
-                      child: (_) => Acrylic(
-                        blurAmount: 50,
-                        luminosityAlpha: .1,
-                        shape: const RoundedRectangleBorder(borderRadius: BorderRadius.all(kComboBoxRadius)),
-                        child: IconButton(
-                          style: ButtonStyle(
-                            backgroundColor: WidgetStateColor.resolveWith((states) => states.contains(WidgetState.hovered) //
-                                ? Colors.white.withOpacity(.1)
-                                : Colors.transparent),
-                            shape: ButtonState.all(RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(4),
-                              side: BorderSide(color: Colors.white.withOpacity(0.1)),
-                            )),
-                          ),
-                          icon: AnimatedRotation(
+                      height: 34,
+                      width: 34,
+                      child: StandardButton(
+                        tooltip: 'Sort results ${!_sortDescending ? "Ascendingly" : "Descendingly"}',
+                        tooltipWaitDuration: Duration(milliseconds: 150),
+                        padding: EdgeInsets.zero,
+                        label: Center(
+                          child: AnimatedRotation(
                             duration: shortStickyHeaderDuration,
                             turns: _sortDescending ? 0 : 1,
                             child: Icon(_sortDescending ? FluentIcons.sort_lines : FluentIcons.sort_lines_ascending, color: Manager.pastelDominantColor),
                           ),
-                          onPressed: _onSortDirectionChanged,
                         ),
-                      ),
-                    ),
-                  ),
+                        onPressed: _onSortDirectionChanged,
+                      )),
                 ],
               ),
             ),
@@ -923,10 +912,10 @@ class LibraryScreenState extends State<LibraryScreen> {
                 duration: const Duration(milliseconds: 150),
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
                 decoration: BoxDecoration(
-                  color: isSelected ? Manager.accentColor.withOpacity(0.8) : Colors.white.withOpacity(0.1),
+                  color: isSelected ? Manager.accentColor.light : Colors.white.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(6),
                   border: Border.all(
-                    color: isSelected ? Manager.accentColor : Colors.white.withOpacity(0.2),
+                    color: isSelected ? Manager.accentColor.lightest : Colors.white.withOpacity(0.2),
                     width: 1,
                   ),
                 ),
@@ -936,13 +925,13 @@ class LibraryScreenState extends State<LibraryScreen> {
                     Icon(
                       _getViewTypeIcon(viewType),
                       size: 14,
-                      color: isSelected ? Colors.white : Manager.pastelDominantColor,
+                      color: Colors.white,
                     ),
                     const SizedBox(width: 4),
                     Text(
                       _getViewTypeLabel(viewType),
                       style: Manager.captionStyle.copyWith(
-                        color: isSelected ? Colors.white : Manager.pastelDominantColor,
+                        color: Colors.white,
                         fontSize: 11 * Manager.fontSizeMultiplier,
                       ),
                     ),
@@ -1612,7 +1601,7 @@ class LibraryScreenState extends State<LibraryScreen> {
       case SortOrder.progress:
         return 'Progress';
       case SortOrder.lastModified:
-        return 'Last Updated';
+        return 'Last Local Change';
       case SortOrder.dateAdded:
         return 'Date Added';
       case SortOrder.startDate:

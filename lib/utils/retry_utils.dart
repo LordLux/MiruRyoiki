@@ -46,13 +46,13 @@ class RetryUtils {
         lastError = error;
 
         // Check if we should retry this error
-        if (retryIf != null && !retryIf(error) && (error is! HandshakeException && error is! TimeoutException && error is! ClientException)) {
+        if (retryIf != null && !retryIf(error) && !(error is HandshakeException || error is TimeoutException || error is ClientException)) {
           logWarn('${operationName ?? 'Operation'} failed with non-retryable error: $error');
           rethrow;
         }
 
         // If we've exceeded max retries, don't retry
-        if (attempt > maxRetries && (error is! HandshakeException && error is! TimeoutException && error is! ClientException)) {
+        if (attempt > maxRetries && !(error is HandshakeException || error is TimeoutException || error is ClientException)) {
           logErr('${operationName ?? 'Operation'} failed after $maxRetries retries.', error, stackTrace);
           break;
         }

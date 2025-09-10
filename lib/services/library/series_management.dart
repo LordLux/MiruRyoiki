@@ -2,7 +2,7 @@ part of 'library_provider.dart';
 
 extension LibrarySeriesManagement on Library {
   Series? getSeriesByPath(PathString path) => _series.firstWhereOrNull((s) => s.path == path);
-  
+
   Series? getSeriesByAnilistId(int anilistId) => _series.firstWhereOrNull((s) => s.primaryAnilistId == anilistId);
 
   Series? getSeriesById(int id) => _series.firstWhereOrNull((s) => s.id == id);
@@ -50,7 +50,7 @@ extension LibrarySeriesManagement on Library {
     await _saveLibrary();
     notifyListeners();
   }
-  
+
   Future<void> playEpisode(Episode episode) async {
     try {
       openFile(episode.path);
@@ -119,6 +119,8 @@ extension LibrarySeriesManagement on Library {
 
     // Clear the thumbnail cache for this series
     await ThumbnailManager().clearThumbnailCacheForSeries(seriesPath.path);
+    notifyListeners();
+    Manager.setState();
 
     // Reset thumbnail statuses for all episodes in this series
     for (final season in series.seasons) {

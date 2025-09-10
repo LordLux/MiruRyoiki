@@ -174,9 +174,12 @@ class _CustomKeyboardListenerState extends State<CustomKeyboardListener> {
           if (library.initialized && !library.isIndexing) {
             // Check if we're in series view and clear thumbnails for that series
             final homeState = homeKey.currentState;
+            bool operationSuccessful = true;
+
             if (homeState != null && homeState.mounted) {
               if (homeState.isSeriesView) {
                 final seriesScreenState = getActiveSeriesScreenState();
+                snackBar('Clearing thumbnail cache...', severity: InfoBarSeverity.info);
                 if (seriesScreenState != null && seriesScreenState.widget.seriesPath.pathMaybe != null) {
                   // Clear thumbnails for this specific series (don't await, do it in background)
                   library.clearThumbnailCacheForSeries(seriesScreenState.widget.seriesPath).then((_) {
@@ -190,7 +193,7 @@ class _CustomKeyboardListenerState extends State<CustomKeyboardListener> {
                   });
                 }
               } else {
-                library.clearAllThumbnailCache().then((_) {
+                if (operationSuccessful) library.clearAllThumbnailCache().then((_) {
                   logTrace('Cleared all thumbnail cache');
 
                   // Also clear Flutter's image cache
@@ -202,7 +205,10 @@ class _CustomKeyboardListenerState extends State<CustomKeyboardListener> {
               }
             }
 
-            library.reloadLibrary(force: true, showSnackBar: false).then((_) => snackBar('Reloaded clearing Thumbnail Cache', severity: InfoBarSeverity.success));
+            if (operationSuccessful) {
+              library.reloadLibrary(force: true, showSnackBar: false).then((_) => snackBar('Reloaded and Cleared thumbnail cache!', severity: InfoBarSeverity.success));
+              Manager.setState();
+            }
           } else {
             if (!library.initialized) snackBar('Library is not initialized', severity: InfoBarSeverity.warning);
             if (library.isIndexing) snackBar('Library is currently scanning\nPlease wait before reloading', severity: InfoBarSeverity.warning);

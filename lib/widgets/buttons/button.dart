@@ -17,6 +17,7 @@ class StandardButton extends StatelessWidget {
   final String? tooltip;
   final Widget? tooltipWidget;
   final bool expand;
+  final Duration? tooltipWaitDuration;
   final EdgeInsets? padding;
 
   const StandardButton({
@@ -31,6 +32,7 @@ class StandardButton extends StatelessWidget {
     this.tooltip,
     this.tooltipWidget,
     this.expand = false,
+    this.tooltipWaitDuration,
     this.padding,
   });
 
@@ -40,6 +42,7 @@ class StandardButton extends StatelessWidget {
       isButtonDisabled: isButtonDisabled,
       isLoading: isLoading,
       tooltip: tooltip,
+      tooltipWaitDuration: tooltipWaitDuration,
       tooltipWidget: tooltipWidget,
       child: (isHovered) => Button(
         onPressed: isButtonDisabled ? null : onPressed,
