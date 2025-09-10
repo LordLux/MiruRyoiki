@@ -52,9 +52,8 @@ Color darken(Color color, [double amount = 0.1]) {
 }
 
 Color _changeLighting(Color color, double amount) {
-  final hsl = HSLColor.fromColor(color);
-  final hslLight = hsl.withLightness((hsl.lightness + amount).clamp(0.0, 1.0));
-  return hslLight.toColor();
+  if (amount < 0) return Color.lerp(color, Colors.black, -amount)!;
+  return Color.lerp(color, Colors.white, amount)!;
 }
 
 Color lighten(Color color, [double amount = 0.1]) {
@@ -106,6 +105,8 @@ Color determineTextColor(
   Color backgroundColor, {
   double preferBlack = 0.5,
   double preferWhite = 0.5,
+  Color lightColor = Colors.white,
+  Color darkColor = Colors.black,
 }) {
   // Ensure preferBlack and preferWhite are between 0 and 1
   preferBlack = preferBlack.clamp(0.0, 1.0);
@@ -127,11 +128,8 @@ Color determineTextColor(
   }
 
   // Determine the text color based on luminance
-  if (adjustedLuminance < 0.5) {
-    return Colors.white;
-  } else {
-    return Colors.black;
-  }
+  if (adjustedLuminance < 0.5) return lightColor;
+  return darkColor;
 }
 
 /// Calculate and cache the dominant color from the image

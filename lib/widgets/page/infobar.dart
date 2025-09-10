@@ -106,7 +106,6 @@ class _MiruRyoikiInfobarState extends State<MiruRyoikiInfobar> {
                     getInfoBarOffset = math.max(posterHeight - squareSize - 16, 0);
                   }
                 }
-                print('width: $posterWidth, height: $posterHeight, offset: $getInfoBarOffset');
 
                 final double squareness = (getInfoBarOffset / 31);
                 return child(squareness, posterWidth, posterHeight, imageProvider, getInfoBarOffset);

@@ -232,19 +232,22 @@ class NotificationsContentState extends State<_NotificationsContent> {
                     ),
                   ),
                   if (_unreadCount > 0)
-                    Container(
-                      margin: const EdgeInsets.only(left: 8),
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: Manager.accentColor,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        _unreadCount.toString(),
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
+                    Transform.translate(
+                      offset: Offset(0, 4 * Manager.fontSizeMultiplier),
+                      child: Container(
+                        margin: const EdgeInsets.only(left: 8),
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Manager.currentDominantColor ?? Manager.accentColor,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          '$_unreadCount',
+                          style: TextStyle(
+                            color: determineTextColor(Manager.currentDominantColor ?? Manager.accentColor, darkColor: lighten(Colors.black, 0.2)),
+                            fontSize: 11 * Manager.fontSizeMultiplier,
+                            fontWeight: FontWeight.w900,
+                          ),
                         ),
                       ),
                     ),
@@ -393,7 +396,7 @@ class NotificationsContentState extends State<_NotificationsContent> {
     return Row(children: [
       Container(
         decoration: BoxDecoration(
-            color: notification.isRead ? Colors.transparent : lighten(Manager.accentColor.lightest),
+            color: notification.isRead ? Colors.transparent : Manager.currentDominantColor ?? Manager.accentColor,
             borderRadius: BorderRadius.only(
               topLeft: Radius.circular(3),
               bottomLeft: Radius.circular(3),

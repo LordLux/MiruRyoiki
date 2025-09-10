@@ -15,6 +15,7 @@ import '../services/library/library_provider.dart';
 import '../services/navigation/dialogs.dart';
 import '../services/navigation/navigation.dart';
 import '../utils/logging.dart';
+import 'animated_icon.dart' as animIcon;
 import 'dialogs/notifications.dart';
 
 class ReleaseNotificationWidget extends StatefulWidget {
@@ -154,14 +155,17 @@ class _ReleaseNotificationWidgetState extends State<ReleaseNotificationWidget> {
               children: [
                 Transform.scale(
                   scale: 1.2,
-                  child: mat.Icon(
-                    isEnabled ? (_notificationsOpen ? Symbols.notifications : Symbols.notifications) : mat.Icons.notifications_off,
-                    size: 17,
-                    color: isEnabled ? (hasNotifications ? Manager.accentColor : Colors.white.withOpacity(0.8)) : Colors.white.withOpacity(0.4),
-                    weight: 300,
-                    fill: _notificationsOpen ? 1.0 : 0.0,
-                    grade: 0,
-                    opticalSize: 40,
+                  child: animIcon.AnimatedIcon(
+                    duration: const Duration(milliseconds: 300),
+                    icon: mat.Icon(
+                      isEnabled ? (_notificationsOpen ? Symbols.notifications : Symbols.notifications) : mat.Icons.notifications_off,
+                      size: 17,
+                      color: isEnabled ? (hasNotifications ? Manager.currentDominantColor ?? Manager.accentColor : Colors.white.withOpacity(0.8)) : Colors.white.withOpacity(0.4),
+                      weight: 300,
+                      fill: _notificationsOpen ? 1.0 : 0.0,
+                      grade: 0,
+                      opticalSize: 40,
+                    ),
                   ),
                 ),
                 if (hasNotifications && isEnabled)
