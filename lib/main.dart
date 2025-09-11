@@ -1123,7 +1123,6 @@ Future<void> _registerWindowsUrlScheme(String scheme) async {
   }
 }
 
-// TODO fix controller attached to multiple scroll views error on library screen
 // TODO 'correct' dominant color from series if too dark
 // TODO add click and hover on lists in infobar
 // TODO move hidden series switches to settings

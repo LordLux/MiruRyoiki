@@ -1182,6 +1182,7 @@ class LibraryScreenState extends State<LibraryScreen> {
     return ScrollConfiguration(
       behavior: ScrollConfiguration.of(context).copyWith(overscroll: true, platform: TargetPlatform.windows, scrollbars: false),
       child: DynMouseScroll(
+        controller: widget.scrollController,
         stopScroll: KeyboardState.ctrlPressedNotifier,
         scrollSpeed: 1.0,
         enableSmoothScroll: Manager.animationsEnabled,
