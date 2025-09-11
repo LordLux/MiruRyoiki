@@ -80,7 +80,7 @@ class SettingsScreenState extends State<SettingsScreen> {
   FlyoutController controller = FlyoutController();
   Color tempColor = Colors.transparent;
   List<SeriesFormatPreview> _issuesPreview = [];
-  
+
   int _buildClicks = 0;
   Timer? _buildClickTimer;
   bool _buildUnlocked = false;
@@ -701,7 +701,7 @@ class SettingsScreenState extends State<SettingsScreen> {
       );
     }
   }
-  
+
   void a() {
     _buildClicks++;
     if (_buildClicks == 1) {
@@ -714,7 +714,7 @@ class SettingsScreenState extends State<SettingsScreen> {
       snackBar('Carpaccio Sardo!', severity: InfoBarSeverity.info);
     }
   }
-  
+
   @override
   void initState() {
     super.initState();
@@ -1269,16 +1269,14 @@ class SettingsScreenState extends State<SettingsScreen> {
                             context: context,
                             id: 'dominantColorSource',
                             title: 'Recalculate Colors?',
-                            body: 'Would you like to recalculate all dominant colors using the new source?',
-                            onPositive: () {
+                            body: 'Would you like to recalculate all dominant colors using the new source?\n\nThis may take some time depending on the size of your library.',
+                            onPositive: () async {
                               settings.dominantColorSource = value;
                               final library = Provider.of<Library>(context, listen: false);
-                              library.calculateDominantColors(forceRecalculate: true);
 
-                              snackBar(
-                                'Dominant colors recalculated using ${value.name_} source.',
-                                severity: InfoBarSeverity.info,
-                              );
+                              snackBar('Recalculating dominant colors using ${value.name_} source...', severity: InfoBarSeverity.info);
+                              await library.calculateDominantColors(forceRecalculate: true);
+                              snackBar('Dominant colors recalculated successfully!', severity: InfoBarSeverity.success);
                             },
                           );
                         },

@@ -237,6 +237,39 @@ Future<(Color?, bool)> _extractColorFromPath(Series series, String imagePath) as
   return (null, false);
 }
 
+/// Corrects dark dominant colors by making them lighter and more vibrant
+Color _correctDarkDominantColor(Color color) {
+  final HSLColor hsl = HSLColor.fromColor(color);
+
+  // Define thresholds and correction parameters
+  const double minLightness = 0.3; // Colors below this lightness will be corrected
+  const double targetLightness = 0.45; // Target lightness for corrected colors
+  const double saturationBoost = 0.15; // Amount to boost saturation
+
+  // Only correct if the color is too dark
+  if (hsl.lightness < minLightness) {
+    // Calculate the correction amount based on how dark the color is
+    final lightnessDeficit = minLightness - hsl.lightness;
+    final correctionFactor = (lightnessDeficit / minLightness).clamp(0.0, 1.0);
+
+    // Apply progressive lightness correction
+    final newLightness = hsl.lightness + (targetLightness - hsl.lightness) * correctionFactor;
+
+    // Apply saturation boost, but less for already saturated colors
+    final saturationMultiplier = 1.0 - hsl.saturation; // Less boost for already saturated colors
+    final newSaturation = (hsl.saturation + (saturationBoost * saturationMultiplier)).clamp(0.0, 1.0);
+
+    final correctedHsl = hsl.withLightness(newLightness).withSaturation(newSaturation);
+    final correctedColor = correctedHsl.toColor();
+
+    log('   Color correction applied: ${color.toHex()} → ${correctedColor.toHex()} (lightness: ${hsl.lightness.toStringAsFixed(2)} → ${newLightness.toStringAsFixed(2)}, saturation: ${hsl.saturation.toStringAsFixed(2)} → ${newSaturation.toStringAsFixed(2)})');
+    return correctedColor;
+  }
+
+  // Return original color if it's not too dark
+  return color;
+}
+
 /// Entry point for extracting color in an isolate
 Future<Color?> _isolateExtractColor((ByteData, int, int) data) async {
   try {
@@ -248,7 +281,12 @@ Future<Color?> _isolateExtractColor((ByteData, int, int) data) async {
     final paletteGenerator = await PaletteGenerator.fromByteData(encoded_image);
 
     // Try vibrant color first, fall back to dominant
-    return paletteGenerator.vibrantColor?.color ?? paletteGenerator.dominantColor?.color;
+    Color? extractedColor = paletteGenerator.vibrantColor?.color ?? paletteGenerator.dominantColor?.color;
+
+    // Apply dark color correction if we found a color
+    if (extractedColor != null) extractedColor = _correctDarkDominantColor(extractedColor);
+
+    return extractedColor;
   } catch (e) {
     logErr('Error extracting color from image', e);
     return null;
