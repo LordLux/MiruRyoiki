@@ -14,13 +14,15 @@ import '../manager.dart';
 import 'time_utils.dart';
 import 'path_utils.dart';
 
-bool doLogRelease = false; // Set to true to enable logging in release mode
-bool doLogTrace = false; // Set to true to enable trace logging; dotrace
+bool doLogRelease = true; // Set to true to enable logging in release mode
+bool doLogTrace = true; // Set to true to enable trace logging; dotrace
 bool doLogComplexError = false; // Set to true to enable complex error logging
 
 // Session-based logging variables
 String? _sessionId;
 File? _sessionLogFile;
+
+Logger logger = Logger();
 
 /// Initialize logging session with a unique timestamp
 /// Call this once at app startup
@@ -117,16 +119,28 @@ int _getLogRetentionDays() {
 }
 
 void _log(LogLevel level, String msg, {Object? error, StackTrace? stackTrace, DateTime? time}) {
-  switch (level) {
-    case LogLevel.none:
-    case LogLevel.trace:
-    case LogLevel.debug:
-    case LogLevel.info:
-    case LogLevel.warning:
-      developer.log(msg);
-    case LogLevel.error:
-      logger.e(msg, error: error, stackTrace: stackTrace, time: time);
-  }
+  if (kDebugMode)
+    switch (level) {
+      case LogLevel.none:
+      case LogLevel.trace:
+      case LogLevel.debug:
+      case LogLevel.info:
+      case LogLevel.warning:
+        developer.log(msg);
+      case LogLevel.error:
+        logger.e(msg, error: error, stackTrace: stackTrace, time: time);
+    }
+  else
+    switch (level) {
+      case LogLevel.none:
+      case LogLevel.trace:
+      case LogLevel.debug:
+      case LogLevel.info:
+      case LogLevel.warning:
+        logger.i(msg);
+      case LogLevel.error:
+        logger.e(msg, error: error, stackTrace: stackTrace, time: time);
+    }
 }
 
 /// Logs a message with an optional text color and background color.
@@ -296,8 +310,6 @@ String getColorEscapeCodeBg(Color color) {
   return '\x1B[48;2;$r;$g;${b}m';
 }
 
-Logger logger = Logger();
-
 /// Logs multiple messages with optional text colors and background colors.
 ///
 /// The `messages` parameter is a list of lists, where each inner list contains the String `message`,
@@ -314,7 +326,7 @@ Logger logger = Logger();
 /// ```
 /// This will log three messages with different text and background colors.
 void logMulti(List<List<dynamic>> messages, {bool showTime = true}) {
-  if (!doLogRelease && !kDebugMode) return;
+  if (!doLogRelease && !kDebugMode) return; // Skip logging in release mode if disabled
   String logMessage = '';
   for (var innerList in messages) {
     String msg = innerList[0];

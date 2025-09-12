@@ -12,7 +12,11 @@ class LibraryScanProgressManager {
   factory LibraryScanProgressManager() => _instance;
   LibraryScanProgressManager._internal();
 
-  final ValueNotifier<double> _progress = ValueNotifier<double>(0.0);
+  /// Minimum initial progress value to show the bar (to show the dot)
+  static final double kMinInitialProgressValue = 0.015;
+  
+  /// Notifier that carries the current progress value (0.0 to 1.0)
+  final ValueNotifier<double> _progress = ValueNotifier<double>(kMinInitialProgressValue);
 
   /// Notifier that tells widgets whether to show/hide the bar
   final ValueNotifier<bool> _isShowingNotifier = ValueNotifier<bool>(false);
@@ -28,6 +32,9 @@ class LibraryScanProgressManager {
   ValueNotifier<bool> get showingNotifier => _isShowingNotifier;
   ValueNotifier<Color> get styleNotifier => _styleNotifier;
   ValueNotifier<double> get progressNotifier => _progress;
+    
+  /// Resets the progress (without animation)
+  void resetProgress() => _progress.value = kMinInitialProgressValue;
 
   /// Shows the status bar immediately, with given message/style.
   void show(
@@ -112,8 +119,8 @@ class _AnimatedProgressIndicatorState extends State<AnimatedProgressIndicator> {
         _previousValue = progress;
 
         return TweenAnimationBuilder<double>(
-          tween: Tween(begin: beginValue, end: progress),
-          duration: const Duration(milliseconds: 600),
+          tween: Tween(begin: progress == 0.0 ? 0.0 : beginValue, end: progress),
+          duration: progress == 0.0 ? Duration.zero : const Duration(milliseconds: 600),
           curve: Curves.easeOut,
           builder: (context, animatedValue, _) {
             return mat.LinearProgressIndicator(

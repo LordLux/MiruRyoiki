@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:math' show min;
+import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
@@ -115,8 +116,13 @@ Future<void> initializeMiruRyoikiSaveDirectory() async {
 ///
 /// Throws if [initializeMiruRyoikiSaveDirectory] has not been called.
 Directory get miruRyoikiSaveDirectory {
-  if (_miruRyoiokiSaveDirectoryPath == null) //
-    throw StateError('miruRyoiokiSaveDirectoryPath not initialized. Call initializeMiruRyoiokiSaveDirectory() first.');
+  if (_miruRyoiokiSaveDirectoryPath == null) {
+    if (kDebugMode) {
+      return Directory(r'C:\Users\LordLux\AppData\Roaming\MiruRyoiki');
+    } else {
+      throw StateError('miruRyoiokiSaveDirectoryPath not initialized. initializeMiruRyoiokiSaveDirectory() has to be called first.');
+    }
+  }
 
   return Directory(_miruRyoiokiSaveDirectoryPath!);
 }

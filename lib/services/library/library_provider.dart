@@ -28,6 +28,7 @@ import '../anilist/provider/anilist_provider.dart';
 import '../anilist/queries/anilist_service.dart';
 import '../file_system/cache.dart';
 import '../../services/navigation/show_info.dart';
+import '../../utils/color_utils.dart' as color_utils;
 import '../../utils/logging.dart';
 import '../../utils/path_utils.dart';
 import '../../utils/time_utils.dart';

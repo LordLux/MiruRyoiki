@@ -1,5 +1,7 @@
 import 'dart:io';
 import 'dart:ui';
+import 'dart:isolate';
+import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart' show ColorScheme, Colors, ThemeMode;
@@ -11,9 +13,11 @@ import '../enums.dart';
 import '../manager.dart';
 import '../models/series.dart';
 import '../services/file_system/cache.dart';
+import '../services/isolates/isolate_manager.dart';
 import '../theme.dart';
 import 'logging.dart';
 import 'path_utils.dart';
+import 'image_color_extractor.dart';
 
 /// Generate a color scheme from a dominant color
 ColorScheme generateColorScheme(Color baseColor, {Brightness brightness = Brightness.dark}) {
@@ -142,9 +146,14 @@ Future<(Color?, bool)> calculateDominantColor(Series series, {bool forceRecalcul
   }
 
   // Skip if binding not initialized or no poster path
-  if (!WidgetsBinding.instance.isRootWidgetAttached) {
-    logDebug('   WidgetsBinding not initialized, initializing...');
-    WidgetsFlutterBinding.ensureInitialized();
+  try {
+    if (!WidgetsBinding.instance.isRootWidgetAttached) {
+      logDebug('   WidgetsBinding not initialized, initializing...');
+      WidgetsFlutterBinding.ensureInitialized();
+    }
+  } catch (e) {
+    // If we're in an isolate or WidgetsBinding is not available, skip this check
+    logTrace('   WidgetsBinding not available (possibly in isolate), continuing...');
   }
 
   logTrace('  Calculating dominant color for ${substringSafe(series.name, 0, 20, '"')}...');
@@ -185,6 +194,33 @@ Future<(Color?, bool)> calculateDominantColor(Series series, {bool forceRecalcul
   return await _extractColorFromPath(series, imagePath);
 }
 
+/// Calculate dominant colors for multiple series using isolate manager with progress
+/// Returns a map of series ID to dominant color and whether it was updated
+Future<Map<String, Map<String, dynamic>>> calculateDominantColorsWithProgress({
+  required List<Series> series,
+  required bool forceRecalculate,
+  required int dominantColorSourceIndex,
+  void Function()? onStart,
+  void Function(int processed, int total)? onProgress,
+}) async {
+  final isolateManager = IsolateManager();
+  
+  // Serialize series for the isolate
+  final serializedSeries = series.map((s) => s.toJson()).toList();
+  
+  return await isolateManager.runIsolateWithProgress<CalculateDominantColorsParams, Map<String, Map<String, dynamic>>>(
+    task: calculateDominantColorsIsolate,
+    params: CalculateDominantColorsParams(
+      serializedSeries: serializedSeries,
+      forceRecalculate: forceRecalculate,
+      dominantColorSourceIndex: dominantColorSourceIndex,
+      replyPort: ReceivePort().sendPort, // This will be replaced by the isolate manager
+    ),
+    onStart: onStart,
+    onProgress: onProgress,
+  );
+}
+
 /// Helper method to get cached Anilist images
 Future<String?> _getAnilistCachedImagePath(Series series) async {
   final anilistData = series.anilistData;
@@ -211,15 +247,37 @@ Future<String?> _getAnilistCachedImagePath(Series series) async {
 Future<(Color?, bool)> _extractColorFromPath(Series series, String imagePath) async {
   // Calculate color using compute to avoid UI blocking
   try {
-    // Use compute to process on a background thread
+    // Check if we can use Flutter's painting system
+    bool canUseFlutterPainting = false;
+    try {
+      if (WidgetsBinding.instance.isRootWidgetAttached) {
+        canUseFlutterPainting = true;
+      }
+    } catch (e) {
+      // We're likely in an isolate or Flutter binding isn't available
+      canUseFlutterPainting = false;
+    }
+
     final imageFile = File(imagePath);
     if (await imageFile.exists()) {
-      final Uint8List imageBytes = await imageFile.readAsBytes();
-      final Image image = (await decodeImageFromList(imageBytes));
-      final ByteData byteData = (await image.toByteData())!;
+      Color? newColor;
 
-      // Force UI update by using a separate isolate
-      final Color? newColor = await compute(_isolateExtractColor, (byteData, image.width, image.height));
+      if (canUseFlutterPainting) {
+        // Use the existing Flutter-based approach
+        final Uint8List imageBytes = await imageFile.readAsBytes();
+        final Image image = (await decodeImageFromList(imageBytes));
+        final ByteData byteData = (await image.toByteData())!;
+
+        // Force UI update by using a separate isolate
+        newColor = await compute(_isolateExtractColor, (byteData, image.width, image.height));
+      } else {
+        // Use the pure Dart approach that works in isolates
+        // For banners, prefer background colors; for posters, prefer vibrant colors
+        final sourceType = Manager.dominantColorSource;
+        final preferBackground = sourceType == DominantColorSource.banner;
+        newColor = await ImageColorExtractor.extractDominantColor(imagePath, preferBackground: preferBackground);
+      }
+
       logMulti([
         ['   Dominant color calculated: '],
         [newColor?.toHex() ?? 'None', newColor ?? Colors.yellow, newColor == null ? Colors.red : Colors.transparent],

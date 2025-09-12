@@ -1124,6 +1124,7 @@ Future<void> _registerWindowsUrlScheme(String scheme) async {
 }
 
 // TODO 'correct' dominant color from series if too dark
+//    TODO check for correct color source when getting on demand dominant color
 // TODO add click and hover on lists in infobar
 // TODO move hidden series switches to settings
 // TODO add ctrl + tab navigation

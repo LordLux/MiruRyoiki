@@ -1,6 +1,12 @@
 import 'dart:async';
 import 'dart:isolate';
+import 'dart:io';
+import 'dart:convert';
+import 'dart:ui' show Color;
+
 import 'package:flutter/services.dart';
+import 'package:flutter/widgets.dart' hide Image, HSLColor;
+import 'package:crypto/crypto.dart';
 import 'package:video_data_utils/video_data_utils.dart';
 import '../../main.dart' show rootIsolateToken;
 import '../../models/metadata.dart';
@@ -9,6 +15,7 @@ import '../../enums.dart';
 import '../../models/anilist/anime.dart';
 import '../../utils/logging.dart';
 import '../../utils/path_utils.dart';
+import '../../utils/image_color_extractor.dart';
 
 class _IsolateProgressUpdate {
   final int processed;
@@ -38,6 +45,22 @@ class SortSeriesParams {
     required this.progressData,
     required this.replyPort,
   });
+}
+
+class CalculateDominantColorsParams {
+  final List<Map<String, dynamic>> serializedSeries;
+  final bool forceRecalculate;
+  final int dominantColorSourceIndex; // Use index instead of enum
+  final SendPort replyPort;
+
+  CalculateDominantColorsParams({
+    required this.serializedSeries,
+    required this.forceRecalculate,
+    required this.dominantColorSourceIndex,
+    required this.replyPort,
+  });
+
+  DominantColorSource get dominantColorSource => DominantColorSource.values[dominantColorSourceIndex];
 }
 
 class _IsolateTask {
@@ -72,6 +95,8 @@ Future<void> _isolateEntry(dynamic isolateTask) async {
       data.params.replyPort.send(const _IsolateStarted());
     } else if (data.params is SortSeriesParams) {
       data.params.replyPort.send(const _IsolateStarted());
+    } else if (data.params is CalculateDominantColorsParams) {
+      data.params.replyPort.send(const _IsolateStarted());
     }
     // The task is now responsible for sending its own completion message.
     await Function.apply(data.task, [data.params]);
@@ -80,6 +105,8 @@ Future<void> _isolateEntry(dynamic isolateTask) async {
     if (data.params is ProcessFilesParams) {
       data.params.replyPort.send(_IsolateError(e.toString(), stack.toString()));
     } else if (data.params is SortSeriesParams) {
+      data.params.replyPort.send(_IsolateError(e.toString(), stack.toString()));
+    } else if (data.params is CalculateDominantColorsParams) {
       data.params.replyPort.send(_IsolateError(e.toString(), stack.toString()));
     }
   }
@@ -103,7 +130,7 @@ class IsolateManager {
     final token = rootIsolateToken;
     if (token == null) throw StateError('IsolateManager cannot run without a valid RootIsolateToken.');
 
-    // Special handling for ProcessFilesParams and SortSeriesParams to inject the correct SendPort
+    // Special handling for ProcessFilesParams, SortSeriesParams, and CalculateDominantColorsParams to inject the correct SendPort
     P actualParams = params;
     if (params is ProcessFilesParams) {
       actualParams = ProcessFilesParams(params.files, receivePort.sendPort) as P;
@@ -114,6 +141,13 @@ class IsolateManager {
         sortDescending: params.sortDescending,
         sortData: params.sortData,
         progressData: params.progressData,
+        replyPort: receivePort.sendPort,
+      ) as P;
+    } else if (params is CalculateDominantColorsParams) {
+      actualParams = CalculateDominantColorsParams(
+        serializedSeries: params.serializedSeries,
+        forceRecalculate: params.forceRecalculate,
+        dominantColorSourceIndex: params.dominantColorSourceIndex,
         replyPort: receivePort.sendPort,
       ) as P;
     }
@@ -130,6 +164,14 @@ class IsolateManager {
         if (onStart != null) onStart();
       } else if (message is _IsolateProgressUpdate) {
         onProgress?.call(message.processed, message.total);
+        if (actualParams is CalculateDominantColorsParams) {
+          final processedIndex = message.processed - 4;
+          if (processedIndex >= 0 && processedIndex < actualParams.serializedSeries.length) {
+            final seriesName = actualParams.serializedSeries[processedIndex]['name'] ?? 'Unknown';
+            final dominantColor = Color(actualParams.serializedSeries[processedIndex]['dominantColor'] ?? 0).toHex();
+            print('Processed: $seriesName, Dominant Color: $dominantColor');
+          }
+        }
       } else if (message is _IsolateError) {
         completer.completeError(message.error, StackTrace.fromString(message.stackTrace));
         receivePort.close();
@@ -191,10 +233,10 @@ Future<void> processFilesIsolate(ProcessFilesParams params) async {
 /// Isolate task that sorts series and sends progress updates.
 Future<void> sortSeriesIsolate(SortSeriesParams params) async {
   final sortOrder = SortOrder.values[params.sortOrderIndex];
-  
+
   // Convert serialized series back to Series objects
   final series = params.serializedSeries.map((json) => Series.fromJson(json)).toList();
-  
+
   final List<Series> seriesCopy = List.from(series);
 
   Comparator<Series> comparator;
@@ -307,4 +349,135 @@ Future<void> sortSeriesIsolate(SortSeriesParams params) async {
 
   // Send the final result
   params.replyPort.send(seriesCopy);
+}
+
+/// Isolate task that calculates dominant colors and sends progress updates.
+Future<void> calculateDominantColorsIsolate(CalculateDominantColorsParams params) async {
+  final results = <String, Map<String, dynamic>>{};
+  final totalSeries = params.serializedSeries.length;
+  int processedCount = 0;
+
+  for (final serializedSeries in params.serializedSeries) {
+    try {
+      // Check if we need to process this series before deserializing
+      final hasDominantColor = serializedSeries['dominantColor'] != null;
+      if (!params.forceRecalculate && hasDominantColor) {
+        processedCount++;
+        continue;
+      }
+
+      // Deserialize the series
+      final series = Series.fromJson(serializedSeries);
+
+      // Calculate the dominant color using the isolate version
+      final (colorResult, (success, errorMessage)) = await _calculateDominantColorInIsolate(series, params.dominantColorSource);
+
+      if (!success) {
+        results[series.path.path] = {
+          'error': 'Failed to extract color for ${series.name}: $errorMessage',
+          'changed': false,
+        };
+        continue;
+      }
+
+      if (colorResult != null) {
+        results[series.path.path] = {
+          'dominantColor': colorResult.value,
+          'changed': true,
+        };
+      }
+    } catch (e, st) {
+      // Log error but continue processing other series - include stack trace for debugging
+      final seriesName = serializedSeries['name'] ?? 'Unknown';
+      results[serializedSeries['path'] as String] = {
+        'error': 'Error processing $seriesName: $e\nStack: ${st.toString().split('\n').take(3).join('\n')}',
+        'changed': false,
+      };
+    } finally {
+      processedCount++;
+
+      // Send progress update every few series or on completion
+      if (processedCount % 3 == 0 || processedCount == totalSeries) {
+        params.replyPort.send(_IsolateProgressUpdate(processedCount, totalSeries));
+      }
+    }
+  }
+
+  // Send the final result
+  params.replyPort.send(results);
+}
+
+/// Helper function to calculate dominant color in isolate
+Future<(Color?, (bool, String?))> _calculateDominantColorInIsolate(Series series, DominantColorSource sourceType) async {
+  PathString? imagePath;
+
+  // Determine image path based on source type and image source preferences
+  if (sourceType == DominantColorSource.poster) {
+    // Check for AniList poster first if it should be prioritized, then local
+    if (series.anilistPosterUrl != null) {
+      // Try to get the cached AniList image path
+      imagePath = await _getCachedAnilistImagePath(series.anilistPosterUrl!);
+    }
+
+    // Fall back to local poster if no AniList image or not cached
+    if (imagePath == null && series.folderPosterPath != null) {
+      imagePath = series.folderPosterPath;
+    }
+  } else {
+    // Banner source - same logic
+    if (series.anilistBannerUrl != null) {
+      // Try to get the cached AniList image path
+      imagePath = await _getCachedAnilistImagePath(series.anilistBannerUrl!);
+    }
+
+    // Fall back to local banner if no AniList image or not cached
+    if (imagePath == null && series.folderBannerPath != null) {
+      imagePath = series.folderBannerPath;
+    }
+  }
+
+  if (imagePath == null || imagePath.pathMaybe == null) return (null, (false, 'No image source available'));
+
+  // Extract color from the image file
+  try {
+    final imageFile = File(imagePath.path);
+    if (!await imageFile.exists()) return (null, (false, 'Cached image file does not exist'));
+
+    // Use the pure Dart image color extractor that works in isolates
+    // For banners, prefer background colors; for posters, prefer vibrant colors
+    final preferBackground = sourceType == DominantColorSource.banner;
+    final extractedColor = await ImageColorExtractor.extractDominantColor(
+      imagePath.path, 
+      preferBackground: preferBackground
+    );
+
+    return (extractedColor, (true, null));
+  } catch (e) {
+    return (null, (false, 'Error extracting color: $e'));
+  }
+}
+
+/// Helper to get cached AniList image path in isolate (simplified version)
+Future<PathString?> _getCachedAnilistImagePath(String url) async {
+  try {
+    // Recreate the same caching logic used by ImageCacheService
+    // Generate filename from URL using MD5 hash (matching the cache service logic)
+    final bytes = utf8.encode(url);
+    final digest = md5.convert(bytes);
+    final extension = url.split('.').last.split('?').first;
+    final filename = '${digest.toString()}.$extension';
+
+    // Get the cache directory path (matching the cache service path)
+    final dir = miruRyoikiSaveDirectory;
+    final cacheDir = Directory('${dir.path}/image_cache');
+    final cachedFile = File('${cacheDir.path}/$filename');
+
+    if (await cachedFile.exists()) {
+      return PathString(cachedFile.path);
+    }
+
+    return null;
+  } catch (e) {
+    return null;
+  }
 }

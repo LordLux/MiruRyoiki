@@ -96,7 +96,7 @@ extension LibraryScanning on Library {
         scanResult = await isolateManager.runIsolateWithProgress<ProcessFilesParams, Map<PathString, Metadata>>(
           task: processFilesIsolate,
           params: ProcessFilesParams(filesToProcess.toList(), dummySendPort),
-          onStart: () => LibraryScanProgressManager().show(0.015),
+          onStart: () => LibraryScanProgressManager().resetProgress(),
           onProgress: (processed, total) {
             scanProgress.value = (processed, total);
             LibraryScanProgressManager().show(processed.toDouble() / total.toDouble());
@@ -199,7 +199,7 @@ extension LibraryScanning on Library {
 
       // --- 3d. Finalize ---
       _series = updatedSeriesList; // Save the updated series list to memory
-      
+
       await _saveLibrary(); // Save the updated library to database
 
       if (showSnack) {
@@ -270,7 +270,7 @@ extension LibraryScanning on Library {
         .whereNotNull()
         .toList();
 
-  final series = Series(name: name, path: seriesPath, seasons: [], folderPosterPath: posterPath, folderBannerPath: bannerPath);
+    final series = Series(name: name, path: seriesPath, seasons: [], folderPosterPath: posterPath, folderBannerPath: bannerPath);
     return _organizeEpisodesIntoSeasons(series, episodes);
   }
 
@@ -469,48 +469,79 @@ extension LibraryScanning on Library {
       return;
     }
 
-    logTrace('Calculating dominant colors for ${seriesToProcess.length} series');
-    int processed = 0;
-    bool anyChanged = false;
+    logTrace('Calculating dominant colors for ${seriesToProcess.length} series using isolate manager');
 
-    // Process one series at a time to avoid UI freezes
-    for (final series in seriesToProcess) {
-      try {
-        final oldColor = series.dominantColor;
-        await series.calculateDominantColor(forceRecalculate: forceRecalculate);
-        processed++;
-
-        // Check if color actually changed
-        if (oldColor != series.dominantColor) {
-          anyChanged = true;
-        }
-
-        // Update UI periodically
-        if (processed % 3 == 0 || processed == seriesToProcess.length) {
+    try {
+      // Use the isolate-based approach with progress tracking
+      final results = await color_utils.calculateDominantColorsWithProgress(
+        series: seriesToProcess,
+        forceRecalculate: forceRecalculate,
+        dominantColorSourceIndex: Manager.settings.dominantColorSource.index,
+        onStart: () {
+          LibraryScanProgressManager().resetProgress();
+          logTrace('Starting dominant color calculation in isolate');
+        },
+        onProgress: (processed, total) {
+          final progress = processed.toDouble() / total.toDouble();
+          LibraryScanProgressManager().show(progress);
+          logTrace('Dominant color progress: $processed/$total (${(progress * 100).toStringAsFixed(1)}%)');
           notifyListeners();
+          libraryScreenKey.currentState?.updateColorsInSortCache();
+        },
+      );
 
-          // Save more frequently to preserve progress
-          // if (processed % 10 == 0) {
-          //   logTrace('Saving library after processing $processed series');
-          //   await _saveLibrary();
-          // }
+      // Apply the results to the actual series objects
+      int successCount = 0;
+      bool anyChanged = false;
+
+      for (final entry in results.entries) {
+        final seriesPath = entry.key;
+        final result = entry.value;
+
+        // Find the series with this path
+        final series = _series.firstWhereOrNull((s) => s.path.path == seriesPath);
+        if (series == null) continue;
+
+        if (result.containsKey('dominantColor') && result['changed'] == true) {
+          final colorValue = result['dominantColor'] as int;
+          final oldColor = series.dominantColor;
+
+          // Use reflection-like approach to set the private field
+          final newColor = Color(colorValue);
+          final updatedSeries = series.copyWith(dominantColor: newColor);
+
+          // Replace the series in the list
+          final seriesIndex = _series.indexWhere((s) => s.path.path == seriesPath);
+          if (seriesIndex != -1) {
+            _series[seriesIndex] = updatedSeries;
+            if (oldColor != newColor) {
+              anyChanged = true;
+              successCount++;
+            }
+          }
+        } else if (result.containsKey('error')) {
+          if ((result['error'] as String).contains('No image source available'))
+            logWarn('Skipped dominant color calculation for ${series.name}: ${result['error']}');
+          else
+            logErr('Error calculating dominant color for ${series.name}: ${result['error']}');
         }
-      } catch (e) {
-        logErr('Error calculating dominant color for ${series.name}', e);
       }
 
-      // Delay to avoid overwhelming the UI
-      await Future.delayed(const Duration(milliseconds: 15));
-    }
+      // Hide progress indicator
+      LibraryScanProgressManager().hide();
 
-    // Save and notify when done
-    if (anyChanged || forceRecalculate) {
-      await _saveLibrary();
-      notifyListeners();
-      logTrace('Finished calculating dominant colors for $processed series');
+      // Save and notify when done
+      if (anyChanged || forceRecalculate) {
+        await _saveLibrary();
+        notifyListeners();
+        logTrace('Finished calculating dominant colors for $successCount series');
+      }
+    } catch (e, st) {
+      LibraryScanProgressManager().hide();
+      logErr('Error during batch dominant color calculation', e, st);
       snackBar(
-        'Finished calculating dominant colors for $processed series',
-        severity: InfoBarSeverity.success,
+        'Error calculating dominant colors: $e',
+        severity: InfoBarSeverity.error,
       );
     }
   }

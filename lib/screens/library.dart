@@ -556,6 +556,13 @@ class LibraryScreenState extends State<LibraryScreen> {
     _groupedDataCache = null;
     _cacheParameters = null;
   }
+  
+  void updateColorsInSortCache(){
+    if (_sortedSeriesCache == null) return;
+    
+    // 
+  
+  }
 
   /// Update or add a series to the sort cache
   void updateSeriesInSortCache(Series series) {
