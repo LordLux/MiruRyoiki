@@ -486,7 +486,6 @@ extension LibraryScanning on Library {
           LibraryScanProgressManager().show(progress);
           logTrace('Dominant color progress: $processed/$total (${(progress * 100).toStringAsFixed(1)}%)');
           notifyListeners();
-          libraryScreenKey.currentState?.updateColorsInSortCache();
         },
       );
 
@@ -526,6 +525,7 @@ extension LibraryScanning on Library {
             logErr('Error calculating dominant color for ${series.name}: ${result['error']}');
         }
       }
+      libraryScreenKey.currentState?.updateColorsInSortCache();
 
       // Hide progress indicator
       LibraryScanProgressManager().hide();

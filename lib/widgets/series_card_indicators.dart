@@ -117,7 +117,7 @@ class _AiringIndicatorState extends State<AiringIndicator> {
         left: 8,
         child: AnimatedContainer(
           duration: shortDuration,
-          width: (widget.isHovered ? expanded * Manager.fontSizeMultiplier : size),
+          width: (Manager.settings.hoverShowAiringIndicator && widget.isHovered ? expanded * Manager.fontSizeMultiplier : size),
           height: size,
           padding: EdgeInsets.zero,
           margin: EdgeInsets.zero,
@@ -146,7 +146,7 @@ class _AiringIndicatorState extends State<AiringIndicator> {
             ],
           ),
           child: AnimatedOpacity(
-            opacity: widget.isHovered ? 1 : 0,
+            opacity: Manager.settings.hoverShowAiringIndicator && widget.isHovered ? 1 : 0,
             duration: shortDuration,
             child: Text(
               text,

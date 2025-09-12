@@ -1284,6 +1284,26 @@ class SettingsScreenState extends State<SettingsScreen> {
                     ],
                   ),
                 ],
+                VDiv(12),
+                // Hover show airing indicator
+                ...[
+                  Row(
+                    children: [
+                      Text(
+                        'Hover Show Airing Indicator',
+                        style: Manager.bodyStyle,
+                      ),
+                      const SizedBox(width: 12),
+                      ToggleSwitch(
+                        checked: settings.hoverShowAiringIndicator,
+                        content: Text(settings.hoverShowAiringIndicator ? 'Enabled' : 'Disabled', style: Manager.bodyStyle),
+                        onChanged: (value) {
+                          settings.hoverShowAiringIndicator = value;
+                        },
+                      ),
+                    ],
+                  ),
+                ],
                 //
               ],
             );

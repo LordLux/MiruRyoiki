@@ -10,6 +10,7 @@ import '../utils/logging.dart';
 import '../utils/screen_utils.dart';
 import '../utils/time_utils.dart';
 import 'context_menu/series.dart';
+import 'series_card_indicators.dart';
 
 class SeriesCard extends StatefulWidget {
   final Series series;
@@ -215,13 +216,15 @@ class _SeriesCardState extends State<SeriesCard> {
                             scale: 1.01,
                             child: Transform.translate(
                               offset: Offset(0, .5),
-                              child: Container(
+                              child: AnimatedContainer(
+                                duration: getDuration(const Duration(milliseconds: 400)),
                                 width: constraints.maxWidth,
                                 height: 4,
                                 color: Color.lerp(Colors.black.withOpacity(0.2), widget.series.dominantColor, .4),
                                 child: Align(
                                   alignment: Alignment.topLeft,
-                                  child: Container(
+                                  child: AnimatedContainer(
+                                    duration: getDuration(const Duration(milliseconds: 400)),
                                     color: widget.series.watchedPercentage == 0 ? Colors.transparent : widget.series.dominantColor,
                                     width: constraints.maxWidth * widget.series.watchedPercentage,
                                   ),
@@ -236,7 +239,8 @@ class _SeriesCardState extends State<SeriesCard> {
                           final double value = widget.series.isAnilistPoster ? .76 : .9;
                           final Color nicerColor = mainColor.lerpWith(Colors.grey, value);
 
-                          Widget child = Container(
+                          Widget child = AnimatedContainer(
+                            duration: getDuration(const Duration(milliseconds: 400)),
                             decoration: BoxDecoration(
                               gradient: LinearGradient(
                                 colors: [
@@ -251,7 +255,8 @@ class _SeriesCardState extends State<SeriesCard> {
                             ),
                             child: Padding(
                               padding: const EdgeInsets.all(12.0),
-                              child: Container(
+                              child: AnimatedContainer(
+                                duration: getDuration(const Duration(milliseconds: 400)),
                                 constraints: BoxConstraints(minHeight: 42 * Manager.fontSizeMultiplier),
                                 child: Column(
                                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -298,15 +303,19 @@ class _SeriesCardState extends State<SeriesCard> {
                               ),
                             );
                           }
-                          return Container(color: nicerColor, child: child);
+                          return AnimatedContainer(
+                            duration: getDuration(const Duration(milliseconds: 400)),
+                            color: nicerColor,
+                            child: child,
+                          );
                         }),
                       ],
                     ),
                   ),
 
-                  // Positioned.fill(child: CardIndicators(series: widget.series)),
+                  CardIndicators(series: widget.series),
 
-                  // AiringIndicator(series: widget.series, isHovered: _isHovering),
+                  AiringIndicator(series: widget.series, isHovered: _isHovering),
 
                   // Hover overlay
                   Positioned.fill(

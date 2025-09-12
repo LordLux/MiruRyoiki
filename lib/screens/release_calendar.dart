@@ -194,10 +194,9 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
         _isLoading = false;
       });
     } catch (e) {
-      setState(() {
-        _errorMessage = 'Error loading data: ${e.toString()}';
-        _isLoading = false;
-      });
+      _isLoading = false;
+      _errorMessage = 'Error loading data: ${e.toString()}';
+      if (mounted) setState(() {});
       logErr('Error loading calendar data', e);
     }
   }

@@ -20,6 +20,7 @@ import '../services/library/library_provider.dart';
 import '../models/series.dart';
 import '../services/anilist/provider/anilist_provider.dart';
 import '../services/navigation/shortcuts.dart';
+import '../utils/logging.dart';
 import '../utils/path_utils.dart';
 import '../utils/screen_utils.dart';
 import '../utils/time_utils.dart';
@@ -556,12 +557,56 @@ class LibraryScreenState extends State<LibraryScreen> {
     _groupedDataCache = null;
     _cacheParameters = null;
   }
-  
-  void updateColorsInSortCache(){
+
+  void updateColorsInSortCache() {
     if (_sortedSeriesCache == null) return;
-    
-    // 
-  
+
+    final library = Provider.of<Library>(context, listen: false);
+    final liveSeries = library.series;
+
+    // Create a lookup map for efficient series matching by path
+    final liveSeriesMap = <String, Series>{};
+    for (final series in liveSeries) {
+      liveSeriesMap[series.path.path] = series;
+    }
+
+    setState(() {
+      // Update dominant colors in the sorted cache
+      for (int i = 0; i < _sortedSeriesCache!.length; i++) {
+        final cachedSeries = _sortedSeriesCache![i];
+        final liveSeries = liveSeriesMap[cachedSeries.path.path];
+
+        if (liveSeries != null && liveSeries.dominantColor != cachedSeries.dominantColor) {
+          // Update the cached series with the new dominant color
+          _sortedSeriesCache![i] = cachedSeries.copyWith(dominantColor: liveSeries.dominantColor);
+        } else {
+          log('No live series found for path: ${cachedSeries.path.path}');
+        }
+      }
+
+      // Update grouped cache if it exists
+      if (_groupedDataCache != null) {
+        for (final groupEntry in _groupedDataCache!.entries) {
+          final groupSeriesList = groupEntry.value;
+
+          for (int i = 0; i < groupSeriesList.length; i++) {
+            final cachedSeries = groupSeriesList[i];
+            final liveSeries = liveSeriesMap[cachedSeries.path.path];
+
+            if (liveSeries != null) {
+              // Update the cached series with the new dominant color
+              groupSeriesList[i] = cachedSeries.copyWith(dominantColor: liveSeries.dominantColor);
+            } else {
+              log('No live series found for path: ${cachedSeries.path.path}');
+            }
+          }
+        }
+      } else {
+        log('Grouped data cache is null, skipping grouped update.');
+      }
+    }); // Trigger UI update
+    Manager.setState(() {});
+    log('called setState from updateColorsInSortCache');
   }
 
   /// Update or add a series to the sort cache
@@ -1253,7 +1298,7 @@ class LibraryScreenState extends State<LibraryScreen> {
             ),
             child: Row(
               children: [
-                const SizedBox(width: 47), // Space for image
+                const SizedBox(width: 44), // Space for image
 
                 Expanded(
                   child: Text(

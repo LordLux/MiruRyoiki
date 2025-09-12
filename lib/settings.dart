@@ -65,6 +65,9 @@ class SettingsManager extends ChangeNotifier {
   
   bool get confirmClearAllThumbnails => _getBool('confirmClearAllThumbnails', defaultValue: false);
   set confirmClearAllThumbnails(bool value) => _setBool('confirmClearAllThumbnails', value);
+  
+  bool get hoverShowAiringIndicator => _getBool('hoverShowAiringIndicator', defaultValue: false);
+  set hoverShowAiringIndicator(bool value) => _setBool('hoverShowAiringIndicator', value);
 
 
   // Logging

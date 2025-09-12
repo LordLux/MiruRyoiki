@@ -13,6 +13,7 @@ import '../../models/metadata.dart';
 import '../../models/series.dart';
 import '../../enums.dart';
 import '../../models/anilist/anime.dart';
+import '../../utils/color_utils.dart';
 import '../../utils/logging.dart';
 import '../../utils/path_utils.dart';
 import '../../utils/image_color_extractor.dart';
@@ -168,8 +169,12 @@ class IsolateManager {
           final processedIndex = message.processed - 4;
           if (processedIndex >= 0 && processedIndex < actualParams.serializedSeries.length) {
             final seriesName = actualParams.serializedSeries[processedIndex]['name'] ?? 'Unknown';
-            final dominantColor = Color(actualParams.serializedSeries[processedIndex]['dominantColor'] ?? 0).toHex();
-            print('Processed: $seriesName, Dominant Color: $dominantColor');
+            final dominantColor = Color(actualParams.serializedSeries[processedIndex]['dominantColor'] ?? 0).toHex(leadingHashSign: false);
+            final color = Color(int.parse('0xFF$dominantColor'));
+            logMulti([
+              ['Processed: $seriesName, Dominant Color: '],
+              [' #$dominantColor ‎', determineTextColor(color), color],
+            ]);
           }
         }
       } else if (message is _IsolateError) {
