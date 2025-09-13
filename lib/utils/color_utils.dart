@@ -155,9 +155,9 @@ Future<(Color?, bool)> calculateDominantColor(Series series, {bool forceRecalcul
     logTrace('   WidgetsBinding not available (possibly in isolate), continuing...');
   }
 
-  logTrace('  Calculating dominant color for ${substringSafe(series.name, 0, 20, '"')}...');
   // Get source type
   final DominantColorSource sourceType = Manager.dominantColorSource;
+  logTrace('  Calculating dominant color for ${substringSafe(series.name, 0, 20, '"')} with source ${sourceType == DominantColorSource.poster ? "poster" : "banner"}...');
   String? imagePath;
 
   // Use the existing logic from effectivePosterPath/effectiveBannerPath

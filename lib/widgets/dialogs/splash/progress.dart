@@ -79,16 +79,19 @@ class LibraryScanProgressIndicator extends StatelessWidget {
         builder: (context, _) {
           final isShowing = libraryScanProgressManager.showingNotifier.value;
           final operationName = lockManager.currentOperationDescription ?? 'Indexing library...';
+          print('Operation Name: "$operationName"');
           
           return AnimatedOpacity(
             opacity: isShowing ? 1.0 : 0.0,
             duration: getDuration(const Duration(milliseconds: 200)),
             child: SizedBox(
-              width: 350,
               height: ScreenUtils.kStatusBarHeight,
               child: Row(
+                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  SizedBox(width: 100, child: Text(operationName, style: Manager.captionStyle.copyWith(fontSize: 11 * Manager.fontSizeMultiplier))),
+                  Text(operationName, style: Manager.captionStyle.copyWith(fontSize: 11 * Manager.fontSizeMultiplier)),
+                  const SizedBox(width: 12),
                   SizedBox(
                     width: 250,
                     child: AnimatedProgressIndicator(progressNotifier: libraryScanProgressManager.progressNotifier),

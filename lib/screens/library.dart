@@ -1260,50 +1260,47 @@ class LibraryScreenState extends State<LibraryScreen> {
       return _buildGroupedViewFromCache(groupedData, maxWidth, episodesGrid);
 
     // Ungrouped view
-    final scrollContent = ScrollConfiguration(
-      behavior: ScrollConfiguration.of(context).copyWith(overscroll: false, platform: TargetPlatform.windows, scrollbars: false),
-      child: DynMouseScroll(
-        controller: shimmer ? null : widget.scrollController,
-        stopScroll: KeyboardState.ctrlPressedNotifier,
-        scrollSpeed: 1.0,
-        enableSmoothScroll: Manager.animationsEnabled,
-        durationMS: 350,
-        animationCurve: Curves.easeOutQuint,
-        builder: (context, controller, physics) {
-          return ValueListenableBuilder(
-            valueListenable: KeyboardState.ctrlPressedNotifier,
-            builder: (context, isCtrlPressed, _) {
-              return ValueListenableBuilder(
-                valueListenable: previousGridColumnCount,
-                builder: (context, columns, __) {
-                  return GridView.builder(
-                    controller: controller,
-                    physics: physics,
-                    padding: const EdgeInsets.only(bottom: 8),
-                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: columns ?? ScreenUtils.crossAxisCount(maxWidth),
-                      childAspectRatio: ScreenUtils.kDefaultAspectRatio,
-                      crossAxisSpacing: ScreenUtils.cardPadding,
-                      mainAxisSpacing: ScreenUtils.cardPadding,
-                    ),
-                    itemCount: series.length,
-                    itemBuilder: (context, index) {
-                      final serieItem = series[index];
-                      Widget seriesCard = SeriesCard(
-                        key: (index == 0) ? firstCardKey : ValueKey('${serieItem.path}:${serieItem.effectivePosterPath ?? 'none'}'),
-                        series: serieItem,
-                        onTap: () => _navigateToSeries(serieItem),
-                      );
-
-                      return seriesCard;
-                    },
-                  );
-                },
-              );
-            },
-          );
-        },
-      ),
+    final scrollContent = DynMouseScroll(
+      controller: shimmer ? null : widget.scrollController,
+      stopScroll: KeyboardState.ctrlPressedNotifier,
+      scrollSpeed: 1.0,
+      enableSmoothScroll: Manager.animationsEnabled,
+      durationMS: 350,
+      animationCurve: Curves.easeOutQuint,
+      builder: (context, controller, physics) {
+        return ValueListenableBuilder(
+          valueListenable: KeyboardState.ctrlPressedNotifier,
+          builder: (context, isCtrlPressed, _) {
+            return ValueListenableBuilder(
+              valueListenable: previousGridColumnCount,
+              builder: (context, columns, __) {
+                return GridView.builder(
+                  controller: controller,
+                  physics: physics,
+                  padding: const EdgeInsets.only(bottom: 8),
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: columns ?? ScreenUtils.crossAxisCount(maxWidth),
+                    childAspectRatio: ScreenUtils.kDefaultAspectRatio,
+                    crossAxisSpacing: ScreenUtils.cardPadding,
+                    mainAxisSpacing: ScreenUtils.cardPadding,
+                  ),
+                  itemCount: series.length,
+                  itemBuilder: (context, index) {
+                    final serieItem = series[index];
+                    Widget seriesCard = SeriesCard(
+                      key: (index == 0) ? firstCardKey : ValueKey('${serieItem.path}:${serieItem.effectivePosterPath ?? 'none'}'),
+                      series: serieItem,
+                      onTap: () => _navigateToSeries(serieItem),
+                    );
+    
+                    return seriesCard;
+                  },
+                );
+              },
+            );
+          },
+        );
+      },
     );
 
     // Add Scrollbar for non-shimmer content
@@ -1384,129 +1381,126 @@ class LibraryScreenState extends State<LibraryScreen> {
       );
     }
 
-    final scrollContent = ScrollConfiguration(
-      behavior: ScrollConfiguration.of(context).copyWith(overscroll: false, platform: TargetPlatform.windows, scrollbars: false), // show only when not shimmer
-      child: DynMouseScroll(
-        controller: shimmer ? null : widget.scrollController,
-        stopScroll: KeyboardState.zoomReleaseNotifier,
-        scrollSpeed: 1.0,
-        enableSmoothScroll: Manager.animationsEnabled,
-        durationMS: 350,
-        animationCurve: Curves.easeOutQuint,
-        builder: (context, controller, physics) {
-          return ValueListenableBuilder(
-            valueListenable: KeyboardState.zoomReleaseNotifier,
-            builder: (context, _, __) {
-              // Grouped View with Sticky Headers
-              if (groupedData != null && _showGrouped) {
-                // Use the _customListOrder to determine display order
-                final displayOrder = groupedData.keys.toList();
-                displayOrder.sort((a, b) {
-                  // Get the original position in _customListOrder
-                  final aIndex = _customListOrder.indexOf(_getApiName(a));
-                  final bIndex = _customListOrder.indexOf(_getApiName(b));
-
-                  // If one is not found, put it at the end
-                  if (aIndex == -1) return 1;
-                  if (bIndex == -1) return -1;
-
-                  // Otherwise use the custom order
-                  return aIndex.compareTo(bIndex);
-                });
-
-                return ListView.builder(
-                  controller: controller,
-                  physics: physics,
-                  padding: EdgeInsets.zero,
-                  itemCount: displayOrder.length,
-                  itemBuilder: (context, index) {
-                    final groupName = displayOrder[index];
-                    final seriesList = groupedData[groupName] ?? [];
-                    final isFirstGroup = index == 0;
-
-                    if (seriesList.isEmpty) return const SizedBox.shrink();
-
-                    return Padding(
-                      padding: EdgeInsets.only(top: isFirstGroup ? 0 : 8.0),
-                      child: StickyHeader(
-                        header: ClipRRect(
-                          borderRadius: const BorderRadius.all(Radius.circular(ScreenUtils.kStatCardBorderRadius)),
-                          child: Acrylic(
-                            luminosityAlpha: 1,
-                            child: Container(
-                              constraints: const BoxConstraints(minHeight: 50.0),
-                              decoration: BoxDecoration(
-                                borderRadius: const BorderRadius.only(
-                                  topLeft: Radius.circular(ScreenUtils.kStatCardBorderRadius),
-                                  topRight: Radius.circular(ScreenUtils.kStatCardBorderRadius),
-                                ),
-                                color: Colors.white.withOpacity(0.05),
+    final scrollContent = DynMouseScroll(
+      controller: shimmer ? null : widget.scrollController,
+      stopScroll: KeyboardState.zoomReleaseNotifier,
+      scrollSpeed: 1.0,
+      enableSmoothScroll: Manager.animationsEnabled,
+      durationMS: 350,
+      animationCurve: Curves.easeOutQuint,
+      builder: (context, controller, physics) {
+        return ValueListenableBuilder(
+          valueListenable: KeyboardState.zoomReleaseNotifier,
+          builder: (context, _, __) {
+            // Grouped View with Sticky Headers
+            if (groupedData != null && _showGrouped) {
+              // Use the _customListOrder to determine display order
+              final displayOrder = groupedData.keys.toList();
+              displayOrder.sort((a, b) {
+                // Get the original position in _customListOrder
+                final aIndex = _customListOrder.indexOf(_getApiName(a));
+                final bIndex = _customListOrder.indexOf(_getApiName(b));
+    
+                // If one is not found, put it at the end
+                if (aIndex == -1) return 1;
+                if (bIndex == -1) return -1;
+    
+                // Otherwise use the custom order
+                return aIndex.compareTo(bIndex);
+              });
+    
+              return ListView.builder(
+                controller: controller,
+                physics: physics,
+                padding: EdgeInsets.zero,
+                itemCount: displayOrder.length,
+                itemBuilder: (context, index) {
+                  final groupName = displayOrder[index];
+                  final seriesList = groupedData[groupName] ?? [];
+                  final isFirstGroup = index == 0;
+    
+                  if (seriesList.isEmpty) return const SizedBox.shrink();
+    
+                  return Padding(
+                    padding: EdgeInsets.only(top: isFirstGroup ? 0 : 8.0),
+                    child: StickyHeader(
+                      header: ClipRRect(
+                        borderRadius: const BorderRadius.all(Radius.circular(ScreenUtils.kStatCardBorderRadius)),
+                        child: Acrylic(
+                          luminosityAlpha: 1,
+                          child: Container(
+                            constraints: const BoxConstraints(minHeight: 50.0),
+                            decoration: BoxDecoration(
+                              borderRadius: const BorderRadius.only(
+                                topLeft: Radius.circular(ScreenUtils.kStatCardBorderRadius),
+                                topRight: Radius.circular(ScreenUtils.kStatCardBorderRadius),
                               ),
-                              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  if (shimmer) ...[
-                                    Expanded(
-                                      child: Container(
-                                        height: 12,
-                                        decoration: BoxDecoration(
-                                          color: Colors.white.withOpacity(0.2),
-                                          borderRadius: BorderRadius.circular(6),
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 12),
-                                    Container(
+                              color: Colors.white.withOpacity(0.05),
+                            ),
+                            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                if (shimmer) ...[
+                                  Expanded(
+                                    child: Container(
                                       height: 12,
-                                      width: 80,
                                       decoration: BoxDecoration(
                                         color: Colors.white.withOpacity(0.2),
                                         borderRadius: BorderRadius.circular(6),
                                       ),
                                     ),
-                                  ],
-                                  if (!shimmer) ...[
-                                    Text(groupName, style: Manager.subtitleStyle),
-                                    Text('${seriesList.length} Series', style: Manager.captionStyle),
-                                  ],
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Container(
+                                    height: 12,
+                                    width: 80,
+                                    decoration: BoxDecoration(
+                                      color: Colors.white.withOpacity(0.2),
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                  ),
                                 ],
-                              ),
+                                if (!shimmer) ...[
+                                  Text(groupName, style: Manager.subtitleStyle),
+                                  Text('${seriesList.length} Series', style: Manager.captionStyle),
+                                ],
+                              ],
                             ),
                           ),
                         ),
-                        content: Column(
-                          children: [
-                            const SizedBox(height: 8),
-
-                            // Group content with headers and list
-                            Container(
-                              decoration: BoxDecoration(
-                                border: Border.all(color: Manager.genericGray.withOpacity(0.2)),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: SizedBox(
-                                height: 53.5 * seriesList.length + 33 + 2, // +33 for header
-                                child: buildListContent(seriesList, null, const NeverScrollableScrollPhysics(), false),
-                              ),
-                            ),
-
-                            // Spacing between groups
-                            if (index != displayOrder.length - 1) const SizedBox(height: 12),
-                          ],
-                        ),
                       ),
-                    );
-                  },
-                );
-              }
-
-              // Ungrouped list view
-              return buildListContent(series, controller, physics, true);
-            },
-          );
-        },
-      ),
+                      content: Column(
+                        children: [
+                          const SizedBox(height: 8),
+    
+                          // Group content with headers and list
+                          Container(
+                            decoration: BoxDecoration(
+                              border: Border.all(color: Manager.genericGray.withOpacity(0.2)),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: SizedBox(
+                              height: 53.5 * seriesList.length + 33 + 2, // +33 for header
+                              child: buildListContent(seriesList, null, const NeverScrollableScrollPhysics(), false),
+                            ),
+                          ),
+    
+                          // Spacing between groups
+                          if (index != displayOrder.length - 1) const SizedBox(height: 12),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              );
+            }
+    
+            // Ungrouped list view
+            return buildListContent(series, controller, physics, true);
+          },
+        );
+      },
     );
 
     // Add Scrollbar for non-shimmer content
@@ -1580,106 +1574,103 @@ class LibraryScreenState extends State<LibraryScreen> {
       return aIndex.compareTo(bIndex);
     });
 
-    final scrollContent = ScrollConfiguration(
-      behavior: ScrollConfiguration.of(context).copyWith(overscroll: false, platform: TargetPlatform.windows, scrollbars: false),
-      child: DynMouseScroll(
-        controller: widget.scrollController,
-        stopScroll: KeyboardState.zoomReleaseNotifier,
-        scrollSpeed: 1.0,
-        enableSmoothScroll: Manager.animationsEnabled,
-        durationMS: 350,
-        animationCurve: Curves.easeOutQuint,
-        builder: (context, controller, physics) {
-          return ValueListenableBuilder(
-            valueListenable: KeyboardState.zoomReleaseNotifier,
-            builder: (context, _, __) {
-              return ListView.builder(
-                controller: controller,
-                padding: EdgeInsets.zero,
-                cacheExtent: kDebugMode ? null : 1000,
-                physics: physics,
-                itemCount: displayOrder.length,
-                itemBuilder: (context, index) {
-                  final groupName = displayOrder[index];
-                  final seriesInGroup = groupedData[groupName]!;
-                  final isFirstGroup = index == 0;
-
-                  return ClipRRect(
-                    clipBehavior: Clip.antiAlias,
-                    borderRadius: const BorderRadius.all(Radius.circular(ScreenUtils.kStatCardBorderRadius)),
-                    child: Padding(
-                      padding: EdgeInsets.only(top: isFirstGroup ? 0 : 8.0),
-                      child: StickyHeader(
-                        header: Transform.translate(
-                          offset: const Offset(0, -1),
-                          child: ClipRRect(
-                            borderRadius: const BorderRadius.all(Radius.circular(ScreenUtils.kStatCardBorderRadius)),
-                            child: Acrylic(
-                              luminosityAlpha: 1,
-                              child: Container(
-                                constraints: const BoxConstraints(minHeight: 50.0),
-                                decoration: BoxDecoration(
-                                  borderRadius: const BorderRadius.only(
-                                    topLeft: Radius.circular(ScreenUtils.kStatCardBorderRadius),
-                                    topRight: Radius.circular(ScreenUtils.kStatCardBorderRadius),
-                                  ),
-                                  color: Colors.white.withOpacity(0.05),
+    final scrollContent = DynMouseScroll(
+      controller: widget.scrollController,
+      stopScroll: KeyboardState.zoomReleaseNotifier,
+      scrollSpeed: 1.0,
+      enableSmoothScroll: Manager.animationsEnabled,
+      durationMS: 350,
+      animationCurve: Curves.easeOutQuint,
+      builder: (context, controller, physics) {
+        return ValueListenableBuilder(
+          valueListenable: KeyboardState.zoomReleaseNotifier,
+          builder: (context, _, __) {
+            return ListView.builder(
+              controller: controller,
+              padding: EdgeInsets.zero,
+              cacheExtent: kDebugMode ? null : 1000,
+              physics: physics,
+              itemCount: displayOrder.length,
+              itemBuilder: (context, index) {
+                final groupName = displayOrder[index];
+                final seriesInGroup = groupedData[groupName]!;
+                final isFirstGroup = index == 0;
+    
+                return ClipRRect(
+                  clipBehavior: Clip.antiAlias,
+                  borderRadius: const BorderRadius.all(Radius.circular(ScreenUtils.kStatCardBorderRadius)),
+                  child: Padding(
+                    padding: EdgeInsets.only(top: isFirstGroup ? 0 : 8.0),
+                    child: StickyHeader(
+                      header: Transform.translate(
+                        offset: const Offset(0, -1),
+                        child: ClipRRect(
+                          borderRadius: const BorderRadius.all(Radius.circular(ScreenUtils.kStatCardBorderRadius)),
+                          child: Acrylic(
+                            luminosityAlpha: 1,
+                            child: Container(
+                              constraints: const BoxConstraints(minHeight: 50.0),
+                              decoration: BoxDecoration(
+                                borderRadius: const BorderRadius.only(
+                                  topLeft: Radius.circular(ScreenUtils.kStatCardBorderRadius),
+                                  topRight: Radius.circular(ScreenUtils.kStatCardBorderRadius),
                                 ),
-                                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Text(groupName, style: Manager.subtitleStyle),
-                                    Text('${seriesInGroup.length} Series', style: Manager.captionStyle),
-                                  ],
-                                ),
+                                color: Colors.white.withOpacity(0.05),
+                              ),
+                              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(groupName, style: Manager.subtitleStyle),
+                                  Text('${seriesInGroup.length} Series', style: Manager.captionStyle),
+                                ],
                               ),
                             ),
                           ),
                         ),
-                        content: ClipRRect(
-                          borderRadius: BorderRadius.only(topRight: Radius.circular(ScreenUtils.kStatCardBorderRadius)),
-                          child: ValueListenableBuilder(
-                            valueListenable: previousGridColumnCount,
-                            builder: (context, columns, __) {
-                              final crossAxisCount = columns ?? ScreenUtils.crossAxisCount(maxWidth);
-
-                              return GridView.builder(
-                                padding: const EdgeInsets.only(bottom: 8.0, left: 0.3, right: 0.3, top: 8.0),
-                                physics: const NeverScrollableScrollPhysics(),
-                                shrinkWrap: true,
-                                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                                  crossAxisCount: crossAxisCount,
-                                  childAspectRatio: ScreenUtils.kDefaultAspectRatio,
-                                  crossAxisSpacing: ScreenUtils.cardPadding,
-                                  mainAxisSpacing: ScreenUtils.cardPadding,
-                                ),
-                                itemCount: seriesInGroup.length,
-                                itemBuilder: (context, seriesIndex) {
-                                  final series = seriesInGroup[seriesIndex];
-
-                                  // Add measurement capability for first card
-                                  Widget seriesCard = SeriesCard(
-                                    key: (seriesIndex == 0 && isFirstGroup) ? firstCardKey : ValueKey('${series.path}:${series.effectivePosterPath ?? 'none'}'),
-                                    series: series,
-                                    onTap: () => _navigateToSeries(series),
-                                  );
-
-                                  return seriesCard;
-                                },
-                              );
-                            },
-                          ),
+                      ),
+                      content: ClipRRect(
+                        borderRadius: BorderRadius.only(topRight: Radius.circular(ScreenUtils.kStatCardBorderRadius)),
+                        child: ValueListenableBuilder(
+                          valueListenable: previousGridColumnCount,
+                          builder: (context, columns, __) {
+                            final crossAxisCount = columns ?? ScreenUtils.crossAxisCount(maxWidth);
+    
+                            return GridView.builder(
+                              padding: const EdgeInsets.only(bottom: 8.0, left: 0.3, right: 0.3, top: 8.0),
+                              physics: const NeverScrollableScrollPhysics(),
+                              shrinkWrap: true,
+                              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: crossAxisCount,
+                                childAspectRatio: ScreenUtils.kDefaultAspectRatio,
+                                crossAxisSpacing: ScreenUtils.cardPadding,
+                                mainAxisSpacing: ScreenUtils.cardPadding,
+                              ),
+                              itemCount: seriesInGroup.length,
+                              itemBuilder: (context, seriesIndex) {
+                                final series = seriesInGroup[seriesIndex];
+    
+                                // Add measurement capability for first card
+                                Widget seriesCard = SeriesCard(
+                                  key: (seriesIndex == 0 && isFirstGroup) ? firstCardKey : ValueKey('${series.path}:${series.effectivePosterPath ?? 'none'}'),
+                                  series: series,
+                                  onTap: () => _navigateToSeries(series),
+                                );
+    
+                                return seriesCard;
+                              },
+                            );
+                          },
                         ),
                       ),
                     ),
-                  );
-                },
-              );
-            },
-          );
-        },
-      ),
+                  ),
+                );
+              },
+            );
+          },
+        );
+      },
     );
 
     return _buildStyledScrollbar(scrollContent);

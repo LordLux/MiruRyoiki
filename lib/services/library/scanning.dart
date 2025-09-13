@@ -479,7 +479,7 @@ extension LibraryScanning on Library {
     // Try to acquire a lock for dominant color calculation
     final lockHandle = await _lockManager.acquireLock(
       OperationType.dominantColorCalculation,
-      description: 'calculating dominant colors',
+      description: 'Recalculating Colors...',
       waitForOthers: false,
     );
 

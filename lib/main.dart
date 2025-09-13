@@ -1123,9 +1123,10 @@ Future<void> _registerWindowsUrlScheme(String scheme) async {
   }
 }
 
-// TODO 'correct' dominant color from series if too dark
-//    TODO check for correct color source when getting on demand dominant color
+
+// TODO check for correct color source when getting on demand dominant color
 // TODO add click and hover on lists in infobar
+// TODO fix setstate called after dispose ReleaseCalendar when navigating away quickly
 // TODO move hidden series switches to settings
 // TODO add ctrl + tab navigation
 // TODO cache anime info
