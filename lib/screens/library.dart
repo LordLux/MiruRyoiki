@@ -129,6 +129,34 @@ class LibraryScreenState extends State<LibraryScreen> {
   Map<String, List<Series>>? _groupedDataCache;
   _CacheParameters? _cacheParameters;
 
+  /// Create a styled scrollbar with consistent theming and right padding
+  Widget _buildStyledScrollbar(Widget child) {
+    return Scrollbar(
+      controller: widget.scrollController,
+      thumbVisibility: true,
+      style: ScrollbarThemeData(
+        thickness: 3,
+        hoveringThickness: 4.5,
+        radius: const Radius.circular(4),
+        backgroundColor: Colors.transparent,
+        scrollbarPressingColor: Manager.accentColor.lightest.withOpacity(.7),
+        contractDelay: const Duration(milliseconds: 200),
+        scrollbarColor: Manager.accentColor.lightest.withOpacity(.4),
+        trackBorderColor: Colors.transparent,
+      ),
+      child: Padding(
+        padding: const EdgeInsets.only(right: 12.0),
+        child: ScrollConfiguration(
+          behavior: ScrollBehavior().copyWith(overscroll: false, scrollbars: false, physics: const ClampingScrollPhysics()),
+          child: ClipRRect(
+            borderRadius: const BorderRadius.all(Radius.circular(ScreenUtils.kStatCardBorderRadius)),
+            child: child,
+          ),
+        ),
+      ),
+    );
+  }
+
   /// Check if the current cache is valid by comparing parameters
   bool _isCacheValid() {
     if (_cacheParameters == null) return false;
@@ -1162,12 +1190,13 @@ class LibraryScreenState extends State<LibraryScreen> {
   }
 
   Widget _buildSeriesGrid(List<Series> series, double maxWidth, {Map<String, List<Series>>? groupedData, bool shimmer = false}) {
-    if (_viewType == ViewType.grid) {
-      // Existing grid implementation
-      return _buildGridView(series, maxWidth, groupedData: groupedData, shimmer: shimmer);
-    }
-    // List view implementation
-    return Container(child: _buildListView(series, maxWidth, groupedData: groupedData, shimmer: shimmer));
+    final Widget content = (_viewType == ViewType.grid)
+        // Grid view
+        ? _buildGridView(series, maxWidth, groupedData: groupedData, shimmer: shimmer)
+        // List view
+        : Container(child: _buildListView(series, maxWidth, groupedData: groupedData, shimmer: shimmer));
+
+    return content;
   }
 
   Widget _buildGridView(List<Series> series, double maxWidth, {Map<String, List<Series>>? groupedData, bool shimmer = false}) {
@@ -1198,7 +1227,7 @@ class LibraryScreenState extends State<LibraryScreen> {
           });
 
           return GridView(
-            padding: includePadding ? const EdgeInsets.only(bottom: 8, right: 12) : EdgeInsets.zero,
+            padding: includePadding ? const EdgeInsets.only(bottom: 8) : EdgeInsets.zero,
             gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: columns ?? ScreenUtils.crossAxisCount(maxWidth),
               childAspectRatio: ScreenUtils.kDefaultAspectRatio,
@@ -1231,10 +1260,10 @@ class LibraryScreenState extends State<LibraryScreen> {
       return _buildGroupedViewFromCache(groupedData, maxWidth, episodesGrid);
 
     // Ungrouped view
-    return ScrollConfiguration(
-      behavior: ScrollConfiguration.of(context).copyWith(overscroll: true, platform: TargetPlatform.windows, scrollbars: false),
+    final scrollContent = ScrollConfiguration(
+      behavior: ScrollConfiguration.of(context).copyWith(overscroll: false, platform: TargetPlatform.windows, scrollbars: false),
       child: DynMouseScroll(
-        controller: widget.scrollController,
+        controller: shimmer ? null : widget.scrollController,
         stopScroll: KeyboardState.ctrlPressedNotifier,
         scrollSpeed: 1.0,
         enableSmoothScroll: Manager.animationsEnabled,
@@ -1250,7 +1279,7 @@ class LibraryScreenState extends State<LibraryScreen> {
                   return GridView.builder(
                     controller: controller,
                     physics: physics,
-                    padding: const EdgeInsets.only(bottom: 8, right: 12),
+                    padding: const EdgeInsets.only(bottom: 8),
                     gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                       crossAxisCount: columns ?? ScreenUtils.crossAxisCount(maxWidth),
                       childAspectRatio: ScreenUtils.kDefaultAspectRatio,
@@ -1276,6 +1305,11 @@ class LibraryScreenState extends State<LibraryScreen> {
         },
       ),
     );
+
+    // Add Scrollbar for non-shimmer content
+    if (shimmer) return scrollContent;
+
+    return _buildStyledScrollbar(scrollContent);
   }
 
   Widget _buildListView(List<Series> series, double maxWidth, {Map<String, List<Series>>? groupedData, bool shimmer = false}) {
@@ -1350,10 +1384,10 @@ class LibraryScreenState extends State<LibraryScreen> {
       );
     }
 
-    return ScrollConfiguration(
-      behavior: ScrollConfiguration.of(context).copyWith(overscroll: false, platform: TargetPlatform.windows, scrollbars: !shimmer), // show only when not shimmer
+    final scrollContent = ScrollConfiguration(
+      behavior: ScrollConfiguration.of(context).copyWith(overscroll: false, platform: TargetPlatform.windows, scrollbars: false), // show only when not shimmer
       child: DynMouseScroll(
-        controller: widget.scrollController,
+        controller: shimmer ? null : widget.scrollController,
         stopScroll: KeyboardState.zoomReleaseNotifier,
         scrollSpeed: 1.0,
         enableSmoothScroll: Manager.animationsEnabled,
@@ -1383,7 +1417,7 @@ class LibraryScreenState extends State<LibraryScreen> {
                 return ListView.builder(
                   controller: controller,
                   physics: physics,
-                  padding: const EdgeInsets.only(right: 12.0),
+                  padding: EdgeInsets.zero,
                   itemCount: displayOrder.length,
                   itemBuilder: (context, index) {
                     final groupName = displayOrder[index];
@@ -1474,6 +1508,11 @@ class LibraryScreenState extends State<LibraryScreen> {
         },
       ),
     );
+
+    // Add Scrollbar for non-shimmer content
+    if (shimmer) return scrollContent;
+
+    return _buildStyledScrollbar(scrollContent);
   }
 
   Widget _buildShimmerList() {
@@ -1541,8 +1580,8 @@ class LibraryScreenState extends State<LibraryScreen> {
       return aIndex.compareTo(bIndex);
     });
 
-    return ScrollConfiguration(
-      behavior: ScrollConfiguration.of(context).copyWith(overscroll: false, platform: TargetPlatform.windows, scrollbars: true),
+    final scrollContent = ScrollConfiguration(
+      behavior: ScrollConfiguration.of(context).copyWith(overscroll: false, platform: TargetPlatform.windows, scrollbars: false),
       child: DynMouseScroll(
         controller: widget.scrollController,
         stopScroll: KeyboardState.zoomReleaseNotifier,
@@ -1556,6 +1595,7 @@ class LibraryScreenState extends State<LibraryScreen> {
             builder: (context, _, __) {
               return ListView.builder(
                 controller: controller,
+                padding: EdgeInsets.zero,
                 cacheExtent: kDebugMode ? null : 1000,
                 physics: physics,
                 itemCount: displayOrder.length,
@@ -1641,6 +1681,8 @@ class LibraryScreenState extends State<LibraryScreen> {
         },
       ),
     );
+
+    return _buildStyledScrollbar(scrollContent);
   }
 
   String _getSortText(SortOrder? order) {
