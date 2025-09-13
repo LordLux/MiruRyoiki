@@ -2,10 +2,8 @@ import 'dart:async';
 import 'dart:isolate';
 import 'dart:io';
 import 'dart:convert';
-import 'dart:ui' show Color;
 
 import 'package:flutter/services.dart';
-import 'package:flutter/widgets.dart' hide Image, HSLColor;
 import 'package:crypto/crypto.dart';
 import 'package:video_data_utils/video_data_utils.dart';
 import '../../main.dart' show rootIsolateToken;

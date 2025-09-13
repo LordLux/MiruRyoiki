@@ -230,7 +230,7 @@ class AccountsScreenState extends State<AccountsScreen> {
             ),
             VDiv(8),
             NormalSwitch(
-              toggleSwitch: ToggleSwitch(
+              ToggleSwitch(
                 checked: true,
                 content: Flexible(child: Text('Warn when linking the same File/Folder to an Anilist entry', style: Manager.bodyStyle)),
                 onChanged: (value) {
@@ -240,7 +240,7 @@ class AccountsScreenState extends State<AccountsScreen> {
             ),
             VDiv(8),
             NormalSwitch(
-              toggleSwitch: ToggleSwitch(
+              ToggleSwitch(
                 checked: true,
                 content: Flexible(child: Text('Warn when linking the same Anilist entry to a File/Folder', style: Manager.bodyStyle)),
                 onChanged: (value) {
@@ -265,7 +265,7 @@ class AccountsScreenState extends State<AccountsScreen> {
 
       // Toggle for showing hidden series
       NormalSwitch(
-        toggleSwitch: ToggleSwitch(
+        ToggleSwitch(
           checked: _showHiddenSeries,
           content: Flexible(
             child: Text('Show hidden series', style: Manager.bodyStyle),
@@ -281,8 +281,7 @@ class AccountsScreenState extends State<AccountsScreen> {
 
       // Toggle for showing hidden series
       NormalSwitch(
-        tooltip: 'Show series hidden from status lists (these will only be visible in custom lists)',
-        toggleSwitch: ToggleSwitch(
+        ToggleSwitch(
           checked: _showAnilistHiddenSeries,
           content: Flexible(
             child: Text('Show series hidden from status lists', style: Manager.bodyStyle),
@@ -294,6 +293,7 @@ class AccountsScreenState extends State<AccountsScreen> {
             });
           },
         ),
+        tooltip: 'Show series hidden from status lists (these will only be visible in custom lists)',
       ),
     ];
   }

@@ -15,6 +15,21 @@ extension LibraryScanning on Library {
     }
     if (_isScanning) return;
 
+    // Try to acquire a lock for library scanning
+    final lockHandle = await _lockManager.acquireLock(
+      OperationType.libraryScanning,
+      description: 'Scanning Library...',
+      exclusive: true,
+      waitForOthers: false,
+    );
+
+    if (lockHandle == null) {
+      if (showSnack) {
+        snackBar('Library scan is already in progress or another operation is active', severity: InfoBarSeverity.warning);
+      }
+      return;
+    }
+
     logDebug('\n3 | Scanning library at $_libraryPath', splitLines: true);
     _isScanning = true;
     notifyListeners();
@@ -103,6 +118,7 @@ extension LibraryScanning on Library {
             Manager.setState();
           },
         );
+
         Future.delayed(Duration(milliseconds: 1000), () => LibraryScanProgressManager().hide()); // NOT awaited
 
         logDebug('3 | Isolate processing complete. Found metadata for ${scanResult.length} files.');
@@ -212,6 +228,7 @@ extension LibraryScanning on Library {
       else
         logErr('Error scanning library', e, stackTrace);
     } finally {
+      lockHandle.dispose();
       _isScanning = false;
       scanProgress.value = null;
       notifyListeners();
@@ -459,19 +476,34 @@ extension LibraryScanning on Library {
 
   /// Calculate dominant colors only for series that need it
   Future<void> calculateDominantColors({bool forceRecalculate = false}) async {
-    // Determine which series need processing
-    final seriesToProcess = forceRecalculate //
-        ? _series
-        : _series.where((s) => s.dominantColor == null).toList();
+    // Try to acquire a lock for dominant color calculation
+    final lockHandle = await _lockManager.acquireLock(
+      OperationType.dominantColorCalculation,
+      description: 'calculating dominant colors',
+      waitForOthers: false,
+    );
 
-    if (seriesToProcess.isEmpty) {
-      logTrace('No series need dominant color calculation');
+    if (lockHandle == null) {
+      snackBar(
+        'Dominant color calculation is already in progress',
+        severity: InfoBarSeverity.warning,
+      );
       return;
     }
 
-    logTrace('Calculating dominant colors for ${seriesToProcess.length} series using isolate manager');
-
     try {
+      // Determine which series need processing
+      final seriesToProcess = forceRecalculate //
+          ? _series
+          : _series.where((s) => s.dominantColor == null).toList();
+
+      if (seriesToProcess.isEmpty) {
+        logTrace('No series need dominant color calculation');
+        return;
+      }
+
+      logTrace('Calculating dominant colors for ${seriesToProcess.length} series using isolate manager');
+
       // Use the isolate-based approach with progress tracking
       final results = await color_utils.calculateDominantColorsWithProgress(
         series: seriesToProcess,
@@ -543,6 +575,8 @@ extension LibraryScanning on Library {
         'Error calculating dominant colors: $e',
         severity: InfoBarSeverity.error,
       );
+    } finally {
+      lockHandle.dispose();
     }
   }
 }

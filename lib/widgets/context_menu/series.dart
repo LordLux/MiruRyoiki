@@ -13,6 +13,7 @@ import '../../models/series.dart';
 import '../../services/anilist/provider/anilist_provider.dart';
 import '../../services/anilist/queries/anilist_service.dart';
 import '../../services/library/library_provider.dart';
+import '../../services/lock_manager.dart';
 import '../../services/navigation/dialogs.dart';
 import '../../services/navigation/show_info.dart';
 import '../../screens/series.dart';
@@ -224,6 +225,16 @@ class SeriesContextMenuState extends State<SeriesContextMenu> {
 
   void _markAllAsWatched(BuildContext context) {
     final library = Provider.of<Library>(context, listen: false);
+    
+    // Check if the action should be disabled
+    if (library.lockManager.shouldDisableAction(UserAction.markSeriesWatched)) {
+      snackBar(
+        library.lockManager.getDisabledReason(UserAction.markSeriesWatched),
+        severity: InfoBarSeverity.warning,
+      );
+      return;
+    }
+    
     library.markSeriesWatched(widget.series, watched: true);
     snackBar('Marked all episodes as watched', severity: InfoBarSeverity.success);
   }
@@ -232,6 +243,16 @@ class SeriesContextMenuState extends State<SeriesContextMenu> {
 
   void _markAllAsUnwatched(BuildContext context) {
     final library = Provider.of<Library>(context, listen: false);
+    
+    // Check if the action should be disabled
+    if (library.lockManager.shouldDisableAction(UserAction.markSeriesWatched)) {
+      snackBar(
+        library.lockManager.getDisabledReason(UserAction.markSeriesWatched),
+        severity: InfoBarSeverity.warning,
+      );
+      return;
+    }
+    
     library.markSeriesWatched(widget.series, watched: false);
     snackBar('Marked all episodes as unwatched', severity: InfoBarSeverity.success);
   }

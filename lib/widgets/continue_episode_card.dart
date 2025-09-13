@@ -13,7 +13,6 @@ import '../utils/screen_utils.dart';
 import '../utils/time_utils.dart';
 import 'context_menu/series.dart';
 import 'hidden.dart';
-import 'upcoming_episode_card.dart';
 
 class ContinueEpisodeCard extends StatefulWidget {
   final Series series;

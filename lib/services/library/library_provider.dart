@@ -5,7 +5,6 @@ import 'dart:isolate';
 
 import 'package:collection/collection.dart';
 import 'package:fluent_ui/fluent_ui.dart';
-import 'package:flutter/foundation.dart';
 import 'package:miruryoiki/functions.dart';
 import 'package:path/path.dart' as p;
 import 'package:provider/provider.dart';
@@ -34,6 +33,7 @@ import '../../utils/path_utils.dart';
 import '../../utils/time_utils.dart';
 import '../isolates/isolate_manager.dart';
 import '../isolates/thumbnail_manager.dart';
+import '../lock_manager.dart';
 
 // Include all the parts
 part 'initialization.dart';
@@ -51,6 +51,7 @@ class Library with ChangeNotifier {
   final SettingsManager _settings;
   late final AppDatabase _db = AppDatabase();
   late final SeriesDao seriesDao = SeriesDao(_db);
+  late final LockManager _lockManager = LockManager();
 
   bool _initialized = false;
   bool _cacheValidated = false;
@@ -60,6 +61,7 @@ class Library with ChangeNotifier {
   bool get initialized => _initialized;
   bool get isIndexing => _isScanning;
   AppDatabase get database => _db;
+  LockManager get lockManager => _lockManager;
 
   static const String settingsFileName = 'settings';
   static const String miruryoikiLibrary = 'library';
