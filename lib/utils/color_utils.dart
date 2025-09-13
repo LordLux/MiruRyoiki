@@ -5,7 +5,6 @@ import 'dart:isolate';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart' show ColorScheme, Colors, ThemeMode;
 import 'package:flutter/widgets.dart' hide Image;
-import 'package:palette_generator/palette_generator.dart';
 import 'package:provider/provider.dart';
 
 import '../enums.dart';
@@ -183,7 +182,7 @@ Future<(Color?, bool)> calculateDominantColor(Series series, {bool forceRecalcul
 
   // For Anilist images, we need to get the cached path
   if ((sourceType == DominantColorSource.poster && series.isAnilistPoster) || (sourceType == DominantColorSource.banner && series.isAnilistBanner)) {
-    imagePath = await _getAnilistCachedImagePath(series);
+    imagePath = await _getAnilistCachedImagePath(series, poster: sourceType == DominantColorSource.poster);
     if (imagePath == null) {
       logTrace('   Failed to get cached Anilist image');
       return (null, false);
@@ -203,10 +202,10 @@ Future<Map<String, Map<String, dynamic>>> calculateDominantColorsWithProgress({
   void Function(int processed, int total)? onProgress,
 }) async {
   final isolateManager = IsolateManager();
-  
+
   // Serialize series for the isolate
   final serializedSeries = series.map((s) => s.toJson()).toList();
-  
+
   return await isolateManager.runIsolateWithProgress<CalculateDominantColorsParams, Map<String, Map<String, dynamic>>>(
     task: calculateDominantColorsIsolate,
     params: CalculateDominantColorsParams(
@@ -221,65 +220,56 @@ Future<Map<String, Map<String, dynamic>>> calculateDominantColorsWithProgress({
 }
 
 /// Helper method to get cached Anilist images
-Future<String?> _getAnilistCachedImagePath(Series series) async {
+Future<String?> _getAnilistCachedImagePath(Series series, {bool poster = true}) async {
   final anilistData = series.anilistData;
   if (anilistData == null) return null;
 
   final imageCache = ImageCacheService();
   await imageCache.init();
 
-  // Try poster first
-  if (anilistData.posterImage != null) {
-    final path = await imageCache.getCachedImagePath(anilistData.posterImage!);
-    if (path != null) return path;
+  if (poster) {
+    // Try poster first
+    if (anilistData.posterImage != null) {
+      final path = await imageCache.getCachedImagePath(anilistData.posterImage!);
+      if (path != null) return path;
+    }
+
+    // Try banner next
+    if (anilistData.bannerImage != null) return await imageCache.getCachedImagePath(anilistData.bannerImage!);
+  } else {
+    // Try banner first
+    if (anilistData.bannerImage != null) {
+      final path = await imageCache.getCachedImagePath(anilistData.bannerImage!);
+      if (path != null) return path;
+    }
+
+    // Try poster next
+    if (anilistData.posterImage != null) return await imageCache.getCachedImagePath(anilistData.posterImage!);
   }
 
-  // Try banner next
-  if (anilistData.bannerImage != null) {
-    return await imageCache.getCachedImagePath(anilistData.bannerImage!);
-  }
-
+  // No cached image found
   return null;
 }
 
 /// Extract dominant color from an image file
 Future<(Color?, bool)> _extractColorFromPath(Series series, String imagePath) async {
-  // Calculate color using compute to avoid UI blocking
+  // Use the unified color extraction system
   try {
-    // Check if we can use Flutter's painting system
-    bool canUseFlutterPainting = false;
-    try {
-      if (WidgetsBinding.instance.isRootWidgetAttached) {
-        canUseFlutterPainting = true;
-      }
-    } catch (e) {
-      // We're likely in an isolate or Flutter binding isn't available
-      canUseFlutterPainting = false;
-    }
-
     final imageFile = File(imagePath);
     if (await imageFile.exists()) {
-      Color? newColor;
+      // Use the pure Dart approach that works everywhere (main thread and isolates)
+      // For banners, prefer background colors; for posters, prefer vibrant colors
+      final sourceType = Manager.dominantColorSource;
+      final preferBackground = sourceType == DominantColorSource.banner;
 
-      if (canUseFlutterPainting) {
-        // Use the existing Flutter-based approach
-        final Uint8List imageBytes = await imageFile.readAsBytes();
-        final Image image = (await decodeImageFromList(imageBytes));
-        final ByteData byteData = (await image.toByteData())!;
-
-        // Force UI update by using a separate isolate
-        newColor = await compute(_isolateExtractColor, (byteData, image.width, image.height));
-      } else {
-        // Use the pure Dart approach that works in isolates
-        // For banners, prefer background colors; for posters, prefer vibrant colors
-        final sourceType = Manager.dominantColorSource;
-        final preferBackground = sourceType == DominantColorSource.banner;
-        newColor = await ImageColorExtractor.extractDominantColor(imagePath, preferBackground: preferBackground);
-      }
+      final newColor = await ImageColorExtractor.extractDominantColor(
+        imagePath,
+        preferBackground: preferBackground,
+      );
 
       logMulti([
         ['   Dominant color calculated: '],
-        [newColor?.toHex() ?? 'None', newColor ?? Colors.yellow, newColor == null ? Colors.red : Colors.transparent],
+        [newColor?.toHex(), determineTextColor(newColor ?? Colors.white), newColor ?? Colors.black],
       ]);
 
       // Only update if the color actually changed
@@ -292,60 +282,4 @@ Future<(Color?, bool)> _extractColorFromPath(Series series, String imagePath) as
     logErr('Error extracting dominant color', e);
   }
   return (null, false);
-}
-
-/// Corrects dark dominant colors by making them lighter and more vibrant
-Color _correctDarkDominantColor(Color color) {
-  final HSLColor hsl = HSLColor.fromColor(color);
-
-  // Define thresholds and correction parameters
-  const double minLightness = 0.3; // Colors below this lightness will be corrected
-  const double targetLightness = 0.45; // Target lightness for corrected colors
-  const double saturationBoost = 0.15; // Amount to boost saturation
-
-  // Only correct if the color is too dark
-  if (hsl.lightness < minLightness) {
-    // Calculate the correction amount based on how dark the color is
-    final lightnessDeficit = minLightness - hsl.lightness;
-    final correctionFactor = (lightnessDeficit / minLightness).clamp(0.0, 1.0);
-
-    // Apply progressive lightness correction
-    final newLightness = hsl.lightness + (targetLightness - hsl.lightness) * correctionFactor;
-
-    // Apply saturation boost, but less for already saturated colors
-    final saturationMultiplier = 1.0 - hsl.saturation; // Less boost for already saturated colors
-    final newSaturation = (hsl.saturation + (saturationBoost * saturationMultiplier)).clamp(0.0, 1.0);
-
-    final correctedHsl = hsl.withLightness(newLightness).withSaturation(newSaturation);
-    final correctedColor = correctedHsl.toColor();
-
-    log('   Color correction applied: ${color.toHex()} → ${correctedColor.toHex()} (lightness: ${hsl.lightness.toStringAsFixed(2)} → ${newLightness.toStringAsFixed(2)}, saturation: ${hsl.saturation.toStringAsFixed(2)} → ${newSaturation.toStringAsFixed(2)})');
-    return correctedColor;
-  }
-
-  // Return original color if it's not too dark
-  return color;
-}
-
-/// Entry point for extracting color in an isolate
-Future<Color?> _isolateExtractColor((ByteData, int, int) data) async {
-  try {
-    final byteData = data.$1;
-    final width = data.$2;
-    final height = data.$3;
-    final EncodedImage encoded_image = EncodedImage(byteData, height: height, width: width);
-
-    final paletteGenerator = await PaletteGenerator.fromByteData(encoded_image);
-
-    // Try vibrant color first, fall back to dominant
-    Color? extractedColor = paletteGenerator.vibrantColor?.color ?? paletteGenerator.dominantColor?.color;
-
-    // Apply dark color correction if we found a color
-    if (extractedColor != null) extractedColor = _correctDarkDominantColor(extractedColor);
-
-    return extractedColor;
-  } catch (e) {
-    logErr('Error extracting color from image', e);
-    return null;
-  }
 }
