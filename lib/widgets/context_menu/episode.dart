@@ -11,6 +11,7 @@ import '../../manager.dart';
 import '../../models/episode.dart';
 import '../../models/series.dart';
 import '../../services/library/library_provider.dart';
+import '../../services/lock_manager.dart';
 import '../../services/navigation/show_info.dart';
 import '../../utils/shell_utils.dart';
 import 'icons.dart' as icons;
@@ -128,6 +129,15 @@ class EpisodeContextMenuState extends State<EpisodeContextMenu> {
   void _toggleWatched(BuildContext context) {
     final library = Provider.of<Library>(context, listen: false);
     final newState = !widget.episode.watched;
+
+    // Check if the action should be disabled
+    if (library.lockManager.shouldDisableAction(UserAction.markEpisodeWatched)) {
+      snackBar(
+        library.lockManager.getDisabledReason(UserAction.markEpisodeWatched),
+        severity: InfoBarSeverity.warning,
+      );
+      return;
+    }
 
     library.markEpisodeWatched(widget.episode, watched: newState);
 

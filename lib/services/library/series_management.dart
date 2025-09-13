@@ -21,6 +21,15 @@ extension LibrarySeriesManagement on Library {
 
   /// Save a single series with updated properties
   Future<void> updateSeries(Series series, {bool invalidateCache = true}) async {
+    // Check if user actions are disabled
+    if (_lockManager.shouldDisableAction(UserAction.updateSeriesInfo)) {
+      snackBar(
+        _lockManager.getDisabledReason(UserAction.updateSeriesInfo),
+        severity: InfoBarSeverity.warning,
+      );
+      return;
+    }
+
     final index = _series.indexWhere((s) => s.path == series.path);
     if (index < 0) return;
 
@@ -47,7 +56,20 @@ extension LibrarySeriesManagement on Library {
     }
 
     logTrace('Series updated: ${series.name}, ${PathUtils.getFileName(series.effectivePosterPath ?? '')}, ${PathUtils.getFileName(series.effectiveBannerPath ?? '')}');
-    await _saveLibrary();
+    
+    // Acquire database save lock
+    final saveLockHandle = await _lockManager.acquireLock(
+      OperationType.databaseSave,
+      description: 'saving series update',
+      waitForOthers: true,
+    );
+
+    try {
+      await _saveLibrary();
+      notifyListeners();
+    } finally {
+      saveLockHandle?.dispose();
+    }
     notifyListeners();
   }
 
@@ -71,6 +93,15 @@ extension LibrarySeriesManagement on Library {
   }
 
   void markEpisodeWatched(Episode episode, {bool watched = true, bool save = true}) {
+    // Check if user actions are disabled
+    if (_lockManager.shouldDisableAction(UserAction.markEpisodeWatched)) {
+      snackBar(
+        _lockManager.getDisabledReason(UserAction.markEpisodeWatched),
+        severity: InfoBarSeverity.warning,
+      );
+      return;
+    }
+
     episode.watched = watched;
     episode.progress = watched ? 1.0 : 0.0;
 
@@ -86,6 +117,15 @@ extension LibrarySeriesManagement on Library {
   }
 
   void markSeasonWatched(Season season, {bool watched = true, bool save = true}) {
+    // Check if user actions are disabled
+    if (_lockManager.shouldDisableAction(UserAction.markSeriesWatched)) {
+      snackBar(
+        _lockManager.getDisabledReason(UserAction.markSeriesWatched),
+        severity: InfoBarSeverity.warning,
+      );
+      return;
+    }
+
     for (final episode in season.episodes) //
       markEpisodeWatched(episode, watched: watched, save: false);
 
@@ -96,6 +136,15 @@ extension LibrarySeriesManagement on Library {
   }
 
   void markSeriesWatched(Series series, {bool watched = true}) {
+    // Check if user actions are disabled
+    if (_lockManager.shouldDisableAction(UserAction.markSeriesWatched)) {
+      snackBar(
+        _lockManager.getDisabledReason(UserAction.markSeriesWatched),
+        severity: InfoBarSeverity.warning,
+      );
+      return;
+    }
+
     for (final season in series.seasons) //
       markSeasonWatched(season, watched: watched, save: false);
 

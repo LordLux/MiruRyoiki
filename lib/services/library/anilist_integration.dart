@@ -149,7 +149,7 @@ extension LibraryAnilistIntegration on Library {
         await Future.delayed(const Duration(milliseconds: 500));
       }
     }
-    
+
     notifyListeners();
   }
 
@@ -326,8 +326,19 @@ extension LibraryAnilistIntegration on Library {
       severity: InfoBarSeverity.success,
     );
 
-    await _saveLibrary();
-    notifyListeners();
+    // Acquire database save lock
+    final saveLockHandle = await _lockManager.acquireLock(
+      OperationType.databaseSave,
+      description: 'saving AniList metadata updates',
+      waitForOthers: true,
+    );
+
+    try {
+      await _saveLibrary();
+      notifyListeners();
+    } finally {
+      saveLockHandle?.dispose();
+    }
   }
 
   /// Get Anilist series suggestion

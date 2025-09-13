@@ -1,4 +1,5 @@
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:miruryoiki/widgets/buttons/wrapper.dart';
 import 'package:toggle_switch/toggle_switch.dart' as toggle;
 
 import '../manager.dart';
@@ -10,6 +11,10 @@ class EnumToggle<T> extends StatefulWidget {
   final String Function(T) labelExtractor;
   final T currentValue;
   final Function(T) onChanged;
+  final bool disabled;
+  final String? tooltip;
+  final Widget? tooltipWidget;
+  final Duration? tooltipWaitDuration;
 
   const EnumToggle({
     super.key,
@@ -17,6 +22,10 @@ class EnumToggle<T> extends StatefulWidget {
     required this.labelExtractor,
     required this.currentValue,
     required this.onChanged,
+    this.tooltip,
+    this.tooltipWidget,
+    this.tooltipWaitDuration,
+    this.disabled = false,
   });
 
   @override
@@ -29,27 +38,37 @@ class _EnumToggleState<T> extends State<EnumToggle<T>> {
     final currentIndex = widget.enumValues.indexOf(widget.currentValue);
     final theme = FluentTheme.of(context);
     
-    return toggle.ToggleSwitch(
-      animate: true,
-      animationDuration: dimDuration.inMilliseconds,
-      initialLabelIndex: currentIndex,
-      customTextStyles: [ for (var i = 0; i < widget.enumValues.length; i++)
-        Manager.bodyStyle.copyWith(color: currentIndex == i ? getPrimaryColorBasedOnAccent() : null),
-      ],
-      totalSwitches: widget.enumValues.length,
-      activeFgColor: getPrimaryColorBasedOnAccent(),
-      activeBgColors: List.generate(
-        widget.enumValues.length,
-        (index) => [theme.accentColor.lighter],
+    return AnimatedOpacity(
+      duration: dimDuration,
+      opacity: widget.disabled ? 0.6 : 1.0,
+      child: MouseButtonWrapper(
+        isButtonDisabled: widget.disabled,
+        tooltip: widget.tooltip,
+        tooltipWidget: widget.tooltipWidget,
+        tooltipWaitDuration: widget.tooltipWaitDuration,
+        child: (_) => toggle.ToggleSwitch(
+          animate: true,
+          animationDuration: dimDuration.inMilliseconds,
+          initialLabelIndex: currentIndex,
+          customTextStyles: [ for (var i = 0; i < widget.enumValues.length; i++)
+            Manager.bodyStyle.copyWith(color: currentIndex == i ? getPrimaryColorBasedOnAccent() : null),
+          ],
+          totalSwitches: widget.enumValues.length,
+          activeFgColor: getPrimaryColorBasedOnAccent(),
+          activeBgColors: List.generate(
+            widget.enumValues.length,
+            (index) => [theme.accentColor.lighter],
+          ),
+          minWidth: 130.0,
+          labels: widget.enumValues.map((value) => widget.labelExtractor(value)).toList(),
+          onToggle: (int? index) {
+            if (index != null) {
+              final selectedValue = widget.enumValues[index];
+              widget.onChanged(selectedValue);
+            }
+          },
+        ),
       ),
-      minWidth: 130.0,
-      labels: widget.enumValues.map((value) => widget.labelExtractor(value)).toList(),
-      onToggle: (int? index) {
-        if (index != null) {
-          final selectedValue = widget.enumValues[index];
-          widget.onChanged(selectedValue);
-        }
-      },
     );
   }
 }

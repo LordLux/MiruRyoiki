@@ -21,6 +21,7 @@ import '../main.dart';
 import '../manager.dart';
 import '../models/formatter/action.dart';
 import '../models/series.dart';
+import '../services/lock_manager.dart';
 import '../services/navigation/dialogs.dart';
 import '../services/navigation/shortcuts.dart';
 import '../services/navigation/show_info.dart';
@@ -35,6 +36,7 @@ import '../utils/time_utils.dart';
 import '../widgets/buttons/button.dart';
 import '../widgets/buttons/hyperlink.dart';
 import '../widgets/buttons/setting_category_button.dart';
+import '../widgets/buttons/switch.dart';
 import '../widgets/buttons/wrapper.dart';
 import '../widgets/enum_toggle.dart';
 import '../widgets/page/header_widget.dart';
@@ -83,7 +85,6 @@ class SettingsScreenState extends State<SettingsScreen> {
 
   int _buildClicks = 0;
   Timer? _buildClickTimer;
-  bool _buildUnlocked = false;
 
   // ignore: unused_field
   bool _isFormatting = false;
@@ -702,7 +703,7 @@ class SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-  void a() {
+  void carpaccio() {
     _buildClicks++;
     if (_buildClicks == 1) {
       _buildClickTimer = Timer(Duration(seconds: 1), () {
@@ -1022,19 +1023,22 @@ class SettingsScreenState extends State<SettingsScreen> {
                           children: [
                             Text('Effect:', style: Manager.bodyStyle),
                             const SizedBox(width: 12),
-                            ComboBox<WindowEffect>(
-                              value: appTheme.windowEffect,
-                              items: _PlatformWindowEffects.map((WindowEffect value) {
-                                return ComboBoxItem<WindowEffect>(
-                                  value: value,
-                                  child: Text(value.name_),
-                                );
-                              }).toList(),
-                              onChanged: (WindowEffect? newValue) {
-                                appTheme.windowEffect = newValue!;
-                                appTheme.setEffect(newValue, context);
-                                settings.windowEffect = newValue;
-                              },
+                            MouseButtonWrapper(
+                              tooltip: 'Choose a style for the window background.',
+                              child: (_) => ComboBox<WindowEffect>(
+                                value: appTheme.windowEffect,
+                                items: _PlatformWindowEffects.map((WindowEffect value) {
+                                  return ComboBoxItem<WindowEffect>(
+                                    value: value,
+                                    child: Text(value.name_),
+                                  );
+                                }).toList(),
+                                onChanged: (WindowEffect? newValue) {
+                                  appTheme.windowEffect = newValue!;
+                                  appTheme.setEffect(newValue, context);
+                                  settings.windowEffect = newValue;
+                                },
+                              ),
                             ),
                           ],
                         ),
@@ -1059,62 +1063,65 @@ class SettingsScreenState extends State<SettingsScreen> {
                       const SizedBox(width: 12),
                       FlyoutTarget(
                         controller: controller,
-                        child: GestureDetector(
-                          child: Container(
-                            width: 34,
-                            height: 34,
-                            decoration: BoxDecoration(
-                              color: settings.accentColor.toAccentColor().light,
-                              border: Border.all(
-                                color: settings.accentColor.lerpWith(Colors.black, .25),
-                                width: 1.25,
+                        child: MouseButtonWrapper(
+                          tooltip: 'Select an accent color for the app theme. When changed, updates the interface highlighting and accent elements.',
+                          child: (_) => GestureDetector(
+                            child: Container(
+                              width: 34,
+                              height: 34,
+                              decoration: BoxDecoration(
+                                color: settings.accentColor.toAccentColor().light,
+                                border: Border.all(
+                                  color: settings.accentColor.lerpWith(Colors.black, .25),
+                                  width: 1.25,
+                                ),
+                                borderRadius: BorderRadius.circular(4),
                               ),
-                              borderRadius: BorderRadius.circular(4),
                             ),
-                          ),
-                          onTapDown: (details) {
-                            final Offset offset = details.localPosition;
-                            final RenderBox renderBox = context.findRenderObject() as RenderBox;
-                            final Offset globalOffset = renderBox.localToGlobal(offset);
-                            final Offset flyoutOffset = Offset(globalOffset.dx, globalOffset.dy + renderBox.size.height / 3);
+                            onTapDown: (details) {
+                              final Offset offset = details.localPosition;
+                              final RenderBox renderBox = context.findRenderObject() as RenderBox;
+                              final Offset globalOffset = renderBox.localToGlobal(offset);
+                              final Offset flyoutOffset = Offset(globalOffset.dx, globalOffset.dy + renderBox.size.height / 3);
 
-                            // ignore: avoid_single_cascade_in_expression_statements
-                            controller.showFlyout(
-                              autoModeConfiguration: FlyoutAutoConfiguration(
-                                preferredMode: FlyoutPlacementMode.right,
-                                horizontal: true,
-                              ),
-                              barrierDismissible: true,
-                              dismissOnPointerMoveAway: true,
-                              dismissWithEsc: true,
-                              navigatorKey: rootNavigatorKey.currentState,
-                              position: flyoutOffset,
-                              builder: (context) {
-                                return FlyoutContent(
-                                  child: ColorPicker(
-                                    color: settings.accentColor,
-                                    onChanged: (color) {
-                                      tempColor = color;
-                                    },
-                                    minValue: 100,
-                                    isAlphaSliderVisible: false,
-                                    colorSpectrumShape: ColorSpectrumShape.ring,
-                                    isMoreButtonVisible: false,
-                                    isColorSliderVisible: false,
-                                    isColorChannelTextInputVisible: false,
-                                    isHexInputVisible: false,
-                                    minSaturation: 80,
-                                    maxSaturation: 80,
-                                    isAlphaEnabled: false,
-                                  ),
-                                );
-                              },
-                            )..then((_) {
-                                settings.accentColor = tempColor.saturate(300);
-                                appTheme.color = settings.accentColor.toAccentColor();
-                                settings.accentColor = settings.accentColor;
-                              });
-                          },
+                              // ignore: avoid_single_cascade_in_expression_statements
+                              controller.showFlyout(
+                                autoModeConfiguration: FlyoutAutoConfiguration(
+                                  preferredMode: FlyoutPlacementMode.right,
+                                  horizontal: true,
+                                ),
+                                barrierDismissible: true,
+                                dismissOnPointerMoveAway: true,
+                                dismissWithEsc: true,
+                                navigatorKey: rootNavigatorKey.currentState,
+                                position: flyoutOffset,
+                                builder: (context) {
+                                  return FlyoutContent(
+                                    child: ColorPicker(
+                                      color: settings.accentColor,
+                                      onChanged: (color) {
+                                        tempColor = color;
+                                      },
+                                      minValue: 100,
+                                      isAlphaSliderVisible: false,
+                                      colorSpectrumShape: ColorSpectrumShape.ring,
+                                      isMoreButtonVisible: false,
+                                      isColorSliderVisible: false,
+                                      isColorChannelTextInputVisible: false,
+                                      isHexInputVisible: false,
+                                      minSaturation: 80,
+                                      maxSaturation: 80,
+                                      isAlphaEnabled: false,
+                                    ),
+                                  );
+                                },
+                              )..then((_) {
+                                  settings.accentColor = tempColor.saturate(300);
+                                  appTheme.color = settings.accentColor.toAccentColor();
+                                  settings.accentColor = settings.accentColor;
+                                });
+                            },
+                          ),
                         ),
                       ),
                     ],
@@ -1129,6 +1136,7 @@ class SettingsScreenState extends State<SettingsScreen> {
                       Text('Dim', style: Manager.bodyStyle),
                       const SizedBox(width: 12),
                       EnumToggle<Dim>(
+                        tooltip: 'Adjust the dimming level of the background when using acrylic or mica effects.',
                         enumValues: Dim.values,
                         labelExtractor: (value) => value.name_,
                         currentValue: appTheme.dim,
@@ -1147,19 +1155,22 @@ class SettingsScreenState extends State<SettingsScreen> {
                     children: [
                       Text('Font Size:', style: Manager.bodyStyle),
                       const SizedBox(width: 12),
-                      ComboBox<double>(
-                        focusNode: fontSizeFocusNode,
-                        value: appTheme.fontSize,
-                        items: <double>[for (double i = ScreenUtils.kMinFontSize; i <= ScreenUtils.kMaxFontSize; i += 2) i].map((double value) {
-                          return ComboBoxItem<double>(
-                            value: value,
-                            child: Text(value.toString()),
-                          );
-                        }).toList(),
-                        onChanged: (double? newValue) {
-                          appTheme.fontSize = newValue!;
-                          settings.fontSize = newValue;
-                        },
+                      MouseButtonWrapper(
+                        tooltip: 'Adjust the font size throughout the app.',
+                        child: (_) => ComboBox<double>(
+                          focusNode: fontSizeFocusNode,
+                          value: appTheme.fontSize,
+                          items: <double>[for (double i = ScreenUtils.kMinFontSize; i <= ScreenUtils.kMaxFontSize; i += 2) i].map((double value) {
+                            return ComboBoxItem<double>(
+                              value: value,
+                              child: Text('$value'),
+                            );
+                          }).toList(),
+                          onChanged: (double? newValue) {
+                            appTheme.fontSize = newValue!;
+                            settings.fontSize = newValue;
+                          },
+                        ),
                       ),
                     ],
                   ),
@@ -1174,12 +1185,15 @@ class SettingsScreenState extends State<SettingsScreen> {
                         style: Manager.bodyStyle,
                       ),
                       const SizedBox(width: 12),
-                      ToggleSwitch(
-                        checked: settings.disableAnimations,
-                        content: Text(settings.disableAnimations ? 'Animations Disabled' : 'Animations Enabled', style: Manager.bodyStyle),
-                        onChanged: (value) {
-                          settings.disableAnimations = value;
-                        },
+                      NormalSwitch(
+                        ToggleSwitch(
+                          checked: settings.disableAnimations,
+                          content: Text(settings.disableAnimations ? 'Animations Disabled' : 'Animations Enabled', style: Manager.bodyStyle),
+                          onChanged: (value) {
+                            setState(() => settings.disableAnimations = value);
+                          },
+                        ),
+                        tooltip: 'When enabled, most UI animations will be disabled for a more static experience.',
                       ),
                     ],
                   ),
@@ -1194,29 +1208,32 @@ class SettingsScreenState extends State<SettingsScreen> {
                         style: Manager.bodyStyle,
                       ),
                       const SizedBox(width: 12),
-                      ToggleSwitch(
-                        checked: showAccentLibViewCol,
-                        content: Text(showAccentLibViewCol ? 'Accent' : 'Dominant', style: Manager.bodyStyle),
-                        onChanged: (value) => setState(() {
-                          showAccentLibViewCol = value;
+                      NormalSwitch(
+                        ToggleSwitch(
+                          checked: showAccentLibViewCol,
+                          content: Text(showAccentLibViewCol ? 'Accent' : 'Dominant', style: Manager.bodyStyle),
+                          onChanged: (value) => setState(() {
+                            showAccentLibViewCol = value;
 
-                          // Convert between equivalent modes when toggle changes
-                          switch (settings.libColView) {
-                            case LibraryColorView.alwaysAccent:
-                            case LibraryColorView.alwaysDominant:
-                              settings.libColView = value ? LibraryColorView.alwaysAccent : LibraryColorView.alwaysDominant;
-                              break;
+                            // Convert between equivalent modes when toggle changes
+                            switch (settings.libColView) {
+                              case LibraryColorView.alwaysAccent:
+                              case LibraryColorView.alwaysDominant:
+                                settings.libColView = value ? LibraryColorView.alwaysAccent : LibraryColorView.alwaysDominant;
+                                break;
 
-                            case LibraryColorView.hoverAccent:
-                            case LibraryColorView.hoverDominant:
-                              settings.libColView = value ? LibraryColorView.hoverAccent : LibraryColorView.hoverDominant;
-                              break;
+                              case LibraryColorView.hoverAccent:
+                              case LibraryColorView.hoverDominant:
+                                settings.libColView = value ? LibraryColorView.hoverAccent : LibraryColorView.hoverDominant;
+                                break;
 
-                            case LibraryColorView.none:
-                              settings.libColView = LibraryColorView.none;
-                              break;
-                          }
-                        }),
+                              case LibraryColorView.none:
+                                settings.libColView = LibraryColorView.none;
+                                break;
+                            }
+                          }),
+                        ),
+                        tooltip: 'When enabled, the library cards will use the accent color for their background.\nOtherwise, they will use the dominant color extracted from the series poster.',
                       ),
                       const SizedBox(width: 12),
                       Builder(builder: (context) {
@@ -1230,24 +1247,27 @@ class SettingsScreenState extends State<SettingsScreen> {
                         if (initialIndex < 0) initialIndex = 0; // Fallback
 
                         return Flexible(
-                          child: toggle.ToggleSwitch(
-                            animate: true,
-                            multiLineText: true,
-                            animationDuration: dimDuration.inMilliseconds,
-                            initialLabelIndex: initialIndex,
-                            totalSwitches: 3,
-                            customTextStyles: [
-                              for (var i = 0; i < options.length; i++) Manager.bodyStyle.copyWith(color: initialIndex == i ? getPrimaryColorBasedOnAccent() : null),
-                            ],
-                            activeFgColor: getPrimaryColorBasedOnAccent(),
-                            activeBgColor: [FluentTheme.of(context).accentColor.lighter],
-                            customWidths: customWidths,
-                            labels: options.map((opt) => opt.name_).toList(),
-                            onToggle: (int? value) {
-                              if (value != null && value >= 0 && value < options.length) {
-                                settings.libColView = options[value];
-                              }
-                            },
+                          child: MouseButtonWrapper(
+                            tooltip: 'Choose way the library Series cards\' background color looks.\n\n- Always: Always show the color in the card.\n- Hover: Show the color only when hovering over the card.\n- None: Never show any color on the card.',
+                            child: (_) => toggle.ToggleSwitch(
+                              animate: true,
+                              multiLineText: true,
+                              animationDuration: dimDuration.inMilliseconds,
+                              initialLabelIndex: initialIndex,
+                              totalSwitches: 3,
+                              customTextStyles: [
+                                for (var i = 0; i < options.length; i++) Manager.bodyStyle.copyWith(color: initialIndex == i ? getPrimaryColorBasedOnAccent() : null),
+                              ],
+                              activeFgColor: getPrimaryColorBasedOnAccent(),
+                              activeBgColor: [FluentTheme.of(context).accentColor.lighter],
+                              customWidths: customWidths,
+                              labels: options.map((opt) => opt.name_).toList(),
+                              onToggle: (int? value) {
+                                if (value != null && value >= 0 && value < options.length) {
+                                  settings.libColView = options[value];
+                                }
+                              },
+                            ),
                           ),
                         );
                       }),
@@ -1261,6 +1281,8 @@ class SettingsScreenState extends State<SettingsScreen> {
                       Text('Dominant Color Source', style: Manager.bodyStyle),
                       const SizedBox(width: 12),
                       EnumToggle<DominantColorSource>(
+                        disabled: LockManager().hasActiveOperations,
+                        tooltip: LockManager().hasActiveOperations ? 'Cannot change while library operations are active' : 'Choose the source for calculating dominant colors. Changing this will allow you to recalculate all dominant colors using the new source.',
                         enumValues: DominantColorSource.values,
                         labelExtractor: (value) => value.name_,
                         currentValue: settings.dominantColorSource,
@@ -1285,22 +1307,57 @@ class SettingsScreenState extends State<SettingsScreen> {
                   ),
                 ],
                 VDiv(12),
-                // Hover show airing indicator
+                // Airing indicator
                 ...[
-                  Row(
+                  Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Hover Show Airing Indicator',
+                        'Series Airing Status Indicator',
                         style: Manager.bodyStyle,
                       ),
-                      const SizedBox(width: 12),
-                      ToggleSwitch(
-                        checked: settings.hoverShowAiringIndicator,
-                        content: Text(settings.hoverShowAiringIndicator ? 'Enabled' : 'Disabled', style: Manager.bodyStyle),
-                        onChanged: (value) {
-                          settings.hoverShowAiringIndicator = value;
-                        },
+                      const SizedBox(height: 8),
+                      Padding(
+                        padding: const EdgeInsets.only(left: 16.0),
+                        child: Row(
+                          children: [
+                            Text('Show Indicator:', style: Manager.bodyStyle),
+                            const SizedBox(width: 12),
+                            NormalSwitch(
+                              ToggleSwitch(
+                                checked: settings.showAiringIndicator,
+                                content: Text(settings.showAiringIndicator ? 'Enabled' : 'Disabled', style: Manager.bodyStyle),
+                                onChanged: (value) {
+                                  setState(() => settings.showAiringIndicator = value);
+                                },
+                              ),
+                              tooltip: 'When enabled, an indicator will be shown on series cards if the series is currently airing or if the series is local.\nOtherwise, no indicator is shown.',
+                            ),
+                          ],
+                        ),
                       ),
+                      const SizedBox(height: 12),
+                      if (settings.showAiringIndicator)
+                        Padding(
+                          padding: const EdgeInsets.only(left: 16.0),
+                          child: Row(
+                            children: [
+                              Text('Expand Indicator:', style: Manager.bodyStyle),
+                              const SizedBox(width: 12),
+                              NormalSwitch(
+                                ToggleSwitch(
+                                  checked: settings.hoverExpandAiringIndicator,
+                                  content: Text(settings.hoverExpandAiringIndicator ? 'Enabled' : 'Disabled', style: Manager.bodyStyle),
+                                  onChanged: (value) {
+                                    settings.hoverExpandAiringIndicator = value;
+                                  },
+                                ),
+                                tooltip: 'When enabled, hovering over a series card will display an indicator if the series is currently airing.\nOtherwise, no indicator is shown.',
+                              ),
+                            ],
+                          ),
+                        ),
                     ],
                   ),
                 ],
@@ -1328,12 +1385,16 @@ class SettingsScreenState extends State<SettingsScreen> {
                         style: Manager.bodyStyle,
                       ),
                       VDiv(12),
-                      ToggleSwitch(
-                        checked: Manager.defaultPosterSource == ImageSource.autoAnilist,
-                        content: Text(Manager.defaultPosterSource == ImageSource.autoAnilist ? 'Prefer Anilist Posters' : 'Prefer Local Posters', style: Manager.bodyStyle),
-                        onChanged: (value) {
-                          settings.defaultPosterSource = value ? ImageSource.autoAnilist : ImageSource.autoLocal;
-                        },
+                      NormalSwitch(
+                        ToggleSwitch(
+                          checked: Manager.defaultPosterSource == ImageSource.autoAnilist,
+                          content: Text(Manager.defaultPosterSource == ImageSource.autoAnilist ? 'Prefer Anilist Posters' : 'Prefer Local Posters', style: Manager.bodyStyle),
+                          onChanged: (value) {
+                            settings.defaultPosterSource = value ? ImageSource.autoAnilist : ImageSource.autoLocal;
+                          },
+                        ),
+                        disabled: LockManager().hasActiveOperations,
+                        tooltip: LockManager().hasActiveOperations ? 'Cannot change while library operations are active' : 'When enabled, Anilist posters will be used when available.\nOtherwise, local posters will be used.',
                       ),
                     ],
                   ),
@@ -1345,12 +1406,16 @@ class SettingsScreenState extends State<SettingsScreen> {
                         style: Manager.bodyStyle,
                       ),
                       VDiv(12),
-                      ToggleSwitch(
-                        checked: Manager.defaultBannerSource == ImageSource.autoAnilist,
-                        content: Text(Manager.defaultBannerSource == ImageSource.autoAnilist ? 'Prefer Anilist Banners' : 'Prefer Local Banners', style: Manager.bodyStyle),
-                        onChanged: (value) {
-                          settings.defaultBannerSource = value ? ImageSource.autoAnilist : ImageSource.autoLocal;
-                        },
+                      NormalSwitch(
+                        ToggleSwitch(
+                          checked: Manager.defaultBannerSource == ImageSource.autoAnilist,
+                          content: Text(Manager.defaultBannerSource == ImageSource.autoAnilist ? 'Prefer Anilist Banners' : 'Prefer Local Banners', style: Manager.bodyStyle),
+                          onChanged: (value) {
+                            settings.defaultBannerSource = value ? ImageSource.autoAnilist : ImageSource.autoLocal;
+                          },
+                        ),
+                        disabled: LockManager().hasActiveOperations,
+                        tooltip: LockManager().hasActiveOperations ? 'Cannot change while library operations are active' : 'When enabled, Anilist banners will be used when available.\nOtherwise, local banners will be used.',
                       ),
                     ],
                   ),
@@ -1365,12 +1430,15 @@ class SettingsScreenState extends State<SettingsScreen> {
                     style: Manager.bodyStyle,
                   ),
                   VDiv(12),
-                  ToggleSwitch(
-                    checked: settings.returnToLibraryAfterSeriesScreen,
-                    content: Text(settings.returnToLibraryAfterSeriesScreen ? 'Enabled' : 'Disabled', style: Manager.bodyStyle),
-                    onChanged: (value) {
-                      settings.returnToLibraryAfterSeriesScreen = value;
-                    },
+                  NormalSwitch(
+                    ToggleSwitch(
+                      checked: settings.returnToLibraryAfterSeriesScreen,
+                      content: Text(settings.returnToLibraryAfterSeriesScreen ? 'Enabled' : 'Disabled', style: Manager.bodyStyle),
+                      onChanged: (value) {
+                        settings.returnToLibraryAfterSeriesScreen = value;
+                      },
+                    ),
+                    tooltip: 'When enabled, exiting a series screen (e.g., by pressing back) will return you to the main library view, even if you navigated from a different tab.',
                   ),
                 ],
               ),
@@ -1409,6 +1477,7 @@ class SettingsScreenState extends State<SettingsScreen> {
                         ),
                         SizedBox(height: 12),
                         EnumToggle<LogLevel>(
+                          tooltip: 'Select the minimum log level for file logging. When set to higher levels, more detailed messages are logged.\nOtherwise, only important messages (like errors) are captured.',
                           enumValues: LogLevel.values,
                           labelExtractor: (level) => level.displayName,
                           currentValue: settings.fileLogLevel,
@@ -1444,14 +1513,17 @@ class SettingsScreenState extends State<SettingsScreen> {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Expanded(
-                              child: NumberBox<int>(
-                                value: settings.logRetentionDays,
-                                onChanged: (int? value) {
-                                  if (value != null && value >= 0) settings.logRetentionDays = value;
-                                },
-                                min: 0,
-                                max: 365,
-                                mode: SpinButtonPlacementMode.inline,
+                              child: MouseButtonWrapper(
+                                tooltip: 'Set the number of days to keep log files. When enabled, automatically deletes older log files.\nOtherwise, logs are kept indefinitely.',
+                                child: (_) => NumberBox<int>(
+                                  value: settings.logRetentionDays,
+                                  onChanged: (int? value) {
+                                    if (value != null && value >= 0) settings.logRetentionDays = value;
+                                  },
+                                  min: 0,
+                                  max: 365,
+                                  mode: SpinButtonPlacementMode.inline,
+                                ),
                               ),
                             ),
                             HDiv(8),
@@ -1516,11 +1588,12 @@ class SettingsScreenState extends State<SettingsScreen> {
               Text(settingsList[4]["title"], style: Manager.subtitleStyle),
               VDiv(12),
               Text('Version: ${Manager.appVersion}', style: Manager.bodyStyle),
-              GestureDetector(
-                onTap: () => a(),
-                child: Text('Build Number: ${Manager.buildNumber}', style: Manager.bodyStyle),
+              MouseButtonWrapper(
+                child: (_) => GestureDetector(
+                  onTap: () => carpaccio(),
+                  child: Text('Build Number: ${Manager.buildNumber}', style: Manager.bodyStyle),
+                ),
               ),
-              if (_buildUnlocked) Text(' Carpaccio Sardo', style: Manager.bodyStyle.copyWith(color: Colors.red)),
               VDiv(6),
               Text('Last Update: ${Manager.lastUpdate.pretty()}', style: Manager.bodyStyle),
               VDiv(24),

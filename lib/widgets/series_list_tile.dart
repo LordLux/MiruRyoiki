@@ -28,7 +28,6 @@ class _SeriesListTileState extends State<SeriesListTile> {
   bool _loading = true;
   bool _hasError = false;
   ImageProvider? _posterImageProvider;
-  ImageSource? _lastKnownDefaultSource;
   final GlobalKey<SeriesContextMenuState> _contextMenuKey = GlobalKey<SeriesContextMenuState>();
 
   @override

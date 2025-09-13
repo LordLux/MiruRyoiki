@@ -38,7 +38,10 @@ class _MouseButtonWrapperState extends State<MouseButtonWrapper> {
               : widget.isLoading
                   ? SystemMouseCursors.progress
                   : SystemMouseCursors.click,
-          child: widget.child(_isHovering),
+          child: AbsorbPointer(
+            absorbing: widget.isButtonDisabled || widget.isLoading,
+            child: widget.child(_isHovering),
+          ),
         );
         // no tooltip
         if (widget.tooltip == null && widget.tooltipWidget == null) return button;

@@ -5,7 +5,6 @@ import 'package:miruryoiki/services/navigation/dialogs.dart';
 import 'package:miruryoiki/services/navigation/show_info.dart';
 import 'package:miruryoiki/services/window/service.dart';
 import 'package:miruryoiki/theme.dart';
-import 'package:miruryoiki/utils/time_utils.dart';
 import 'package:provider/provider.dart';
 
 import '../../main.dart';

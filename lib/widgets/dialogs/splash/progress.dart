@@ -4,6 +4,7 @@ import 'package:miruryoiki/utils/screen_utils.dart';
 
 import '../../../utils/time_utils.dart';
 import '../../../manager.dart';
+import '../../../services/lock_manager.dart';
 
 /// Manages the global status bar
 class LibraryScanProgressManager {
@@ -58,20 +59,27 @@ class LibraryScanProgressManager {
   void hide() => _isShowingNotifier.value = false;
 }
 
-/// Widget that displays the current status of the library scan
+/// Widget that displays the current status of active operations
 class LibraryScanProgressIndicator extends StatelessWidget {
   const LibraryScanProgressIndicator({super.key});
 
   @override
   Widget build(BuildContext context) {
     final libraryScanProgressManager = LibraryScanProgressManager();
+    final lockManager = LockManager();
 
     return Positioned(
       right: 8,
       bottom: 0,
-      child: ValueListenableBuilder<bool>(
-        valueListenable: libraryScanProgressManager.showingNotifier,
-        builder: (context, isShowing, _) {
+      child: ListenableBuilder(
+        listenable: Listenable.merge([
+          libraryScanProgressManager.showingNotifier,
+          lockManager,
+        ]),
+        builder: (context, _) {
+          final isShowing = libraryScanProgressManager.showingNotifier.value;
+          final operationName = lockManager.currentOperationDescription ?? 'Indexing library...';
+          
           return AnimatedOpacity(
             opacity: isShowing ? 1.0 : 0.0,
             duration: getDuration(const Duration(milliseconds: 200)),
@@ -80,7 +88,7 @@ class LibraryScanProgressIndicator extends StatelessWidget {
               height: ScreenUtils.kStatusBarHeight,
               child: Row(
                 children: [
-                  SizedBox(width: 100, child: Text('Indexing library...', style: Manager.captionStyle.copyWith(fontSize: 11))),
+                  SizedBox(width: 100, child: Text(operationName, style: Manager.captionStyle.copyWith(fontSize: 11 * Manager.fontSizeMultiplier))),
                   SizedBox(
                     width: 250,
                     child: AnimatedProgressIndicator(progressNotifier: libraryScanProgressManager.progressNotifier),

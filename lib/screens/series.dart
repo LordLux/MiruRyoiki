@@ -147,7 +147,7 @@ class SeriesScreenState extends State<SeriesScreen> {
       });
 
       // Calculate dominant color (this will update it if needed)
-      await series!.calculateDominantColor(forceRecalculate: true);
+      await series!.calculateDominantColor();
 
       if (!mounted || series == null) return; // in case series was disposed during the async operation
 
