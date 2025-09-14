@@ -64,7 +64,7 @@ class Season {
 
     final seasonNum = seasonNumber; // Use the parsed season number if available
     if (seasonNum != null) return 'Season $seasonNum';
-    
+
     // if no valid season number found, return the original name
     return name;
   }
@@ -1146,11 +1146,19 @@ class Series {
   int get numberOfSeasons {
     if (seasons.isEmpty) return 0;
 
-    // Count seasons that have valid season numbers (actual seasons)
-    final actualSeasons = seasons.where((season) => season.seasonNumber != null).length;
+    // Get all valid season numbers
+    final seasonNumbers = seasons //
+        .map((season) => season.seasonNumber)
+        .where((number) => number != null)
+        .cast<int>()
+        .toList();
 
-    // If we found actual seasons, return that count, otherwise return total seasons
-    return actualSeasons > 0 ? actualSeasons : seasons.length;
+    // If we have actual seasons with numbers, return the highest number
+    if (seasonNumbers.isNotEmpty) //
+      return seasonNumbers.reduce((a, b) => a > b ? a : b);
+
+    // Otherwise, return the total count of all seasons
+    return seasons.length;
   }
 }
 
