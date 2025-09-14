@@ -75,7 +75,6 @@ class SeriesScreenState extends State<SeriesScreen> {
         _loadAnilistDataForCurrentSeries();
       });
     }
-    log('INIT SERIES SCREEN');
   }
   
   @override
@@ -95,7 +94,6 @@ class SeriesScreenState extends State<SeriesScreen> {
   @override
   void dispose() {
     deferredPointerLink?.dispose();
-    log('DISPOSING SERIES SCREEN');
     super.dispose();
   }
   
