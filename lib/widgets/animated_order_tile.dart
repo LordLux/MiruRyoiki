@@ -14,6 +14,7 @@ class AnimatedReorderableTile extends StatefulWidget {
   final bool isReordering;
   final bool initialAnimation;
   final bool reorderable;
+  final void Function(int index)? onPressed;
 
   const AnimatedReorderableTile({
     required super.key,
@@ -24,6 +25,7 @@ class AnimatedReorderableTile extends StatefulWidget {
     required this.isReordering,
     this.initialAnimation = false,
     this.reorderable = true,
+    this.onPressed,
   });
 
   @override
@@ -96,6 +98,7 @@ class _AnimatedReorderableTileState extends State<AnimatedReorderableTile> with 
                     : _colorAnimation.value!;
 
             return ListTile(
+              onPressed: () => widget.onPressed?.call(widget.index),
               margin: EdgeInsets.only(top: 4),
               tileColor: WidgetStatePropertyAll(tileColor),
               title: Text(widget.displayName, style: Manager.bodyStyle),

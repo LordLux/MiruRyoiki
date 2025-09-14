@@ -121,6 +121,9 @@ class LibraryScreenState extends State<LibraryScreen> {
   bool _isSelectingFolder = false;
   bool _isReordering = false;
 
+  // Global keys for each group to enable scrolling
+  final Map<String, GlobalKey> _groupKeys = {};
+
   List<String> _customListOrder = [];
   List<Series> displayedSeries = [];
 
@@ -307,6 +310,9 @@ class LibraryScreenState extends State<LibraryScreen> {
     } else {
       _groupedDataCache = null;
     }
+
+    // Clean up group keys after building cache
+    _cleanupGroupKeys();
 
     // Store current parameters
     _cacheParameters = _CacheParameters(
@@ -584,6 +590,126 @@ class LibraryScreenState extends State<LibraryScreen> {
     _sortedSeriesCache = null;
     _groupedDataCache = null;
     _cacheParameters = null;
+  }
+
+  void _cleanupGroupKeys() {
+    if (_groupedDataCache == null) {
+      _groupKeys.clear();
+      return;
+    }
+    
+    // Remove keys for groups that no longer exist
+    final currentGroups = _groupedDataCache!.keys.toSet();
+    _groupKeys.removeWhere((groupName, key) => !currentGroups.contains(groupName));
+  }
+
+  void _scrollToList(String targetListName) {
+    if (_groupedDataCache == null) return;
+    
+    // Find the index of the target list in the sorted display order
+    final displayOrder = _groupedDataCache!.keys.toList();
+    displayOrder.sort((a, b) {
+      final aIndex = _customListOrder.indexOf(_getApiName(a));
+      final bIndex = _customListOrder.indexOf(_getApiName(b));
+      if (aIndex == -1) return 1;
+      if (bIndex == -1) return -1;
+      return aIndex.compareTo(bIndex);
+    });
+    
+    // Find the index of the target list in the display order
+    final targetIndex = displayOrder.indexOf(targetListName);
+    if (targetIndex == -1) {
+      logTrace('Target list $targetListName not found in grouped data');
+      return;
+    }
+    
+    // Try to use the group key first (for already-rendered widgets)
+    final groupKey = _groupKeys[targetListName];
+    if (groupKey?.currentContext != null) {
+      Scrollable.ensureVisible(
+        groupKey!.currentContext!,
+        duration: shortDuration,
+        curve: Curves.easeInOut,
+      );
+      logTrace('Scrolling to list $targetListName using GlobalKey');
+    } else {
+      // Fallback: two-step approach for better accuracy
+      _scrollToListWithRendering(targetIndex, targetListName);
+    }
+  }
+
+  void _scrollToListWithRendering(int targetIndex, String targetListName) async {
+    // Step 1: Scroll to approximate position to trigger rendering
+    _scrollToListByIndex(targetIndex);
+    
+    // Step 2: Wait a bit for rendering, then try precise scrolling
+    await Future.delayed(const Duration(milliseconds: 100));
+    
+    // Check if the widget is now rendered
+    final groupKey = _groupKeys[targetListName];
+    if (groupKey?.currentContext != null) {
+      Scrollable.ensureVisible(
+        groupKey!.currentContext!,
+        duration: const Duration(milliseconds: 200), // Shorter duration for fine adjustment
+        curve: Curves.easeInOut,
+      );
+      logTrace('Fine-tuned scroll to $targetListName using GlobalKey after rendering');
+    } else {
+      logTrace('Widget still not rendered for $targetListName, using index calculation only');
+    }
+  }
+
+  void _scrollToListByIndex(int targetIndex) {
+    final scrollController = widget.scrollController;
+    if (!scrollController.hasClients) return;
+
+    // Estimate the height of each group section
+    // This is an approximation - you may need to adjust based on your actual content
+    const double estimatedHeaderHeight = 50.0; // Height of sticky header
+    const double estimatedGroupSpacing = 8.0; // Spacing between groups
+    
+    // Calculate estimated position
+    double estimatedOffset = 0.0;
+    
+    if (_groupedDataCache != null) {
+      final displayOrder = _groupedDataCache!.keys.toList();
+      displayOrder.sort((a, b) {
+        final aIndex = _customListOrder.indexOf(_getApiName(a));
+        final bIndex = _customListOrder.indexOf(_getApiName(b));
+        if (aIndex == -1) return 1;
+        if (bIndex == -1) return -1;
+        return aIndex.compareTo(bIndex);
+      });
+
+      for (int i = 0; i < targetIndex && i < displayOrder.length; i++) {
+        final groupName = displayOrder[i];
+        final seriesInGroup = _groupedDataCache![groupName] ?? [];
+        
+        // Add header height
+        estimatedOffset += estimatedHeaderHeight;
+        
+        // Add content height (estimate based on number of series and grid layout)
+        if (seriesInGroup.isNotEmpty) {
+          final crossAxisCount = ScreenUtils.crossAxisCount(ScreenUtils.libraryContentWidthWithoutPadding);
+          final rows = (seriesInGroup.length / crossAxisCount).ceil();
+          final itemHeight = (ScreenUtils.libraryContentWidthWithoutPadding / crossAxisCount) / ScreenUtils.kDefaultAspectRatio;
+          final contentHeight = rows * itemHeight + (rows - 1) * ScreenUtils.cardPadding + 16; // 16 for padding
+          estimatedOffset += contentHeight;
+        }
+        
+        // Add spacing between groups
+        if (i < targetIndex - 1) {
+          estimatedOffset += estimatedGroupSpacing;
+        }
+      }
+    }
+
+    // Animate to the estimated position
+    scrollController.animateTo(
+      estimatedOffset.clamp(0.0, scrollController.position.maxScrollExtent),
+      duration: shortDuration,
+      curve: Curves.easeInOut,
+    );
   }
 
   void updateColorsInSortCache() {
@@ -911,6 +1037,7 @@ class LibraryScreenState extends State<LibraryScreen> {
                   key: ValueKey(listName),
                   listName: listName,
                   displayName: displayName,
+                  onPressed: (i) => _scrollToList(displayName),
                   index: index,
                   selected: false,
                   isReordering: false,
@@ -995,7 +1122,7 @@ class LibraryScreenState extends State<LibraryScreen> {
                   color: isSelected ? Manager.accentColor.light : Colors.white.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(6),
                   border: Border.all(
-                    color: isSelected ? Manager.accentColor.lightest : Colors.white.withOpacity(0.2),
+                    color: isSelected ? Manager.accentColor.dark : Colors.white.withOpacity(0.2),
                     width: 1,
                   ),
                 ),
@@ -1200,7 +1327,7 @@ class LibraryScreenState extends State<LibraryScreen> {
   }
 
   Widget _buildGridView(List<Series> series, double maxWidth, {Map<String, List<Series>>? groupedData, bool shimmer = false}) {
-    Widget episodesGrid(List<Series> list, ScrollController? controller, ScrollPhysics? physics, bool includePadding, {bool allowMeasurement = false, bool shimmer = false}) {
+    Widget episodesGrid(List<Series> list, ScrollController? controller, ScrollPhysics? physics, bool includePadding, {bool allowMeasurement = false, bool shimmer = false, bool isNestedInScrollable = false}) {
       assert(shimmer || (controller != null && physics != null));
       return ValueListenableBuilder(
         valueListenable: previousGridColumnCount,
@@ -1234,8 +1361,9 @@ class LibraryScreenState extends State<LibraryScreen> {
               crossAxisSpacing: ScreenUtils.cardPadding,
               mainAxisSpacing: ScreenUtils.cardPadding,
             ),
-            controller: controller,
-            physics: shimmer ? NeverScrollableScrollPhysics() : physics,
+            controller: isNestedInScrollable ? null : controller,
+            physics: isNestedInScrollable ? const NeverScrollableScrollPhysics() : (shimmer ? const NeverScrollableScrollPhysics() : physics),
+            shrinkWrap: isNestedInScrollable, // Only shrinkWrap when nested
             children: children,
           );
         },
@@ -1292,7 +1420,7 @@ class LibraryScreenState extends State<LibraryScreen> {
                       series: serieItem,
                       onTap: () => _navigateToSeries(serieItem),
                     );
-    
+
                     return seriesCard;
                   },
                 );
@@ -1400,15 +1528,15 @@ class LibraryScreenState extends State<LibraryScreen> {
                 // Get the original position in _customListOrder
                 final aIndex = _customListOrder.indexOf(_getApiName(a));
                 final bIndex = _customListOrder.indexOf(_getApiName(b));
-    
+
                 // If one is not found, put it at the end
                 if (aIndex == -1) return 1;
                 if (bIndex == -1) return -1;
-    
+
                 // Otherwise use the custom order
                 return aIndex.compareTo(bIndex);
               });
-    
+
               return ListView.builder(
                 controller: controller,
                 physics: physics,
@@ -1418,9 +1546,9 @@ class LibraryScreenState extends State<LibraryScreen> {
                   final groupName = displayOrder[index];
                   final seriesList = groupedData[groupName] ?? [];
                   final isFirstGroup = index == 0;
-    
+
                   if (seriesList.isEmpty) return const SizedBox.shrink();
-    
+
                   return Padding(
                     padding: EdgeInsets.only(top: isFirstGroup ? 0 : 8.0),
                     child: StickyHeader(
@@ -1473,7 +1601,7 @@ class LibraryScreenState extends State<LibraryScreen> {
                       content: Column(
                         children: [
                           const SizedBox(height: 8),
-    
+
                           // Group content with headers and list
                           Container(
                             decoration: BoxDecoration(
@@ -1485,7 +1613,7 @@ class LibraryScreenState extends State<LibraryScreen> {
                               child: buildListContent(seriesList, null, const NeverScrollableScrollPhysics(), false),
                             ),
                           ),
-    
+
                           // Spacing between groups
                           if (index != displayOrder.length - 1) const SizedBox(height: 12),
                         ],
@@ -1495,7 +1623,7 @@ class LibraryScreenState extends State<LibraryScreen> {
                 },
               );
             }
-    
+
             // Ungrouped list view
             return buildListContent(series, controller, physics, true);
           },
@@ -1557,7 +1685,7 @@ class LibraryScreenState extends State<LibraryScreen> {
   Widget _buildGroupedViewFromCache(
     Map<String, List<Series>> groupedData,
     double maxWidth,
-    Widget Function(List<Series>, ScrollController, ScrollPhysics, bool, {bool allowMeasurement}) episodesGrid,
+    Widget Function(List<Series>, ScrollController, ScrollPhysics, bool, {bool allowMeasurement, bool isNestedInScrollable}) episodesGrid,
   ) {
     // Use the _customListOrder to determine display order
     final displayOrder = groupedData.keys.toList();
@@ -1595,73 +1723,48 @@ class LibraryScreenState extends State<LibraryScreen> {
                 final groupName = displayOrder[index];
                 final seriesInGroup = groupedData[groupName]!;
                 final isFirstGroup = index == 0;
-    
-                return ClipRRect(
-                  clipBehavior: Clip.antiAlias,
-                  borderRadius: const BorderRadius.all(Radius.circular(ScreenUtils.kStatCardBorderRadius)),
-                  child: Padding(
-                    padding: EdgeInsets.only(top: isFirstGroup ? 0 : 8.0),
-                    child: StickyHeader(
-                      header: Transform.translate(
-                        offset: const Offset(0, -1),
-                        child: ClipRRect(
-                          borderRadius: const BorderRadius.all(Radius.circular(ScreenUtils.kStatCardBorderRadius)),
-                          child: Acrylic(
-                            luminosityAlpha: 1,
-                            child: Container(
-                              constraints: const BoxConstraints(minHeight: 50.0),
-                              decoration: BoxDecoration(
-                                borderRadius: const BorderRadius.only(
-                                  topLeft: Radius.circular(ScreenUtils.kStatCardBorderRadius),
-                                  topRight: Radius.circular(ScreenUtils.kStatCardBorderRadius),
+
+                // Ensure we have a key for this group
+                if (!_groupKeys.containsKey(groupName)) {
+                  _groupKeys[groupName] = GlobalKey();
+                }
+
+                return Container(
+                  key: _groupKeys[groupName],
+                  child: ClipRRect(
+                    clipBehavior: Clip.antiAlias,
+                    borderRadius: const BorderRadius.all(Radius.circular(ScreenUtils.kStatCardBorderRadius)),
+                    child: Padding(
+                      padding: EdgeInsets.only(top: isFirstGroup ? 0 : 8.0),
+                      child: StickyHeader(
+                        header: Transform.translate(
+                          offset: const Offset(0, -1),
+                          child: ClipRRect(
+                            borderRadius: const BorderRadius.all(Radius.circular(ScreenUtils.kStatCardBorderRadius)),
+                            child: Acrylic(
+                              luminosityAlpha: 1,
+                              child: Container(
+                                constraints: const BoxConstraints(minHeight: 50.0),
+                                decoration: BoxDecoration(
+                                  borderRadius: const BorderRadius.only(
+                                    topLeft: Radius.circular(ScreenUtils.kStatCardBorderRadius),
+                                    topRight: Radius.circular(ScreenUtils.kStatCardBorderRadius),
+                                  ),
+                                  color: Colors.white.withOpacity(0.05),
                                 ),
-                                color: Colors.white.withOpacity(0.05),
-                              ),
-                              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text(groupName, style: Manager.subtitleStyle),
-                                  Text('${seriesInGroup.length} Series', style: Manager.captionStyle),
-                                ],
+                                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(groupName, style: Manager.subtitleStyle),
+                                    Text('${seriesInGroup.length} Series', style: Manager.captionStyle),
+                                  ],
+                                ),
                               ),
                             ),
                           ),
                         ),
-                      ),
-                      content: ClipRRect(
-                        borderRadius: BorderRadius.only(topRight: Radius.circular(ScreenUtils.kStatCardBorderRadius)),
-                        child: ValueListenableBuilder(
-                          valueListenable: previousGridColumnCount,
-                          builder: (context, columns, __) {
-                            final crossAxisCount = columns ?? ScreenUtils.crossAxisCount(maxWidth);
-    
-                            return GridView.builder(
-                              padding: const EdgeInsets.only(bottom: 8.0, left: 0.3, right: 0.3, top: 8.0),
-                              physics: const NeverScrollableScrollPhysics(),
-                              shrinkWrap: true,
-                              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                                crossAxisCount: crossAxisCount,
-                                childAspectRatio: ScreenUtils.kDefaultAspectRatio,
-                                crossAxisSpacing: ScreenUtils.cardPadding,
-                                mainAxisSpacing: ScreenUtils.cardPadding,
-                              ),
-                              itemCount: seriesInGroup.length,
-                              itemBuilder: (context, seriesIndex) {
-                                final series = seriesInGroup[seriesIndex];
-    
-                                // Add measurement capability for first card
-                                Widget seriesCard = SeriesCard(
-                                  key: (seriesIndex == 0 && isFirstGroup) ? firstCardKey : ValueKey('${series.path}:${series.effectivePosterPath ?? 'none'}'),
-                                  series: series,
-                                  onTap: () => _navigateToSeries(series),
-                                );
-    
-                                return seriesCard;
-                              },
-                            );
-                          },
-                        ),
+                        content: episodesGrid(seriesInGroup, controller, physics, false, allowMeasurement: index == 0, isNestedInScrollable: true),
                       ),
                     ),
                   ),
