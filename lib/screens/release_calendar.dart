@@ -195,6 +195,8 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
 
       // Load notifications (past events)
       await _loadNotificationData(library, calendarMap, startDate, endDate);
+n
+      if (_isDisposed) return;
 
       if (_isDisposed) return;
 
