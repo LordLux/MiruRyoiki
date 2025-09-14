@@ -162,7 +162,9 @@ extension LibrarySeriesManagement on Library {
   }
 
   /// Clear thumbnail cache for a specific series and reset episode thumbnail statuses
-  Future<void> clearThumbnailCacheForSeries(PathString seriesPath) async {
+  Future<void> clearThumbnailCacheForSeries(PathString? seriesPath) async {
+    if (seriesPath == null) return;
+    
     final series = getSeriesByPath(seriesPath);
     if (series == null) return;
 

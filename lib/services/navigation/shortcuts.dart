@@ -179,16 +179,16 @@ class _CustomKeyboardListenerState extends State<CustomKeyboardListener> {
               snackBar('Clearing Series thumbnail cache...', severity: InfoBarSeverity.info);
 
               // Clear thumbnails for the current series if possible
-              if (seriesScreenState != null && seriesScreenState.widget.seriesPath.pathMaybe != null) {
+              if (seriesScreenState != null && seriesScreenState.widget.seriesPath?.pathMaybe != null) {
                 // Clear thumbnails for this specific series (don't await, do it in background)
                 library.clearThumbnailCacheForSeries(seriesScreenState.widget.seriesPath).then((_) {
-                  logTrace('Cleared thumbnail cache for series: ${seriesScreenState.widget.seriesPath.path}');
+                  logTrace('Cleared thumbnail cache for series: ${seriesScreenState.widget.seriesPath?.path}');
 
                   // Also clear Flutter's image cache
                   imageCache.clear();
                   imageCache.clearLiveImages();
                 }).catchError((error) {
-                  logErr('Error clearing thumbnail cache for series: ${seriesScreenState.widget.seriesPath.path}', error);
+                  logErr('Error clearing thumbnail cache for series: ${seriesScreenState.widget.seriesPath?.path}', error);
                 });
 
                 library.reloadLibrary(force: true, showSnackBar: false).then((_) => snackBar('Cleared Series thumbnail cache and Reloaded!', severity: InfoBarSeverity.success));

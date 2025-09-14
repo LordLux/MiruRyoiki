@@ -79,7 +79,8 @@ class LibraryScanProgressIndicator extends StatelessWidget {
         builder: (context, _) {
           final isShowing = libraryScanProgressManager.showingNotifier.value;
           final operationName = lockManager.currentOperationDescription ?? 'Indexing library...';
-          print('Operation Name: "$operationName"');
+          // ignore: avoid_print
+          print('Operation Name: "$operationName"'); //TODO fix double 'Recalculating Dominant Colors...Recalculating Dominant Colors'
           
           return AnimatedOpacity(
             opacity: isShowing ? 1.0 : 0.0,

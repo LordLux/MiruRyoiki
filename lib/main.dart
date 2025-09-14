@@ -328,7 +328,12 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
   PathString? lastSelectedSeriesPath;
   bool _isSeriesView = false;
   bool isStartedTransitioning = false;
-  bool _isFinishedTransitioning = false;
+  
+  /// Whether the transition animation to the series screen has fully completed
+  bool _isFinishedTransitioningToSeries = false;
+
+  /// Whether the transition animation back to the library screen has fully completed
+  bool _isFinishedTransitioningToLibrary = true;
   bool _isSecondaryTitleBarVisible = false;
   bool seriesWasModified = false;
   // ignore: unused_field
@@ -345,9 +350,12 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
   // bool get _isLibraryView => !(_isSeriesView && _selectedSeriesPath != null);
   bool get isSeriesView => _isSeriesView;
 
+  PathString? get selectedSeriesPath => _selectedSeriesPath;
+
   final GlobalKey<NavigationViewState> _paneKey = GlobalKey<NavigationViewState>();
 
   Widget anilistIcon(bool offline) {
+    homeKey.currentState?.isSeriesView;
     return SizedBox(
       height: 25,
       width: 18,
@@ -561,11 +569,11 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
                               children: [
                                 // Always keep LibraryScreen in the tree with Offstage
                                 Offstage(
-                                  offstage: _isSeriesView && _selectedSeriesPath != null && _isFinishedTransitioning,
+                                  offstage: _isSeriesView && _selectedSeriesPath != null && _isFinishedTransitioningToSeries,
                                   child: AnimatedOpacity(
-                                    duration: getDuration(const Duration(milliseconds: 230)),
+                                    duration: getDuration(const Duration(milliseconds: 330)),
                                     opacity: _isSeriesView ? 0.0 : 1.0,
-                                    curve: Curves.easeInOut,
+                                    curve: Curves.ease,
                                     child: AbsorbPointer(
                                       absorbing: _isSeriesView,
                                       child: _libraryScreen,
@@ -574,17 +582,17 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
                                 ),
 
                                 // Animated container for the SeriesScreen
-                                if (_selectedSeriesPath != null)
-                                  AnimatedOpacity(
-                                    duration: getDuration(const Duration(milliseconds: 300)),
-                                    opacity: _isSeriesView ? 1.0 : 0.0,
-                                    curve: Curves.easeInOut,
-                                    onEnd: onEndTransitionToLibrary,
-                                    child: AbsorbPointer(
-                                      absorbing: !_isSeriesView,
-                                      child: SeriesScreen(
+                                // will hide only after fade out animation finishes
+                                  AbsorbPointer(
+                                    absorbing: !_isSeriesView,
+                                    child: AnimatedOpacity(
+                                      duration: getDuration(const Duration(milliseconds: 300)),
+                                      opacity: _isSeriesView ? 1.0 : 0.0,
+                                      curve: Curves.ease,
+                                      onEnd: onEndTransitionSeriesScreen,
+                                      child: _isFinishedTransitioningToLibrary ? const SizedBox.shrink() : SeriesScreen(
                                         key: librarySeriesScreenKey,
-                                        seriesPath: _selectedSeriesPath!,
+                                        seriesPath: _selectedSeriesPath,
                                         onBack: exitSeriesView,
                                       ),
                                     ),
@@ -880,6 +888,7 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
     _previousIndex = _selectedIndex;
     // First, ensure we're on the library pane if not already
     if (_selectedIndex != libraryIndex || _isSeriesView) {
+      logTrace('Navigating to library pane before opening series view');
       setState(() {
         _selectedIndex = libraryIndex;
         lastSelectedSeriesPath = _selectedSeriesPath;
@@ -917,6 +926,7 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
       _selectedSeriesPath = seriesPath;
       Manager.currentDominantColor = series?.dominantColor;
       _isSeriesView = true;
+      _isFinishedTransitioningToLibrary = false;
     });
 
     Manager.setState();
@@ -940,7 +950,8 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
       Manager.currentDominantColor = null;
       lastSelectedSeriesPath = _selectedSeriesPath ?? lastSelectedSeriesPath;
       _isSeriesView = false;
-      _isFinishedTransitioning = false;
+      _isFinishedTransitioningToLibrary = false;
+      _isFinishedTransitioningToSeries = false;
     });
 
     if (seriesWasModified) {
@@ -952,13 +963,21 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
   }
 
   /// Called when the transition to the library view ends
-  void onEndTransitionToLibrary() {
+  void onEndTransitionSeriesScreen() {
     setState(() {
-      if (_isSeriesView) _isFinishedTransitioning = true;
+      // When going from series view to library
+      if (_isSeriesView) {
+        log('Transition anim TO SERIES finished');
+        _isFinishedTransitioningToSeries = true;
+      } else {
+        log('Transition anim TO LIBRARY finished');
+        _selectedSeriesPath = null;
+        _isFinishedTransitioningToLibrary = true;
+        _isFinishedTransitioningToSeries = false;
+        Manager.currentDominantColor = null;
+      }
       isStartedTransitioning = false;
-      _selectedSeriesPath = null;
       previousGridColumnCount.value = null;
-      Manager.currentDominantColor = null;
     });
   }
 
@@ -1122,7 +1141,6 @@ Future<void> _registerWindowsUrlScheme(String scheme) async {
     logErr('Warning: Could not register URL scheme: $e');
   }
 }
-
 
 // TODO fix setstate called after dispose ReleaseCalendar when navigating away quickly
 // TODO move hidden series switches to settings

@@ -2,7 +2,6 @@ import 'dart:io';
 import 'dart:ui';
 import 'dart:isolate';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart' show ColorScheme, Colors, ThemeMode;
 import 'package:flutter/widgets.dart' hide Image;
 import 'package:provider/provider.dart';

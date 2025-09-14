@@ -35,7 +35,7 @@ import '../widgets/transparency_shadow_image.dart';
 import 'anilist_settings.dart';
 
 class SeriesScreen extends StatefulWidget {
-  final PathString seriesPath;
+  final PathString? seriesPath;
   final VoidCallback onBack;
 
   const SeriesScreen({
@@ -55,10 +55,10 @@ class SeriesScreenState extends State<SeriesScreen> {
   final Map<int, GlobalKey<ExpanderState>> _seasonExpanderKeys = {};
 
   bool _isPosterHovering = false;
-  DeferredPointerHandlerLink deferredPointerLink = DeferredPointerHandlerLink();
+  DeferredPointerHandlerLink? deferredPointerLink;
   bool _isBannerHovering = false;
 
-  Series? get series => Provider.of<Library>(context, listen: false).getSeriesByPath(widget.seriesPath);
+  Series? get series => Provider.of<Library>(context, listen: false).getSeriesByPath(widget.seriesPath!);
 
   Color get dominantColor =>
       series?.dominantColor ?? //
@@ -69,9 +69,45 @@ class SeriesScreenState extends State<SeriesScreen> {
   @override
   void initState() {
     super.initState();
-    nextFrame(() {
-      _loadAnilistDataForCurrentSeries();
-    });
+    if (widget.seriesPath != null) {
+      deferredPointerLink = DeferredPointerHandlerLink();
+      nextFrame(() {
+        _loadAnilistDataForCurrentSeries();
+      });
+    }
+    log('INIT SERIES SCREEN');
+  }
+  
+  @override
+  didUpdateWidget(covariant SeriesScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.seriesPath != oldWidget.seriesPath) {
+      // Series changed, load new data
+      if (widget.seriesPath != null) {
+        deferredPointerLink ??= DeferredPointerHandlerLink();
+        nextFrame(() {
+          _loadAnilistDataForCurrentSeries();
+        });
+      }
+    }
+  }
+  
+  @override
+  void dispose() {
+    deferredPointerLink?.dispose();
+    log('DISPOSING SERIES SCREEN');
+    super.dispose();
+  }
+  
+  @override
+  didChangeDependencies() {
+    super.didChangeDependencies();
+    // If series changes while dependencies change, reload Anilist data
+    if (widget.seriesPath != null && series != null && !series!.isLinked) {
+      nextFrame(() {
+        _loadAnilistDataForCurrentSeries();
+      });
+    }
   }
 
   ColorFilter get colorFilter => ColorFilter.matrix([
@@ -99,7 +135,7 @@ class SeriesScreenState extends State<SeriesScreen> {
   }
 
   Future<void> _loadAnilistDataForCurrentSeries() async {
-    if (!mounted || series == null) return;
+    if (!mounted || widget.seriesPath == null || series == null) return;
 
     if (!series!.isLinked) {
       // Clear any Anilist data references to ensure UI updates
@@ -205,8 +241,10 @@ class SeriesScreenState extends State<SeriesScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (widget.seriesPath == null) return Container(color: Colors.red);
+
     return Selector<Library, Series?>(
-      selector: (_, library) => library.getSeriesByPath(widget.seriesPath),
+      selector: (_, library) => library.getSeriesByPath(widget.seriesPath!),
       shouldRebuild: (prev, next) => prev != next,
       builder: (context, series, child) {
         if (series == null) {

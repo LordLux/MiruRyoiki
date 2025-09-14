@@ -131,11 +131,16 @@ class LibraryScreenState extends State<LibraryScreen> {
   List<Series>? _sortedSeriesCache;
   Map<String, List<Series>>? _groupedDataCache;
   _CacheParameters? _cacheParameters;
+  
+  final ScrollController _controller = ScrollController(
+    debugLabel: 'LibraryScreen Scroll Controller',
+    keepScrollOffset: true,
+  );
 
   /// Create a styled scrollbar with consistent theming and right padding
   Widget _buildStyledScrollbar(Widget child) {
     return Scrollbar(
-      controller: widget.scrollController,
+      controller: _controller,
       thumbVisibility: true,
       style: ScrollbarThemeData(
         thickness: 3,
@@ -660,7 +665,7 @@ class LibraryScreenState extends State<LibraryScreen> {
   }
 
   void _scrollToListByIndex(int targetIndex) {
-    final scrollController = widget.scrollController;
+    final scrollController = _controller;
     if (!scrollController.hasClients) return;
 
     // Estimate the height of each group section
@@ -1389,7 +1394,7 @@ class LibraryScreenState extends State<LibraryScreen> {
 
     // Ungrouped view
     final scrollContent = DynMouseScroll(
-      controller: shimmer ? null : widget.scrollController,
+      controller: shimmer ? null : _controller,
       stopScroll: KeyboardState.ctrlPressedNotifier,
       scrollSpeed: 1.0,
       enableSmoothScroll: Manager.animationsEnabled,
@@ -1510,7 +1515,7 @@ class LibraryScreenState extends State<LibraryScreen> {
     }
 
     final scrollContent = DynMouseScroll(
-      controller: shimmer ? null : widget.scrollController,
+      controller: shimmer ? null : _controller,
       stopScroll: KeyboardState.zoomReleaseNotifier,
       scrollSpeed: 1.0,
       enableSmoothScroll: Manager.animationsEnabled,
@@ -1703,7 +1708,7 @@ class LibraryScreenState extends State<LibraryScreen> {
     });
 
     final scrollContent = DynMouseScroll(
-      controller: widget.scrollController,
+      controller: _controller,
       stopScroll: KeyboardState.zoomReleaseNotifier,
       scrollSpeed: 1.0,
       enableSmoothScroll: Manager.animationsEnabled,

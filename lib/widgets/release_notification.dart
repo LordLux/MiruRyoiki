@@ -15,7 +15,7 @@ import '../services/library/library_provider.dart';
 import '../services/navigation/dialogs.dart';
 import '../services/navigation/navigation.dart';
 import '../utils/logging.dart';
-import 'animated_icon.dart' as animIcon;
+import 'animated_icon.dart' as anim_icon;
 import 'dialogs/notifications.dart';
 
 class ReleaseNotificationWidget extends StatefulWidget {
@@ -155,7 +155,7 @@ class _ReleaseNotificationWidgetState extends State<ReleaseNotificationWidget> {
               children: [
                 Transform.scale(
                   scale: 1.2,
-                  child: animIcon.AnimatedIcon(
+                  child: anim_icon.AnimatedIcon(
                     duration: const Duration(milliseconds: 300),
                     icon: mat.Icon(
                       isEnabled ? (_notificationsOpen ? Symbols.notifications : Symbols.notifications) : mat.Icons.notifications_off,
