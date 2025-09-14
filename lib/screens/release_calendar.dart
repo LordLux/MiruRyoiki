@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math' as math;
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:miruryoiki/enums.dart';
 import 'package:miruryoiki/widgets/buttons/wrapper.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
@@ -142,7 +143,7 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
       }
     }
   }
-  
+
   // void scrollToToday({bool animated = true}) {
   //   // Find today's position in the calendar entries and scroll to it
   //   if (!mounted || _calendarCache.isEmpty) return;
@@ -552,7 +553,8 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
                   final dateKey = DateTime(date.year, date.month, date.day);
                   final entriesForDay = _calendarCache[dateKey] ?? [];
                   final isSelected = _isSameDay(date, _selectedDate);
-                  final isToday = _isSameDay(date, DateTime.now());
+                  final isToday = _isSameDay(date, now);
+                  if (isToday) print('Building cell for ${dateKey.pretty()} isToday=$isToday');
 
                   return _buildCalendarDay(date, entriesForDay, isSelected, isToday);
                 },
@@ -590,7 +592,7 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
                 // Reset older notifications flag when navigating to any different date
                 _showOlderNotifications = false;
                 if (_selectedDate.month == now.month && _selectedDate.year == now.year && _selectedDate.day == now.day) {
-                  // nextFrame(() => scrollToToday());
+                  _filterSelectedDate = false;
                 }
               });
             }
@@ -755,21 +757,21 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
       // Group all entries (within cache window)
       allEntries.sort((a, b) => a.date.compareTo(b.date));
       final map = <DateTime, List<CalendarEntry>>{};
-      
+
       // Check if we're on today and should filter older notifications
       final today = now;
       final todayKey = DateTime(today.year, today.month, today.day);
       final isOnToday = _selectedDate.year == today.year && _selectedDate.month == today.month && _selectedDate.day == today.day;
       final shouldFilterOlder = isOnToday && !_showOnlyTodayEpisodes && !_showOlderNotifications;
-      
+
       for (final entry in allEntries) {
         final k = DateTime(entry.date.year, entry.date.month, entry.date.day);
-        
+
         // If we should filter older notifications, skip past entries
         if (shouldFilterOlder && k.isBefore(todayKey)) {
           continue;
         }
-        
+
         map.putIfAbsent(k, () => []).add(entry);
       }
       entriesByDate = map;
@@ -793,8 +795,7 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
     // 1. We're on today and not in today-only mode and not showing older notifications
     // 2. We're on a selected date that has no entries (filtered) and not showing older notifications
     final isOnSelectedDateWithNoEntries = _filterSelectedDate && selectedDayEntries.isEmpty;
-    final shouldShowOlderButton = (isToday && !_showOnlyTodayEpisodes && !_showOlderNotifications) || 
-                                  (isOnSelectedDateWithNoEntries && !_showOlderNotifications);
+    final shouldShowOlderButton = (isToday && !_showOnlyTodayEpisodes && !_showOlderNotifications) || (isOnSelectedDateWithNoEntries && !_showOlderNotifications);
 
     // If we have no entries to show and should show the button, show a different empty state
     if (entriesByDate.isEmpty && shouldShowOlderButton) {
@@ -870,61 +871,62 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
           // Episode list
           Expanded(
             child: ScrollablePositionedList.builder(
-                itemScrollController: _episodeListController,
-                itemPositionsListener: _itemPositionsListener,
-                padding: const EdgeInsets.only(right: 8.0),
-                itemCount: flattenedList.length + (isToday ? 1 : 0),
-                itemBuilder: (context, index) {
-                  if (index <= -1 || (isToday && index == flattenedList.length)) return SizedBox(height: _spacerHeight);
+              itemScrollController: _episodeListController,
+              itemPositionsListener: _itemPositionsListener,
+              padding: const EdgeInsets.only(right: 8.0),
+              itemCount: flattenedList.length + (isToday ? 1 : 0),
+              itemBuilder: (context, index) {
+                if (index <= -1 || (isToday && index == flattenedList.length)) return SizedBox(height: _spacerHeight);
 
-                  final item = flattenedList[index];
+                final item = flattenedList[index];
 
-                  // Date header
-                  if (item is DateTime) {
-                    final date = item;
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 12.0, top: 16.0, left: 4.0),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          Text(
-                            _getRelativeDateLabel(date),
-                            style: Manager.bodyLargeStyle.copyWith(fontWeight: FontWeight.w600, color: lighten(Manager.accentColor.lightest)),
+                // Date header
+                if (item is DateTime) {
+                  final date = item;
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 12.0, top: 16.0, left: 4.0),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Text(
+                          _getRelativeDateLabel(date),
+                          style: Manager.bodyLargeStyle.copyWith(fontWeight: FontWeight.w600, color: lighten(Manager.accentColor.lightest)),
+                        ),
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: Manager.accentColor.light.withOpacity(0.25),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: Manager.accentColor.light.withOpacity(0.4), width: 1),
                           ),
-                          const SizedBox(width: 8),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: Manager.accentColor.light.withOpacity(0.25),
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(color: Manager.accentColor.light.withOpacity(0.4), width: 1),
-                            ),
-                            child: Transform.translate(
-                              offset: const Offset(0, -0.66),
-                              child: Text(
-                                '${entriesByDate[date]!.length}',
-                                style: FluentTheme.of(context).typography.caption?.copyWith(
-                                      fontWeight: FontWeight.w600,
-                                      color: lighten(Manager.accentColor.lightest),
-                                    ),
-                              ),
+                          child: Transform.translate(
+                            offset: const Offset(0, -0.66),
+                            child: Text(
+                              '${entriesByDate[date]!.length}',
+                              style: FluentTheme.of(context).typography.caption?.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                    color: lighten(Manager.accentColor.lightest),
+                                  ),
                             ),
                           ),
-                        ],
-                      ),
-                    );
-                  }
+                        ),
+                      ],
+                    ),
+                  );
+                }
 
-                  if (item is CalendarEntry) {
-                    final entry = item;
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 0.0),
-                      child: _buildCalendarEntryItem(entry),
-                    );
-                  }
+                if (item is CalendarEntry) {
+                  final entry = item;
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 0.0),
+                    child: _buildCalendarEntryItem(entry),
+                  );
+                }
 
-                  return const SizedBox.shrink();
-                }),
+                return const SizedBox.shrink();
+              },
+            ),
           ),
         ],
       );
