@@ -739,7 +739,7 @@ class LibraryScreenState extends State<LibraryScreen> {
           // Update the cached series with the new dominant color
           _sortedSeriesCache![i] = cachedSeries.copyWith(dominantColor: liveSeries.dominantColor);
         } else {
-          log('No live series found for path: ${cachedSeries.path.path}');
+          logTrace('No live series found for path: ${cachedSeries.path.path}');
         }
       }
 
@@ -756,16 +756,16 @@ class LibraryScreenState extends State<LibraryScreen> {
               // Update the cached series with the new dominant color
               groupSeriesList[i] = cachedSeries.copyWith(dominantColor: liveSeries.dominantColor);
             } else {
-              log('No live series found for path: ${cachedSeries.path.path}');
+              logTrace('No live series found for path: ${cachedSeries.path.path}');
             }
           }
         }
       } else {
-        log('Grouped data cache is null, skipping grouped update.');
+        logTrace('Grouped data cache is null, skipping grouped update.');
       }
     }); // Trigger UI update
     Manager.setState(() {});
-    log('called setState from updateColorsInSortCache');
+    logTrace('called setState from updateColorsInSortCache');
   }
 
   /// Update or add a series to the sort cache

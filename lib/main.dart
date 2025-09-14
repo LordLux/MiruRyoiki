@@ -967,10 +967,8 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
     setState(() {
       // When going from series view to library
       if (_isSeriesView) {
-        log('Transition anim TO SERIES finished');
         _isFinishedTransitioningToSeries = true;
       } else {
-        log('Transition anim TO LIBRARY finished');
         _selectedSeriesPath = null;
         _isFinishedTransitioningToLibrary = true;
         _isFinishedTransitioningToSeries = false;
@@ -1142,7 +1140,6 @@ Future<void> _registerWindowsUrlScheme(String scheme) async {
   }
 }
 
-// TODO fix setstate called after dispose ReleaseCalendar when navigating away quickly
 // TODO move hidden series switches to settings
 // TODO add ctrl + tab navigation
 // TODO cache anime info

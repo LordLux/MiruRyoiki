@@ -54,6 +54,8 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
   Timer? _minuteRefreshTimer; // periodic UI refresh for relative labels & countdowns
   bool _filterSelectedDate = false; // controls whether selected date filter is active
 
+  bool _isDisposed = false;
+
   @override
   void initState() {
     super.initState();
@@ -72,24 +74,29 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
 
   @override
   void dispose() {
+    _isDisposed = true;
     _minuteRefreshTimer?.cancel();
     _itemPositionsListener.itemPositions.removeListener(_updateSpacerHeight);
     super.dispose();
   }
 
   void focusToday() {
-    setState(() {
-      _focusedMonth = DateTime(now.year, now.month, 1);
-      _selectedDate = now; // Reset selection to today
-      _filterSelectedDate = false; // Disable filter to show all episodes
-    });
-    nextFrame(() => scrollToToday(animated: false)); // Scroll immediately without animation
+    if (mounted && !_isDisposed) {
+      setState(() {
+        _focusedMonth = DateTime(now.year, now.month, 1);
+        _selectedDate = now; // Reset selection to today
+        _filterSelectedDate = false; // Disable filter to show all episodes
+      });
+      nextFrame(() => scrollToToday(animated: false)); // Scroll immediately without animation
+    }
   }
 
   void toggleFilter([bool? value]) {
-    setState(() {
-      _showOnlyTodayEpisodes = value ?? !_showOnlyTodayEpisodes;
-    });
+    if (mounted && !_isDisposed) {
+      setState(() {
+        _showOnlyTodayEpisodes = value ?? !_showOnlyTodayEpisodes;
+      });
+    }
   }
 
   void _updateSpacerHeight() {
@@ -118,7 +125,7 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
       final newSpacerHeight = math.max(0.0, availableHeight - contentPixelHeight);
 
       // Update state only if the value has changed to avoid unnecessary rebuilds
-      if ((newSpacerHeight - _spacerHeight).abs() > 1.0) {
+      if ((newSpacerHeight - _spacerHeight).abs() > 1.0 && mounted && !_isDisposed) {
         setState(() {
           _spacerHeight = newSpacerHeight + 60;
         });
@@ -141,9 +148,9 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
   }
 
   Future<void> loadReleaseData() async {
-    if (_isLoading) return;
+    if (_isLoading || _isDisposed) return;
 
-    setState(() => _isLoading = true);
+    if (mounted) setState(() => _isLoading = true);
 
     try {
       final library = Provider.of<Library>(context, listen: false);
@@ -151,9 +158,12 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
 
       // Check if user is logged in before making requests
       if (!anilistProvider.isLoggedIn || anilistProvider.isOffline) {
-        setState(() => _isLoading = false);
+        if (mounted && !_isDisposed) setState(() => _isLoading = false);
         return;
       }
+
+      // Check cancellation before proceeding
+      if (_isDisposed) return;
 
       // Sync notifications to get the latest data before loading
       try {
@@ -163,9 +173,13 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
           types: [NotificationType.AIRING, NotificationType.MEDIA_DATA_CHANGE],
           maxPages: 2,
         );
+
+        // Check cancellation after async operation
+        if (_isDisposed) return;
       } catch (e) {
         // Log but don't fail - we can still show cached notifications
         logErr('Failed to sync notifications for release calendar', e);
+        if (_isDisposed) return;
       }
 
       // Get date range (±2 weeks from today for wider view)
@@ -177,8 +191,12 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
       // Load episodes (future releases)
       await _loadEpisodeData(library, anilistProvider, calendarMap, startDate, null); // we want all schedules
 
+      if (_isDisposed) return;
+
       // Load notifications (past events)
       await _loadNotificationData(library, calendarMap, startDate, endDate);
+
+      if (_isDisposed) return;
 
       // Sort entries by date within each day
       for (final dayEntries in calendarMap.values) {
@@ -187,21 +205,27 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
 
       logTrace('Found ${calendarMap.length} days with entries, total entries: ${calendarMap.values.expand((x) => x).length}');
 
-      setState(() {
-        _calendarCache = calendarMap;
-        _errorMessage = calendarMap.isEmpty ? 'No episodes or notifications found within the selected date range.' : null;
-
-        _isLoading = false;
-      });
+      if (mounted && !_isDisposed) {
+        setState(() {
+          _calendarCache = calendarMap;
+          _errorMessage = calendarMap.isEmpty ? 'No episodes or notifications found within the selected date range.' : null;
+          _isLoading = false;
+        });
+      }
     } catch (e) {
-      _isLoading = false;
-      _errorMessage = 'Error loading data: ${e.toString()}';
-      if (mounted) setState(() {});
+      if (mounted && !_isDisposed) {
+        setState(() {
+          _isLoading = false;
+          _errorMessage = 'Error loading data: ${e.toString()}';
+        });
+      }
       logErr('Error loading calendar data', e);
     }
   }
 
   Future<void> _loadEpisodeData(Library library, AnilistProvider anilistProvider, Map<DateTime, List<CalendarEntry>> calendarMap, DateTime? startDate, DateTime? endDate) async {
+    if (_isDisposed) return;
+
     // Get unique anime IDs to avoid duplicate requests
     final Set<int> animeIds = {};
     for (final series in library.series) {
@@ -212,7 +236,7 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
       }
     }
 
-    if (animeIds.isEmpty) return;
+    if (animeIds.isEmpty || _isDisposed) return;
 
     // Use the same approach as homepage - get cached data first, refresh in background
     final cachedUpcomingEpisodes = anilistProvider.getCachedUpcomingEpisodes(animeIds.toList(), refreshInBackground: true);
@@ -221,6 +245,8 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
 
     // Process the cached results first
     for (final series in library.series) {
+      if (_isDisposed) return;
+
       if (series.anilistMappings.isNotEmpty) {
         for (final mapping in series.anilistMappings) {
           final airingInfo = cachedUpcomingEpisodes[mapping.anilistId];
@@ -247,14 +273,18 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
     }
 
     // If no cached data available, try fetching fresh data as fallback
-    if (calendarMap.isEmpty) {
+    if (calendarMap.isEmpty && !_isDisposed) {
       try {
         final upcomingEpisodes = await anilistProvider.getUpcomingEpisodes(animeIds.toList());
+
+        if (_isDisposed) return;
 
         logTrace('Fallback: Loaded upcoming episodes for ${upcomingEpisodes.length} anime');
 
         // Process the fresh results
         for (final series in library.series) {
+          if (_isDisposed) return;
+
           if (series.anilistMappings.isNotEmpty) {
             for (final mapping in series.anilistMappings) {
               final airingInfo = upcomingEpisodes[mapping.anilistId];
@@ -287,6 +317,8 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
   }
 
   Future<void> _loadNotificationData(Library library, Map<DateTime, List<CalendarEntry>> calendarMap, DateTime startDate, DateTime endDate) async {
+    if (_isDisposed) return;
+
     try {
       final anilistService = AnilistService();
 
@@ -296,10 +328,14 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
         limit: 100, // Get more notifications for broader date range
       );
 
+      if (_isDisposed) return;
+
       logTrace('Loaded ${notifications.length} cached notifications');
 
       // Filter notifications for our date range and add them to calendar
       for (final notification in notifications) {
+        if (_isDisposed) return;
+
         final notificationDate = DateTime.fromMillisecondsSinceEpoch(notification.createdAt * 1000);
 
         if (notificationDate.isAfter(startDate) && notificationDate.isBefore(endDate)) {
@@ -427,9 +463,11 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
             child: Button(
               style: ButtonStyle(padding: ButtonState.all(const EdgeInsets.all(8))),
               onPressed: () {
-                setState(() {
-                  _focusedMonth = DateTime(_focusedMonth.year, _focusedMonth.month - 1);
-                });
+                if (mounted && !_isDisposed) {
+                  setState(() {
+                    _focusedMonth = DateTime(_focusedMonth.year, _focusedMonth.month - 1);
+                  });
+                }
               },
               child: const Icon(FluentIcons.chevron_left),
             ),
@@ -443,9 +481,11 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
             child: Button(
               style: ButtonStyle(padding: ButtonState.all(const EdgeInsets.all(8))),
               onPressed: () {
-                setState(() {
-                  _focusedMonth = DateTime(_focusedMonth.year, _focusedMonth.month + 1);
-                });
+                if (mounted && !_isDisposed) {
+                  setState(() {
+                    _focusedMonth = DateTime(_focusedMonth.year, _focusedMonth.month + 1);
+                  });
+                }
               },
               child: const Icon(FluentIcons.chevron_right),
             ),
@@ -522,24 +562,26 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
       child: MouseButtonWrapper(
         child: (isHovering) => Button(
           onPressed: () {
-            setState(() {
-              // Toggle filter off/on when clicking the same selected date
-              if (isSelected) {
-                // DISABLE FILTER - show all episodes when clicking the already selected date
-                _filterSelectedDate = false;
-              } else {
-                // ENABLE FILTER - show only this date's episodes when clicking a different date
-                _selectedDate = date;
-                _filterSelectedDate = true;
-              }
-              // Turning off today-only if user manually toggles date
-              if (_showOnlyTodayEpisodes && !_filterSelectedDate) {
-                _showOnlyTodayEpisodes = false;
-              }
-              if (_selectedDate.month == now.month && _selectedDate.year == now.year && _selectedDate.day == now.day) {
-                nextFrame(() => scrollToToday());
-              }
-            });
+            if (mounted && !_isDisposed) {
+              setState(() {
+                // Toggle filter off/on when clicking the same selected date
+                if (isSelected) {
+                  // DISABLE FILTER - show all episodes when clicking the already selected date
+                  _filterSelectedDate = false;
+                } else {
+                  // ENABLE FILTER - show only this date's episodes when clicking a different date
+                  _selectedDate = date;
+                  _filterSelectedDate = true;
+                }
+                // Turning off today-only if user manually toggles date
+                if (_showOnlyTodayEpisodes && !_filterSelectedDate) {
+                  _showOnlyTodayEpisodes = false;
+                }
+                if (_selectedDate.month == now.month && _selectedDate.year == now.year && _selectedDate.day == now.day) {
+                  nextFrame(() => scrollToToday());
+                }
+              });
+            }
           },
           style: ButtonStyle(
             padding: ButtonState.all(const EdgeInsets.all(0)),

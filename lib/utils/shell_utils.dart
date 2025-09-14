@@ -62,7 +62,7 @@ class ShellUtils {
       return false;
     }
 
-    log('Opened directory: $directory, highlighted file: $fileName');
+    logInfo('Opened directory: $directory, highlighted file: $fileName');
     return true;
   }
 
