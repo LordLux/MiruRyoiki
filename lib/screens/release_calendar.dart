@@ -53,6 +53,7 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
   bool _showOnlyTodayEpisodes = false; // Track if we're filtering to today only
   Timer? _minuteRefreshTimer; // periodic UI refresh for relative labels & countdowns
   bool _filterSelectedDate = false; // controls whether selected date filter is active
+  bool _showOlderNotifications = false; // Track if we're showing older notifications when on today
 
   bool _isDisposed = false;
 
@@ -63,7 +64,7 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
     nextFrame(() async {
       _itemPositionsListener.itemPositions.addListener(_updateSpacerHeight);
       loadReleaseData().then((_) {
-        nextFrame(delay: 5, () => scrollToToday());
+        // nextFrame(delay: 5, () => scrollToToday());
       });
     });
     // Periodic refresh for relative times
@@ -86,8 +87,9 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
         _focusedMonth = DateTime(now.year, now.month, 1);
         _selectedDate = now; // Reset selection to today
         _filterSelectedDate = false; // Disable filter to show all episodes
+        _showOlderNotifications = false; // Reset older notifications flag
       });
-      nextFrame(() => scrollToToday(animated: false)); // Scroll immediately without animation
+      // nextFrame(() => scrollToToday(animated: false)); // Scroll immediately without animation
     }
   }
 
@@ -95,6 +97,14 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
     if (mounted && !_isDisposed) {
       setState(() {
         _showOnlyTodayEpisodes = value ?? !_showOnlyTodayEpisodes;
+      });
+    }
+  }
+
+  void toggleOlderNotifications([bool? value]) {
+    if (mounted && !_isDisposed) {
+      setState(() {
+        _showOlderNotifications = value ?? !_showOlderNotifications;
       });
     }
   }
@@ -132,20 +142,20 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
       }
     }
   }
+  
+  // void scrollToToday({bool animated = true}) {
+  //   // Find today's position in the calendar entries and scroll to it
+  //   if (!mounted || _calendarCache.isEmpty) return;
 
-  void scrollToToday({bool animated = true}) {
-    // Find today's position in the calendar entries and scroll to it
-    if (!mounted || _calendarCache.isEmpty) return;
-
-    // Scroll to position of first upcoming episode
-    if (_firstUpcomingItemIndex < _flattenedList.length && _firstUpcomingItemIndex > -1) {
-      _episodeListController.scrollTo(
-        index: _firstUpcomingItemIndex,
-        duration: animated ? const Duration(milliseconds: 300) : Duration(microseconds: 1),
-        curve: Curves.easeInOut,
-      );
-    }
-  }
+  //   // Scroll to position of first upcoming episode
+  //   if (_firstUpcomingItemIndex < _flattenedList.length && _firstUpcomingItemIndex > -1) {
+  //     _episodeListController.scrollTo(
+  //       index: _firstUpcomingItemIndex,
+  //       duration: animated ? const Duration(milliseconds: 300) : Duration(microseconds: 1),
+  //       curve: Curves.easeInOut,
+  //     );
+  //   }
+  // }
 
   Future<void> loadReleaseData() async {
     if (_isLoading || _isDisposed) return;
@@ -309,9 +319,9 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
             }
           }
         }
-      } catch (e) {
+      } catch (e, st) {
         // If API call fails, log but don't fail completely since we might have notifications
-        logErr('Episode API call failed', e);
+        logErr('Episode API call failed', e, st);
       }
     }
   }
@@ -361,9 +371,9 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
           calendarMap.putIfAbsent(dateKey, () => []).add(calendarEntry);
         }
       }
-    } catch (e) {
+    } catch (e, st) {
       // Log error but don't fail completely since we might have episodes
-      logErr('Error loading notifications', e);
+      logErr('Error loading notifications', e, st);
     }
   }
 
@@ -577,8 +587,10 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
                 if (_showOnlyTodayEpisodes && !_filterSelectedDate) {
                   _showOnlyTodayEpisodes = false;
                 }
+                // Reset older notifications flag when navigating to any different date
+                _showOlderNotifications = false;
                 if (_selectedDate.month == now.month && _selectedDate.year == now.year && _selectedDate.day == now.day) {
-                  nextFrame(() => scrollToToday());
+                  // nextFrame(() => scrollToToday());
                 }
               });
             }
@@ -667,9 +679,7 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
   }
 
   Widget _buildEpisodeList() {
-    if (_isLoading) {
-      return const Center(child: ProgressRing());
-    }
+    if (_isLoading) return Center(child: ProgressRing());
 
     if (_errorMessage != null) {
       return Column(
@@ -726,12 +736,40 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
     } else if (_filterSelectedDate && selectedDayEntries.isNotEmpty) {
       // Show ONLY selected date
       entriesByDate = {selectedDateKey: List.of(selectedDayEntries)..sort((a, b) => a.date.compareTo(b.date))};
+    } else if (_filterSelectedDate && selectedDayEntries.isEmpty) {
+      // Selected date has no entries - check if we should filter older notifications
+      if (!_showOlderNotifications) {
+        // Show empty for now, but we'll show the button to reveal older notifications
+        entriesByDate = {};
+      } else {
+        // Show all entries when revealing older notifications
+        allEntries.sort((a, b) => a.date.compareTo(b.date));
+        final map = <DateTime, List<CalendarEntry>>{};
+        for (final entry in allEntries) {
+          final k = DateTime(entry.date.year, entry.date.month, entry.date.day);
+          map.putIfAbsent(k, () => []).add(entry);
+        }
+        entriesByDate = map;
+      }
     } else {
       // Group all entries (within cache window)
       allEntries.sort((a, b) => a.date.compareTo(b.date));
       final map = <DateTime, List<CalendarEntry>>{};
+      
+      // Check if we're on today and should filter older notifications
+      final today = now;
+      final todayKey = DateTime(today.year, today.month, today.day);
+      final isOnToday = _selectedDate.year == today.year && _selectedDate.month == today.month && _selectedDate.day == today.day;
+      final shouldFilterOlder = isOnToday && !_showOnlyTodayEpisodes && !_showOlderNotifications;
+      
       for (final entry in allEntries) {
         final k = DateTime(entry.date.year, entry.date.month, entry.date.day);
+        
+        // If we should filter older notifications, skip past entries
+        if (shouldFilterOlder && k.isBefore(todayKey)) {
+          continue;
+        }
+        
         map.putIfAbsent(k, () => []).add(entry);
       }
       entriesByDate = map;
@@ -750,63 +788,146 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
     _flattenedList = flattenedList;
     final isToday = _selectedDate.year == now.year && _selectedDate.month == now.month && _selectedDate.day == now.day;
 
-    return LayoutBuilder(builder: (context, constraints) {
-      return ScrollablePositionedList.builder(
-          itemScrollController: _episodeListController,
-          itemPositionsListener: _itemPositionsListener,
-          padding: const EdgeInsets.only(right: 8.0),
-          itemCount: flattenedList.length + (isToday ? 1 : 0),
-          itemBuilder: (context, index) {
-            if (index <= -1 || (isToday && index == flattenedList.length)) return SizedBox(height: _spacerHeight);
+    // Check if we should show the "Show older notifications" button
+    // Show the button when:
+    // 1. We're on today and not in today-only mode and not showing older notifications
+    // 2. We're on a selected date that has no entries (filtered) and not showing older notifications
+    final isOnSelectedDateWithNoEntries = _filterSelectedDate && selectedDayEntries.isEmpty;
+    final shouldShowOlderButton = (isToday && !_showOnlyTodayEpisodes && !_showOlderNotifications) || 
+                                  (isOnSelectedDateWithNoEntries && !_showOlderNotifications);
 
-            final item = flattenedList[index];
-
-            // Date header
-            if (item is DateTime) {
-              final date = item;
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 12.0, top: 16.0, left: 4.0),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Text(
-                      _getRelativeDateLabel(date),
-                      style: Manager.bodyLargeStyle.copyWith(fontWeight: FontWeight.w600, color: lighten(Manager.accentColor.lightest)),
-                    ),
-                    const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: Manager.accentColor.light.withOpacity(0.25),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: Manager.accentColor.light.withOpacity(0.4), width: 1),
-                      ),
-                      child: Transform.translate(
-                        offset: const Offset(0, -0.66),
-                        child: Text(
-                          '${entriesByDate[date]!.length}',
-                          style: FluentTheme.of(context).typography.caption?.copyWith(
-                                fontWeight: FontWeight.w600,
-                                color: lighten(Manager.accentColor.lightest),
-                              ),
-                        ),
-                      ),
-                    ),
-                  ],
+    // If we have no entries to show and should show the button, show a different empty state
+    if (entriesByDate.isEmpty && shouldShowOlderButton) {
+      return Column(
+        children: [
+          // Show older notifications button
+          Padding(
+            padding: const EdgeInsets.only(left: 4.0, right: 8.0, bottom: 8.0, top: 8.0),
+            child: Row(
+              children: [
+                Button(
+                  style: ButtonStyle(
+                    padding: ButtonState.all(const EdgeInsets.symmetric(horizontal: 12, vertical: 6)),
+                  ),
+                  onPressed: () => toggleOlderNotifications(true),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(FluentIcons.history, size: 14),
+                      const SizedBox(width: 6),
+                      Text(isToday ? 'Show older notifications' : 'Show all notifications'),
+                    ],
+                  ),
                 ),
-              );
-            }
+              ],
+            ),
+          ),
+          // Empty state message
+          Expanded(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(FluentIcons.calendar_day, size: 48, color: FluentTheme.of(context).inactiveColor),
+                VDiv(16),
+                Text(
+                  isToday ? 'No episodes scheduled for today' : 'No episodes scheduled for this date',
+                  style: FluentTheme.of(context).typography.subtitle,
+                ),
+              ],
+            ),
+          ),
+        ],
+      );
+    }
 
-            if (item is CalendarEntry) {
-              final entry = item;
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 0.0),
-                child: _buildCalendarEntryItem(entry),
-              );
-            }
+    return LayoutBuilder(builder: (context, constraints) {
+      return Column(
+        children: [
+          // Show older notifications button (when conditions are met)
+          if (shouldShowOlderButton) ...[
+            Padding(
+              padding: const EdgeInsets.only(left: 4.0, right: 8.0, bottom: 8.0, top: 8.0),
+              child: Row(
+                children: [
+                  Button(
+                    style: ButtonStyle(
+                      padding: ButtonState.all(const EdgeInsets.symmetric(horizontal: 12, vertical: 6)),
+                    ),
+                    onPressed: () => toggleOlderNotifications(true),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(FluentIcons.history, size: 14),
+                        const SizedBox(width: 6),
+                        Text(isToday ? 'Show older notifications' : 'Show all notifications'),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+          // Episode list
+          Expanded(
+            child: ScrollablePositionedList.builder(
+                itemScrollController: _episodeListController,
+                itemPositionsListener: _itemPositionsListener,
+                padding: const EdgeInsets.only(right: 8.0),
+                itemCount: flattenedList.length + (isToday ? 1 : 0),
+                itemBuilder: (context, index) {
+                  if (index <= -1 || (isToday && index == flattenedList.length)) return SizedBox(height: _spacerHeight);
 
-            return const SizedBox.shrink();
-          });
+                  final item = flattenedList[index];
+
+                  // Date header
+                  if (item is DateTime) {
+                    final date = item;
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 12.0, top: 16.0, left: 4.0),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Text(
+                            _getRelativeDateLabel(date),
+                            style: Manager.bodyLargeStyle.copyWith(fontWeight: FontWeight.w600, color: lighten(Manager.accentColor.lightest)),
+                          ),
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Manager.accentColor.light.withOpacity(0.25),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(color: Manager.accentColor.light.withOpacity(0.4), width: 1),
+                            ),
+                            child: Transform.translate(
+                              offset: const Offset(0, -0.66),
+                              child: Text(
+                                '${entriesByDate[date]!.length}',
+                                style: FluentTheme.of(context).typography.caption?.copyWith(
+                                      fontWeight: FontWeight.w600,
+                                      color: lighten(Manager.accentColor.lightest),
+                                    ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+
+                  if (item is CalendarEntry) {
+                    final entry = item;
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 0.0),
+                      child: _buildCalendarEntryItem(entry),
+                    );
+                  }
+
+                  return const SizedBox.shrink();
+                }),
+          ),
+        ],
+      );
     });
   }
 

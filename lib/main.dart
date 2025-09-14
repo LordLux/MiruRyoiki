@@ -447,7 +447,7 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
 
       if (index == calendarIndex) {
         nextFrame(() {
-          releaseCalendarScreenKey.currentState?.scrollToToday(animated: false);
+          // releaseCalendarScreenKey.currentState?.scrollToToday(animated: false);
           // Refresh notifications and release data when navigating to calendar
           releaseCalendarScreenKey.currentState?.loadReleaseData();
         });
@@ -542,7 +542,7 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
                           if (_selectedIndex == index) {
                             // If clicking the same tab, reset its scroll position
                             _resetScrollPosition(index, animate: true);
-                            releaseCalendarScreenKey.currentState?.toggleFilter(false);
+                            // releaseCalendarScreenKey.currentState?.toggleFilter(false);
                             releaseCalendarScreenKey.currentState?.focusToday();
                           }
                         },
