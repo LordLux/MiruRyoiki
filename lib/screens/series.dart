@@ -665,7 +665,7 @@ class SeriesScreenState extends State<SeriesScreen> {
           children: [
             InfoLabel(
               label: 'Seasons',
-              child: Text('${series.seasons.isNotEmpty ? series.seasons.length : 1}'),
+              child: Text('${series.numberOfSeasons}'),
             ),
             InfoLabel(
               label: 'Episodes',
@@ -796,10 +796,11 @@ class SeriesScreenState extends State<SeriesScreen> {
       // Add a section for each season
       for (int i = 1; i <= series!.seasons.length; i++) {
         final seasonEpisodes = series!.getEpisodesForSeason(i);
+        final seasonName = series!.seasons[i - 1].prettyName;
         if (seasonEpisodes.isNotEmpty) {
           seasonWidgets.add(
             EpisodeGrid(
-              title: 'Season $i',
+              title: seasonName,
               episodes: seasonEpisodes,
               initiallyExpanded: true,
               expanderKey: _seasonExpanderKeys[i],

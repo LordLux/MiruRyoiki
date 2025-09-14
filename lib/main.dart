@@ -583,17 +583,20 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
 
                                 // Animated container for the SeriesScreen
                                 // will hide only after fade out animation finishes
-                                  AbsorbPointer(
-                                    absorbing: !_isSeriesView,
-                                    child: AnimatedOpacity(
-                                      duration: getDuration(const Duration(milliseconds: 300)),
-                                      opacity: _isSeriesView ? 1.0 : 0.0,
-                                      curve: Curves.ease,
-                                      onEnd: onEndTransitionSeriesScreen,
-                                      child: _isFinishedTransitioningToLibrary ? const SizedBox.shrink() : SeriesScreen(
-                                        key: librarySeriesScreenKey,
-                                        seriesPath: _selectedSeriesPath,
-                                        onBack: exitSeriesView,
+                                  IgnorePointer(
+                                    ignoring: !_isSeriesView,
+                                    child: AbsorbPointer(
+                                      absorbing: !_isSeriesView,
+                                      child: AnimatedOpacity(
+                                        duration: getDuration(const Duration(milliseconds: 300)),
+                                        opacity: _isSeriesView ? 1.0 : 0.0,
+                                        curve: Curves.ease,
+                                        onEnd: onEndTransitionSeriesScreen,
+                                        child: _isFinishedTransitioningToLibrary ? const SizedBox.shrink() : SeriesScreen(
+                                          key: librarySeriesScreenKey,
+                                          seriesPath: _selectedSeriesPath,
+                                          onBack: exitSeriesView,
+                                        ),
                                       ),
                                     ),
                                   ),

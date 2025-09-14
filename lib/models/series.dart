@@ -59,6 +59,26 @@ class Season {
   int get totalCount => episodes.length;
   double get watchedPercentage => totalCount > 0 ? watchedCount / totalCount : 0.0;
 
+  String get prettyName {
+    if (name.isEmpty) return 'Season';
+
+    final seasonNum = seasonNumber; // Use the parsed season number if available
+    if (seasonNum != null) return 'Season $seasonNum';
+    
+    // if no valid season number found, return the original name
+    return name;
+  }
+
+  int? get seasonNumber {
+    // Pattern to match "Season \d+" or "S\s?\d+"
+    final seasonPattern = RegExp(r'^[Ss](?:eason)?\s*(\d+)$');
+    final match = seasonPattern.firstMatch(name.trim());
+
+    if (match != null) return int.parse(match.group(1)!); // Return as integer
+
+    return null; // Return null if no valid season number found
+  }
+
   Metadata? _metadata;
 
   Metadata? get metadata => _metadata ?? _getMetadata();
@@ -1121,6 +1141,16 @@ class Series {
     }
     // Fallback to local calculation
     return totalEpisodes > 0 ? watchedEpisodes / totalEpisodes : 0.0;
+  }
+
+  int get numberOfSeasons {
+    if (seasons.isEmpty) return 0;
+
+    // Count seasons that have valid season numbers (actual seasons)
+    final actualSeasons = seasons.where((season) => season.seasonNumber != null).length;
+
+    // If we found actual seasons, return that count, otherwise return total seasons
+    return actualSeasons > 0 ? actualSeasons : seasons.length;
   }
 }
 

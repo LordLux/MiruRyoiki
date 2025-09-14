@@ -131,7 +131,7 @@ class LibraryScreenState extends State<LibraryScreen> {
   List<Series>? _sortedSeriesCache;
   Map<String, List<Series>>? _groupedDataCache;
   _CacheParameters? _cacheParameters;
-  
+
   final ScrollController _controller = ScrollController(
     debugLabel: 'LibraryScreen Scroll Controller',
     keepScrollOffset: true,
@@ -602,7 +602,7 @@ class LibraryScreenState extends State<LibraryScreen> {
       _groupKeys.clear();
       return;
     }
-    
+
     // Remove keys for groups that no longer exist
     final currentGroups = _groupedDataCache!.keys.toSet();
     _groupKeys.removeWhere((groupName, key) => !currentGroups.contains(groupName));
@@ -610,7 +610,7 @@ class LibraryScreenState extends State<LibraryScreen> {
 
   void _scrollToList(String targetListName) {
     if (_groupedDataCache == null) return;
-    
+
     // Find the index of the target list in the sorted display order
     final displayOrder = _groupedDataCache!.keys.toList();
     displayOrder.sort((a, b) {
@@ -620,14 +620,14 @@ class LibraryScreenState extends State<LibraryScreen> {
       if (bIndex == -1) return -1;
       return aIndex.compareTo(bIndex);
     });
-    
+
     // Find the index of the target list in the display order
     final targetIndex = displayOrder.indexOf(targetListName);
     if (targetIndex == -1) {
       logTrace('Target list $targetListName not found in grouped data');
       return;
     }
-    
+
     // Try to use the group key first (for already-rendered widgets)
     final groupKey = _groupKeys[targetListName];
     if (groupKey?.currentContext != null) {
@@ -646,10 +646,10 @@ class LibraryScreenState extends State<LibraryScreen> {
   void _scrollToListWithRendering(int targetIndex, String targetListName) async {
     // Step 1: Scroll to approximate position to trigger rendering
     _scrollToListByIndex(targetIndex);
-    
+
     // Step 2: Wait a bit for rendering, then try precise scrolling
     await Future.delayed(const Duration(milliseconds: 100));
-    
+
     // Check if the widget is now rendered
     final groupKey = _groupKeys[targetListName];
     if (groupKey?.currentContext != null) {
@@ -672,10 +672,10 @@ class LibraryScreenState extends State<LibraryScreen> {
     // This is an approximation - you may need to adjust based on your actual content
     const double estimatedHeaderHeight = 50.0; // Height of sticky header
     const double estimatedGroupSpacing = 8.0; // Spacing between groups
-    
+
     // Calculate estimated position
     double estimatedOffset = 0.0;
-    
+
     if (_groupedDataCache != null) {
       final displayOrder = _groupedDataCache!.keys.toList();
       displayOrder.sort((a, b) {
@@ -689,10 +689,10 @@ class LibraryScreenState extends State<LibraryScreen> {
       for (int i = 0; i < targetIndex && i < displayOrder.length; i++) {
         final groupName = displayOrder[i];
         final seriesInGroup = _groupedDataCache![groupName] ?? [];
-        
+
         // Add header height
         estimatedOffset += estimatedHeaderHeight;
-        
+
         // Add content height (estimate based on number of series and grid layout)
         if (seriesInGroup.isNotEmpty) {
           final crossAxisCount = ScreenUtils.crossAxisCount(ScreenUtils.libraryContentWidthWithoutPadding);
@@ -701,7 +701,7 @@ class LibraryScreenState extends State<LibraryScreen> {
           final contentHeight = rows * itemHeight + (rows - 1) * ScreenUtils.cardPadding + 16; // 16 for padding
           estimatedOffset += contentHeight;
         }
-        
+
         // Add spacing between groups
         if (i < targetIndex - 1) {
           estimatedOffset += estimatedGroupSpacing;
@@ -1359,7 +1359,7 @@ class LibraryScreenState extends State<LibraryScreen> {
           });
 
           return GridView(
-            padding: includePadding ? const EdgeInsets.only(bottom: 8) : EdgeInsets.zero,
+            padding: includePadding ? EdgeInsets.only(bottom: 8) : EdgeInsets.zero,
             gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: columns ?? ScreenUtils.crossAxisCount(maxWidth),
               childAspectRatio: ScreenUtils.kDefaultAspectRatio,
@@ -1555,7 +1555,7 @@ class LibraryScreenState extends State<LibraryScreen> {
                   if (seriesList.isEmpty) return const SizedBox.shrink();
 
                   return Padding(
-                    padding: EdgeInsets.only(top: isFirstGroup ? 0 : 8.0),
+                    padding: EdgeInsets.only(top: isFirstGroup ? 0 : 16.0),
                     child: StickyHeader(
                       header: ClipRRect(
                         borderRadius: const BorderRadius.all(Radius.circular(ScreenUtils.kStatCardBorderRadius)),
@@ -1605,17 +1605,18 @@ class LibraryScreenState extends State<LibraryScreen> {
                       ),
                       content: Column(
                         children: [
-                          const SizedBox(height: 8),
-
                           // Group content with headers and list
-                          Container(
-                            decoration: BoxDecoration(
-                              border: Border.all(color: Manager.genericGray.withOpacity(0.2)),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: SizedBox(
-                              height: 53.5 * seriesList.length + 33 + 2, // +33 for header
-                              child: buildListContent(seriesList, null, const NeverScrollableScrollPhysics(), false),
+                          Padding(
+                            padding: const EdgeInsets.only(top: 12.0),
+                            child: Container(
+                              decoration: BoxDecoration(
+                                border: Border.all(color: Manager.genericGray.withOpacity(0.2)),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: SizedBox(
+                                height: 53.5 * seriesList.length + 33 + 2, // +33 for header
+                                child: buildListContent(seriesList, null, const NeverScrollableScrollPhysics(), false),
+                              ),
                             ),
                           ),
 
@@ -1730,9 +1731,7 @@ class LibraryScreenState extends State<LibraryScreen> {
                 final isFirstGroup = index == 0;
 
                 // Ensure we have a key for this group
-                if (!_groupKeys.containsKey(groupName)) {
-                  _groupKeys[groupName] = GlobalKey();
-                }
+                if (!_groupKeys.containsKey(groupName)) _groupKeys[groupName] = GlobalKey();
 
                 return Container(
                   key: _groupKeys[groupName],
@@ -1740,7 +1739,7 @@ class LibraryScreenState extends State<LibraryScreen> {
                     clipBehavior: Clip.antiAlias,
                     borderRadius: const BorderRadius.all(Radius.circular(ScreenUtils.kStatCardBorderRadius)),
                     child: Padding(
-                      padding: EdgeInsets.only(top: isFirstGroup ? 0 : 8.0),
+                      padding: EdgeInsets.only(top: isFirstGroup ? 0 : 16.0),
                       child: StickyHeader(
                         header: Transform.translate(
                           offset: const Offset(0, -1),
@@ -1769,7 +1768,10 @@ class LibraryScreenState extends State<LibraryScreen> {
                             ),
                           ),
                         ),
-                        content: episodesGrid(seriesInGroup, controller, physics, false, allowMeasurement: index == 0, isNestedInScrollable: true),
+                        content: Padding(
+                          padding: const EdgeInsets.only(top: 12.0),
+                          child: episodesGrid(seriesInGroup, controller, physics, false, allowMeasurement: index == 0, isNestedInScrollable: true),
+                        ),
                       ),
                     ),
                   ),
