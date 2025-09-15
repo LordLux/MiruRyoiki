@@ -6,11 +6,11 @@ class ScreenUtils {
   static const int _kcrossAxisCountMax = 10;
 
   static const double kDefaultAspectRatio = 0.71; // 7:10 aspect ratio
-  static const double kDefaultCardAspectRatio = 0.65388983532; // 7:10 aspect ratio
+  static const double kDefaultCardAspectRatio = 0.707901322849; // 7:10 actual aspect ratio
   static const double kDefaultCardPadding = 14.0;
-  static const double kDefaultCardWidth = 170.0;
-  static const double kDefaultCardHeight = 200.0 * kDefaultCardAspectRatio;
-
+  static const double kDefaultCardWidth = 198.0;
+  static const double kDefaultCardHeight = kDefaultCardWidth / kDefaultCardAspectRatio;
+  
   static const double kMinStatCardWidth = 130.0;
   static const double kMaxStatCardWidth = 200.0;
   static const double kMinDistrCardWidth = 430.0;
@@ -26,6 +26,8 @@ class ScreenUtils {
 
   static const double kMaxFontSize = 24.0;
   static const double kMinFontSize = 8.0;
+  
+  static const double kDefaultListViewItemHeight = 53.5;
 
   static const double kNavigationBarWidth = 300.0;
   static const double kStatusBarHeight = 24.0;
@@ -37,10 +39,13 @@ class ScreenUtils {
   static const double kOfflineBarMaxHeight = 20.0;
   static const double kEpisodeCardBorderRadius = 4.0;
   static const double kStatCardBorderRadius = 8.0;
+  static const double kLibraryHeaderContentSeparatorHeight = 8.0;
+  static const double kLibraryHeaderHeaderSeparatorHeight = 16.0;
   static const double kProfilePictureSize = 150.0;
   static const double kProfilePictureBorderRadius = 6.0;
 
   static double libraryContentWidthWithoutPadding = 0.0;
+  static Size libraryCardSize = Size(kDefaultCardWidth, kDefaultCardHeight);
 
   static MediaQueryData get _mediaQuery => MediaQueryData.fromWindow(WidgetsBinding.instance.window);
   static double get width => _mediaQuery.size.width;
@@ -49,13 +54,14 @@ class ScreenUtils {
   static double get textScaleFactor => _mediaQuery.textScaleFactor;
   static double get fallbackWidth => (width - kNavigationBarWidth - 32 /*padding*/);
   static double get maxCardWidth => Manager.fontSizeMultiplier * kDefaultCardWidth;
+  static double get maxCardHeight => Manager.fontSizeMultiplier * kDefaultCardHeight;
   static double get cardPadding => Manager.fontSizeMultiplier * kDefaultCardPadding;
   static double get paddedCardHeight => kDefaultCardHeight + cardPadding;
 
   static int crossAxisCount(double? maxConstrainedWidth) {
-    final width = (maxConstrainedWidth ?? fallbackWidth);
+    final totalWidth = (maxConstrainedWidth ?? fallbackWidth);
     final size = (maxCardWidth + cardPadding);
-    final nCards = (width ~/ size);
+    final nCards = (totalWidth ~/ size);
     final clamped = nCards.clamp(1, _kcrossAxisCountMax);
     // if (clamped != nCards) print("clamped: $clamped");
     return clamped;

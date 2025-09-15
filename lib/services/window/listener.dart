@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:miruryoiki/main.dart';
 import 'package:window_manager/window_manager.dart';
 
 import '../../manager.dart';
@@ -70,6 +71,7 @@ class MyWindowListener extends WindowListener {
   @override
   void onWindowResized() {
     update();
+    libraryScreenKey.currentState?.measureCardSize();
     WindowStateService.saveWindowState();
     super.onWindowResized();
     WindowStateService.toggleFullScreen(false);

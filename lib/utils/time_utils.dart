@@ -21,6 +21,8 @@ Duration get stickyHeaderDuration => getDuration(const Duration(milliseconds: 43
 
 Duration get shortStickyHeaderDuration => Duration(milliseconds: stickyHeaderDuration.inMilliseconds ~/ 3);
 
+Duration get mediumDuration => getDuration(const Duration(milliseconds: 300));
+
 Duration get dimDuration => getDuration(const Duration(milliseconds: 200));
 
 Duration get shortDuration => getDuration(const Duration(milliseconds: 150));

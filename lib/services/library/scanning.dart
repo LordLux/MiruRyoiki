@@ -111,7 +111,10 @@ extension LibraryScanning on Library {
         scanResult = await isolateManager.runIsolateWithProgress<ProcessFilesParams, Map<PathString, Metadata>>(
           task: processFilesIsolate,
           params: ProcessFilesParams(filesToProcess.toList(), dummySendPort),
-          onStart: () => LibraryScanProgressManager().resetProgress(),
+          onStart: () {
+          LibraryScanProgressManager().showInLibraryBottom = false;
+            LibraryScanProgressManager().resetProgress();
+          },
           onProgress: (processed, total) {
             scanProgress.value = (processed, total);
             LibraryScanProgressManager().show(processed.toDouble() / total.toDouble());
@@ -204,7 +207,7 @@ extension LibraryScanning on Library {
         // Rebuild the series with all the collected changes
         if (episodesToAdd.isNotEmpty || episodesToDelete.isNotEmpty || episodesToUpdate.isNotEmpty) {
           logTrace('  Rebuilding series due to changes...');
-          final rebuiltSeries = _rebuildSeries(originalSeries, episodesToAdd, episodesToDelete, episodesToUpdate);
+          final rebuiltSeries = await _rebuildSeries(originalSeries, episodesToAdd, episodesToDelete, episodesToUpdate);
           updatedSeriesList[seriesIndex] = rebuiltSeries;
           logTrace('  Series updated in list');
         } else {
@@ -288,7 +291,7 @@ extension LibraryScanning on Library {
         .toList();
 
     final series = Series(name: name, path: seriesPath, seasons: [], folderPosterPath: posterPath, folderBannerPath: bannerPath);
-    return _organizeEpisodesIntoSeasons(series, episodes);
+    return await _organizeEpisodesIntoSeasons(series, episodes);
   }
 
   /// Creates a single Episode object.
@@ -304,7 +307,7 @@ extension LibraryScanning on Library {
   }
 
   /// Rebuilds an existing series with add/delete/update changes.
-  Series _rebuildSeries(Series original, Set<Episode> toAdd, Set<Episode> toDelete, Map<Episode, Episode> toUpdate) {
+  Future<Series> _rebuildSeries(Series original, Set<Episode> toAdd, Set<Episode> toDelete, Map<Episode, Episode> toUpdate) async {
     List<Episode> currentEpisodes = original.seasons.expand((s) => s.episodes).toList()..addAll(original.relatedMedia);
 
     logTrace('  Rebuilding series: ${original.name}');
@@ -332,14 +335,14 @@ extension LibraryScanning on Library {
       }
     });
 
-    final rebuilt = _organizeEpisodesIntoSeasons(original, currentEpisodes);
+    final rebuilt = await _organizeEpisodesIntoSeasons(original, currentEpisodes);
     logTrace('    After organization - Seasons: ${rebuilt.seasons.length}, Related: ${rebuilt.relatedMedia.length}');
     return rebuilt;
   }
 
   /// Organizes a flat list of episodes into the correct Season/Related Media structure.
-  /// This logic is ported from the original, working FileScanner.
-  Series _organizeEpisodesIntoSeasons(Series series, List<Episode> allEpisodes) {
+  /// This logic scans all subdirectories and creates seasons even if they're empty.
+  Future<Series> _organizeEpisodesIntoSeasons(Series series, List<Episode> allEpisodes) async {
     final seasons = <Season>[];
     final relatedMedia = <Episode>[];
 
@@ -350,13 +353,34 @@ extension LibraryScanning on Library {
     final seasonDirPaths = <String>[];
     final otherDirPaths = <String>[];
 
-    // Categorize all directories within the series folder
+    // Scan ALL subdirectories in the series folder, not just those with episodes
+    final seriesDir = Directory(seriesRootPath);
+    if (await seriesDir.exists()) {
+      await for (final entity in seriesDir.list()) {
+        if (entity is Directory) {
+          final dirPath = entity.path;
+          final dirName = p.basename(dirPath);
+
+          if (_isSeasonDirectory(dirName)) {
+            seasonDirPaths.add(dirPath);
+          } else {
+            // Only add to other directories if it contains episodes
+            if (episodesByParentDir.containsKey(dirPath)) otherDirPaths.add(dirPath);
+          }
+        }
+      }
+    }
+
+    // Also include any directories that contain episodes but weren't found in the file system scan
+    // (this handles the case where episodes exist but directory was removed/renamed)
     for (final dirPath in episodesByParentDir.keys) {
       if (dirPath == seriesRootPath) continue; // Skip the root, handle it separately
-      if (_isSeasonDirectory(p.basename(dirPath))) {
-        seasonDirPaths.add(dirPath);
-      } else {
-        otherDirPaths.add(dirPath);
+      if (!seasonDirPaths.contains(dirPath) && !otherDirPaths.contains(dirPath)) {
+        if (_isSeasonDirectory(p.basename(dirPath))) {
+          seasonDirPaths.add(dirPath);
+        } else {
+          otherDirPaths.add(dirPath);
+        }
       }
     }
 
@@ -370,12 +394,15 @@ extension LibraryScanning on Library {
         episodes: rootVideoFiles,
       ));
     } else {
-      // Case 2: Season folders exist, process them
+      // Case 2: Season folders exist, process them (including empty ones)
       for (final seasonPath in seasonDirPaths) {
+        final seasonName = p.basename(seasonPath);
+        final episodesInSeason = episodesByParentDir[seasonPath] ?? <Episode>[];
+
         seasons.add(Season(
-          name: _formatSeasonName(p.basename(seasonPath)),
+          name: _formatSeasonName(seasonName),
           path: PathString(seasonPath),
-          episodes: episodesByParentDir[seasonPath]!,
+          episodes: episodesInSeason,
         ));
       }
       // Any videos in the root folder are now related media
@@ -387,7 +414,23 @@ extension LibraryScanning on Library {
       relatedMedia.addAll(episodesByParentDir[otherPath]!);
     }
 
-    seasons.sort((a, b) => a.name.compareTo(b.name));
+    // Sort seasons by season number (preserve original numbering)
+    seasons.sort((a, b) {
+      final aNum = a.seasonNumber;
+      final bNum = b.seasonNumber;
+
+      // If both have valid season numbers, sort by number
+      if (aNum != null && bNum != null) {
+        return aNum.compareTo(bNum);
+      }
+
+      // If only one has a valid season number, it comes first
+      if (aNum != null) return -1;
+      if (bNum != null) return 1;
+
+      // If neither has a valid season number, sort alphabetically
+      return a.name.compareTo(b.name);
+    });
 
     return series.copyWith(
       seasons: seasons,
@@ -402,8 +445,15 @@ extension LibraryScanning on Library {
   /// Check if a filename is a video file
   bool _isVideoFile(String path) => _videoExtensions.contains(p.extension(path).toLowerCase());
 
-  /// Check if a directory name matches the season pattern (S1, S01, Season 01, etc.)
-  bool _isSeasonDirectory(String name) => RegExp(r'S\d+', caseSensitive: false).hasMatch(name) || RegExp(r'Season\s+\d+', caseSensitive: false).hasMatch(name);
+  /// Check if a directory name matches the season pattern ([S or s]eason (\d){1+} or [S or s](\s){0 or 1}(\d){1+})
+  bool _isSeasonDirectory(String name) {
+    // Match "[S or s]eason (\d){1+}" - e.g., "Season 1", "season 12", etc.
+    final seasonPattern = RegExp(r'^[Ss]eason\s+\d+$');
+    // Match "[S or s](\s){0 or 1}(\d){1+}" - e.g., "S1", "s1", "S 12", "s 12", etc.
+    final shortPattern = RegExp(r'^[Ss]\s?\d+$');
+
+    return seasonPattern.hasMatch(name.trim()) || shortPattern.hasMatch(name.trim());
+  }
 
   /// Format season name to be consistent
   String _formatSeasonName(String name) {
@@ -510,6 +560,7 @@ extension LibraryScanning on Library {
         forceRecalculate: forceRecalculate,
         dominantColorSourceIndex: Manager.settings.dominantColorSource.index,
         onStart: () {
+          LibraryScanProgressManager().showInLibraryBottom = true;
           LibraryScanProgressManager().resetProgress();
           logTrace('Starting dominant color calculation in isolate');
         },

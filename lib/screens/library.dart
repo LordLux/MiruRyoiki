@@ -24,9 +24,11 @@ import '../utils/logging.dart';
 import '../utils/path_utils.dart';
 import '../utils/screen_utils.dart';
 import '../utils/time_utils.dart';
+import '../widgets/acrylic_header.dart';
 import '../widgets/animated_order_tile.dart';
 import '../widgets/buttons/button.dart';
 import '../widgets/buttons/wrapper.dart';
+import '../widgets/dialogs/splash/progress.dart';
 import '../widgets/page/header_widget.dart';
 import '../widgets/page/infobar.dart';
 import '../widgets/page/page.dart';
@@ -136,6 +138,16 @@ class LibraryScreenState extends State<LibraryScreen> {
     debugLabel: 'LibraryScreen Scroll Controller',
     keepScrollOffset: true,
   );
+
+  void measureCardSize() {
+    nextFrame(() {
+      final RenderBox? box = firstCardKey.currentContext?.findRenderObject() as RenderBox?;
+      if (box != null) {
+        ScreenUtils.libraryCardSize = Size(box.size.width, box.size.width / ScreenUtils.kDefaultAspectRatio);
+        log('card height: ${ScreenUtils.libraryCardSize.height}, width: ${ScreenUtils.libraryCardSize.width}');
+      }
+    });
+  }
 
   /// Create a styled scrollbar with consistent theming and right padding
   Widget _buildStyledScrollbar(Widget child) {
@@ -645,17 +657,18 @@ class LibraryScreenState extends State<LibraryScreen> {
 
   void _scrollToListWithRendering(int targetIndex, String targetListName) async {
     // Step 1: Scroll to approximate position to trigger rendering
-    _scrollToListByIndex(targetIndex);
-
-    // Step 2: Wait a bit for rendering, then try precise scrolling
-    await Future.delayed(const Duration(milliseconds: 100));
+    final duration = await _scrollToListByIndex(targetIndex);
+    if (duration != null) {
+      // Step 2: Wait a bit for rendering, then try precise scrolling
+      await Future.delayed(Duration(milliseconds: duration));
+    }
 
     // Check if the widget is now rendered
     final groupKey = _groupKeys[targetListName];
     if (groupKey?.currentContext != null) {
       Scrollable.ensureVisible(
         groupKey!.currentContext!,
-        duration: const Duration(milliseconds: 200), // Shorter duration for fine adjustment
+        duration: Duration(milliseconds: duration ?? 200), // Shorter duration for fine adjustment
         curve: Curves.easeInOut,
       );
       logTrace('Fine-tuned scroll to $targetListName using GlobalKey after rendering');
@@ -664,27 +677,25 @@ class LibraryScreenState extends State<LibraryScreen> {
     }
   }
 
-  void _scrollToListByIndex(int targetIndex) {
+  Future<int?> _scrollToListByIndex(int targetIndex) async {
     final scrollController = _controller;
-    if (!scrollController.hasClients) return;
+    final library = Provider.of<Library>(context, listen: false);
+    if (!scrollController.hasClients || library.isIndexing) return null;
+    logInfo('Scrolling to list index $targetIndex');
+
+    final currentPosition = scrollController.position.pixels;
 
     // Estimate the height of each group section
     // This is an approximation - you may need to adjust based on your actual content
-    const double estimatedHeaderHeight = 50.0; // Height of sticky header
-    const double estimatedGroupSpacing = 8.0; // Spacing between groups
+    const double estimatedHeaderHeight = 53.0; // Height of sticky header
+    const double estimatedGroupSpacing = ScreenUtils.kLibraryHeaderHeaderSeparatorHeight; // Spacing between groups
 
     // Calculate estimated position
     double estimatedOffset = 0.0;
 
     if (_groupedDataCache != null) {
       final displayOrder = _groupedDataCache!.keys.toList();
-      displayOrder.sort((a, b) {
-        final aIndex = _customListOrder.indexOf(_getApiName(a));
-        final bIndex = _customListOrder.indexOf(_getApiName(b));
-        if (aIndex == -1) return 1;
-        if (bIndex == -1) return -1;
-        return aIndex.compareTo(bIndex);
-      });
+      logInfo('Total groups: ${displayOrder.length}, Target index: $targetIndex');
 
       for (int i = 0; i < targetIndex && i < displayOrder.length; i++) {
         final groupName = displayOrder[i];
@@ -692,29 +703,37 @@ class LibraryScreenState extends State<LibraryScreen> {
 
         // Add header height
         estimatedOffset += estimatedHeaderHeight;
+        logInfo('Group $groupName [$i]: ${seriesInGroup.length} series');
 
         // Add content height (estimate based on number of series and grid layout)
         if (seriesInGroup.isNotEmpty) {
-          final crossAxisCount = ScreenUtils.crossAxisCount(ScreenUtils.libraryContentWidthWithoutPadding);
-          final rows = (seriesInGroup.length / crossAxisCount).ceil();
-          final itemHeight = (ScreenUtils.libraryContentWidthWithoutPadding / crossAxisCount) / ScreenUtils.kDefaultAspectRatio;
-          final contentHeight = rows * itemHeight + (rows - 1) * ScreenUtils.cardPadding + 16; // 16 for padding
+          final rows = ScreenUtils.mainAxisCount(seriesInGroup.length);
+          log('Group $groupName [$i] has ${seriesInGroup.length} series, estimated rows: $rows');
+          final cardHeight = ScreenUtils.libraryCardSize.height;
+          final contentHeight = rows * cardHeight + (rows + 1) * 8.0 + ScreenUtils.kLibraryHeaderContentSeparatorHeight;
           estimatedOffset += contentHeight;
         }
 
-        // Add spacing between groups
+        // Add spacing between groups (add spacing after each group except the last one we're calculating)
         if (i < targetIndex - 1) {
           estimatedOffset += estimatedGroupSpacing;
         }
+
+        logInfo('Loop iteration $i: estimatedOffset = $estimatedOffset');
       }
     }
+
+    final differenceInPosition = (estimatedOffset - currentPosition).abs();
+    final duration = Duration(milliseconds: 10 * math.min(differenceInPosition ~/ 10, 20));
 
     // Animate to the estimated position
     scrollController.animateTo(
       estimatedOffset.clamp(0.0, scrollController.position.maxScrollExtent),
-      duration: shortDuration,
+      duration: duration, // Cap duration for large jumps
       curve: Curves.easeInOut,
     );
+
+    return duration.inMilliseconds;
   }
 
   void updateColorsInSortCache() {
@@ -1306,11 +1325,9 @@ class LibraryScreenState extends State<LibraryScreen> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    ProgressRing(), // TODO use actual line loading indicator from statusbar and hide statusbar while on library screen while indexing
-                    VDiv(16),
                     Text('Please wait while the Library is being indexed...'),
-                    // VDiv(16),
-                    // TODO maybe image
+                    VDiv(16),
+                    LibraryScanProgressIndicator(showText: false),
                   ],
                 ),
               ),
@@ -1351,6 +1368,10 @@ class LibraryScreenState extends State<LibraryScreen> {
 
             final Series series_ = list[index % list.length];
 
+            if (index == 0) {
+              // Measure the first card to determine the number of columns
+              measureCardSize();
+            }
             return SeriesCard(
               key: (index == 0 && allowMeasurement) ? firstCardKey : ValueKey('${series_.path}:${series_.effectivePosterPath ?? 'none'}'),
               series: series_,
@@ -1358,18 +1379,21 @@ class LibraryScreenState extends State<LibraryScreen> {
             );
           });
 
-          return GridView(
-            padding: includePadding ? EdgeInsets.only(bottom: 8) : EdgeInsets.zero,
-            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: columns ?? ScreenUtils.crossAxisCount(maxWidth),
-              childAspectRatio: ScreenUtils.kDefaultAspectRatio,
-              crossAxisSpacing: ScreenUtils.cardPadding,
-              mainAxisSpacing: ScreenUtils.cardPadding,
+          return ScrollConfiguration(
+            behavior: ScrollBehavior().copyWith(overscroll: false, scrollbars: false),
+            child: GridView(
+              padding: includePadding ? EdgeInsets.only(bottom: 8) : EdgeInsets.zero,
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: columns ?? ScreenUtils.crossAxisCount(maxWidth),
+                childAspectRatio: ScreenUtils.kDefaultAspectRatio,
+                crossAxisSpacing: ScreenUtils.cardPadding,
+                mainAxisSpacing: ScreenUtils.cardPadding,
+              ),
+              controller: isNestedInScrollable ? null : controller,
+              physics: isNestedInScrollable ? const NeverScrollableScrollPhysics() : (shimmer ? const NeverScrollableScrollPhysics() : physics),
+              shrinkWrap: isNestedInScrollable, // Only shrinkWrap when nested
+              children: children,
             ),
-            controller: isNestedInScrollable ? null : controller,
-            physics: isNestedInScrollable ? const NeverScrollableScrollPhysics() : (shimmer ? const NeverScrollableScrollPhysics() : physics),
-            shrinkWrap: isNestedInScrollable, // Only shrinkWrap when nested
-            children: children,
           );
         },
       );
@@ -1550,71 +1574,56 @@ class LibraryScreenState extends State<LibraryScreen> {
                 itemBuilder: (context, index) {
                   final groupName = displayOrder[index];
                   final seriesList = groupedData[groupName] ?? [];
-                  final isFirstGroup = index == 0;
+                  final isLastGroup = index == displayOrder.length - 1;
 
                   if (seriesList.isEmpty) return const SizedBox.shrink();
 
                   return Padding(
-                    padding: EdgeInsets.only(top: isFirstGroup ? 0 : 16.0),
+                    padding: EdgeInsets.only(bottom: isLastGroup ? 0 : ScreenUtils.kLibraryHeaderHeaderSeparatorHeight),
                     child: StickyHeader(
-                      header: ClipRRect(
-                        borderRadius: const BorderRadius.all(Radius.circular(ScreenUtils.kStatCardBorderRadius)),
-                        child: Acrylic(
-                          luminosityAlpha: 1,
-                          child: Container(
-                            constraints: const BoxConstraints(minHeight: 50.0),
-                            decoration: BoxDecoration(
-                              borderRadius: const BorderRadius.only(
-                                topLeft: Radius.circular(ScreenUtils.kStatCardBorderRadius),
-                                topRight: Radius.circular(ScreenUtils.kStatCardBorderRadius),
+                      header: AcrylicHeader(
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            if (shimmer) ...[
+                              Expanded(
+                                child: Container(
+                                  height: 12,
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withOpacity(0.2),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                ),
                               ),
-                              color: Colors.white.withOpacity(0.05),
-                            ),
-                            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                if (shimmer) ...[
-                                  Expanded(
-                                    child: Container(
-                                      height: 12,
-                                      decoration: BoxDecoration(
-                                        color: Colors.white.withOpacity(0.2),
-                                        borderRadius: BorderRadius.circular(6),
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Container(
-                                    height: 12,
-                                    width: 80,
-                                    decoration: BoxDecoration(
-                                      color: Colors.white.withOpacity(0.2),
-                                      borderRadius: BorderRadius.circular(6),
-                                    ),
-                                  ),
-                                ],
-                                if (!shimmer) ...[
-                                  Text(groupName, style: Manager.subtitleStyle),
-                                  Text('${seriesList.length} Series', style: Manager.captionStyle),
-                                ],
-                              ],
-                            ),
-                          ),
+                              const SizedBox(width: 12),
+                              Container(
+                                height: 12,
+                                width: 80,
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.2),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                              ),
+                            ],
+                            if (!shimmer) ...[
+                              Text(groupName, style: Manager.subtitleStyle),
+                              Text('${seriesList.length} Series', style: Manager.captionStyle),
+                            ],
+                          ],
                         ),
                       ),
                       content: Column(
                         children: [
                           // Group content with headers and list
                           Padding(
-                            padding: const EdgeInsets.only(top: 12.0),
+                            padding: const EdgeInsets.only(top: ScreenUtils.kLibraryHeaderContentSeparatorHeight),
                             child: Container(
                               decoration: BoxDecoration(
                                 border: Border.all(color: Manager.genericGray.withOpacity(0.2)),
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: SizedBox(
-                                height: 53.5 * seriesList.length + 33 + 2, // +33 for header
+                                height: ScreenUtils.kDefaultListViewItemHeight * seriesList.length + 33 + 2, // +33 for header
                                 child: buildListContent(seriesList, null, const NeverScrollableScrollPhysics(), false),
                               ),
                             ),
@@ -1728,7 +1737,7 @@ class LibraryScreenState extends State<LibraryScreen> {
               itemBuilder: (context, index) {
                 final groupName = displayOrder[index];
                 final seriesInGroup = groupedData[groupName]!;
-                final isFirstGroup = index == 0;
+                final isLastGroup = index == displayOrder.length - 1;
 
                 // Ensure we have a key for this group
                 if (!_groupKeys.containsKey(groupName)) _groupKeys[groupName] = GlobalKey();
@@ -1739,37 +1748,22 @@ class LibraryScreenState extends State<LibraryScreen> {
                     clipBehavior: Clip.antiAlias,
                     borderRadius: const BorderRadius.all(Radius.circular(ScreenUtils.kStatCardBorderRadius)),
                     child: Padding(
-                      padding: EdgeInsets.only(top: isFirstGroup ? 0 : 16.0),
+                      padding: EdgeInsets.only(bottom: isLastGroup ? 0 : ScreenUtils.kLibraryHeaderHeaderSeparatorHeight),
                       child: StickyHeader(
                         header: Transform.translate(
                           offset: const Offset(0, -1),
-                          child: ClipRRect(
-                            borderRadius: const BorderRadius.all(Radius.circular(ScreenUtils.kStatCardBorderRadius)),
-                            child: Acrylic(
-                              luminosityAlpha: 1,
-                              child: Container(
-                                constraints: const BoxConstraints(minHeight: 50.0),
-                                decoration: BoxDecoration(
-                                  borderRadius: const BorderRadius.only(
-                                    topLeft: Radius.circular(ScreenUtils.kStatCardBorderRadius),
-                                    topRight: Radius.circular(ScreenUtils.kStatCardBorderRadius),
-                                  ),
-                                  color: Colors.white.withOpacity(0.05),
-                                ),
-                                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Text(groupName, style: Manager.subtitleStyle),
-                                    Text('${seriesInGroup.length} Series', style: Manager.captionStyle),
-                                  ],
-                                ),
-                              ),
+                          child: AcrylicHeader(
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(groupName, style: Manager.subtitleStyle),
+                                Text('${seriesInGroup.length} Series', style: Manager.captionStyle),
+                              ],
                             ),
                           ),
                         ),
                         content: Padding(
-                          padding: const EdgeInsets.only(top: 12.0),
+                          padding: const EdgeInsets.only(top: ScreenUtils.kLibraryHeaderContentSeparatorHeight),
                           child: episodesGrid(seriesInGroup, controller, physics, false, allowMeasurement: index == 0, isNestedInScrollable: true),
                         ),
                       ),

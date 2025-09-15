@@ -76,7 +76,7 @@ class SeriesScreenState extends State<SeriesScreen> {
       });
     }
   }
-  
+
   @override
   didUpdateWidget(covariant SeriesScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
@@ -90,13 +90,13 @@ class SeriesScreenState extends State<SeriesScreen> {
       }
     }
   }
-  
+
   @override
   void dispose() {
     deferredPointerLink?.dispose();
     super.dispose();
   }
-  
+
   @override
   didChangeDependencies() {
     super.didChangeDependencies();
@@ -582,9 +582,7 @@ class SeriesScreenState extends State<SeriesScreen> {
                       AnimatedOpacity(
                         duration: shortStickyHeaderDuration,
                         opacity: enabled && imageProvider != null ? 1 : 0,
-                        child: Center(
-                          child: Icon(FluentIcons.edit, size: 35, color: Colors.white),
-                        ),
+                        child: Center(child: Icon(FluentIcons.edit, size: 35, color: Colors.white)),
                       ),
                     ],
                   ],
@@ -797,18 +795,17 @@ class SeriesScreenState extends State<SeriesScreen> {
       for (int i = 1; i <= series!.seasons.length; i++) {
         final seasonEpisodes = series!.getEpisodesForSeason(i);
         final seasonName = series!.seasons[i - 1].prettyName;
-        if (seasonEpisodes.isNotEmpty) {
-          seasonWidgets.add(
-            EpisodeGrid(
-              title: seasonName,
-              episodes: seasonEpisodes,
-              initiallyExpanded: true,
-              expanderKey: _seasonExpanderKeys[i],
-              onTap: (episode) => _playEpisode(episode),
-              series: series!,
-            ),
-          );
-        }
+        // Display all seasons, even if they're empty
+        seasonWidgets.add(
+          EpisodeGrid(
+            title: seasonName,
+            episodes: seasonEpisodes,
+            initiallyExpanded: true,
+            expanderKey: _seasonExpanderKeys[i],
+            onTap: (episode) => _playEpisode(episode),
+            series: series!,
+          ),
+        );
       }
 
       // Add uncategorized episodes if any

@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/material.dart' show InkWell, Material;
 import 'package:transparent_image/transparent_image.dart';
@@ -254,10 +256,10 @@ class _SeriesCardState extends State<SeriesCard> {
                               ),
                             ),
                             child: Padding(
-                              padding: const EdgeInsets.all(12.0),
+                              padding: EdgeInsets.all(12.0 * Manager.fontSizeMultiplier),
                               child: AnimatedContainer(
                                 duration: getDuration(const Duration(milliseconds: 400)),
-                                constraints: BoxConstraints(minHeight: 42 * Manager.fontSizeMultiplier),
+                                constraints: BoxConstraints(minHeight: 42 * min(Manager.fontSizeMultiplier, 1)),
                                 child: Column(
                                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                   crossAxisAlignment: CrossAxisAlignment.start,

@@ -328,7 +328,7 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
   PathString? lastSelectedSeriesPath;
   bool _isSeriesView = false;
   bool isStartedTransitioning = false;
-  
+
   /// Whether the transition animation to the series screen has fully completed
   bool _isFinishedTransitioningToSeries = false;
 
@@ -351,6 +351,12 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
   bool get isSeriesView => _isSeriesView;
 
   PathString? get selectedSeriesPath => _selectedSeriesPath;
+  
+  bool get showLibraryScanProgressIndicatorBottom =>
+      (LibraryScanProgressManager().showInLibraryBottom || _selectedIndex != libraryIndex) && LibraryScanProgressManager().showingNotifier.value;
+      
+  bool get showLibraryScanProgressIndicatorCenter => 
+      _selectedIndex == libraryIndex && LibraryScanProgressManager().showingNotifier.value;
 
   final GlobalKey<NavigationViewState> _paneKey = GlobalKey<NavigationViewState>();
 
@@ -522,9 +528,9 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
                               valueListenable: LibraryScanProgressManager().showingNotifier,
                               builder: (context, isShowing, child) {
                                 return AnimatedContainer(
-                                  duration: shortDuration,
+                                  duration: mediumDuration,
                                   color: getDimmableWhite(context),
-                                  height: !isShowing ? 0 : ScreenUtils.kStatusBarHeight,
+                                  height: showLibraryScanProgressIndicatorBottom ? ScreenUtils.kStatusBarHeight : 0,
                                 );
                               },
                             )
@@ -583,23 +589,25 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
 
                                 // Animated container for the SeriesScreen
                                 // will hide only after fade out animation finishes
-                                  IgnorePointer(
-                                    ignoring: !_isSeriesView,
-                                    child: AbsorbPointer(
-                                      absorbing: !_isSeriesView,
-                                      child: AnimatedOpacity(
-                                        duration: getDuration(const Duration(milliseconds: 300)),
-                                        opacity: _isSeriesView ? 1.0 : 0.0,
-                                        curve: Curves.ease,
-                                        onEnd: onEndTransitionSeriesScreen,
-                                        child: _isFinishedTransitioningToLibrary ? const SizedBox.shrink() : SeriesScreen(
-                                          key: librarySeriesScreenKey,
-                                          seriesPath: _selectedSeriesPath,
-                                          onBack: exitSeriesView,
-                                        ),
-                                      ),
+                                IgnorePointer(
+                                  ignoring: !_isSeriesView,
+                                  child: AbsorbPointer(
+                                    absorbing: !_isSeriesView,
+                                    child: AnimatedOpacity(
+                                      duration: getDuration(const Duration(milliseconds: 300)),
+                                      opacity: _isSeriesView ? 1.0 : 0.0,
+                                      curve: Curves.ease,
+                                      onEnd: onEndTransitionSeriesScreen,
+                                      child: _isFinishedTransitioningToLibrary
+                                          ? const SizedBox.shrink()
+                                          : SeriesScreen(
+                                              key: librarySeriesScreenKey,
+                                              seriesPath: _selectedSeriesPath,
+                                              onBack: exitSeriesView,
+                                            ),
                                     ),
                                   ),
+                                ),
                               ],
                             ),
                           ),
@@ -719,7 +727,17 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
                 ),
               ),
               const StatusBarWidget(),
-              const LibraryScanProgressIndicator(),
+              ValueListenableBuilder(
+                valueListenable: LibraryScanProgressManager().showingNotifier,
+                builder: (context, isShowing, _) {
+                  return AnimatedPositioned(
+                    duration: mediumDuration,
+                    bottom: showLibraryScanProgressIndicatorBottom ? 0 : -ScreenUtils.kStatusBarHeight,
+                    right: 8,
+                    child: const LibraryScanProgressIndicator(),
+                  );
+                }
+              ),
             ],
           ),
         );

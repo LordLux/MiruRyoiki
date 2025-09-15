@@ -2,6 +2,8 @@ import 'package:fluent_ui/fluent_ui.dart';
 import '../manager.dart';
 import '../models/episode.dart';
 import '../models/series.dart';
+import '../utils/screen_utils.dart';
+import 'acrylic_header.dart';
 import 'episode_card.dart';
 
 class EpisodeGrid extends StatefulWidget {
@@ -32,11 +34,16 @@ class _EpisodeGridState extends State<EpisodeGrid> {
   @override
   Widget build(BuildContext context) {
     if (widget.episodes.isEmpty) {
-      return Center(
-        child: Text(
-          'No episodes found',
-          style: Manager.bodyStyle,
-        ),
+      return AcrylicHeader(//TODO remove acrylic ugh
+        child: widget.title != null
+            ? Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(widget.title!, style: Manager.subtitleStyle),
+                  Text('No Episodes Found', style: Manager.bodyStyle),
+                ],
+              )
+            : Text('No Episodes Found for this Season', style: Manager.subtitleStyle),
       );
     }
 
