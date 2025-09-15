@@ -10,7 +10,7 @@ class Episode {
   final int? id;
   final PathString path;
   final String name;
-  final int? episodeNumber;
+  final int? _episodeNumber;
   PathString? thumbnailPath;
   bool watched;
   double _progress;
@@ -22,14 +22,14 @@ class Episode {
     this.id,
     required this.path,
     required this.name,
-    this.episodeNumber,
+    int? episodeNumber,
     this.thumbnailPath,
     this.watched = false,
     double progress = 0.0,
     this.thumbnailUnavailable = false,
     this.metadata,
     this.mkvMetadata,
-  }) : _progress = progress;
+  }) : _episodeNumber = episodeNumber, _progress = progress;
 
   double get progress => double.parse(_progress.toStringAsFixed(2));
   set progress(double value) {
@@ -37,7 +37,7 @@ class Episode {
     _progress = value;
   }
 
-  int? get resolvedEpisodeNumber => episodeNumber ?? _parseEpisodeNumberFromName();
+  int? get episodeNumber => _episodeNumber ?? _parseEpisodeNumberFromName();
 
   int? _parseEpisodeNumberFromName() {
     if (name.isEmpty) return null;
@@ -92,7 +92,7 @@ class Episode {
     return """
     Episode(
       name: $name,
-      number: $resolvedEpisodeNumber,
+      number: $episodeNumber,
       metadata: $metadata,
       mkvMetadata: $mkvMetadata
     )
@@ -118,7 +118,7 @@ class Episode {
       'id': id,
       'name': name,
       'path': path.path, // not nullable
-      'episodeNumber': episodeNumber, // nullable
+      'episodeNumber': _episodeNumber, // nullable
       'thumbnailPath': thumbnailPath?.pathMaybe, // nullable
       'watched': watched,
       'watchedPercentage': progress,
@@ -189,7 +189,7 @@ class Episode {
       id: id ?? this.id,
       path: path ?? this.path,
       name: name ?? this.name,
-      episodeNumber: episodeNumber ?? this.episodeNumber,
+      episodeNumber: episodeNumber ?? this._episodeNumber,
       thumbnailPath: thumbnailPath ?? this.thumbnailPath,
       watched: watched ?? this.watched,
       progress: progress ?? this.progress,

@@ -162,7 +162,7 @@ class Season {
   Episode? getEpisodeById(int episodeId) => episodes.firstWhereOrNull((episode) => episode.id == episodeId);
 
   /// Get episode by number within this season
-  Episode? getEpisodeByNumber(int episodeNumber) => episodes.firstWhereOrNull((episode) => episode.resolvedEpisodeNumber == episodeNumber);
+  Episode? getEpisodeByNumber(int episodeNumber) => episodes.firstWhereOrNull((episode) => episode.episodeNumber == episodeNumber);
 }
 
 class Series {
@@ -822,7 +822,7 @@ class Series {
     }
 
     // Search related media
-    return relatedMedia.firstWhereOrNull((e) => e.resolvedEpisodeNumber == episodeNumber);
+    return relatedMedia.firstWhereOrNull((e) => e.episodeNumber == episodeNumber);
   }
 
   List<Episode> getEpisodesForSeason([int i = 1]) {

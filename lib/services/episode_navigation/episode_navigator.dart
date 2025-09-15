@@ -61,7 +61,7 @@ class EpisodeNavigator {
 
   /// Get next episode in series (by episode number)
   Episode? getNextEpisode(Episode currentEpisode, Series series) {
-    final currentNumber = currentEpisode.resolvedEpisodeNumber;
+    final currentNumber = currentEpisode.episodeNumber;
     if (currentNumber == null) return null;
 
     return series.getEpisodeByNumber(currentNumber + 1);
@@ -69,7 +69,7 @@ class EpisodeNavigator {
 
   /// Get previous episode in series (by episode number)
   Episode? getPreviousEpisode(Episode currentEpisode, Series series) {
-    final currentNumber = currentEpisode.resolvedEpisodeNumber;
+    final currentNumber = currentEpisode.episodeNumber;
     if (currentNumber == null || currentNumber <= 1) return null;
 
     return series.getEpisodeByNumber(currentNumber - 1);
@@ -83,8 +83,8 @@ class EpisodeNavigator {
     ];
 
     allEpisodes.sort((a, b) {
-      final aNum = a.resolvedEpisodeNumber ?? 0;
-      final bNum = b.resolvedEpisodeNumber ?? 0;
+      final aNum = a.episodeNumber ?? 0;
+      final bNum = b.episodeNumber ?? 0;
       return aNum.compareTo(bNum);
     });
 
@@ -111,21 +111,21 @@ class EpisodeNavigator {
 
   /// Check if episode is the first in its series
   bool isFirstEpisode(Episode episode, Series series) {
-    final episodeNumber = episode.resolvedEpisodeNumber;
+    final episodeNumber = episode.episodeNumber;
     if (episodeNumber == null) return false;
     
     final allEpisodes = getAllEpisodesInSeries(series);
     return allEpisodes.isNotEmpty && 
-           allEpisodes.first.resolvedEpisodeNumber == episodeNumber;
+           allEpisodes.first.episodeNumber == episodeNumber;
   }
 
   /// Check if episode is the last in its series
   bool isLastEpisode(Episode episode, Series series) {
-    final episodeNumber = episode.resolvedEpisodeNumber;
+    final episodeNumber = episode.episodeNumber;
     if (episodeNumber == null) return false;
     
     final allEpisodes = getAllEpisodesInSeries(series);
     return allEpisodes.isNotEmpty && 
-           allEpisodes.last.resolvedEpisodeNumber == episodeNumber;
+           allEpisodes.last.episodeNumber == episodeNumber;
   }
 }

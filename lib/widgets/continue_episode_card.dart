@@ -171,7 +171,7 @@ class _ContinueEpisodeCardState extends State<ContinueEpisodeCard> {
             StatusBarManager().hide();
             setState(() => _isHovering = false);
           },
-          onHover: (_) => StatusBarManager().showDelayed("Episode ${widget.episode.resolvedEpisodeNumber ?? '?'} - ${widget.series.name}"),
+          onHover: (_) => StatusBarManager().showDelayed("Episode ${widget.episode.episodeNumber ?? '?'} - ${widget.series.name}"),
           cursor: SystemMouseCursors.click,
           child: ClipRRect(
             borderRadius: const BorderRadius.all(Radius.circular(8.02)),
@@ -237,7 +237,7 @@ class _ContinueEpisodeCardState extends State<ContinueEpisodeCard> {
                                     const SizedBox.shrink(),
                                     const Spacer(),
                                     Text(
-                                      'Episode ${widget.episode.resolvedEpisodeNumber ?? '?'}',
+                                      'Episode ${widget.episode.episodeNumber ?? '?'}',
                                       style: FluentTheme.of(context).typography.caption?.copyWith(
                                             fontWeight: FontWeight.w600,
                                             color: lighten(widget.series.dominantColor ?? FluentTheme.of(context).resources.textFillColorSecondary, .4),

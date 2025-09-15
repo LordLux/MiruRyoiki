@@ -93,7 +93,7 @@ class AnilistProgressManager {
 
     final allEpisodes = EpisodeNavigator.instance.getAllEpisodesInSeries(series);
     return allEpisodes.where((episode) {
-      final episodeNumber = episode.resolvedEpisodeNumber;
+      final episodeNumber = episode.episodeNumber;
       return episodeNumber != null && episodeNumber <= watchedCount;
     }).toList();
   }
@@ -104,7 +104,7 @@ class AnilistProgressManager {
 
     final allEpisodes = EpisodeNavigator.instance.getAllEpisodesInSeries(series);
     return allEpisodes.where((episode) {
-      final episodeNumber = episode.resolvedEpisodeNumber;
+      final episodeNumber = episode.episodeNumber;
       return episodeNumber != null && episodeNumber > watchedCount;
     }).toList();
   }

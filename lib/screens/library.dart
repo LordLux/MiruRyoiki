@@ -1653,46 +1653,50 @@ class LibraryScreenState extends State<LibraryScreen> {
   }
 
   Widget _buildShimmerList() {
-    return ListView.builder(
-      padding: EdgeInsets.zero,
-      itemCount: 12,
-      itemBuilder: (context, index) {
-        return Container(
-          height: 53.7,
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          child: Row(
-            children: [
-              Container(
-                width: 35,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: Manager.genericGray.withOpacity(0.3),
-                  borderRadius: BorderRadius.circular(4),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Container(
-                  height: 12,
+    return ScrollConfiguration(
+      behavior: ScrollBehavior().copyWith(overscroll: false, scrollbars: false),
+      child: ListView.builder(
+        padding: EdgeInsets.zero,
+        physics: const NeverScrollableScrollPhysics(),
+        itemCount: 12,
+        itemBuilder: (context, index) {
+          return Container(
+            height: 53.7,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            child: Row(
+              children: [
+                Container(
+                  width: 35,
+                  height: 40,
                   decoration: BoxDecoration(
                     color: Manager.genericGray.withOpacity(0.3),
-                    borderRadius: BorderRadius.circular(6),
+                    borderRadius: BorderRadius.circular(4),
                   ),
                 ),
-              ),
-              const SizedBox(width: 12),
-              Container(
-                width: 80,
-                height: 8,
-                decoration: BoxDecoration(
-                  color: Manager.genericGray.withOpacity(0.3),
-                  borderRadius: BorderRadius.circular(4),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Container(
+                    height: 12,
+                    decoration: BoxDecoration(
+                      color: Manager.genericGray.withOpacity(0.3),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                  ),
                 ),
-              ),
-            ],
-          ),
-        );
-      },
+                const SizedBox(width: 12),
+                Container(
+                  width: 80,
+                  height: 8,
+                  decoration: BoxDecoration(
+                    color: Manager.genericGray.withOpacity(0.3),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
     );
   }
 
