@@ -116,6 +116,10 @@ class SettingsScreenState extends State<SettingsScreen> {
           "icon": Icon(mat.Icons.tune, color: lighten(Manager.accentColor), size: 23),
         },
         {
+          "title": "Players",
+          "icon": Icon(mat.Icons.play_circle_outline, color: lighten(Manager.accentColor), size: 23),
+        },
+        {
           "title": "Advanced",
           "icon": Icon(mat.Icons.settings, color: lighten(Manager.accentColor), size: 23),
         },
@@ -1446,8 +1450,284 @@ class SettingsScreenState extends State<SettingsScreen> {
           ),
           SizedBox(height: 24),
         ],
-      // Logging section
+      // Media Players section
       3 => [
+          SettingsCard(
+            children: [
+              Text(
+                settingsList[3]["title"],
+                style: Manager.subtitleStyle,
+              ),
+              SizedBox(height: 12),
+              Text(
+                'Configure automatic detection and control of media players like VLC and MPC-HC.',
+                style: Manager.bodyStyle,
+              ),
+              SizedBox(height: 24),
+              
+              // Enable Media Player Integration
+              Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Enable Media Player Integration',
+                          style: Manager.bodyStrongStyle,
+                        ),
+                        SizedBox(height: 4),
+                        Text(
+                          'Automatically detect and connect to supported media players for playback control and progress tracking.',
+                          style: Manager.bodyStyle.copyWith(color: Colors.grey[400]),
+                        ),
+                      ],
+                    ),
+                  ),
+                  SizedBox(width: 24),
+                  NormalSwitch(
+                    ToggleSwitch(
+                      checked: settings.enableMediaPlayerIntegration,
+                      content: Text(settings.enableMediaPlayerIntegration ? 'Enabled' : 'Disabled', style: Manager.bodyStyle),
+                      onChanged: (value) {
+                        setState(() {
+                          settings.enableMediaPlayerIntegration = value;
+                          if (value) {
+                            library.initializeMediaPlayerIntegration();
+                          } else {
+                            library.stopPlayerAutoConnection();
+                          }
+                        });
+                      },
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(height: 24),
+              
+              // Auto Connect to Player
+              Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Auto Connect to Player',
+                          style: Manager.bodyStrongStyle,
+                        ),
+                        SizedBox(height: 4),
+                        Text(
+                          'Automatically attempt to connect to detected media players when they become available.',
+                          style: Manager.bodyStyle.copyWith(color: Colors.grey[400]),
+                        ),
+                      ],
+                    ),
+                  ),
+                  SizedBox(width: 24),
+                  NormalSwitch(
+                    ToggleSwitch(
+                      checked: settings.autoConnectToPlayer,
+                      content: Text(settings.autoConnectToPlayer ? 'Enabled' : 'Disabled', style: Manager.bodyStyle),
+                      onChanged: settings.enableMediaPlayerIntegration ? (value) {
+                        setState(() {
+                          settings.autoConnectToPlayer = value;
+                        });
+                      } : null,
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(height: 24),
+              
+              // Connection Interval
+              Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Connection Check Interval',
+                          style: Manager.bodyStrongStyle,
+                        ),
+                        SizedBox(height: 4),
+                        Text(
+                          'How often to check for and attempt to connect to media players (in seconds).',
+                          style: Manager.bodyStyle.copyWith(color: Colors.grey[400]),
+                        ),
+                      ],
+                    ),
+                  ),
+                  SizedBox(width: 24),
+                  SizedBox(
+                    width: 100,
+                    child: NumberBox<int>(
+                      value: settings.playerConnectionInterval,
+                      onChanged: settings.enableMediaPlayerIntegration ? (value) {
+                        if (value != null && value >= 5 && value <= 60) {
+                          setState(() {
+                            settings.playerConnectionInterval = value;
+                          });
+                        }
+                      } : null,
+                      min: 5,
+                      max: 60,
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(height: 24),
+              
+              // Player Priority
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Player Priority Order',
+                    style: Manager.bodyStrongStyle,
+                  ),
+                  SizedBox(height: 4),
+                  Text(
+                    'Drag to reorder. The app will try to connect to players in this order of preference.',
+                    style: Manager.bodyStyle.copyWith(color: Colors.grey[400]),
+                  ),
+                  SizedBox(height: 12),
+                  ...settings.mediaPlayerPriority.asMap().entries.map((entry) {
+                    final index = entry.key;
+                    final playerId = entry.value;
+                    final playerName = playerId == 'vlc' ? 'VLC Media Player' :
+                                     playerId == 'mpc-hc' ? 'MPC-HC' : 
+                                     playerId;
+                    
+                    return Container(
+                      margin: EdgeInsets.only(bottom: 8),
+                      child: Card(
+                        child: ListTile(
+                          leading: Icon(
+                            playerId == 'vlc' ? mat.Icons.play_circle :
+                            playerId == 'mpc-hc' ? mat.Icons.movie :
+                            mat.Icons.play_arrow,
+                            color: Manager.accentColor,
+                          ),
+                          title: Text(playerName),
+                          subtitle: Text('Priority: ${index + 1}'),
+                          trailing: settings.enableMediaPlayerIntegration ? Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (index > 0)
+                                IconButton(
+                                  icon: Icon(mat.Icons.keyboard_arrow_up),
+                                  onPressed: () {
+                                    setState(() {
+                                      final list = List<String>.from(settings.mediaPlayerPriority);
+                                      final item = list.removeAt(index);
+                                      list.insert(index - 1, item);
+                                      settings.mediaPlayerPriority = list;
+                                    });
+                                  },
+                                ),
+                              if (index < settings.mediaPlayerPriority.length - 1)
+                                IconButton(
+                                  icon: Icon(mat.Icons.keyboard_arrow_down),
+                                  onPressed: () {
+                                    setState(() {
+                                      final list = List<String>.from(settings.mediaPlayerPriority);
+                                      final item = list.removeAt(index);
+                                      list.insert(index + 1, item);
+                                      settings.mediaPlayerPriority = list;
+                                    });
+                                  },
+                                ),
+                            ],
+                          ) : null,
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ],
+              ),
+              
+              // Connection Status
+              if (settings.enableMediaPlayerIntegration) ...[
+                SizedBox(height: 24),
+                Divider(),
+                SizedBox(height: 12),
+                Text(
+                  'Connection Status',
+                  style: Manager.bodyStrongStyle,
+                ),
+                SizedBox(height: 12),
+                Consumer<Library>(
+                  builder: (context, lib, child) {
+                    final connectedPlayer = lib.currentConnectedPlayer;
+                    final detectedPlayers = lib.detectedPlayers;
+                    
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (connectedPlayer != null)
+                          Row(
+                            children: [
+                              Icon(mat.Icons.check_circle, color: Colors.green, size: 16),
+                              SizedBox(width: 8),
+                              Text(
+                                'Connected to: $connectedPlayer',
+                                style: Manager.bodyStyle.copyWith(color: Colors.green),
+                              ),
+                            ],
+                          )
+                        else
+                          Row(
+                            children: [
+                              Icon(mat.Icons.error, color: Colors.orange, size: 16),
+                              SizedBox(width: 8),
+                              Text(
+                                'No players connected',
+                                style: Manager.bodyStyle.copyWith(color: Colors.orange),
+                              ),
+                            ],
+                          ),
+                        SizedBox(height: 8),
+                        if (detectedPlayers.isNotEmpty) ...[
+                          Text(
+                            'Detected Players:',
+                            style: Manager.bodyStyle.copyWith(fontWeight: FontWeight.w600),
+                          ),
+                          SizedBox(height: 4),
+                          ...detectedPlayers.map((player) => Padding(
+                            padding: EdgeInsets.only(left: 16, bottom: 4),
+                            child: Text(
+                              '• ${player.name} (${player.detectionMethod})',
+                              style: Manager.bodyStyle.copyWith(fontSize: 12),
+                            ),
+                          )),
+                        ] else
+                          Padding(
+                            padding: EdgeInsets.only(left: 16),
+                            child: Text(
+                              'No media players detected',
+                              style: Manager.bodyStyle.copyWith(fontSize: 12),
+                            ),
+                          ),
+                        SizedBox(height: 12),
+                        FilledButton(
+                          onPressed: () {
+                            library.refreshMediaPlayers();
+                          },
+                          child: Text('Refresh Players'),
+                        ),
+                      ],
+                    );
+                  },
+                ),
+              ],
+            ],
+          ),
+          SizedBox(height: 24),
+        ],
+      // Advanced section (now index 4)
+      4 => [
           SettingsCard(
             children: [
               Text(
@@ -1581,8 +1861,8 @@ class SettingsScreenState extends State<SettingsScreen> {
           ),
           SizedBox(height: 24),
         ],
-      // About section
-      4 => [
+      // About section (now index 5)
+      5 => [
           SettingsCard(
             children: [
               Text(settingsList[4]["title"], style: Manager.subtitleStyle),

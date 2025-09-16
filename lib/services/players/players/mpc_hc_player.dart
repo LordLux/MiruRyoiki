@@ -10,6 +10,7 @@ class MPCHCPlayer extends MediaPlayer {
 
   Timer? _statusTimer;
   final StreamController<MediaStatus> _statusController = StreamController<MediaStatus>.broadcast();
+  MediaStatus? _lastStatus;
 
   MPCHCPlayer({
     this.host = 'localhost',
@@ -24,10 +25,8 @@ class MPCHCPlayer extends MediaPlayer {
   @override
   Future<bool> connect() async {
     try {
-      final response = await http
-          .get(
-            Uri.parse('$_baseUrl/variables.html'),
-          )
+      final response = await http //
+          .get(Uri.parse('$_baseUrl/variables.html'))
           .timeout(const Duration(seconds: 5));
 
       if (response.statusCode == 200) {
@@ -69,6 +68,7 @@ class MPCHCPlayer extends MediaPlayer {
           isMuted: variables['muted'] == '1',
         );
 
+        _lastStatus = status;
         _statusController.add(status);
       }
     } catch (e) {
@@ -120,6 +120,40 @@ class MPCHCPlayer extends MediaPlayer {
 
   @override
   Future<void> unmute() async => await _sendCommand(909);
+
+  @override
+  Future<void> nextVideo() async => await _sendCommand(919); // Next file/chapter
+
+  @override
+  Future<void> previousVideo() async => await _sendCommand(920); // Previous file/chapter
+
+  @override
+  Future<void> seek(int seconds) async {
+    try {
+      // Use last known status to calculate percentage
+      if (_lastStatus != null && _lastStatus!.totalDuration.inSeconds > 0) {
+        // Calculate percentage (0-100) of total duration
+        final percent = (seconds / _lastStatus!.totalDuration.inSeconds * 100).clamp(0.0, 100.0);
+
+        // MPC-HC seek using command -1 with percentage
+        await http.get(
+          Uri.parse('$_baseUrl/command.html').replace(
+            queryParameters: {
+              'wm_command': '-1',
+              'percent': percent.toString(),
+            },
+          ),
+        );
+      }
+    } catch (e, st) {
+      logErr('Error seeking to $seconds seconds', e, st);
+    }
+  }
+
+  @override
+  Future<void> pollStatus() async {
+    await _fetchStatus();
+  }
 
   Future<int> _getCurrentVolume() async {
     try {

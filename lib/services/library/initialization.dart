@@ -28,7 +28,10 @@ extension LibraryInitialization on Library {
     // 3. Validate Cache
     await ensureCacheValidated();
 
-    // 4. Load posters for library
+    // 4. Initialize Media Player Integration
+    await initializeMediaPlayerIntegration();
+
+    // 5. Load posters for library
     await loadAnilistPostersForLibrary(onProgress: (loaded, total) {
       if (loaded % 2 == 0 || loaded == total) {
         // UI can be notified of progress here if needed

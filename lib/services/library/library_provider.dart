@@ -9,6 +9,10 @@ import 'package:miruryoiki/functions.dart';
 import 'package:path/path.dart' as p;
 import 'package:provider/provider.dart';
 
+import '../players/player_manager.dart';
+import '../players/factory.dart';
+import '../../models/players/mediastatus.dart';
+
 import '../../database/daos/series_dao.dart';
 import '../../database/database.dart';
 import '../../enums.dart';
@@ -41,12 +45,20 @@ part 'persistence.dart';
 part 'scanning.dart';
 part 'series_management.dart';
 part 'anilist_integration.dart';
+part 'media_player_integration.dart';
 
 class Library with ChangeNotifier {
   List<Series> _series = [];
   String? _libraryPath;
   bool _isScanning = false;
   final ValueNotifier<(int, int)?> scanProgress = ValueNotifier(null);
+  
+  // Media player integration fields
+  PlayerManager? _playerManager;
+  Timer? _connectionTimer;
+  List<DetectedPlayer> _detectedPlayers = [];
+  String? _currentConnectedPlayer;
+  StreamSubscription? _playerStatusSubscription;
   
   final SettingsManager _settings;
   late final AppDatabase _db = AppDatabase();
@@ -73,6 +85,7 @@ class Library with ChangeNotifier {
   @override
   void dispose() {
     scanProgress.dispose();
+    disposeMediaPlayerIntegration();
     super.dispose();
   }
 }

@@ -3,7 +3,7 @@
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart' show Material, MaterialPageRoute, ScaffoldMessenger;
-import 'package:fluent_ui/fluent_ui.dart' hide ColorExtension;
+import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_acrylic/flutter_acrylic.dart';
 import 'package:flutter_acrylic/window.dart' as flutter_acrylic;
@@ -22,6 +22,7 @@ import 'package:win32_registry/win32_registry.dart';
 import 'screens/home.dart';
 import 'screens/release_calendar.dart';
 import 'widgets/dialogs/splash/progress.dart';
+import 'widgets/player.dart';
 import 'widgets/release_notification.dart';
 import 'widgets/svg.dart';
 import 'widgets/connectivity_indicator.dart';
@@ -351,12 +352,10 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
   bool get isSeriesView => _isSeriesView;
 
   PathString? get selectedSeriesPath => _selectedSeriesPath;
-  
-  bool get showLibraryScanProgressIndicatorBottom =>
-      (LibraryScanProgressManager().showInLibraryBottom || _selectedIndex != libraryIndex) && LibraryScanProgressManager().showingNotifier.value;
-      
-  bool get showLibraryScanProgressIndicatorCenter => 
-      _selectedIndex == libraryIndex && LibraryScanProgressManager().showingNotifier.value;
+
+  bool get showLibraryScanProgressIndicatorBottom => (LibraryScanProgressManager().showInLibraryBottom || _selectedIndex != libraryIndex) && LibraryScanProgressManager().showingNotifier.value;
+
+  bool get showLibraryScanProgressIndicatorCenter => _selectedIndex == libraryIndex && LibraryScanProgressManager().showingNotifier.value;
 
   final GlobalKey<NavigationViewState> _paneKey = GlobalKey<NavigationViewState>();
 
@@ -736,8 +735,9 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
                     right: 8,
                     child: const LibraryScanProgressIndicator(),
                   );
-                }
+                },
               ),
+              Player(),
             ],
           ),
         );

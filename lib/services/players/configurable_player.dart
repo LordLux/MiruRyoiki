@@ -176,6 +176,45 @@ class ConfigurablePlayer extends MediaPlayer {
   @override
   Future<void> unmute() async => await _sendCommand('mute');
 
+  @override
+  Future<void> nextVideo() async => await _sendCommand('next');
+
+  @override
+  Future<void> previousVideo() async => await _sendCommand('previous');
+
+  @override
+  Future<void> seek(int seconds) async {
+    try {
+      final commandConfig = config.commands['goto'] as Map<String, dynamic>?;
+      if (commandConfig == null) return;
+
+      final commandEndpoint = config.endpoints['command'] as String;
+      // Create a copy of the command config and replace any placeholder values
+      final queryParams = <String, String>{};
+      for (final entry in commandConfig.entries) {
+        String value = entry.value.toString();
+        // Replace {seconds} placeholder with actual seconds value
+        if (value.contains('{seconds}')) {
+          value = value.replaceAll('{seconds}', seconds.toString());
+        }
+        queryParams[entry.key] = value;
+      }
+
+      final uri = Uri.parse('$_baseUrl$commandEndpoint').replace(
+        queryParameters: queryParams,
+      );
+
+      await http.get(uri, headers: _headers);
+    } catch (e, st) {
+      logErr('Error seeking to $seconds seconds', e, st);
+    }
+  }
+
+  @override
+  Future<void> pollStatus() async {
+    await _fetchStatus();
+  }
+
   Future<dynamic> _getCurrentData() async {
     try {
       final statusEndpoint = config.endpoints['status'] as String;

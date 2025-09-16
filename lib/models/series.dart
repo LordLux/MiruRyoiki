@@ -163,6 +163,9 @@ class Season {
 
   /// Get episode by number within this season
   Episode? getEpisodeByNumber(int episodeNumber) => episodes.firstWhereOrNull((episode) => episode.episodeNumber == episodeNumber);
+  
+  /// Get episode by path within this season
+  Episode? getEpisodeByPath(PathString episodePath) => episodes.firstWhereOrNull((episode) => episode.path == episodePath);
 }
 
 class Series {
@@ -824,7 +827,18 @@ class Series {
     // Search related media
     return relatedMedia.firstWhereOrNull((e) => e.episodeNumber == episodeNumber);
   }
+  
+  Episode? getEpisodeByPath(PathString episodePath) {
+    // Search seasons
+    for (final season in seasons) {
+      final episode = season.getEpisodeByPath(episodePath);
+      if (episode != null) return episode;
+    }
 
+    // Search related media
+    return relatedMedia.firstWhereOrNull((episode) => episode.path == episodePath);
+  }
+  
   List<Episode> getEpisodesForSeason([int i = 1]) {
     // TODO check if series has global episodes numbering or not
     if (i < 1 || i > seasons.length) //

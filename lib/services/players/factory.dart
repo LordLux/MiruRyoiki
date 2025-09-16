@@ -1,5 +1,6 @@
 import 'dart:io';
 import '../../models/players/player_configuration.dart';
+import '../../utils/logging.dart';
 import 'player.dart';
 import 'players/vlc_player.dart';
 import 'players/mpc_hc_player.dart';
@@ -7,13 +8,26 @@ import 'configurable_player.dart';
 
 enum PlayerType {
   vlc,
-  mpcHc,
+  mpc,
   custom,
+}
+
+extension PlayerTypeExtension on PlayerType {
+  String get displayName {
+    switch (this) {
+      case PlayerType.vlc:
+        return 'VLC Media Player';
+      case PlayerType.mpc:
+        return 'MPC-HC';
+      case PlayerType.custom:
+        return 'Custom Player';
+    }
+  }
 }
 
 class PlayerFactory {
   static const String customPlayersPath = 'players';
-  
+
   /// Create a player instance based on the type
   static MediaPlayer createPlayer(PlayerType type, {Map<String, dynamic>? config}) {
     switch (type) {
@@ -23,13 +37,13 @@ class PlayerFactory {
           port: config?['port'] ?? 8080,
           password: config?['password'] ?? '',
         );
-      
-      case PlayerType.mpcHc:
+
+      case PlayerType.mpc:
         return MPCHCPlayer(
           host: config?['host'] ?? 'localhost',
           port: config?['port'] ?? 13579,
         );
-      
+
       case PlayerType.custom:
         if (config == null || config['configuration'] == null) {
           throw ArgumentError('Custom player requires a PlayerConfiguration');
@@ -47,13 +61,13 @@ class PlayerFactory {
   /// Load all available custom player configurations from the players directory
   static Future<List<PlayerConfiguration>> loadCustomPlayerConfigurations() async {
     final configurations = <PlayerConfiguration>[];
-    
+
     try {
       final playersDir = Directory(customPlayersPath);
       if (!await playersDir.exists()) {
         return configurations;
       }
-      
+
       await for (final entity in playersDir.list()) {
         if (entity is File && (entity.path.endsWith('.json') || entity.path.endsWith('.player'))) {
           try {
@@ -61,15 +75,15 @@ class PlayerFactory {
             final config = PlayerConfiguration.fromJsonString(content);
             configurations.add(config);
           } catch (e) {
-            // Skip invalid configuration files
+            logWarn('Failed to load player configuration from ${entity.path}: $e');
             print('Failed to load player configuration from ${entity.path}: $e');
           }
         }
       }
     } catch (e) {
-      print('Failed to load custom player configurations: $e');
+      logWarn('Failed to load custom player configurations: $e');
     }
-    
+
     return configurations;
   }
 
@@ -80,7 +94,7 @@ class PlayerFactory {
       if (!await playersDir.exists()) {
         await playersDir.create(recursive: true);
       }
-      
+
       final fileName = '${config.name.toLowerCase().replaceAll(' ', '_')}.player';
       final file = File('${playersDir.path}/$fileName');
       await file.writeAsString(config.toJsonString());
@@ -95,17 +109,17 @@ class PlayerFactory {
       PlayerInfo(
         name: 'VLC Media Player',
         type: PlayerType.vlc,
-        description: 'VLC Media Player with Web Interface',
+        description: 'VLC Media Player',
         isBuiltIn: true,
       ),
       PlayerInfo(
         name: 'MPC-HC',
-        type: PlayerType.mpcHc,
-        description: 'Media Player Classic - Home Cinema',
+        type: PlayerType.mpc,
+        description: 'Media Player Classic',
         isBuiltIn: true,
       ),
     ];
-    
+
     // Add custom players
     final customConfigs = await loadCustomPlayerConfigurations();
     for (final config in customConfigs) {
@@ -117,7 +131,7 @@ class PlayerFactory {
         configuration: config,
       ));
     }
-    
+
     return players;
   }
 
@@ -165,10 +179,9 @@ class PlayerFactory {
           'isMuted': 'is_muted',
         },
       );
-      
+
       final customFile = File('${playersDir.path}/custom_example.player');
       await customFile.writeAsString(customExample.toJsonString());
-      
     } catch (e) {
       throw Exception('Failed to create example configurations: $e');
     }

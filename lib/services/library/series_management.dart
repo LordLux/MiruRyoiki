@@ -56,7 +56,7 @@ extension LibrarySeriesManagement on Library {
     }
 
     logTrace('Series updated: ${series.name}, ${PathUtils.getFileName(series.effectivePosterPath ?? '')}, ${PathUtils.getFileName(series.effectiveBannerPath ?? '')}');
-    
+
     // Acquire database save lock
     final saveLockHandle = await _lockManager.acquireLock(
       OperationType.databaseSave,
@@ -75,6 +75,7 @@ extension LibrarySeriesManagement on Library {
 
   Future<void> playEpisode(Episode episode) async {
     try {
+      // Use openFile and monitor by the media player system
       openFile(episode.path);
     } catch (e, stackTrace) {
       snackBar(
@@ -164,7 +165,7 @@ extension LibrarySeriesManagement on Library {
   /// Clear thumbnail cache for a specific series and reset episode thumbnail statuses
   Future<void> clearThumbnailCacheForSeries(PathString? seriesPath) async {
     if (seriesPath == null) return;
-    
+
     final series = getSeriesByPath(seriesPath);
     if (series == null) return;
 

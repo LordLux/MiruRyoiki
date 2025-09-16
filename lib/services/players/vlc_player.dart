@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../../../models/players/mediastatus.dart';
-import '../players/player.dart';
+import 'player.dart';
 
 class VLCPlayer extends MediaPlayer {
   final String host;
@@ -133,6 +133,26 @@ class VLCPlayer extends MediaPlayer {
     } catch (e) {
       // Handle error
     }
+  }
+
+  @override
+  Future<void> nextVideo() async {
+    await _sendCommand('pl_next');
+  }
+
+  @override
+  Future<void> previousVideo() async {
+    await _sendCommand('pl_previous');
+  }
+
+  @override
+  Future<void> seek(int seconds) async {
+    await _sendCommand('seek', {'val': seconds.toString()});
+  }
+
+  @override
+  Future<void> pollStatus() async {
+    await _fetchStatus();
   }
 
   @override

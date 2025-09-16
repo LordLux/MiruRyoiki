@@ -43,7 +43,6 @@ class SettingsManager extends ChangeNotifier {
   bool get disableAnimations => _getBool('disableAnimations', defaultValue: false);
   set disableAnimations(bool value) => _setBool('disableAnimations', value);
 
-
   // Behavior
   bool get autoLoadAnilistPosters => _getBool('autoLoadAnilistPosters', defaultValue: true);
   set autoLoadAnilistPosters(bool value) => _setBool('autoLoadAnilistPosters', value);
@@ -62,16 +61,15 @@ class SettingsManager extends ChangeNotifier {
 
   bool get returnToLibraryAfterSeriesScreen => _getBool('returnToLibraryAfterSeriesScreen', defaultValue: true);
   set returnToLibraryAfterSeriesScreen(bool value) => _setBool('returnToLibraryAfterSeriesScreen', value);
-  
+
   bool get confirmClearAllThumbnails => _getBool('confirmClearAllThumbnails', defaultValue: false);
   set confirmClearAllThumbnails(bool value) => _setBool('confirmClearAllThumbnails', value);
-  
+
   bool get showAiringIndicator => _getBool('showAiringIndicator', defaultValue: true);
   set showAiringIndicator(bool value) => _setBool('showAiringIndicator', value);
 
   bool get hoverExpandAiringIndicator => _getBool('hoverExpandAiringIndicator', defaultValue: false);
   set hoverExpandAiringIndicator(bool value) => _setBool('hoverExpandAiringIndicator', value);
-
 
   // Logging
   LogLevel get fileLogLevel => LogLevelX.fromString(_getString('fileLogLevel', defaultValue: LogLevel.error.name_));
@@ -79,12 +77,25 @@ class SettingsManager extends ChangeNotifier {
 
   int get logRetentionDays => _getInt('logRetentionDays', defaultValue: 7);
   set logRetentionDays(int value) => _setInt('logRetentionDays', value);
-  
+
   bool get showHiddenSeries => _getBool('showHiddenSeries', defaultValue: false);
   set showHiddenSeries(bool value) => _setBool('showHiddenSeries', value);
 
   bool get showAnilistHiddenSeries => _getBool('showAnilistHiddenSeries', defaultValue: false);
   set showAnilistHiddenSeries(bool value) => _setBool('showAnilistHiddenSeries', value);
+
+  // Media Player Settings
+  List<String> get mediaPlayerPriority => _getStringList('mediaPlayerPriority', defaultValue: ['vlc', 'mpc-hc']);
+  set mediaPlayerPriority(List<String> value) => _setStringList('mediaPlayerPriority', value);
+
+  int get playerConnectionInterval => _getInt('playerConnectionInterval', defaultValue: 5);
+  set playerConnectionInterval(int value) => _setInt('playerConnectionInterval', value);
+
+  bool get enableMediaPlayerIntegration => _getBool('enableMediaPlayerIntegration', defaultValue: true);
+  set enableMediaPlayerIntegration(bool value) => _setBool('enableMediaPlayerIntegration', value);
+
+  bool get autoConnectToPlayer => _getBool('autoConnectToPlayer', defaultValue: true);
+  set autoConnectToPlayer(bool value) => _setBool('autoConnectToPlayer', value);
 
   // // Generic getters with type safety
   bool _getBool(String key, {required bool defaultValue}) {
@@ -160,13 +171,29 @@ class SettingsManager extends ChangeNotifier {
     notifyListeners();
   }
 
-  // For any other type of setting
-  dynamic get(String key, {dynamic defaultValue}) {
-    return _settings[key] ?? defaultValue;
+  List<String> _getStringList(String key, {required List<String> defaultValue}) {
+    if (!_settings.containsKey(key)) return defaultValue;
+
+    final value = _settings[key];
+    if (value is List<String>) return value;
+    if (value is String) return value.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList(); // Parse comma-separated string
+    return defaultValue;
   }
+
+  void _setStringList(String key, List<String> value) {
+    final currentValue = _getStringList(key, defaultValue: []);
+    if (currentValue.length == value.length && currentValue.every((element) => value.contains(element))) return; // No change
+    _settings[key] = value;
+    _saveToPrefs(key, value.join(','));
+    notifyListeners();
+  }
+
+  // For any other type of setting
+  dynamic get(String key, {dynamic defaultValue}) => _settings[key] ?? defaultValue;
 
   void set(String key, dynamic value) {
     if (_settings[key] == value) return;
+    
     _settings[key] = value;
     _saveToPrefs(key, value.toString());
     notifyListeners();
@@ -174,6 +201,7 @@ class SettingsManager extends ChangeNotifier {
 
   Future<void> init() async {
     if (_initialized) return;
+    
     _prefs = await SharedPreferences.getInstance();
     await loadSettings();
     _initialized = true;

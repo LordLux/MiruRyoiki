@@ -46,8 +46,8 @@ class VLCPlayer extends MediaPlayer {
         return true;
       }
       return false;
-    } catch (e, st) {
-      logErr('VLCPlayer connect error', e, st);
+    } catch (_) {
+      // don't log connection errors to avoid spamming the logs
       return false;
     }
   }
@@ -113,6 +113,22 @@ class VLCPlayer extends MediaPlayer {
 
   @override
   Future<void> unmute() async => await _sendCommand('volume', {'val': '${(prevVolume * 2.56).round()}'});
+
+  @override
+  Future<void> nextVideo() async => await _sendCommand('pl_next');
+
+  @override
+  Future<void> previousVideo() async => await _sendCommand('pl_previous');
+
+  @override
+  Future<void> seek(int seconds) async {
+    await _sendCommand('seek', {'val': seconds.toString()});
+  }
+
+  @override
+  Future<void> pollStatus() async {
+    await _fetchStatus();
+  }
 
   Future<void> _sendCommand(String command, [Map<String, String>? params]) async {
     try {

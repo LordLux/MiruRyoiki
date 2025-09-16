@@ -12,9 +12,17 @@ abstract class MediaPlayer {
   Future<void> mute();
   Future<void> unmute();
   
+  // Navigation controls
+  Future<void> nextVideo();
+  Future<void> previousVideo();
+  Future<void> seek(int seconds);
+  
   // Connection management
   Future<bool> connect();
   void disconnect();
   void dispose();
+  
+  // Force immediate status update
+  Future<void> pollStatus();
 }
 
