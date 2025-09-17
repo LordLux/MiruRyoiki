@@ -122,10 +122,10 @@ class MPCHCPlayer extends MediaPlayer {
   Future<void> unmute() async => await _sendCommand(909);
 
   @override
-  Future<void> nextVideo() async => await _sendCommand(919); // Next file/chapter
+  Future<void> previousVideo() async => await _sendCommand(919); // Previous file/chapter
 
   @override
-  Future<void> previousVideo() async => await _sendCommand(920); // Previous file/chapter
+  Future<void> nextVideo() async => await _sendCommand(920); // Next file/chapter
 
   @override
   Future<void> seek(int seconds) async {

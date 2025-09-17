@@ -19,6 +19,9 @@ extension LibraryInitialization on Library {
   Future<void> startBackgroundLoading(BuildContext context) async {
     final anilistProvider = Provider.of<AnilistProvider>(context, listen: false);
 
+    // 4. Initialize Media Player Integration
+    await initializeMediaPlayerIntegration();
+    
     // 1. Scan Local Library (this now reports progress and manages its own state)
     await scanLocalLibrary();
 
@@ -27,9 +30,6 @@ extension LibraryInitialization on Library {
 
     // 3. Validate Cache
     await ensureCacheValidated();
-
-    // 4. Initialize Media Player Integration
-    await initializeMediaPlayerIntegration();
 
     // 5. Load posters for library
     await loadAnilistPostersForLibrary(onProgress: (loaded, total) {
@@ -41,7 +41,6 @@ extension LibraryInitialization on Library {
   }
 
   // DISPOSE IN MAIN
-
   Future<void> reloadLibrary({bool force = false, bool showSnackBar = true}) async {
     if (_libraryPath == null) return;
     if (!force && _isScanning) return;
