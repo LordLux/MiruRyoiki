@@ -52,7 +52,7 @@ class DataStorageService {
 
       // Create backup filename with timestamp
       final timestamp = now.toIso8601String().replaceAll(':', '-').split('.').first;
-      final backupFileName = 'miruryoiki_backup_$timestamp.db';
+      final backupFileName = 'miruryoiki_backup_$timestamp.db.bak';
       final backupPath = p.join(selectedDirectory, backupFileName);
 
       // Copy database file
@@ -78,7 +78,7 @@ class DataStorageService {
 
       // Create backup of current database before restore
       if (targetDb.existsSync()) {
-        final currentBackupPath = p.join(appDataDir.path, '$dbFileName.pre-restore_${now.toIso8601String().replaceAll(':', '-').split('.').first}');
+        final currentBackupPath = p.join(appDataDir.path, '$dbFileName.pre-restore_${now.toIso8601String().replaceAll(':', '-').split('.').first}.db.bak');
         await targetDb.copy(currentBackupPath);
         logInfo('Current database backed up to: $currentBackupPath');
       }
@@ -158,6 +158,6 @@ class DataStorageService {
     if (!file.existsSync()) return false;
 
     final extension = p.extension(filePath).toLowerCase();
-    return extension == '.db';
+    return extension == '.db' || extension == '.bak';
   }
 }

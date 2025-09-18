@@ -1789,7 +1789,7 @@ class SettingsScreenState extends State<SettingsScreen> {
                       dialogTitle: 'Select Backup to Restore',
                       lockParentWindow: true,
                       type: FileType.custom,
-                      allowedExtensions: ['db'],
+                      allowedExtensions: ['db', 'bak'],
                       initialDirectory: miruRyoikiSaveDirectory.path,
                     );
                     if (result == null || result.files.isEmpty || result.files.first.path == null) return; // User cancelled
