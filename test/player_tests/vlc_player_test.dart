@@ -1,8 +1,10 @@
+// ignore_for_file: avoid_print
+
 import 'package:flutter_test/flutter_test.dart';
 import 'dart:async';
 
-import '../../lib/services/players/vlc_player.dart';
-import '../../lib/models/players/mediastatus.dart';
+import 'package:miruryoiki/services/players/players/vlc_player.dart';
+import 'package:miruryoiki/models/players/mediastatus.dart';
 
 void main() {
   group('VLC Player Integration Tests', () {

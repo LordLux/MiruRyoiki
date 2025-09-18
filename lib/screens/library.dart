@@ -144,7 +144,6 @@ class LibraryScreenState extends State<LibraryScreen> {
       final RenderBox? box = firstCardKey.currentContext?.findRenderObject() as RenderBox?;
       if (box != null) {
         ScreenUtils.libraryCardSize = Size(box.size.width, box.size.width / ScreenUtils.kDefaultAspectRatio);
-        log('card height: ${ScreenUtils.libraryCardSize.height}, width: ${ScreenUtils.libraryCardSize.width}');
       }
     });
   }

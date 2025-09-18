@@ -1,6 +1,7 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import '../manager.dart';
 import '../models/players/mediastatus.dart';
+import 'package:squiggly_slider/slider.dart';
 
 class VideoDurationBar extends StatefulWidget {
   final MediaStatus? status;
@@ -33,7 +34,6 @@ class VideoDurationBar extends StatefulWidget {
 class _VideoDurationBarState extends State<VideoDurationBar> {
   bool _isDragging = false;
   double _dragValue = 0.0;
-  double _barWidth = 0.0;
   static const Color _whiteColor = Color.fromARGB(255, 208, 208, 208);
 
   @override
@@ -59,118 +59,47 @@ class _VideoDurationBarState extends State<VideoDurationBar> {
           _formatDuration(_isDragging ? Duration(seconds: (_dragValue * status.totalDuration.inSeconds).round()) : status.currentPosition),
           style: const TextStyle(fontSize: 10, color: _whiteColor),
         ),
-        const SizedBox(width: 4),
         // Progress bar
         Expanded(
           child: SizedBox(
             height: widget.height + 16, // Extra height for easier touch target
-            child: GestureDetector(
-              onTapDown: (details) => _handleTap(details),
-              onPanStart: (details) => _handlePanStart(details),
-              onPanUpdate: (details) => _handlePanUpdate(details),
-              onPanEnd: (details) => _handlePanEnd(),
-              child: Container(
-                alignment: Alignment.center,
-                child: LayoutBuilder(builder: (context, constraints) {
-                  _barWidth = constraints.maxWidth;
-                  return Stack(
-                    children: [
-                      // Background bar
-                      Container(
-                        height: widget.height,
-                        decoration: BoxDecoration(
-                          color: widget.backgroundColor,
-                          borderRadius: BorderRadius.circular(widget.height / 2),
-                        ),
-                      ),
-                      // Progress bar
-                      Positioned(
-                        left: 0,
-                        top: 0,
-                        child: Container(
-                          height: widget.height,
-                          width: progress * _barWidth,
-                          decoration: BoxDecoration(
-                            color: widget.progressColor,
-                            borderRadius: BorderRadius.circular(widget.height / 2),
-                          ),
-                        ),
-                      ),
-                      // Thumb (only visible when dragging or hovering)
-                      if (_isDragging || progress > 0)
-                        Positioned(
-                          left: (progress * _barWidth) - 8,
-                          top: (widget.height / 2) - 8,
-                          child: Container(
-                            width: 16,
-                            height: 16,
-                            decoration: BoxDecoration(
-                              color: widget.thumbColor,
-                              shape: BoxShape.circle,
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.2),
-                                  blurRadius: 4,
-                                  offset: const Offset(0, 2),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                    ],
-                  );
-                }),
-              ),
+            child: SquigglySlider(
+              value: progress,
+              onChanged: (value) {
+                setState(() => _dragValue = value);
+                _seekToProgress(value);
+              },
+              useLineThumb: true,
+              onChangeStart: (value) {
+                widget.onSeekDown?.call();
+                setState(() {
+                  _isDragging = true;
+                  _dragValue = value;
+                });
+              },
+              trackThickness: 1.0,
+              onChangeEnd: (value) {
+                _seekToProgress(value);
+                widget.onSeekUp?.call();
+                setState(() => _isDragging = false);
+              },
+              squiggleAmplitude: 4.0,
+              squiggleWavelength: 8.0,
+              squiggleSpeed: 0.01,
+              activeColor: widget.progressColor,
+              inactiveColor: widget.backgroundColor,
+              thumbColor: widget.thumbColor,
+              min: 0.0,
+              max: 1.0,
             ),
           ),
         ),
-        const SizedBox(width: 4),
         Text(
           _formatDuration(status.totalDuration),
           style: const TextStyle(fontSize: 10, color: _whiteColor),
         ),
       ],
     );
-  }
-
-  void _handleTap(TapDownDetails details) {
-    final barWidth = _barWidth;
-    final clickPosition = details.localPosition.dx;
-    final newProgress = (clickPosition / barWidth).clamp(0.0, 1.0);
-
-    _seekToProgress(newProgress);
-
-    setState(() {});
-  }
-
-  void _handlePanStart(DragStartDetails details) {
-    widget.onSeekDown?.call();
-    setState(() {
-      _isDragging = true;
-      final barWidth = _barWidth;
-      final clickPosition = details.localPosition.dx;
-      _dragValue = (clickPosition / barWidth).clamp(0.0, 1.0);
-    });
-  }
-
-  void _handlePanUpdate(DragUpdateDetails details) {
-    if (!_isDragging) return;
-
-    setState(() {
-      final barWidth = _barWidth;
-      final newPosition = details.localPosition.dx;
-      _dragValue = (newPosition / barWidth).clamp(0.0, 1.0);
-    });
-  }
-
-  void _handlePanEnd() {
-    if (!_isDragging) return;
-
-    _seekToProgress(_dragValue);
-    widget.onSeekUp?.call();
-    setState(() {
-      _isDragging = false;
-    });
   }
 
   void _seekToProgress(double progress) {

@@ -77,6 +77,9 @@ dependencies:
   flutter_single_instance: ^1.6.0 # TODO https://pub.dev/packages/flutter_single_instance#macos
   shimmer: ^3.0.0
   sticky_headers: "^0.3.0"
+  squiggly_slider:
+    path: M:/Projects/squiggly_slider/
+  flutter_svg: ^2.2.1
 
 dev_dependencies:
   flutter_test:

@@ -1,10 +1,14 @@
 import 'dart:async';
+import 'package:flutter/widgets.dart';
 import 'package:http/http.dart' as http;
 import '../../../models/players/mediastatus.dart';
 import '../../../utils/logging.dart';
+import '../../../widgets/svg.dart' as icon show mpcHc;
 import '../player.dart';
 
 class MPCHCPlayer extends MediaPlayer {
+  @override
+  Widget get iconWidget => icon.mpcHc;
   final String host;
   final int port;
 

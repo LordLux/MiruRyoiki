@@ -88,14 +88,8 @@ class SettingsManager extends ChangeNotifier {
   List<String> get mediaPlayerPriority => _getStringList('mediaPlayerPriority', defaultValue: ['vlc', 'mpc-hc']);
   set mediaPlayerPriority(List<String> value) => _setStringList('mediaPlayerPriority', value);
 
-  int get playerConnectionInterval => _getInt('playerConnectionInterval', defaultValue: 5);
-  set playerConnectionInterval(int value) => _setInt('playerConnectionInterval', value);
-
   bool get enableMediaPlayerIntegration => _getBool('enableMediaPlayerIntegration', defaultValue: true);
   set enableMediaPlayerIntegration(bool value) => _setBool('enableMediaPlayerIntegration', value);
-
-  bool get autoConnectToPlayer => _getBool('autoConnectToPlayer', defaultValue: true);
-  set autoConnectToPlayer(bool value) => _setBool('autoConnectToPlayer', value);
 
   // // Generic getters with type safety
   bool _getBool(String key, {required bool defaultValue}) {

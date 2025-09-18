@@ -10,6 +10,7 @@ import 'package:flutter_acrylic/window_effect.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:miruryoiki/widgets/buttons/loading_button.dart';
 import 'package:miruryoiki/widgets/page/infobar.dart';
+import 'package:miruryoiki/widgets/svg.dart';
 import 'package:provider/provider.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:toggle_switch/toggle_switch.dart' as toggle;
@@ -20,6 +21,7 @@ import '../functions.dart';
 import '../main.dart';
 import '../manager.dart';
 import '../models/formatter/action.dart';
+import '../models/players/player_configuration.dart';
 import '../models/series.dart';
 import '../services/lock_manager.dart';
 import '../services/navigation/dialogs.dart';
@@ -44,6 +46,9 @@ import '../widgets/page/page.dart';
 import '../widgets/series_image.dart';
 import '../widgets/widget_image_provider.dart';
 
+import '../services/players/player.dart';
+import '../services/players/players/vlc_player.dart';
+import '../services/players/players/mpc_hc_player.dart';
 class SettingsScreen extends StatefulWidget {
   final ScrollController scrollController;
 
@@ -1464,7 +1469,7 @@ class SettingsScreenState extends State<SettingsScreen> {
                 style: Manager.bodyStyle,
               ),
               SizedBox(height: 24),
-              
+
               // Enable Media Player Integration
               Row(
                 children: [
@@ -1479,7 +1484,7 @@ class SettingsScreenState extends State<SettingsScreen> {
                         SizedBox(height: 4),
                         Text(
                           'Automatically detect and connect to supported media players for playback control and progress tracking.',
-                          style: Manager.bodyStyle.copyWith(color: Colors.grey[400]),
+                          style: Manager.bodyStyle.copyWith(color: Colors.white.withOpacity(.5)),
                         ),
                       ],
                     ),
@@ -1495,7 +1500,7 @@ class SettingsScreenState extends State<SettingsScreen> {
                           if (value) {
                             library.initializeMediaPlayerIntegration();
                           } else {
-                            library.stopPlayerAutoConnection();
+                            library.disposeMediaPlayerIntegration();
                           }
                         });
                       },
@@ -1504,150 +1509,101 @@ class SettingsScreenState extends State<SettingsScreen> {
                 ],
               ),
               SizedBox(height: 24),
-              
-              // Auto Connect to Player
-              Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Auto Connect to Player',
-                          style: Manager.bodyStrongStyle,
-                        ),
-                        SizedBox(height: 4),
-                        Text(
-                          'Automatically attempt to connect to detected media players when they become available.',
-                          style: Manager.bodyStyle.copyWith(color: Colors.grey[400]),
-                        ),
-                      ],
-                    ),
-                  ),
-                  SizedBox(width: 24),
-                  NormalSwitch(
-                    ToggleSwitch(
-                      checked: settings.autoConnectToPlayer,
-                      content: Text(settings.autoConnectToPlayer ? 'Enabled' : 'Disabled', style: Manager.bodyStyle),
-                      onChanged: settings.enableMediaPlayerIntegration ? (value) {
-                        setState(() {
-                          settings.autoConnectToPlayer = value;
-                        });
-                      } : null,
-                    ),
-                  ),
-                ],
-              ),
-              SizedBox(height: 24),
-              
-              // Connection Interval
-              Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Connection Check Interval',
-                          style: Manager.bodyStrongStyle,
-                        ),
-                        SizedBox(height: 4),
-                        Text(
-                          'How often to check for and attempt to connect to media players (in seconds).',
-                          style: Manager.bodyStyle.copyWith(color: Colors.grey[400]),
-                        ),
-                      ],
-                    ),
-                  ),
-                  SizedBox(width: 24),
-                  SizedBox(
-                    width: 100,
-                    child: NumberBox<int>(
-                      value: settings.playerConnectionInterval,
-                      onChanged: settings.enableMediaPlayerIntegration ? (value) {
-                        if (value != null && value >= 5 && value <= 60) {
-                          setState(() {
-                            settings.playerConnectionInterval = value;
-                          });
-                        }
-                      } : null,
-                      min: 5,
-                      max: 60,
-                    ),
-                  ),
-                ],
-              ),
-              SizedBox(height: 24),
-              
+
               // Player Priority
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
+                  if (settings.enableMediaPlayerIntegration) ...[
+                Row(
+                  children: [Text(
                     'Player Priority Order',
                     style: Manager.bodyStrongStyle,
                   ),
                   SizedBox(height: 4),
                   Text(
                     'Drag to reorder. The app will try to connect to players in this order of preference.',
-                    style: Manager.bodyStyle.copyWith(color: Colors.grey[400]),
+                    style: Manager.bodyStyle.copyWith(color: Colors.white.withOpacity(.5)),
                   ),
-                  SizedBox(height: 12),
-                  ...settings.mediaPlayerPriority.asMap().entries.map((entry) {
-                    final index = entry.key;
-                    final playerId = entry.value;
-                    final playerName = playerId == 'vlc' ? 'VLC Media Player' :
-                                     playerId == 'mpc-hc' ? 'MPC-HC' : 
-                                     playerId;
-                    
-                    return Container(
-                      margin: EdgeInsets.only(bottom: 8),
-                      child: Card(
-                        child: ListTile(
-                          leading: Icon(
-                            playerId == 'vlc' ? mat.Icons.play_circle :
-                            playerId == 'mpc-hc' ? mat.Icons.movie :
-                            mat.Icons.play_arrow,
-                            color: Manager.accentColor,
-                          ),
-                          title: Text(playerName),
-                          subtitle: Text('Priority: ${index + 1}'),
-                          trailing: settings.enableMediaPlayerIntegration ? Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              if (index > 0)
-                                IconButton(
-                                  icon: Icon(mat.Icons.keyboard_arrow_up),
-                                  onPressed: () {
-                                    setState(() {
-                                      final list = List<String>.from(settings.mediaPlayerPriority);
-                                      final item = list.removeAt(index);
-                                      list.insert(index - 1, item);
-                                      settings.mediaPlayerPriority = list;
-                                    });
-                                  },
-                                ),
-                              if (index < settings.mediaPlayerPriority.length - 1)
-                                IconButton(
-                                  icon: Icon(mat.Icons.keyboard_arrow_down),
-                                  onPressed: () {
-                                    setState(() {
-                                      final list = List<String>.from(settings.mediaPlayerPriority);
-                                      final item = list.removeAt(index);
-                                      list.insert(index + 1, item);
-                                      settings.mediaPlayerPriority = list;
-                                    });
-                                  },
-                                ),
-                            ],
-                          ) : null,
-                        ),
+                    StandardButton(
+                      label: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(mat.Icons.refresh, size: 16),
+                          SizedBox(width: 8),
+                          Text('Reload'),
+                        ],
                       ),
-                    );
-                  }).toList(),
+                      onPressed: () async {
+                        // Reload player configuration and detection
+                        await library.playerManager?.disconnect();
+                        await library.playerManager?.autoConnect();
+                        
+                        // Show confirmation
+                        snackBar('Player configuration reloaded', severity: InfoBarSeverity.success);
+                      },
+                    ),
+                  ],
+                ),
+              ],
+                  
+                  SizedBox(height: 12),
+                  ReorderableListView.builder(
+                    shrinkWrap: true,
+                    physics: NeverScrollableScrollPhysics(),
+                    itemCount: settings.mediaPlayerPriority.length,
+                    buildDefaultDragHandles: false,
+                    onReorder: (oldIndex, newIndex) {
+                      setState(() {
+                        if (oldIndex < newIndex) newIndex -= 1;
+
+                        final item = settings.mediaPlayerPriority.removeAt(oldIndex);
+                        if (!settings.mediaPlayerPriority.contains(item)) settings.mediaPlayerPriority.insert(newIndex, item);
+                      });
+                    },
+                    itemBuilder: (context, index) {
+                      final playerId = settings.mediaPlayerPriority[index];
+                      final playerName = playerId == 'vlc'
+                          ? 'VLC Media Player'
+                          : playerId == 'mpc-hc'
+                              ? 'MPC-HC'
+                              : playerId;
+
+                      // Get the player instance for this ID
+                      MediaPlayer? player;
+                      if (playerId == 'vlc') {
+                        player = VLCPlayer();
+                      } else if (playerId == 'mpc-hc') {
+                        player = MPCHCPlayer();
+                      } else {
+                        // For custom, you may want to load config from file or settings
+                        // Here we just show a fallback icon
+                        player = null;
+                      }
+
+                      return Container(
+                        key: ValueKey('player_priority_${playerId}_$index'),
+                        margin: EdgeInsets.only(bottom: 8),
+                        child: Card(
+                          child: ListTile(
+                            leading: settings.enableMediaPlayerIntegration //
+                                ? ReorderableDragStartListener(index: index, child: Icon(mat.Icons.drag_handle, color: Colors.white.withOpacity(.5)))
+                                : null,
+                            title: Row(
+                              children: [
+                                player?.iconWidget ?? Icon(mat.Icons.play_arrow, size: 20, color: Manager.accentColor),
+                                SizedBox(width: 8),
+                                Text(playerName),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
                 ],
               ),
-              
+
               // Connection Status
               if (settings.enableMediaPlayerIntegration) ...[
                 SizedBox(height: 24),
@@ -1662,7 +1618,7 @@ class SettingsScreenState extends State<SettingsScreen> {
                   builder: (context, lib, child) {
                     final connectedPlayer = lib.currentConnectedPlayer;
                     final detectedPlayers = lib.detectedPlayers;
-                    
+
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -1696,12 +1652,12 @@ class SettingsScreenState extends State<SettingsScreen> {
                           ),
                           SizedBox(height: 4),
                           ...detectedPlayers.map((player) => Padding(
-                            padding: EdgeInsets.only(left: 16, bottom: 4),
-                            child: Text(
-                              '• ${player.name} (${player.detectionMethod})',
-                              style: Manager.bodyStyle.copyWith(fontSize: 12),
-                            ),
-                          )),
+                                padding: EdgeInsets.only(left: 16, bottom: 4),
+                                child: Text(
+                                  '• ${player.name} (${player.detectionMethod})',
+                                  style: Manager.bodyStyle.copyWith(fontSize: 12),
+                                ),
+                              )),
                         ] else
                           Padding(
                             padding: EdgeInsets.only(left: 16),
@@ -1904,7 +1860,7 @@ class SettingsScreenState extends State<SettingsScreen> {
 
     return Column(children: list);
   }
-}
+  }
 
 /// Card with vertically distributed children
 Widget SettingsCard({

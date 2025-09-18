@@ -6,6 +6,7 @@ class PlayerConfiguration {
   final String host;
   final int port;
   final String? password;
+  final String? iconPath; // Path to icon file (.png/.svg/.ico)
   final Map<String, dynamic> endpoints;
   final Map<String, dynamic> commands;
   final Map<String, String> fieldMappings;
@@ -16,6 +17,7 @@ class PlayerConfiguration {
     required this.host,
     required this.port,
     this.password,
+    this.iconPath,
     required this.endpoints,
     required this.commands,
     required this.fieldMappings,
@@ -28,6 +30,7 @@ class PlayerConfiguration {
       host: json['host'],
       port: json['port'],
       password: json['password'],
+      iconPath: json['iconPath'],
       endpoints: json['endpoints'] ?? {},
       commands: json['commands'] ?? {},
       fieldMappings: Map<String, String>.from(json['fieldMappings'] ?? {}),
@@ -41,6 +44,7 @@ class PlayerConfiguration {
       'host': host,
       'port': port,
       'password': password,
+      'iconPath': iconPath,
       'endpoints': endpoints,
       'commands': commands,
       'fieldMappings': fieldMappings,
@@ -62,6 +66,7 @@ class PlayerConfiguration {
     host: 'localhost',
     port: 8080,
     password: '',
+    iconPath: 'assets/icons/vlc.si',
     endpoints: {
       'status': '/requests/status.json',
       'command': '/requests/status.json',
@@ -89,6 +94,7 @@ class PlayerConfiguration {
     type: 'http',
     host: 'localhost',
     port: 13579,
+    iconPath: 'assets/icons/mpchc.si',
     endpoints: {
       'status': '/variables.html',
       'command': '/command.html',

@@ -42,14 +42,14 @@ extension LibraryMediaPlayerIntegration on Library {
     await _detectAvailablePlayers();
     _playerManager = PlayerManager();
 
-    if (_settings.autoConnectToPlayer) await _startPlayerAutoConnection();
+    await _startPlayerAutoConnection(); // Always auto-connect
   }
 
   /// Start automatic player connection attempts
   Future<void> _startPlayerAutoConnection() async {
     if (_connectionTimer?.isActive == true) return;
 
-    final interval = Duration(seconds: _settings.playerConnectionInterval);
+    final interval = Duration(seconds: 5);
     logDebug('Starting media player auto-connection with ${interval.inSeconds}s interval');
 
     // Try immediate connection
@@ -89,8 +89,8 @@ extension LibraryMediaPlayerIntegration on Library {
   Future<void> refreshMediaPlayers() async {
     await _detectAvailablePlayers();
 
-    // If auto-connect is enabled, restart connection attempts
-    if (_settings.autoConnectToPlayer) await _startPlayerAutoConnection();
+    // Always restart connection attempts
+    await _startPlayerAutoConnection();
 
     notifyListeners();
     Manager.setState();

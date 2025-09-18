@@ -7,11 +7,14 @@ import 'factory.dart';
 
 class PlayerManager {
   MediaPlayer? _currentPlayer;
+  PlayerType? _currentPlayerType;
+  PlayerConfiguration? _currentPlayerConfig;
   final StreamController<MediaStatus> _statusController = StreamController<MediaStatus>.broadcast();
   final StreamController<PlayerConnectionStatus> _connectionController = StreamController<PlayerConnectionStatus>.broadcast();
 
   StreamSubscription? _playerStatusSubscription;
   Timer? _connectionCheckTimer;
+  bool _configLoaded = false; // Track if config is already loaded
 
   MediaStatus? _lastStatus;
 
@@ -27,6 +30,12 @@ class PlayerManager {
   /// Whether a player is currently connected
   bool get isConnected => _currentPlayer != null;
 
+  /// Get the current player type
+  PlayerType? get currentPlayerType => _currentPlayerType;
+
+  /// Get the current player configuration
+  PlayerConfiguration? get currentPlayerConfig => _currentPlayerConfig;
+
   /// Get the last known status
   MediaStatus? get lastStatus => _lastStatus;
 
@@ -36,6 +45,8 @@ class PlayerManager {
 
     try {
       _currentPlayer = PlayerFactory.createPlayer(type, config: config);
+      _currentPlayerType = type;
+      _currentPlayerConfig = null; // Built-in players don't use PlayerConfiguration
       return await _establishConnection();
     } catch (e) {
       _connectionController.add(PlayerConnectionStatus.error('Failed to create player: $e'));
@@ -49,6 +60,8 @@ class PlayerManager {
 
     try {
       _currentPlayer = PlayerFactory.createFromConfiguration(config);
+      _currentPlayerType = PlayerType.custom;
+      _currentPlayerConfig = config;
       return await _establishConnection();
     } catch (e) {
       _connectionController.add(PlayerConnectionStatus.error('Failed to create player: $e'));
@@ -58,15 +71,14 @@ class PlayerManager {
 
   /// Auto-discover and connect to available players
   Future<bool> autoConnect() async {
-    // Load player configuration
-    await PlayerConfig.load();
+    // Load player configuration only once
+    if (!_configLoaded) {
+      await PlayerConfig.load();
+      _configLoaded = true;
+    }
 
     final players = [
       () => connectToPlayer(PlayerType.vlc, config: PlayerConfig.vlc),
-      () => connectToPlayer(PlayerType.vlc, config: {
-            ...PlayerConfig.vlc,
-            'password': '', // Try without password
-          }),
       () => connectToPlayer(PlayerType.mpc, config: PlayerConfig.mpcHc),
     ];
 
@@ -97,6 +109,9 @@ class PlayerManager {
       _currentPlayer!.dispose();
       _currentPlayer = null;
     }
+
+    _currentPlayerType = null;
+    _currentPlayerConfig = null;
 
     _connectionController.add(PlayerConnectionStatus.disconnected());
   }

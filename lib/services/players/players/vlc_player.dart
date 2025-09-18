@@ -1,11 +1,16 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:flutter/widgets.dart';
 import 'package:http/http.dart' as http;
+import 'package:http/http.dart';
 import '../../../models/players/mediastatus.dart';
 import '../../../utils/logging.dart';
+import '../../../widgets/svg.dart' as icon show vlc;
 import '../player.dart';
 
 class VLCPlayer extends MediaPlayer {
+  @override
+  Widget get iconWidget => icon.vlc;
   final String host;
   final int port;
   final String password;
@@ -85,6 +90,7 @@ class VLCPlayer extends MediaPlayer {
         _statusController.add(status);
       }
     } catch (e) {
+      if (e is ClientException || e is TimeoutException) return;
       logErr('VLCPlayer fetchStatus error', e);
     }
   }
@@ -141,6 +147,7 @@ class VLCPlayer extends MediaPlayer {
 
       await http.get(uri, headers: _headers);
     } catch (e, st) {
+      if (e is ClientException || e is TimeoutException) return;
       logErr('VLCPlayer sendCommand error', e, st);
     }
   }

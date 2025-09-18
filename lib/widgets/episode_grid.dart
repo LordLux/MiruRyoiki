@@ -2,7 +2,6 @@ import 'package:fluent_ui/fluent_ui.dart';
 import '../manager.dart';
 import '../models/episode.dart';
 import '../models/series.dart';
-import '../utils/screen_utils.dart';
 import 'acrylic_header.dart';
 import 'episode_card.dart';
 

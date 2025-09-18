@@ -1,12 +1,36 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
+import 'package:flutter/widgets.dart';
+import 'package:flutter/material.dart' show Icons, Icon;
 import 'package:http/http.dart' as http;
 import '../../models/players/mediastatus.dart';
 import '../../models/players/player_configuration.dart';
 import '../../utils/logging.dart';
+import '../../widgets/svg.dart';
 import 'player.dart';
 
 class ConfigurablePlayer extends MediaPlayer {
+  @override
+  Widget get iconWidget {
+    final path = config.iconPath;
+    try {
+      if (path != null && path.isNotEmpty) {
+        if (path.startsWith('assets/')) {
+          if (path.endsWith('.svg')) return Svg(path, width: 20, height: 20);
+          if (path.endsWith('.png') || path.endsWith('.jpg') || path.endsWith('.jpeg')) return Image.asset(path, width: 20, height: 20);
+          return Image.asset(path, width: 20, height: 20);
+        }
+        final file = File(path);
+        if (file.existsSync()) return Image.file(file, width: 20, height: 20);
+      }
+    } catch (e) {
+      logErr('Error loading the player icon from $path', e);
+    }
+    // Fallback icon
+    return Icon(Icons.play_arrow, size: 20);
+  }
+
   final PlayerConfiguration config;
 
   Timer? _statusTimer;
