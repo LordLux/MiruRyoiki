@@ -1,12 +1,10 @@
 import 'dart:async';
-import 'dart:io';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/material.dart' show Icons;
 import 'package:provider/provider.dart';
 
 import '../manager.dart';
 import '../models/episode.dart';
-import '../models/players/player_configuration.dart';
 import '../models/series.dart';
 import '../services/library/library_provider.dart';
 import '../services/players/player_manager.dart';
@@ -17,19 +15,18 @@ import 'buttons/button.dart';
 import 'video_duration_bar.dart';
 
 class Player extends StatefulWidget {
-  final bool expanded;
-
-  const Player({
-    super.key,
-    this.expanded = false,
-  });
+  const Player({super.key});
 
   @override
   State<Player> createState() => _PlayerState();
 }
 
 class _PlayerState extends State<Player> with TickerProviderStateMixin {
+  StreamSubscription? _connectionSubscription;
   StreamSubscription? _statusSubscription;
+  Timer? _updateTimer;
+  bool _isPlayerConnected = false;
+  bool _expanded = false;
 
   PlayerManager? get _playerManager => Provider.of<Library>(context, listen: false).playerManager;
 
@@ -42,47 +39,75 @@ class _PlayerState extends State<Player> with TickerProviderStateMixin {
   static const Color _whiteColor = Color.fromARGB(255, 208, 208, 208);
   static const Color _grayColor = Color(0xFF8a8a8a);
 
-  Timer? _updateTimer;
-
   @override
   void initState() {
     super.initState();
-    _setupStatusSubscription();
-    // Periodically update the UI to reflect playback progress
-    _updateTimer = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (mounted && _playerManager?.lastStatus != null) setState(() {}); // Update every second if playing something
-    });
+    _subscribeToConnection();
   }
 
   @override
   void dispose() {
+    _connectionSubscription?.cancel();
     _statusSubscription?.cancel();
     _updateTimer?.cancel();
     super.dispose();
   }
 
-  void _setupStatusSubscription() {
+  void _subscribeToConnection() {
     final library = Provider.of<Library>(context, listen: false);
-
-    // Listen to player status stream for background updates
-    _statusSubscription?.cancel();
-    _statusSubscription = library.playerManager?.statusStream.listen(
-      (status) {
-        // Update UI even when app is not focused
-        if (mounted) {
-          setState(() {
-            // Force rebuild to update play/pause buttons and progress
-          });
+    _connectionSubscription?.cancel();
+    _connectionSubscription = library.playerManager?.connectionStream.listen((status) {
+      final connected = status.state == PlayerConnectionState.connected && library.currentConnectedPlayer != null;
+      if (connected != _isPlayerConnected) {
+        setState(() {
+          _isPlayerConnected = connected;
+        });
+        if (connected) {
+          _startPeriodicUpdate();
+          _subscribeToStatus();
+          _updateExpandedState(); // Update expansion state when connected
+        } else {
+          _updateTimer?.cancel();
+          _statusSubscription?.cancel();
+          _expanded = false; // Collapse when disconnected
         }
-      },
-    );
+      }
+    });
+    // Initial state - use Library's connection state
+    _isPlayerConnected = library.playerManager?.isConnected == true && library.currentConnectedPlayer != null;
+    if (_isPlayerConnected) {
+      _startPeriodicUpdate();
+      _subscribeToStatus();
+      _updateExpandedState(); // Set initial expansion state
+    }
   }
 
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    // Reestablish subscription when dependencies change (e.g., new playerManager)
-    _setupStatusSubscription();
+  void _startPeriodicUpdate() {
+    _updateTimer?.cancel();
+    _updateTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted && _playerManager?.lastStatus != null) {
+        _updateExpandedState();
+        setState(() {});
+      }
+    });
+  }
+
+  void _subscribeToStatus() {
+    final library = Provider.of<Library>(context, listen: false);
+    _statusSubscription?.cancel();
+    _statusSubscription = library.playerManager?.statusStream.listen((status) {
+      if (mounted) {
+        _updateExpandedState();
+        setState(() {});
+      }
+    });
+  }
+
+  void _updateExpandedState() {
+    // Expand when there's any media loaded (playing or paused)
+    final hasMedia = _playerManager?.lastStatus?.filePath.isNotEmpty == true; 
+
+    if (_expanded != hasMedia) _expanded = hasMedia;
   }
 
   @override
@@ -94,7 +119,7 @@ class _PlayerState extends State<Player> with TickerProviderStateMixin {
         if (Manager.settings.enableMediaPlayerIntegration != true) return SizedBox.shrink();
 
         final library = Provider.of<Library>(context);
-        if (library.playerManager?.isConnected != true) return const SizedBox.shrink();
+        if (library.playerManager?.isConnected != true || library.currentConnectedPlayer == null) return const SizedBox.shrink();
 
         return Padding(
           padding: const EdgeInsets.all(8.0),
@@ -111,7 +136,7 @@ class _PlayerState extends State<Player> with TickerProviderStateMixin {
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                   child: AnimatedContainer(
                     duration: shortDuration,
-                    height: widget.expanded ? 100 : 40,
+                    height: _expanded ? 100 : 40,
                     width: ScreenUtils.kNavigationBarWidth + 4,
                     decoration: BoxDecoration(
                       color: Colors.black.withOpacity(.4),
@@ -188,10 +213,10 @@ class _PlayerState extends State<Player> with TickerProviderStateMixin {
                       ),
                       AnimatedPositioned(
                         duration: shortDuration,
-                        top: widget.expanded ? 0 : -15,
+                        top: _expanded ? 0 : -15,
                         child: AnimatedOpacity(
                           duration: shortDuration,
-                          opacity: widget.expanded ? 1 : 0,
+                          opacity: _expanded ? 1 : 0,
                           child: Container(
                             width: 300,
                             padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
@@ -200,11 +225,13 @@ class _PlayerState extends State<Player> with TickerProviderStateMixin {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
+                                  // Episode title or file path
                                   Text(
                                     _currentEpisode?.name ?? _playerManager?.lastStatus?.filePath ?? '',
                                     style: const TextStyle(fontSize: 13, color: _whiteColor),
                                     overflow: TextOverflow.ellipsis,
                                   ),
+                                  // Series title if available
                                   if (_series?.displayTitle != null)
                                     Text(
                                       _series!.displayTitle,
@@ -213,6 +240,8 @@ class _PlayerState extends State<Player> with TickerProviderStateMixin {
                                     )
                                   else
                                     SizedBox(height: 5),
+
+                                  // Video duration bar with seek functionality
                                   VideoDurationBar(
                                     status: library.playerManager?.lastStatus,
                                     onSeek: (seconds) async {
@@ -251,13 +280,12 @@ class _PlayerState extends State<Player> with TickerProviderStateMixin {
 
   Widget _buildControlButton(dynamic iconOrWidget, VoidCallback onPressed) {
     Widget iconWidget;
-    if (iconOrWidget is IconData) {
+    if (iconOrWidget is IconData)
       iconWidget = Icon(iconOrWidget, size: 18, color: _whiteColor);
-    } else if (iconOrWidget is Widget) {
+    else if (iconOrWidget is Widget)
       iconWidget = iconOrWidget;
-    } else {
+    else
       iconWidget = Icon(Icons.play_arrow, size: 18, color: _whiteColor);
-    }
 
     return SizedBox.square(
       dimension: 25,
@@ -267,34 +295,6 @@ class _PlayerState extends State<Player> with TickerProviderStateMixin {
         label: iconWidget,
         onPressed: onPressed,
       ),
-    );
-  }
-
-  Widget _getCurrentPlayerIcon() {
-    try {
-      final playerManager = _playerManager;
-      if (playerManager?.isConnected == true) {
-        // Try to determine player type from the last status or connection info
-        // For VLC, check if we're using the VLC default port or other VLC indicators
-        // For MPC-HC, check if we're using MPC-HC default port
-        // This is a heuristic approach since we don't have direct access to player type
-
-        // Check if there's any way to determine from the PlayerManager
-        // For now, return a generic connected player icon
-        return SizedBox(
-          width: 18,
-          height: 18,
-          child: Icon(Icons.play_circle, size: 18, color: _whiteColor),
-        );
-      }
-    } catch (e) {
-      // Fallback
-    }
-
-    return SizedBox(
-      width: 18,
-      height: 18,
-      child: Icon(Icons.video_library, size: 18, color: _whiteColor),
     );
   }
 }
