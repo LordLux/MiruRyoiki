@@ -95,6 +95,7 @@ class SettingsScreenState extends State<SettingsScreen> {
 
   List<File> _availableBackups = [];
   final mat.ExpansionTileController expansionTileKey = mat.ExpansionTileController();
+  bool _showBackupsList = false;
   bool _isRestoringBackup = false;
 
   // ignore: unused_field
@@ -722,9 +723,15 @@ class SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-  Future<void> _expandTile() async {
+  Future<void> _toggleExpanderTile() async {
+    setState(() => _showBackupsList = !_showBackupsList);
     nextFrame(() {
-      if (mounted && !expansionTileKey.isExpanded) expansionTileKey.expand();
+      if (mounted) {
+        if (expansionTileKey.isExpanded)
+          expansionTileKey.collapse();
+        else
+          expansionTileKey.expand();
+      }
     });
   }
 
@@ -1770,7 +1777,7 @@ class SettingsScreenState extends State<SettingsScreen> {
                   Expanded(
                     child: LoadingButton(
                       label: 'Restore Backup',
-                      onPressed: () => _expandTile(),
+                      onPressed: () => _toggleExpanderTile(),
                       isLoading: false,
                       isSmall: true,
                     ),
@@ -1778,42 +1785,56 @@ class SettingsScreenState extends State<SettingsScreen> {
                 ],
               ),
               VDiv(12),
-              mat.ExpansionTile(
-                trailing: StandardButton.icon(
-                  isFilled: true,
-                  label: Text('Select Backup from files', style: Manager.bodyStyle.copyWith(color: getPrimaryColorBasedOnAccent())),
-                  icon: Icon(mat.Icons.folder_open, size: 16, color: getPrimaryColorBasedOnAccent()),
-                  onPressed: () async {
-                    // Open file picker to select backup file (default to app data folder)
-                    final FilePickerResult? result = await FilePicker.platform.pickFiles(
-                      dialogTitle: 'Select Backup to Restore',
-                      lockParentWindow: true,
-                      type: FileType.custom,
-                      allowedExtensions: ['db', 'bak'],
-                      initialDirectory: miruRyoikiSaveDirectory.path,
-                    );
-                    if (result == null || result.files.isEmpty || result.files.first.path == null) return; // User cancelled
-
-                    final File backupFile = File(result.files.first.path!);
-                    _restoreBackup(backupFile);
-                  },
+              AnimatedSwitcher(
+                duration: dimDuration,
+                transitionBuilder: (child, animation) => SizeTransition(
+                  sizeFactor: animation,
+                  axisAlignment: -1,
+                  child: FadeTransition(opacity: animation, child: child),
                 ),
-                controller: expansionTileKey,
-                title: Text('Available Backups', style: Manager.bodyStyle),
-                enabled: false,
-                children: _availableBackups.take(10).map((backup) {
-                  final modified = backup.statSync().modified;
-                  return mat.ListTile(
-                    dense: true,
-                    leading: const Icon(mat.Icons.backup),
-                    title: Text(backup.path.split(Platform.pathSeparator).last),
-                    subtitle: Text('Modified: ${modified.pretty(time: true)}', style: Manager.miniBodyStyle),
-                    trailing: StandardButton(
-                      onPressed: _isRestoringBackup ? null : () => _restoreBackup(backup),
-                      label: Text('Restore', style: Manager.bodyStyle.copyWith(color: Colors.white)),
+                child: !_showBackupsList ? const SizedBox.shrink() : AbsorbPointer(
+                  absorbing: !_showBackupsList,
+                  child: IgnorePointer(
+                    ignoring: !_showBackupsList,
+                    child: mat.ExpansionTile(
+                      trailing: StandardButton.icon(
+                        isFilled: true,
+                        label: Text('Select Backup from files', style: Manager.bodyStyle.copyWith(color: getPrimaryColorBasedOnAccent())),
+                        icon: Icon(mat.Icons.folder_open, size: 16, color: getPrimaryColorBasedOnAccent()),
+                        onPressed: () async {
+                          // Open file picker to select backup file (default to app data folder)
+                          final FilePickerResult? result = await FilePicker.platform.pickFiles(
+                            dialogTitle: 'Select Backup to Restore',
+                            lockParentWindow: true,
+                            type: FileType.custom,
+                            allowedExtensions: ['db', 'bak'],
+                            initialDirectory: miruRyoikiSaveDirectory.path,
+                          );
+                          if (result == null || result.files.isEmpty || result.files.first.path == null) return; // User cancelled
+                                
+                          final File backupFile = File(result.files.first.path!);
+                          _restoreBackup(backupFile);
+                        },
+                      ),
+                      controller: expansionTileKey,
+                      title: Text('Available Backups', style: Manager.bodyStyle),
+                      enabled: false,
+                      children: _availableBackups.take(10).map((backup) {
+                        final modified = backup.statSync().modified;
+                        return mat.ListTile(
+                          dense: true,
+                          leading: const Icon(mat.Icons.backup),
+                          title: Text(backup.path.split(Platform.pathSeparator).last),
+                          subtitle: Text('Modified: ${modified.pretty(time: true)}', style: Manager.miniBodyStyle),
+                          trailing: StandardButton(
+                            onPressed: _isRestoringBackup ? null : () => _restoreBackup(backup),
+                            label: Text('Restore', style: Manager.bodyStyle.copyWith(color: Colors.white)),
+                          ),
+                        );
+                      }).toList(),
                     ),
-                  );
-                }).toList(),
+                  ),
+                ),
               ),
               VDiv(24),
 
