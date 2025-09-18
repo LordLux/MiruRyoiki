@@ -848,7 +848,7 @@ class SettingsScreenState extends State<SettingsScreen> {
 
   Widget _buildContent(Library library, SettingsManager settings) {
     final list = switch (_selectedSettingCategory) {
-      // Library location section
+      // Library
       0 => [
           SettingsCard(
             children: [
@@ -994,7 +994,7 @@ class SettingsScreenState extends State<SettingsScreen> {
           ),
           VDiv(24),
         ],
-      // Appearance section
+      // Appearance
       1 => [
           Builder(builder: (context) {
             final appTheme = context.watch<AppTheme>();
@@ -1387,7 +1387,7 @@ class SettingsScreenState extends State<SettingsScreen> {
           }),
           VDiv(24),
         ],
-      // Behavior section
+      // Behavior
       2 => [
           SettingsCard(
             children: [
@@ -1466,7 +1466,7 @@ class SettingsScreenState extends State<SettingsScreen> {
           ),
           SizedBox(height: 24),
         ],
-      // Media Players section
+      // Media Players
       3 => [
           SettingsCard(
             children: [
@@ -1693,7 +1693,7 @@ class SettingsScreenState extends State<SettingsScreen> {
           ),
           SizedBox(height: 24),
         ],
-      // Data & Storage section
+      // Data & Storage
       4 => [
           SettingsCard(
             children: [
@@ -1873,7 +1873,7 @@ class SettingsScreenState extends State<SettingsScreen> {
             ],
           ),
         ],
-      // Advanced section (now index 5)
+      // Advanced
       5 => [
           SettingsCard(
             children: [
@@ -2008,7 +2008,7 @@ class SettingsScreenState extends State<SettingsScreen> {
           ),
           SizedBox(height: 24),
         ],
-      // About section
+      // About
       6 => [
           SettingsCard(
             children: [
@@ -2045,7 +2045,6 @@ class SettingsScreenState extends State<SettingsScreen> {
             ],
           ),
         ],
-      // Default/fallback
       _ => <Widget>[],
     };
 
