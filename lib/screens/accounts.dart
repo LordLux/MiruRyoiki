@@ -491,51 +491,56 @@ class AccountsScreenState extends State<AccountsScreen> {
                         duration: const Duration(milliseconds: 500),
                         child: Card(
                           child: LayoutBuilder(builder: (context, constraints) {
-                            return SelectionArea(
-                              child: Html(
-                                data: _convertMarkupToHtml(userData.about!, constraints.maxWidth),
-                                style: {
-                                  "body": Style(
-                                    fontSize: FontSize(Manager.bodyStyle.fontSize!),
-                                    fontFamily: Manager.bodyStyle.fontFamily,
-                                    color: Manager.bodyStyle.color,
-                                    margin: Margins.zero,
-                                    padding: HtmlPaddings.zero,
-                                  ),
-                                  "a": Style(
-                                    color: Manager.accentColor,
-                                    textDecoration: TextDecoration.none,
-                                  ),
-                                  "blockquote": Style(
-                                    border: Border(left: BorderSide(color: Manager.accentColor.darker, width: 3)),
-                                    padding: HtmlPaddings.only(left: 8),
-                                    fontStyle: FontStyle.italic,
-                                    color: Manager.bodyStyle.color?.withOpacity(0.8),
-                                  ),
-                                  "img": Style(
-                                    margin: Margins.only(top: 4, bottom: 4),
-                                  ),
-                                  "ul, ol": Style(
-                                    margin: Margins.only(left: 16, top: 4, bottom: 4),
-                                  ),
-                                  "li": Style(
-                                    margin: Margins.only(bottom: 2),
-                                  ),
-                                  "iframe": Style(
-                                    width: Width(250),
-                                    height: Height(150),
-                                  ),
-                                },
-                                onLinkTap: (url, _, __) {
-                                  if (url != null) launchUrl(Uri.parse(url));
-                                },
-                                extensions: [
-                                  WindowsIframeHtmlExtension(),
-                                  SpoilerTagExtension(),
-                                  CodeBlockExtension(),
-                                  VideoHtmlExtension(),
-                                  UnsupportedBlockExtension(),
-                                ],
+                            return mat.Theme(
+                              data: mat.ThemeData(
+                                textSelectionTheme: mat.TextSelectionThemeData(selectionColor: Colors.red.withOpacity(0.4), cursorColor: Colors.white, selectionHandleColor: Colors.white.withOpacity(0.4)),
+                              ),
+                              child: mat.SelectionArea(
+                                child: Html(
+                                  data: _convertMarkupToHtml(userData.about!, constraints.maxWidth),
+                                  style: {
+                                    "body": Style(
+                                      fontSize: FontSize(Manager.bodyStyle.fontSize!),
+                                      fontFamily: Manager.bodyStyle.fontFamily,
+                                      color: Manager.bodyStyle.color,
+                                      margin: Margins.zero,
+                                      padding: HtmlPaddings.zero,
+                                    ),
+                                    "a": Style(
+                                      color: Manager.accentColor,
+                                      textDecoration: TextDecoration.none,
+                                    ),
+                                    "blockquote": Style(
+                                      border: Border(left: BorderSide(color: Manager.accentColor.darker, width: 3)),
+                                      padding: HtmlPaddings.only(left: 8),
+                                      fontStyle: FontStyle.italic,
+                                      color: Manager.bodyStyle.color?.withOpacity(0.8),
+                                    ),
+                                    "img": Style(
+                                      margin: Margins.only(top: 4, bottom: 4),
+                                    ),
+                                    "ul, ol": Style(
+                                      margin: Margins.only(left: 16, top: 4, bottom: 4),
+                                    ),
+                                    "li": Style(
+                                      margin: Margins.only(bottom: 2),
+                                    ),
+                                    "iframe": Style(
+                                      width: Width(250),
+                                      height: Height(150),
+                                    ),
+                                  },
+                                  onLinkTap: (url, _, __) {
+                                    if (url != null) launchUrl(Uri.parse(url));
+                                  },
+                                  extensions: [
+                                    WindowsIframeHtmlExtension(),
+                                    SpoilerTagExtension(),
+                                    CodeBlockExtension(),
+                                    VideoHtmlExtension(),
+                                    UnsupportedBlockExtension(),
+                                  ],
+                                ),
                               ),
                             );
                           }),

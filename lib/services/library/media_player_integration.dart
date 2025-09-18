@@ -74,6 +74,7 @@ extension LibraryMediaPlayerIntegration on Library {
   Future<void> _detectAvailablePlayers() async {
     _detectedPlayers.clear();
 
+    // Detection order doesn't matter, we'll connect based on user priority
     // Detect MPC-HC
     final mpcHc = await _detectMpcHc();
     if (mpcHc != null) _detectedPlayers.add(mpcHc);
@@ -87,11 +88,14 @@ extension LibraryMediaPlayerIntegration on Library {
 
   /// Refresh detected players and update connections
   Future<void> refreshMediaPlayers() async {
+    notifyListeners();
+    Manager.setState();
+    
     await _detectAvailablePlayers();
 
     // Always restart connection attempts
     await _startPlayerAutoConnection();
-
+    
     notifyListeners();
     Manager.setState();
   }

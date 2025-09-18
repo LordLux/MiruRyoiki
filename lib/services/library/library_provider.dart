@@ -56,6 +56,7 @@ class Library with ChangeNotifier {
   // Media player integration fields
   PlayerManager? _playerManager;
   Timer? _connectionTimer;
+  // ignore: prefer_final_fields
   List<DetectedPlayer> _detectedPlayers = [];
   String? _currentConnectedPlayer;
   StreamSubscription? _playerStatusSubscription;

@@ -16,6 +16,7 @@ class LoadingButton extends StatefulWidget {
   final Color filledColor;
   final Color? hoverFillColor;
   final bool expand;
+  final Duration? tooltipWaitDuration;
 
   const LoadingButton({
     super.key,
@@ -31,6 +32,7 @@ class LoadingButton extends StatefulWidget {
     this.filledColor = Colors.transparent,
     this.hoverFillColor,
     this.expand = false,
+    this.tooltipWaitDuration,
   });
 
   @override
@@ -54,6 +56,7 @@ class LoadingButtonState extends State<LoadingButton> {
       isButtonDisabled: widget.isButtonDisabled,
       isLoading: widget.isLoading,
       tooltip: widget.tooltip,
+      tooltipWaitDuration: widget.tooltipWaitDuration,
       tooltipWidget: widget.tooltipWidget,
       child: (isHovering) {
         ButtonStyle copy = ButtonStyle(

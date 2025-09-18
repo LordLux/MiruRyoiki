@@ -31,6 +31,7 @@ import '../widgets/page/header_widget.dart';
 import '../widgets/page/infobar.dart';
 import '../widgets/page/page.dart';
 import '../widgets/shift_clickable_hover.dart';
+import '../widgets/simple_html_parser.dart';
 import '../widgets/transparency_shadow_image.dart';
 import 'anilist_settings.dart';
 
@@ -49,6 +50,8 @@ class SeriesScreen extends StatefulWidget {
 }
 
 class SeriesScreenState extends State<SeriesScreen> {
+  late final SimpleHtmlParser parser;
+
   bool posterChangeDisabled = false;
   bool bannerChangeDisabled = false;
 
@@ -75,6 +78,7 @@ class SeriesScreenState extends State<SeriesScreen> {
         _loadAnilistDataForCurrentSeries();
       });
     }
+    parser = SimpleHtmlParser(context);
   }
 
   @override
@@ -647,11 +651,12 @@ class SeriesScreenState extends State<SeriesScreen> {
 
         // Add description if available
         if (series.description != null) ...[
-          SelectableText(
-            series.description!,
-            maxLines: 10,
-            cursorColor: Manager.currentDominantColor,
-          ),
+          parser.parse(series.description!, selectable: true, selectionColor: series.dominantColor),
+          // SelectableText(
+          //   series.description!,
+          //   maxLines: 10,
+          //   cursorColor: Manager.pastelDominantColor,
+          // ),
           VDiv(16),
         ],
 

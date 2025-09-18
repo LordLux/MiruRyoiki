@@ -3,9 +3,9 @@
 
 import 'dart:async';
 
-import 'package:fluent_ui/fluent_ui.dart';
+import 'package:fluent_ui/fluent_ui.dart' hide AnimatedSwitcher;
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart' as mat;
+import 'package:flutter/material.dart' as mat hide AnimatedSwitcher;
 import 'package:flutter_acrylic/window_effect.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:miruryoiki/widgets/buttons/loading_button.dart';
@@ -26,6 +26,7 @@ import '../services/lock_manager.dart';
 import '../services/navigation/dialogs.dart';
 import '../services/navigation/shortcuts.dart';
 import '../services/navigation/show_info.dart';
+import '../services/players/player.dart';
 import '../settings.dart';
 import '../utils/color.dart';
 import '../utils/database_recovery.dart';
@@ -35,6 +36,7 @@ import '../theme.dart';
 import '../utils/path.dart';
 import '../utils/screen.dart';
 import '../utils/time.dart';
+import '../widgets/animated_switcher.dart';
 import '../widgets/buttons/button.dart';
 import '../widgets/buttons/hyperlink.dart';
 import '../widgets/buttons/setting_category_button.dart';
@@ -46,10 +48,6 @@ import '../widgets/page/header_widget.dart';
 import '../widgets/page/page.dart';
 import '../widgets/series_image.dart';
 import '../widgets/widget_image_provider.dart';
-
-import '../services/players/player.dart';
-import '../services/players/players/vlc_player.dart';
-import '../services/players/players/mpc_hc_player.dart';
 
 class SettingsScreen extends StatefulWidget {
   final ScrollController scrollController;
@@ -97,6 +95,7 @@ class SettingsScreenState extends State<SettingsScreen> {
   final mat.ExpansionTileController expansionTileKey = mat.ExpansionTileController();
   bool _showBackupsList = false;
   bool _isRestoringBackup = false;
+  bool _isRefreshingPlayers = false;
 
   // ignore: unused_field
   bool _isFormatting = false;
@@ -1519,176 +1518,203 @@ class SettingsScreenState extends State<SettingsScreen> {
                   ),
                 ],
               ),
-              SizedBox(height: 24),
 
               // Player Priority
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (settings.enableMediaPlayerIntegration) ...[
-                    Row(
-                      children: [
-                        Text(
-                          'Player Priority Order',
-                          style: Manager.bodyStrongStyle,
-                        ),
-                        SizedBox(height: 4),
-                        Text(
-                          'Drag to reorder. The app will try to connect to players in this order of preference.',
-                          style: Manager.bodyStyle.copyWith(color: Colors.white.withOpacity(.5)),
-                        ),
-                        StandardButton(
-                          label: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(mat.Icons.refresh, size: 16),
-                              SizedBox(width: 8),
-                              Text('Reload'),
-                            ],
-                          ),
-                          onPressed: () async {
-                            // Reload player configuration and detection
-                            await library.playerManager?.disconnect();
-                            await library.playerManager?.autoConnect();
-
-                            // Show confirmation
-                            snackBar('Player configuration reloaded', severity: InfoBarSeverity.success);
-                          },
-                        ),
-                      ],
+              AnimatedSwitcher(
+                duration: dimDuration,
+                showChild: settings.enableMediaPlayerIntegration,
+                switchInCurve: Curves.easeInOut,
+                switchOutCurve: Curves.easeInOut,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SizedBox(height: 24),
+                    Divider(),
+                    SizedBox(height: 12),
+                    Text(
+                      'Connection Status',
+                      style: Manager.bodyStrongStyle,
                     ),
-                  ],
-                  SizedBox(height: 12),
-                  ReorderableListView.builder(
-                    shrinkWrap: true,
-                    physics: NeverScrollableScrollPhysics(),
-                    itemCount: settings.mediaPlayerPriority.length,
-                    buildDefaultDragHandles: false,
-                    onReorder: (oldIndex, newIndex) {
-                      setState(() {
-                        if (oldIndex < newIndex) newIndex -= 1;
+                    SizedBox(height: 12),
+                    Consumer<Library>(
+                      builder: (context, lib, child) {
+                        final connectedPlayer = lib.currentConnectedPlayer;
+                        final detectedPlayers = lib.detectedPlayers;
 
-                        final item = settings.mediaPlayerPriority.removeAt(oldIndex);
-                        if (!settings.mediaPlayerPriority.contains(item)) settings.mediaPlayerPriority.insert(newIndex, item);
-                      });
-                    },
-                    itemBuilder: (context, index) {
-                      final playerId = settings.mediaPlayerPriority[index];
-                      final playerName = playerId == 'vlc'
-                          ? 'VLC Media Player'
-                          : playerId == 'mpc-hc'
-                              ? 'MPC-HC'
-                              : playerId;
-
-                      // Get the player instance for this ID
-                      MediaPlayer? player;
-                      if (playerId == 'vlc') {
-                        player = VLCPlayer();
-                      } else if (playerId == 'mpc-hc') {
-                        player = MPCHCPlayer();
-                      } else {
-                        // For custom, you may want to load config from file or settings
-                        // Here we just show a fallback icon
-                        player = null;
-                      }
-
-                      return Container(
-                        key: ValueKey('player_priority_${playerId}_$index'),
-                        margin: EdgeInsets.only(bottom: 8),
-                        child: Card(
-                          child: ListTile(
-                            leading: settings.enableMediaPlayerIntegration //
-                                ? ReorderableDragStartListener(index: index, child: Icon(mat.Icons.drag_handle, color: Colors.white.withOpacity(.5)))
-                                : null,
-                            title: Row(
+                        return Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                player?.iconWidget ?? Icon(mat.Icons.play_arrow, size: 20, color: Manager.accentColor),
-                                SizedBox(width: 8),
-                                Text(playerName),
+                                if (connectedPlayer != null)
+                                  Row(
+                                    children: [
+                                      Icon(mat.Icons.check_circle, color: Colors.green, size: 16),
+                                      SizedBox(width: 8),
+                                      Text(
+                                        'Connected to: $connectedPlayer',
+                                        style: Manager.bodyStyle.copyWith(color: Colors.green),
+                                      ),
+                                    ],
+                                  )
+                                else
+                                  Row(
+                                    children: [
+                                      Icon(mat.Icons.error, color: Colors.orange, size: 16),
+                                      SizedBox(width: 8),
+                                      Text(
+                                        'No players connected',
+                                        style: Manager.bodyStyle.copyWith(color: Colors.orange),
+                                      ),
+                                    ],
+                                  ),
+                                SizedBox(height: 12),
+                                if (detectedPlayers.isNotEmpty) ...[
+                                  Text(
+                                    'Installed Players:',
+                                    style: Manager.bodyStyle.copyWith(fontWeight: FontWeight.w600),
+                                  ),
+                                  SizedBox(height: 4),
+                                  ...detectedPlayers.map((player) => Padding(
+                                        padding: EdgeInsets.only(left: 16, bottom: 4),
+                                        child: Card(
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              SizedBox(
+                                                height: 25,
+                                                width: 25,
+                                                child: getPlayerFromId(player.id)?.iconWidget,
+                                              ),
+                                              SizedBox(width:8),
+                                              Text.rich(
+                                                TextSpan(
+                                                  children: [
+                                                    TextSpan(text: player.name, style: Manager.bodyStrongStyle),
+                                                    TextSpan(text: ' (${player.detectionMethod})', style: Manager.bodyStyle),
+                                                  ],
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      )),
+                                ] else
+                                  Padding(
+                                    padding: EdgeInsets.only(left: 16),
+                                    child: Text(
+                                      'No media players detected\nPlease ensure VLC or MPC-HC is installed.',
+                                      style: Manager.bodyStyle.copyWith(fontSize: 12),
+                                    ),
+                                  ),
                               ],
                             ),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ],
+                            LoadingButton(
+                              onPressed: () async {
+                                setState(() => _isRefreshingPlayers = true);
+
+                                await library.refreshMediaPlayers();
+                                await library.playerManager?.disconnect();
+                                await library.playerManager?.autoConnect();
+
+                                snackBar('Video Players Reloaded', severity: InfoBarSeverity.success);
+                                setState(() => _isRefreshingPlayers = false);
+                              },
+                              isLoading: _isRefreshingPlayers,
+                              isFilled: true,
+                              hoverFillColor: Manager.accentColor.lighter,
+                              filledColor: Manager.accentColor.light,
+                              tooltip: 'Refresh Players list and Player configs',
+                              tooltipWaitDuration: const Duration(milliseconds: 200),
+                              label: 'Reload Players',
+                            ),
+                          ],
+                        );
+                      },
+                    ),
+                    SizedBox(height: 24),
+                  ],
+                ),
               ),
 
               // Connection Status
-              if (settings.enableMediaPlayerIntegration) ...[
-                SizedBox(height: 24),
-                Divider(),
-                SizedBox(height: 12),
-                Text(
-                  'Connection Status',
-                  style: Manager.bodyStrongStyle,
-                ),
-                SizedBox(height: 12),
-                Consumer<Library>(
-                  builder: (context, lib, child) {
-                    final connectedPlayer = lib.currentConnectedPlayer;
-                    final detectedPlayers = lib.detectedPlayers;
+              AnimatedSwitcher(
+                duration: dimDuration,
+                showChild: settings.enableMediaPlayerIntegration,
+                switchInCurve: Curves.easeInOut,
+                switchOutCurve: Curves.easeInOut,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Player Priority Order',
+                      style: Manager.bodyStrongStyle,
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      'Drag to reorder. The app will try to connect to players in this order of preference.',
+                      style: Manager.bodyStyle.copyWith(color: Colors.white.withOpacity(.5)),
+                    ),
+                    SizedBox(height: 12),
+                    ReorderableListView.builder(
+                      shrinkWrap: true,
+                      physics: NeverScrollableScrollPhysics(),
+                      itemCount: settings.mediaPlayerPriority.length,
+                      buildDefaultDragHandles: false,
+                      onReorder: (oldIndex, newIndex) {
+                        setState(() {
+                          if (oldIndex < newIndex) newIndex -= 1;
 
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        if (connectedPlayer != null)
-                          Row(
-                            children: [
-                              Icon(mat.Icons.check_circle, color: Colors.green, size: 16),
-                              SizedBox(width: 8),
-                              Text(
-                                'Connected to: $connectedPlayer',
-                                style: Manager.bodyStyle.copyWith(color: Colors.green),
+                          final item = settings.mediaPlayerPriority.removeAt(oldIndex);
+                          if (!settings.mediaPlayerPriority.contains(item)) settings.mediaPlayerPriority.insert(newIndex, item);
+                        });
+                      },
+                      itemBuilder: (context, index) {
+                        final playerId = settings.mediaPlayerPriority[index];
+                        final playerName = playerId == 'vlc'
+                            ? 'VLC Media Player'
+                            : playerId == 'mpc-hc'
+                                ? 'MPC-HC'
+                                : playerId;
+
+                        // Get the player instance for this ID
+                        MediaPlayer? player = getPlayerFromId(playerId);
+
+                        return Container(
+                          key: ValueKey('player_priority_${playerId}_$index'),
+                          margin: EdgeInsets.only(bottom: 8),
+                          child: Card(
+                            child: ListTile(
+                              leading: settings.enableMediaPlayerIntegration //
+                                  ? ReorderableDragStartListener(index: index, child: Icon(mat.Icons.drag_handle, color: Colors.white.withOpacity(.5)))
+                                  : null,
+                              title: Row(
+                                children: [
+                                  if (player?.iconWidget != null)
+                                    Opacity(
+                                      opacity: 0.85,
+                                      child: SizedBox(
+                                        height: 25,
+                                        width: 25,
+                                        child: player!.iconWidget,
+                                      ),
+                                    )
+                                  else
+                                    Icon(mat.Icons.play_arrow, size: 20, color: Manager.accentColor),
+                                  SizedBox(width: 12),
+                                  Text(playerName),
+                                ],
                               ),
-                            ],
-                          )
-                        else
-                          Row(
-                            children: [
-                              Icon(mat.Icons.error, color: Colors.orange, size: 16),
-                              SizedBox(width: 8),
-                              Text(
-                                'No players connected',
-                                style: Manager.bodyStyle.copyWith(color: Colors.orange),
-                              ),
-                            ],
-                          ),
-                        SizedBox(height: 8),
-                        if (detectedPlayers.isNotEmpty) ...[
-                          Text(
-                            'Detected Players:',
-                            style: Manager.bodyStyle.copyWith(fontWeight: FontWeight.w600),
-                          ),
-                          SizedBox(height: 4),
-                          ...detectedPlayers.map((player) => Padding(
-                                padding: EdgeInsets.only(left: 16, bottom: 4),
-                                child: Text(
-                                  '• ${player.name} (${player.detectionMethod})',
-                                  style: Manager.bodyStyle.copyWith(fontSize: 12),
-                                ),
-                              )),
-                        ] else
-                          Padding(
-                            padding: EdgeInsets.only(left: 16),
-                            child: Text(
-                              'No media players detected',
-                              style: Manager.bodyStyle.copyWith(fontSize: 12),
                             ),
                           ),
-                        SizedBox(height: 12),
-                        FilledButton(
-                          onPressed: () {
-                            library.refreshMediaPlayers();
-                          },
-                          child: Text('Refresh Players'),
-                        ),
-                      ],
-                    );
-                  },
+                        );
+                      },
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ],
           ),
           SizedBox(height: 24),
@@ -1787,12 +1813,8 @@ class SettingsScreenState extends State<SettingsScreen> {
               VDiv(12),
               AnimatedSwitcher(
                 duration: dimDuration,
-                transitionBuilder: (child, animation) => SizeTransition(
-                  sizeFactor: animation,
-                  axisAlignment: -1,
-                  child: FadeTransition(opacity: animation, child: child),
-                ),
-                child: !_showBackupsList ? const SizedBox.shrink() : AbsorbPointer(
+                showChild: _showBackupsList,
+                child: AbsorbPointer(
                   absorbing: !_showBackupsList,
                   child: IgnorePointer(
                     ignoring: !_showBackupsList,
@@ -1811,7 +1833,7 @@ class SettingsScreenState extends State<SettingsScreen> {
                             initialDirectory: miruRyoikiSaveDirectory.path,
                           );
                           if (result == null || result.files.isEmpty || result.files.first.path == null) return; // User cancelled
-                                
+
                           final File backupFile = File(result.files.first.path!);
                           _restoreBackup(backupFile);
                         },
