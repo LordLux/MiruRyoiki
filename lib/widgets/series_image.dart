@@ -3,7 +3,7 @@ import 'dart:math' show min;
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:transparent_image/transparent_image.dart';
 import 'package:miruryoiki/models/series.dart';
-import 'package:miruryoiki/utils/time_utils.dart';
+import 'package:miruryoiki/utils/time.dart';
 
 /// A widget that displays a series image (poster or banner) with loading state handling
 class SeriesImageBuilder extends StatefulWidget {

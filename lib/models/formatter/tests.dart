@@ -1,7 +1,7 @@
 import 'dart:io';
 import 'package:path/path.dart' as p;
 import '../../utils/logging.dart';
-import '../../utils/path_utils.dart';
+import '../../utils/path.dart';
 import 'action.dart';
 
 /// Test case definition for formatter testing

@@ -13,7 +13,7 @@ import 'package:miruryoiki/models/anilist/user_data.dart';
 import 'package:flexible_wrap/flexible_wrap.dart';
 import 'package:miruryoiki/services/navigation/dialogs.dart';
 import 'package:miruryoiki/utils/html/extensions/spoiler.dart';
-import 'package:miruryoiki/utils/time_utils.dart';
+import 'package:miruryoiki/utils/time.dart';
 import 'package:miruryoiki/widgets/buttons/switch.dart';
 import 'package:miruryoiki/widgets/buttons/wrapper.dart';
 import 'package:pie_chart/pie_chart.dart';
@@ -28,12 +28,12 @@ import 'package:provider/provider.dart';
 import '../services/library/library_provider.dart';
 import '../services/navigation/shortcuts.dart';
 import '../services/navigation/show_info.dart';
-import '../utils/color_utils.dart';
+import '../utils/color.dart';
 import '../utils/html/extensions/code.dart';
 import '../utils/html/extensions/iframe.dart';
 import '../utils/html/extensions/unsupported.dart';
 import '../utils/logging.dart';
-import '../utils/screen_utils.dart';
+import '../utils/screen.dart';
 import '../widgets/activity_graph.dart';
 import '../widgets/animated_stats_counter.dart';
 import '../widgets/buttons/hyperlink.dart';
@@ -762,7 +762,7 @@ class AccountsScreenState extends State<AccountsScreen> {
                             padding: const EdgeInsets.symmetric(horizontal: 12.0),
                             child: Text(
                               entry.key.titleCase,
-                              style: Manager.bodyStyle.copyWith(color: determineTextColor(main, preferWhite: preferWhiteThreshold, preferBlack: preferBlackThreshold)),
+                              style: Manager.bodyStyle.copyWith(color: getTextColor(main, preferWhite: preferWhiteThreshold, preferBlack: preferBlackThreshold)),
                             ),
                           ),
                           Container(
@@ -774,7 +774,7 @@ class AccountsScreenState extends State<AccountsScreen> {
                             child: Center(
                               child: Text(
                                 '${((entry.value / statusTotal) * 100).round()}%',
-                                style: Manager.bodyStrongStyle.copyWith(color: determineTextColor(main, preferWhite: preferWhiteThreshold, preferBlack: preferBlackThreshold)),
+                                style: Manager.bodyStrongStyle.copyWith(color: getTextColor(main, preferWhite: preferWhiteThreshold, preferBlack: preferBlackThreshold)),
                               ),
                             ),
                           ),
@@ -834,7 +834,7 @@ class AccountsScreenState extends State<AccountsScreen> {
                             padding: const EdgeInsets.symmetric(horizontal: 12.0),
                             child: Text(
                               entry.key,
-                              style: Manager.bodyStyle.copyWith(color: determineTextColor(main, preferWhite: preferWhiteThreshold, preferBlack: preferBlackThreshold)),
+                              style: Manager.bodyStyle.copyWith(color: getTextColor(main, preferWhite: preferWhiteThreshold, preferBlack: preferBlackThreshold)),
                             ),
                           ),
                           Container(
@@ -846,7 +846,7 @@ class AccountsScreenState extends State<AccountsScreen> {
                             child: Center(
                               child: Text(
                                 '${((entry.value / formatTotal) * 100).round()}%',
-                                style: Manager.bodyStrongStyle.copyWith(color: determineTextColor(main, preferWhite: preferWhiteThreshold, preferBlack: preferBlackThreshold)),
+                                style: Manager.bodyStrongStyle.copyWith(color: getTextColor(main, preferWhite: preferWhiteThreshold, preferBlack: preferBlackThreshold)),
                               ),
                             ),
                           ),

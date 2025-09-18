@@ -5,7 +5,7 @@ import 'package:window_manager/window_manager.dart';
 
 import '../../manager.dart';
 import '../../utils/logging.dart';
-import '../../utils/time_utils.dart';
+import '../../utils/time.dart';
 import 'service.dart';
 
 class MyWindowListener extends WindowListener {

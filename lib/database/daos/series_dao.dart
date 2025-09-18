@@ -8,7 +8,7 @@ import '../../models/series.dart';
 import '../../models/episode.dart';
 import '../../models/anilist/mapping.dart';
 import '../../models/anilist/anime.dart';
-import '../../utils/path_utils.dart';
+import '../../utils/path.dart';
 import '../../enums.dart';
 import '../converters.dart';
 

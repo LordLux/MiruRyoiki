@@ -7,9 +7,9 @@ import '../manager.dart';
 
 import '../models/series.dart';
 import '../services/navigation/statusbar.dart';
-import '../utils/color_utils.dart';
+import '../utils/color.dart';
 import '../utils/logging.dart';
-import '../utils/time_utils.dart';
+import '../utils/time.dart';
 import 'context_menu/series.dart';
 import 'hidden.dart';
 

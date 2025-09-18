@@ -13,7 +13,7 @@ import '../services/file_system/cache.dart';
 import '../services/isolates/isolate_manager.dart';
 import '../theme.dart';
 import 'logging.dart';
-import 'path_utils.dart';
+import 'path.dart';
 import 'image_color_extractor.dart';
 
 /// Generate a color scheme from a dominant color
@@ -102,7 +102,7 @@ Color getPrimaryColorBasedOnAccent() {
 
 /// Finds the best color for the text based on the background color
 /// works on contrast, not brightness
-Color determineTextColor(
+Color getTextColor(
   Color backgroundColor, {
   double preferBlack = 0.5,
   double preferWhite = 0.5,
@@ -268,7 +268,7 @@ Future<(Color?, bool)> _extractColorFromPath(Series series, String imagePath) as
 
       logMulti([
         ['   Dominant color calculated: '],
-        [newColor?.toHex(), determineTextColor(newColor ?? Colors.white), newColor ?? Colors.black],
+        [newColor?.toHex(), getTextColor(newColor ?? Colors.white), newColor ?? Colors.black],
       ]);
 
       // Only update if the color actually changed

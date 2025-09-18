@@ -10,7 +10,6 @@ import 'package:flutter_acrylic/window_effect.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:miruryoiki/widgets/buttons/loading_button.dart';
 import 'package:miruryoiki/widgets/page/infobar.dart';
-import 'package:miruryoiki/widgets/svg.dart';
 import 'package:provider/provider.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:toggle_switch/toggle_switch.dart' as toggle;
@@ -21,25 +20,27 @@ import '../functions.dart';
 import '../main.dart';
 import '../manager.dart';
 import '../models/formatter/action.dart';
-import '../models/players/player_configuration.dart';
 import '../models/series.dart';
+import '../services/data_storage_service.dart';
 import '../services/lock_manager.dart';
 import '../services/navigation/dialogs.dart';
 import '../services/navigation/shortcuts.dart';
 import '../services/navigation/show_info.dart';
 import '../settings.dart';
-import '../utils/color_utils.dart';
+import '../utils/color.dart';
+import '../utils/database_recovery.dart';
 import '../utils/logging.dart';
 import '../services/library/library_provider.dart';
 import '../theme.dart';
-import '../utils/path_utils.dart';
-import '../utils/screen_utils.dart';
-import '../utils/time_utils.dart';
+import '../utils/path.dart';
+import '../utils/screen.dart';
+import '../utils/time.dart';
 import '../widgets/buttons/button.dart';
 import '../widgets/buttons/hyperlink.dart';
 import '../widgets/buttons/setting_category_button.dart';
 import '../widgets/buttons/switch.dart';
 import '../widgets/buttons/wrapper.dart';
+import '../widgets/dialogs/database_recovery.dart';
 import '../widgets/enum_toggle.dart';
 import '../widgets/page/header_widget.dart';
 import '../widgets/page/page.dart';
@@ -49,6 +50,7 @@ import '../widgets/widget_image_provider.dart';
 import '../services/players/player.dart';
 import '../services/players/players/vlc_player.dart';
 import '../services/players/players/mpc_hc_player.dart';
+
 class SettingsScreen extends StatefulWidget {
   final ScrollController scrollController;
 
@@ -91,6 +93,10 @@ class SettingsScreenState extends State<SettingsScreen> {
   int _buildClicks = 0;
   Timer? _buildClickTimer;
 
+  List<File> _availableBackups = [];
+  final mat.ExpansionTileController expansionTileKey = mat.ExpansionTileController();
+  bool _isRestoringBackup = false;
+
   // ignore: unused_field
   bool _isFormatting = false;
   bool _isOpenFolderHovered = false;
@@ -123,6 +129,10 @@ class SettingsScreenState extends State<SettingsScreen> {
         {
           "title": "Players",
           "icon": Icon(mat.Icons.play_circle_outline, color: lighten(Manager.accentColor), size: 23),
+        },
+        {
+          "title": "Data & Storage",
+          "icon": Icon(mat.Icons.storage, color: lighten(Manager.accentColor), size: 23),
         },
         {
           "title": "Advanced",
@@ -712,6 +722,12 @@ class SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+  Future<void> _expandTile() async {
+    nextFrame(() {
+      if (mounted && !expansionTileKey.isExpanded) expansionTileKey.expand();
+    });
+  }
+
   void carpaccio() {
     _buildClicks++;
     if (_buildClicks == 1) {
@@ -728,11 +744,42 @@ class SettingsScreenState extends State<SettingsScreen> {
   @override
   void initState() {
     super.initState();
+    _loadAvailableBackups();
 
     nextFrame(() {
       final settings = Provider.of<SettingsManager>(context, listen: false);
       tempColor = settings.accentColor;
     });
+  }
+
+  void _loadAvailableBackups() => setState(() => _availableBackups = DatabaseRecovery.getAvailableBackups());
+
+  void _restoreBackup(File backupFile) async {
+    try {
+      bool confirmed = false;
+      await showSimpleManagedDialog<bool>(
+        context: context,
+        id: 'restoreBackup',
+        title: 'Restore Database',
+        body: 'This will replace your current database with the selected backup.\n'
+            'Your current database will be backed up first. Continue?',
+        positiveButtonText: 'Restore Backup',
+        isPositiveButtonPrimary: true,
+        negativeButtonText: 'Cancel',
+        onPositive: () => confirmed = true,
+      );
+
+      if (!confirmed) return;
+
+      setState(() => _isRestoringBackup = true);
+      final backupPath = await DataStorageService.restoreFromBackup(backupFile);
+
+      if (backupPath != null) snackBar('Database restored successfully. Please restart the app.', severity: InfoBarSeverity.success);
+    } catch (e) {
+      snackBar('Failed to restore backup: $e', severity: InfoBarSeverity.error);
+    } finally {
+      setState(() => _isRestoringBackup = false);
+    }
   }
 
   @override
@@ -811,74 +858,31 @@ class SettingsScreenState extends State<SettingsScreen> {
               VDiv(24),
               Row(
                 children: [
-                  Expanded(
-                    child: SizedBox(
-                      height: 34,
-                      child: Stack(
-                        alignment: Alignment.centerRight,
-                        children: [
-                          //TODO make this go above if the horizontal space is too small
-                          TextBox(
-                            placeholder: 'No folder selected',
-                            controller: TextEditingController(text: library.libraryPath ?? ''),
-                            readOnly: true,
-                            enabled: false,
-                          ),
-                          Padding(
-                            padding: const EdgeInsets.all(3),
-                            child: ValueListenableBuilder(
-                                valueListenable: KeyboardState.shiftPressedNotifier,
-                                builder: (context, isShiftPressed, _) {
-                                  return MouseButtonWrapper(
-                                    tooltip: isShiftPressed ? 'Copy Library Folder Path' : 'Open Library Folder',
-                                    child: (_) => SizedBox(
-                                      height: 28,
-                                      child: MouseRegion(
-                                        onEnter: (_) => setState(() => _isOpenFolderHovered = true),
-                                        onExit: (_) => setState(() => _isOpenFolderHovered = false),
-                                        child: IconButton(
-                                          icon: Transform.translate(
-                                            offset: isShiftPressed ? Offset(-.5, -.5) : Offset(0, -1),
-                                            child: AnimatedRotation(
-                                              turns: isShiftPressed ? -0.125 : 0,
-                                              duration: getDuration(const Duration(milliseconds: 40)),
-                                              child: Icon(
-                                                isShiftPressed ? Symbols.link : (_isOpenFolderHovered ? Symbols.folder_open : Symbols.folder),
-                                                size: 18,
-                                                color: FluentTheme.of(context).resources.textFillColorPrimary,
-                                              ),
-                                            ),
-                                          ),
-                                          onPressed: library.libraryPath == null
-                                              ? null
-                                              : () {
-                                                  if (isShiftPressed) {
-                                                    // Copy path to clipboard
-                                                    snackBar('Library path copied to clipboard', severity: InfoBarSeverity.success);
-                                                    copyToClipboard(library.libraryPath!);
-                                                    return;
-                                                  }
-                                                  // Open path in file explorer
-                                                  try {
-                                                    Process.run('explorer', [library.libraryPath!]);
-                                                  } catch (e, stackTrace) {
-                                                    snackBar(
-                                                      'Failed to open library folder: $e',
-                                                      severity: InfoBarSeverity.error,
-                                                      exception: e,
-                                                      stackTrace: stackTrace,
-                                                    );
-                                                  }
-                                                },
-                                        ),
-                                      ),
-                                    ),
-                                  );
-                                }),
-                          ),
-                        ],
-                      ),
-                    ),
+                  ReadonlyTextBoxWithShiftAltButton(
+                    library.libraryPath,
+                    unshiftTooltip: 'Open Library Folder',
+                    shiftTooltip: 'Copy Library Path',
+                    onPressed: library.libraryPath == null
+                        ? null
+                        : (isShiftPressed) {
+                            if (isShiftPressed) {
+                              // Copy path to clipboard
+                              snackBar('Library path copied to clipboard', severity: InfoBarSeverity.success);
+                              copyToClipboard(library.libraryPath!);
+                              return;
+                            }
+                            // Open path in file explorer
+                            try {
+                              Process.run('explorer', [library.libraryPath!]);
+                            } catch (e, stackTrace) {
+                              snackBar(
+                                'Failed to open library folder: $e',
+                                severity: InfoBarSeverity.error,
+                                exception: e,
+                                stackTrace: stackTrace,
+                              );
+                            }
+                          },
                   ),
                   const SizedBox(width: 6),
                   LoadingButton(
@@ -1515,38 +1519,38 @@ class SettingsScreenState extends State<SettingsScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   if (settings.enableMediaPlayerIntegration) ...[
-                Row(
-                  children: [Text(
-                    'Player Priority Order',
-                    style: Manager.bodyStrongStyle,
-                  ),
-                  SizedBox(height: 4),
-                  Text(
-                    'Drag to reorder. The app will try to connect to players in this order of preference.',
-                    style: Manager.bodyStyle.copyWith(color: Colors.white.withOpacity(.5)),
-                  ),
-                    StandardButton(
-                      label: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(mat.Icons.refresh, size: 16),
-                          SizedBox(width: 8),
-                          Text('Reload'),
-                        ],
-                      ),
-                      onPressed: () async {
-                        // Reload player configuration and detection
-                        await library.playerManager?.disconnect();
-                        await library.playerManager?.autoConnect();
-                        
-                        // Show confirmation
-                        snackBar('Player configuration reloaded', severity: InfoBarSeverity.success);
-                      },
+                    Row(
+                      children: [
+                        Text(
+                          'Player Priority Order',
+                          style: Manager.bodyStrongStyle,
+                        ),
+                        SizedBox(height: 4),
+                        Text(
+                          'Drag to reorder. The app will try to connect to players in this order of preference.',
+                          style: Manager.bodyStyle.copyWith(color: Colors.white.withOpacity(.5)),
+                        ),
+                        StandardButton(
+                          label: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(mat.Icons.refresh, size: 16),
+                              SizedBox(width: 8),
+                              Text('Reload'),
+                            ],
+                          ),
+                          onPressed: () async {
+                            // Reload player configuration and detection
+                            await library.playerManager?.disconnect();
+                            await library.playerManager?.autoConnect();
+
+                            // Show confirmation
+                            snackBar('Player configuration reloaded', severity: InfoBarSeverity.success);
+                          },
+                        ),
+                      ],
                     ),
                   ],
-                ),
-              ],
-                  
                   SizedBox(height: 12),
                   ReorderableListView.builder(
                     shrinkWrap: true,
@@ -1682,8 +1686,174 @@ class SettingsScreenState extends State<SettingsScreen> {
           ),
           SizedBox(height: 24),
         ],
-      // Advanced section (now index 4)
+      // Data & Storage section
       4 => [
+          SettingsCard(
+            children: [
+              Text(
+                settingsList[4]['title'],
+                style: Manager.subtitleStyle,
+              ),
+              VDiv(12),
+              Text(
+                'Manage your application data, database backups, and storage settings.',
+                style: Manager.bodyStyle,
+              ),
+              VDiv(24),
+
+              // App Data Location Section
+              Text('App Data Location', style: Manager.bodyStrongStyle),
+              VDiv(8),
+              Row(
+                children: [
+                  ReadonlyTextBoxWithShiftAltButton(
+                    DataStorageService.getAppDataPath(),
+                    onPressed: (isShiftPressed) {
+                      if (isShiftPressed) {
+                        // Copy path to clipboard
+                        snackBar('App Data path copied to clipboard', severity: InfoBarSeverity.success);
+                        copyToClipboard(DataStorageService.getAppDataPath());
+                        return;
+                      }
+                      // Open path in file explorer
+                      try {
+                        Process.run('explorer', [DataStorageService.getAppDataPath()]);
+                      } catch (e, stackTrace) {
+                        snackBar(
+                          'Failed to open app data folder: $e',
+                          severity: InfoBarSeverity.error,
+                          exception: e,
+                          stackTrace: stackTrace,
+                        );
+                      }
+                    },
+                  ),
+                ],
+              ),
+              VDiv(4),
+              Text(
+                'Database size: ${DataStorageService.getDatabaseSize()} • '
+                'Total app data: ${DataStorageService.getAppDataSize()}',
+                style: Manager.miniBodyStyle,
+              ),
+              VDiv(8),
+              InfoBar(
+                title: SizedBox.shrink(),
+                content: Text('This is where automatic backups, cache files, and application data are stored. '),
+                severity: InfoBarSeverity.info,
+              ),
+              VDiv(24),
+
+              // Backup and Restore Section
+              Text('Backup and Restore', style: Manager.bodyStrongStyle),
+              VDiv(12),
+              Row(
+                children: [
+                  Expanded(
+                    child: LoadingButton(
+                      label: 'Create Backup',
+                      onPressed: () async {
+                        try {
+                          final backupPath = await DataStorageService.createBackup();
+                          if (backupPath != null) {
+                            snackBar('Backup created successfully', severity: InfoBarSeverity.success);
+                          }
+                        } catch (e) {
+                          snackBar('Failed to create backup: $e', severity: InfoBarSeverity.error);
+                        }
+                      },
+                      isLoading: false,
+                      isSmall: true,
+                    ),
+                  ),
+                  SizedBox(width: 12),
+                  Expanded(
+                    child: LoadingButton(
+                      label: 'Restore Backup',
+                      onPressed: () => _expandTile(),
+                      isLoading: false,
+                      isSmall: true,
+                    ),
+                  ),
+                ],
+              ),
+              VDiv(12),
+              mat.ExpansionTile(
+                trailing: StandardButton.icon(
+                  isFilled: true,
+                  label: Text('Select Backup from files', style: Manager.bodyStyle.copyWith(color: getPrimaryColorBasedOnAccent())),
+                  icon: Icon(mat.Icons.folder_open, size: 16, color: getPrimaryColorBasedOnAccent()),
+                  onPressed: () async {
+                    // Open file picker to select backup file (default to app data folder)
+                    final FilePickerResult? result = await FilePicker.platform.pickFiles(
+                      dialogTitle: 'Select Backup to Restore',
+                      lockParentWindow: true,
+                      type: FileType.custom,
+                      allowedExtensions: ['db'],
+                      initialDirectory: miruRyoikiSaveDirectory.path,
+                    );
+                    if (result == null || result.files.isEmpty || result.files.first.path == null) return; // User cancelled
+
+                    final File backupFile = File(result.files.first.path!);
+                    _restoreBackup(backupFile);
+                  },
+                ),
+                controller: expansionTileKey,
+                title: Text('Available Backups', style: Manager.bodyStyle),
+                enabled: false,
+                children: _availableBackups.take(10).map((backup) {
+                  final modified = backup.statSync().modified;
+                  return mat.ListTile(
+                    dense: true,
+                    leading: const Icon(mat.Icons.backup),
+                    title: Text(backup.path.split(Platform.pathSeparator).last),
+                    subtitle: Text('Modified: ${modified.pretty(time: true)}', style: Manager.miniBodyStyle),
+                    trailing: StandardButton(
+                      onPressed: _isRestoringBackup ? null : () => _restoreBackup(backup),
+                      label: Text('Restore', style: Manager.bodyStyle.copyWith(color: Colors.white)),
+                    ),
+                  );
+                }).toList(),
+              ),
+              VDiv(24),
+
+              // Database Recovery Section
+              if (DataStorageService.isDatabaseLocked()) ...[
+                InfoBar(
+                  title: Text('Database Lock Detected!', style: Manager.bodyStrongStyle),
+                  content: Text('Your database appears to be locked. This usually happens when the app is force-closed during a save operation.', style: Manager.bodyStyle),
+                  severity: InfoBarSeverity.warning,
+                ),
+                VDiv(12),
+              ],
+
+              Text('Database Recovery', style: Manager.bodyStrongStyle),
+              VDiv(8),
+              Text(
+                'If you experience database lock issues, use this tool to recover access to your data.',
+                style: Manager.bodyStyle,
+              ),
+              VDiv(12),
+              SizedBox(
+                width: double.infinity,
+                child: LoadingButton(
+                  label: 'Database Recovery Tool',
+                  onPressed: () async {
+                    final result = await showDatabaseRecoveryDialog(context);
+                    if (result == true) {
+                      snackBar('Database recovery completed successfully', severity: InfoBarSeverity.success);
+                      setState(() {}); // Refresh the UI
+                    }
+                  },
+                  isLoading: false,
+                  isSmall: false,
+                ),
+              ),
+            ],
+          ),
+        ],
+      // Advanced section (now index 5)
+      5 => [
           SettingsCard(
             children: [
               Text(
@@ -1817,11 +1987,11 @@ class SettingsScreenState extends State<SettingsScreen> {
           ),
           SizedBox(height: 24),
         ],
-      // About section (now index 5)
-      5 => [
+      // About section
+      6 => [
           SettingsCard(
             children: [
-              Text(settingsList[4]["title"], style: Manager.subtitleStyle),
+              Text(settingsList[6]["title"], style: Manager.subtitleStyle),
               VDiv(12),
               Text('Version: ${Manager.appVersion}', style: Manager.bodyStyle),
               MouseButtonWrapper(
@@ -1860,7 +2030,64 @@ class SettingsScreenState extends State<SettingsScreen> {
 
     return Column(children: list);
   }
+
+  Expanded ReadonlyTextBoxWithShiftAltButton(
+    String? textboxText, {
+    String unshiftTooltip = "",
+    String shiftTooltip = "",
+    Function(bool)? onPressed,
+  }) {
+    return Expanded(
+      child: SizedBox(
+        height: 34,
+        child: Stack(
+          alignment: Alignment.centerRight,
+          children: [
+            //TODO make this go above if the horizontal space is too small
+            TextBox(
+              placeholder: 'No folder selected',
+              controller: TextEditingController(text: textboxText ?? ''),
+              readOnly: true,
+              enabled: false,
+            ),
+            Padding(
+              padding: const EdgeInsets.all(3),
+              child: ValueListenableBuilder(
+                  valueListenable: KeyboardState.shiftPressedNotifier,
+                  builder: (context, isShiftPressed, _) {
+                    return MouseButtonWrapper(
+                      tooltip: isShiftPressed ? shiftTooltip : unshiftTooltip,
+                      child: (_) => SizedBox(
+                        height: 28,
+                        child: MouseRegion(
+                          onEnter: (_) => setState(() => _isOpenFolderHovered = true),
+                          onExit: (_) => setState(() => _isOpenFolderHovered = false),
+                          child: IconButton(
+                            icon: Transform.translate(
+                              offset: isShiftPressed ? Offset(-.5, -.5) : Offset(0, -1),
+                              child: AnimatedRotation(
+                                turns: isShiftPressed ? -0.125 : 0,
+                                duration: getDuration(const Duration(milliseconds: 40)),
+                                child: Icon(
+                                  isShiftPressed ? Symbols.link : (_isOpenFolderHovered ? Symbols.folder_open : Symbols.folder),
+                                  size: 18,
+                                  color: FluentTheme.of(context).resources.textFillColorPrimary,
+                                ),
+                              ),
+                            ),
+                            onPressed: () => onPressed?.call(isShiftPressed),
+                          ),
+                        ),
+                      ),
+                    );
+                  }),
+            ),
+          ],
+        ),
+      ),
+    );
   }
+}
 
 /// Card with vertically distributed children
 Widget SettingsCard({

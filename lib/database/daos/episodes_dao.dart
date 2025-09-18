@@ -3,7 +3,7 @@ import 'package:drift/drift.dart';
 import '../database.dart';
 import '../tables.dart';
 import '../../models/episode.dart';
-import '../../utils/path_utils.dart';
+import '../../utils/path.dart';
 
 part 'episodes_dao.g.dart';
 

@@ -1,12 +1,12 @@
 
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/material.dart' as mat;
-import 'package:miruryoiki/utils/screen_utils.dart';
+import 'package:miruryoiki/utils/screen.dart';
 
 import '../manager.dart';
 import '../models/series.dart';
 import '../services/navigation/shortcuts.dart';
-import '../utils/time_utils.dart';
+import '../utils/time.dart';
 
 class ShiftClickableHover extends StatefulWidget {
   const ShiftClickableHover({

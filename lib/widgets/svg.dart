@@ -3,7 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:jovial_svg/jovial_svg.dart';
 
-import '../utils/time_utils.dart';
+import '../utils/time.dart';
+import '../utils/icons.dart' as icons;
 
 late final ScalableImageWidget anilistLogo;
 late final ScalableImageWidget offlineIcon;
@@ -74,9 +75,9 @@ class Svg extends StatelessWidget {
 }
 
 Future<void> initializeSVGs() async {
-  anilistLogo = ScalableImageWidget.fromSISource(si: ScalableImageSource.fromSI(rootBundle, 'assets/anilist/logo.si'));
-  offlineIcon = ScalableImageWidget.fromSISource(si: ScalableImageSource.fromSI(rootBundle, 'assets/anilist/offline.si'));
-  offlineLogo = ScalableImageWidget.fromSISource(si: ScalableImageSource.fromSI(rootBundle, 'assets/anilist/offline_logo.si'));
-  vlc = ScalableImageWidget.fromSISource(si: ScalableImageSource.fromSI(rootBundle, 'assets/icons/vlc.si'));
-  mpcHc = ScalableImageWidget.fromSISource(si: ScalableImageSource.fromSI(rootBundle, 'assets/icons/mpchc.si'));
+  anilistLogo = ScalableImageWidget.fromSISource(si: ScalableImageSource.fromSI(rootBundle, icons.anilist_logo));
+  offlineIcon = ScalableImageWidget.fromSISource(si: ScalableImageSource.fromSI(rootBundle, icons.icon_offline));
+  offlineLogo = ScalableImageWidget.fromSISource(si: ScalableImageSource.fromSI(rootBundle, icons.anilist_logo_offline));
+  vlc = ScalableImageWidget.fromSISource(si: ScalableImageSource.fromSI(rootBundle, icons.vlc));
+  mpcHc = ScalableImageWidget.fromSISource(si: ScalableImageSource.fromSI(rootBundle, icons.mpcHc));
 }

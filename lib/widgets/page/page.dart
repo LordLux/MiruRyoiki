@@ -1,10 +1,11 @@
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:smooth_scroll_multiplatform/smooth_scroll_multiplatform.dart';
 
 import '../../manager.dart';
 import '../../services/navigation/shortcuts.dart';
-import '../../utils/screen_utils.dart';
-import '../../utils/time_utils.dart';
+import '../../utils/screen.dart';
+import '../../utils/time.dart';
 import 'header_widget.dart';
 import 'infobar.dart';
 
@@ -42,6 +43,7 @@ class _MiruRyoikiTemplatePageState extends State<MiruRyoikiTemplatePage> {
   late double _headerHeight;
   late double _maxHeaderHeight;
   late double _minHeaderHeight;
+  ScrollController? _scrollController;
 
   @override
   void initState() {
@@ -49,6 +51,17 @@ class _MiruRyoikiTemplatePageState extends State<MiruRyoikiTemplatePage> {
     _maxHeaderHeight = _headerHeight;
     _minHeaderHeight = widget.headerMinHeight ?? ScreenUtils.kMinHeaderHeight;
     super.initState();
+    _setupScrollListener();
+  }
+
+  void _setupScrollListener() {
+    if (_maxHeaderHeight != _minHeaderHeight && _scrollController != null) {
+      _scrollController!.addListener(() {
+        final offset = _scrollController!.offset;
+        final double newHeight = offset > 0 ? _minHeaderHeight : _maxHeaderHeight;
+        if (mounted) setState(() => _headerHeight = newHeight);
+      });
+    }
   }
 
   @override
@@ -113,14 +126,8 @@ class _MiruRyoikiTemplatePageState extends State<MiruRyoikiTemplatePage> {
                                   animationCurve: Curves.easeOut,
                                   builder: (context, controller, physics) {
                                     // Skip if we want a static header
-                                    if (_maxHeaderHeight != _minHeaderHeight) {
-                                    controller.addListener(() {
-                                      final offset = controller.offset;
-                                      final double newHeight = offset > 0 ? _minHeaderHeight : _maxHeaderHeight;
-
-                                      if (mounted) setState(() => _headerHeight = newHeight);
-                                    });
-                                    }
+                                    _scrollController = controller;
+                                    if (_scrollController != null) _setupScrollListener();
 
                                     // Then use the controller for your scrollable content
                                     return CustomScrollView(

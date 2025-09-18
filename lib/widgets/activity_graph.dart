@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:miruryoiki/enums.dart';
 import 'package:miruryoiki/manager.dart';
-import 'package:miruryoiki/utils/screen_utils.dart';
+import 'package:miruryoiki/utils/screen.dart';
 import '../models/anilist/user_data.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter_heatmap_calendar/flutter_heatmap_calendar.dart';
 
 import '../utils/logging.dart';
-import '../utils/time_utils.dart';
+import '../utils/time.dart';
 
 class ActivityGraph extends StatelessWidget {
   final List<AnilistActivityHistory> activityHistory;

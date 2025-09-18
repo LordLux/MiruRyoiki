@@ -1,10 +1,10 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/material.dart' show Material;
 import 'package:provider/provider.dart';
-import '../../utils/screen_utils.dart';
+import '../../utils/screen.dart';
 import '../../manager.dart';
 import '../../utils/logging.dart';
-import '../../utils/time_utils.dart';
+import '../../utils/time.dart';
 import '../../widgets/buttons/wrapper.dart';
 import '../../widgets/dialogs/show_dialog.dart';
 import '../../main.dart';
@@ -127,17 +127,13 @@ Future<T?> showSimpleManagedDialog<T>({
           ManagedDialogButton(
             popContext: popContext,
             text: negativeButtonText,
-            onPressed: () {
-              onNegative?.call();
-            },
+            onPressed: () => onNegative?.call(),
           ),
           ManagedDialogButton(
             isPrimary: isPositiveButtonPrimary,
             popContext: popContext,
             text: positiveButtonText,
-            onPressed: () {
-              onPositive?.call();
-            },
+            onPressed: () => onPositive?.call(),
           ),
         ],
       );
@@ -192,28 +188,26 @@ Future<T?> showSimpleTickboxManagedDialog<T>({
         contentBuilder: (context, __) => Column(mainAxisSize: MainAxisSize.min, children: [
           builder != null ? builder(context) : Text(body, style: Manager.bodyStyle),
           const SizedBox(height: 24),
-          StatefulBuilder(
-            builder: (context, setState) {
-              return Align(
-                alignment: Alignment.centerLeft,
-                child: SizedBox(
-                  height: 20,
-                  child: Checkbox(
-                    checked: localTickboxValue,
-                    onChanged: (value) {
-                      if (value != null) {
-                        onTickboxChanged?.call(value);
-                        setState(() {
-                          localTickboxValue = value;
-                        });
-                      }
-                    },
-                    content: Text(tickboxLabel, style: Manager.bodyStyle),
-                  ),
+          StatefulBuilder(builder: (context, setState) {
+            return Align(
+              alignment: Alignment.centerLeft,
+              child: SizedBox(
+                height: 20,
+                child: Checkbox(
+                  checked: localTickboxValue,
+                  onChanged: (value) {
+                    if (value != null) {
+                      onTickboxChanged?.call(value);
+                      setState(() {
+                        localTickboxValue = value;
+                      });
+                    }
+                  },
+                  content: Text(tickboxLabel, style: Manager.bodyStyle),
                 ),
-              );
-            }
-          ),
+              ),
+            );
+          }),
         ]),
         constraints: constraints ??
             const BoxConstraints(
@@ -224,17 +218,13 @@ Future<T?> showSimpleTickboxManagedDialog<T>({
           ManagedDialogButton(
             popContext: popContext,
             text: negativeButtonText,
-            onPressed: () {
-              onNegative?.call();
-            },
+            onPressed: () => onNegative?.call(),
           ),
           ManagedDialogButton(
             isPrimary: isPositiveButtonPrimary,
             popContext: popContext,
             text: positiveButtonText,
-            onPressed: () {
-              onPositive?.call(localTickboxValue);
-            },
+            onPressed: () => onPositive?.call(localTickboxValue),
           ),
         ],
       );
@@ -246,13 +236,18 @@ Future<T?> showSimpleOneButtonManagedDialog<T>({
   required BuildContext context,
   required String id,
   required String title,
-  required String body,
+  String? body,
+  Widget Function(BuildContext)? builder,
   BoxConstraints? constraints,
   String positiveButtonText = 'OK',
 
   /// Callback for the positive button, automatically closes the dialog
   Function()? onPositive,
 }) async {
+  assert(
+    (body == null && builder != null) || (body != null && builder == null),
+    'Only one of body or builder should be provided',
+  );
   return showManagedDialog(
     context: context,
     id: id,
@@ -262,7 +257,7 @@ Future<T?> showSimpleOneButtonManagedDialog<T>({
       return ManagedDialog(
         popContext: context,
         title: Text(title),
-        contentBuilder: (_, __) => Text(body),
+        contentBuilder: (context, __) => builder != null ? builder(context) : Text(body!),
         constraints: constraints ??
             const BoxConstraints(
               maxWidth: 500,
@@ -272,9 +267,7 @@ Future<T?> showSimpleOneButtonManagedDialog<T>({
           ManagedDialogButton(
             popContext: popContext,
             text: positiveButtonText,
-            onPressed: () {
-              onPositive?.call();
-            },
+            onPressed: () => onPositive?.call(),
           ),
         ],
       );

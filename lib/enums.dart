@@ -290,9 +290,11 @@ enum SortOrder {
 enum GroupBy { none, anilistLists }
 
 extension DateTimeX on DateTime? {
-  String pretty() {
+  String pretty({bool time = false}) {
     if (this == null) return 'null';
-    return DateFormat('dd MMM yyyy', 'en').format(this!);
+    final dateFormat = DateFormat('dd MMM yyyy', 'en');
+    final timeFormat = DateFormat('HH:mm:ss', 'en');
+    return '${dateFormat.format(this!)}${time ? ' ${timeFormat.format(this!)}' : ''}';
   }
 
   static DateTime get epoch => DateTime.fromMillisecondsSinceEpoch(0);

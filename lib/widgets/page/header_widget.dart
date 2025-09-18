@@ -3,8 +3,8 @@ import 'dart:math' as math show max, min;
 import 'package:fluent_ui/fluent_ui.dart';
 
 import '../../manager.dart';
-import '../../utils/screen_utils.dart';
-import '../../utils/time_utils.dart';
+import '../../utils/screen.dart';
+import '../../utils/time.dart';
 
 class HeaderWidget extends StatefulWidget {
   final Widget Function(TextStyle titleStyle, BoxConstraints constraints) title;

@@ -12,10 +12,10 @@ import '../../services/library/library_provider.dart';
 import '../../screens/series.dart';
 import '../../services/navigation/dialogs.dart';
 import '../../services/navigation/show_info.dart';
-import '../../utils/image_utils.dart';
+import '../../utils/image.dart';
 import '../../utils/logging.dart';
-import '../../utils/path_utils.dart';
-import '../../utils/screen_utils.dart';
+import '../../utils/path.dart';
+import '../../utils/screen.dart';
 import '../series_image.dart';
 import '../transparency_shadow_image.dart';
 

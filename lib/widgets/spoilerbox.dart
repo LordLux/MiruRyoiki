@@ -4,7 +4,7 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/material.dart' as mat;
 
 import '../manager.dart';
-import '../utils/screen_utils.dart';
+import '../utils/screen.dart';
 
 class SpoilerBox extends StatefulWidget {
   final Widget child;

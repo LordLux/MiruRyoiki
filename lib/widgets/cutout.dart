@@ -2,12 +2,53 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'dart:ui' as ui;
 
-class SquircleCutoutWidget extends StatelessWidget {
-  final Widget child;
-  final double borderRadius;
-  final Size size;
-  final Color color;
+/// A widget that creates a squircle (rounded rectangle) cutout overlay with a child widget
+/// rendered inside the cutout area.
+/// 
+/// This widget captures the visual representation of its [child] and displays it within
+/// a squircle-shaped cutout against a solid background color. The child is scaled to
+/// fit within 60% of the container size and centered within the cutout.
+/// 
+/// The widget uses a two-step rendering process:
+/// 1. Captures the child widget as an image off-screen
+/// 2. Renders the captured image within a squircle cutout using blend modes
+/// 
+/// Example usage:
+/// ```dart
+/// SquircleCutoutWidget(
+///   borderRadius: 12.0,
+///   size: Size(50, 50),
+///   color: Colors.blue,
+///   child: Icon(Icons.star),
+/// )
+/// ```
 
+class SquircleCutoutWidget extends StatelessWidget {
+  /// The widget to be displayed inside the squircle cutout.
+  /// 
+  /// This widget will be captured as an image and rendered within the cutout area,
+  /// scaled to 60% of the container size and centered.
+  final Widget child;
+
+  /// The border radius for the squircle corners.
+  /// 
+  /// Controls how rounded the corners of the squircle cutout appear.
+  /// Defaults to 8.0.
+  final double borderRadius;
+
+  /// The size of the entire cutout widget.
+  /// 
+  /// Defines the dimensions of the container that holds the squircle cutout.
+  /// The child will be scaled relative to this size.
+  /// Defaults to Size(35, 35).
+  final Size size;
+
+  /// The background color of the squircle overlay.
+  /// 
+  /// This color fills the area around the cutout, creating the frame effect.
+  /// Defaults to Colors.white.
+  final Color color;
+  
   const SquircleCutoutWidget({
     super.key,
     required this.child,

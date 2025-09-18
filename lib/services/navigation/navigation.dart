@@ -2,7 +2,7 @@
 
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/foundation.dart';
-import 'package:miruryoiki/utils/time_utils.dart';
+import 'package:miruryoiki/utils/time.dart';
 
 import '../../utils/logging.dart';
 

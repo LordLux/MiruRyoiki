@@ -11,7 +11,7 @@ import '../../main.dart';
 import '../../manager.dart';
 import '../library/library_provider.dart';
 import '../../utils/logging.dart';
-import '../../utils/screen_utils.dart';
+import '../../utils/screen.dart';
 import 'statusbar.dart';
 
 class KeyboardState {

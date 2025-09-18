@@ -1,8 +1,8 @@
 import 'package:fluent_ui/fluent_ui.dart';
-import 'package:miruryoiki/utils/time_utils.dart';
+import 'package:miruryoiki/utils/time.dart';
 
 import '../../manager.dart';
-import '../../utils/color_utils.dart';
+import '../../utils/color.dart';
 import 'wrapper.dart';
 
 class SwitchButton extends StatelessWidget {

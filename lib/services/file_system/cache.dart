@@ -6,7 +6,7 @@ import 'dart:convert';
 import 'package:cached_network_image/cached_network_image.dart';
 
 import '../../utils/logging.dart';
-import '../../utils/path_utils.dart';
+import '../../utils/path.dart';
 
 class ImageCacheService {
   static final ImageCacheService _instance = ImageCacheService._internal();

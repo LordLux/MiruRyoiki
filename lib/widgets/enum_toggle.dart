@@ -3,8 +3,8 @@ import 'package:miruryoiki/widgets/buttons/wrapper.dart';
 import 'package:toggle_switch/toggle_switch.dart' as toggle;
 
 import '../manager.dart';
-import '../utils/color_utils.dart';
-import '../utils/time_utils.dart';
+import '../utils/color.dart';
+import '../utils/time.dart';
 
 class EnumToggle<T> extends StatefulWidget {
   final List<T> enumValues;

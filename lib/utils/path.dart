@@ -49,6 +49,19 @@ class PathString {
   String? get name => PathUtils.getFileName(_path);
   String? get ext => PathUtils.getFileExtension(_path);
 
+  /// Returns the asset path if this path is within the assets directory, otherwise null.
+  /// For example, if the path is "C:/Programs/MiruRyioiki/flutter_assets/assets/icons/anilist/logo.si",
+  /// this returns "assets/icons/anilist/logo.si".
+  String? get asset {
+    if (pathMaybe == null || pathMaybe!.isEmpty) return null;
+    
+    final parts = path.split(ps);
+    final assetsIndex = parts.indexOf('assets');
+    if (assetsIndex == -1) return null;
+    
+    return parts.sublist(assetsIndex).join('/');
+  }
+
   Directory? get directory {
     if (_path == null || _path!.isEmpty) return null;
     return Directory(_path!);

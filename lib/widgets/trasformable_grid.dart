@@ -3,7 +3,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 
-import '../utils/time_utils.dart';
+import '../utils/time.dart';
 
 /// A grid that can display widgets in an infinitely repeating pattern
 /// with transformation options and caching for performance.

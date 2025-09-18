@@ -11,8 +11,8 @@ import 'package:package_info_plus/package_info_plus.dart';
 
 import '../enums.dart';
 import '../manager.dart';
-import 'time_utils.dart';
-import 'path_utils.dart';
+import 'time.dart';
+import 'path.dart';
 
 bool doLogRelease = true; // Set to true to enable logging in release mode
 bool doLogTrace = false; // Set to true to enable trace logging; dotrace

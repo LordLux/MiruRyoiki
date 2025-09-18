@@ -18,9 +18,9 @@ import '../../services/navigation/dialogs.dart';
 import '../../services/navigation/show_info.dart';
 import '../../screens/series.dart';
 import '../../utils/logging.dart';
-import '../../utils/shell_utils.dart';
+import '../../utils/shell.dart';
 import '../dialogs/image_select.dart';
-import 'icons.dart' as icons;
+import '../../utils/icons.dart' as icons;
 
 typedef LastListChange = ({Series series, String previousListName});
 
@@ -65,7 +65,7 @@ class SeriesContextMenuState extends State<SeriesContextMenu> {
         MenuItem(
           label: 'Open in File Explorer',
           shortcutKey: 'e',
-          icon: icons.openFolder,
+          icon: icons.folder_open,
           shortcutModifiers: ShortcutModifiers(control: Platform.isWindows, meta: Platform.isMacOS),
           onClick: (_) => _openFolderLocation(context),
         ),
@@ -110,7 +110,7 @@ class SeriesContextMenuState extends State<SeriesContextMenu> {
           disabled: shouldDisable,
           label: widget.series.watchedPercentage == 1.0 ? 'Mark as Unwatched' : 'Mark as Watched',
           toolTip: widget.series.watchedPercentage == 1.0 ? 'Mark all Episodes from this Series as Unwatched' : 'Mark all Episodes from this Series as Watched',
-          icon: widget.series.watchedPercentage == 1.0 ? icons.unwatch : icons.watch,
+          icon: widget.series.watchedPercentage == 1.0 ? icons.unwatch : icons.check,
           onClick: (_) => widget.series.watchedPercentage == 1.0 ? _markAllAsUnwatched(context) : _markAllAsWatched(context),
         ),
       ],

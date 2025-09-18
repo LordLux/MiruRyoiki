@@ -8,7 +8,7 @@ import 'dart:ffi';
 import 'package:ffi/ffi.dart';
 import 'package:win32/win32.dart';
 
-import 'path_utils.dart';
+import 'path.dart';
 
 const int SEE_MASK_INVOKEIDLIST = 0x0000000C;
 const int SEE_MASK_NO_CONSOLE = 0x00008000;

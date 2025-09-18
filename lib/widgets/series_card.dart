@@ -9,8 +9,8 @@ import '../manager.dart';
 import '../models/series.dart';
 import '../services/navigation/statusbar.dart';
 import '../utils/logging.dart';
-import '../utils/screen_utils.dart';
-import '../utils/time_utils.dart';
+import '../utils/screen.dart';
+import '../utils/time.dart';
 import 'context_menu/series.dart';
 import 'series_card_indicators.dart';
 

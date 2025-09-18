@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:miruryoiki/manager.dart';
-import 'package:miruryoiki/utils/time_utils.dart';
+import 'package:miruryoiki/utils/time.dart';
 
 class AnimatedNavigationIndicator extends StatefulWidget {
   final Widget Function(Color? color) indicatorBuilder;

@@ -9,11 +9,11 @@ import 'package:miruryoiki/models/anilist/anime.dart';
 import 'package:miruryoiki/models/anilist/mapping.dart';
 import 'package:miruryoiki/services/file_system/cache.dart';
 import 'package:miruryoiki/utils/logging.dart';
-import 'package:miruryoiki/utils/path_utils.dart';
-import 'package:miruryoiki/utils/time_utils.dart';
+import 'package:miruryoiki/utils/path.dart';
+import 'package:miruryoiki/utils/time.dart';
 import 'package:miruryoiki/enums.dart';
 import 'package:miruryoiki/models/series.dart';
-import 'package:miruryoiki/utils/color_utils.dart';
+import 'package:miruryoiki/utils/color.dart';
 
 Future<void> main() async {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -64,7 +64,7 @@ Future<void> _calculateDominantColor(Series series, bool isPoster) async {
   final wasChanges = results.isNotEmpty ? results.entries.first.value.entries.last.value : false;
   logMulti([
     ['Series: $seriesName, new color: '],
-    [' #$colorString ', determineTextColor(color), color],
+    [' #$colorString ', getTextColor(color), color],
     [' was changed: $wasChanges']
   ]);
 }

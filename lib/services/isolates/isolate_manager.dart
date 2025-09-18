@@ -11,9 +11,9 @@ import '../../models/metadata.dart';
 import '../../models/series.dart';
 import '../../enums.dart';
 import '../../models/anilist/anime.dart';
-import '../../utils/color_utils.dart';
+import '../../utils/color.dart';
 import '../../utils/logging.dart';
-import '../../utils/path_utils.dart';
+import '../../utils/path.dart';
 import '../../utils/image_color_extractor.dart';
 
 class _IsolateProgressUpdate {
@@ -171,7 +171,7 @@ class IsolateManager {
             final color = Color(int.parse('0xFF$dominantColor'));
             logMulti([
               ['Processed: $seriesName, Dominant Color: '],
-              [' #$dominantColor ‎', determineTextColor(color), color],
+              [' #$dominantColor ‎', getTextColor(color), color],
             ]);
           }
         }

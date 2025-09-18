@@ -2,7 +2,7 @@ import 'dart:io';
 import 'package:collection/collection.dart';
 import 'package:path/path.dart' as p;
 import '../../utils/logging.dart';
-import '../../utils/path_utils.dart';
+import '../../utils/path.dart';
 
 /// Type of formatting action to perform
 enum ActionType {

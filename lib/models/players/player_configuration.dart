@@ -1,4 +1,5 @@
 import 'dart:convert';
+import '../../utils/icons.dart';
 
 class PlayerConfiguration {
   final String name;
@@ -66,7 +67,7 @@ class PlayerConfiguration {
     host: 'localhost',
     port: 8080,
     password: '',
-    iconPath: 'assets/icons/vlc.si',
+    iconPath: vlc,
     endpoints: {
       'status': '/requests/status.json',
       'command': '/requests/status.json',
@@ -94,7 +95,7 @@ class PlayerConfiguration {
     type: 'http',
     host: 'localhost',
     port: 13579,
-    iconPath: 'assets/icons/mpchc.si',
+    iconPath: mpcHc,
     endpoints: {
       'status': '/variables.html',
       'command': '/command.html',

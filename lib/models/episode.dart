@@ -2,7 +2,7 @@ import 'dart:io';
 
 
 import '../services/isolates/thumbnail_manager.dart';
-import '../utils/path_utils.dart';
+import '../utils/path.dart';
 import 'metadata.dart';
 import 'mkv_metadata.dart';
 
@@ -189,7 +189,7 @@ class Episode {
       id: id ?? this.id,
       path: path ?? this.path,
       name: name ?? this.name,
-      episodeNumber: episodeNumber ?? this._episodeNumber,
+      episodeNumber: episodeNumber ?? _episodeNumber,
       thumbnailPath: thumbnailPath ?? this.thumbnailPath,
       watched: watched ?? this.watched,
       progress: progress ?? this.progress,

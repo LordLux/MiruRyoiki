@@ -13,8 +13,8 @@ import '../../models/series.dart';
 import '../../services/anilist/queries/anilist_service.dart';
 import '../../services/library/library_provider.dart';
 import '../../services/navigation/dialogs.dart';
-import '../../utils/color_utils.dart';
-import '../../utils/time_utils.dart';
+import '../../utils/color.dart';
+import '../../utils/time.dart';
 import '../../widgets/buttons/wrapper.dart';
 import '../buttons/rotating_loading_button.dart';
 
@@ -244,7 +244,7 @@ class NotificationsContentState extends State<_NotificationsContent> {
                         child: Text(
                           '$_unreadCount',
                           style: TextStyle(
-                            color: determineTextColor(Manager.currentDominantColor ?? Manager.accentColor, darkColor: lighten(Colors.black, 0.2)),
+                            color: getTextColor(Manager.currentDominantColor ?? Manager.accentColor, darkColor: lighten(Colors.black, 0.2)),
                             fontSize: 11 * Manager.fontSizeMultiplier,
                             fontWeight: FontWeight.w900,
                           ),

@@ -1,6 +1,6 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:provider/provider.dart';
-import '../../utils/screen_utils.dart';
+import '../../utils/screen.dart';
 import 'navigation.dart';
 
 class NavigationHistoryDebug extends StatelessWidget {

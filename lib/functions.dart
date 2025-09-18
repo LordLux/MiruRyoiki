@@ -10,7 +10,7 @@ import 'package:provider/provider.dart';
 
 import 'services/navigation/show_info.dart';
 import 'utils/logging.dart';
-import 'utils/path_utils.dart';
+import 'utils/path.dart';
 
 void copyToClipboard(String text) {
   Clipboard.setData(ClipboardData(text: text));

@@ -6,7 +6,7 @@ import 'package:miruryoiki/database/converters.dart';
 import '../models/metadata.dart';
 import '../models/mkv_metadata.dart';
 import '../models/notification.dart';
-import '../utils/path_utils.dart';
+import '../utils/path.dart';
 import 'tables.dart';
 import 'daos/series_dao.dart';
 import 'daos/episodes_dao.dart';
@@ -92,7 +92,9 @@ class AppDatabase extends _$AppDatabase {
 LazyDatabase _openConnection() {
   return LazyDatabase(() async {
     final saveDirPath = PathString(miruRyoikiSaveDirectory.path);
-    final file = File('${saveDirPath.path}${Platform.pathSeparator}miruryoiki.db');
+    final file = File('${saveDirPath.path}${Platform.pathSeparator}$dbFileName');
     return NativeDatabase.createInBackground(file);
   });
 }
+
+const String dbFileName = 'miruryoiki.db';

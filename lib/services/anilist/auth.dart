@@ -7,7 +7,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../utils/logging.dart';
-import '../../utils/time_utils.dart';
+import '../../utils/time.dart';
 
 const String mRyoikiAnilistScheme = 'mryoiki';
 const String redirectUrl = '$mRyoikiAnilistScheme://auth-callback';

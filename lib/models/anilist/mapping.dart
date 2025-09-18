@@ -1,6 +1,6 @@
 import 'dart:convert';
 
-import '../../utils/path_utils.dart';
+import '../../utils/path.dart';
 import 'anime.dart';
 
 class AnilistMapping {

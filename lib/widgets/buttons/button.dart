@@ -1,14 +1,14 @@
 import 'package:fluent_ui/fluent_ui.dart';
-import 'package:miruryoiki/utils/time_utils.dart';
+import 'package:miruryoiki/utils/time.dart';
 
 import '../../manager.dart';
-import '../../utils/color_utils.dart';
-import '../../utils/text_utils.dart';
+import '../../utils/color.dart';
+import '../../utils/text.dart';
 import 'wrapper.dart';
 
 class StandardButton extends StatelessWidget {
   final Widget label;
-  final VoidCallback onPressed;
+  final VoidCallback? onPressed;
   final bool isButtonDisabled;
   final bool isSmall;
   final bool isWide;
@@ -35,6 +35,45 @@ class StandardButton extends StatelessWidget {
     this.tooltipWaitDuration,
     this.padding,
   });
+  
+  factory StandardButton.icon({
+    required Widget icon,
+    required Widget label,
+    required VoidCallback? onPressed,
+    bool isButtonDisabled = false,
+    bool isSmall = true,
+    bool isWide = true,
+    bool isFilled = false,
+    bool isLoading = false,
+    String? tooltip,
+    Widget? tooltipWidget,
+    bool expand = false,
+    Duration? tooltipWaitDuration,
+    EdgeInsets? padding,
+    TextStyle? textStyle,
+  }) {
+    return StandardButton(
+      label: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          icon,
+          const SizedBox(width: 8),
+          label,
+        ],
+      ),
+      onPressed: onPressed,
+      isButtonDisabled: isButtonDisabled,
+      isSmall: isSmall,
+      isWide: isWide,
+      isFilled: isFilled,
+      isLoading: isLoading,
+      tooltip: tooltip,
+      tooltipWidget: tooltipWidget,
+      expand: expand,
+      tooltipWaitDuration: tooltipWaitDuration,
+      padding: padding,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {

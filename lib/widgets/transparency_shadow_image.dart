@@ -1,6 +1,6 @@
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
-import 'package:miruryoiki/utils/screen_utils.dart';
+import 'package:miruryoiki/utils/screen.dart';
 
 /// A widget that displays an image with a shadow effect considering the image's transparency and shape.
 class ShadowedImage extends StatelessWidget {

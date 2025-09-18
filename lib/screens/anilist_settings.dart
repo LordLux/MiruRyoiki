@@ -1,5 +1,5 @@
 import 'package:fluent_ui/fluent_ui.dart';
-import 'package:miruryoiki/utils/color_utils.dart';
+import 'package:miruryoiki/utils/color.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
@@ -7,7 +7,7 @@ import '../services/anilist/provider/anilist_provider.dart';
 import '../services/library/library_provider.dart';
 import '../manager.dart';
 import '../utils/logging.dart';
-import '../utils/screen_utils.dart';
+import '../utils/screen.dart';
 import '../widgets/buttons/button.dart';
 import '../widgets/buttons/loading_button.dart';
 
@@ -220,7 +220,7 @@ Widget Chip({
     child: Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        text(determineTextColor(Manager.currentDominantColor ?? Colors.black)),
+        text(getTextColor(Manager.currentDominantColor ?? Colors.black)),
         if (trailing != null) ...[
           const SizedBox(width: 8),
           trailing,

@@ -3,7 +3,7 @@
 import 'dart:io';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/material.dart' show Icons;
-import 'package:miruryoiki/utils/time_utils.dart';
+import 'package:miruryoiki/utils/time.dart';
 import 'package:miruryoiki/widgets/series_image.dart';
 
 import '../../main.dart';
@@ -15,8 +15,8 @@ import '../../services/file_system/cache.dart';
 import '../../services/navigation/dialogs.dart';
 import '../../services/navigation/shortcuts.dart';
 import '../../services/navigation/show_info.dart';
-import '../../utils/color_utils.dart';
-import '../../utils/path_utils.dart';
+import '../../utils/color.dart';
+import '../../utils/path.dart';
 import '../buttons/wrapper.dart';
 import 'search_panel.dart';
 

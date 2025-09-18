@@ -13,7 +13,7 @@ import 'services/episode_navigation/episode_navigator.dart';
 import 'services/navigation/shortcuts.dart';
 import 'settings.dart';
 import 'theme.dart';
-import 'utils/screen_utils.dart';
+import 'utils/screen.dart';
 
 class Manager {
   static void init() async {

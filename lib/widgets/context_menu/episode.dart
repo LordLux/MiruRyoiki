@@ -13,8 +13,8 @@ import '../../models/series.dart';
 import '../../services/library/library_provider.dart';
 import '../../services/lock_manager.dart';
 import '../../services/navigation/show_info.dart';
-import '../../utils/shell_utils.dart';
-import 'icons.dart' as icons;
+import '../../utils/shell.dart';
+import '../../utils/icons.dart' as icons;
 
 class EpisodeContextMenu extends StatefulWidget {
   final Episode episode;
@@ -67,7 +67,7 @@ class EpisodeContextMenuState extends State<EpisodeContextMenu> {
         MenuItem(
           label: 'Open Folder Location',
           shortcutKey: 'f',
-          icon: icons.openFolder,
+          icon: icons.folder_open,
           shortcutModifiers: ShortcutModifiers(control: Platform.isWindows, meta: Platform.isMacOS),
           onClick: (_) => _openFolderLocation(context),
         ),
@@ -82,7 +82,7 @@ class EpisodeContextMenuState extends State<EpisodeContextMenu> {
         MenuItem(
           label: episode.watched ? 'Unmark as Watched' : 'Mark as Watched',
           shortcutKey: 'w',
-          icon: episode.watched ? icons.unwatch : icons.watch,
+          icon: episode.watched ? icons.unwatch : icons.check,
           onClick: (_) => _toggleWatched(context),
         ),
       ],

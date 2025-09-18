@@ -5,7 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 
 import '../../utils/logging.dart';
-import '../../utils/time_utils.dart' show now;
+import '../../utils/time.dart' show now;
 
 /// Service to monitor network connectivity status with real-time updates
 class ConnectivityService extends ChangeNotifier {

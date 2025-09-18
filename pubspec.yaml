@@ -97,24 +97,42 @@ flutter:
 
   assets:
     - .env
-    - assets/
-  # anilist:
-    - assets/anilist/
-    - assets/anilist/logo.png
-    - assets/anilist/logo.si
-    - assets/anilist/offline.si
-    - assets/anilist/offline_logo.si
     
-  # system icons:
-    - assets/system/
+  ### Anilist:
+    - assets/icons/anilist/logo.png
+    - assets/icons/anilist/logo.si
+    - assets/icons/anilist/offline.si
+    - assets/icons/anilist/offline_logo.si
+    
+  ### System Icons:
     - assets/system/icon.ico
     - assets/system/icon.png
-    # cursors:
-    - assets/system/grab.png
-    - assets/system/grabbing.png
     
-  # context menu icons: TODO
-    - assets/icons/
+    # Cursors:
+    - assets/system/cursors/grab.png
+    - assets/system/cursors/grabbing.png
+    
+    # Context Menu:
+    - assets/system/context/anilist.png
+    - assets/system/context/check.png
+    - assets/system/context/check_all.png
+    - assets/system/context/copy.ico
+    - assets/system/context/folder_info.ico
+    - assets/system/context/folder_open.ico
+    - assets/system/context/hide.ico
+    - assets/system/context/list.png
+    - assets/system/context/play.png
+    - assets/system/context/series.ico
+    - assets/system/context/unhide.ico
+    - assets/system/context/unwatch.ico
+    - assets/system/context/video_info.ico
+    - assets/system/context/watch.png
+    - assets/system/context/watch_all.ico
+    
+    # Video Players:
+    - assets/system/players/
+    - assets/system/players/vlc.si
+    - assets/system/players/mpchc.si
 
 
   # fonts:

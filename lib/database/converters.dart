@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import '../models/metadata.dart';
 import '../models/mkv_metadata.dart';
 import '../models/notification.dart';
-import '../utils/path_utils.dart';
+import '../utils/path.dart';
 import '../enums.dart'; // per ImageSource
 
 /// -------- String <-> PathString --------

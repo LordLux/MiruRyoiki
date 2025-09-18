@@ -4,7 +4,7 @@ import '../../models/mkv_metadata.dart';
 import '../../utils/logging.dart';
 import 'dart:io';
 
-import '../../utils/path_utils.dart';
+import '../../utils/path.dart';
 
 class MediaInfo {
   static Future<MkvMetadata?> getMkvMetadata(PathString filepath) async {

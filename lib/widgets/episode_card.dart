@@ -10,9 +10,9 @@ import '../models/episode.dart';
 import '../models/series.dart';
 import '../services/library/library_provider.dart';
 import '../utils/logging.dart';
-import '../utils/path_utils.dart';
-import '../utils/screen_utils.dart';
-import '../utils/time_utils.dart';
+import '../utils/path.dart';
+import '../utils/screen.dart';
+import '../utils/time.dart';
 import 'context_menu/episode.dart';
 import 'watched_badge.dart';
 

@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:math' as math;
 import 'package:fluent_ui/fluent_ui.dart';
-import 'package:miruryoiki/enums.dart';
 import 'package:miruryoiki/widgets/buttons/wrapper.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
@@ -13,11 +12,11 @@ import '../models/anilist/anime.dart';
 import '../models/notification.dart';
 import '../services/anilist/provider/anilist_provider.dart';
 import '../services/anilist/queries/anilist_service.dart';
-import '../utils/color_utils.dart';
+import '../utils/color.dart';
 import '../utils/logging.dart';
-import '../utils/path_utils.dart';
-import '../utils/screen_utils.dart';
-import '../utils/time_utils.dart';
+import '../utils/path.dart';
+import '../utils/screen.dart';
+import '../utils/time.dart';
 import '../widgets/page/header_widget.dart';
 import '../widgets/page/page.dart';
 import '../manager.dart';
@@ -45,7 +44,6 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
   double _spacerHeight = 0.0;
   int _firstUpcomingItemIndex = -1;
   int _lastItemIndex = -1;
-  List<Object> _flattenedList = [];
 
   // Cache for release data to avoid repeated calculations
   Map<DateTime, List<CalendarEntry>> _calendarCache = {};
@@ -554,7 +552,6 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
                   final entriesForDay = _calendarCache[dateKey] ?? [];
                   final isSelected = _isSameDay(date, _selectedDate);
                   final isToday = _isSameDay(date, now);
-                  if (isToday) print('Building cell for ${dateKey.pretty()} isToday=$isToday');
 
                   return _buildCalendarDay(date, entriesForDay, isSelected, isToday);
                 },
@@ -787,7 +784,6 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
 
     _firstUpcomingItemIndex = flattenedList.indexWhere((item) => item is EpisodeCalendarEntry && item.episodeInfo.airingDate.isAfter(now));
     _lastItemIndex = flattenedList.length - 1;
-    _flattenedList = flattenedList;
     final isToday = _selectedDate.year == now.year && _selectedDate.month == now.month && _selectedDate.day == now.day;
 
     // Check if we should show the "Show older notifications" button
@@ -1030,11 +1026,12 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
 
   String _getNotificationTitle(AnilistNotification notification, Series? series) {
     return switch (notification) {
+      // TODO crossreference with seriesId to find entry type (TV/ONA/OVA or MOVIE) and adjust wording accordingly
       AiringNotification airing => 'Episode ${airing.episode} - ${series?.displayTitle ?? airing.media?.title ?? 'Unknown anime'}',
       MediaDataChangeNotification dataChange => '${series?.displayTitle ?? dataChange.media?.title ?? 'Unknown anime'} was updated',
       MediaMergeNotification merge => '${series?.displayTitle ?? merge.media?.title ?? 'Unknown anime'} was merged',
       MediaDeletionNotification deletion => '${deletion.deletedMediaTitle ?? 'Anime'} was deleted',
-      _ => 'Unknown notification', // fallback
+      _ => 'Unknown notification',
     };
   }
 

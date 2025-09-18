@@ -1,7 +1,7 @@
 
 import 'package:fluent_ui/fluent_ui.dart';
 
-import '../utils/screen_utils.dart';
+import '../utils/screen.dart';
 
 class AcrylicHeader extends StatelessWidget {
   final Widget child;

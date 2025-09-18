@@ -1,6 +1,6 @@
 import 'package:fluent_ui/fluent_ui.dart';
-import 'package:miruryoiki/utils/screen_utils.dart';
-import 'package:miruryoiki/utils/time_utils.dart';
+import 'package:miruryoiki/utils/screen.dart';
+import 'package:miruryoiki/utils/time.dart';
 
 import '../manager.dart';
 import '../models/series.dart';

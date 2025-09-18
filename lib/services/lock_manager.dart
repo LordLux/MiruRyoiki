@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 
 import '../utils/logging.dart';
-import '../utils/time_utils.dart';
+import '../utils/time.dart';
 
 /// Operation types that can be locked
 enum OperationType {

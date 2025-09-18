@@ -8,8 +8,8 @@ import '../../services/anilist/provider/anilist_provider.dart';
 import '../../services/file_system/cache.dart';
 import '../../services/navigation/dialogs.dart';
 import '../../services/navigation/shortcuts.dart';
-import '../../utils/screen_utils.dart';
-import '../../utils/time_utils.dart';
+import '../../utils/screen.dart';
+import '../../utils/time.dart';
 import 'link_anilist_multi.dart';
 
 class AnilistSearchPanel extends StatefulWidget {

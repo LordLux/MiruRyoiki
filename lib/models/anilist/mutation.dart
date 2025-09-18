@@ -1,5 +1,5 @@
 // Define a class for offline mutations
-import '../../utils/time_utils.dart';
+import '../../utils/time.dart';
 
 class AnilistMutation {
   final String type; // 'progress', 'status', 'score', etc.

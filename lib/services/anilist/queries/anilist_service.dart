@@ -12,8 +12,8 @@ import '../../../models/notification.dart';
 import '../../../database/database.dart';
 import '../../../database/daos/notifications_dao.dart';
 import '../../../utils/logging.dart';
-import '../../../utils/retry_utils.dart';
-import '../../../utils/time_utils.dart';
+import '../../../utils/retry.dart';
+import '../../../utils/time.dart';
 import '../auth.dart';
 
 part 'initialization.dart';

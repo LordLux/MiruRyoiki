@@ -6,7 +6,7 @@ import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
 import 'package:video_data_utils/video_data_utils.dart';
 
-import '../../utils/path_utils.dart';
+import '../../utils/path.dart';
 import '../../utils/logging.dart';
 
 /// Manager for handling thumbnail extraction in a controlled manner.

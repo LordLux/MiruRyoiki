@@ -8,9 +8,9 @@ import '../models/episode.dart';
 import '../models/series.dart';
 import '../services/library/library_provider.dart';
 import '../services/players/player_manager.dart';
-import '../utils/path_utils.dart';
-import '../utils/screen_utils.dart';
-import '../utils/time_utils.dart';
+import '../utils/path.dart';
+import '../utils/screen.dart';
+import '../utils/time.dart';
 import 'buttons/button.dart';
 import 'video_duration_bar.dart';
 
@@ -30,8 +30,16 @@ class _PlayerState extends State<Player> with TickerProviderStateMixin {
 
   PlayerManager? get _playerManager => Provider.of<Library>(context, listen: false).playerManager;
 
+  bool get _hasCurrentMedia {
+    final status = _playerManager?.lastStatus;
+    return status != null &&
+           status.filePath.isNotEmpty &&
+           status.totalDuration.inSeconds > 0;
+  }
+
   Series? _series;
   Episode? get _currentEpisode {
+    if (!_hasCurrentMedia) return null;
     _series = Provider.of<Library>(context, listen: false).getSeriesByPath(PathString(_playerManager?.lastStatus?.filePath ?? ''));
     return _series?.getEpisodeByPath(PathString(_playerManager?.lastStatus?.filePath ?? ''));
   }
@@ -85,7 +93,7 @@ class _PlayerState extends State<Player> with TickerProviderStateMixin {
   void _startPeriodicUpdate() {
     _updateTimer?.cancel();
     _updateTimer = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (mounted && _playerManager?.lastStatus != null) {
+      if (mounted && _hasCurrentMedia) {
         _updateExpandedState();
         setState(() {});
       }
@@ -104,10 +112,8 @@ class _PlayerState extends State<Player> with TickerProviderStateMixin {
   }
 
   void _updateExpandedState() {
-    // Expand when there's any media loaded (playing or paused)
-    final hasMedia = _playerManager?.lastStatus?.filePath.isNotEmpty == true; 
-
-    if (_expanded != hasMedia) _expanded = hasMedia;
+    // Only expand if there's actually current media loaded, not old cached data
+    if (_expanded != _hasCurrentMedia) _expanded = _hasCurrentMedia;
   }
 
   @override
@@ -169,42 +175,56 @@ class _PlayerState extends State<Player> with TickerProviderStateMixin {
                                   children: [
                                     _buildControlButton(
                                       Icons.skip_previous,
-                                      () async {
-                                        final lib = Provider.of<Library>(context, listen: false);
-                                        await lib.previousCurrentVideo();
-                                        setState(() {});
-                                      },
+                                      _hasCurrentMedia 
+                                        ? () {
+                                            final lib = Provider.of<Library>(context, listen: false);
+                                            lib.previousCurrentVideo().then((_) {
+                                              if (mounted) setState(() {});
+                                            });
+                                          }
+                                        : () {}, // Empty callback when no media
                                     ),
                                     const SizedBox(width: 8),
                                     // Play/Pause button
                                     _buildControlButton(
-                                      _playerManager?.lastStatus?.isPlaying == true ? Icons.pause : Icons.play_arrow,
-                                      () async {
-                                        final lib = Provider.of<Library>(context, listen: false);
-                                        await lib.togglePlayPauseCurrentPlayback();
-                                        setState(() {});
-                                      },
+                                      _hasCurrentMedia && _playerManager?.lastStatus?.isPlaying == true 
+                                        ? Icons.pause : Icons.play_arrow,
+                                      _hasCurrentMedia 
+                                        ? () {
+                                            final lib = Provider.of<Library>(context, listen: false);
+                                            lib.togglePlayPauseCurrentPlayback().then((_) {
+                                              if (mounted) setState(() {});
+                                            });
+                                          }
+                                        : () {}, // Empty callback when no media
                                     ),
                                     const SizedBox(width: 8),
                                     // Next button
                                     _buildControlButton(
                                       Icons.skip_next,
-                                      () async {
-                                        final lib = Provider.of<Library>(context, listen: false);
-                                        await lib.nextCurrentVideo();
-                                        setState(() {});
-                                      },
+                                      _hasCurrentMedia 
+                                        ? () {
+                                            final lib = Provider.of<Library>(context, listen: false);
+                                            lib.nextCurrentVideo().then((_) {
+                                              if (mounted) setState(() {});
+                                            });
+                                          }
+                                        : () {}, // Empty callback when no media
                                     ),
                                   ],
                                 ),
                                 // Mute button
                                 _buildControlButton(
-                                  library.playerManager?.lastStatus?.isMuted == true ? Icons.volume_off : Icons.volume_up,
-                                  () async {
-                                    final lib = Provider.of<Library>(context, listen: false);
-                                    await lib.toggleMuteCurrentPlayback();
-                                    setState(() {});
-                                  },
+                                  _hasCurrentMedia && library.playerManager?.lastStatus?.isMuted == true 
+                                    ? Icons.volume_off : Icons.volume_up,
+                                  _hasCurrentMedia 
+                                    ? () {
+                                        final lib = Provider.of<Library>(context, listen: false);
+                                        lib.toggleMuteCurrentPlayback().then((_) {
+                                          if (mounted) setState(() {});
+                                        });
+                                      }
+                                    : () {}, // Empty callback when no media
                                 ),
                               ],
                             ),
@@ -227,12 +247,14 @@ class _PlayerState extends State<Player> with TickerProviderStateMixin {
                                 children: [
                                   // Episode title or file path
                                   Text(
-                                    _currentEpisode?.name ?? _playerManager?.lastStatus?.filePath ?? '',
+                                    _hasCurrentMedia 
+                                      ? (_currentEpisode?.name ?? _playerManager?.lastStatus?.filePath ?? '')
+                                      : '',
                                     style: const TextStyle(fontSize: 13, color: _whiteColor),
                                     overflow: TextOverflow.ellipsis,
                                   ),
                                   // Series title if available
-                                  if (_series?.displayTitle != null)
+                                  if (_hasCurrentMedia && _series?.displayTitle != null)
                                     Text(
                                       _series!.displayTitle,
                                       style: const TextStyle(fontSize: 9, color: _grayColor),
@@ -243,7 +265,7 @@ class _PlayerState extends State<Player> with TickerProviderStateMixin {
 
                                   // Video duration bar with seek functionality
                                   VideoDurationBar(
-                                    status: library.playerManager?.lastStatus,
+                                    status: _hasCurrentMedia ? library.playerManager?.lastStatus : null,
                                     onSeek: (seconds) async {
                                       final lib = Provider.of<Library>(context, listen: false);
                                       await lib.gotoCurrentVideo(seconds);

@@ -3,7 +3,7 @@ import 'package:flutter/material.dart' show Icons;
 import 'package:flutter_custom_cursor/flutter_custom_cursor.dart';
 
 import '../manager.dart';
-import '../utils/time_utils.dart';
+import '../utils/time.dart';
 import 'cursors.dart';
 
 class AnimatedReorderableTile extends StatefulWidget {

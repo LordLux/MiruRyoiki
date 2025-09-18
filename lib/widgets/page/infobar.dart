@@ -5,9 +5,9 @@ import 'package:smooth_scroll_multiplatform/smooth_scroll_multiplatform.dart';
 
 import '../../manager.dart';
 import '../../services/navigation/shortcuts.dart';
-import '../../utils/image_utils.dart';
-import '../../utils/screen_utils.dart';
-import '../../utils/time_utils.dart';
+import '../../utils/image.dart';
+import '../../utils/screen.dart';
+import '../../utils/time.dart';
 
 class MiruRyoikiInfobar extends StatefulWidget {
   final Future<ImageProvider<Object>?>? getPosterImage;

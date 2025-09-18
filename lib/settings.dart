@@ -7,7 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'enums.dart';
 import 'manager.dart';
 import 'theme.dart';
-import 'utils/time_utils.dart';
+import 'utils/time.dart';
 
 class SettingsManager extends ChangeNotifier {
   static final SettingsManager _instance = SettingsManager._internal();
