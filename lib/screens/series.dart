@@ -462,13 +462,6 @@ class SeriesScreenState extends State<SeriesScreen> {
             child: parser.parse(series.description!, selectable: true, selectionColor: series.dominantColor),
           ),
         ],
-        Text(
-          'Episodes: ${series.totalEpisodes} | Watched: ${series.watchedEpisodes} (${(series.watchedPercentage * 100).round()}%)',
-          style: const TextStyle(
-            fontSize: 16,
-            color: Colors.white,
-          ),
-        )
       ],
     );
   }
