@@ -29,7 +29,7 @@ class FadingEdgeScrollView extends StatefulWidget {
     this.gradientColors,
     this.gradientStops,
     this.debug = false,
-    this.animationDuration = const Duration(milliseconds: 300),
+    this.animationDuration = const Duration(milliseconds: 200),
   });
 
   @override

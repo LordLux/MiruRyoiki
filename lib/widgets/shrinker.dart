@@ -50,7 +50,7 @@ class Shrinker extends StatefulWidget {
     required this.minHeight,
     required this.maxHeight,
     this.controller,
-    this.animationDuration = const Duration(milliseconds: 500),
+    this.animationDuration = const Duration(milliseconds: 400),
     this.animationCurve = Curves.easeInOutQuad,
     this.readMoreButton,
     this.readLessButton,
@@ -157,6 +157,8 @@ class _ShrinkerState extends State<Shrinker> with SingleTickerProviderStateMixin
           child: StandardButton(
             isFilled: readMore,
             isSmall: true,
+            filledColor: widget.buttonBackgroundColor,
+            hoverFillColor: widget.buttonBackgroundColor?.toAccentColor().light,
             onPressed: () => readMore ? _controller.expand() : _controller.collapse(),
             label: Text(readMore ? 'Read More' : 'Read Less', style: Manager.miniBodyStyle),
           ),
@@ -182,6 +184,8 @@ class _ShrinkerState extends State<Shrinker> with SingleTickerProviderStateMixin
       animation: _heightAnimation,
       builder: (context, child) {
         final isExpanded = _controller.isExpanded;
+        // Use the minimum of maxHeight and actual content height to prevent blank space
+        final expandedHeight = _contentHeight > 0 ? _contentHeight.clamp(widget.minHeight, widget.maxHeight) : widget.maxHeight;
 
         return Stack(
           children: [
@@ -189,7 +193,7 @@ class _ShrinkerState extends State<Shrinker> with SingleTickerProviderStateMixin
             AnimatedContainer(
               duration: widget.animationDuration,
               curve: widget.animationCurve,
-              height: isExpanded ? widget.maxHeight : widget.minHeight,
+              height: isExpanded ? expandedHeight : widget.minHeight,
               child: FadingEdgeScrollView(
                 gradientColors: [
                   (widget.buttonBackgroundColor ?? Theme.of(context).scaffoldBackgroundColor).withOpacity(1.0),

@@ -1161,16 +1161,19 @@ Future<void> _registerWindowsUrlScheme(String scheme) async {
   }
 }
 
+// TODO make shrinker's maxSize to be max the content's max height
+// TODO only one player at a time
 // TODO move hidden series switches to settings
-// TODO add ctrl + tab navigation
-// TODO cache anime info
 // TODO view settings to choose what to show on homepage
-
+// TODO cache anime info
 // TODO cache Anilist lists to be able to work offline
-// TODO anilist grouping for 'About to Watch'
+// TODO make it so custom lists display their items instead of being empty (add toggle to show/hide custom lists in library)
+
+// TODO add ctrl + tab navigation
 // TODO Local 'Unlinked' auto connect to Anilist 'About to Watch' (allow custom name to search for)
-// TODO create autolinker
-// TODO change FORMATTER format for specials (allow specials inside season, OVA/ONAs in separate folder if not alone)
 // TODO fix back mouse button navigation
 // TODO understand what makes 'scan library' button smooth on rescale
 // TODO add group traversal policies to app
+// TODO detect custom players
+// TODO create autolinker
+// TODO change FORMATTER format for specials (allow specials inside season, OVA/ONAs in separate folder if not alone)
