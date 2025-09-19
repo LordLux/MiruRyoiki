@@ -31,6 +31,7 @@ import '../widgets/page/header_widget.dart';
 import '../widgets/page/infobar.dart';
 import '../widgets/page/page.dart';
 import '../widgets/shift_clickable_hover.dart';
+import '../widgets/shrinker.dart';
 import '../widgets/simple_html_parser.dart';
 import '../widgets/transparency_shadow_image.dart';
 import 'anilist_settings.dart';
@@ -51,6 +52,8 @@ class SeriesScreen extends StatefulWidget {
 
 class SeriesScreenState extends State<SeriesScreen> {
   late final SimpleHtmlParser parser;
+
+  final ShrinkerController _descriptionController = ShrinkerController();
 
   bool posterChangeDisabled = false;
   bool bannerChangeDisabled = false;
@@ -274,6 +277,8 @@ class SeriesScreenState extends State<SeriesScreen> {
             infobar: (_) => _buildInfoBar(context, series),
             content: _buildEpisodesList(context),
             backgroundColor: dominantColor,
+            onHeaderCollapse: () => _descriptionController.collapse(),
+            
           ),
         );
       },
@@ -447,6 +452,16 @@ class SeriesScreenState extends State<SeriesScreen> {
       titleLeftAligned: false,
       title: (style, constraints) => Text(series.displayTitle, style: style),
       children: [
+        // Add description if available
+        if (series.description != null) ...[
+          VDiv(8),
+          Shrinker(
+            maxHeight: 150,
+            minHeight: 45,
+            controller: _descriptionController,
+            child: parser.parse(series.description!, selectable: true, selectionColor: series.dominantColor),
+          ),
+        ],
         Text(
           'Episodes: ${series.totalEpisodes} | Watched: ${series.watchedEpisodes} (${(series.watchedPercentage * 100).round()}%)',
           style: const TextStyle(
@@ -646,17 +661,6 @@ class SeriesScreenState extends State<SeriesScreen> {
               },
             ),
           ),
-          VDiv(16),
-        ],
-
-        // Add description if available
-        if (series.description != null) ...[
-          parser.parse(series.description!, selectable: true, selectionColor: series.dominantColor),
-          // SelectableText(
-          //   series.description!,
-          //   maxLines: 10,
-          //   cursorColor: Manager.pastelDominantColor,
-          // ),
           VDiv(16),
         ],
 

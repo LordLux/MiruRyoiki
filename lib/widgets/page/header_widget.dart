@@ -91,15 +91,15 @@ class _HeaderWidgetState extends State<HeaderWidget> {
 
               return result;
             }(),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.start,
-              children: [
-                // Series title
-                SizedBox(
-                  width: math.min(ScreenUtils.kMaxContentWidth, constraints.maxWidth - 16 /*right padding*/) - (widget.titleLeftAligned ? 0 : ScreenUtils.kInfoBarWidth) - 32,
-                  child: widget.title(
+            child: SizedBox(
+              width: math.min(ScreenUtils.kMaxContentWidth, constraints.maxWidth - 16 /*right padding*/) - (widget.titleLeftAligned ? 0 : ScreenUtils.kInfoBarWidth) - 32,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.start,
+                children: [
+                  // Series title
+                  widget.title(
                     Manager.bodyLargeStyle.copyWith(
                       fontSize: 32 * Manager.fontSizeMultiplier,
                       fontWeight: FontWeight.bold,
@@ -107,10 +107,10 @@ class _HeaderWidgetState extends State<HeaderWidget> {
                     ),
                     constraints,
                   ),
-                ),
-                ...widget.children,
-                if (widget.children.isNotEmpty) VDiv(8),
-              ],
+                  ...widget.children,
+                  if (widget.children.isNotEmpty) VDiv(8),
+                ],
+              ),
             ),
           ),
         ],

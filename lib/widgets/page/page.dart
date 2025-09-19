@@ -20,6 +20,8 @@ class MiruRyoikiTemplatePage extends StatefulWidget {
   final double? headerMinHeight;
   final bool scrollableContent;
   final bool contentExtraHeaderPadding;
+  final VoidCallback? onHeaderCollapse;
+  final VoidCallback? onHeaderExpand;
 
   const MiruRyoikiTemplatePage({
     super.key,
@@ -33,6 +35,8 @@ class MiruRyoikiTemplatePage extends StatefulWidget {
     this.headerMinHeight = ScreenUtils.kMinHeaderHeight,
     this.scrollableContent = true,
     this.contentExtraHeaderPadding = false,
+    this.onHeaderCollapse,
+    this.onHeaderExpand,
   });
 
   @override
@@ -58,7 +62,14 @@ class _MiruRyoikiTemplatePageState extends State<MiruRyoikiTemplatePage> {
     if (_maxHeaderHeight != _minHeaderHeight && _scrollController != null) {
       _scrollController!.addListener(() {
         final offset = _scrollController!.offset;
-        final double newHeight = offset > 0 ? _minHeaderHeight : _maxHeaderHeight;
+        final double newHeight;
+        if (offset > 0) {
+          newHeight = _minHeaderHeight;
+          widget.onHeaderCollapse?.call();
+        } else {
+          newHeight = _maxHeaderHeight;
+          widget.onHeaderExpand?.call();
+        }
         if (mounted) setState(() => _headerHeight = newHeight);
       });
     }
@@ -104,7 +115,6 @@ class _MiruRyoikiTemplatePageState extends State<MiruRyoikiTemplatePage> {
                         width: ScreenUtils.kInfoBarWidth,
                         child: widget.infobar!(widget.noHeaderBanner),
                       ),
-
                     // Content area on the right
                     Expanded(
                       child: Align(
