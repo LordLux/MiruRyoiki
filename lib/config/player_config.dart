@@ -62,9 +62,10 @@ class PlayerConfig {
   static List<String> get autoConnectOrder => List<String>.from(_config['auto_connect_order'] ?? _defaultConfig['auto_connect_order']);
 
   /// Update VLC password
-  static void setVlcPassword(String password) {
-    _config['vlc'] = {...vlc, 'password': password};
-  }
+  static void setVlcPassword(String password) => _config['vlc'] = {...vlc, 'password': password};
+
+  /// Update auto-connect order
+  static void setAutoConnectOrder(List<String> order) => _config['auto_connect_order'] = order;
 
   /// Print current configuration
   static void printConfig() {

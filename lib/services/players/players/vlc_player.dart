@@ -38,6 +38,9 @@ class VLCPlayer extends MediaPlayer {
 
   @override
   Future<bool> connect() async {
+    // If already connected (polling timer is active), return true
+    if (_statusTimer?.isActive == true) return true;
+    
     try {
       final response = await http
           .get(
@@ -51,8 +54,9 @@ class VLCPlayer extends MediaPlayer {
         return true;
       }
       return false;
-    } catch (_) {
-      // don't log connection errors to avoid spamming the logs
+    } catch (e) {
+      // Ensure we're properly disconnected on failed connection attempt
+      disconnect();
       return false;
     }
   }

@@ -28,6 +28,9 @@ class MPCHCPlayer extends MediaPlayer {
 
   @override
   Future<bool> connect() async {
+    // If already connected (polling timer is active), return true
+    if (_statusTimer?.isActive == true) return true;
+    
     try {
       final response = await http //
           .get(Uri.parse('$_baseUrl/variables.html'))
@@ -39,6 +42,8 @@ class MPCHCPlayer extends MediaPlayer {
       }
       return false;
     } catch (e) {
+      // Ensure we're properly disconnected on failed connection attempt
+      disconnect();
       return false;
     }
   }

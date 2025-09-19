@@ -37,7 +37,10 @@ MediaPlayer? getPlayerFromId(String id) {
     return VLCPlayer();
   } else if (id == 'mpc-hc') {
     return MPCHCPlayer();
-  } else {//TODO get custom player's icon
+  } else {
+    // Custom players are handled differently through PlayerFactory
     return null;
   }
 }
+
+

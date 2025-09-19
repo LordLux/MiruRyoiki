@@ -1,10 +1,18 @@
 import 'dart:async';
+import 'package:collection/collection.dart';
 import '../../models/players/mediastatus.dart';
 import '../../models/players/player_configuration.dart';
 import '../../config/player_config.dart';
 import 'player.dart';
 import 'factory.dart';
 
+/// Manages media player connections and ensures only one player is active at a time.
+///
+/// The PlayerManager follows a strict single-player policy:
+/// - Only one player can be connected and monitored at any given time
+/// - Connection attempts follow user-defined priority order from PlayerConfig.autoConnectOrder
+/// - When a connection is lost, it attempts to reconnect following the same priority order
+/// - All player commands are delegated to the currently active player
 class PlayerManager {
   MediaPlayer? _currentPlayer;
   PlayerType? _currentPlayerType;
@@ -41,6 +49,7 @@ class PlayerManager {
 
   /// Connect to a specific player type with optional configuration
   Future<bool> connectToPlayer(PlayerType type, {Map<String, dynamic>? config}) async {
+    // Always disconnect from current player first to ensure only one connection
     await disconnect();
 
     try {
@@ -56,6 +65,7 @@ class PlayerManager {
 
   /// Connect to a player using a configuration object
   Future<bool> connectToPlayerWithConfiguration(PlayerConfiguration config) async {
+    // Always disconnect from current player first to ensure only one connection
     await disconnect();
 
     try {
@@ -69,29 +79,44 @@ class PlayerManager {
     }
   }
 
-  /// Auto-discover and connect to available players
-  Future<bool> autoConnect() async {
+  /// Auto-discover and connect to available players following user-defined priority order
+  Future<bool> autoConnect([List<String>? customPriorityOrder]) async {
     // Load player configuration only once
     if (!_configLoaded) {
       await PlayerConfig.load();
       _configLoaded = true;
     }
 
-    final players = [
-      () => connectToPlayer(PlayerType.vlc, config: PlayerConfig.vlc),
-      () => connectToPlayer(PlayerType.mpc, config: PlayerConfig.mpcHc),
-    ];
+    // Use provided priority order or fall back to config
+    final priorityOrder = customPriorityOrder ?? PlayerConfig.autoConnectOrder;
 
-    for (final playerConnector in players) {
-      if (await playerConnector()) {
-        return true;
+    // Try players in the exact order specified by user
+    for (final playerId in priorityOrder) {
+      bool connected = false;
+
+      switch (playerId) {
+        case 'vlc_with_password':
+        case 'vlc':
+          connected = await connectToPlayer(PlayerType.vlc, config: PlayerConfig.vlc);
+          break;
+
+        case 'mpc_hc':
+        case 'mpc-hc':
+          connected = await connectToPlayer(PlayerType.mpc, config: PlayerConfig.mpcHc);
+          break;
+
+        default:
+          // Try to find custom player with this ID
+          final customConfigs = await PlayerFactory.loadCustomPlayerConfigurations();
+          final customConfig = customConfigs.where((c) => c.name.toLowerCase().replaceAll(' ', '_') == playerId).firstOrNull;
+          if (customConfig != null) connected = await connectToPlayerWithConfiguration(customConfig);
+
+          break;
       }
-    }
 
-    // Try custom players
-    final customConfigs = await PlayerFactory.loadCustomPlayerConfigurations();
-    for (final config in customConfigs) {
-      if (await connectToPlayerWithConfiguration(config)) {
+      // As soon as one player connects successfully, stop trying others
+      if (connected) {
+        _connectionController.add(PlayerConnectionStatus.connected());
         return true;
       }
     }
@@ -157,21 +182,24 @@ class PlayerManager {
     });
   }
 
-  /// Check if the connection is still alive
+  /// Check if the connection is still alive and reconnect following priority order if needed
   Future<void> _checkConnection() async {
     if (_currentPlayer == null) return;
 
     try {
-      // Try to reconnect if connection is lost
-      // This is a simple check - in practice you might want more sophisticated logic
-      final reconnected = await _currentPlayer!.connect();
-      if (!reconnected) {
-        _connectionController.add(PlayerConnectionStatus.error('Connection lost'));
-        await disconnect();
-      }
+      // Try to poll status to verify connection is still active
+      await _currentPlayer!.pollStatus();
+      // If we get here without exception, connection is still good
     } catch (e) {
-      _connectionController.add(PlayerConnectionStatus.error('Connection check failed: $e'));
+      // Connection lost, disconnect current player and try to reconnect following priority order
+      _connectionController.add(PlayerConnectionStatus.error('Connection lost, attempting reconnection'));
+      
+      // Store the priority order before disconnecting to ensure we use the same order for reconnection
+      final priorityOrder = PlayerConfig.autoConnectOrder;
       await disconnect();
+
+      // Try to reconnect following the same user priority order
+      await autoConnect(priorityOrder);
     }
   }
 

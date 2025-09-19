@@ -39,9 +39,7 @@ extension LibraryMediaPlayerIntegration on Library {
   Future<void> initializeMediaPlayerIntegration() async {
     if (!_settings.enableMediaPlayerIntegration) return;
 
-    await _detectAvailablePlayers();
     _playerManager = PlayerManager();
-
     await _startPlayerAutoConnection(); // Always auto-connect
   }
 
@@ -70,40 +68,31 @@ extension LibraryMediaPlayerIntegration on Library {
     logDebug('Stopped media player auto-connection');
   }
 
-  /// Detect available media players on the system
-  Future<void> _detectAvailablePlayers() async {
-    _detectedPlayers.clear();
-
-    // Detection order doesn't matter, we'll connect based on user priority
-    // Detect MPC-HC
-    final mpcHc = await _detectMpcHc();
-    if (mpcHc != null) _detectedPlayers.add(mpcHc);
-
-    // Detect VLC
-    final vlc = await _detectVlc();
-    if (vlc != null) _detectedPlayers.add(vlc);
-
-    logDebug('Detected ${_detectedPlayers.length} media players: ${_detectedPlayers.map((p) => p.name).join(', ')}');
-  }
-
-  /// Refresh detected players and update connections
+  /// Refresh player connections
   Future<void> refreshMediaPlayers() async {
     notifyListeners();
     Manager.setState();
     
-    await _detectAvailablePlayers();
-
-    // Always restart connection attempts
+    // Simply restart connection attempts using current user priority
     await _startPlayerAutoConnection();
     
     notifyListeners();
     Manager.setState();
   }
 
-  /// Attempt to connect to players in priority order
+  /// Attempt to connect to players in user-defined priority order
   Future<void> _attemptPlayerConnection() async {
-    // If already connected, verify connection is still active
-    if (_currentConnectedPlayer != null && _playerManager?.isConnected == true) return; // Still connected
+    // If already connected and connection is still active, don't attempt new connections
+    if (_currentConnectedPlayer != null && _playerManager?.isConnected == true) {
+      // Verify connection is still active by polling
+      try {
+        await _playerManager?.pollStatus();
+        return; // Connection is good, no need to reconnect
+      } catch (e) {
+        // Connection is dead, continue with reconnection logic below
+        logWarn('Connection verification failed for $_currentConnectedPlayer: $e');
+      }
+    }
 
     // Lost connection or not connected, try to reconnect
     if (_currentConnectedPlayer != null) {
@@ -112,26 +101,32 @@ extension LibraryMediaPlayerIntegration on Library {
       await _playerManager?.disconnect();
     }
 
-    // Try players in priority order
-    final priority = _settings.mediaPlayerPriority;
-    for (final playerId in priority) {
-      final player = _detectedPlayers.where((p) => p.id == playerId).firstOrNull;
-      if (player == null || !player.isAvailable) continue;
+    // Use the user's priority settings from UI, not PlayerConfig
+    final userPriorityOrder = _settings.mediaPlayerPriority;
+    
+    try {
+      final connected = await _playerManager?.autoConnect(userPriorityOrder) ?? false;
 
-      try {
-        final connected = await _playerManager?.autoConnect() ?? false;
-
-        if (connected) {
-          _currentConnectedPlayer = playerId;
-          _setupPlayerStatusMonitoring();
-          logInfo('Connected to media player: ${player.name}');
-          notifyListeners();
-          Manager.setState();
-          return;
+      if (connected) {
+        // Determine which player we connected to based on PlayerManager's current state
+        final playerType = _playerManager?.currentPlayerType;
+        final playerConfig = _playerManager?.currentPlayerConfig;
+        
+        if (playerType == PlayerType.vlc) {
+          _currentConnectedPlayer = 'vlc';
+        } else if (playerType == PlayerType.mpc) {
+          _currentConnectedPlayer = 'mpc-hc';
+        } else if (playerType == PlayerType.custom && playerConfig != null) {
+          _currentConnectedPlayer = playerConfig.name.toLowerCase().replaceAll(' ', '_');
         }
-      } catch (e) {
-        logErr('Failed to connect to ${player.name}: $e');
+        
+        _setupPlayerStatusMonitoring();
+        logInfo('Connected to media player: $_currentConnectedPlayer (priority: ${userPriorityOrder.indexOf(_currentConnectedPlayer!) + 1})');
+        notifyListeners();
+        Manager.setState();
       }
+    } catch (e) {
+      logErr('Failed to connect to media player: $e');
     }
   }
 
@@ -237,70 +232,5 @@ extension LibraryMediaPlayerIntegration on Library {
     _playerManager?.dispose();
     _playerManager = null;
     _detectedPlayers.clear();
-  }
-
-  // Player detection methods
-  Future<DetectedPlayer?> _detectMpcHc() async {
-    // Implementation for detecting MPC-HC
-    try {
-      final result = await Process.run('where', ['mpc-hc64.exe']);
-      if (result.exitCode == 0 && result.stdout.toString().isNotEmpty) {
-        final executablePath = result.stdout.toString().trim().split('\n').first;
-        final file = File(executablePath);
-        if (await file.exists()) {
-          return DetectedPlayer(
-            id: 'mpc-hc',
-            name: 'MPC-HC',
-            type: PlayerType.mpc,
-            executablePath: executablePath,
-            isAvailable: true,
-            detectionMethod: 'PATH lookup',
-          );
-        }
-      }
-    } catch (e) {
-      // Try common installation paths
-      final commonPaths = [
-        r'C:\Program Files\MPC-HC\mpc-hc64.exe',
-        r'C:\Program Files (x86)\MPC-HC\mpc-hc64.exe',
-      ];
-
-      for (final path in commonPaths) {
-        final file = File(path);
-        if (await file.exists()) {
-          return DetectedPlayer(
-            id: 'mpc-hc',
-            name: 'MPC-HC',
-            type: PlayerType.mpc,
-            executablePath: path,
-            isAvailable: true,
-            detectionMethod: 'Common directory scan',
-          );
-        }
-      }
-    }
-    return null;
-  }
-
-  Future<DetectedPlayer?> _detectVlc() async {
-    // Implementation for detecting VLC
-    const vlcLinkPath = r'C:\ProgramData\Microsoft\Windows\Start Menu\Programs\VideoLAN\VLC media player.lnk';
-
-    try {
-      final linkFile = File(vlcLinkPath);
-      if (await linkFile.exists()) {
-        return DetectedPlayer(
-          id: 'vlc',
-          name: 'VLC Media Player',
-          type: PlayerType.vlc,
-          executablePath: vlcLinkPath,
-          isAvailable: true,
-          detectionMethod: 'Start Menu shortcut',
-        );
-      }
-    } catch (e) {
-      logErr('Error detecting VLC: $e');
-    }
-    return null;
   }
 }

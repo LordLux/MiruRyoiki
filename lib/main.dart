@@ -1161,7 +1161,6 @@ Future<void> _registerWindowsUrlScheme(String scheme) async {
   }
 }
 
-// TODO make shrinker's maxSize to be max the content's max height
 // TODO only one player at a time
 // TODO move hidden series switches to settings
 // TODO view settings to choose what to show on homepage

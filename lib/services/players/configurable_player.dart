@@ -54,6 +54,9 @@ class ConfigurablePlayer extends MediaPlayer {
 
   @override
   Future<bool> connect() async {
+    // If already connected (polling timer is active), return true
+    if (_statusTimer?.isActive == true) return true;
+    
     try {
       final statusEndpoint = config.endpoints['status'] as String;
       final response = await http
@@ -69,6 +72,8 @@ class ConfigurablePlayer extends MediaPlayer {
       }
       return false;
     } catch (e) {
+      // Ensure we're properly disconnected on failed connection attempt
+      disconnect();
       return false;
     }
   }
