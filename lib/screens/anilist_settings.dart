@@ -187,7 +187,7 @@ class AnilistAccountScreen extends StatelessWidget {
         LoadingButton(
           label: 'Logout',
           isLoading: false,
-          isAlreadyBig: true,
+          isBigEvenWithoutLoading: true,
           onPressed: () async {
             await provider.logout();
             onLogout.call();

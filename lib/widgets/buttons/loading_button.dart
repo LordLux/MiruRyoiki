@@ -9,7 +9,7 @@ class LoadingButton extends StatefulWidget {
   final VoidCallback onPressed;
   final bool isButtonDisabled;
   final bool isSmall;
-  final bool isAlreadyBig;
+  final bool isBigEvenWithoutLoading;
   final bool isFilled;
   final String? tooltip;
   final Widget? tooltipWidget;
@@ -25,7 +25,7 @@ class LoadingButton extends StatefulWidget {
     required this.isLoading,
     this.isButtonDisabled = false,
     this.isSmall = false,
-    this.isAlreadyBig = false,
+    this.isBigEvenWithoutLoading = false,
     this.isFilled = false,
     this.tooltip,
     this.tooltipWidget,
@@ -46,7 +46,7 @@ class LoadingButtonState extends State<LoadingButton> {
 
   double get horizPadding {
     if (widget.isLoading) return 32;
-    if (widget.isAlreadyBig) return 32;
+    if (widget.isBigEvenWithoutLoading) return 32;
     return widget.isSmall ? 12 : 16;
   }
 
@@ -59,20 +59,14 @@ class LoadingButtonState extends State<LoadingButton> {
       tooltipWaitDuration: widget.tooltipWaitDuration,
       tooltipWidget: widget.tooltipWidget,
       child: (isHovering) {
+        final Color? bg = widget.isLoading ? null : (isHovering ? widget.hoverFillColor : widget.filledColor);
+        final Color fg = widget.isFilled && !widget.isLoading ? Colors.black : Colors.white;
+        
         ButtonStyle copy = ButtonStyle(
           padding: WidgetStatePropertyAll(EdgeInsets.zero),
-          backgroundColor: WidgetStateProperty.all<Color?>(isHovering ? widget.hoverFillColor : widget.filledColor),
+          foregroundColor: WidgetStatePropertyAll<Color>(fg),
+          backgroundColor: WidgetStateProperty.all<Color?>(bg),
         );
-        Widget btn(Widget child) => Button(
-              onPressed: widget.isButtonDisabled ? null : widget.onPressed,
-              style: FluentTheme.of(context).buttonTheme.defaultButtonStyle!.copyWith(padding: copy.padding, backgroundColor: copy.backgroundColor),
-              child: child,
-            );
-        Widget filled_btn(Widget child) => FilledButton(
-              onPressed: widget.isButtonDisabled ? null : widget.onPressed,
-              style: FluentTheme.of(context).buttonTheme.filledButtonStyle!.copyWith(padding: copy.padding, backgroundColor: copy.backgroundColor),
-              child: child,
-            );
         Widget child = SizedBox(
           height: widget.isSmall ? 32 : 48,
           child: Stack(
@@ -80,7 +74,7 @@ class LoadingButtonState extends State<LoadingButton> {
             children: [
               AnimatedSlide(
                 offset: widget.isLoading ? const Offset(-0.125, 0) : Offset.zero,
-                duration: shortStickyHeaderDuration,
+                duration: mediumDuration,
                 curve: Curves.easeInOut,
                 child: Padding(
                   padding: EdgeInsets.symmetric(horizontal: horizPadding),
@@ -91,7 +85,7 @@ class LoadingButtonState extends State<LoadingButton> {
                 right: 15,
                 child: AnimatedOpacity(
                   opacity: widget.isLoading ? 1.0 : 0.0,
-                  duration: shortStickyHeaderDuration,
+                  duration: mediumDuration,
                   child: SizedBox(
                     width: widget.isSmall ? 20 : 25,
                     height: widget.isSmall ? 20 : 25,
@@ -104,7 +98,11 @@ class LoadingButtonState extends State<LoadingButton> {
             ],
           ),
         );
-        Widget buttonWidget = widget.isFilled ? filled_btn(child) : btn(child);
+        Widget buttonWidget = Button(
+          onPressed: widget.isButtonDisabled ? null : widget.onPressed,
+          style: (!widget.isFilled ? FluentTheme.of(context).buttonTheme.defaultButtonStyle! : FluentTheme.of(context).buttonTheme.filledButtonStyle!).merge(copy),
+          child: child,
+        );
         if (widget.expand) {
           return SizedBox(
             width: double.infinity,

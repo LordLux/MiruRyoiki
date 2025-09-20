@@ -896,7 +896,7 @@ class SettingsScreenState extends State<SettingsScreen> {
                     onPressed: () => library.reloadLibrary(force: true),
                     isLoading: library.isIndexing,
                     isSmall: true,
-                    isAlreadyBig: true,
+                    isBigEvenWithoutLoading: true,
                   ),
                   const SizedBox(width: 6),
                   NormalButton(
@@ -1629,6 +1629,7 @@ class SettingsScreenState extends State<SettingsScreen> {
                               tooltip: 'Refresh Players list and Player configs',
                               tooltipWaitDuration: const Duration(milliseconds: 200),
                               label: 'Reload Players',
+                              isBigEvenWithoutLoading: true,
                             ),
                           ],
                         );

@@ -343,7 +343,7 @@ class AccountsScreenState extends State<AccountsScreen> {
         hoverFillColor: Color.fromARGB(176, 94, 26, 26),
         label: 'Logout',
         isLoading: false,
-        isAlreadyBig: true,
+        isBigEvenWithoutLoading: true,
         onPressed: () async {
           await showSimpleManagedDialog(
             context: context,
@@ -383,7 +383,7 @@ class AccountsScreenState extends State<AccountsScreen> {
               child: LoadingButton(
                 isLoading: isButtonDisabled || isLocalLoading || anilistProvider.isLoading,
                 label: 'Connect Anilist',
-                isAlreadyBig: true,
+                isBigEvenWithoutLoading: true,
                 isFilled: true,
                 onPressed: () async {
                   if (isLocalLoading) return;
@@ -493,7 +493,7 @@ class AccountsScreenState extends State<AccountsScreen> {
                           child: LayoutBuilder(builder: (context, constraints) {
                             return mat.Theme(
                               data: mat.ThemeData(
-                                textSelectionTheme: mat.TextSelectionThemeData(selectionColor: Colors.red.withOpacity(0.4), cursorColor: Colors.white, selectionHandleColor: Colors.white.withOpacity(0.4)),
+                                textSelectionTheme: mat.TextSelectionThemeData(selectionColor: Manager.accentColor.withOpacity(0.4), cursorColor: Colors.white, selectionHandleColor: Colors.white.withOpacity(0.4)),
                               ),
                               child: mat.SelectionArea(
                                 child: Html(

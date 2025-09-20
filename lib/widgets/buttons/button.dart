@@ -6,6 +6,7 @@ import '../../utils/color.dart';
 import '../../utils/text.dart';
 import 'wrapper.dart';
 
+/// A customizable button widget with loading and tooltip capabilities.
 class StandardButton extends StatefulWidget {
   final Widget label;
   final VoidCallback? onPressed;
@@ -20,7 +21,7 @@ class StandardButton extends StatefulWidget {
   final Duration? tooltipWaitDuration;
   final EdgeInsets? padding;
   final Color filledColor;
-  final Color? hoverFillColor;
+  final Color hoverFillColor;
 
   StandardButton({
     super.key,
@@ -36,8 +37,8 @@ class StandardButton extends StatefulWidget {
     this.expand = false,
     this.tooltipWaitDuration,
     this.padding,
-    filledColor,
-    hoverFillColor,
+    Color? filledColor,
+    Color? hoverFillColor,
   })  : filledColor = filledColor ?? Manager.accentColor.lighter,
         hoverFillColor = hoverFillColor ?? Manager.accentColor.lightest;
 
@@ -56,6 +57,8 @@ class StandardButton extends StatefulWidget {
     Duration? tooltipWaitDuration,
     EdgeInsets? padding,
     TextStyle? textStyle,
+    Color? filledColor,
+    Color? hoverFillColor,
   }) {
     return StandardButton(
       label: Row(
@@ -77,6 +80,8 @@ class StandardButton extends StatefulWidget {
       expand: expand,
       tooltipWaitDuration: tooltipWaitDuration,
       padding: padding,
+      filledColor: filledColor,
+      hoverFillColor: hoverFillColor,
     );
   }
 
@@ -201,6 +206,10 @@ class NormalButton extends StatelessWidget {
   final bool isLoading;
   final String? tooltip;
   final Widget? tooltipWidget;
+  final Duration? tooltipWaitDuration;
+  final EdgeInsets? padding;
+  final Color? filledColor;
+  final Color? hoverFillColor;
 
   const NormalButton({
     super.key,
@@ -214,6 +223,10 @@ class NormalButton extends StatelessWidget {
     this.tooltip,
     this.tooltipWidget,
     this.isLoading = false,
+    this.tooltipWaitDuration,
+    this.padding,
+    this.filledColor,
+    this.hoverFillColor,
   });
 
   @override
@@ -229,6 +242,10 @@ class NormalButton extends StatelessWidget {
       tooltip: tooltip,
       tooltipWidget: tooltipWidget,
       isLoading: isLoading,
+      tooltipWaitDuration: tooltipWaitDuration,
+      padding: padding,
+      filledColor: filledColor,
+      hoverFillColor: hoverFillColor,
     );
   }
 }

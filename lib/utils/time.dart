@@ -46,3 +46,10 @@ void nextFrame(
 }
 
 void _runAfterFrame(VoidCallback function) => WidgetsBinding.instance.addPostFrameCallback((_) => function());
+
+extension DurationArithmetic on Duration {
+  Duration operator +(Duration other) => Duration(milliseconds: inMilliseconds + other.inMilliseconds);
+  Duration operator -(Duration other) => Duration(milliseconds: inMilliseconds - other.inMilliseconds);
+  Duration operator *(double factor) => Duration(milliseconds: (inMilliseconds * factor).round());
+  Duration operator /(double divisor) => Duration(milliseconds: (inMilliseconds / divisor).round());
+}

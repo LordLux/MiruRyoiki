@@ -195,14 +195,16 @@ class MyApp extends StatelessWidget {
           FluentTheme.of(ctx).typography,
           Manager.fontSizeMultiplier,
         ),
-        buttonTheme: ButtonThemeData(
-          defaultButtonStyle: ButtonStyle(
-            padding: ButtonState.all(const EdgeInsets.symmetric(horizontal: 20, vertical: 8)),
-          ),
-          filledButtonStyle: ButtonStyle(
-            padding: ButtonState.all(const EdgeInsets.symmetric(horizontal: 20, vertical: 8)),
-          ),
-        ),
+        buttonTheme: FluentTheme.of(ctx).buttonTheme.merge(
+              ButtonThemeData(
+                defaultButtonStyle: ButtonStyle(
+                  padding: ButtonState.all(const EdgeInsets.symmetric(horizontal: 20, vertical: 8)),
+                ),
+                filledButtonStyle: ButtonStyle(
+                  padding: ButtonState.all(const EdgeInsets.symmetric(horizontal: 20, vertical: 8)),
+                ),
+              ),
+            ),
       ),
       child: DefaultTextStyle(
         style: FluentTheme.of(ctx).typography.body!,
