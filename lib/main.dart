@@ -1163,7 +1163,7 @@ Future<void> _registerWindowsUrlScheme(String scheme) async {
   }
 }
 
-// TODO only one player at a time
+// TODO detect video being watched
 // TODO move hidden series switches to settings
 // TODO view settings to choose what to show on homepage
 // TODO cache anime info
