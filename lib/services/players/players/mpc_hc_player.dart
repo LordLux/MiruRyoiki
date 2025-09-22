@@ -30,7 +30,7 @@ class MPCHCPlayer extends MediaPlayer {
   Future<bool> connect() async {
     // If already connected (polling timer is active), return true
     if (_statusTimer?.isActive == true) return true;
-    
+
     try {
       final response = await http //
           .get(Uri.parse('$_baseUrl/variables.html'))
@@ -68,8 +68,27 @@ class MPCHCPlayer extends MediaPlayer {
       if (response.statusCode == 200) {
         final variables = _parseVariables(response.body);
 
+        // Try to get the full file path - MPC-HC provides 'filepath' variable with complete path
+        String fullFilePath = variables['filepath'] ?? '';
+
+        // Fallback to constructing path from directory and filename if filepath not available
+        if (fullFilePath.isEmpty) {
+          final fileDir = variables['filedir'] ?? '';
+          final fileName = variables['file'] ?? '';
+
+          if (fileDir.isNotEmpty && fileName.isNotEmpty) {
+            fullFilePath = fileDir.endsWith('\\') || fileDir.endsWith('/') ? '$fileDir$fileName' : '$fileDir\\$fileName';
+          } else if (fileName.isNotEmpty) {
+            fullFilePath = fileName;
+            logTrace('MPC-HC: Using filename only: "$fullFilePath"');
+          } else {
+            fullFilePath = ''; // No valid path info available
+            logWarn('MPC-HC: No valid file path information available from variables for current file.');
+          }
+        }
+
         final status = MediaStatus(
-          filePath: variables['file'] ?? '',
+          filePath: fullFilePath,
           currentPosition: Duration(milliseconds: int.tryParse(variables['position'] ?? '0') ?? 0),
           totalDuration: Duration(milliseconds: int.tryParse(variables['duration'] ?? '0') ?? 0),
           isPlaying: variables['state'] == '2', // 2 = playing in MPC-HC
@@ -88,7 +107,9 @@ class MPCHCPlayer extends MediaPlayer {
   Map<String, String> _parseVariables(String html) {
     final variables = <String, String>{};
 
-    // MPC-HC variables.html contains lines like: <p id="file">filename.mkv</p>
+    // MPC-HC variables.html contains lines like:
+    // <p id="file">filename.mkv</p>
+    // <p id="filedir">C:\Path\To\Directory</p>
     final regex = RegExp(r'<p id="([^"]+)">([^<]*)</p>');
     final matches = regex.allMatches(html);
 

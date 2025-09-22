@@ -1,7 +1,24 @@
 part of 'library_provider.dart';
 
 extension LibrarySeriesManagement on Library {
-  Series? getSeriesByPath(PathString path) => _series.firstWhereOrNull((s) => s.path == path);
+  Series? getSeriesByPath(PathString path) {
+    // First check for exact match
+    final exactMatch = _series.firstWhereOrNull((s) => s.path == path);
+    if (exactMatch != null) return exactMatch;
+
+    // If no exact match, check if the path is inside any series directory
+    return _series.firstWhereOrNull((s) {
+      // Check if the given path starts with the series path
+      if (path.path.startsWith(s.path.path)) {
+        // Get the relative path from series to the given path
+        final relativePath = path.path.substring(s.path.path.length);
+
+        // If the relative path is empty or starts with a separator, it's inside this series
+        return relativePath.isEmpty || relativePath.startsWith('/') || relativePath.startsWith('\\');
+      }
+      return false;
+    });
+  }
 
   Series? getSeriesByAnilistId(int anilistId) => _series.firstWhereOrNull((s) => s.primaryAnilistId == anilistId);
 
@@ -87,13 +104,7 @@ extension LibrarySeriesManagement on Library {
     }
   }
 
-  Future<void> refreshEpisode(Episode episode) async {
-    // TODO get watched percentage and watched status from player
-    await _saveLibrary();
-    notifyListeners();
-  }
-
-  void markEpisodeWatched(Episode episode, {bool watched = true, bool save = true}) {
+  void markEpisodeWatched(Episode episode, {bool watched = true, bool save = true, bool overrideProgress = false}) {
     // Check if user actions are disabled
     if (_lockManager.shouldDisableAction(UserAction.markEpisodeWatched)) {
       snackBar(
@@ -104,13 +115,12 @@ extension LibrarySeriesManagement on Library {
     }
 
     episode.watched = watched;
-    episode.progress = watched ? 1.0 : 0.0;
+    if (watched) episode.progress = 1.0; // always override to 1 when watched, but not when unwatching
+    if (overrideProgress && !watched) episode.progress = 0.0; // reset progress when unmarking as watched and overrideProgress is true
 
     if (save) {
       // Set the flag indicating a series was modified
-      if (homeKey.currentState != null) {
-        homeKey.currentState!.seriesWasModified = true;
-      }
+      if (homeKey.currentState != null) homeKey.currentState!.seriesWasModified = true;
 
       _saveLibrary();
       notifyListeners();
@@ -128,7 +138,7 @@ extension LibrarySeriesManagement on Library {
     }
 
     for (final episode in season.episodes) //
-      markEpisodeWatched(episode, watched: watched, save: false);
+      markEpisodeWatched(episode, watched: watched, save: false, overrideProgress: true);
 
     if (save) {
       _saveLibrary();
@@ -150,7 +160,7 @@ extension LibrarySeriesManagement on Library {
       markSeasonWatched(season, watched: watched, save: false);
 
     for (final episode in series.relatedMedia) {
-      markEpisodeWatched(episode, watched: watched, save: false);
+      markEpisodeWatched(episode, watched: watched, save: false, overrideProgress: true);
     }
 
     // Set the flag indicating a series was modified

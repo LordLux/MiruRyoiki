@@ -5,6 +5,7 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:graphql/client.dart' as graphql;
 import 'package:logger/logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:package_info_plus/package_info_plus.dart';
@@ -14,9 +15,19 @@ import '../manager.dart';
 import 'time.dart';
 import 'path.dart';
 
-bool doLogRelease = true; // Set to true to enable logging in release mode
-bool doLogTrace = false; // Set to true to enable trace logging; dotrace
-bool doLogComplexError = false; // Set to true to enable complex error logging
+class LoggingConfig {
+  static bool doLogRelease = true; // Set to true to enable logging in release mode
+  static bool doLogTrace = true; // Set to true to enable trace logging; dotrace
+  static bool doLogComplexError = false; // Set to true to enable complex error logging
+
+  static void doTrace() => doLogTrace = true;
+  static void doComplex() => doLogComplexError = true;
+  static void doRelease() => doLogRelease = true;
+
+  static void disableTrace() => doLogTrace = false;
+  static void disableComplex() => doLogComplexError = false;
+  static void disableRelease() => doLogRelease = false;
+}
 
 // Session-based logging variables
 String? _sessionId;
@@ -150,7 +161,7 @@ void _log(LogLevel level, String msg, {Object? error, StackTrace? stackTrace, Da
 /// The `color` parameter is the text color of the message (default is [Colors.purpleAccent] to make it more noticeable).
 /// The `bgColor` parameter is the background color of the message (default is [Colors.transparent]).
 void log(final dynamic msg, {final Color color = Colors.purpleAccent, final Color bgColor = Colors.transparent, Object? error, StackTrace? stackTrace, bool? splitLines = false, LogLevel level = LogLevel.none}) {
-  if (!doLogRelease && !kDebugMode) return;
+  if (!LoggingConfig.doLogRelease && !kDebugMode) return;
   String escapeCode = getColorEscapeCode(color);
   String bgEscapeCode = getColorEscapeCodeBg(bgColor);
 
@@ -238,13 +249,13 @@ void _writeLogToSessionFile(LogLevel level, dynamic msg, Object? error, StackTra
 
 /// Logs a trace message with the specified [msg] and sets the text color to Teal.
 void logTrace(final dynamic msg, {bool? splitLines}) {
-  if (!doLogTrace) return;
+  if (!LoggingConfig.doLogTrace) return;
   _logWithLevel(LogLevel.trace, msg, color: Colors.tealAccent, splitLines: splitLines);
 }
 
 /// Logs a debug message with the specified [msg]
 void logDebug(final dynamic msg, {bool? splitLines}) {
-  if (!doLogRelease && !kDebugMode) return;
+  if (!LoggingConfig.doLogRelease && !kDebugMode) return;
   _logWithLevel(LogLevel.debug, msg, color: Colors.amber, bgColor: Colors.transparent, splitLines: splitLines);
 }
 
@@ -266,7 +277,7 @@ void logErr(final dynamic msg, [Object? error, StackTrace? stackTrace]) {
   final actualStackTrace = stackTrace ?? StackTrace.current;
   // logger.e(msg, error: error, stackTrace: actualStackTrace, time: now);
   if (!kDebugMode) print(msg); // print error to terminal in release mode
-  if (doLogComplexError) log(msg, color: Colors.red, bgColor: Colors.transparent, error: error, stackTrace: actualStackTrace);
+  if (LoggingConfig.doLogComplexError) log(msg, color: Colors.red, bgColor: Colors.transparent, error: error, stackTrace: actualStackTrace);
 
   // Use new level-based logging
   _logWithLevel(LogLevel.error, msg, color: Colors.red, error: error, stackTrace: actualStackTrace);
@@ -326,7 +337,7 @@ String getColorEscapeCodeBg(Color color) {
 /// ```
 /// This will log three messages with different text and background colors.
 void logMulti(List<List<dynamic>> messages, {bool showTime = true}) {
-  if (!doLogRelease && !kDebugMode) return; // Skip logging in release mode if disabled
+  if (!LoggingConfig.doLogRelease && !kDebugMode) return; // Skip logging in release mode if disabled
   String logMessage = '';
   for (var innerList in messages) {
     String msg = innerList[0];
@@ -340,4 +351,21 @@ void logMulti(List<List<dynamic>> messages, {bool showTime = true}) {
   }
   if (showTime) logMessage = '$nowFormatted | $logMessage';
   _log(LogLevel.none, logMessage);
+}
+
+/// Parses known Anilist API errors and logs appropriate warnings.
+/// Returns true if a known error was detected and handled, false otherwise.
+bool parseKnownAnilistErrors(Object? error) {
+  if (error == null) return false;
+  if (error is! Exception) return false;
+  if (error is graphql.OperationException) {
+    if (error.linkException != null && error.linkException is graphql.ServerException) {
+      final serverEx = (error.linkException as graphql.ServerException).toString().toLowerCase();
+      if (serverEx.contains('too many requests.')) {
+        logWarn('⚠️ Anilist API rate limit reached. Consider setting up your own client ID/secret in settings to avoid this.');
+        return true;
+      }
+    }
+  }
+  return false;
 }

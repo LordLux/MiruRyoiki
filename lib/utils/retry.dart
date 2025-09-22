@@ -105,8 +105,7 @@ class RetryUtils {
 
     // Add AniList specific error conditions
     final errorMessage = error.toString().toLowerCase();
-    if (errorMessage.contains('rate limit')) return true;
-    if (errorMessage.contains('too many requests')) return true;
+    if (errorMessage.contains('too many requests')) return false;
 
     return false;
   }

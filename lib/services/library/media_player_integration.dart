@@ -63,6 +63,7 @@ extension LibraryMediaPlayerIntegration on Library {
     _connectionTimer = null;
     await _playerStatusSubscription?.cancel();
     _playerStatusSubscription = null;
+    _stopForcedSaveTimer();
     await _playerManager?.disconnect();
     _currentConnectedPlayer = null;
     logDebug('Stopped media player auto-connection');
@@ -72,10 +73,10 @@ extension LibraryMediaPlayerIntegration on Library {
   Future<void> refreshMediaPlayers() async {
     notifyListeners();
     Manager.setState();
-    
+
     // Simply restart connection attempts using current user priority
     await _startPlayerAutoConnection();
-    
+
     notifyListeners();
     Manager.setState();
   }
@@ -103,7 +104,7 @@ extension LibraryMediaPlayerIntegration on Library {
 
     // Use the user's priority settings from UI, not PlayerConfig
     final userPriorityOrder = _settings.mediaPlayerPriority;
-    
+
     try {
       final connected = await _playerManager?.autoConnect(userPriorityOrder) ?? false;
 
@@ -111,7 +112,7 @@ extension LibraryMediaPlayerIntegration on Library {
         // Determine which player we connected to based on PlayerManager's current state
         final playerType = _playerManager?.currentPlayerType;
         final playerConfig = _playerManager?.currentPlayerConfig;
-        
+
         if (playerType == PlayerType.vlc) {
           _currentConnectedPlayer = 'vlc';
         } else if (playerType == PlayerType.mpc) {
@@ -119,7 +120,7 @@ extension LibraryMediaPlayerIntegration on Library {
         } else if (playerType == PlayerType.custom && playerConfig != null) {
           _currentConnectedPlayer = playerConfig.name.toLowerCase().replaceAll(' ', '_');
         }
-        
+
         _setupPlayerStatusMonitoring();
         logInfo('Connected to media player: $_currentConnectedPlayer (priority: ${userPriorityOrder.indexOf(_currentConnectedPlayer!) + 1})');
         notifyListeners();
@@ -144,51 +145,214 @@ extension LibraryMediaPlayerIntegration on Library {
       onError: (error) {
         logErr('Player status stream error: $error');
         _currentConnectedPlayer = null;
+        _stopForcedSaveTimer();
         notifyListeners();
       },
     );
+
+    // Start the forced save timer when monitoring begins
+    _startForcedSaveTimer();
   }
 
   /// Handle player status updates - integrate with your episode tracking
   void _handlePlayerStatusUpdate(MediaStatus status) {
-    // Find which episode is currently playing by matching file path
     final currentFile = status.filePath;
-    if (currentFile.isNotEmpty) {
-      final episode = _findEpisodeByPath(currentFile);
-      if (episode != null) {
-        // Update episode progress/watched status
-        _updateEpisodeFromPlayerStatus(episode, status);
-      }
-    }
+    final currentEpisode = currentFile.isNotEmpty ? _findEpisodeByPath(currentFile) : null;
+
+    // Always update episode progress if we have a valid episode
+    bool progressUpdated = false;
+    if (currentEpisode != null) progressUpdated = _updateEpisodeFromPlayerStatus(currentEpisode, status);
+
+    // Check for immediate save triggers (important status changes)
+    final shouldSaveImmediately = _shouldTriggerImmediateSave(status, currentEpisode) || progressUpdated;
+
+    // Save immediately if triggered by important status changes
+    if (shouldSaveImmediately) _saveImmediately();
+
+    // Update state tracking for next comparison
+    _updateStateTracking(status, currentEpisode);
   }
 
   /// Find an episode by file path across all series
   Episode? _findEpisodeByPath(String filePath) {
+    // Extract the series name from the file path relative to library path
+    final libraryPath = _libraryPath;
+    if (libraryPath == null) return null;
+
+    // Get relative path from library root
+    String relativePath;
+    try {
+      relativePath = path.relative(filePath, from: libraryPath);
+    } catch (e) {
+      // If path.relative fails, fall back to original search
+      return _findEpisodeByPathFallback(filePath);
+    }
+
+    // Extract the first directory (series folder name)
+    final pathSegments = path.split(relativePath);
+    if (pathSegments.isEmpty) return null;
+
+    final seriesFolderName = pathSegments.first;
+
+    // Find the series with matching folder name
+    final targetSeries = _series.where((series) {
+      final seriesPath = path.relative(series.path.path, from: libraryPath);
+      return path.basename(seriesPath) == seriesFolderName;
+    }).firstOrNull;
+
+    if (targetSeries == null) return null;
+
+    // Search only within this specific series
+    for (final episode in targetSeries.seasons.expand((s) => s.episodes)) {
+      if (episode.path.path == filePath) {
+        return episode;
+      }
+    }
+
+    // Also search related media for this series
+    for (final episode in targetSeries.relatedMedia) {
+      if (episode.path.path == filePath) return episode;
+    }
+
+    return null;
+  }
+
+  /// Fallback method using original approach
+  Episode? _findEpisodeByPathFallback(String filePath) {
+    final String path = PathString(filePath).path;
     for (final series in _series) {
-      // Search through all episodes in all seasons
       for (final episode in series.seasons.expand((s) => s.episodes)) {
-        if (episode.path.path == filePath) {
+        if (episode.path.path == path) {
           return episode;
         }
       }
-      // Also search related media
       for (final episode in series.relatedMedia) {
-        if (episode.path.path == filePath) return episode;
+        if (episode.path.path == path) return episode;
       }
     }
     return null;
   }
 
+  /// Check if the current state change should trigger an immediate save
+  bool _shouldTriggerImmediateSave(MediaStatus status, Episode? currentEpisode) {
+    final currentFile = status.filePath;
+    final currentPlaying = status.isPlaying;
+    final lastFile = _lastFilePath ?? '';
+
+    // Player was closed (had a file, now doesn't)
+    if (lastFile.isNotEmpty && currentFile.isEmpty) {
+      logInfo('Player closed - triggering immediate save');
+      return true;
+    }
+
+    // Video changed (different file being played)
+    if (lastFile.isNotEmpty && currentFile.isNotEmpty && lastFile != currentFile) {
+      logInfo('Video changed from "$lastFile" to "$currentFile" - triggering immediate save');
+      return true;
+    }
+
+    // Player stopped playing (was playing, now not)
+    if (_lastPlayingState == true && !currentPlaying) {
+      logInfo('Player stopped/paused - triggering immediate save');
+      return true;
+    }
+
+    // Episode became null (had episode, now doesn't)
+    if (_lastEpisode != null && currentEpisode == null) {
+      logInfo('Episode tracking lost - triggering immediate save');
+      return true;
+    }
+
+    return false;
+  }
+
+  /// Start the forced save timer for regular progress updates
+  void _startForcedSaveTimer() {
+    // Cancel any existing forced save timer
+    _forcedSaveTimer?.cancel();
+
+    // Check and save every 90 seconds if player status has changed
+    _forcedSaveTimer = Timer.periodic(const Duration(seconds: 90), (timer) async {
+      final currentStatus = _playerManager?.lastStatus;
+
+      // Only save if we have a valid status and it has changed
+      if (currentStatus != null && _hasPlayerStatusChanged(currentStatus)) {
+        final currentEpisode = currentStatus.filePath.isNotEmpty ? _findEpisodeByPath(currentStatus.filePath) : null;
+
+        if (currentEpisode != null) {
+          // Update episode progress with current player status
+          _updateEpisodeFromPlayerStatus(currentEpisode, currentStatus);
+          logTrace('Updated episode progress during periodic check: ${(currentEpisode.progress * 100).toStringAsFixed(1)}%');
+
+          // Save to database and update UI
+          await _saveLibrary();
+          notifyListeners();
+          Manager.setState();
+          logTrace('Auto-saved episode progress from media player monitoring (periodic)');
+
+          // Update tracking after successful save
+          _updateStateTracking(currentStatus, currentEpisode);
+        }
+      }
+    });
+  }
+
+  /// Check if the player status has meaningfully changed since last check
+  bool _hasPlayerStatusChanged(MediaStatus currentStatus) {
+    final lastFile = _lastFilePath ?? '';
+
+    // Status changed if file changed, playing state changed, or significant progress made
+    return lastFile != currentStatus.filePath || _lastPlayingState != currentStatus.isPlaying || (currentStatus.filePath.isNotEmpty && _lastEpisode != null && (currentStatus.currentPosition.inMilliseconds - (_lastEpisode!.progress * currentStatus.totalDuration.inMilliseconds)).abs() > 5000); // 5 second threshold
+  }
+
+  /// Update state tracking variables
+  void _updateStateTracking(MediaStatus status, Episode? episode) {
+    _lastFilePath = status.filePath;
+    _lastPlayingState = status.isPlaying;
+    _lastEpisode = episode;
+  }
+
+  /// Stop the forced save timer
+  void _stopForcedSaveTimer() {
+    _forcedSaveTimer?.cancel();
+    _forcedSaveTimer = null;
+  }
+
+  /// Immediately save the library and cancel any pending saves
+  Future<void> _saveImmediately() async {
+    // Cancel any pending debounced save (if any exists)
+    _progressSaveTimer?.cancel();
+    _progressSaveTimer = null;
+
+    // Perform immediate save
+    await _saveLibrary();
+    notifyListeners();
+    Manager.setState();
+    logTrace('Immediately saved episode progress from media player monitoring');
+  }
+
   /// Update episode information based on player status
-  void _updateEpisodeFromPlayerStatus(Episode episode, MediaStatus status) {
+  /// Returns true if the episode was set as watched/unwatched, false otherwise.
+  bool _updateEpisodeFromPlayerStatus(Episode episode, MediaStatus status) {
     // Calculate progress percentage
     if (status.totalDuration.inMilliseconds > 0) {
       final progress = status.currentPosition.inMilliseconds / status.totalDuration.inMilliseconds;
 
-      // Mark as watched if progress > threshold
-      if (progress > Library.progressThreshold && !episode.watched) //
+      episode.progress = progress.clamp(0.0, 1.0);
+
+      if (progress > Library.progressThreshold && !episode.watched) {
+        // Mark as watched if progress > threshold
         markEpisodeWatched(episode, save: false);
+        logInfo('Auto-marked episode "${episode.name}" as watched (progress: ${(progress * 100).toStringAsFixed(1)}%)');
+        return true;
+      } else if (episode.watched && progress < Library.progressThreshold) {
+        // or mark as unwatched if progress < threshold
+        markEpisodeWatched(episode, watched: false, save: false);
+        logInfo('Auto-unmarked episode "${episode.name}" as watched (progress: ${(progress * 100).toStringAsFixed(1)}%)');
+        return true;
+      }
     }
+    return false;
   }
 
   /// Manual player connection trigger
@@ -229,6 +393,9 @@ extension LibraryMediaPlayerIntegration on Library {
   /// Cleanup media player resources
   Future<void> disposeMediaPlayerIntegration() async {
     await stopPlayerAutoConnection();
+    _progressSaveTimer?.cancel();
+    _progressSaveTimer = null;
+    _stopForcedSaveTimer();
     _playerManager?.dispose();
     _playerManager = null;
     _detectedPlayers.clear();

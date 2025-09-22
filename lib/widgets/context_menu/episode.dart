@@ -139,7 +139,7 @@ class EpisodeContextMenuState extends State<EpisodeContextMenu> {
       return;
     }
 
-    library.markEpisodeWatched(widget.episode, watched: newState);
+    library.markEpisodeWatched(widget.episode, watched: newState, overrideProgress: true);
 
     snackBar(newState ? 'Marked as watched' : 'Marked as unwatched', severity: InfoBarSeverity.success);
     Manager.setState();

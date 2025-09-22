@@ -80,6 +80,7 @@ void main() {
 
 void _printStatusUpdate(MediaStatus status, int updateNumber) {
   final timestamp = DateTime.now().toIso8601String().substring(11, 19);
+  final filepath = status.filePath;
   final file = status.filePath.isEmpty ? 'No file' : status.filePath.split('\\').last;
   final progress = status.totalDuration.inMilliseconds > 0 ? 
       '${_formatTime(status.currentPosition.inMilliseconds)}/${_formatTime(status.totalDuration.inMilliseconds)}' : 'Unknown';
@@ -87,6 +88,7 @@ void _printStatusUpdate(MediaStatus status, int updateNumber) {
   final volume = status.isMuted ? 'MUTED' : '${status.volumeLevel}%';
   
   print('[$timestamp] Update #$updateNumber:');
+  print('   FilePath: $filepath');
   print('   File: $file');
   print('   Status: $playStatus | Volume: $volume');
   print('   Progress: $progress');

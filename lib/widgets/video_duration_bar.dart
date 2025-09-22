@@ -23,9 +23,9 @@ class VideoDurationBar extends StatefulWidget {
     Color? progressColor,
     Color? backgroundColor,
     Color? thumbColor,
-  })  : backgroundColor = backgroundColor ?? const Color(0xFF595959).lerpWith(Manager.currentDominantColor ?? Manager.accentColor, 0.2),
+  })  : backgroundColor = backgroundColor ?? const Color(0xFF595959).lerpWith(Manager.currentDominantColor ?? Manager.accentColor, 0.5).withOpacity(0.5),
         progressColor = progressColor ?? Manager.currentDominantColor ?? Manager.accentColor,
-        thumbColor = thumbColor ?? Manager.currentDominantColor ?? Manager.accentColor;
+        thumbColor = thumbColor ?? (Manager.currentDominantColor ?? Manager.accentColor).toAccentColor().light;
 
   @override
   State<VideoDurationBar> createState() => _VideoDurationBarState();
@@ -69,6 +69,7 @@ class _VideoDurationBarState extends State<VideoDurationBar> {
                 setState(() => _dragValue = value);
                 _seekToProgress(value);
               },
+              thumbsSize: Size(4, 20),
               useLineThumb: true,
               onChangeStart: (value) {
                 widget.onSeekDown?.call();
@@ -77,15 +78,15 @@ class _VideoDurationBarState extends State<VideoDurationBar> {
                   _dragValue = value;
                 });
               },
-              trackThickness: 1.0,
+              trackThickness: 1,
               onChangeEnd: (value) {
                 _seekToProgress(value);
                 widget.onSeekUp?.call();
                 setState(() => _isDragging = false);
               },
-              squiggleAmplitude: 4.0,
-              squiggleWavelength: 8.0,
-              squiggleSpeed: 0.01,
+              squiggleAmplitude: 5.0,
+              squiggleWavelength: 4.0,
+              squiggleSpeed: 0.1,
               activeColor: widget.progressColor,
               inactiveColor: widget.backgroundColor,
               thumbColor: widget.thumbColor,

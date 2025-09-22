@@ -1118,9 +1118,7 @@ class SettingsScreenState extends State<SettingsScreen> {
                                   return FlyoutContent(
                                     child: ColorPicker(
                                       color: settings.accentColor,
-                                      onChanged: (color) {
-                                        tempColor = color;
-                                      },
+                                      onChanged: (color) => tempColor = color,
                                       minValue: 100,
                                       isAlphaSliderVisible: false,
                                       colorSpectrumShape: ColorSpectrumShape.ring,
@@ -1135,9 +1133,11 @@ class SettingsScreenState extends State<SettingsScreen> {
                                   );
                                 },
                               )..then((_) {
-                                  settings.accentColor = tempColor.saturate(300);
-                                  appTheme.color = settings.accentColor.toAccentColor();
-                                  settings.accentColor = settings.accentColor;
+                                  Manager.setState(() {
+                                    settings.accentColor = tempColor.saturate(300);
+                                    appTheme.color = settings.accentColor.toAccentColor();
+                                    settings.accentColor = settings.accentColor;
+                                  });
                                 });
                             },
                           ),
@@ -1588,7 +1588,7 @@ class SettingsScreenState extends State<SettingsScreen> {
                                                 width: 25,
                                                 child: getPlayerFromId(player.id)?.iconWidget,
                                               ),
-                                              SizedBox(width:8),
+                                              SizedBox(width: 8),
                                               Text.rich(
                                                 TextSpan(
                                                   children: [
@@ -1935,9 +1935,9 @@ class SettingsScreenState extends State<SettingsScreen> {
                             settings.fileLogLevel = newLevel;
                             setState(() {
                               if (newLevel == LogLevel.trace)
-                                doLogTrace = true;
+                                LoggingConfig.doLogTrace = true;
                               else
-                                doLogTrace = false;
+                                LoggingConfig.doLogTrace = false;
                             });
                           },
                         ),

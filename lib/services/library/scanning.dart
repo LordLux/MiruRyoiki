@@ -99,7 +99,7 @@ extension LibraryScanning on Library {
         logWarn('3 | No files to process, skipping isolate scan.');
       } else {
         logDebug('3 | Processing ${filesToProcess.length} files in a background isolate...');
-        if (doLogTrace) for (final file in filesToProcess) logTrace('3 |  Processing: ${p.basename(file.path)}');
+        if (LoggingConfig.doLogTrace) for (final file in filesToProcess) logTrace('3 |  Processing: ${p.basename(file.path)}');
 
         final isolateManager = IsolateManager();
 
@@ -125,7 +125,7 @@ extension LibraryScanning on Library {
         Future.delayed(Duration(milliseconds: 1000), () => LibraryScanProgressManager().hide()); // NOT awaited
 
         logDebug('3 | Isolate processing complete. Found metadata for ${scanResult.length} files.');
-        if (doLogTrace) for (final result in scanResult.entries) logTrace('  Processed: ${p.basename(result.key.path)} -> ${result.value.duration}');
+        if (LoggingConfig.doLogTrace) for (final result in scanResult.entries) logTrace('  Processed: ${p.basename(result.key.path)} -> ${result.value.duration}');
       }
 
       // ===================================================================

@@ -7,6 +7,7 @@ import 'package:collection/collection.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:miruryoiki/functions.dart';
 import 'package:path/path.dart' as p;
+import 'package:path/path.dart' as path;
 import 'package:provider/provider.dart';
 
 import '../players/player_manager.dart';
@@ -56,10 +57,17 @@ class Library with ChangeNotifier {
   // Media player integration fields
   PlayerManager? _playerManager;
   Timer? _connectionTimer;
+  Timer? _progressSaveTimer;
+  Timer? _forcedSaveTimer;
   // ignore: prefer_final_fields
   List<DetectedPlayer> _detectedPlayers = [];
   String? _currentConnectedPlayer;
   StreamSubscription? _playerStatusSubscription;
+  
+  // State tracking for immediate saves
+  String? _lastFilePath;
+  bool? _lastPlayingState;
+  Episode? _lastEpisode;
   
   final SettingsManager _settings;
   late final AppDatabase _db = AppDatabase();

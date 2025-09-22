@@ -32,9 +32,7 @@ class _PlayerState extends State<Player> with TickerProviderStateMixin {
 
   bool get _hasCurrentMedia {
     final status = _playerManager?.lastStatus;
-    return status != null &&
-           status.filePath.isNotEmpty &&
-           status.totalDuration.inSeconds > 0;
+    return status != null && status.filePath.isNotEmpty && status.totalDuration.inSeconds > 0;
   }
 
   Series? _series;
@@ -133,7 +131,8 @@ class _PlayerState extends State<Player> with TickerProviderStateMixin {
             children: [
               Opacity(
                 opacity: 0.2,
-                child: Acrylic(
+                child: AnimatedAcrylic(
+                  duration: mediumDuration * 2,
                   tint: Manager.accentColor,
                   blurAmount: 30,
                   elevation: 4,
@@ -141,7 +140,7 @@ class _PlayerState extends State<Player> with TickerProviderStateMixin {
                   tintAlpha: 0.1,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                   child: AnimatedContainer(
-                    duration: shortDuration,
+                    duration: mediumDuration,
                     height: _expanded ? 100 : 40,
                     width: ScreenUtils.kNavigationBarWidth + 4,
                     decoration: BoxDecoration(
@@ -175,56 +174,54 @@ class _PlayerState extends State<Player> with TickerProviderStateMixin {
                                   children: [
                                     _buildControlButton(
                                       Icons.skip_previous,
-                                      _hasCurrentMedia 
-                                        ? () {
-                                            final lib = Provider.of<Library>(context, listen: false);
-                                            lib.previousCurrentVideo().then((_) {
-                                              if (mounted) setState(() {});
-                                            });
-                                          }
-                                        : () {}, // Empty callback when no media
+                                      _hasCurrentMedia
+                                          ? () {
+                                              final lib = Provider.of<Library>(context, listen: false);
+                                              lib.previousCurrentVideo().then((_) {
+                                                if (mounted) setState(() {});
+                                              });
+                                            }
+                                          : () {}, // Empty callback when no media
                                     ),
                                     const SizedBox(width: 8),
                                     // Play/Pause button
                                     _buildControlButton(
-                                      _hasCurrentMedia && _playerManager?.lastStatus?.isPlaying == true 
-                                        ? Icons.pause : Icons.play_arrow,
-                                      _hasCurrentMedia 
-                                        ? () {
-                                            final lib = Provider.of<Library>(context, listen: false);
-                                            lib.togglePlayPauseCurrentPlayback().then((_) {
-                                              if (mounted) setState(() {});
-                                            });
-                                          }
-                                        : () {}, // Empty callback when no media
+                                      _hasCurrentMedia && _playerManager?.lastStatus?.isPlaying == true ? Icons.pause : Icons.play_arrow,
+                                      _hasCurrentMedia
+                                          ? () {
+                                              final lib = Provider.of<Library>(context, listen: false);
+                                              lib.togglePlayPauseCurrentPlayback().then((_) {
+                                                if (mounted) setState(() {});
+                                              });
+                                            }
+                                          : () {}, // Empty callback when no media
                                     ),
                                     const SizedBox(width: 8),
                                     // Next button
                                     _buildControlButton(
                                       Icons.skip_next,
-                                      _hasCurrentMedia 
-                                        ? () {
-                                            final lib = Provider.of<Library>(context, listen: false);
-                                            lib.nextCurrentVideo().then((_) {
-                                              if (mounted) setState(() {});
-                                            });
-                                          }
-                                        : () {}, // Empty callback when no media
+                                      _hasCurrentMedia
+                                          ? () {
+                                              final lib = Provider.of<Library>(context, listen: false);
+                                              lib.nextCurrentVideo().then((_) {
+                                                if (mounted) setState(() {});
+                                              });
+                                            }
+                                          : () {}, // Empty callback when no media
                                     ),
                                   ],
                                 ),
                                 // Mute button
                                 _buildControlButton(
-                                  _hasCurrentMedia && library.playerManager?.lastStatus?.isMuted == true 
-                                    ? Icons.volume_off : Icons.volume_up,
-                                  _hasCurrentMedia 
-                                    ? () {
-                                        final lib = Provider.of<Library>(context, listen: false);
-                                        lib.toggleMuteCurrentPlayback().then((_) {
-                                          if (mounted) setState(() {});
-                                        });
-                                      }
-                                    : () {}, // Empty callback when no media
+                                  _hasCurrentMedia && library.playerManager?.lastStatus?.isMuted == true ? Icons.volume_off : Icons.volume_up,
+                                  _hasCurrentMedia
+                                      ? () {
+                                          final lib = Provider.of<Library>(context, listen: false);
+                                          lib.toggleMuteCurrentPlayback().then((_) {
+                                            if (mounted) setState(() {});
+                                          });
+                                        }
+                                      : () {}, // Empty callback when no media
                                 ),
                               ],
                             ),
@@ -247,9 +244,7 @@ class _PlayerState extends State<Player> with TickerProviderStateMixin {
                                 children: [
                                   // Episode title or file path
                                   Text(
-                                    _hasCurrentMedia 
-                                      ? (_currentEpisode?.name ?? _playerManager?.lastStatus?.filePath ?? '')
-                                      : '',
+                                    _hasCurrentMedia ? (_currentEpisode?.name ?? _playerManager?.lastStatus?.filePath ?? '') : '',
                                     style: const TextStyle(fontSize: 13, color: _whiteColor),
                                     overflow: TextOverflow.ellipsis,
                                   ),
@@ -279,8 +274,7 @@ class _PlayerState extends State<Player> with TickerProviderStateMixin {
                                       final lib = Provider.of<Library>(context, listen: false);
                                       await lib.resumeCurrentPlayback();
                                     },
-                                    progressColor: Manager.accentColor,
-                                    backgroundColor: _whiteColor,
+                                    progressColor: Manager.accentColor.lightest,
                                     thumbColor: Manager.accentColor.light,
                                   ),
                                 ],
@@ -305,7 +299,7 @@ class _PlayerState extends State<Player> with TickerProviderStateMixin {
     if (iconOrWidget is IconData)
       iconWidget = Icon(iconOrWidget, size: 18, color: _whiteColor);
     else if (iconOrWidget is Widget)
-      iconWidget = iconOrWidget;
+      iconWidget = Padding(padding: const EdgeInsets.all(4.0), child: iconOrWidget);
     else
       iconWidget = Icon(Icons.play_arrow, size: 18, color: _whiteColor);
 
