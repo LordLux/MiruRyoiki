@@ -198,7 +198,7 @@ extension AnilistProviderBackgroundSync on AnilistProvider {
         final library = Provider.of<Library>(context, listen: false);
         await _anilistService.syncNotifications(
           database: library.database,
-          types: [NotificationType.AIRING, NotificationType.MEDIA_DATA_CHANGE],
+          types: [NotificationType.AIRING, NotificationType.RELATED_MEDIA_ADDITION, NotificationType.MEDIA_DATA_CHANGE],
           maxPages: 2,
         );
       }

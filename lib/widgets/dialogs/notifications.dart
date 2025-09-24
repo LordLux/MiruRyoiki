@@ -123,7 +123,7 @@ class NotificationsContentState extends State<_NotificationsContent> {
       // Focus on airing notifications primarily, with some media change notifications
       final notifications = await _anilistService!.syncNotifications(
         database: library.database,
-        types: [NotificationType.AIRING, NotificationType.MEDIA_DATA_CHANGE],
+        types: [NotificationType.AIRING, NotificationType.RELATED_MEDIA_ADDITION, NotificationType.MEDIA_DATA_CHANGE],
         maxPages: 2,
       );
 
@@ -355,9 +355,14 @@ class NotificationsContentState extends State<_NotificationsContent> {
         _formatNotificationTime(notification.createdAt),
         style: TextStyle(fontSize: 11, color: Colors.white.withOpacity(0.6)),
       ),
+      trailing: notification.isRead ? null : Icon(
+        FluentIcons.circle_fill,
+        size: 7,
+        color: Manager.currentDominantColor ?? Manager.accentColor.light,
+      ),
       onPressed: () {
         _markAsRead(notification.id);
-        // TODO: Navigate to downloaded content pane
+        // TODO: Navigate to series screen or download content pane
       },
     );
   }
@@ -380,6 +385,7 @@ class NotificationsContentState extends State<_NotificationsContent> {
     final a = switch (notification) {
       AiringNotification airing => _buildMediaImage(airing.media?.coverImage, associatedSeries),
       MediaDataChangeNotification dataChange => _buildMediaImage(dataChange.media?.coverImage, associatedSeries),
+      RelatedMediaAdditionNotification related => _buildMediaImage(related.media?.coverImage, associatedSeries),
       MediaMergeNotification merge => _buildMediaImage(merge.media?.coverImage, associatedSeries),
       MediaDeletionNotification _ => Container(
           width: 32,
@@ -512,6 +518,9 @@ class NotificationsContentState extends State<_NotificationsContent> {
       case AiringNotification airing:
         final title = airing.media?.title ?? 'Unknown anime';
         return 'Episode ${airing.episode} of $title aired';
+      case RelatedMediaAdditionNotification related:
+        final title = related.media?.title ?? 'Unknown anime';
+        return '$title was added to Anilist';
       case MediaDataChangeNotification dataChange:
         final title = dataChange.media?.title ?? 'Unknown anime';
         return '$title data was updated';

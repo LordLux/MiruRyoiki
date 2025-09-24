@@ -35,10 +35,37 @@ Map<String, dynamic> _$AiringNotificationToJson(AiringNotification instance) =>
 
 const _$NotificationTypeEnumMap = {
   NotificationType.AIRING: 'AIRING',
+  NotificationType.RELATED_MEDIA_ADDITION: 'RELATED_MEDIA_ADDITION',
   NotificationType.MEDIA_DATA_CHANGE: 'MEDIA_DATA_CHANGE',
   NotificationType.MEDIA_MERGE: 'MEDIA_MERGE',
   NotificationType.MEDIA_DELETION: 'MEDIA_DELETION',
 };
+
+RelatedMediaAdditionNotification _$RelatedMediaAdditionNotificationFromJson(
+        Map<String, dynamic> json) =>
+    RelatedMediaAdditionNotification(
+      id: (json['id'] as num).toInt(),
+      type: $enumDecode(_$NotificationTypeEnumMap, json['type']),
+      createdAt: (json['createdAt'] as num).toInt(),
+      isRead: json['isRead'] as bool? ?? false,
+      mediaId: (json['mediaId'] as num).toInt(),
+      context: json['context'] as String?,
+      media: json['media'] == null
+          ? null
+          : MediaInfo.fromJson(json['media'] as Map<String, dynamic>),
+    );
+
+Map<String, dynamic> _$RelatedMediaAdditionNotificationToJson(
+        RelatedMediaAdditionNotification instance) =>
+    <String, dynamic>{
+      'id': instance.id,
+      'type': _$NotificationTypeEnumMap[instance.type]!,
+      'createdAt': instance.createdAt,
+      'isRead': instance.isRead,
+      'mediaId': instance.mediaId,
+      'context': instance.context,
+      'media': instance.media,
+    };
 
 MediaDataChangeNotification _$MediaDataChangeNotificationFromJson(
         Map<String, dynamic> json) =>

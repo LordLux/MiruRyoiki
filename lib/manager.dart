@@ -110,14 +110,14 @@ class Manager {
   static bool get isCtrlPressed => KeyboardState.ctrlPressedNotifier.value;
   static bool get isShiftPressed => KeyboardState.shiftPressedNotifier.value;
 
-  static TextStyle get bodyStyle => FluentTheme.of(context).typography.body!;
+  static TextStyle get displayStyle => FluentTheme.of(context).typography.display!;
+  static TextStyle get titleLargeStyle => FluentTheme.of(context).typography.titleLarge!;
+  static TextStyle get titleStyle => FluentTheme.of(context).typography.title!;
+  static TextStyle get subtitleStyle => FluentTheme.of(context).typography.subtitle!;
+  static TextStyle get smallSubtitleStyle => FluentTheme.of(context).typography.subtitle!.copyWith(fontSize: 16 * Manager.fontSizeMultiplier);
   static TextStyle get bodyLargeStyle => FluentTheme.of(context).typography.bodyLarge!;
+  static TextStyle get bodyStyle => FluentTheme.of(context).typography.body!;
   static TextStyle get bodyStrongStyle => FluentTheme.of(context).typography.bodyStrong!;
   static TextStyle get captionStyle => FluentTheme.of(context).typography.caption!;
-  static TextStyle get displayStyle => FluentTheme.of(context).typography.display!;
-  static TextStyle get subtitleStyle => FluentTheme.of(context).typography.subtitle!;
-  static TextStyle get titleStyle => FluentTheme.of(context).typography.title!;
-  static TextStyle get titleLargeStyle => FluentTheme.of(context).typography.titleLarge!;
   static TextStyle get miniBodyStyle => FluentTheme.of(context).typography.body!.copyWith(fontSize: 10 * fontSizeMultiplier);
-  static TextStyle get smallSubtitleStyle => FluentTheme.of(context).typography.subtitle!.copyWith(fontSize: 16 * Manager.fontSizeMultiplier);
 }

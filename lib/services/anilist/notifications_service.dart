@@ -36,6 +36,28 @@ extension AnilistServiceNotifications on AnilistService {
               episodes
             }
           }
+          ... on RelatedMediaAdditionNotification {
+            id
+            type
+            mediaId
+            context
+            createdAt
+            media {
+              id
+              title {
+                romaji
+                english
+                native
+              }
+              coverImage {
+                large
+                medium
+              }
+              type
+              format
+              episodes
+            }
+          }
           ... on MediaDataChangeNotification {
             id
             type
@@ -214,6 +236,18 @@ extension AnilistServiceNotifications on AnilistService {
           contexts: contexts,
           media: mediaInfo,
         );
+      case NotificationType.RELATED_MEDIA_ADDITION:
+        final mediaId = json['mediaId'] as int? ?? 0;
+        final context = json['context'] as String?;
+
+        return RelatedMediaAdditionNotification(
+          id: id,
+          type: notificationType,
+          createdAt: createdAt,
+          mediaId: mediaId,
+          context: context,
+          media: mediaInfo,
+        );
 
       case NotificationType.MEDIA_DATA_CHANGE:
         final mediaId = json['mediaId'] as int? ?? 0;
@@ -268,6 +302,8 @@ extension AnilistServiceNotifications on AnilistService {
     switch (typeStr.toUpperCase()) {
       case 'AIRING':
         return NotificationType.AIRING;
+      case 'RELATED_MEDIA_ADDITION':
+        return NotificationType.RELATED_MEDIA_ADDITION;
       case 'MEDIA_DATA_CHANGE':
         return NotificationType.MEDIA_DATA_CHANGE;
       case 'MEDIA_MERGE':
@@ -313,13 +349,11 @@ extension AnilistServiceNotifications on AnilistService {
     List<NotificationType>? types,
     int maxPages = 3,
   }) async {
+    print('Syncing notifications from Anilist...');
     // If a sync is in progress, return the same future
-    if (_notificationsSyncCompleter != null) {
-      return _notificationsSyncCompleter!.future;
-    }
+    if (_notificationsSyncCompleter != null) return _notificationsSyncCompleter!.future;
 
     // Throttle full syncs: if last completed within 5s, just return cached (if any)
-
     if (_lastNotificationsSyncAt != null && now.difference(_lastNotificationsSyncAt!).inSeconds < 5) {
       if (_lastNotificationsCache != null) return _lastNotificationsCache!;
     }
@@ -361,6 +395,8 @@ extension AnilistServiceNotifications on AnilistService {
           switch (n) {
             case AiringNotification airing:
               allNotifications[i] = airing.copyWith(isRead: true);
+            case RelatedMediaAdditionNotification related:
+              allNotifications[i] = related.copyWith(isRead: true);
             case MediaDataChangeNotification dataChange:
               allNotifications[i] = dataChange.copyWith(isRead: true);
             case MediaMergeNotification merge:
@@ -408,6 +444,8 @@ extension AnilistServiceNotifications on AnilistService {
           switch (current) {
             case AiringNotification airing:
               notifications[i] = airing.copyWith(isRead: true);
+            case RelatedMediaAdditionNotification related:
+              notifications[i] = related.copyWith(isRead: true);
             case MediaDataChangeNotification dataChange:
               notifications[i] = dataChange.copyWith(isRead: true);
             case MediaMergeNotification merge:

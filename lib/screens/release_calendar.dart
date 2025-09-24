@@ -1,10 +1,9 @@
 import 'dart:async';
-import 'dart:math' as math;
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:miruryoiki/widgets/buttons/wrapper.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
-import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
+import 'package:smooth_scroll_multiplatform/smooth_scroll_multiplatform.dart';
 
 import '../services/library/library_provider.dart';
 import '../models/series.dart';
@@ -12,11 +11,15 @@ import '../models/anilist/anime.dart';
 import '../models/notification.dart';
 import '../services/anilist/provider/anilist_provider.dart';
 import '../services/anilist/queries/anilist_service.dart';
+import '../services/navigation/shortcuts.dart';
 import '../utils/color.dart';
 import '../utils/logging.dart';
 import '../utils/path.dart';
 import '../utils/screen.dart';
 import '../utils/time.dart';
+import '../widgets/animated_translate.dart';
+import '../widgets/no_image.dart';
+import '../widgets/notification_list_tile.dart';
 import '../widgets/page/header_widget.dart';
 import '../widgets/page/page.dart';
 import '../manager.dart';
@@ -38,12 +41,6 @@ class ReleaseCalendarScreen extends StatefulWidget {
 class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
   DateTime _selectedDate = now;
   DateTime _focusedMonth = now;
-  final ItemPositionsListener _itemPositionsListener = ItemPositionsListener.create();
-  final ItemScrollController _episodeListController = ItemScrollController();
-
-  double _spacerHeight = 0.0;
-  int _firstUpcomingItemIndex = -1;
-  int _lastItemIndex = -1;
 
   // Cache for release data to avoid repeated calculations
   Map<DateTime, List<CalendarEntry>> _calendarCache = {};
@@ -59,13 +56,10 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
   @override
   void initState() {
     super.initState();
-    // Initial load & scroll after first frame
-    nextFrame(() async {
-      _itemPositionsListener.itemPositions.addListener(_updateSpacerHeight);
-      loadReleaseData().then((_) {
-        // nextFrame(delay: 5, () => scrollToToday());
-      });
-    });
+    // Initial load
+    print('Loading release data...');
+    nextFrame(() => loadReleaseData());
+
     // Periodic refresh for relative times
     _minuteRefreshTimer = Timer.periodic(const Duration(minutes: 1), (_) {
       if (mounted) setState(() {});
@@ -76,7 +70,6 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
   void dispose() {
     _isDisposed = true;
     _minuteRefreshTimer?.cancel();
-    _itemPositionsListener.itemPositions.removeListener(_updateSpacerHeight);
     super.dispose();
   }
 
@@ -108,54 +101,6 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
     }
   }
 
-  void _updateSpacerHeight() {
-    if (!mounted || _firstUpcomingItemIndex == -1) return;
-
-    final positions = _itemPositionsListener.itemPositions.value;
-    if (positions.isEmpty) return;
-
-    // Find the visible item positions for our start and end indices
-    final firstItemPos = positions.where((p) => p.index == _firstUpcomingItemIndex).firstOrNull;
-    final lastItemPos = positions.where((p) => p.index == _lastItemIndex).firstOrNull;
-
-    // We can only calculate the height if BOTH the start and end items are visible.
-    // This is a limitation, but for many UI cases it's sufficient.
-    // If you need to calculate off-screen items, the logic becomes much more complex.
-    if (firstItemPos != null && lastItemPos != null) {
-      // The position values are fractions of the viewport height (0.0 to 1.0)
-      // itemLeadingEdge is the top, itemTrailingEdge is the bottom.
-      final contentHeightFraction = lastItemPos.itemTrailingEdge - firstItemPos.itemLeadingEdge;
-
-      // Get the viewport height. We wrap the list in a LayoutBuilder for this.
-      final viewportHeight = MediaQuery.of(context).size.height; // Or get from LayoutBuilder
-      final contentPixelHeight = contentHeightFraction * viewportHeight;
-
-      final availableHeight = ScreenUtils.height - ScreenUtils.kTitleBarHeight - 100 /*StuckHeader*/ - 16 /*bottom padding*/;
-      final newSpacerHeight = math.max(0.0, availableHeight - contentPixelHeight);
-
-      // Update state only if the value has changed to avoid unnecessary rebuilds
-      if ((newSpacerHeight - _spacerHeight).abs() > 1.0 && mounted && !_isDisposed) {
-        setState(() {
-          _spacerHeight = newSpacerHeight + 60;
-        });
-      }
-    }
-  }
-
-  // void scrollToToday({bool animated = true}) {
-  //   // Find today's position in the calendar entries and scroll to it
-  //   if (!mounted || _calendarCache.isEmpty) return;
-
-  //   // Scroll to position of first upcoming episode
-  //   if (_firstUpcomingItemIndex < _flattenedList.length && _firstUpcomingItemIndex > -1) {
-  //     _episodeListController.scrollTo(
-  //       index: _firstUpcomingItemIndex,
-  //       duration: animated ? const Duration(milliseconds: 300) : Duration(microseconds: 1),
-  //       curve: Curves.easeInOut,
-  //     );
-  //   }
-  // }
-
   Future<void> loadReleaseData() async {
     if (_isLoading || _isDisposed) return;
 
@@ -179,7 +124,7 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
         final anilistService = AnilistService();
         await anilistService.syncNotifications(
           database: library.database,
-          types: [NotificationType.AIRING, NotificationType.MEDIA_DATA_CHANGE],
+          types: [NotificationType.AIRING, NotificationType.RELATED_MEDIA_ADDITION, NotificationType.MEDIA_DATA_CHANGE],
           maxPages: 2,
         );
 
@@ -192,7 +137,7 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
       }
 
       // Get date range (±2 weeks from today for wider view)
-      final startDate = now.subtract(const Duration(days: 14));
+      final startDate = now.subtract(const Duration(days: 14)); // TODO 'get more' button to extend range?
       final endDate = now.add(const Duration(days: 14));
 
       final Map<DateTime, List<CalendarEntry>> calendarMap = {};
@@ -203,7 +148,7 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
       if (_isDisposed) return;
 
       // Load notifications (past events)
-      await _loadNotificationData(library, calendarMap, startDate, endDate);
+      await _loadNotificationData(library, calendarMap, null, endDate);
 
       if (_isDisposed) return;
 
@@ -325,7 +270,7 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
     }
   }
 
-  Future<void> _loadNotificationData(Library library, Map<DateTime, List<CalendarEntry>> calendarMap, DateTime startDate, DateTime endDate) async {
+  Future<void> _loadNotificationData(Library library, Map<DateTime, List<CalendarEntry>> calendarMap, DateTime? startDate, DateTime endDate) async {
     if (_isDisposed) return;
 
     try {
@@ -347,7 +292,7 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
 
         final notificationDate = DateTime.fromMillisecondsSinceEpoch(notification.createdAt * 1000);
 
-        if (notificationDate.isAfter(startDate) && notificationDate.isBefore(endDate)) {
+        if ((((startDate != null && notificationDate.isAfter(startDate)) || startDate == null) && notificationDate.isBefore(endDate))) {
           final dateKey = DateTime(notificationDate.year, notificationDate.month, notificationDate.day);
 
           // Try to find the associated series for this notification
@@ -782,8 +727,6 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
       flattenedList.addAll(entriesByDate[date]!); // Add all entries for that date
     }
 
-    _firstUpcomingItemIndex = flattenedList.indexWhere((item) => item is EpisodeCalendarEntry && item.episodeInfo.airingDate.isAfter(now));
-    _lastItemIndex = flattenedList.length - 1;
     final isToday = _selectedDate.year == now.year && _selectedDate.month == now.month && _selectedDate.day == now.day;
 
     // Check if we should show the "Show older notifications" button
@@ -866,63 +809,73 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
           ],
           // Episode list
           Expanded(
-            child: ScrollablePositionedList.builder(
-              itemScrollController: _episodeListController,
-              itemPositionsListener: _itemPositionsListener,
-              padding: const EdgeInsets.only(right: 8.0),
-              itemCount: flattenedList.length + (isToday ? 1 : 0),
-              itemBuilder: (context, index) {
-                if (index <= -1 || (isToday && index == flattenedList.length)) return SizedBox(height: _spacerHeight);
+            child: DynMouseScroll(
+                stopScroll: KeyboardState.ctrlPressedNotifier,
+                scrollSpeed: 1.0,
+                enableSmoothScroll: Manager.animationsEnabled,
+                durationMS: 350,
+                animationCurve: Curves.easeOutQuint,
+                builder: (context, controller, physics) {
+                  return ValueListenableBuilder(
+                      valueListenable: KeyboardState.ctrlPressedNotifier,
+                      builder: (context, isCtrlPressed, _) {
+                        return ListView.builder(
+                          physics: isCtrlPressed ? const NeverScrollableScrollPhysics() : null,
+                          controller: controller,
+                          padding: const EdgeInsets.only(right: 8.0),
+                          itemCount: flattenedList.length,
+                          itemBuilder: (context, index) {
+                            final item = flattenedList[index];
 
-                final item = flattenedList[index];
+                            // Date header
+                            if (item is DateTime) {
+                              final date = item;
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: 12.0, top: 16.0, left: 4.0),
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                  children: [
+                                    Text(
+                                      _getRelativeDateLabel(date),
+                                      style: Manager.bodyLargeStyle.copyWith(fontWeight: FontWeight.w600, color: lighten(Manager.accentColor.lightest)),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: Manager.accentColor.light.withOpacity(0.25),
+                                        borderRadius: BorderRadius.circular(20),
+                                        border: Border.all(color: Manager.accentColor.light.withOpacity(0.4), width: 1),
+                                      ),
+                                      child: Transform.translate(
+                                        offset: const Offset(0, -0.66),
+                                        child: Text(
+                                          '${entriesByDate[date]!.length}',
+                                          style: FluentTheme.of(context).typography.caption?.copyWith(
+                                                fontWeight: FontWeight.w600,
+                                                color: lighten(Manager.accentColor.lightest),
+                                              ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }
 
-                // Date header
-                if (item is DateTime) {
-                  final date = item;
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 12.0, top: 16.0, left: 4.0),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        Text(
-                          _getRelativeDateLabel(date),
-                          style: Manager.bodyLargeStyle.copyWith(fontWeight: FontWeight.w600, color: lighten(Manager.accentColor.lightest)),
-                        ),
-                        const SizedBox(width: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: Manager.accentColor.light.withOpacity(0.25),
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(color: Manager.accentColor.light.withOpacity(0.4), width: 1),
-                          ),
-                          child: Transform.translate(
-                            offset: const Offset(0, -0.66),
-                            child: Text(
-                              '${entriesByDate[date]!.length}',
-                              style: FluentTheme.of(context).typography.caption?.copyWith(
-                                    fontWeight: FontWeight.w600,
-                                    color: lighten(Manager.accentColor.lightest),
-                                  ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                }
+                            if (item is CalendarEntry) {
+                              final entry = item;
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: 3.0),
+                                child: _buildCalendarEntryItem(entry),
+                              );
+                            }
 
-                if (item is CalendarEntry) {
-                  final entry = item;
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 0.0),
-                    child: _buildCalendarEntryItem(entry),
-                  );
-                }
-
-                return const SizedBox.shrink();
-              },
-            ),
+                            return const SizedBox.shrink();
+                          },
+                        );
+                      });
+                }),
           ),
         ],
       );
@@ -931,254 +884,10 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
 
   Widget _buildCalendarEntryItem(CalendarEntry entry) {
     return switch (entry) {
-      EpisodeCalendarEntry episodeEntry => _buildEpisodeItem(episodeEntry.episodeInfo),
-      NotificationCalendarEntry notificationEntry => _buildNotificationItem(notificationEntry.notification, notificationEntry.series),
+      NotificationCalendarEntry notificationEntry => NotificationCalendarEntryWidget(notificationEntry.notification, notificationEntry.series, widget.onSeriesSelected),
+      EpisodeCalendarEntry episodeEntry => ScheduledEpisodeCalendarEntryWidget(episodeEntry),
       _ => const SizedBox(), // fallback for abstract CalendarEntry
     };
-  }
-
-  Widget _buildNotificationItem(AnilistNotification notification, Series? series) {
-    final notificationDate = DateTime.fromMillisecondsSinceEpoch(notification.createdAt * 1000);
-    final timeAgo = now.difference(notificationDate);
-
-    return Opacity(
-      opacity: 0.7, // Notifications are always in the past, so make them slightly transparent
-      child: ListTile(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        cursor: series != null ? SystemMouseCursors.click : SystemMouseCursors.basic,
-        tileColor: WidgetStateColor.resolveWith((states) {
-          if (states.contains(WidgetState.hovered)) return Colors.blue.withOpacity(0.2);
-          return Colors.grey.withOpacity(.15);
-        }),
-        onPressed: series != null
-            ? () {
-                widget.onSeriesSelected(series.path);
-              }
-            : null,
-        leading: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 30,
-              height: 30,
-              decoration: BoxDecoration(
-                color: Colors.blue.withOpacity(0.3),
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: Icon(
-                _getNotificationIcon(notification),
-                size: 16,
-                color: Colors.blue.light,
-              ),
-            ),
-            HDivPx(12),
-            SizedBox(
-              width: 70,
-              height: 54,
-              child: Builder(builder: (context) {
-                String? imageUrl = _getNotificationImageString(notification);
-                return _buildNotificationImage(imageUrl, series);
-              }),
-            ),
-          ],
-        ),
-        title: Text(
-          _getNotificationTitle(notification, series),
-          style: const TextStyle(fontWeight: FontWeight.w600),
-        ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Aired ${_formatTimeAgo(timeAgo)}',
-              style: Manager.bodyStyle.copyWith(color: Colors.blue.lightest),
-            ),
-            Text(
-              DateFormat.yMMMd().add_jm().format(notificationDate),
-              style: Manager.captionStyle.copyWith(color: Colors.white.withOpacity(.5)),
-            ),
-          ],
-        ),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (!notification.isRead)
-              Icon(
-                FluentIcons.circle_fill,
-                color: Colors.blue,
-                size: 8,
-              ),
-            if (series != null) const Icon(FluentIcons.chevron_right),
-          ],
-        ),
-      ),
-    );
-  }
-
-  IconData _getNotificationIcon(AnilistNotification notification) {
-    return switch (notification.type) {
-      NotificationType.AIRING => FluentIcons.play,
-      NotificationType.MEDIA_DATA_CHANGE => FluentIcons.edit,
-      NotificationType.MEDIA_MERGE => FluentIcons.merge,
-      NotificationType.MEDIA_DELETION => FluentIcons.delete,
-    };
-  }
-
-  String _getNotificationTitle(AnilistNotification notification, Series? series) {
-    return switch (notification) {
-      // TODO crossreference with seriesId to find entry type (TV/ONA/OVA or MOVIE) and adjust wording accordingly
-      AiringNotification airing => 'Episode ${airing.episode} - ${series?.displayTitle ?? airing.media?.title ?? 'Unknown anime'}',
-      MediaDataChangeNotification dataChange => '${series?.displayTitle ?? dataChange.media?.title ?? 'Unknown anime'} was updated',
-      MediaMergeNotification merge => '${series?.displayTitle ?? merge.media?.title ?? 'Unknown anime'} was merged',
-      MediaDeletionNotification deletion => '${deletion.deletedMediaTitle ?? 'Anime'} was deleted',
-      _ => 'Unknown notification',
-    };
-  }
-
-  String? _getNotificationImageString(AnilistNotification notification) {
-    return switch (notification) {
-      AiringNotification airing => airing.media?.coverImage,
-      MediaDataChangeNotification dataChange => dataChange.media?.coverImage,
-      MediaMergeNotification merge => merge.media?.coverImage,
-      MediaDeletionNotification _ => null, // No media info for deletion notifications
-      _ => null,
-    };
-  }
-
-  Series? _getSeriesFromSchedule(ReleaseEpisodeInfo episodeInfo) {
-    final library = Provider.of<Library>(context, listen: false);
-    return library.getSeriesByPath(episodeInfo.series.path);
-  }
-
-  Widget _buildNotificationImage(String? imageUrl, Series? series) {
-    // Use series poster image if available, otherwise fallback to Anilist cover
-    if (series != null) {
-      return FutureBuilder<ImageProvider?>(
-        future: series.getPosterImage(),
-        builder: (context, snapshot) {
-          if (snapshot.hasData && snapshot.data != null) {
-            return ClipRRect(
-              borderRadius: BorderRadius.circular(4),
-              child: Image(
-                image: snapshot.data!,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) => const NoImageWidget(),
-              ),
-            );
-          } else if (snapshot.hasError || imageUrl == null) {
-            return const NoImageWidget();
-          } else {
-            // Fallback to Anilist cover image while loading
-            return Image.network(
-              imageUrl,
-              fit: BoxFit.cover,
-              frameBuilder: (context, child, frame, wasSynchronouslyLoaded) => ClipRRect(
-                borderRadius: BorderRadius.circular(4),
-                child: child,
-              ),
-              errorBuilder: (context, error, stackTrace) => const NoImageWidget(),
-            );
-          }
-        },
-      );
-    } else if (imageUrl != null) {
-      return Image.network(
-        imageUrl,
-        fit: BoxFit.cover,
-        frameBuilder: (context, child, frame, wasSynchronouslyLoaded) => ClipRRect(
-          borderRadius: BorderRadius.circular(4),
-          child: child,
-        ),
-        errorBuilder: (context, error, stackTrace) => const NoImageWidget(),
-      );
-    } else {
-      return const NoImageWidget();
-    }
-  }
-
-  Widget _buildEpisodeItem(ReleaseEpisodeInfo episodeInfo) {
-    final isUpcoming = episodeInfo.airingDate.isAfter(now);
-    final timeUntil = episodeInfo.airingDate.difference(now);
-
-    final realSeries = _getSeriesFromSchedule(episodeInfo);
-    final imageUrl = realSeries?.posterImage;
-
-    return Opacity(
-      opacity: isUpcoming ? 1.0 : 0.7,
-      child: ListTile(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        cursor: SystemMouseCursors.click,
-        tileColor: WidgetStateColor.resolveWith((states) {
-          if (states.contains(WidgetState.hovered)) return Manager.accentColor.light.withOpacity(0.2);
-          return Colors.grey.withOpacity(.25);
-        }),
-        onPressed: () => widget.onSeriesSelected(episodeInfo.series.path),
-        leading: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              episodeInfo.airingEpisode.episode.toString(),
-              style: Manager.bodyStyle.copyWith(
-                color: lighten(Manager.accentColor.lightest),
-                fontWeight: FontWeight.w900,
-              ),
-              textAlign: TextAlign.center,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            HDivPx(12),
-            SizedBox(
-              width: 70,
-              height: 54,
-              child: _buildNotificationImage(imageUrl, realSeries),
-            ),
-          ],
-        ),
-        title: Text(
-          'Episode ${episodeInfo.airingEpisode.episode ?? '?'} - ${episodeInfo.series.displayTitle}',
-          style: const TextStyle(fontWeight: FontWeight.w600),
-        ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              isUpcoming ? 'Airs in ${_formatDuration(timeUntil)}' : 'Aired ${_formatTimeAgo(timeUntil.abs())}',
-              style: Manager.bodyStyle.copyWith(color: Manager.accentColor.lightest),
-            ),
-            Text(
-              DateFormat.yMMMd().add_jm().format(episodeInfo.airingDate),
-              style: Manager.captionStyle.copyWith(color: Colors.white.withOpacity(.5)),
-            ),
-          ],
-        ),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(FluentIcons.chevron_right),
-          ],
-        ),
-      ),
-    );
-  }
-
-  String _formatDuration(Duration duration) {
-    if (duration.inDays > 0) {
-      return '${duration.inDays}d ${duration.inHours % 24}h';
-    } else if (duration.inHours > 0) {
-      return '${duration.inHours}h ${duration.inMinutes % 60}m';
-    } else {
-      return '${duration.inMinutes}m';
-    }
-  }
-
-  String _formatTimeAgo(Duration duration) {
-    if (duration.inDays > 0) {
-      return '${duration.inDays} day${duration.inDays > 1 ? 's' : ''} ago';
-    } else if (duration.inHours > 0) {
-      return '${duration.inHours} hour${duration.inHours > 1 ? 's' : ''} ago';
-    } else {
-      return '${duration.inMinutes} minute${duration.inMinutes > 1 ? 's' : ''} ago';
-    }
   }
 
   String _getRelativeDateLabel(DateTime date) {
@@ -1203,20 +912,6 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
 
   bool _isSameDay(DateTime a, DateTime b) {
     return a.year == b.year && a.month == b.month && a.day == b.day;
-  }
-}
-
-class NoImageWidget extends StatelessWidget {
-  const NoImageWidget({
-    super.key,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      color: Colors.grey.withOpacity(0.3),
-      child: const Icon(FluentIcons.photo2),
-    );
   }
 }
 
@@ -1272,4 +967,323 @@ class NotificationCalendarEntry extends CalendarEntry {
   }) : super(
           date: notification.createdAt != 0 ? DateTime.fromMillisecondsSinceEpoch(notification.createdAt * 1000) : DateTime.now(),
         );
+}
+
+class NotificationCalendarEntryWidget extends StatefulWidget {
+  final AnilistNotification notification;
+  final Series? series;
+  final Function(PathString) onSeriesSelected;
+
+  const NotificationCalendarEntryWidget(this.notification, this.series, this.onSeriesSelected, {super.key});
+
+  @override
+  State<NotificationCalendarEntryWidget> createState() => _NotificationCalendarEntryWidgetState();
+}
+
+class _NotificationCalendarEntryWidgetState extends State<NotificationCalendarEntryWidget> {
+  late final DateTime notificationDate;
+  late final Duration timeAgo;
+  bool _isHovered = false;
+  bool _isReadNotifHovered = false;
+  late final bool isRelatedMediaAdditionNotification;
+
+  @override
+  void initState() {
+    super.initState();
+    notificationDate = DateTime.fromMillisecondsSinceEpoch(widget.notification.createdAt * 1000);
+    timeAgo = now.difference(notificationDate);
+    isRelatedMediaAdditionNotification = widget.notification is RelatedMediaAdditionNotification;
+  }
+
+  IconData _getNotificationIcon(AnilistNotification notification, Series? series) {
+    if (isRelatedMediaAdditionNotification || series == null) return FluentIcons.download;
+
+    return switch (notification.type) {
+      NotificationType.AIRING => FluentIcons.play,
+      NotificationType.RELATED_MEDIA_ADDITION => FluentIcons.add,
+      NotificationType.MEDIA_DATA_CHANGE => FluentIcons.edit,
+      NotificationType.MEDIA_MERGE => FluentIcons.merge,
+      NotificationType.MEDIA_DELETION => FluentIcons.delete,
+    };
+  }
+
+  String _getNotificationTitle(AnilistNotification notification, Series? series) {
+    return switch (notification) {
+      // TODO crossreference with seriesId to find entry type (TV/ONA/OVA or MOVIE) and adjust wording accordingly (e.g. "Movie released" instead of "Episode X released")
+      AiringNotification airing => 'Episode ${airing.episode} - ${series?.displayTitle ?? airing.media?.title ?? 'Unknown anime'}',
+      RelatedMediaAdditionNotification related => '${series?.displayTitle ?? related.media?.title ?? 'Unknown anime'} was added to Anilist',
+      MediaDataChangeNotification dataChange => '${series?.displayTitle ?? dataChange.media?.title ?? 'Unknown anime'} was updated',
+      MediaMergeNotification merge => '${series?.displayTitle ?? merge.media?.title ?? 'Unknown anime'} was merged',
+      MediaDeletionNotification deletion => '${deletion.deletedMediaTitle ?? 'Anime'} was deleted',
+      _ => 'Unknown notification',
+    };
+  }
+
+  String? _getNotificationImageString(AnilistNotification notification) {
+    return switch (notification) {
+      AiringNotification airing => airing.media?.coverImage,
+      RelatedMediaAdditionNotification related => related.media?.coverImage,
+      MediaDataChangeNotification dataChange => dataChange.media?.coverImage,
+      MediaMergeNotification merge => merge.media?.coverImage,
+      MediaDeletionNotification _ => null, // No media info for deletion notifications
+      _ => null,
+    };
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bool hasEpisodeNumber = widget.notification is AiringNotification;
+    final double offset = hasEpisodeNumber ? _calculateOffset((widget.notification as AiringNotification).episode.toString().length) : 0.0;
+    return NotificationListTile(
+      leading: MouseRegion(
+        onEnter: (_) => setState(() => _isHovered = true),
+        onExit: (_) => setState(() => _isHovered = false),
+        child: SizedBox(
+          width: 70,
+          child: Stack(
+            alignment: Alignment.centerLeft,
+            children: [
+              if (hasEpisodeNumber)
+                Padding(
+                  padding: const EdgeInsets.only(left: 3.0),
+                  child: Text(
+                    (widget.notification as AiringNotification).episode.toString(),
+                    style: Manager.bodyStyle.copyWith(
+                      color: lighten(Manager.accentColor.lightest),
+                      fontWeight: FontWeight.w900,
+                    ),
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              SizedBox(
+                width: 70,
+                height: 64,
+                child: hasEpisodeNumber
+                    ? AnimatedTranslate(
+                        duration: shortDuration,
+                        curve: Curves.easeInOut,
+                        offset: _isHovered ? Offset(offset, 0) : Offset.zero,
+                        child: _buildNotificationImage(_getNotificationImageString(widget.notification), widget.series),
+                      )
+                    : _buildNotificationImage(_getNotificationImageString(widget.notification), widget.series),
+              ),
+            ],
+          ),
+        ),
+      ),
+      title: _getNotificationTitle(widget.notification, widget.series),
+      contentBuilder: (context, child) {
+        if (!hasEpisodeNumber) return child;
+        return AnimatedTranslate(
+          duration: shortDuration,
+          curve: Curves.easeInOut,
+          offset: _isHovered ? Offset(offset, 0) : Offset.zero,
+          child: child,
+        );
+      },
+      subtitle: _formatTimeAgo(widget.notification, timeAgo),
+      timestamp: DateFormat.yMMMd().add_jm().format(notificationDate),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (!widget.notification.isRead)
+            Builder(
+              builder: (context) {
+                final icon = Icon(
+                  FluentIcons.circle_fill,
+                  color: Manager.accentColor.light,
+                  size: 8,
+                );
+                if (!_isReadNotifHovered) return icon;
+                return IconButton(
+                    icon: icon,
+                    onPressed: () {
+                      setState(() {
+                        // TODO: Mark notification as read
+                        print('Marking notification as read: ${widget.notification.id}');
+                      });
+                    });
+              },
+            ),
+          if (widget.series != null) const Icon(FluentIcons.chevron_right),
+        ],
+      ),
+      onTap: () => widget.series != null ? widget.onSeriesSelected(widget.series!.path) : null,
+      isRead: widget.notification.isRead,
+    );
+  }
+}
+
+class ScheduledEpisodeCalendarEntryWidget extends StatefulWidget {
+  final EpisodeCalendarEntry episodeEntry;
+
+  const ScheduledEpisodeCalendarEntryWidget(this.episodeEntry, {super.key});
+
+  // NotificationItem2(ReleaseEpisodeInfo episodeInfo, this.onSeriesSelected, {super.key}) : episodeInfo = ReleaseEpisodeInfo(
+  //   series: episodeInfo.series,
+  //   animeData: episodeInfo.animeData,
+  //   airingEpisode: AiringEpisode(
+  //     airingAt: episodeInfo.airingEpisode.airingAt,
+  //     episode: 100000,
+  //     timeUntilAiring: episodeInfo.airingEpisode.timeUntilAiring,
+  //   ),
+  //   airingDate: episodeInfo.airingDate,
+  //   isWatched: episodeInfo.isWatched,
+  //   isAvailable: episodeInfo.isAvailable,
+  // );
+
+  @override
+  State<ScheduledEpisodeCalendarEntryWidget> createState() => _NotificationItemState2();
+}
+
+double _calculateOffset(int? length) {
+  // Calculate offset based on text length (1 to 4 characters)
+  final titleLength = length ?? 1;
+  return 8.0 + 9.5 * titleLength; // Base offset + per-character offset
+}
+
+class _NotificationItemState2 extends State<ScheduledEpisodeCalendarEntryWidget> {
+  late final bool isUpcoming;
+  late final Duration timeUntil;
+  late final Series? realSeries;
+  late final String? imageUrl;
+  bool _isHovered = false;
+
+  @override
+  void initState() {
+    super.initState();
+    isUpcoming = widget.episodeEntry.episodeInfo.airingDate.isAfter(now);
+    timeUntil = widget.episodeEntry.episodeInfo.airingDate.difference(now);
+
+    realSeries = _getSeriesFromSchedule(widget.episodeEntry.episodeInfo);
+    imageUrl = realSeries?.posterImage;
+  }
+
+  Series? _getSeriesFromSchedule(ReleaseEpisodeInfo episodeInfo) {
+    final library = Provider.of<Library>(context, listen: false);
+    return library.getSeriesByPath(episodeInfo.series.path);
+  }
+
+  String _formatDuration(Duration duration) {
+    if (duration.inDays > 0) return '${duration.inDays}d ${duration.inHours % 24}h';
+    if (duration.inHours > 0) return '${duration.inHours}h ${duration.inMinutes % 60}m';
+    return '${duration.inMinutes}m';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final offset = _calculateOffset(widget.episodeEntry.episodeInfo.airingEpisode.episode?.toString().length);
+    return NotificationListTile(
+      leading: MouseRegion(
+        onEnter: (_) => setState(() => _isHovered = true),
+        onExit: (_) => setState(() => _isHovered = false),
+        child: SizedBox(
+          width: 70,
+          child: Stack(
+            alignment: Alignment.centerLeft,
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(left: 3.0),
+                child: Text(
+                  widget.episodeEntry.episodeInfo.airingEpisode.episode.toString(),
+                  style: Manager.bodyStyle.copyWith(
+                    color: lighten(Manager.accentColor.lightest),
+                    fontWeight: FontWeight.w900,
+                  ),
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              SizedBox(
+                width: 70,
+                height: 64,
+                child: AnimatedTranslate(
+                  duration: shortDuration,
+                  curve: Curves.easeInOut,
+                  offset: _isHovered ? Offset(offset, 0) : Offset.zero,
+                  child: _buildNotificationImage(imageUrl, realSeries),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+      title: 'Episode ${widget.episodeEntry.episodeInfo.airingEpisode.episode ?? '?'} - ${widget.episodeEntry.episodeInfo.series.displayTitle}',
+      contentBuilder: (context, child) {
+        return AnimatedTranslate(
+          duration: shortDuration,
+          curve: Curves.easeInOut,
+          offset: _isHovered ? Offset(offset, 0) : Offset.zero,
+          child: child,
+        );
+      },
+      trailing: const Icon(FluentIcons.chevron_right),
+      subtitle: isUpcoming ? 'Airs in ${_formatDuration(timeUntil)}' : _formatTimeAgo(null, timeUntil.abs()),
+      timestamp: DateFormat.yMMMd().add_jm().format(widget.episodeEntry.episodeInfo.airingDate),
+      onTap: null,
+      isRead: false, // TODO: Mark as read if episode is watched
+    );
+  }
+}
+
+Widget _buildNotificationImage(String? imageUrl, Series? series) {
+  // Use series poster image if available, otherwise fallback to Anilist cover
+  if (series != null) {
+    return FutureBuilder<ImageProvider?>(
+      future: series.getPosterImage(),
+      builder: (context, snapshot) {
+        if (snapshot.hasData && snapshot.data != null) {
+          return ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: Image(
+              image: snapshot.data!,
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) => const NoImageWidget(),
+            ),
+          );
+        } else if (snapshot.hasError || imageUrl == null) {
+          return const NoImageWidget();
+        } else {
+          // Fallback to Anilist cover image while loading
+          return Image.network(
+            imageUrl,
+            fit: BoxFit.cover,
+            frameBuilder: (context, child, frame, wasSynchronouslyLoaded) => ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: child,
+            ),
+            errorBuilder: (context, error, stackTrace) => const NoImageWidget(),
+          );
+        }
+      },
+    );
+  } else if (imageUrl != null) {
+    return Image.network(
+      imageUrl,
+      fit: BoxFit.cover,
+      frameBuilder: (context, child, frame, wasSynchronouslyLoaded) => ClipRRect(
+        borderRadius: BorderRadius.circular(4),
+        child: child,
+      ),
+      errorBuilder: (context, error, stackTrace) => const NoImageWidget(),
+    );
+  } else {
+    return const NoImageWidget();
+  }
+}
+
+String _formatTimeAgo(AnilistNotification? notification, Duration duration) {
+  String str = "";
+  if (duration.inDays > 0)
+    str = '${duration.inDays} day${duration.inDays > 1 ? 's' : ''} ago';
+  else if (duration.inHours > 0)
+    str = '${duration.inHours} hour${duration.inHours > 1 ? 's' : ''} ago';
+  else
+    str = '${duration.inMinutes} minute${duration.inMinutes > 1 ? 's' : ''} ago';
+
+  if (notification == null || notification is! RelatedMediaAdditionNotification) str = 'Aired $str';
+  return str;
 }

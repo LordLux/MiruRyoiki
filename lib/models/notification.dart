@@ -6,6 +6,7 @@ part 'notification.g.dart';
 
 enum NotificationType {
   AIRING,
+  RELATED_MEDIA_ADDITION,
   MEDIA_DATA_CHANGE,
   MEDIA_MERGE,
   MEDIA_DELETION,
@@ -68,6 +69,48 @@ class AiringNotification extends AnilistNotification {
       animeId: animeId ?? this.animeId,
       episode: episode ?? this.episode,
       contexts: contexts ?? this.contexts,
+      media: media ?? this.media,
+    );
+  }
+}
+
+@JsonSerializable()
+class RelatedMediaAdditionNotification extends AnilistNotification {
+  final int mediaId;
+  final String? context;
+  final MediaInfo? media;
+
+  const RelatedMediaAdditionNotification({
+    required super.id,
+    required super.type,
+    required super.createdAt,
+    super.isRead,
+    required this.mediaId,
+    this.context,
+    this.media,
+  });
+
+  factory RelatedMediaAdditionNotification.fromJson(Map<String, dynamic> json) => _$RelatedMediaAdditionNotificationFromJson(json);
+
+  @override
+  Map<String, dynamic> toJson() => _$RelatedMediaAdditionNotificationToJson(this);
+
+  RelatedMediaAdditionNotification copyWith({
+    int? id,
+    NotificationType? type,
+    int? createdAt,
+    bool? isRead,
+    int? mediaId,
+    String? context,
+    MediaInfo? media,
+  }) {
+    return RelatedMediaAdditionNotification(
+      id: id ?? this.id,
+      type: type ?? this.type,
+      createdAt: createdAt ?? this.createdAt,
+      isRead: isRead ?? this.isRead,
+      mediaId: mediaId ?? this.mediaId,
+      context: context ?? this.context,
       media: media ?? this.media,
     );
   }

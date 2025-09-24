@@ -139,18 +139,19 @@ class SeriesScreenState extends State<SeriesScreen> {
     });
   }
 
-  Future<void> _loadAnilistDataForCurrentSeries() async {
+  Future<void> _loadAnilistDataForCurrentSeries() async { // TODO cancel fetch if screen gets disposed
+    final series = this.series; // get current series
     if (!mounted || widget.seriesPath == null || series == null) return;
 
-    if (!series!.isLinked) {
+    if (!series.isLinked) {
       // Clear any Anilist data references to ensure UI updates
-      series!.anilistData = null;
+      series.anilistData = null;
       if (homeKey.currentContext?.mounted ?? false) setState(() {});
       return;
     }
 
     // Load data for the primary mapping (or first mapping if no primary)
-    final anilistId = series!.primaryAnilistId ?? series!.anilistMappings.first.anilistId;
+    final anilistId = series.primaryAnilistId ?? series.anilistMappings.first.anilistId;
     await _loadAnilistData(anilistId);
   }
 

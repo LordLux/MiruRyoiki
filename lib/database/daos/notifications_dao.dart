@@ -194,6 +194,8 @@ class NotificationsDao extends DatabaseAccessor<AppDatabase> with _$Notification
 
   int? _getMediaId(AnilistNotification notification) {
     switch (notification) {
+      case RelatedMediaAdditionNotification related:
+        return related.mediaId;
       case MediaDataChangeNotification dataChange:
         return dataChange.mediaId;
       case MediaMergeNotification merge:
@@ -205,6 +207,8 @@ class NotificationsDao extends DatabaseAccessor<AppDatabase> with _$Notification
 
   String? _getContext(AnilistNotification notification) {
     switch (notification) {
+      case RelatedMediaAdditionNotification related:
+        return related.context;
       case MediaDataChangeNotification dataChange:
         return dataChange.context;
       case MediaMergeNotification merge:
@@ -243,6 +247,7 @@ class NotificationsDao extends DatabaseAccessor<AppDatabase> with _$Notification
   String? _getMediaInfo(AnilistNotification notification) {
     final media = switch (notification) {
       AiringNotification airing => airing.media,
+      RelatedMediaAdditionNotification related => related.media,
       MediaDataChangeNotification dataChange => dataChange.media,
       MediaMergeNotification merge => merge.media,
       MediaDeletionNotification _ => null,
@@ -266,6 +271,16 @@ class NotificationsDao extends DatabaseAccessor<AppDatabase> with _$Notification
     return (delete(notificationsTable)..where((t) => t.id.isIn(idsToDelete))).go();
   }
 
+  // Clear all notifications (force refresh from API)
+  Future<int> clearAllNotifications() async => delete(notificationsTable).go();
+
+  // Clear notifications of specific types (force refresh of problematic cached data)
+  Future<int> clearNotificationsByTypes(List<NotificationType> types) async {
+    if (types.isEmpty) return 0;
+    final typeIndices = types.map((t) => t.index).toList();
+    return (delete(notificationsTable)..where((t) => t.type.isIn(typeIndices))).go();
+  }
+
   // Convert AnilistNotification to database companion
   NotificationsTableCompanion _notificationToCompanion(AnilistNotification notification) {
     switch (notification) {
@@ -279,6 +294,16 @@ class NotificationsDao extends DatabaseAccessor<AppDatabase> with _$Notification
           episode: Value(airing.episode),
           contexts: Value(airing.contexts),
           mediaInfo: Value(airing.media),
+        );
+      case RelatedMediaAdditionNotification related:
+        return NotificationsTableCompanion.insert(
+          id: Value(related.id),
+          type: related.type,
+          createdAt: related.createdAt,
+          isRead: Value(related.isRead),
+          mediaId: Value(related.mediaId),
+          context: Value(related.context),
+          mediaInfo: Value(related.media),
         );
       case MediaDataChangeNotification dataChange:
         return NotificationsTableCompanion.insert(
@@ -330,6 +355,16 @@ class NotificationsDao extends DatabaseAccessor<AppDatabase> with _$Notification
           animeId: data.animeId ?? 0,
           episode: data.episode ?? 0,
           contexts: data.contexts ?? [],
+          media: data.mediaInfo,
+        );
+      case NotificationType.RELATED_MEDIA_ADDITION:
+        return RelatedMediaAdditionNotification(
+          id: data.id,
+          type: data.type,
+          createdAt: data.createdAt,
+          isRead: data.isRead,
+          mediaId: data.mediaId ?? 0,
+          context: data.context,
           media: data.mediaInfo,
         );
       case NotificationType.MEDIA_DATA_CHANGE:

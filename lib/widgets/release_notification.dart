@@ -18,6 +18,8 @@ import '../utils/logging.dart';
 import 'animated_icon.dart' as anim_icon;
 import 'dialogs/notifications.dart';
 
+/// Widget that shows a notification bell icon with unread count badge.
+/// Tapping the icon opens a dialog showing recent notifications.
 class ReleaseNotificationWidget extends StatefulWidget {
   final void Function(BuildContext context)? onMorePressed;
 
@@ -74,7 +76,7 @@ class _ReleaseNotificationWidgetState extends State<ReleaseNotificationWidget> {
       try {
         await _anilistService!.syncNotifications(
           database: library.database,
-          types: [NotificationType.AIRING, NotificationType.MEDIA_DATA_CHANGE],
+          types: [NotificationType.AIRING, NotificationType.RELATED_MEDIA_ADDITION, NotificationType.MEDIA_DATA_CHANGE],
           maxPages: 2,
         );
       } catch (e) {
