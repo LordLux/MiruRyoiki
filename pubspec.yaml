@@ -80,6 +80,8 @@ dependencies:
   squiggly_slider:
     path: M:/Projects/squiggly_slider/
   flutter_svg: ^2.2.1
+  process_monitor:
+    path: M:/Projects/process_monitor/
 
 dev_dependencies:
   flutter_test:

@@ -101,6 +101,7 @@ class PlayerManager {
           break;
 
         case 'mpc_hc':
+        case 'mpchc':
         case 'mpc-hc':
           connected = await connectToPlayer(PlayerType.mpc, config: PlayerConfig.mpcHc);
           break;

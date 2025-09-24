@@ -39,6 +39,7 @@ import '../../utils/time.dart';
 import '../isolates/isolate_manager.dart';
 import '../isolates/thumbnail_manager.dart';
 import '../lock_manager.dart';
+import '../processes/monitor.dart' as process_monitor;
 
 // Include all the parts
 part 'initialization.dart';

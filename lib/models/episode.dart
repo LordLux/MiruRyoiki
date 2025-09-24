@@ -30,13 +30,18 @@ class Episode {
     this.metadata,
     this.mkvMetadata,
   }) : _episodeNumber = episodeNumber, _progress = progress;
-
+  
+  /// Returns progress as a value between 0.0 and 1.0
   double get progress => double.parse(_progress.toStringAsFixed(2));
   set progress(double value) {
     if (value < 0.0 || value > 1.0) throw ArgumentError('Progress must be between 0.0 and 1.0');
     _progress = value;
   }
-
+  
+  /// Returns progress as a percentage string like "75%"
+  String get progressPercentage => '${(progress * 100).toStringAsFixed(0)}%';
+  
+  /// Returns the episode number, either from metadata or parsed from the name
   int? get episodeNumber => _episodeNumber ?? _parseEpisodeNumberFromName();
 
   int? _parseEpisodeNumberFromName() {

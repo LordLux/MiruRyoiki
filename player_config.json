@@ -1,1 +1,15 @@
-{"vlc":{"host":"localhost","port":8080,"password":"miruryoiki"},"mpc_hc":{"host":"localhost","port":13579},"auto_connect_order":["vlc_with_password","vlc_without_password","mpc_hc"]}
+{
+    "vlc": {
+        "host": "localhost",
+        "port": 8080,
+        "password": "miruryoiki"
+    },
+    "mpc_hc": {
+        "host": "localhost",
+        "port": 13579
+    },
+    "auto_connect_order": [
+        "vlc_with_password",
+        "mpc_hc"
+    ]
+}

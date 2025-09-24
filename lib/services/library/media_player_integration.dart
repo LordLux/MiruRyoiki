@@ -40,7 +40,36 @@ extension LibraryMediaPlayerIntegration on Library {
     if (!_settings.enableMediaPlayerIntegration) return;
 
     _playerManager = PlayerManager();
-    await _startPlayerAutoConnection(); // Always auto-connect
+
+    // Initialize video player process monitoring
+    logDebug('Initializing video player process monitoring...');
+    final processMonitorStarted = await process_monitor.VideoPlayerProcessIntegration.initialize(
+      onPlayerDetected: () {
+        logDebug('Video player detected by process monitor - starting reconnection timer');
+        _startPlayerAutoConnection();
+      },
+      onPlayerStopped: () {
+        if (!process_monitor.VideoPlayerProcessIntegration.hasRunningPlayers) {
+          logDebug('All video players stopped - stopping reconnection timer');
+          _stopConnectionTimer();
+        }
+      },
+      onSpecificPlayerStarted: (processName, playerType) {
+        logDebug('Started: $processName (type: $playerType)');
+      },
+      onSpecificPlayerStopped: (processName, playerType) {
+        logDebug('Stopped: $processName (type: $playerType)');
+        // If the currently connected player's process stopped, disconnect immediately
+        _handlePlayerProcessStopped(processName, playerType);
+      },
+    );
+
+    if (processMonitorStarted) {
+      logDebug('Video player process monitoring started successfully');
+    } else {
+      logWarn('Video player process monitoring failed to start - starting timer-based connection as fallback');
+      await _startPlayerAutoConnection(); // Fallback to timer-based connection
+    }
   }
 
   /// Start automatic player connection attempts
@@ -69,40 +98,83 @@ extension LibraryMediaPlayerIntegration on Library {
     logDebug('Stopped media player auto-connection');
   }
 
+  /// Stop only the connection timer (keep other connections active)
+  void _stopConnectionTimer() {
+    _connectionTimer?.cancel();
+    _connectionTimer = null;
+    logDebug('Stopped connection timer - no video player processes running');
+  }
+
+  /// Handle when a specific player process stops
+  void _handlePlayerProcessStopped(String processName, String playerType) {
+    // Check if this is the currently connected player
+    if (_currentConnectedPlayer != null && _isCurrentPlayerType(playerType)) {
+      logWarn('Currently connected player process stopped: $processName');
+      _disconnectCurrentPlayer();
+    }
+  }
+
+  /// Check if the given player type matches currently connected player
+  bool _isCurrentPlayerType(String playerType) {
+    if (_currentConnectedPlayer == null) return false;
+
+    switch (playerType) {
+      case 'vlc':
+        return _currentConnectedPlayer == 'vlc';
+      case 'mpc-hc':
+        return _currentConnectedPlayer == 'mpc-hc';
+      default:
+        return false;
+    }
+  }
+
+  /// Disconnect current player and update UI
+  Future<void> _disconnectCurrentPlayer() async {
+    final previousPlayer = _currentConnectedPlayer;
+
+    await _playerStatusSubscription?.cancel();
+    _playerStatusSubscription = null;
+    _stopForcedSaveTimer();
+    await _playerManager?.disconnect();
+    _currentConnectedPlayer = null;
+
+    logInfo('Disconnected from $previousPlayer');
+    notifyListeners();
+    Manager.setState();
+  }
+
   /// Refresh player connections
   Future<void> refreshMediaPlayers() async {
     notifyListeners();
     Manager.setState();
 
-    // Simply restart connection attempts using current user priority
     await _startPlayerAutoConnection();
 
     notifyListeners();
     Manager.setState();
   }
 
-  /// Attempt to connect to players in user-defined priority order
+  /// Attempt to connect to players in user defined priority order
   Future<void> _attemptPlayerConnection() async {
-    // If already connected and connection is still active, don't attempt new connections
+    // Don't attempt new connections if already connected and connection is still active
     if (_currentConnectedPlayer != null && _playerManager?.isConnected == true) {
-      // Verify connection is still active by polling
       try {
         await _playerManager?.pollStatus();
         return; // Connection is good, no need to reconnect
       } catch (e) {
-        // Connection is dead, continue with reconnection logic below
+        // Connection is dead -> try to reconnect below
         logWarn('Connection verification failed for $_currentConnectedPlayer: $e');
       }
     }
 
-    // Lost connection or not connected, try to reconnect
+    // Lost connection/not connected, try to reconnect
     if (_currentConnectedPlayer != null) {
       logWarn('Lost connection to $_currentConnectedPlayer, attempting reconnection');
       _currentConnectedPlayer = null;
       await _playerManager?.disconnect();
     }
 
-    // Use the user's priority settings from UI, not PlayerConfig
+    // Use the user's priority settings
     final userPriorityOrder = _settings.mediaPlayerPriority;
 
     try {
@@ -113,13 +185,12 @@ extension LibraryMediaPlayerIntegration on Library {
         final playerType = _playerManager?.currentPlayerType;
         final playerConfig = _playerManager?.currentPlayerConfig;
 
-        if (playerType == PlayerType.vlc) {
+        if (playerType == PlayerType.vlc)
           _currentConnectedPlayer = 'vlc';
-        } else if (playerType == PlayerType.mpc) {
+        else if (playerType == PlayerType.mpc)
           _currentConnectedPlayer = 'mpc-hc';
-        } else if (playerType == PlayerType.custom && playerConfig != null) {
+        else if (playerType == PlayerType.custom && playerConfig != null) //
           _currentConnectedPlayer = playerConfig.name.toLowerCase().replaceAll(' ', '_');
-        }
 
         _setupPlayerStatusMonitoring();
         logInfo('Connected to media player: $_currentConnectedPlayer (priority: ${userPriorityOrder.indexOf(_currentConnectedPlayer!) + 1})');
@@ -131,6 +202,21 @@ extension LibraryMediaPlayerIntegration on Library {
     }
   }
 
+  /// Cleanup media player resources
+  Future<void> disposeMediaPlayerIntegration() async {
+    await stopPlayerAutoConnection();
+    _progressSaveTimer?.cancel();
+    _progressSaveTimer = null;
+    _stopForcedSaveTimer();
+    _playerManager?.dispose();
+    _playerManager = null;
+    _detectedPlayers.clear();
+
+    // Stop video player process monitoring
+    await process_monitor.VideoPlayerProcessIntegration.stop();
+    logDebug('Video player process monitoring stopped');
+  }
+
   /// Setup monitoring of player status for current playback information
   void _setupPlayerStatusMonitoring() {
     _playerStatusSubscription?.cancel();
@@ -139,7 +225,6 @@ extension LibraryMediaPlayerIntegration on Library {
 
     _playerStatusSubscription = _playerManager!.statusStream.listen(
       (status) {
-        // Here you could update episode progress, detect what's playing, etc.
         _handlePlayerStatusUpdate(status);
       },
       onError: (error) {
@@ -154,18 +239,17 @@ extension LibraryMediaPlayerIntegration on Library {
     _startForcedSaveTimer();
   }
 
-  /// Handle player status updates - integrate with your episode tracking
+  /// Handle player status updates
   void _handlePlayerStatusUpdate(MediaStatus status) {
     final currentFile = status.filePath;
     final currentEpisode = currentFile.isNotEmpty ? _findEpisodeByPath(currentFile) : null;
 
-    // Always update episode progress if we have a valid episode
+    // Always update episode progress
     bool progressUpdated = false;
     if (currentEpisode != null) progressUpdated = _updateEpisodeFromPlayerStatus(currentEpisode, status);
 
-    // Check for immediate save triggers (important status changes)
+    // Check for immediate save triggers
     final shouldSaveImmediately = _shouldTriggerImmediateSave(status, currentEpisode) || progressUpdated;
-
     // Save immediately if triggered by important status changes
     if (shouldSaveImmediately) _saveImmediately();
 
@@ -174,6 +258,7 @@ extension LibraryMediaPlayerIntegration on Library {
   }
 
   /// Find an episode by file path across all series
+  /// Tries to optimize search by inferring series from path structure
   Episode? _findEpisodeByPath(String filePath) {
     // Extract the series name from the file path relative to library path
     final libraryPath = _libraryPath;
@@ -217,7 +302,7 @@ extension LibraryMediaPlayerIntegration on Library {
     return null;
   }
 
-  /// Fallback method using original approach
+  /// Fallback method iterating through all series and episodes
   Episode? _findEpisodeByPathFallback(String filePath) {
     final String path = PathString(filePath).path;
     for (final series in _series) {
@@ -241,25 +326,25 @@ extension LibraryMediaPlayerIntegration on Library {
 
     // Player was closed (had a file, now doesn't)
     if (lastFile.isNotEmpty && currentFile.isEmpty) {
-      logInfo('Player closed - triggering immediate save');
+      logInfo('Player closed -> triggering immediate save');
       return true;
     }
 
     // Video changed (different file being played)
     if (lastFile.isNotEmpty && currentFile.isNotEmpty && lastFile != currentFile) {
-      logInfo('Video changed from "$lastFile" to "$currentFile" - triggering immediate save');
+      logInfo('Video changed from "$lastFile" to "$currentFile" -> triggering immediate save');
       return true;
     }
 
     // Player stopped playing (was playing, now not)
     if (_lastPlayingState == true && !currentPlaying) {
-      logInfo('Player stopped/paused - triggering immediate save');
+      logInfo('Player stopped/paused -> triggering immediate save');
       return true;
     }
 
     // Episode became null (had episode, now doesn't)
     if (_lastEpisode != null && currentEpisode == null) {
-      logInfo('Episode tracking lost - triggering immediate save');
+      logInfo('Episode tracking lost -> triggering immediate save');
       return true;
     }
 
@@ -267,12 +352,12 @@ extension LibraryMediaPlayerIntegration on Library {
   }
 
   /// Start the forced save timer for regular progress updates
+  /// Just to avoid having large gaps between saves if user leaves player running
   void _startForcedSaveTimer() {
-    // Cancel any existing forced save timer
     _forcedSaveTimer?.cancel();
 
-    // Check and save every 90 seconds if player status has changed
-    _forcedSaveTimer = Timer.periodic(const Duration(seconds: 90), (timer) async {
+    // Check and save every 60 seconds if player status has changed
+    _forcedSaveTimer = Timer.periodic(const Duration(seconds: 60), (timer) async {
       final currentStatus = _playerManager?.lastStatus;
 
       // Only save if we have a valid status and it has changed
@@ -282,13 +367,13 @@ extension LibraryMediaPlayerIntegration on Library {
         if (currentEpisode != null) {
           // Update episode progress with current player status
           _updateEpisodeFromPlayerStatus(currentEpisode, currentStatus);
-          logTrace('Updated episode progress during periodic check: ${(currentEpisode.progress * 100).toStringAsFixed(1)}%');
+          logTrace('Updated episode progress during periodic check: ${currentEpisode.progressPercentage}');
 
           // Save to database and update UI
           await _saveLibrary();
           notifyListeners();
           Manager.setState();
-          logTrace('Auto-saved episode progress from media player monitoring (periodic)');
+          // logTrace('Auto-saved episode progress from media player monitoring (periodic)');
 
           // Update tracking after successful save
           _updateStateTracking(currentStatus, currentEpisode);
@@ -297,12 +382,16 @@ extension LibraryMediaPlayerIntegration on Library {
     });
   }
 
-  /// Check if the player status has meaningfully changed since last check
+  /// Check if the player status has changed meaningfully since last check
   bool _hasPlayerStatusChanged(MediaStatus currentStatus) {
     final lastFile = _lastFilePath ?? '';
 
-    // Status changed if file changed, playing state changed, or significant progress made
-    return lastFile != currentStatus.filePath || _lastPlayingState != currentStatus.isPlaying || (currentStatus.filePath.isNotEmpty && _lastEpisode != null && (currentStatus.currentPosition.inMilliseconds - (_lastEpisode!.progress * currentStatus.totalDuration.inMilliseconds)).abs() > 5000); // 5 second threshold
+    // Status changed if file changed/playing state changed/significant progress made
+    return lastFile != currentStatus.filePath || //
+        _lastPlayingState != currentStatus.isPlaying ||
+        (currentStatus.filePath.isNotEmpty && //
+            _lastEpisode != null &&
+            (currentStatus.currentPosition.inMilliseconds - (_lastEpisode!.progress * currentStatus.totalDuration.inMilliseconds)).abs() > 2000); // 2 second threshold
   }
 
   /// Update state tracking variables
@@ -320,7 +409,6 @@ extension LibraryMediaPlayerIntegration on Library {
 
   /// Immediately save the library and cancel any pending saves
   Future<void> _saveImmediately() async {
-    // Cancel any pending debounced save (if any exists)
     _progressSaveTimer?.cancel();
     _progressSaveTimer = null;
 
@@ -389,15 +477,4 @@ extension LibraryMediaPlayerIntegration on Library {
 
   /// Force immediate status update
   Future<void> pollCurrentPlayerStatus() async => await _playerManager?.pollStatus();
-
-  /// Cleanup media player resources
-  Future<void> disposeMediaPlayerIntegration() async {
-    await stopPlayerAutoConnection();
-    _progressSaveTimer?.cancel();
-    _progressSaveTimer = null;
-    _stopForcedSaveTimer();
-    _playerManager?.dispose();
-    _playerManager = null;
-    _detectedPlayers.clear();
-  }
 }
