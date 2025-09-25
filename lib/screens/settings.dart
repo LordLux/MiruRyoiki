@@ -1820,7 +1820,7 @@ class SettingsScreenState extends State<SettingsScreen> {
                   child: IgnorePointer(
                     ignoring: !_showBackupsList,
                     child: mat.ExpansionTile(
-                      trailing: StandardButton.icon(
+                      trailing: StandardButton.iconLabel(
                         isFilled: true,
                         label: Text('Select Backup from files', style: Manager.bodyStyle.copyWith(color: getPrimaryColorBasedOnAccent())),
                         icon: Icon(mat.Icons.folder_open, size: 16, color: getPrimaryColorBasedOnAccent()),

@@ -104,7 +104,7 @@ class _DatabaseRecoveryDialogState extends State<DatabaseRecoveryDialog> {
                     const SizedBox(height: 8),
                     Align(
                       alignment: Alignment.centerRight,
-                      child: StandardButton.icon(
+                      child: StandardButton.iconLabel(
                         onPressed: _copyInstructionsToClipboard,
                         expand: false,
                         isSmall: true,
@@ -142,7 +142,7 @@ class _DatabaseRecoveryDialogState extends State<DatabaseRecoveryDialog> {
                 const SizedBox(height: 8),
                 Align(
                   alignment: Alignment.centerRight,
-                  child: StandardButton.icon(
+                  child: StandardButton.iconLabel(
                     onPressed: _isProcessing ? null : () => _attemptAutomaticRecovery(),
                     icon: _isProcessing ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.healing, color: Colors.white),
                     label: Text(_isProcessing ? 'Processing...' : 'Attempt Automatic Fix', style: Manager.bodyStrongStyle.copyWith(color: Colors.white)),

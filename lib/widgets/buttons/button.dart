@@ -42,7 +42,7 @@ class StandardButton extends StatefulWidget {
   })  : filledColor = filledColor ?? Manager.accentColor.lighter,
         hoverFillColor = hoverFillColor ?? Manager.accentColor.lightest;
 
-  factory StandardButton.icon({
+  factory StandardButton.iconLabel({
     required Widget icon,
     required Widget label,
     required VoidCallback? onPressed,
@@ -69,6 +69,40 @@ class StandardButton extends StatefulWidget {
           label,
         ],
       ),
+      onPressed: onPressed,
+      isButtonDisabled: isButtonDisabled,
+      isSmall: isSmall,
+      isWide: isWide,
+      isFilled: isFilled,
+      isLoading: isLoading,
+      tooltip: tooltip,
+      tooltipWidget: tooltipWidget,
+      expand: expand,
+      tooltipWaitDuration: tooltipWaitDuration,
+      padding: padding,
+      filledColor: filledColor,
+      hoverFillColor: hoverFillColor,
+    );
+  }
+  factory StandardButton.icon({
+    required Widget icon,
+    required VoidCallback? onPressed,
+    bool isButtonDisabled = false,
+    bool isSmall = true,
+    bool isWide = true,
+    bool isFilled = false,
+    bool isLoading = false,
+    String? tooltip,
+    Widget? tooltipWidget,
+    bool expand = false,
+    Duration? tooltipWaitDuration,
+    EdgeInsets? padding,
+    TextStyle? textStyle,
+    Color? filledColor,
+    Color? hoverFillColor,
+  }) {
+    return StandardButton(
+      label: icon,
       onPressed: onPressed,
       isButtonDisabled: isButtonDisabled,
       isSmall: isSmall,

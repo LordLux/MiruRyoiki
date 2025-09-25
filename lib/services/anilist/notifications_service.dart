@@ -349,9 +349,27 @@ extension AnilistServiceNotifications on AnilistService {
     List<NotificationType>? types,
     int maxPages = 3,
   }) async {
-    print('Syncing notifications from Anilist...');
-    // If a sync is in progress, return the same future
-    if (_notificationsSyncCompleter != null) return _notificationsSyncCompleter!.future;
+    // If a sync is in progress, return the same future with timeout
+    if (_notificationsSyncCompleter != null) {
+      try {
+        return await _notificationsSyncCompleter!.future.timeout(
+          const Duration(seconds: 10),
+          onTimeout: () {
+            // Reset the completer on timeout and retry
+            _notificationsSyncCompleter = null;
+            return syncNotifications(
+              database: database,
+              types: types,
+              maxPages: maxPages,
+            );
+          },
+        );
+      } catch (e) {
+        // If timeout or other error, reset completer and continue
+        _notificationsSyncCompleter = null;
+        rethrow;
+      }
+    }
 
     // Throttle full syncs: if last completed within 5s, just return cached (if any)
     if (_lastNotificationsSyncAt != null && now.difference(_lastNotificationsSyncAt!).inSeconds < 5) {
@@ -360,8 +378,9 @@ extension AnilistServiceNotifications on AnilistService {
 
     _notificationsSyncCompleter = Completer<List<AnilistNotification>>();
 
-    final allNotifications = <AnilistNotification>[];
-    final notificationsDao = database.notificationsDao;
+    try {
+      final allNotifications = <AnilistNotification>[];
+      final notificationsDao = database.notificationsDao;
 
     // Fetch notifications from multiple pages
     for (int page = 1; page <= maxPages; page++) {
@@ -411,11 +430,19 @@ extension AnilistServiceNotifications on AnilistService {
       await notificationsDao.deleteOldNotifications(keepCount: 200); // cleanup
     }
 
-    _lastNotificationsSyncAt = DateTime.now();
-    _lastNotificationsCache = allNotifications; // cache entire result set for popup usage
-    _notificationsSyncCompleter!.complete(allNotifications);
-    _notificationsSyncCompleter = null;
-    return allNotifications;
+      _lastNotificationsSyncAt = DateTime.now();
+      _lastNotificationsCache = allNotifications; // cache entire result set for popup usage
+      _notificationsSyncCompleter!.complete(allNotifications);
+      _notificationsSyncCompleter = null;
+      return allNotifications;
+    } catch (e) {
+      // Ensure completer is always cleaned up on error
+      if (_notificationsSyncCompleter != null && !_notificationsSyncCompleter!.isCompleted) {
+        _notificationsSyncCompleter!.completeError(e);
+      }
+      _notificationsSyncCompleter = null;
+      rethrow;
+    }
   }
 
   // Get cached notifications from local database

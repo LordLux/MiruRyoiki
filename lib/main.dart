@@ -542,6 +542,7 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
                         menuButton: const SizedBox.shrink(), //_appTitle(),
                         selected: _selectedIndex,
                         onItemPressed: (index) {
+                          previousGridColumnCount.value = null;
                           if (_isSeriesView && _selectedSeriesPath != null) {
                             // If in series view, exit series view first
                             exitSeriesView();

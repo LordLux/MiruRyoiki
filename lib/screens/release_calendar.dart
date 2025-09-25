@@ -1,10 +1,13 @@
 import 'dart:async';
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:flutter/material.dart' as mat;
+import 'package:material_symbols_icons/symbols.dart';
 import 'package:miruryoiki/widgets/buttons/wrapper.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:smooth_scroll_multiplatform/smooth_scroll_multiplatform.dart';
 
+import '../main.dart';
 import '../services/library/library_provider.dart';
 import '../models/series.dart';
 import '../models/anilist/anime.dart';
@@ -18,6 +21,7 @@ import '../utils/path.dart';
 import '../utils/screen.dart';
 import '../utils/time.dart';
 import '../widgets/animated_translate.dart';
+import '../widgets/buttons/button.dart';
 import '../widgets/no_image.dart';
 import '../widgets/notification_list_tile.dart';
 import '../widgets/page/header_widget.dart';
@@ -57,7 +61,6 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
   void initState() {
     super.initState();
     // Initial load
-    print('Loading release data...');
     nextFrame(() => loadReleaseData());
 
     // Periodic refresh for relative times
@@ -95,10 +98,121 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
 
   void toggleOlderNotifications([bool? value]) {
     if (mounted && !_isDisposed) {
+      final newValue = value ?? !_showOlderNotifications;
+
       setState(() {
-        _showOlderNotifications = value ?? !_showOlderNotifications;
+        _showOlderNotifications = newValue;
       });
+
+      // Auto-scroll when toggled to true
+      if (newValue && widget.scrollController.hasClients) {
+        // Wait for the list to rebuild before calculating scroll position
+        nextFrame(() => _autoScrollToScheduledEpisodes());
+      }
     }
+  }
+
+  void scrollTo(double offset) {
+    if (widget.scrollController.hasClients) {
+      widget.scrollController.animateTo(
+        offset,
+        duration: const Duration(milliseconds: 2900),
+        curve: Curves.easeOutCubic,
+      );
+    }
+  }
+
+  Future<void> _autoScrollToScheduledEpisodes() async {
+    if (!widget.scrollController.hasClients) return;
+
+    try {
+      // Calculate the number of scheduled episodes and date headers that should be skipped
+      int scheduledEpisodeCount = 0;
+      int dateHeaderCount = 0;
+
+      // Get current entries
+      final Map<DateTime, List<CalendarEntry>> entriesByDate = _getCurrentEntriesByDate();
+      final sortedDates = entriesByDate.keys.toList()..sort();
+
+      // Count items that appear in future dates (scheduled episodes and their headers)
+      final todayStart = DateTime(now.year, now.month, now.day);
+
+      for (final date in sortedDates) {
+        final entries = entriesByDate[date]!;
+
+        // If this date is in the future, count its items
+        if (date.isAfter(todayStart)) {
+          // Count the date header
+          dateHeaderCount++;
+
+          // Count all episodes for future dates (they are all scheduled)
+          scheduledEpisodeCount += entries.length;
+        }
+      }
+
+      // Calculate scroll position
+      // Date headers: 54px height * font size multiplier
+      // Episode entries: 83px height * font size multiplier
+      final headerHeight = 54 * Manager.fontSizeMultiplier;
+      final episodeHeight = 83 * Manager.fontSizeMultiplier;
+      final availableSpace = (ScreenUtils.height - (ScreenUtils.kMinHeaderHeight + ScreenUtils.kTitleBarHeight - 36));
+
+      final targetOffset = (dateHeaderCount * headerHeight) + (scheduledEpisodeCount * episodeHeight);
+      final maxScrollExtent = widget.scrollController.position.maxScrollExtent;
+      final temp1 = maxScrollExtent - targetOffset;
+      final temp2 = temp1 + availableSpace;
+      final clampedPosition = temp2.clamp(0.0, maxScrollExtent);
+      widget.scrollController.jumpTo(clampedPosition);
+      if (targetOffset <= availableSpace) return; // if the target offset fits in available space, no need to scroll up, as the content will be in the lower part of the screen
+      nextFrame(() => widget.scrollController.animateTo(
+            clampedPosition - 200,
+            duration: const Duration(milliseconds: 1000),
+            curve: Curves.easeOutCubic,
+          ));
+    } catch (e) {
+      // If calculation fails, just scroll to bottom
+      widget.scrollController.animateTo(
+        widget.scrollController.position.maxScrollExtent,
+        duration: const Duration(milliseconds: 900),
+        curve: Curves.easeOutCubic,
+      );
+    }
+  }
+
+  Map<DateTime, List<CalendarEntry>> _getCurrentEntriesByDate() {
+    // This helper method returns the current entries by date
+    // We need to replicate the filtering logic from the build method
+    final Map<DateTime, List<CalendarEntry>> entriesByDate = {};
+
+    for (final entry in _calendarCache.entries) {
+      final date = entry.key;
+      final entries = entry.value;
+
+      if (entries.isEmpty) continue;
+
+      // Apply the same filtering logic as in build method
+      final isOnToday = date.year == now.year && date.month == now.month && date.day == now.day;
+      final shouldFilterOlder = isOnToday && !_showOnlyTodayEpisodes && !_showOlderNotifications;
+
+      List<CalendarEntry> filteredEntries = entries;
+      if (shouldFilterOlder) {
+        // Filter out older notifications (keep only future episodes)
+        filteredEntries = entries.where((entry) {
+          if (entry is EpisodeCalendarEntry && entry.isFutureEntry) return true; // Keep scheduled episodes
+          if (entry is NotificationCalendarEntry) {
+            final notificationTime = DateTime.fromMillisecondsSinceEpoch(entry.notification.createdAt * 1000);
+            return notificationTime.isAfter(now.subtract(const Duration(hours: 6)));
+          }
+          return true;
+        }).toList();
+      }
+
+      if (filteredEntries.isNotEmpty) {
+        entriesByDate[date] = filteredEntries;
+      }
+    }
+
+    return entriesByDate;
   }
 
   Future<void> loadReleaseData() async {
@@ -151,6 +265,19 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
       await _loadNotificationData(library, calendarMap, null, endDate);
 
       if (_isDisposed) return;
+
+      //temporarily multiplicate all scheduled episodes items (only dates after today) for testing by random number
+      calendarMap.forEach((date, entries) {
+        if (date.isAfter(DateTime(now.year, now.month, now.day))) {
+          final episodesToDuplicate = entries.whereType<EpisodeCalendarEntry>().toList();
+          final randomCount = 1 + (DateTime.now().millisecondsSinceEpoch % 12); // Random number between 7-12
+          final duplicatedEpisodes = <EpisodeCalendarEntry>[];
+          for (int i = 0; i < randomCount; i++) {
+            duplicatedEpisodes.addAll(episodesToDuplicate);
+          }
+          calendarMap[date] = [...entries, ...duplicatedEpisodes];
+        }
+      });
 
       // Sort entries by date within each day
       for (final dayEntries in calendarMap.values) {
@@ -810,6 +937,7 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
           // Episode list
           Expanded(
             child: DynMouseScroll(
+                controller: widget.scrollController,
                 stopScroll: KeyboardState.ctrlPressedNotifier,
                 scrollSpeed: 1.0,
                 enableSmoothScroll: Manager.animationsEnabled,
@@ -822,6 +950,7 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
                         return ListView.builder(
                           physics: isCtrlPressed ? const NeverScrollableScrollPhysics() : null,
                           controller: controller,
+                          cacheExtent: 999999,
                           padding: const EdgeInsets.only(right: 8.0),
                           itemCount: flattenedList.length,
                           itemBuilder: (context, index) {
@@ -993,18 +1122,6 @@ class _NotificationCalendarEntryWidgetState extends State<NotificationCalendarEn
     notificationDate = DateTime.fromMillisecondsSinceEpoch(widget.notification.createdAt * 1000);
     timeAgo = now.difference(notificationDate);
     isRelatedMediaAdditionNotification = widget.notification is RelatedMediaAdditionNotification;
-  }
-
-  IconData _getNotificationIcon(AnilistNotification notification, Series? series) {
-    if (isRelatedMediaAdditionNotification || series == null) return FluentIcons.download;
-
-    return switch (notification.type) {
-      NotificationType.AIRING => FluentIcons.play,
-      NotificationType.RELATED_MEDIA_ADDITION => FluentIcons.add,
-      NotificationType.MEDIA_DATA_CHANGE => FluentIcons.edit,
-      NotificationType.MEDIA_MERGE => FluentIcons.merge,
-      NotificationType.MEDIA_DELETION => FluentIcons.delete,
-    };
   }
 
   String _getNotificationTitle(AnilistNotification notification, Series? series) {
@@ -1180,7 +1297,7 @@ class _NotificationItemState2 extends State<ScheduledEpisodeCalendarEntryWidget>
         onEnter: (_) => setState(() => _isHovered = true),
         onExit: (_) => setState(() => _isHovered = false),
         child: SizedBox(
-          width: 70,
+          width: 50,
           child: Stack(
             alignment: Alignment.centerLeft,
             children: [
@@ -1198,7 +1315,7 @@ class _NotificationItemState2 extends State<ScheduledEpisodeCalendarEntryWidget>
                 ),
               ),
               SizedBox(
-                width: 70,
+                width: 50,
                 height: 64,
                 child: AnimatedTranslate(
                   duration: shortDuration,
@@ -1220,10 +1337,19 @@ class _NotificationItemState2 extends State<ScheduledEpisodeCalendarEntryWidget>
           child: child,
         );
       },
-      trailing: const Icon(FluentIcons.chevron_right),
+      trailing: StandardButton.icon(
+        isSmall: true,
+        tooltipWaitDuration: const Duration(milliseconds: 400),
+        tooltip: 'Get notified when this episode airs',
+        padding: EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+        icon: Icon(Symbols.notification_add, color: Manager.accentColor.light, weight: 400, grade: 0, opticalSize: 24, size: 18),
+        onPressed: () {
+          // TODO: Implement windows notification addition
+        },
+      ),
       subtitle: isUpcoming ? 'Airs in ${_formatDuration(timeUntil)}' : _formatTimeAgo(null, timeUntil.abs()),
       timestamp: DateFormat.yMMMd().add_jm().format(widget.episodeEntry.episodeInfo.airingDate),
-      onTap: null,
+      onTap: () {},
       isRead: false, // TODO: Mark as read if episode is watched
     );
   }

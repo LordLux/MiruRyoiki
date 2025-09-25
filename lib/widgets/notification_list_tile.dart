@@ -1,4 +1,3 @@
-
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/material.dart' as mat;
 
@@ -52,49 +51,57 @@ class _NotificationListTileState extends State<NotificationListTile> {
               child: Padding(
                 padding: const EdgeInsets.all(4.0),
                 child: Row(
-                  mainAxisSize: MainAxisSize.min,
                   children: [
                     // Leading
-                    Padding(
-                      padding: const EdgeInsets.only(left: 4.0),
-                      child: widget.leading,
-                    ),
-                    SizedBox(width: 12),
-                    Padding(
-                      padding: const EdgeInsets.only(top: 6.0, bottom: 6.0),
-                      child: widget.contentBuilder(
-                        context,
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              widget.title,
-                              style: Manager.smallSubtitleStyle.copyWith(fontWeight: FontWeight.w600),
-                            ),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  widget.subtitle,
-                                  style: Manager.bodyStyle.copyWith(color: Manager.accentColor.lightest),
-                                ),
-                                Text(
-                                  widget.timestamp,
-                                  style: Manager.miniBodyStyle.copyWith(color: Colors.white.withOpacity(.5)),
-                                ),
-                              ],
-                            ),
-                          ],
+                    if (widget.leading != null)
+                      Padding(
+                        padding: const EdgeInsets.only(left: 4.0),
+                        child: widget.leading!,
+                      ),
+                    if (widget.leading != null) SizedBox(width: 12),
+                    // Content (flexible to shrink when needed)
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.only(top: 6.0, bottom: 6.0),
+                        child: widget.contentBuilder(
+                          context,
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                widget.title,
+                                style: Manager.smallSubtitleStyle.copyWith(fontWeight: FontWeight.w600),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    widget.subtitle,
+                                    style: Manager.bodyStyle.copyWith(color: Manager.accentColor.lightest),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  Text(
+                                    widget.timestamp,
+                                    style: Manager.miniBodyStyle.copyWith(color: Colors.white.withOpacity(.5)),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ),
-                    Spacer(),
-                    if (widget.trailing != null)
+                    // Trailing
+                    if (widget.trailing != null) ...[
+                      SizedBox(width: 12),
                       Padding(
                         padding: const EdgeInsets.only(right: 8.0),
                         child: widget.trailing!,
                       ),
+                    ],
                   ],
                 ),
               ),
