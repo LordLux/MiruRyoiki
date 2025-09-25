@@ -159,13 +159,14 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
 
       final targetOffset = (dateHeaderCount * headerHeight) + (scheduledEpisodeCount * episodeHeight);
       final maxScrollExtent = widget.scrollController.position.maxScrollExtent;
-      final temp1 = maxScrollExtent - targetOffset;
-      final temp2 = temp1 + availableSpace;
-      final clampedPosition = temp2.clamp(0.0, maxScrollExtent);
-      widget.scrollController.jumpTo(clampedPosition);
+      final clampedPosition = (maxScrollExtent - targetOffset + availableSpace).clamp(0.0, maxScrollExtent);
+
+      widget.scrollController.jumpTo(clampedPosition - 65); // space occupied by the 'show older notifications' button
+
       if (targetOffset <= availableSpace) return; // if the target offset fits in available space, no need to scroll up, as the content will be in the lower part of the screen
-      nextFrame(() => widget.scrollController.animateTo(
-            clampedPosition - 200,
+
+      nextFrame(delay: 5, () => widget.scrollController.animateTo(
+            clampedPosition - 250,
             duration: const Duration(milliseconds: 1000),
             curve: Curves.easeOutCubic,
           ));
@@ -266,18 +267,18 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
 
       if (_isDisposed) return;
 
-      //temporarily multiplicate all scheduled episodes items (only dates after today) for testing by random number
-      calendarMap.forEach((date, entries) {
-        if (date.isAfter(DateTime(now.year, now.month, now.day))) {
-          final episodesToDuplicate = entries.whereType<EpisodeCalendarEntry>().toList();
-          final randomCount = 1 + (DateTime.now().millisecondsSinceEpoch % 12); // Random number between 7-12
-          final duplicatedEpisodes = <EpisodeCalendarEntry>[];
-          for (int i = 0; i < randomCount; i++) {
-            duplicatedEpisodes.addAll(episodesToDuplicate);
-          }
-          calendarMap[date] = [...entries, ...duplicatedEpisodes];
-        }
-      });
+      // temporarily multiplicate all scheduled episodes items (only dates after today) for testing by random number
+      // calendarMap.forEach((date, entries) {
+      //   if (date.isAfter(DateTime(now.year, now.month, now.day))) {
+      //     final episodesToDuplicate = entries.whereType<EpisodeCalendarEntry>().toList();
+      //     final randomCount = 1 + (DateTime.now().millisecondsSinceEpoch % 12); // Random number between 7-12
+      //     final duplicatedEpisodes = <EpisodeCalendarEntry>[];
+      //     for (int i = 0; i < randomCount; i++) {
+      //       duplicatedEpisodes.addAll(episodesToDuplicate);
+      //     }
+      //     calendarMap[date] = [...entries, ...duplicatedEpisodes];
+      //   }
+      // });
 
       // Sort entries by date within each day
       for (final dayEntries in calendarMap.values) {
