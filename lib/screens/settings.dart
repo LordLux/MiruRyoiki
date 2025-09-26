@@ -1459,6 +1459,22 @@ class SettingsScreenState extends State<SettingsScreen> {
                     ),
                     tooltip: 'When enabled, exiting a series screen (e.g., by pressing back) will return you to the main library view, even if you navigated from a different tab.',
                   ),
+                  VDiv(12),
+                  Row(
+                    children: [
+                      Text('First Day of Week', style: Manager.bodyStyle),
+                      const SizedBox(width: 12),
+                      EnumToggle<FirstDayOfWeek>(
+                        tooltip: 'Set which day appears first in the release calendar.',
+                        enumValues: FirstDayOfWeek.values,
+                        labelExtractor: (value) => value.displayName,
+                        currentValue: settings.firstDayOfWeek,
+                        onChanged: (value) {
+                          settings.firstDayOfWeek = value;
+                        },
+                      ),
+                    ],
+                  ),
                 ],
               ),
             ],

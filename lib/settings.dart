@@ -71,6 +71,9 @@ class SettingsManager extends ChangeNotifier {
   bool get hoverExpandAiringIndicator => _getBool('hoverExpandAiringIndicator', defaultValue: false);
   set hoverExpandAiringIndicator(bool value) => _setBool('hoverExpandAiringIndicator', value);
 
+  FirstDayOfWeek get firstDayOfWeek => FirstDayOfWeekX.fromString(_getString('firstDayOfWeek', defaultValue: FirstDayOfWeek.monday.name_));
+  set firstDayOfWeek(FirstDayOfWeek value) => _setString('firstDayOfWeek', value.name_);
+
   // Logging
   LogLevel get fileLogLevel => LogLevelX.fromString(_getString('fileLogLevel', defaultValue: LogLevel.error.name_));
   set fileLogLevel(LogLevel value) => _setString('fileLogLevel', value.name_);

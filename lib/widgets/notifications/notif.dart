@@ -199,12 +199,16 @@ class _NotificationCalendarEntryWidgetState extends State<NotificationCalendarEn
               ),
             ),
           if (widget.series != null)
-            const Icon(FluentIcons.chevron_right) //
+            TooltipWrapper(
+              waitDuration: const Duration(milliseconds: 400),
+              message: 'View Series details',
+              child: (_) => const Icon(FluentIcons.chevron_right),
+            ) //
           else
             isRelatedMediaAdditionNotification //
-                ? MouseButtonWrapper(
-                    tooltipWaitDuration: const Duration(milliseconds: 400),
-                    tooltip: 'Open in browser',
+                ? TooltipWrapper(
+                    waitDuration: const Duration(milliseconds: 400),
+                    message: 'Open in browser',
                     child: (_) => Icon(Symbols.open_in_new, weight: 300, grade: 0, opticalSize: 48, size: 18),
                   )
                 : SizedBox(width: 18),

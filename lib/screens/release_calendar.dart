@@ -24,6 +24,9 @@ import '../widgets/notifications/scheduled.dart';
 import '../widgets/page/header_widget.dart';
 import '../widgets/page/page.dart';
 import '../manager.dart';
+import '../widgets/tooltip_wrapper.dart';
+import '../enums.dart';
+import '../settings.dart';
 
 class ReleaseCalendarScreen extends StatefulWidget {
   final Function(PathString) onSeriesSelected;
@@ -583,9 +586,24 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
   }
 
   Widget _buildCalendarGrid(double calendarWidth) {
+    final settings = SettingsManager();
+    final firstDayOfWeekSetting = settings.firstDayOfWeek;
+    
     final daysInMonth = DateTime(_focusedMonth.year, _focusedMonth.month + 1, 0).day;
     final firstDayOfMonth = DateTime(_focusedMonth.year, _focusedMonth.month, 1);
-    final startDay = firstDayOfMonth.weekday % 7; // 0 = Sunday
+    
+    // Calculate start day based on configurable first day of week
+    final firstDayWeekdayValue = firstDayOfWeekSetting.toWeekdayValue;
+    int startDay = (firstDayOfMonth.weekday - firstDayWeekdayValue) % 7;
+    if (startDay < 0) startDay += 7;
+    
+    // Generate day headers based on first day of week setting
+    final dayHeaders = <String>[];
+    final allDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    final startIndex = (firstDayWeekdayValue == 7) ? 0 : firstDayWeekdayValue; // Sunday = 0, Monday = 1, etc.
+    for (int i = 0; i < 7; i++) {
+      dayHeaders.add(allDays[(startIndex + i) % 7]);
+    }
 
     return Expanded(
       child: Column(
@@ -595,7 +613,7 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
           SizedBox(
             width: calendarWidth,
             child: Row(
-              children: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+              children: dayHeaders
                   .map((day) => Expanded(
                         child: Center(
                           child: Text(
@@ -915,7 +933,7 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
 
     return LayoutBuilder(builder: (context, constraints) {
       return AnimatedOpacity(
-        duration: shortDuration/2,
+        duration: shortDuration / 2,
         opacity: _isTempHidingResults ? 0.0 : 1.0,
         curve: Curves.decelerate,
         child: Column(
@@ -965,7 +983,7 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
                             itemCount: flattenedList.length,
                             itemBuilder: (context, index) {
                               final item = flattenedList[index];
-        
+
                               // Date header
                               if (item is DateTime) {
                                 final date = item;
@@ -974,9 +992,13 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
                                   child: Row(
                                     crossAxisAlignment: CrossAxisAlignment.center,
                                     children: [
-                                      Text(
-                                        _getRelativeDateLabel(date),
-                                        style: Manager.bodyLargeStyle.copyWith(fontWeight: FontWeight.w600, color: lighten(Manager.accentColor.lightest)),
+                                      TooltipWrapper(
+                                        waitDuration: const Duration(milliseconds: 400),
+                                        message: '${DateFormat.EEEE().format(date)} ${DateFormat('dMMMy').format(date)} (${entriesByDate[date]!.length} entries)',
+                                        child: (_) => Text(
+                                          _getRelativeDateLabel(date),
+                                          style: Manager.bodyLargeStyle.copyWith(fontWeight: FontWeight.w600, color: lighten(Manager.accentColor.lightest)),
+                                        ),
                                       ),
                                       const SizedBox(width: 8),
                                       Container(
@@ -990,7 +1012,7 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
                                           offset: const Offset(0, -0.66),
                                           child: Text(
                                             '${entriesByDate[date]!.length}',
-                                            style: FluentTheme.of(context).typography.caption?.copyWith(
+                                            style: Manager.captionStyle.copyWith(
                                                   fontWeight: FontWeight.w600,
                                                   color: lighten(Manager.accentColor.lightest),
                                                 ),
@@ -1001,7 +1023,7 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
                                   ),
                                 );
                               }
-        
+
                               if (item is CalendarEntry) {
                                 final entry = item;
                                 return Padding(
@@ -1009,7 +1031,7 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
                                   child: _buildCalendarEntryItem(entry),
                                 );
                               }
-        
+
                               return const SizedBox.shrink();
                             },
                           );

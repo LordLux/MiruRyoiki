@@ -18,6 +18,8 @@ enum LibraryColorView { alwaysDominant, alwaysAccent, hoverDominant, hoverAccent
 
 enum LogLevel { none, error, warning, info, debug, trace }
 
+enum FirstDayOfWeek { sunday, monday, tuesday, wednesday, thursday, friday, saturday }
+
 // EXTENSIONS
 extension ThemeX on ThemeMode {
   String get name_ => enumToString(this);
@@ -126,6 +128,55 @@ extension LogLevelX on LogLevel {
       );
 }
 
+extension FirstDayOfWeekX on FirstDayOfWeek {
+  String get name_ => enumToString(this);
+
+  String get displayName {
+    switch (this) {
+      case FirstDayOfWeek.sunday:
+        return 'Sunday';
+      case FirstDayOfWeek.monday:
+        return 'Monday';
+      case FirstDayOfWeek.tuesday:
+        return 'Tuesday';
+      case FirstDayOfWeek.wednesday:
+        return 'Wednesday';
+      case FirstDayOfWeek.thursday:
+        return 'Thursday';
+      case FirstDayOfWeek.friday:
+        return 'Friday';
+      case FirstDayOfWeek.saturday:
+        return 'Saturday';
+    }
+  }
+
+  /// Convert to DateTime.weekday value (1 = Monday, 7 = Sunday)
+  int get toWeekdayValue {
+    switch (this) {
+      case FirstDayOfWeek.monday:
+        return 1;
+      case FirstDayOfWeek.tuesday:
+        return 2;
+      case FirstDayOfWeek.wednesday:
+        return 3;
+      case FirstDayOfWeek.thursday:
+        return 4;
+      case FirstDayOfWeek.friday:
+        return 5;
+      case FirstDayOfWeek.saturday:
+        return 6;
+      case FirstDayOfWeek.sunday:
+        return 7;
+    }
+  }
+
+  static FirstDayOfWeek fromString(String value, {FirstDayOfWeek? defaultValue}) => fromStringX<FirstDayOfWeek>(
+        value,
+        FirstDayOfWeek.values,
+        defaultValue ?? FirstDayOfWeek.monday,
+      );
+}
+
 extension DominantColorSourceX on DominantColorSource {
   String get name_ {
     switch (this) {
@@ -219,13 +270,11 @@ extension HexColor on Color {
   }
 }
 
-
 extension IntString on String {
   int toInt() => int.parse(this);
 
   int? toIntMaybe() => int.tryParse(this);
 }
-
 
 extension HexString on String {
   Color fromHex() {
@@ -240,39 +289,9 @@ extension HexString on String {
   }
 }
 
-extension DurationX on Duration {
-  Duration copyWith({
-    int? days,
-    int? hours,
-    int? minutes,
-    int? seconds,
-    int? milliseconds,
-    int? microseconds,
-  }) {
-    return Duration(
-      days: days ?? inDays,
-      hours: hours ?? inHours,
-      minutes: minutes ?? inMinutes,
-      seconds: seconds ?? inSeconds,
-      milliseconds: milliseconds ?? inMilliseconds,
-      microseconds: microseconds ?? inMicroseconds,
-    );
-  }
-
-  /// Adds a number of milliseconds to the duration
-  Duration operator /(int other) {
-    return copyWith(
-      milliseconds: inMilliseconds + other,
-    );
-  }
-}
-
 enum LibraryView { all, linked }
 
-enum ViewType { 
-  grid,
-  detailedList 
-}
+enum ViewType { grid, detailedList }
 
 enum SortOrder {
   alphabetical,
