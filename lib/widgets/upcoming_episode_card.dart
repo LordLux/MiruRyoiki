@@ -311,9 +311,9 @@ class _UpcomingEpisodeCardState extends State<UpcomingEpisodeCard> {
     if (difference.isNegative) {
       return 'Aired';
     } else if (difference.inDays > 0) {
-      return 'Airs in ${difference.inDays}d${difference.inHours % 24 > 0 ? ' ${difference.inHours % 24}h' : ''}';
+      return 'Airs in ${difference.inDays}d${difference.inHours % 24 > 0 ? ' ${difference.inHours % 24}h' : ''}'.replaceAll(" 0d", "").replaceAll(" 0h", "");
     } else if (difference.inHours > 0) {
-      return 'Airs in ${difference.inHours}h${difference.inMinutes % 60 > 0 ? ' ${difference.inMinutes % 60}m' : ''}';
+      return 'Airs in ${difference.inHours}h${difference.inMinutes % 60 > 0 ? ' ${difference.inMinutes % 60}m' : ''}'.replaceAll(" 0h", "");
     } else if (difference.inMinutes > 0) {
       return 'Airs in ${difference.inMinutes}m';
     } else {

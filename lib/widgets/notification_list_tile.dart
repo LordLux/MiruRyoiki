@@ -46,7 +46,7 @@ class _NotificationListTileState extends State<NotificationListTile> {
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
           child: MouseRegion(
             cursor: widget.onTap != null ? SystemMouseCursors.click : MouseCursor.defer,
-            child: mat.InkWell(// TODO this click detection slows down child button click detection
+            child: mat.InkWell(
               borderRadius: BorderRadius.circular(8),
               splashFactory: mat.InkSparkle.constantTurbulenceSeedSplashFactory,
               highlightColor: Manager.accentColor.light.withOpacity(.2), // splash body

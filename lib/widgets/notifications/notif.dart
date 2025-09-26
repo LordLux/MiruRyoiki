@@ -176,14 +176,14 @@ class _NotificationCalendarEntryWidgetState extends State<NotificationCalendarEn
                   return AnimatedIconLabelButton(
                     label: 'Add to lists',
                     icon: (isHovered) => anim.AnimatedIcon(Icon(Symbols.add, color: isHovered ? Colors.white : Manager.accentColor.light, weight: 400, grade: 0, opticalSize: 24, size: 18)),
-                    onPressed: () async => widget.onNotificationRead(widget.notification.id),
+                    onPressed: () => widget.onAddedToList((widget.notification as RelatedMediaAdditionNotification).mediaId),
                     tooltipWaitDuration: const Duration(milliseconds: 700),
                     tooltip: 'Add this entry to Plan to Watch in your Library',
                   );
                 },
               ),
             ),
-          if (false) // TODO show download button when the episode has not been downloaded yet
+          if (isNewEpisodeNotification) // TODO show download button when the episode has not been downloaded yet
             Padding(
               padding: const EdgeInsets.only(right: 8.0),
               child: Builder(

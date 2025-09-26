@@ -13,6 +13,7 @@ import '../models/notification.dart';
 import '../services/anilist/provider/anilist_provider.dart';
 import '../services/anilist/queries/anilist_service.dart';
 import '../services/navigation/shortcuts.dart';
+import '../services/navigation/show_info.dart';
 import '../utils/color.dart';
 import '../utils/logging.dart';
 import '../utils/path.dart';
@@ -51,6 +52,7 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
   bool _filterSelectedDate = false; // controls whether selected date filter is active
   bool _showOlderNotifications = false; // Track if we're showing older notifications when on today
   bool _isDisposed = false;
+  bool _isTempHidingResults = false;
 
   @override
   void initState() {
@@ -156,17 +158,23 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
       final maxScrollExtent = widget.scrollController.position.maxScrollExtent;
       final clampedPosition = (maxScrollExtent - targetOffset + availableSpace).clamp(0.0, maxScrollExtent);
 
+      if (targetOffset <= availableSpace) {
+        widget.scrollController.jumpTo(maxScrollExtent);
+        return; // if the target offset fits in available space, no need to scroll up, as the content will be in the lower part of the screen
+      }
       widget.scrollController.jumpTo(clampedPosition - 65); // space occupied by the 'show older notifications' button
+      logTrace('Auto-scrolling to position: $targetOffset <= available space: $availableSpace');
+      setState(() => _isTempHidingResults = true);
+      await Future.delayed(const Duration(milliseconds: 5));
 
-      if (targetOffset <= availableSpace) return; // if the target offset fits in available space, no need to scroll up, as the content will be in the lower part of the screen
-
-      nextFrame(
-          delay: 5,
-          () => widget.scrollController.animateTo(
-                clampedPosition - 250,
-                duration: const Duration(milliseconds: 1000),
-                curve: Curves.easeOutCubic,
-              ));
+      nextFrame(delay: 5, () {
+        setState(() => _isTempHidingResults = false);
+        widget.scrollController.animateTo(
+          clampedPosition - 250,
+          duration: const Duration(milliseconds: 1000),
+          curve: Curves.easeOutCubic,
+        );
+      });
     } catch (e) {
       // If calculation fails, just scroll to bottom
       widget.scrollController.animateTo(
@@ -906,105 +914,110 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
     }
 
     return LayoutBuilder(builder: (context, constraints) {
-      return Column(
-        children: [
-          // Show older notifications button (when conditions are met)
-          if (shouldShowOlderButton) ...[
-            Padding(
-              padding: const EdgeInsets.only(left: 4.0, right: 8.0, bottom: 8.0, top: 8.0),
-              child: Row(
-                children: [
-                  Button(
-                    style: ButtonStyle(
-                      padding: ButtonState.all(const EdgeInsets.symmetric(horizontal: 12, vertical: 6)),
+      return AnimatedOpacity(
+        duration: shortDuration/2,
+        opacity: _isTempHidingResults ? 0.0 : 1.0,
+        curve: Curves.decelerate,
+        child: Column(
+          children: [
+            // Show older notifications button (when conditions are met)
+            if (shouldShowOlderButton) ...[
+              Padding(
+                padding: const EdgeInsets.only(left: 4.0, right: 8.0, bottom: 8.0, top: 8.0),
+                child: Row(
+                  children: [
+                    Button(
+                      style: ButtonStyle(
+                        padding: ButtonState.all(const EdgeInsets.symmetric(horizontal: 12, vertical: 6)),
+                      ),
+                      onPressed: () => toggleOlderNotifications(true),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(FluentIcons.history, size: 14),
+                          const SizedBox(width: 6),
+                          Text(isToday ? 'Show older notifications' : 'Show all notifications'),
+                        ],
+                      ),
                     ),
-                    onPressed: () => toggleOlderNotifications(true),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(FluentIcons.history, size: 14),
-                        const SizedBox(width: 6),
-                        Text(isToday ? 'Show older notifications' : 'Show all notifications'),
-                      ],
-                    ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-          ],
-          // Episode list
-          Expanded(
-            child: DynMouseScroll(
-                controller: widget.scrollController,
-                stopScroll: KeyboardState.ctrlPressedNotifier,
-                scrollSpeed: 1.0,
-                enableSmoothScroll: Manager.animationsEnabled,
-                durationMS: 350,
-                animationCurve: Curves.easeOutQuint,
-                builder: (context, controller, physics) {
-                  return ValueListenableBuilder(
-                      valueListenable: KeyboardState.ctrlPressedNotifier,
-                      builder: (context, isCtrlPressed, _) {
-                        return ListView.builder(
-                          physics: isCtrlPressed ? const NeverScrollableScrollPhysics() : null,
-                          controller: controller,
-                          cacheExtent: 999999,
-                          padding: const EdgeInsets.only(right: 8.0),
-                          itemCount: flattenedList.length,
-                          itemBuilder: (context, index) {
-                            final item = flattenedList[index];
-
-                            // Date header
-                            if (item is DateTime) {
-                              final date = item;
-                              return Padding(
-                                padding: const EdgeInsets.only(bottom: 12.0, top: 16.0, left: 4.0),
-                                child: Row(
-                                  crossAxisAlignment: CrossAxisAlignment.center,
-                                  children: [
-                                    Text(
-                                      _getRelativeDateLabel(date),
-                                      style: Manager.bodyLargeStyle.copyWith(fontWeight: FontWeight.w600, color: lighten(Manager.accentColor.lightest)),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                      decoration: BoxDecoration(
-                                        color: Manager.accentColor.light.withOpacity(0.25),
-                                        borderRadius: BorderRadius.circular(20),
-                                        border: Border.all(color: Manager.accentColor.light.withOpacity(0.4), width: 1),
+            ],
+            // Episode list
+            Expanded(
+              child: DynMouseScroll(
+                  controller: widget.scrollController,
+                  stopScroll: KeyboardState.ctrlPressedNotifier,
+                  scrollSpeed: 1.0,
+                  enableSmoothScroll: Manager.animationsEnabled,
+                  durationMS: 350,
+                  animationCurve: Curves.easeOutQuint,
+                  builder: (context, controller, physics) {
+                    return ValueListenableBuilder(
+                        valueListenable: KeyboardState.ctrlPressedNotifier,
+                        builder: (context, isCtrlPressed, _) {
+                          return ListView.builder(
+                            physics: isCtrlPressed ? const NeverScrollableScrollPhysics() : null,
+                            controller: controller,
+                            cacheExtent: 999999,
+                            padding: const EdgeInsets.only(right: 8.0),
+                            itemCount: flattenedList.length,
+                            itemBuilder: (context, index) {
+                              final item = flattenedList[index];
+        
+                              // Date header
+                              if (item is DateTime) {
+                                final date = item;
+                                return Padding(
+                                  padding: const EdgeInsets.only(bottom: 12.0, top: 16.0, left: 4.0),
+                                  child: Row(
+                                    crossAxisAlignment: CrossAxisAlignment.center,
+                                    children: [
+                                      Text(
+                                        _getRelativeDateLabel(date),
+                                        style: Manager.bodyLargeStyle.copyWith(fontWeight: FontWeight.w600, color: lighten(Manager.accentColor.lightest)),
                                       ),
-                                      child: Transform.translate(
-                                        offset: const Offset(0, -0.66),
-                                        child: Text(
-                                          '${entriesByDate[date]!.length}',
-                                          style: FluentTheme.of(context).typography.caption?.copyWith(
-                                                fontWeight: FontWeight.w600,
-                                                color: lighten(Manager.accentColor.lightest),
-                                              ),
+                                      const SizedBox(width: 8),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: Manager.accentColor.light.withOpacity(0.25),
+                                          borderRadius: BorderRadius.circular(20),
+                                          border: Border.all(color: Manager.accentColor.light.withOpacity(0.4), width: 1),
+                                        ),
+                                        child: Transform.translate(
+                                          offset: const Offset(0, -0.66),
+                                          child: Text(
+                                            '${entriesByDate[date]!.length}',
+                                            style: FluentTheme.of(context).typography.caption?.copyWith(
+                                                  fontWeight: FontWeight.w600,
+                                                  color: lighten(Manager.accentColor.lightest),
+                                                ),
+                                          ),
                                         ),
                                       ),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            }
-
-                            if (item is CalendarEntry) {
-                              final entry = item;
-                              return Padding(
-                                padding: const EdgeInsets.only(bottom: 3.0),
-                                child: _buildCalendarEntryItem(entry),
-                              );
-                            }
-
-                            return const SizedBox.shrink();
-                          },
-                        );
-                      });
-                }),
-          ),
-        ],
+                                    ],
+                                  ),
+                                );
+                              }
+        
+                              if (item is CalendarEntry) {
+                                final entry = item;
+                                return Padding(
+                                  padding: const EdgeInsets.only(bottom: 3.0),
+                                  child: _buildCalendarEntryItem(entry),
+                                );
+                              }
+        
+                              return const SizedBox.shrink();
+                            },
+                          );
+                        });
+                  }),
+            ),
+          ],
+        ),
       );
     });
   }
@@ -1017,18 +1030,23 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
           onSeriesSelected: widget.onSeriesSelected,
           onDownloadButton: (animeId, episodeId) {
             // TODO callback for when user wants to download this episode -> go to download page with preselected anime/episode
-            print('Download button clicked for episode ID: $episodeId of anime ID: $animeId');
+            print('Download button clicked for episode $episodeId of anime ID: $animeId');
+            snackBar('Download feature not implemented yet', severity: InfoBarSeverity.warning);
           },
           onAddedToList: (animeId) {
             // TODO show anilist dialog with list preselected to Plan to Watch
             print('Add to list clicked for anime ID: $animeId');
+            snackBar('Add to list feature not implemented yet', severity: InfoBarSeverity.warning);
           },
           onRelatedMediaAdditionNotificationTapped: (animeId) {
             final url = 'https://anilist.co/anime/$animeId';
-            print('Opening related media addition notification URL: $url');
+            logTrace('Opening related media addition notification URL: $url');
             launchUrl(Uri.parse(url));
           },
           onNotificationRead: (notificationId) async {
+            // check if the notification is already marked as read and if so, do nothing
+            if (notificationEntry.notification.isRead) return;
+
             final library = Provider.of<Library>(context, listen: false);
             await AnilistService().markAsRead(library.database, notificationId);
             setState(() {
@@ -1051,6 +1069,7 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
           onNotificationButtonToggled: (series) /* we have the DB id of the series, not anilist id */ {
             // TODO callback for when user wants to be notified about this episode(remember to account for when seriesId is -1)
             print('Notification button toggled for episode ${episodeEntry.episodeInfo.airingEpisode.episode} of series: ${series?.name}');
+            snackBar('Notification feature not implemented yet', severity: InfoBarSeverity.warning);
           },
         ),
       _ => const SizedBox(), // fallback for abstract CalendarEntry

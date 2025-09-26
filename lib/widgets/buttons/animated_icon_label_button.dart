@@ -36,7 +36,7 @@ class _AnimatedIconLabelButtonState extends State<AnimatedIconLabelButton> with 
     return AnimatedContainer(
       height: 30,
       duration: shortDuration,
-      width: _isHovered ? textWidth + 30 : 30,
+      width: _isHovered ? textWidth + 24 : 30,
       curve: Curves.easeInOutQuad,
       child: Tooltip(
         message: widget.tooltip ?? '',
@@ -75,7 +75,7 @@ class _AnimatedIconLabelButtonState extends State<AnimatedIconLabelButton> with 
                         duration: shortDuration,
                         curve: Curves.easeInOutQuad,
                         child: Padding(
-                          padding: const EdgeInsets.only(left: 28.0, right: 8.0),
+                          padding: const EdgeInsets.only(left: 22.0, right: 8.0),
                           child: Text(
                             widget.label,
                             overflow: TextOverflow.visible,

@@ -1,4 +1,3 @@
-
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:intl/intl.dart';
 import 'package:material_symbols_icons/material_symbols_icons.dart';
@@ -36,8 +35,8 @@ class _NotificationItemState2 extends State<ScheduledEpisodeCalendarEntryWidget>
   @override
   void initState() {
     super.initState();
-    isUpcoming = widget.episodeEntry.episodeInfo.airingDate.isAfter(now);
     timeUntil = widget.episodeEntry.episodeInfo.airingDate.difference(now);
+    isUpcoming = widget.episodeEntry.episodeInfo.airingDate.isAfter(now.subtract(const Duration(hours: 1)));
 
     realSeries = _getSeriesFromSchedule(widget.episodeEntry.episodeInfo);
     imageUrl = realSeries?.posterImage;
@@ -49,9 +48,10 @@ class _NotificationItemState2 extends State<ScheduledEpisodeCalendarEntryWidget>
   }
 
   String _formatDuration(Duration duration) {
-    if (duration.inDays > 0) return '${duration.inDays}d ${duration.inHours % 24}h';
-    if (duration.inHours > 0) return '${duration.inHours}h ${duration.inMinutes % 60}m';
-    return '${duration.inMinutes}m';
+    if (duration.inDays > 0) return 'Airs in ${duration.inDays}d${duration.inHours % 24 > 0 ? ' ${duration.inHours % 24}h' : duration.inMinutes % 60 > 0 ? ' ${duration.inMinutes % 60}m' : ''}';
+    if (duration.inHours > 0) return 'Airs in ${duration.inHours}h${duration.inMinutes % 60 > 0 ? ' ${duration.inMinutes % 60}m' : ''}';
+    if (duration.inMinutes > 0) return 'Airs in ${duration.inMinutes}m';
+    return 'Airs soon'; // Within an hour of the release time
   }
 
   @override
@@ -112,7 +112,7 @@ class _NotificationItemState2 extends State<ScheduledEpisodeCalendarEntryWidget>
           tooltip: 'Get notified when this episode airs',
         ),
       ),
-      subtitle: isUpcoming ? 'Airs in ${_formatDuration(timeUntil)}' : formatTimeAgo(null, timeUntil.abs()),
+      subtitle: isUpcoming ? _formatDuration(timeUntil) : formatTimeAgo(null, timeUntil.abs()),
       timestamp: DateFormat.yMMMd().add_jm().format(widget.episodeEntry.episodeInfo.airingDate),
       onTap: () {},
       isTileColored: false,
