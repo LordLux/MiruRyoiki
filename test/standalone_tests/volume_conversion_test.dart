@@ -1,3 +1,5 @@
+// ignore_for_file: avoid_print
+
 import 'package:flutter_test/flutter_test.dart';
 
 /// Standalone unit tests for VLC player volume conversion logic

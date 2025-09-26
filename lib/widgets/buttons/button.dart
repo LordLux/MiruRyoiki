@@ -84,6 +84,7 @@ class StandardButton extends StatefulWidget {
       hoverFillColor: hoverFillColor,
     );
   }
+  
   factory StandardButton.icon({
     required Widget icon,
     required VoidCallback? onPressed,
@@ -113,7 +114,7 @@ class StandardButton extends StatefulWidget {
       tooltipWidget: tooltipWidget,
       expand: expand,
       tooltipWaitDuration: tooltipWaitDuration,
-      padding: padding,
+      padding: padding ?? (isSmall ? EdgeInsets.symmetric(horizontal: 6, vertical: 4) : null),
       filledColor: filledColor,
       hoverFillColor: hoverFillColor,
     );

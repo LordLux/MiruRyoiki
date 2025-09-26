@@ -26,6 +26,22 @@ abstract class AnilistNotification {
   });
 
   Map<String, dynamic> toJson();
+
+  AnilistNotification copyWith({
+    int? id,
+    NotificationType? type,
+    int? createdAt,
+    bool? isRead,
+  }) {
+    return switch (this) {
+      AiringNotification n => n.copyWith(id: id, type: type, createdAt: createdAt, isRead: isRead),
+      RelatedMediaAdditionNotification n => n.copyWith(id: id, type: type, createdAt: createdAt, isRead: isRead),
+      MediaDataChangeNotification n => n.copyWith(id: id, type: type, createdAt: createdAt, isRead: isRead),
+      MediaMergeNotification n => n.copyWith(id: id, type: type, createdAt: createdAt, isRead: isRead),
+      MediaDeletionNotification n => n.copyWith(id: id, type: type, createdAt: createdAt, isRead: isRead),
+      _ => throw UnimplementedError('copyWith not implemented for $runtimeType'),
+    };
+  }
 }
 
 @JsonSerializable()

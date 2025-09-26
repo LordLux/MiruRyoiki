@@ -1,13 +1,11 @@
 import 'dart:async';
 import 'package:fluent_ui/fluent_ui.dart';
-import 'package:flutter/material.dart' as mat;
-import 'package:material_symbols_icons/symbols.dart';
 import 'package:miruryoiki/widgets/buttons/wrapper.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:smooth_scroll_multiplatform/smooth_scroll_multiplatform.dart';
+import 'package:url_launcher/url_launcher.dart';
 
-import '../main.dart';
 import '../services/library/library_provider.dart';
 import '../models/series.dart';
 import '../models/anilist/anime.dart';
@@ -20,10 +18,8 @@ import '../utils/logging.dart';
 import '../utils/path.dart';
 import '../utils/screen.dart';
 import '../utils/time.dart';
-import '../widgets/animated_translate.dart';
-import '../widgets/buttons/button.dart';
-import '../widgets/no_image.dart';
-import '../widgets/notification_list_tile.dart';
+import '../widgets/notifications/notif.dart';
+import '../widgets/notifications/scheduled.dart';
 import '../widgets/page/header_widget.dart';
 import '../widgets/page/page.dart';
 import '../manager.dart';
@@ -54,7 +50,6 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
   Timer? _minuteRefreshTimer; // periodic UI refresh for relative labels & countdowns
   bool _filterSelectedDate = false; // controls whether selected date filter is active
   bool _showOlderNotifications = false; // Track if we're showing older notifications when on today
-
   bool _isDisposed = false;
 
   @override
@@ -165,11 +160,13 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
 
       if (targetOffset <= availableSpace) return; // if the target offset fits in available space, no need to scroll up, as the content will be in the lower part of the screen
 
-      nextFrame(delay: 5, () => widget.scrollController.animateTo(
-            clampedPosition - 250,
-            duration: const Duration(milliseconds: 1000),
-            curve: Curves.easeOutCubic,
-          ));
+      nextFrame(
+          delay: 5,
+          () => widget.scrollController.animateTo(
+                clampedPosition - 250,
+                duration: const Duration(milliseconds: 1000),
+                curve: Curves.easeOutCubic,
+              ));
     } catch (e) {
       // If calculation fails, just scroll to bottom
       widget.scrollController.animateTo(
@@ -1014,8 +1011,48 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
 
   Widget _buildCalendarEntryItem(CalendarEntry entry) {
     return switch (entry) {
-      NotificationCalendarEntry notificationEntry => NotificationCalendarEntryWidget(notificationEntry.notification, notificationEntry.series, widget.onSeriesSelected),
-      EpisodeCalendarEntry episodeEntry => ScheduledEpisodeCalendarEntryWidget(episodeEntry),
+      NotificationCalendarEntry notificationEntry => NotificationCalendarEntryWidget(
+          notificationEntry.notification,
+          notificationEntry.series,
+          onSeriesSelected: widget.onSeriesSelected,
+          onDownloadButton: (animeId, episodeId) {
+            // TODO callback for when user wants to download this episode -> go to download page with preselected anime/episode
+            print('Download button clicked for episode ID: $episodeId of anime ID: $animeId');
+          },
+          onAddedToList: (animeId) {
+            // TODO show anilist dialog with list preselected to Plan to Watch
+            print('Add to list clicked for anime ID: $animeId');
+          },
+          onRelatedMediaAdditionNotificationTapped: (animeId) {
+            final url = 'https://anilist.co/anime/$animeId';
+            print('Opening related media addition notification URL: $url');
+            launchUrl(Uri.parse(url));
+          },
+          onNotificationRead: (notificationId) async {
+            final library = Provider.of<Library>(context, listen: false);
+            await AnilistService().markAsRead(library.database, notificationId);
+            setState(() {
+              final dateKey = DateTime(notificationEntry.date.year, notificationEntry.date.month, notificationEntry.date.day);
+              final entriesForDate = _calendarCache[dateKey];
+              if (entriesForDate != null) {
+                _calendarCache[dateKey] = entriesForDate.map((e) {
+                  if (e is NotificationCalendarEntry && e.notification.id == notificationId) {
+                    final updatedNotification = e.notification.copyWith(isRead: true);
+                    return NotificationCalendarEntry(notification: updatedNotification, series: e.series);
+                  }
+                  return e;
+                }).toList();
+              }
+            });
+          },
+        ),
+      EpisodeCalendarEntry episodeEntry => ScheduledEpisodeCalendarEntryWidget(
+          episodeEntry: episodeEntry,
+          onNotificationButtonToggled: (series) /* we have the DB id of the series, not anilist id */ {
+            // TODO callback for when user wants to be notified about this episode(remember to account for when seriesId is -1)
+            print('Notification button toggled for episode ${episodeEntry.episodeInfo.airingEpisode.episode} of series: ${series?.name}');
+          },
+        ),
       _ => const SizedBox(), // fallback for abstract CalendarEntry
     };
   }
@@ -1097,320 +1134,4 @@ class NotificationCalendarEntry extends CalendarEntry {
   }) : super(
           date: notification.createdAt != 0 ? DateTime.fromMillisecondsSinceEpoch(notification.createdAt * 1000) : DateTime.now(),
         );
-}
-
-class NotificationCalendarEntryWidget extends StatefulWidget {
-  final AnilistNotification notification;
-  final Series? series;
-  final Function(PathString) onSeriesSelected;
-
-  const NotificationCalendarEntryWidget(this.notification, this.series, this.onSeriesSelected, {super.key});
-
-  @override
-  State<NotificationCalendarEntryWidget> createState() => _NotificationCalendarEntryWidgetState();
-}
-
-class _NotificationCalendarEntryWidgetState extends State<NotificationCalendarEntryWidget> {
-  late final DateTime notificationDate;
-  late final Duration timeAgo;
-  bool _isHovered = false;
-  bool _isReadNotifHovered = false;
-  late final bool isRelatedMediaAdditionNotification;
-
-  @override
-  void initState() {
-    super.initState();
-    notificationDate = DateTime.fromMillisecondsSinceEpoch(widget.notification.createdAt * 1000);
-    timeAgo = now.difference(notificationDate);
-    isRelatedMediaAdditionNotification = widget.notification is RelatedMediaAdditionNotification;
-  }
-
-  String _getNotificationTitle(AnilistNotification notification, Series? series) {
-    return switch (notification) {
-      // TODO crossreference with seriesId to find entry type (TV/ONA/OVA or MOVIE) and adjust wording accordingly (e.g. "Movie released" instead of "Episode X released")
-      AiringNotification airing => 'Episode ${airing.episode} - ${series?.displayTitle ?? airing.media?.title ?? 'Unknown anime'}',
-      RelatedMediaAdditionNotification related => '${series?.displayTitle ?? related.media?.title ?? 'Unknown anime'} was added to Anilist',
-      MediaDataChangeNotification dataChange => '${series?.displayTitle ?? dataChange.media?.title ?? 'Unknown anime'} was updated',
-      MediaMergeNotification merge => '${series?.displayTitle ?? merge.media?.title ?? 'Unknown anime'} was merged',
-      MediaDeletionNotification deletion => '${deletion.deletedMediaTitle ?? 'Anime'} was deleted',
-      _ => 'Unknown notification',
-    };
-  }
-
-  String? _getNotificationImageString(AnilistNotification notification) {
-    return switch (notification) {
-      AiringNotification airing => airing.media?.coverImage,
-      RelatedMediaAdditionNotification related => related.media?.coverImage,
-      MediaDataChangeNotification dataChange => dataChange.media?.coverImage,
-      MediaMergeNotification merge => merge.media?.coverImage,
-      MediaDeletionNotification _ => null, // No media info for deletion notifications
-      _ => null,
-    };
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final bool hasEpisodeNumber = widget.notification is AiringNotification;
-    final double offset = hasEpisodeNumber ? _calculateOffset((widget.notification as AiringNotification).episode.toString().length) : 0.0;
-    return NotificationListTile(
-      leading: MouseRegion(
-        onEnter: (_) => setState(() => _isHovered = true),
-        onExit: (_) => setState(() => _isHovered = false),
-        child: SizedBox(
-          width: 70,
-          child: Stack(
-            alignment: Alignment.centerLeft,
-            children: [
-              if (hasEpisodeNumber)
-                Padding(
-                  padding: const EdgeInsets.only(left: 3.0),
-                  child: Text(
-                    (widget.notification as AiringNotification).episode.toString(),
-                    style: Manager.bodyStyle.copyWith(
-                      color: lighten(Manager.accentColor.lightest),
-                      fontWeight: FontWeight.w900,
-                    ),
-                    textAlign: TextAlign.center,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              SizedBox(
-                width: 70,
-                height: 64,
-                child: hasEpisodeNumber
-                    ? AnimatedTranslate(
-                        duration: shortDuration,
-                        curve: Curves.easeInOut,
-                        offset: _isHovered ? Offset(offset, 0) : Offset.zero,
-                        child: _buildNotificationImage(_getNotificationImageString(widget.notification), widget.series),
-                      )
-                    : _buildNotificationImage(_getNotificationImageString(widget.notification), widget.series),
-              ),
-            ],
-          ),
-        ),
-      ),
-      title: _getNotificationTitle(widget.notification, widget.series),
-      contentBuilder: (context, child) {
-        if (!hasEpisodeNumber) return child;
-        return AnimatedTranslate(
-          duration: shortDuration,
-          curve: Curves.easeInOut,
-          offset: _isHovered ? Offset(offset, 0) : Offset.zero,
-          child: child,
-        );
-      },
-      subtitle: _formatTimeAgo(widget.notification, timeAgo),
-      timestamp: DateFormat.yMMMd().add_jm().format(notificationDate),
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (!widget.notification.isRead)
-            Builder(
-              builder: (context) {
-                final icon = Icon(
-                  FluentIcons.circle_fill,
-                  color: Manager.accentColor.light,
-                  size: 8,
-                );
-                if (!_isReadNotifHovered) return icon;
-                return IconButton(
-                    icon: icon,
-                    onPressed: () {
-                      setState(() {
-                        // TODO: Mark notification as read
-                        print('Marking notification as read: ${widget.notification.id}');
-                      });
-                    });
-              },
-            ),
-          if (widget.series != null) const Icon(FluentIcons.chevron_right),
-        ],
-      ),
-      onTap: () => widget.series != null ? widget.onSeriesSelected(widget.series!.path) : null,
-      isRead: widget.notification.isRead,
-    );
-  }
-}
-
-class ScheduledEpisodeCalendarEntryWidget extends StatefulWidget {
-  final EpisodeCalendarEntry episodeEntry;
-
-  const ScheduledEpisodeCalendarEntryWidget(this.episodeEntry, {super.key});
-
-  // NotificationItem2(ReleaseEpisodeInfo episodeInfo, this.onSeriesSelected, {super.key}) : episodeInfo = ReleaseEpisodeInfo(
-  //   series: episodeInfo.series,
-  //   animeData: episodeInfo.animeData,
-  //   airingEpisode: AiringEpisode(
-  //     airingAt: episodeInfo.airingEpisode.airingAt,
-  //     episode: 100000,
-  //     timeUntilAiring: episodeInfo.airingEpisode.timeUntilAiring,
-  //   ),
-  //   airingDate: episodeInfo.airingDate,
-  //   isWatched: episodeInfo.isWatched,
-  //   isAvailable: episodeInfo.isAvailable,
-  // );
-
-  @override
-  State<ScheduledEpisodeCalendarEntryWidget> createState() => _NotificationItemState2();
-}
-
-double _calculateOffset(int? length) {
-  // Calculate offset based on text length (1 to 4 characters)
-  final titleLength = length ?? 1;
-  return 8.0 + 9.5 * titleLength; // Base offset + per-character offset
-}
-
-class _NotificationItemState2 extends State<ScheduledEpisodeCalendarEntryWidget> {
-  late final bool isUpcoming;
-  late final Duration timeUntil;
-  late final Series? realSeries;
-  late final String? imageUrl;
-  bool _isHovered = false;
-
-  @override
-  void initState() {
-    super.initState();
-    isUpcoming = widget.episodeEntry.episodeInfo.airingDate.isAfter(now);
-    timeUntil = widget.episodeEntry.episodeInfo.airingDate.difference(now);
-
-    realSeries = _getSeriesFromSchedule(widget.episodeEntry.episodeInfo);
-    imageUrl = realSeries?.posterImage;
-  }
-
-  Series? _getSeriesFromSchedule(ReleaseEpisodeInfo episodeInfo) {
-    final library = Provider.of<Library>(context, listen: false);
-    return library.getSeriesByPath(episodeInfo.series.path);
-  }
-
-  String _formatDuration(Duration duration) {
-    if (duration.inDays > 0) return '${duration.inDays}d ${duration.inHours % 24}h';
-    if (duration.inHours > 0) return '${duration.inHours}h ${duration.inMinutes % 60}m';
-    return '${duration.inMinutes}m';
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final offset = _calculateOffset(widget.episodeEntry.episodeInfo.airingEpisode.episode?.toString().length);
-    return NotificationListTile(
-      leading: MouseRegion(
-        onEnter: (_) => setState(() => _isHovered = true),
-        onExit: (_) => setState(() => _isHovered = false),
-        child: SizedBox(
-          width: 50,
-          child: Stack(
-            alignment: Alignment.centerLeft,
-            children: [
-              Padding(
-                padding: const EdgeInsets.only(left: 3.0),
-                child: Text(
-                  widget.episodeEntry.episodeInfo.airingEpisode.episode.toString(),
-                  style: Manager.bodyStyle.copyWith(
-                    color: lighten(Manager.accentColor.lightest),
-                    fontWeight: FontWeight.w900,
-                  ),
-                  textAlign: TextAlign.center,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-              SizedBox(
-                width: 50,
-                height: 64,
-                child: AnimatedTranslate(
-                  duration: shortDuration,
-                  curve: Curves.easeInOut,
-                  offset: _isHovered ? Offset(offset, 0) : Offset.zero,
-                  child: _buildNotificationImage(imageUrl, realSeries),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-      title: 'Episode ${widget.episodeEntry.episodeInfo.airingEpisode.episode ?? '?'} - ${widget.episodeEntry.episodeInfo.series.displayTitle}',
-      contentBuilder: (context, child) {
-        return AnimatedTranslate(
-          duration: shortDuration,
-          curve: Curves.easeInOut,
-          offset: _isHovered ? Offset(offset, 0) : Offset.zero,
-          child: child,
-        );
-      },
-      trailing: StandardButton.icon(
-        isSmall: true,
-        tooltipWaitDuration: const Duration(milliseconds: 400),
-        tooltip: 'Get notified when this episode airs',
-        padding: EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-        icon: Icon(Symbols.notification_add, color: Manager.accentColor.light, weight: 400, grade: 0, opticalSize: 24, size: 18),
-        onPressed: () {
-          // TODO: Implement windows notification addition
-        },
-      ),
-      subtitle: isUpcoming ? 'Airs in ${_formatDuration(timeUntil)}' : _formatTimeAgo(null, timeUntil.abs()),
-      timestamp: DateFormat.yMMMd().add_jm().format(widget.episodeEntry.episodeInfo.airingDate),
-      onTap: () {},
-      isRead: false, // TODO: Mark as read if episode is watched
-    );
-  }
-}
-
-Widget _buildNotificationImage(String? imageUrl, Series? series) {
-  // Use series poster image if available, otherwise fallback to Anilist cover
-  if (series != null) {
-    return FutureBuilder<ImageProvider?>(
-      future: series.getPosterImage(),
-      builder: (context, snapshot) {
-        if (snapshot.hasData && snapshot.data != null) {
-          return ClipRRect(
-            borderRadius: BorderRadius.circular(4),
-            child: Image(
-              image: snapshot.data!,
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) => const NoImageWidget(),
-            ),
-          );
-        } else if (snapshot.hasError || imageUrl == null) {
-          return const NoImageWidget();
-        } else {
-          // Fallback to Anilist cover image while loading
-          return Image.network(
-            imageUrl,
-            fit: BoxFit.cover,
-            frameBuilder: (context, child, frame, wasSynchronouslyLoaded) => ClipRRect(
-              borderRadius: BorderRadius.circular(4),
-              child: child,
-            ),
-            errorBuilder: (context, error, stackTrace) => const NoImageWidget(),
-          );
-        }
-      },
-    );
-  } else if (imageUrl != null) {
-    return Image.network(
-      imageUrl,
-      fit: BoxFit.cover,
-      frameBuilder: (context, child, frame, wasSynchronouslyLoaded) => ClipRRect(
-        borderRadius: BorderRadius.circular(4),
-        child: child,
-      ),
-      errorBuilder: (context, error, stackTrace) => const NoImageWidget(),
-    );
-  } else {
-    return const NoImageWidget();
-  }
-}
-
-String _formatTimeAgo(AnilistNotification? notification, Duration duration) {
-  String str = "";
-  if (duration.inDays > 0)
-    str = '${duration.inDays} day${duration.inDays > 1 ? 's' : ''} ago';
-  else if (duration.inHours > 0)
-    str = '${duration.inHours} hour${duration.inHours > 1 ? 's' : ''} ago';
-  else
-    str = '${duration.inMinutes} minute${duration.inMinutes > 1 ? 's' : ''} ago';
-
-  if (notification == null || notification is! RelatedMediaAdditionNotification) str = 'Aired $str';
-  return str;
 }

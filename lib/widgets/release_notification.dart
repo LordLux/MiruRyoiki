@@ -55,7 +55,7 @@ class _ReleaseNotificationWidgetState extends State<ReleaseNotificationWidget> {
     if (anilistProvider.isLoggedIn) {
       _anilistService = AnilistService();
       await _loadNotifications();
-      
+
       // Set up a periodic refresh for notifications
       _refreshTimer = Timer.periodic(const Duration(minutes: 5), (timer) {
         if (mounted && _anilistService != null) {
@@ -113,9 +113,9 @@ class _ReleaseNotificationWidgetState extends State<ReleaseNotificationWidget> {
       _isDialogToggling = false;
     }
     _notificationsOpen = true;
-    
+
     if (!context.mounted) return;
-    
+
     await showManagedDialog(
       context: context,
       id: 'notifications',
@@ -158,8 +158,7 @@ class _ReleaseNotificationWidgetState extends State<ReleaseNotificationWidget> {
                 Transform.scale(
                   scale: 1.2,
                   child: anim_icon.AnimatedIcon(
-                    duration: const Duration(milliseconds: 300),
-                    icon: mat.Icon(
+                    mat.Icon(
                       isEnabled ? (_notificationsOpen ? Symbols.notifications : Symbols.notifications) : mat.Icons.notifications_off,
                       size: 17,
                       color: isEnabled ? (hasNotifications ? Manager.currentDominantColor ?? Manager.accentColor : Colors.white.withOpacity(0.8)) : Colors.white.withOpacity(0.4),
@@ -168,6 +167,7 @@ class _ReleaseNotificationWidgetState extends State<ReleaseNotificationWidget> {
                       grade: 0,
                       opticalSize: 40,
                     ),
+                    duration: const Duration(milliseconds: 300),
                   ),
                 ),
                 if (hasNotifications && isEnabled)

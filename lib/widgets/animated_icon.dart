@@ -1,13 +1,12 @@
-
 import 'package:flutter/material.dart';
 
 class AnimatedIcon extends StatefulWidget {
   final Icon icon;
   final Duration duration;
 
-  const AnimatedIcon({
+  const AnimatedIcon(
+    this.icon, {
     super.key,
-    required this.icon,
     this.duration = const Duration(milliseconds: 300),
   });
 
@@ -23,14 +22,14 @@ class _AnimatedIconState extends State<AnimatedIcon> with SingleTickerProviderSt
   @override
   void initState() {
     super.initState();
-    
+
     _currentColor = widget.icon.color ?? Theme.of(context).iconTheme.color ?? Colors.black;
-    
+
     _controller = AnimationController(
       duration: widget.duration,
       vsync: this,
     );
-    
+
     _colorAnimation = ColorTween(
       begin: _currentColor,
       end: _currentColor,
@@ -43,12 +42,12 @@ class _AnimatedIconState extends State<AnimatedIcon> with SingleTickerProviderSt
   @override
   void didUpdateWidget(AnimatedIcon oldWidget) {
     super.didUpdateWidget(oldWidget);
-    
+
     // Update duration if it changed
     if (widget.duration != oldWidget.duration) {
       _controller.duration = widget.duration;
     }
-    
+
     // Check if the color has changed
     final newColor = widget.icon.color ?? Theme.of(context).iconTheme.color ?? Colors.black;
     if (newColor != _currentColor) {
@@ -60,7 +59,7 @@ class _AnimatedIconState extends State<AnimatedIcon> with SingleTickerProviderSt
         parent: _controller,
         curve: Curves.easeInOut,
       ));
-      
+
       _currentColor = newColor;
       _controller.forward(from: 0);
     }

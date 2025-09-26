@@ -76,7 +76,6 @@ class PlayerFactory {
             configurations.add(config);
           } catch (e) {
             logWarn('Failed to load player configuration from ${entity.path}: $e');
-            print('Failed to load player configuration from ${entity.path}: $e');
           }
         }
       }
