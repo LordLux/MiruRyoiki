@@ -260,18 +260,18 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
       }
 
       // Get date range (±2 weeks from today for wider view)
-      final startDate = now.subtract(const Duration(days: 14)); // TODO 'get more' button to extend range?
-      final endDate = now.add(const Duration(days: 14));
+      // final startDate = now.subtract(const Duration(days: 14));
+      // final endDate = now.add(const Duration(days: 14));
 
       final Map<DateTime, List<CalendarEntry>> calendarMap = {};
 
       // Load episodes (future releases)
-      await _loadEpisodeData(library, anilistProvider, calendarMap, startDate, null); // we want all schedules
+      await _loadEpisodeData(library, anilistProvider, calendarMap, now, null); // we want all schedules
 
       if (_isDisposed) return;
 
       // Load notifications (past events)
-      await _loadNotificationData(library, calendarMap, null, endDate);
+      await _loadNotificationData(library, calendarMap, null, now);
 
       if (_isDisposed) return;
 
@@ -562,9 +562,15 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
               child: const Icon(FluentIcons.chevron_left),
             ),
           ),
-          Text(
-            DateFormat.yMMMM().format(_focusedMonth),
-            style: FluentTheme.of(context).typography.subtitle,
+          MouseButtonWrapper(
+            tooltip: 'Click to go to current date',
+            child: (_) => GestureDetector(
+              onTap: () => focusToday(),
+              child: Text(
+                DateFormat.yMMMM().format(_focusedMonth),
+                style: FluentTheme.of(context).typography.subtitle,
+              ),
+            ),
           ),
           Padding(
             padding: const EdgeInsets.only(right: 6.0),
@@ -665,6 +671,9 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
     return Container(
       margin: const EdgeInsets.all(2),
       child: MouseButtonWrapper(
+        tooltip: entryCount > 0
+            ? '${DateFormat.yMMMd().format(date)}\n$entryCount notification${entryCount > 1 ? 's' : ''}'
+            : '${DateFormat.yMMMd().format(date)}\nNo notifications',
         child: (isHovering) => Button(
           onPressed: () {
             if (mounted && !_isDisposed) {
@@ -933,7 +942,7 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
 
     return LayoutBuilder(builder: (context, constraints) {
       return AnimatedOpacity(
-        duration: shortDuration / 2,
+        duration: shortDuration,
         opacity: _isTempHidingResults ? 0.0 : 1.0,
         curve: Curves.decelerate,
         child: Column(
@@ -994,7 +1003,7 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
                                     children: [
                                       TooltipWrapper(
                                         waitDuration: const Duration(milliseconds: 400),
-                                        tooltip: '${DateFormat.EEEE().format(date)} ${DateFormat('dMMMy').format(date)} (${entriesByDate[date]!.length} entries)',
+                                        tooltip: '${DateFormat.EEEE().format(date)} ${DateFormat('d MMM${now.year == date.year ? '' : ' y'}').format(date)} (${entriesByDate[date]!.length} entries)',
                                         child: (_) => Text(
                                           _getRelativeDateLabel(date),
                                           style: Manager.bodyLargeStyle.copyWith(fontWeight: FontWeight.w600, color: lighten(Manager.accentColor.lightest)),

@@ -15,7 +15,7 @@ class MouseButtonWrapper extends StatefulWidget {
     this.isLoading = false,
     this.tooltip,
     this.tooltipWidget,
-    this.tooltipWaitDuration,
+    this.tooltipWaitDuration = const Duration(milliseconds: 400),
   });
 
   @override
