@@ -11,7 +11,6 @@ import '../../utils/color.dart';
 import '../../utils/time.dart';
 import '../animated_translate.dart';
 import '../buttons/animated_icon_label_button.dart';
-import '../buttons/button.dart';
 import '../notification_list_tile.dart';
 import 'notif.dart';
 
@@ -26,8 +25,6 @@ class ScheduledEpisodeCalendarEntryWidget extends StatefulWidget {
 }
 
 class _NotificationItemState2 extends State<ScheduledEpisodeCalendarEntryWidget> {
-  late final bool isUpcoming;
-  late final Duration timeUntil;
   late final Series? realSeries;
   late final String? imageUrl;
   bool _isHovered = false;
@@ -35,9 +32,6 @@ class _NotificationItemState2 extends State<ScheduledEpisodeCalendarEntryWidget>
   @override
   void initState() {
     super.initState();
-    timeUntil = widget.episodeEntry.episodeInfo.airingDate.difference(now);
-    isUpcoming = widget.episodeEntry.episodeInfo.airingDate.isAfter(now.subtract(const Duration(hours: 1)));
-
     realSeries = _getSeriesFromSchedule(widget.episodeEntry.episodeInfo);
     imageUrl = realSeries?.posterImage;
   }
@@ -56,6 +50,9 @@ class _NotificationItemState2 extends State<ScheduledEpisodeCalendarEntryWidget>
 
   @override
   Widget build(BuildContext context) {
+    final timeUntil = widget.episodeEntry.episodeInfo.airingDate.difference(now);
+    final isUpcoming = widget.episodeEntry.episodeInfo.airingDate.isAfter(now.subtract(const Duration(hours: 1)));
+    
     final offset = calculateOffset(widget.episodeEntry.episodeInfo.airingEpisode.episode?.toString().length);
     return NotificationListTile(
       leading: MouseRegion(

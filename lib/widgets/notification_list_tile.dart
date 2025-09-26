@@ -75,7 +75,7 @@ class _NotificationListTileState extends State<NotificationListTile> {
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               TooltipWrapper(
-                                message: widget.title,
+                                tooltip: widget.title,
                                 child: (message) => Text(
                                   message,
                                   style: Manager.smallSubtitleStyle.copyWith(fontWeight: FontWeight.w600),
@@ -86,7 +86,7 @@ class _NotificationListTileState extends State<NotificationListTile> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   TooltipWrapper(
-                                    message: widget.subtitle,
+                                    tooltip: widget.subtitle,
                                     preferBelow: true,
                                     child: (message) => Text(
                                       message,
@@ -95,7 +95,7 @@ class _NotificationListTileState extends State<NotificationListTile> {
                                     ),
                                   ),
                                   TooltipWrapper(
-                                    message: widget.timestamp,
+                                    tooltip: widget.timestamp,
                                     preferBelow: true,
                                     style: TooltipThemeData(preferBelow: true),
                                     child: (message) => Text(

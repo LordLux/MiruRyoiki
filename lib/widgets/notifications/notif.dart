@@ -1,8 +1,6 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:intl/intl.dart';
 import 'package:material_symbols_icons/material_symbols_icons.dart';
-import 'package:miruryoiki/widgets/buttons/wrapper.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../manager.dart';
 import '../../models/notification.dart';
@@ -44,7 +42,6 @@ class NotificationCalendarEntryWidget extends StatefulWidget {
 
 class _NotificationCalendarEntryWidgetState extends State<NotificationCalendarEntryWidget> {
   late final DateTime notificationDate;
-  late final Duration timeAgo;
   bool _isHovered = false;
   bool _isReadNotifHovered = false;
   bool get isRelatedMediaAdditionNotification => widget.notification is RelatedMediaAdditionNotification && (widget.notification as RelatedMediaAdditionNotification).media != null;
@@ -54,7 +51,6 @@ class _NotificationCalendarEntryWidgetState extends State<NotificationCalendarEn
   void initState() {
     super.initState();
     notificationDate = DateTime.fromMillisecondsSinceEpoch(widget.notification.createdAt * 1000);
-    timeAgo = now.difference(notificationDate);
   }
 
   String _getNotificationTitle(AnilistNotification notification, Series? series) {
@@ -82,8 +78,10 @@ class _NotificationCalendarEntryWidgetState extends State<NotificationCalendarEn
 
   @override
   Widget build(BuildContext context) {
+    final timeAgo = now.difference(notificationDate);
     final bool hasEpisodeNumber = widget.notification is AiringNotification;
     final double offset = hasEpisodeNumber ? calculateOffset((widget.notification as AiringNotification).episode.toString().length) : 0.0;
+    
     return NotificationListTile(
       leading: MouseRegion(
         onEnter: (_) => setState(() => _isHovered = true),
@@ -97,7 +95,7 @@ class _NotificationCalendarEntryWidgetState extends State<NotificationCalendarEn
                 Padding(
                   padding: const EdgeInsets.only(left: 3.0),
                   child: TooltipWrapper(
-                    message: (widget.notification as AiringNotification).episode.toString(),
+                    tooltip: (widget.notification as AiringNotification).episode.toString(),
                     child: (message) => Text(
                       message,
                       style: Manager.bodyStyle.copyWith(
@@ -201,14 +199,14 @@ class _NotificationCalendarEntryWidgetState extends State<NotificationCalendarEn
           if (widget.series != null)
             TooltipWrapper(
               waitDuration: const Duration(milliseconds: 400),
-              message: 'View Series details',
+              tooltip: 'View Series details',
               child: (_) => const Icon(FluentIcons.chevron_right),
             ) //
           else
             isRelatedMediaAdditionNotification //
                 ? TooltipWrapper(
                     waitDuration: const Duration(milliseconds: 400),
-                    message: 'Open in browser',
+                    tooltip: 'Open in browser',
                     child: (_) => Icon(Symbols.open_in_new, weight: 300, grade: 0, opticalSize: 48, size: 18),
                   )
                 : SizedBox(width: 18),

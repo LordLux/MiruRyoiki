@@ -47,6 +47,7 @@ import '../widgets/enum_toggle.dart';
 import '../widgets/page/header_widget.dart';
 import '../widgets/page/page.dart';
 import '../widgets/series_image.dart';
+import '../widgets/tooltip_wrapper.dart';
 import '../widgets/widget_image_provider.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -1464,13 +1465,24 @@ class SettingsScreenState extends State<SettingsScreen> {
                     children: [
                       Text('First Day of Week', style: Manager.bodyStyle),
                       const SizedBox(width: 12),
-                      EnumToggle<FirstDayOfWeek>(
+                      TooltipWrapper(
                         tooltip: 'Set which day appears first in the release calendar.',
-                        enumValues: FirstDayOfWeek.values,
-                        labelExtractor: (value) => value.displayName,
-                        currentValue: settings.firstDayOfWeek,
-                        onChanged: (value) {
-                          settings.firstDayOfWeek = value;
+                        child: (_) {
+                          final list = FirstDayOfWeek.values.sublist(1);
+                          list.add(FirstDayOfWeek.values.first);
+                          
+                          return ComboBox<FirstDayOfWeek>(
+                            value: settings.firstDayOfWeek,
+                            items: list.map((FirstDayOfWeek value) {
+                              return ComboBoxItem<FirstDayOfWeek>(
+                                value: value,
+                                child: Text(value.displayName),
+                              );
+                            }).toList(),
+                            onChanged: (FirstDayOfWeek? newValue) {
+                              if (newValue != null) settings.firstDayOfWeek = newValue;
+                            },
+                          );
                         },
                       ),
                     ],

@@ -994,7 +994,7 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
                                     children: [
                                       TooltipWrapper(
                                         waitDuration: const Duration(milliseconds: 400),
-                                        message: '${DateFormat.EEEE().format(date)} ${DateFormat('dMMMy').format(date)} (${entriesByDate[date]!.length} entries)',
+                                        tooltip: '${DateFormat.EEEE().format(date)} ${DateFormat('dMMMy').format(date)} (${entriesByDate[date]!.length} entries)',
                                         child: (_) => Text(
                                           _getRelativeDateLabel(date),
                                           style: Manager.bodyLargeStyle.copyWith(fontWeight: FontWeight.w600, color: lighten(Manager.accentColor.lightest)),

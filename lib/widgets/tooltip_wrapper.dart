@@ -2,7 +2,7 @@ import 'package:fluent_ui/fluent_ui.dart';
 
 class TooltipWrapper extends StatelessWidget {
   final Widget Function(String) child;
-  final String message;
+  final String tooltip;
   final bool? preferBelow;
   final bool enableFeedback;
   final Duration waitDuration;
@@ -17,7 +17,7 @@ class TooltipWrapper extends StatelessWidget {
   const TooltipWrapper({
     super.key,
     required this.child,
-    required this.message,
+    required this.tooltip,
     this.preferBelow,
     this.enableFeedback = true,
     this.waitDuration = const Duration(milliseconds: 400),
@@ -33,7 +33,7 @@ class TooltipWrapper extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Tooltip(
-      message: message,
+      message: tooltip,
       enableFeedback: enableFeedback,
       displayHorizontally: displayHorizontally,
       excludeFromSemantics: excludeFromSemantics,
@@ -41,7 +41,7 @@ class TooltipWrapper extends StatelessWidget {
       style: TooltipThemeData(preferBelow: preferBelow, waitDuration: waitDuration, showDuration: showDuration).merge(style),
       triggerMode: triggerMode,
       useMousePosition: useMousePosition,
-      child: child(message),
+      child: child(tooltip),
     );
   }
 }
