@@ -18,8 +18,6 @@ import '../../utils/time.dart';
 import '../../widgets/buttons/wrapper.dart';
 import '../buttons/rotating_loading_button.dart';
 
-final GlobalKey<NotificationsContentState> notificationsDialogKey = GlobalKey<NotificationsContentState>();
-
 class NotificationsDialog extends ManagedDialog {
   final void Function(BuildContext context)? onMorePressed;
 
@@ -31,7 +29,6 @@ class NotificationsDialog extends ManagedDialog {
           title: null, // Remove the static title
           constraints: const BoxConstraints(maxWidth: 480, maxHeight: 500),
           contentBuilder: (context, constraints) => _NotificationsContent(
-            key: notificationsDialogKey,
             onMorePressed: onMorePressed,
             constraints: constraints,
           ),
@@ -55,7 +52,6 @@ class _NotificationsContent extends StatefulWidget {
   final BoxConstraints constraints;
 
   const _NotificationsContent({
-    super.key,
     this.onMorePressed,
     required this.constraints,
   });
