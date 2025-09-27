@@ -671,7 +671,7 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
     return Container(
       margin: const EdgeInsets.all(2),
       child: MouseButtonWrapper(
-        tooltip: entryCount > 0
+        tooltip: entryCount > 0 //
             ? '${DateFormat.yMMMd().format(date)}\n$entryCount notification${entryCount > 1 ? 's' : ''}'
             : '${DateFormat.yMMMd().format(date)}\nNo notifications',
         child: (isHovering) => Button(

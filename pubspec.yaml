@@ -82,6 +82,7 @@ dependencies:
   flutter_svg: ^2.2.1
   process_monitor:
     path: M:/Projects/process_monitor/
+  glossy: ^0.0.5
 
 dev_dependencies:
   flutter_test:
@@ -135,6 +136,9 @@ flutter:
     - assets/system/players/
     - assets/system/players/vlc.si
     - assets/system/players/mpchc.si
+    
+  ### Images:
+    - assets/images/noise.png
 
 
   # fonts:

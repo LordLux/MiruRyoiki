@@ -111,7 +111,7 @@ class ConnectivityService extends ChangeNotifier {
 
           if (result.isNotEmpty && result[0].rawAddress.isNotEmpty) {
             hasConnection = true;
-            logTrace('Successfully connected to $host');
+            // logTrace('Successfully connected to $host');
             break;
           }
         } catch (e) {

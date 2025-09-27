@@ -300,7 +300,7 @@ class SettingsScreenState extends State<SettingsScreen> {
       },
       isPositiveButtonPrimary: true,
       positiveButtonText: 'Scan Library and Preview Changes',
-      constraints: BoxConstraints(maxWidth: 600),
+      constraints: BoxConstraints(maxWidth: 600, maxHeight: 467 * Manager.fontSizeMultiplier),
       negativeButtonText: 'Cancel',
       onPositive: () async {
         setState(() {
@@ -1161,8 +1161,10 @@ class SettingsScreenState extends State<SettingsScreen> {
                         labelExtractor: (value) => value.name_,
                         currentValue: appTheme.dim,
                         onChanged: (value) {
-                          appTheme.dim = value;
-                          settings.dim = value;
+                          Manager.setState(() {
+                            appTheme.dim = value;
+                            settings.dim = value;
+                          });
                         },
                       ),
                     ],
@@ -1470,7 +1472,7 @@ class SettingsScreenState extends State<SettingsScreen> {
                         child: (_) {
                           final list = FirstDayOfWeek.values.sublist(1);
                           list.add(FirstDayOfWeek.values.first);
-                          
+
                           return ComboBox<FirstDayOfWeek>(
                             value: settings.firstDayOfWeek,
                             items: list.map((FirstDayOfWeek value) {

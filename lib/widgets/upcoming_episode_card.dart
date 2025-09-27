@@ -11,6 +11,7 @@ import '../utils/color.dart';
 import '../utils/logging.dart';
 import '../utils/time.dart';
 import 'context_menu/series.dart';
+import 'frosted_noise.dart';
 import 'hidden.dart';
 
 class UpcomingEpisodeCard extends StatefulWidget {
@@ -258,7 +259,7 @@ class _UpcomingEpisodeCardState extends State<UpcomingEpisodeCard> {
                                 elevation: 0.5,
                                 tintAlpha: 0.5,
                                 luminosityAlpha: 0.8,
-                                child: child,
+                                child: FrostedNoise(child: child),
                               ),
                             ),
                           );

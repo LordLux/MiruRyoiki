@@ -48,6 +48,7 @@ class ScreenUtils {
   static Size libraryCardSize = Size(kDefaultCardWidth, kDefaultCardHeight);
 
   static MediaQueryData get _mediaQuery => MediaQueryData.fromWindow(WidgetsBinding.instance.window);
+  static Size get screenSize => _mediaQuery.size;
   static double get width => _mediaQuery.size.width;
   static double get height => _mediaQuery.size.height;
   static double get pixelRatio => _mediaQuery.devicePixelRatio;
@@ -84,3 +85,9 @@ Widget HDivPx(double width) => SizedBox(width: width);
 
 /// Creates a vertical divider with a fixed pixel height
 Widget VDivPx(double height) => SizedBox(height: height);
+
+Alignment alignmentFromPixels(double x, double y, Size containerSize) {
+  final normalizedX = (2 * x / containerSize.width) - 1;
+  final normalizedY = (2 * y / containerSize.height) - 1;
+  return Alignment(normalizedX, normalizedY);
+}

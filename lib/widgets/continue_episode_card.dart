@@ -1,5 +1,6 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/material.dart' show InkWell, Material;
+import 'package:miruryoiki/widgets/frosted_noise.dart';
 import 'package:transparent_image/transparent_image.dart';
 import '../enums.dart';
 import '../manager.dart';
@@ -272,7 +273,7 @@ class _ContinueEpisodeCardState extends State<ContinueEpisodeCard> {
                                   elevation: 0.5,
                                   tintAlpha: 0.5,
                                   luminosityAlpha: 0.8,
-                                  child: child,
+                                  child: FrostedNoise(child: child),
                                 ),
                               ),
                             );

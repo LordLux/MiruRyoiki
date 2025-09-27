@@ -1,7 +1,7 @@
-
 import 'package:fluent_ui/fluent_ui.dart';
 
 import '../utils/screen.dart';
+import 'frosted_noise.dart';
 
 class AcrylicHeader extends StatelessWidget {
   final Widget child;
@@ -16,18 +16,20 @@ class AcrylicHeader extends StatelessWidget {
       borderRadius: const BorderRadius.all(Radius.circular(ScreenUtils.kStatCardBorderRadius)),
       child: Acrylic(
         luminosityAlpha: 1,
-        child: Container(
-          width: double.infinity,
-          constraints: const BoxConstraints(minHeight: 50.0),
-          decoration: BoxDecoration(
-            borderRadius: const BorderRadius.only(
-              topLeft: Radius.circular(ScreenUtils.kStatCardBorderRadius),
-              topRight: Radius.circular(ScreenUtils.kStatCardBorderRadius),
+        child: FrostedNoise(
+          child: Container(
+            width: double.infinity,
+            constraints: const BoxConstraints(minHeight: 50.0),
+            decoration: BoxDecoration(
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(ScreenUtils.kStatCardBorderRadius),
+                topRight: Radius.circular(ScreenUtils.kStatCardBorderRadius),
+              ),
+              color: Colors.white.withOpacity(0.05),
             ),
-            color: Colors.white.withOpacity(0.05),
+            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+            child: child,
           ),
-          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
-          child: child,
         ),
       ),
     );

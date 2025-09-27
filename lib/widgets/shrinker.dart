@@ -157,8 +157,8 @@ class _ShrinkerState extends State<Shrinker> with SingleTickerProviderStateMixin
           child: StandardButton(
             isFilled: readMore,
             isSmall: true,
-            filledColor: widget.buttonBackgroundColor,
-            hoverFillColor: widget.buttonBackgroundColor?.toAccentColor().light,
+            filledColor: widget.buttonBackgroundColor ?? Manager.currentDominantColor ?? Manager.accentColor,
+            hoverFillColor: widget.buttonBackgroundColor?.toAccentColor().light ?? Manager.currentDominantColor?.toAccentColor().light ?? Manager.accentColor.light,
             onPressed: () => readMore ? _controller.expand() : _controller.collapse(),
             label: Text(readMore ? 'Read More' : 'Read Less', style: Manager.miniBodyStyle),
           ),

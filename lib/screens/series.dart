@@ -13,7 +13,7 @@ import '../utils/text.dart';
 import '../widgets/buttons/button.dart';
 import '../services/anilist/provider/anilist_provider.dart';
 import '../widgets/buttons/wrapper.dart';
-import '../widgets/dialogs/link_anilist_multi.dart';
+import '../widgets/dialogs/link_anilist.dart';
 import '../widgets/dialogs/image_select.dart';
 import '../enums.dart';
 import '../manager.dart';

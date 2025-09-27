@@ -652,6 +652,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.1.3"
+  glossy:
+    dependency: "direct main"
+    description:
+      name: glossy
+      sha256: "70c7626430a23b903755766d161f024d93334f2b06d7b96f6b6c7204aa0b8941"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.0.5"
   google_fonts:
     dependency: "direct main"
     description:

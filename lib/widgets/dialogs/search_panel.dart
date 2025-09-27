@@ -10,7 +10,7 @@ import '../../services/navigation/dialogs.dart';
 import '../../services/navigation/shortcuts.dart';
 import '../../utils/screen.dart';
 import '../../utils/time.dart';
-import 'link_anilist_multi.dart';
+import 'link_anilist.dart';
 
 class AnilistSearchPanel extends StatefulWidget {
   /// The series to link to Anilist.

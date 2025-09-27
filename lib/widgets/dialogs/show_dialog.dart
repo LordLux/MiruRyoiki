@@ -22,7 +22,7 @@ Future<T?> showPaddedDialog<T extends Object?>({
 
   /// Padding for the barrier, for example to allow interactions on custom titlebar
   EdgeInsetsGeometry barrierPadding = EdgeInsets.zero,
-  RouteTransitionsBuilder transitionBuilder = PaddedDialogRoute._defaultTransitionBuilder,
+  RouteTransitionsBuilder? transitionBuilder = PaddedDialogRoute._defaultTransitionBuilder,
   Duration? transitionDuration,
   bool useRootNavigator = true,
   RouteSettings? routeSettings,
@@ -101,9 +101,7 @@ class PaddedDialogRoute<T> extends FluentDialogRoute<T> {
     super.transitionDuration,
     super.transitionBuilder,
     super.settings,
-    super.dismissWithEsc = false,
-
-    /// Recommended false, to override default flutter behavior
+    super.dismissWithEsc = false, /// Recommended false, to override default flutter behavior
   });
 
   static Widget _defaultTransitionBuilder(

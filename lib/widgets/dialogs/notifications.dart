@@ -29,7 +29,7 @@ class NotificationsDialog extends ManagedDialog {
     this.onMorePressed,
   }) : super(
           title: null, // Remove the static title
-          constraints: const BoxConstraints(maxWidth: 480, maxHeight: 600),
+          constraints: const BoxConstraints(maxWidth: 480, maxHeight: 500),
           contentBuilder: (context, constraints) => _NotificationsContent(
             key: notificationsDialogKey,
             onMorePressed: onMorePressed,
@@ -42,7 +42,7 @@ class NotificationsDialog extends ManagedDialog {
   State<ManagedDialog> createState() => _NotificationsDialogState();
 }
 
-class _NotificationsDialogState extends ManagedDialogState {
+class _NotificationsDialogState extends NotificationManagedDialogState {
   @override
   void initState() {
     super.initState();

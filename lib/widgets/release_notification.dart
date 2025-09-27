@@ -15,6 +15,7 @@ import '../services/library/library_provider.dart';
 import '../services/navigation/dialogs.dart';
 import '../services/navigation/navigation.dart';
 import '../utils/logging.dart';
+import '../utils/screen.dart';
 import 'animated_icon.dart' as anim_icon;
 import 'dialogs/notifications.dart';
 
@@ -135,6 +136,19 @@ class _ReleaseNotificationWidgetState extends State<ReleaseNotificationWidget> {
         popContext: ctx,
         onMorePressed: (ctx2) => widget.onMorePressed?.call(ctx2),
       ),
+      transitionBuilder: (context, animation, secondaryAnimation, child) {
+        return ScaleTransition(
+          alignment: alignmentFromPixels(ScreenUtils.width - 155, 25, ScreenUtils.screenSize), // Top-right corner
+          scale: CurvedAnimation(
+            parent: Tween<double>(
+              begin: 0,
+              end: 1,
+            ).animate(animation),
+            curve: Curves.easeOut,
+          ),
+          child: child,
+        );
+      },
     ).then((_) => _notificationsOpen = false);
 
     // Refresh the unread count after the dialog is closed

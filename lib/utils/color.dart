@@ -85,7 +85,7 @@ Color getDimmableBG(BuildContext context) {
 }
 
 Color getDimmableBlack(BuildContext context) {
-  return getDimmable(Colors.black, context, [0.25, 0.15, 0]);
+  return getDimmable(Colors.black, context, [0.35, 0.25, 0.1]);
 }
 
 Color getDimmableWhite(BuildContext context) {
