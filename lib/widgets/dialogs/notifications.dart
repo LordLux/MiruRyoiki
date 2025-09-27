@@ -51,10 +51,7 @@ class _NotificationsContent extends StatefulWidget {
   final void Function(BuildContext context)? onMorePressed;
   final BoxConstraints constraints;
 
-  const _NotificationsContent({
-    this.onMorePressed,
-    required this.constraints,
-  });
+  const _NotificationsContent({this.onMorePressed, required this.constraints});
 
   @override
   NotificationsContentState createState() => NotificationsContentState();
@@ -351,11 +348,13 @@ class NotificationsContentState extends State<_NotificationsContent> {
         _formatNotificationTime(notification.createdAt),
         style: TextStyle(fontSize: 11, color: Colors.white.withOpacity(0.6)),
       ),
-      trailing: notification.isRead ? null : Icon(
-        FluentIcons.circle_fill,
-        size: 7,
-        color: Manager.currentDominantColor ?? Manager.accentColor.light,
-      ),
+      trailing: notification.isRead
+          ? null
+          : Icon(
+              FluentIcons.circle_fill,
+              size: 7,
+              color: Manager.currentDominantColor ?? Manager.accentColor.light,
+            ),
       onPressed: () {
         _markAsRead(notification.id);
         // TODO: Navigate to series screen or download content pane
