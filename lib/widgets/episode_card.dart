@@ -109,8 +109,10 @@ class _HoverableEpisodeTileState extends State<HoverableEpisodeTile> {
                               child: Builder(builder: (context) {
                                 final number = widget.episode.episodeNumber;
                                 final title = widget.episode.displayTitle;
+                                // Show episode title only if it's not a generic "Episode X" title
+                                final showNumber = number != null && !RegExp(r'^(Episode|Ep|E) \d{1,3}$', caseSensitive: false).hasMatch(title);
                                 return Text(
-                                  '${number != null ? "$number" : ""}${title.isNotEmpty ? (number != null ? ' - ' : '') + title : ''}',
+                                  '${title.isEmpty ? "Episode " : ""}${showNumber ? "$number" : ""}${title.isNotEmpty ? (showNumber ? ' - ' : '') + title : ''}',
                                   style: const TextStyle(
                                     color: Colors.white,
                                     fontWeight: FontWeight.w600,

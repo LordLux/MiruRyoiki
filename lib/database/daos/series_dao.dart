@@ -292,10 +292,22 @@ class SeriesDao extends DatabaseAccessor<AppDatabase> with _$SeriesDaoMixin {
   }
 
   EpisodesTableCompanion _episodeToCompanion(Episode e, int seasonId) {
-    return EpisodesTableCompanion(seasonId: Value(seasonId), name: Value(e.name), path: Value(e.path), thumbnailPath: e.thumbnailPath == null ? const Value.absent() : Value(e.thumbnailPath!), watched: Value(e.watched), watchedPercentage: Value(e.progress), thumbnailUnavailable: Value(e.thumbnailUnavailable), metadata: e.metadata == null ? const Value.absent() : Value(e.metadata), mkvMetadata: e.mkvMetadata == null ? const Value.absent() : Value(e.mkvMetadata));
+    return EpisodesTableCompanion(
+      seasonId: Value(seasonId),
+      name: Value(e.name),
+      path: Value(e.path),
+      thumbnailPath: e.thumbnailPath == null ? const Value.absent() : Value(e.thumbnailPath!),
+      watched: Value(e.watched),
+      watchedPercentage: Value(e.progress),
+      thumbnailUnavailable: Value(e.thumbnailUnavailable),
+      metadata: e.metadata == null ? const Value.absent() : Value(e.metadata),
+      mkvMetadata: e.mkvMetadata == null ? const Value.absent() : Value(e.mkvMetadata),
+      anilistTitle: e.anilistTitle == null ? const Value.absent() : Value(e.anilistTitle!),
+    );
   }
 
   Episode _tableToEpisode(EpisodesTableData d) => Episode(
+        id: d.id,
         path: d.path,
         name: d.name,
         thumbnailPath: d.thumbnailPath,
@@ -304,6 +316,7 @@ class SeriesDao extends DatabaseAccessor<AppDatabase> with _$SeriesDaoMixin {
         thumbnailUnavailable: d.thumbnailUnavailable,
         metadata: d.metadata,
         mkvMetadata: d.mkvMetadata,
+        anilistTitle: d.anilistTitle,
       );
 
   AnilistMapping _tableToMapping(AnilistMappingsTableData d) => AnilistMapping(

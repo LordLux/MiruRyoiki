@@ -1168,6 +1168,9 @@ Future<void> _registerWindowsUrlScheme(String scheme) async {
   }
 }
 
+// TODO add indicator of which episodes have anilist titles
+// TODO sometimes anilist episode numbering for seasons > 1 continue from previous season, need to handle that
+// TODO add per-episode/season/series toggle to use anilist titles or local titles
 // TODO move hidden series switches to settings
 // TODO view settings to choose what to show on homepage
 // TODO cache anime info

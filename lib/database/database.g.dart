@@ -1170,6 +1170,12 @@ class $EpisodesTableTable extends EpisodesTable
               type: DriftSqlType.string, requiredDuringInsert: false)
           .withConverter<MkvMetadata?>(
               $EpisodesTableTable.$convertermkvMetadata);
+  static const VerificationMeta _anilistTitleMeta =
+      const VerificationMeta('anilistTitle');
+  @override
+  late final GeneratedColumn<String> anilistTitle = GeneratedColumn<String>(
+      'anilist_title', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
   @override
   List<GeneratedColumn> get $columns => [
         id,
@@ -1181,7 +1187,8 @@ class $EpisodesTableTable extends EpisodesTable
         watchedPercentage,
         thumbnailUnavailable,
         metadata,
-        mkvMetadata
+        mkvMetadata,
+        anilistTitle
       ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -1224,6 +1231,12 @@ class $EpisodesTableTable extends EpisodesTable
           thumbnailUnavailable.isAcceptableOrUnknown(
               data['thumbnail_unavailable']!, _thumbnailUnavailableMeta));
     }
+    if (data.containsKey('anilist_title')) {
+      context.handle(
+          _anilistTitleMeta,
+          anilistTitle.isAcceptableOrUnknown(
+              data['anilist_title']!, _anilistTitleMeta));
+    }
     return context;
   }
 
@@ -1257,6 +1270,8 @@ class $EpisodesTableTable extends EpisodesTable
       mkvMetadata: $EpisodesTableTable.$convertermkvMetadata.fromSql(
           attachedDatabase.typeMapping.read(
               DriftSqlType.string, data['${effectivePrefix}mkv_metadata'])),
+      anilistTitle: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}anilist_title']),
     );
   }
 
@@ -1289,6 +1304,7 @@ class EpisodesTableData extends DataClass
   final bool thumbnailUnavailable;
   final Metadata? metadata;
   final MkvMetadata? mkvMetadata;
+  final String? anilistTitle;
   const EpisodesTableData(
       {required this.id,
       required this.seasonId,
@@ -1299,7 +1315,8 @@ class EpisodesTableData extends DataClass
       required this.watchedPercentage,
       required this.thumbnailUnavailable,
       this.metadata,
-      this.mkvMetadata});
+      this.mkvMetadata,
+      this.anilistTitle});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -1325,6 +1342,9 @@ class EpisodesTableData extends DataClass
       map['mkv_metadata'] = Variable<String>(
           $EpisodesTableTable.$convertermkvMetadata.toSql(mkvMetadata));
     }
+    if (!nullToAbsent || anilistTitle != null) {
+      map['anilist_title'] = Variable<String>(anilistTitle);
+    }
     return map;
   }
 
@@ -1346,6 +1366,9 @@ class EpisodesTableData extends DataClass
       mkvMetadata: mkvMetadata == null && nullToAbsent
           ? const Value.absent()
           : Value(mkvMetadata),
+      anilistTitle: anilistTitle == null && nullToAbsent
+          ? const Value.absent()
+          : Value(anilistTitle),
     );
   }
 
@@ -1364,6 +1387,7 @@ class EpisodesTableData extends DataClass
           serializer.fromJson<bool>(json['thumbnailUnavailable']),
       metadata: serializer.fromJson<Metadata?>(json['metadata']),
       mkvMetadata: serializer.fromJson<MkvMetadata?>(json['mkvMetadata']),
+      anilistTitle: serializer.fromJson<String?>(json['anilistTitle']),
     );
   }
   @override
@@ -1380,6 +1404,7 @@ class EpisodesTableData extends DataClass
       'thumbnailUnavailable': serializer.toJson<bool>(thumbnailUnavailable),
       'metadata': serializer.toJson<Metadata?>(metadata),
       'mkvMetadata': serializer.toJson<MkvMetadata?>(mkvMetadata),
+      'anilistTitle': serializer.toJson<String?>(anilistTitle),
     };
   }
 
@@ -1393,7 +1418,8 @@ class EpisodesTableData extends DataClass
           double? watchedPercentage,
           bool? thumbnailUnavailable,
           Value<Metadata?> metadata = const Value.absent(),
-          Value<MkvMetadata?> mkvMetadata = const Value.absent()}) =>
+          Value<MkvMetadata?> mkvMetadata = const Value.absent(),
+          Value<String?> anilistTitle = const Value.absent()}) =>
       EpisodesTableData(
         id: id ?? this.id,
         seasonId: seasonId ?? this.seasonId,
@@ -1406,6 +1432,8 @@ class EpisodesTableData extends DataClass
         thumbnailUnavailable: thumbnailUnavailable ?? this.thumbnailUnavailable,
         metadata: metadata.present ? metadata.value : this.metadata,
         mkvMetadata: mkvMetadata.present ? mkvMetadata.value : this.mkvMetadata,
+        anilistTitle:
+            anilistTitle.present ? anilistTitle.value : this.anilistTitle,
       );
   EpisodesTableData copyWithCompanion(EpisodesTableCompanion data) {
     return EpisodesTableData(
@@ -1426,6 +1454,9 @@ class EpisodesTableData extends DataClass
       metadata: data.metadata.present ? data.metadata.value : this.metadata,
       mkvMetadata:
           data.mkvMetadata.present ? data.mkvMetadata.value : this.mkvMetadata,
+      anilistTitle: data.anilistTitle.present
+          ? data.anilistTitle.value
+          : this.anilistTitle,
     );
   }
 
@@ -1441,14 +1472,25 @@ class EpisodesTableData extends DataClass
           ..write('watchedPercentage: $watchedPercentage, ')
           ..write('thumbnailUnavailable: $thumbnailUnavailable, ')
           ..write('metadata: $metadata, ')
-          ..write('mkvMetadata: $mkvMetadata')
+          ..write('mkvMetadata: $mkvMetadata, ')
+          ..write('anilistTitle: $anilistTitle')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, seasonId, name, path, thumbnailPath,
-      watched, watchedPercentage, thumbnailUnavailable, metadata, mkvMetadata);
+  int get hashCode => Object.hash(
+      id,
+      seasonId,
+      name,
+      path,
+      thumbnailPath,
+      watched,
+      watchedPercentage,
+      thumbnailUnavailable,
+      metadata,
+      mkvMetadata,
+      anilistTitle);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -1462,7 +1504,8 @@ class EpisodesTableData extends DataClass
           other.watchedPercentage == this.watchedPercentage &&
           other.thumbnailUnavailable == this.thumbnailUnavailable &&
           other.metadata == this.metadata &&
-          other.mkvMetadata == this.mkvMetadata);
+          other.mkvMetadata == this.mkvMetadata &&
+          other.anilistTitle == this.anilistTitle);
 }
 
 class EpisodesTableCompanion extends UpdateCompanion<EpisodesTableData> {
@@ -1476,6 +1519,7 @@ class EpisodesTableCompanion extends UpdateCompanion<EpisodesTableData> {
   final Value<bool> thumbnailUnavailable;
   final Value<Metadata?> metadata;
   final Value<MkvMetadata?> mkvMetadata;
+  final Value<String?> anilistTitle;
   const EpisodesTableCompanion({
     this.id = const Value.absent(),
     this.seasonId = const Value.absent(),
@@ -1487,6 +1531,7 @@ class EpisodesTableCompanion extends UpdateCompanion<EpisodesTableData> {
     this.thumbnailUnavailable = const Value.absent(),
     this.metadata = const Value.absent(),
     this.mkvMetadata = const Value.absent(),
+    this.anilistTitle = const Value.absent(),
   });
   EpisodesTableCompanion.insert({
     this.id = const Value.absent(),
@@ -1499,6 +1544,7 @@ class EpisodesTableCompanion extends UpdateCompanion<EpisodesTableData> {
     this.thumbnailUnavailable = const Value.absent(),
     this.metadata = const Value.absent(),
     this.mkvMetadata = const Value.absent(),
+    this.anilistTitle = const Value.absent(),
   })  : seasonId = Value(seasonId),
         name = Value(name),
         path = Value(path);
@@ -1513,6 +1559,7 @@ class EpisodesTableCompanion extends UpdateCompanion<EpisodesTableData> {
     Expression<bool>? thumbnailUnavailable,
     Expression<String>? metadata,
     Expression<String>? mkvMetadata,
+    Expression<String>? anilistTitle,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -1526,6 +1573,7 @@ class EpisodesTableCompanion extends UpdateCompanion<EpisodesTableData> {
         'thumbnail_unavailable': thumbnailUnavailable,
       if (metadata != null) 'metadata': metadata,
       if (mkvMetadata != null) 'mkv_metadata': mkvMetadata,
+      if (anilistTitle != null) 'anilist_title': anilistTitle,
     });
   }
 
@@ -1539,7 +1587,8 @@ class EpisodesTableCompanion extends UpdateCompanion<EpisodesTableData> {
       Value<double>? watchedPercentage,
       Value<bool>? thumbnailUnavailable,
       Value<Metadata?>? metadata,
-      Value<MkvMetadata?>? mkvMetadata}) {
+      Value<MkvMetadata?>? mkvMetadata,
+      Value<String?>? anilistTitle}) {
     return EpisodesTableCompanion(
       id: id ?? this.id,
       seasonId: seasonId ?? this.seasonId,
@@ -1551,6 +1600,7 @@ class EpisodesTableCompanion extends UpdateCompanion<EpisodesTableData> {
       thumbnailUnavailable: thumbnailUnavailable ?? this.thumbnailUnavailable,
       metadata: metadata ?? this.metadata,
       mkvMetadata: mkvMetadata ?? this.mkvMetadata,
+      anilistTitle: anilistTitle ?? this.anilistTitle,
     );
   }
 
@@ -1592,6 +1642,9 @@ class EpisodesTableCompanion extends UpdateCompanion<EpisodesTableData> {
       map['mkv_metadata'] = Variable<String>(
           $EpisodesTableTable.$convertermkvMetadata.toSql(mkvMetadata.value));
     }
+    if (anilistTitle.present) {
+      map['anilist_title'] = Variable<String>(anilistTitle.value);
+    }
     return map;
   }
 
@@ -1607,7 +1660,8 @@ class EpisodesTableCompanion extends UpdateCompanion<EpisodesTableData> {
           ..write('watchedPercentage: $watchedPercentage, ')
           ..write('thumbnailUnavailable: $thumbnailUnavailable, ')
           ..write('metadata: $metadata, ')
-          ..write('mkvMetadata: $mkvMetadata')
+          ..write('mkvMetadata: $mkvMetadata, ')
+          ..write('anilistTitle: $anilistTitle')
           ..write(')'))
         .toString();
   }
@@ -3960,6 +4014,7 @@ typedef $$EpisodesTableTableCreateCompanionBuilder = EpisodesTableCompanion
   Value<bool> thumbnailUnavailable,
   Value<Metadata?> metadata,
   Value<MkvMetadata?> mkvMetadata,
+  Value<String?> anilistTitle,
 });
 typedef $$EpisodesTableTableUpdateCompanionBuilder = EpisodesTableCompanion
     Function({
@@ -3973,6 +4028,7 @@ typedef $$EpisodesTableTableUpdateCompanionBuilder = EpisodesTableCompanion
   Value<bool> thumbnailUnavailable,
   Value<Metadata?> metadata,
   Value<MkvMetadata?> mkvMetadata,
+  Value<String?> anilistTitle,
 });
 
 final class $$EpisodesTableTableReferences extends BaseReferences<_$AppDatabase,
@@ -4042,6 +4098,9 @@ class $$EpisodesTableTableFilterComposer
           column: $table.mkvMetadata,
           builder: (column) => ColumnWithTypeConverterFilters(column));
 
+  ColumnFilters<String> get anilistTitle => $composableBuilder(
+      column: $table.anilistTitle, builder: (column) => ColumnFilters(column));
+
   $$SeasonsTableTableFilterComposer get seasonId {
     final $$SeasonsTableTableFilterComposer composer = $composerBuilder(
         composer: this,
@@ -4102,6 +4161,10 @@ class $$EpisodesTableTableOrderingComposer
   ColumnOrderings<String> get mkvMetadata => $composableBuilder(
       column: $table.mkvMetadata, builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<String> get anilistTitle => $composableBuilder(
+      column: $table.anilistTitle,
+      builder: (column) => ColumnOrderings(column));
+
   $$SeasonsTableTableOrderingComposer get seasonId {
     final $$SeasonsTableTableOrderingComposer composer = $composerBuilder(
         composer: this,
@@ -4161,6 +4224,9 @@ class $$EpisodesTableTableAnnotationComposer
       $composableBuilder(
           column: $table.mkvMetadata, builder: (column) => column);
 
+  GeneratedColumn<String> get anilistTitle => $composableBuilder(
+      column: $table.anilistTitle, builder: (column) => column);
+
   $$SeasonsTableTableAnnotationComposer get seasonId {
     final $$SeasonsTableTableAnnotationComposer composer = $composerBuilder(
         composer: this,
@@ -4215,6 +4281,7 @@ class $$EpisodesTableTableTableManager extends RootTableManager<
             Value<bool> thumbnailUnavailable = const Value.absent(),
             Value<Metadata?> metadata = const Value.absent(),
             Value<MkvMetadata?> mkvMetadata = const Value.absent(),
+            Value<String?> anilistTitle = const Value.absent(),
           }) =>
               EpisodesTableCompanion(
             id: id,
@@ -4227,6 +4294,7 @@ class $$EpisodesTableTableTableManager extends RootTableManager<
             thumbnailUnavailable: thumbnailUnavailable,
             metadata: metadata,
             mkvMetadata: mkvMetadata,
+            anilistTitle: anilistTitle,
           ),
           createCompanionCallback: ({
             Value<int> id = const Value.absent(),
@@ -4239,6 +4307,7 @@ class $$EpisodesTableTableTableManager extends RootTableManager<
             Value<bool> thumbnailUnavailable = const Value.absent(),
             Value<Metadata?> metadata = const Value.absent(),
             Value<MkvMetadata?> mkvMetadata = const Value.absent(),
+            Value<String?> anilistTitle = const Value.absent(),
           }) =>
               EpisodesTableCompanion.insert(
             id: id,
@@ -4251,6 +4320,7 @@ class $$EpisodesTableTableTableManager extends RootTableManager<
             thumbnailUnavailable: thumbnailUnavailable,
             metadata: metadata,
             mkvMetadata: mkvMetadata,
+            anilistTitle: anilistTitle,
           ),
           withReferenceMapper: (p0) => p0
               .map((e) => (

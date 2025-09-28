@@ -44,9 +44,11 @@ class EpisodesDao extends DatabaseAccessor<AppDatabase> with _$EpisodesDaoMixin 
         thumbnailUnavailable: Value(e.thumbnailUnavailable),
         metadata: e.metadata == null ? const Value.absent() : Value(e.metadata),
         mkvMetadata: e.mkvMetadata == null ? const Value.absent() : Value(e.mkvMetadata),
+        anilistTitle: e.anilistTitle == null ? const Value.absent() : Value(e.anilistTitle!),
       );
 
   Episode fromRow(EpisodesTableData d) => Episode(
+        id: d.id,
         path: d.path,
         name: d.name,
         thumbnailPath: d.thumbnailPath,
@@ -55,5 +57,6 @@ class EpisodesDao extends DatabaseAccessor<AppDatabase> with _$EpisodesDaoMixin 
         thumbnailUnavailable: d.thumbnailUnavailable,
         metadata: d.metadata,
         mkvMetadata: d.mkvMetadata,
+        anilistTitle: d.anilistTitle,
       );
 }

@@ -233,20 +233,23 @@ class _ContinueEpisodeCardState extends State<ContinueEpisodeCard> {
                                   style: Manager.bodyStrongStyle.copyWith(fontWeight: FontWeight.w600),
                                   overflow: TextOverflow.ellipsis,
                                 ),
-                                SizedBox(height: 4),
-                                Opacity(
-                                  opacity: 0.8,
-                                  child: Text(
-                                    widget.episode.displayTitle,
-                                    maxLines: 3,
-                                    style: Manager.miniBodyStyle.copyWith(
-                                      fontWeight: FontWeight.w400,
-                                      fontStyle: FontStyle.italic,
-                                      fontSize: Manager.miniBodyStyle.fontSize! * 1.15,
+                                // Show episode title only if it's not a generic "Episode X" title
+                                if (widget.episode.displayTitle.isNotEmpty && !RegExp(r'^(Episode|Ep|E) \d{1,3}$', caseSensitive: false).hasMatch(widget.episode.displayTitle)) ...[
+                                  SizedBox(height: 4),
+                                  Opacity(
+                                    opacity: 0.8,
+                                    child: Text(
+                                      widget.episode.displayTitle,
+                                      maxLines: 3,
+                                      style: Manager.miniBodyStyle.copyWith(
+                                        fontWeight: FontWeight.w400,
+                                        fontStyle: FontStyle.italic,
+                                        fontSize: Manager.miniBodyStyle.fontSize! * 1.15,
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
                                     ),
-                                    overflow: TextOverflow.ellipsis,
                                   ),
-                                ),
+                                ],
                                 SizedBox(height: 4),
                                 Row(
                                   children: [
