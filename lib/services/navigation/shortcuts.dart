@@ -50,7 +50,7 @@ class _CustomKeyboardListenerState extends State<CustomKeyboardListener> {
     // Snap zoom to nearest allowed value
     final zoomRaw = ScreenUtils.textScaleFactor * (newFontSize / kDefaultFontSize);
     double zoom = calculateZoom(zoomRaw);
-    StatusBarManager().show("${(zoom * 100).toInt().toString()}%", autoHideDuration: const Duration(seconds: 1));
+    StatusBarManager().show("${(zoom * 100).toInt().toString()}%", autoHideDuration: const Duration(seconds: 2));
 
     // Only update if changed
     if (newFontSize != appTheme.fontSize) {

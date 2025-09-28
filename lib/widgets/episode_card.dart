@@ -3,8 +3,7 @@ import 'dart:ui';
 
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/material.dart' show InkWell, Material;
-import 'package:miruryoiki/services/navigation/statusbar.dart';
-import 'package:miruryoiki/widgets/frosted_noise.dart';
+import 'package:miruryoiki/services/navigation/statusbar.dart'; 
 
 import '../manager.dart';
 import '../models/episode.dart';

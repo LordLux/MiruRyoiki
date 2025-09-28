@@ -3,6 +3,7 @@ import 'dart:math' as math;
 
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart' as mat;
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:miruryoiki/manager.dart';
 import 'package:provider/provider.dart';
@@ -1573,8 +1574,10 @@ class LibraryScreenState extends State<LibraryScreen> {
 
                   return Padding(
                     padding: EdgeInsets.only(bottom: isLastGroup ? 0 : ScreenUtils.kLibraryHeaderHeaderSeparatorHeight),
-                    child: StickyHeader(
-                      header: AcrylicHeader(
+                    child: ExpandingStickyHeaderBuilder(
+                      useInkWell: false,
+                      contentBackgroundColor: Colors.transparent,
+                      builder: (BuildContext context, {double stuckAmount = 0.0, bool isHovering = false, bool isExpanded = false}) => AcrylicHeader(
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
@@ -1746,15 +1749,27 @@ class LibraryScreenState extends State<LibraryScreen> {
                     borderRadius: const BorderRadius.all(Radius.circular(ScreenUtils.kStatCardBorderRadius)),
                     child: Padding(
                       padding: EdgeInsets.only(bottom: isLastGroup ? 0 : ScreenUtils.kLibraryHeaderHeaderSeparatorHeight),
-                      child: StickyHeader(
-                        header: Transform.translate(
+                      child: ExpandingStickyHeaderBuilder(
+                        contentBackgroundColor: Colors.transparent,
+                        contentShape: (open) => RoundedRectangleBorder(),
+                        useInkWell: false,
+                        builder: (BuildContext context, {double stuckAmount = 0.0, bool isHovering = false, bool isExpanded = false}) => Transform.translate(
                           offset: const Offset(0, -1),
                           child: AcrylicHeader(
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
                                 Text(groupName, style: Manager.subtitleStyle),
-                                Text('${seriesInGroup.length} Series', style: Manager.captionStyle),
+                                Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children:[
+                                    Transform.translate(
+                                      offset: const Offset(0, -1.5),
+                                      child: Text('${seriesInGroup.length} Series', style: Manager.captionStyle)),
+                                    const SizedBox(width: 8),
+                                    AnimatedRotation(turns: isExpanded ? 0 : .5, duration: shortDuration, child: const Icon(mat.Icons.expand_more)),
+                                  ],
+                                )
                               ],
                             ),
                           ),

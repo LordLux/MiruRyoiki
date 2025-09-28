@@ -15,7 +15,7 @@ class AcrylicHeader extends StatelessWidget {
     return ClipRRect(
       borderRadius: const BorderRadius.all(Radius.circular(ScreenUtils.kStatCardBorderRadius)),
       child: Acrylic(
-        luminosityAlpha: 1,
+        luminosityAlpha: .5,
         child: FrostedNoise(
           child: Container(
             width: double.infinity,

@@ -28,6 +28,7 @@ import '../utils/screen.dart';
 import '../utils/time.dart';
 import '../widgets/episode_grid.dart';
 import '../widgets/page/header_widget.dart';
+import 'package:sticky_headers/sticky_headers.dart';
 import '../widgets/page/infobar.dart';
 import '../widgets/page/page.dart';
 import '../widgets/shift_clickable_hover.dart';
@@ -58,7 +59,7 @@ class SeriesScreenState extends State<SeriesScreen> {
   bool posterChangeDisabled = false;
   bool bannerChangeDisabled = false;
 
-  final Map<int, GlobalKey<ExpanderState>> _seasonExpanderKeys = {};
+  final Map<int, GlobalKey<ExpandingStickyHeaderBuilderState>> _seasonExpanderKeys = {};
 
   bool _isPosterHovering = false;
   DeferredPointerHandlerLink? deferredPointerLink;
@@ -238,9 +239,8 @@ class SeriesScreenState extends State<SeriesScreen> {
   void toggleSeasonExpander(int seasonNumber) {
     final expanderKey = _seasonExpanderKeys[seasonNumber];
     if (expanderKey?.currentState != null) {
-      final isOpen = expanderKey!.currentState!.isExpanded;
       setState(() {
-        expanderKey.currentState!.isExpanded = !isOpen;
+        expanderKey?.currentState!.toggle();
       });
     } else {
       logWarn('No expander key found for season $seasonNumber');
@@ -251,11 +251,11 @@ class SeriesScreenState extends State<SeriesScreen> {
     // For numbered seasons
     for (int i = 1; i <= 10; i++) {
       // Support up to 10 seasons
-      _seasonExpanderKeys.putIfAbsent(i, () => GlobalKey<ExpanderState>());
+      _seasonExpanderKeys.putIfAbsent(i, () => GlobalKey<ExpandingStickyHeaderBuilderState>());
     }
 
     // For "Other Episodes" (season 0)
-    _seasonExpanderKeys.putIfAbsent(0, () => GlobalKey<ExpanderState>());
+    _seasonExpanderKeys.putIfAbsent(0, () => GlobalKey<ExpandingStickyHeaderBuilderState>());
   }
 
   @override
