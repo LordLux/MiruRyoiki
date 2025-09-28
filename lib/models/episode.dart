@@ -1,6 +1,5 @@
 import 'dart:io';
 
-
 import '../services/isolates/thumbnail_manager.dart';
 import '../utils/path.dart';
 import 'metadata.dart';
@@ -10,13 +9,14 @@ class Episode {
   final int? id;
   final PathString path;
   final String name;
-  final int? _episodeNumber;
+  int? _episodeNumber;
   PathString? thumbnailPath;
   bool watched;
   double _progress;
   bool thumbnailUnavailable;
   Metadata? metadata;
   MkvMetadata? mkvMetadata;
+  String? anilistTitle;
 
   Episode({
     this.id,
@@ -29,22 +29,87 @@ class Episode {
     this.thumbnailUnavailable = false,
     this.metadata,
     this.mkvMetadata,
-  }) : _episodeNumber = episodeNumber, _progress = progress;
-  
+    this.anilistTitle,
+  })  : _episodeNumber = episodeNumber,
+        _progress = progress;
+
   /// Returns progress as a value between 0.0 and 1.0
   double get progress => double.parse(_progress.toStringAsFixed(2));
   set progress(double value) {
     if (value < 0.0 || value > 1.0) throw ArgumentError('Progress must be between 0.0 and 1.0');
     _progress = value;
   }
-  
+
   /// Returns progress as a percentage string like "75%"
   String get progressPercentage => '${(progress * 100).toStringAsFixed(0)}%';
-  
-  /// Returns the episode number, either from metadata or parsed from the name
-  int? get episodeNumber => _episodeNumber ?? _parseEpisodeNumberFromName();
 
-  int? _parseEpisodeNumberFromName() {
+  /// Returns the episode number, either from metadata or parsed from the name
+  int? get episodeNumber => _episodeNumber ?? parseEpisodeNumberFromName();
+
+  /// Returns the display title, prioritizing AniList title over filename
+  String get displayTitle {
+    if (anilistTitle != null && anilistTitle!.isNotEmpty) {
+      // Parse episode name from AniList format "Episode DD - EpisodeName"
+      final match = RegExp(r'^(Episode|E|Ep)\s+\d+\s*-\s*(.+)$', caseSensitive: false).firstMatch(anilistTitle!);
+      if (match != null && match.group(2) != null) return match.group(2)!.trim();
+
+      return anilistTitle!;
+    }
+
+    // Fallback to parsing title from filename
+    return parseEpisodeTitleFromName() ?? name;
+  }
+
+  /// Parse episode title from filename if possible
+  String? parseEpisodeTitleFromName() {
+    if (name.isEmpty) return null;
+
+    // Try multiple patterns to remove episode numbers, in order of preference
+    final patterns = [
+      // Pattern 1: "1 - Title" or "01 - Title" (number at start followed by dash)
+      RegExp(r'^(\d{1,3})\s*-'),
+
+      // Pattern 2: "S01E01" or "S1E1" format anywhere in name
+      RegExp(r'S\d{1,2}E(\d{1,3})', caseSensitive: false),
+
+      // Pattern 3: "Episode 1" or "Ep 1" format
+      RegExp(r'(?:episode|ep)\s*(\d{1,3})', caseSensitive: false),
+
+      // Pattern 4: "[01]" or "(01)" - number in brackets at start or after space
+      RegExp(r'(?:^|\s)[\[\(](\d{1,3})[\]\)]'),
+
+      // Pattern 5: " 01 " - standalone number with spaces (but not years like 2024)
+      RegExp(r'\s(\d{1,2})\s'),
+
+      // Pattern 6: "_01_" or ".01." - number surrounded by separators (prefer 1-2 digits)
+      RegExp(r'[_\.](\d{1,2})[_\.]'),
+
+      // Pattern 7: Start of filename with number (common in downloads)
+      RegExp(r'^(\d{1,3})(?:\s|_|\.|$)'),
+
+      // Pattern 8: Last resort - first 1-2 digit number in the name (avoid years)
+      RegExp(r'(\d{1,2})'),
+    ];
+
+    for (int i = 0; i < patterns.length; i++) {
+      final pattern = patterns[i];
+      final match = pattern.firstMatch(name);
+      if (match != null) {
+        final episodeStr = match.group(1);
+        if (episodeStr != null) {
+          final episodeNum = int.tryParse(episodeStr);
+          // Validate reasonable episode numbers (1-999, but prefer 1-99 for most patterns)
+          if (episodeNum != null && episodeNum > 0 && episodeNum <= 999) {
+            return name.replaceFirst(match.group(0)!, '').trim();
+          }
+        }
+      }
+    }
+
+    return null;
+  }
+
+  int? parseEpisodeNumberFromName() {
     if (name.isEmpty) return null;
 
     // Try multiple patterns to extract episode numbers, in order of preference
@@ -83,6 +148,7 @@ class Episode {
           final episodeNum = int.tryParse(episodeStr);
           // Validate reasonable episode numbers (1-999, but prefer 1-99 for most patterns)
           if (episodeNum != null && episodeNum > 0 && episodeNum <= 999) {
+            _episodeNumber = episodeNum;
             return episodeNum;
           }
         }
@@ -130,6 +196,7 @@ class Episode {
       'thumbnailUnavailable': thumbnailUnavailable,
       'metadata': metadata?.toJson(),
       'mkvMetadata': mkvMetadata?.toJson(),
+      'anilistTitle': anilistTitle,
     };
   }
 
@@ -146,6 +213,7 @@ class Episode {
       thumbnailUnavailable: json['thumbnailUnavailable'] ?? false,
       metadata: json['metadata'] != null ? Metadata.fromJson(json['metadata']) : null,
       mkvMetadata: json['mkvMetadata'] != null ? MkvMetadata.fromJson(json['mkvMetadata']) : null,
+      anilistTitle: json['anilistTitle'],
     );
   }
 
@@ -189,6 +257,7 @@ class Episode {
     bool? thumbnailUnavailable,
     Metadata? metadata,
     MkvMetadata? mkvMetadata,
+    String? anilistTitle,
   }) {
     return Episode(
       id: id ?? this.id,
@@ -201,6 +270,7 @@ class Episode {
       thumbnailUnavailable: thumbnailUnavailable ?? this.thumbnailUnavailable,
       metadata: metadata ?? this.metadata,
       mkvMetadata: mkvMetadata ?? this.mkvMetadata,
+      anilistTitle: anilistTitle ?? this.anilistTitle,
     );
   }
 

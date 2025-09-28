@@ -510,4 +510,83 @@ extension AnilistServiceAnimeDetails on AnilistService {
       return {};
     }
   }
+
+  /// Get episode titles for a specific anime using MediaStreamingEpisode
+  Future<Map<int, String>> getEpisodeTitles(int animeId) async {
+    if (_client == null) return {};
+
+    logTrace('Fetching episode titles for anime ID: $animeId');
+
+    const String episodeTitlesQuery = '''
+      query GetEpisodeTitles(\$id: Int!) {
+        Media(id: \$id, type: ANIME) {
+          id
+          streamingEpisodes {
+            title
+          }
+        }
+      }
+    ''';
+
+    try {
+      final result = await RetryUtils.retry<Map<int, String>>(
+        () async {
+          final queryResult = await _client!.query(
+            QueryOptions(
+              document: gql(episodeTitlesQuery),
+              variables: {'id': animeId},
+              fetchPolicy: FetchPolicy.cacheFirst,
+            ),
+          );
+
+          if (queryResult.hasException) {
+            if (queryResult.exception is OperationException && //
+                queryResult.exception!.linkException is UnknownException &&
+                queryResult.exception!.linkException!.originalException is TimeoutException) {
+              throw TimeoutException('Anilist episode titles GET request timed out', const Duration(seconds: 30));
+            }
+            if (queryResult.exception is OperationException && //
+                queryResult.exception!.linkException is ServerException &&
+                queryResult.exception!.linkException!.originalException is HandshakeException ||
+                queryResult.exception!.linkException!.originalException is ClientException) {
+              throw HandshakeException('Anilist episode titles GET request no internet connection');
+            }
+            throw Exception('Error fetching episode titles: ${queryResult.exception}');
+          }
+
+          final Map<int, String> episodeTitles = {};
+          final mediaData = queryResult.data?['Media'];
+          
+          if (mediaData != null) {
+            final streamingEpisodes = mediaData['streamingEpisodes'] as List<dynamic>? ?? [];
+            
+            for (final episodeData in streamingEpisodes) {
+              final title = episodeData['title'] as String?;
+              if (title != null && title.isNotEmpty) {
+                // Parse episode number from title (format: "Episode DD - Title")
+                final match = RegExp(r'^Episode\s+(\d+)').firstMatch(title);
+                if (match != null) {
+                  final episodeNumber = int.tryParse(match.group(1)!);
+                  if (episodeNumber != null) {
+                    episodeTitles[episodeNumber] = title;
+                  }
+                }
+              }
+            }
+          }
+
+          logTrace('Fetched ${episodeTitles.length} episode titles for anime $animeId');
+          return episodeTitles;
+        },
+        maxRetries: 3,
+        retryIf: RetryUtils.shouldRetryAnilistError,
+        operationName: 'getEpisodeTitles(anime: $animeId)',
+      );
+
+      return result ?? {};
+    } catch (e) {
+      logErr('Error querying episode titles for anime $animeId', e);
+      return {};
+    }
+  }
 }

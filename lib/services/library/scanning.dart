@@ -180,7 +180,7 @@ extension LibraryScanning on Library {
             final newPath = newFilesByMetadata[metaKey]!;
             final newMetadata = scanResult[newPath]!;
 
-            final updatedEpisode = oldEpisode.copyWith(path: newPath, name: _cleanEpisodeName(p.basenameWithoutExtension(newPath.path)), metadata: newMetadata);
+            final updatedEpisode = oldEpisode.copyWith(path: newPath, name: p.basenameWithoutExtension(newPath.path), metadata: newMetadata);
             episodesToUpdate[oldEpisode] = updatedEpisode;
             matchedKeys.add(metaKey);
           }
@@ -211,7 +211,7 @@ extension LibraryScanning on Library {
           updatedSeriesList[seriesIndex] = rebuiltSeries;
           logTrace('  Series updated in list');
         } else {
-          logTrace('  No changes needed for this series');
+          logTrace('  No changes needed for ${originalSeries.name}');
         }
       }
       logTrace('3 | Updated ${existingSeriesPathsToCheck.length} existing series.');
@@ -264,7 +264,7 @@ extension LibraryScanning on Library {
         int fileCount = 0;
 
         await for (final file in entity.list(recursive: true)) {
-          if (file is File && _isVideoFile(file.path)) {
+          if (file is File && FileUtils.isVideoFile(file.path)) {
             fileCount++;
             seriesMap[seriesPath]!.add(PathString(file.path));
             logTrace('  Found video file: ${p.basename(file.path)}');
@@ -298,7 +298,7 @@ extension LibraryScanning on Library {
   Episode _createEpisode(PathString path, Metadata metadata) {
     return Episode(
       path: path,
-      name: _cleanEpisodeName(p.basenameWithoutExtension(path.path)),
+      name: p.basenameWithoutExtension(path.path),
       metadata: metadata,
       watched: false,
       progress: 0.0,
@@ -437,14 +437,7 @@ extension LibraryScanning on Library {
       relatedMedia: relatedMedia,
     );
   }
-
-  static const List<String> _videoExtensions = ['.mkv', '.mp4', '.avi', '.mov', '.wmv', '.m4v', '.flv'];
-
-  static const List<String> _imageExtensions = ['.ico', '.png', '.jpg', '.jpeg', '.webp'];
-
-  /// Check if a filename is a video file
-  bool _isVideoFile(String path) => _videoExtensions.contains(p.extension(path).toLowerCase());
-
+  
   /// Check if a directory name matches the season pattern ([S or s]eason (\d){1+} or [S or s](\s){0 or 1}(\d){1+})
   bool _isSeasonDirectory(String name) {
     // Match "[S or s]eason (\d){1+}" - e.g., "Season 1", "season 12", etc.
@@ -465,9 +458,6 @@ extension LibraryScanning on Library {
     return name;
   }
 
-  /// Clean up episode name from filename
-  String _cleanEpisodeName(String name) => name.replaceAll(RegExp(r'\[[^\]]+\]|\([^)]+\)|[sS]\d{1,2}[eE]\d{1,2}|\.\w{3,4}$'), '').trim();
-
   /// Find a poster image in the directory
   Future<PathString?> _findPosterImage(Directory dir) async {
     // First try to find an .ico file
@@ -479,7 +469,7 @@ extension LibraryScanning on Library {
 
     // Then try other image formats
     await for (final entity in dir.list()) {
-      if (entity is File && _imageExtensions.contains(p.extension(entity.path).toLowerCase())) {
+      if (entity is File && FileUtils.imageExtensions.contains(p.extension(entity.path).toLowerCase())) {
         return PathString(entity.path);
       }
     }
@@ -496,7 +486,7 @@ extension LibraryScanning on Library {
       // Look for common banner image filenames
       final bannerNames = ['banner', 'background', 'backdrop', 'fanart'];
       for (final name in bannerNames) {
-        for (final extension in _imageExtensions) {
+        for (final extension in FileUtils.imageExtensions) {
           final bannerFile = files.whereType<File>().firstWhereOrNull((f) => p.basename(f.path).toLowerCase() == '$name$extension');
           if (bannerFile != null) return PathString(bannerFile.path);
         }
@@ -505,7 +495,7 @@ extension LibraryScanning on Library {
       // If no specific banner found, look for any image with banner dimensions
       for (final file in files.whereType<File>()) {
         final extension = p.extension(file.path).toLowerCase();
-        if (_imageExtensions.contains(extension)) {
+        if (FileUtils.imageExtensions.contains(extension)) {
           try {
             // Check if the image has banner-like dimensions (wider than tall)
             final imageBytes = await file.readAsBytes();

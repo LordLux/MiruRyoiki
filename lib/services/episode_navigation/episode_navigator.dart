@@ -1,5 +1,6 @@
 import '../../models/episode.dart';
 import '../../models/series.dart';
+import '../../utils/path.dart';
 
 class EpisodeNavigator {
   static EpisodeNavigator? _instance;
@@ -15,7 +16,7 @@ class EpisodeNavigator {
         if (found != null) return series;
       }
     }
-    
+
     // Fallback to contains check (episodes without ID)
     for (final series in allSeries) {
       // seasons
@@ -27,7 +28,7 @@ class EpisodeNavigator {
     }
     return null;
   }
-  
+
   /// Fast ID-based episode lookup across all series
   Episode? getEpisodeById(int episodeId, List<Series> allSeries) {
     for (final series in allSeries) {
@@ -46,7 +47,7 @@ class EpisodeNavigator {
         if (found != null) return season;
       }
     }
-    
+
     // Fallback to contains check
     for (final season in series.seasons) {
       if (season.episodes.contains(episode)) return season;
@@ -95,7 +96,7 @@ class EpisodeNavigator {
   int? getSeasonIndexForEpisode(Episode episode, Series series) {
     final season = findSeasonForEpisode(episode, series);
     if (season == null) return null;
-    
+
     final index = series.seasons.indexOf(season);
     return index == -1 ? null : index + 1;
   }
@@ -104,7 +105,7 @@ class EpisodeNavigator {
   int? getEpisodePositionInSeason(Episode episode, Series series) {
     final season = findSeasonForEpisode(episode, series);
     if (season == null) return null;
-    
+
     final index = season.episodes.indexOf(episode);
     return index == -1 ? null : index + 1;
   }
@@ -113,19 +114,36 @@ class EpisodeNavigator {
   bool isFirstEpisode(Episode episode, Series series) {
     final episodeNumber = episode.episodeNumber;
     if (episodeNumber == null) return false;
-    
+
     final allEpisodes = getAllEpisodesInSeries(series);
-    return allEpisodes.isNotEmpty && 
-           allEpisodes.first.episodeNumber == episodeNumber;
+    return allEpisodes.isNotEmpty && //
+        allEpisodes.first.episodeNumber == episodeNumber;
   }
 
   /// Check if episode is the last in its series
   bool isLastEpisode(Episode episode, Series series) {
     final episodeNumber = episode.episodeNumber;
     if (episodeNumber == null) return false;
-    
+
     final allEpisodes = getAllEpisodesInSeries(series);
-    return allEpisodes.isNotEmpty && 
-           allEpisodes.last.episodeNumber == episodeNumber;
+    return allEpisodes.isNotEmpty && //
+        allEpisodes.last.episodeNumber == episodeNumber;
+  }
+
+  /// Find episode by file path within a series
+  Episode? findEpisodeByPath(PathString path, Series series) {
+    // Search in all seasons
+    for (final season in series.seasons) {
+      for (final episode in season.episodes) {
+        if (episode.path.path == path.path) return episode;
+      }
+    }
+
+    // Search in related media
+    for (final episode in series.relatedMedia) {
+      if (episode.path.path == path.path) return episode;
+    }
+
+    return null;
   }
 }

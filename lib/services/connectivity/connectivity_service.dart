@@ -140,9 +140,9 @@ class ConnectivityService extends ChangeNotifier {
       isOnlineNotifier.value = isOnline;
 
       if (isOnline)
-        logInfo('✅ Internet connection restored: $reason');
+        logInfo('Internet connection restored: $reason');
       else
-        logWarn('❌ Internet connection lost: $reason');
+        logWarn('Internet connection lost: $reason');
 
       notifyListeners();
     }

@@ -163,7 +163,7 @@ class Season {
 
   /// Get episode by number within this season
   Episode? getEpisodeByNumber(int episodeNumber) => episodes.firstWhereOrNull((episode) => episode.episodeNumber == episodeNumber);
-  
+
   /// Get episode by path within this season
   Episode? getEpisodeByPath(PathString episodePath) => episodes.firstWhereOrNull((episode) => episode.path == episodePath);
 }
@@ -549,7 +549,10 @@ class Series {
   }
 
   /// Anilist data for the series
-  AnilistAnime? get anilistData => anilistMappings.firstWhereOrNull((m) => m.anilistId == _primaryAnilistId)?.anilistData;
+  AnilistAnime? get anilistData {
+    if (_primaryAnilistId == null && anilistMappings.isNotEmpty) _primaryAnilistId = anilistMappings.first.anilistId;
+    return anilistMappings.firstWhereOrNull((m) => m.anilistId == (_primaryAnilistId))?.anilistData;
+  }
 
   /// Set the Anilist data for the series
   set anilistData(AnilistAnime? value) {
@@ -827,7 +830,7 @@ class Series {
     // Search related media
     return relatedMedia.firstWhereOrNull((e) => e.episodeNumber == episodeNumber);
   }
-  
+
   Episode? getEpisodeByPath(PathString episodePath) {
     // Search seasons
     for (final season in seasons) {
@@ -838,7 +841,7 @@ class Series {
     // Search related media
     return relatedMedia.firstWhereOrNull((episode) => episode.path == episodePath);
   }
-  
+
   List<Episode> getEpisodesForSeason([int i = 1]) {
     // TODO check if series has global episodes numbering or not
     if (i < 1 || i > seasons.length) //
@@ -846,6 +849,9 @@ class Series {
 
     return seasons[i - 1].episodes;
   }
+
+  Season? getSeasonFromPath(PathString seasonPath) => //
+      seasons.firstWhereOrNull((season) => season.path == seasonPath);
 
   /// Get ONA/OVA
   List<Episode> getUncategorizedEpisodes() {

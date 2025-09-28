@@ -172,7 +172,7 @@ class _ContinueEpisodeCardState extends State<ContinueEpisodeCard> {
             StatusBarManager().hide();
             setState(() => _isHovering = false);
           },
-          onHover: (_) => StatusBarManager().showDelayed("Episode ${widget.episode.episodeNumber ?? '?'} - ${widget.series.name}"),
+          onHover: (_) => StatusBarManager().showDelayed("Episode ${widget.episode.episodeNumber ?? '?'} - ${widget.episode.displayTitle}"),
           cursor: SystemMouseCursors.click,
           child: ClipRRect(
             borderRadius: const BorderRadius.all(Radius.circular(8.02)),
@@ -229,20 +229,35 @@ class _ContinueEpisodeCardState extends State<ContinueEpisodeCard> {
                               children: [
                                 Text(
                                   widget.series.name,
-                                  maxLines: 3,
+                                  maxLines: 2,
                                   style: Manager.bodyStrongStyle.copyWith(fontWeight: FontWeight.w600),
                                   overflow: TextOverflow.ellipsis,
                                 ),
+                                SizedBox(height: 4),
+                                Opacity(
+                                  opacity: 0.8,
+                                  child: Text(
+                                    widget.episode.displayTitle,
+                                    maxLines: 3,
+                                    style: Manager.miniBodyStyle.copyWith(
+                                      fontWeight: FontWeight.w400,
+                                      fontStyle: FontStyle.italic,
+                                      fontSize: Manager.miniBodyStyle.fontSize! * 1.15,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                SizedBox(height: 4),
                                 Row(
                                   children: [
                                     const SizedBox.shrink(),
                                     const Spacer(),
                                     Text(
                                       'Episode ${widget.episode.episodeNumber ?? '?'}',
-                                      style: FluentTheme.of(context).typography.caption?.copyWith(
-                                            fontWeight: FontWeight.w600,
-                                            color: lighten(widget.series.dominantColor ?? FluentTheme.of(context).resources.textFillColorSecondary, .4),
-                                          ),
+                                      style: Manager.captionStyle.copyWith(
+                                        fontWeight: FontWeight.w600,
+                                        color: lighten(widget.series.dominantColor ?? FluentTheme.of(context).resources.textFillColorSecondary, .4),
+                                      ),
                                       overflow: TextOverflow.ellipsis,
                                     ),
                                   ],

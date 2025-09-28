@@ -139,7 +139,8 @@ class SeriesScreenState extends State<SeriesScreen> {
     });
   }
 
-  Future<void> _loadAnilistDataForCurrentSeries() async { // TODO cancel fetch if screen gets disposed
+  Future<void> _loadAnilistDataForCurrentSeries() async {
+    // TODO cancel fetch if screen gets disposed
     final series = this.series; // get current series
     if (!mounted || widget.seriesPath == null || series == null) return;
 
@@ -158,29 +159,30 @@ class SeriesScreenState extends State<SeriesScreen> {
   Future<void> loadAnilistData(int id) async => await _loadAnilistData(id);
 
   Future<void> _loadAnilistData(int anilistId) async {
+    final series = this.series;
     if (series == null) return;
 
     final anime = await SeriesLinkService().fetchAnimeDetails(anilistId);
 
     if (anime != null) {
       // Store the original dominant color to check if it changes
-      final Color? originalDominantColor = series!.dominantColor;
+      final Color? originalDominantColor = series.dominantColor;
 
       setState(() {
         // Find the mapping with this ID
-        for (var i = 0; i < series!.anilistMappings.length; i++) {
-          if (series!.anilistMappings[i].anilistId == anilistId) {
-            series!.anilistMappings[i] = AnilistMapping(
-              localPath: series!.anilistMappings[i].localPath,
+        for (var i = 0; i < series.anilistMappings.length; i++) {
+          if (series.anilistMappings[i].anilistId == anilistId) {
+            series.anilistMappings[i] = AnilistMapping(
+              localPath: series.anilistMappings[i].localPath,
               anilistId: anilistId,
-              title: series!.anilistMappings[i].title,
+              title: series.anilistMappings[i].title,
               lastSynced: now,
               anilistData: anime,
             );
 
             // Also update the series.anilistData if this is the primary
-            if (series!.primaryAnilistId == anilistId || series!.primaryAnilistId == null) {
-              series!.anilistData = anime;
+            if (series.primaryAnilistId == anilistId || series.primaryAnilistId == null) {
+              series.anilistData = anime;
             }
 
             break; // Break after updating the mapping
@@ -189,12 +191,23 @@ class SeriesScreenState extends State<SeriesScreen> {
       });
 
       // Calculate dominant color (this will update it if needed)
-      await series!.calculateDominantColor(forceRecalculate: true);
+      await series.calculateDominantColor(forceRecalculate: true);
 
-      if (!mounted || series == null) return; // in case series was disposed during the async operation
+      if (!mounted || this.series == null) return; // in case series was disposed during the async operation
+
+      // Fetch episode titles from AniList
+      try {
+        final episodeTitlesUpdated = await Manager.episodeTitleService.fetchAndUpdateEpisodeTitles(series);
+        if (episodeTitlesUpdated && mounted) {
+          logTrace('Episode titles updated, refreshing UI');
+          setState(() {}); // Refresh UI to show updated episode titles
+        }
+      } catch (e) {
+        logErr('Error fetching episode titles', e);
+      }
 
       // Only save if dominant color changed or was newly set
-      if (originalDominantColor?.value != series!.dominantColor?.value) {
+      if (originalDominantColor?.value != series.dominantColor?.value) {
         // Save the updated series to the library
 
         final BuildContext? ctx;
@@ -206,10 +219,10 @@ class SeriesScreenState extends State<SeriesScreen> {
         if (ctx != null && ctx.mounted) {
           try {
             final library = Provider.of<Library>(ctx, listen: false);
-            await library.updateSeries(series!, invalidateCache: false);
+            await library.updateSeries(series, invalidateCache: false);
 
             if (libraryScreenKey.currentState != null) {
-              libraryScreenKey.currentState!.updateSeriesInSortCache(series!);
+              libraryScreenKey.currentState!.updateSeriesInSortCache(series);
             }
             logTrace('Dominant color changed, saving series');
           } catch (e) {
@@ -279,7 +292,6 @@ class SeriesScreenState extends State<SeriesScreen> {
             content: _buildEpisodesList(context),
             backgroundColor: dominantColor,
             onHeaderCollapse: () => _descriptionController.collapse(),
-            
           ),
         );
       },

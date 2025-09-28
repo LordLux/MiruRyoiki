@@ -8,8 +8,10 @@ import 'package:args/args.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
 import 'enums.dart';
+import 'services/anilist/episode_title_service.dart';
 import 'services/episode_navigation/anilist_progress_manager.dart';
 import 'services/episode_navigation/episode_navigator.dart';
+import 'services/episode_navigation/ui_episode_service.dart';
 import 'services/navigation/shortcuts.dart';
 import 'settings.dart';
 import 'theme.dart';
@@ -68,6 +70,10 @@ class Manager {
   static EpisodeNavigator get episodeNavigator => EpisodeNavigator.instance;
 
   static AnilistProgressManager get anilistProgress => AnilistProgressManager.instance;
+
+  static EpisodeTitleService get episodeTitleService => EpisodeTitleService.instance;
+
+  static UIEpisodeService get uiEpisodeService => UIEpisodeService.instance;
 
   static AppTheme? _cachedAppTheme;
 

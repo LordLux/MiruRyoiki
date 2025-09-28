@@ -23,14 +23,14 @@ extension AnilistProviderInitialization on AnilistProvider {
     // Only notify if status changed
     if (wasOffline != _isOffline) {
       if (!_isOffline) {
-        logInfo('✅ Connectivity restored - triggering data refresh');
+        logInfo('Connectivity restored - triggering data refresh');
         // Connection restored - refresh data if logged in
         if (isLoggedIn && isInitialized) {
           refreshUserData();
           _loadUserLists();
         }
       } else {
-        logInfo('❌ Connectivity lost');
+        logInfo('Connectivity lost');
       }
       notifyListeners();
     }

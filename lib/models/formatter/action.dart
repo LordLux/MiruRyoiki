@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:collection/collection.dart';
 import 'package:path/path.dart' as p;
+import '../../utils/file.dart';
 import '../../utils/logging.dart';
 import '../../utils/path.dart';
 
@@ -109,7 +110,7 @@ class FormatterConfig {
   final bool deleteEmptyFolders;
 
   const FormatterConfig({
-    this.videoExtensions = const ['.mkv', '.mp4', '.avi', '.mov', '.wmv', '.m4v', '.flv'],
+    this.videoExtensions = FileUtils.videoExtensions,
     this.detectSeasonsFromFolders = true,
     this.detectSeasonsFromFilenames = true,
     this.detectRelatedMedia = true,
@@ -166,7 +167,7 @@ Future<SeriesFormatPreview> formatSeriesFolders({
     for (final entity in entities) {
       if (entity is Directory) {
         directories.add(entity);
-      } else if (entity is File && _isVideoFile(entity.path, config.videoExtensions)) {
+      } else if (entity is File && FileUtils.isVideoFile(entity.path, config.videoExtensions)) {
         rootFiles.add(entity);
       }
       // else ignore non-video files

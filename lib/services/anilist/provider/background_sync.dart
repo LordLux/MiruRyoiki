@@ -151,18 +151,14 @@ extension AnilistProviderBackgroundSync on AnilistProvider {
   void handleAppLifecycleStateChange(AppLifecycleState state) {
     switch (state) {
       case AppLifecycleState.resumed:
-        logTrace('App resumed - refreshing data and switching to foreground refresh rate');
+        logTrace('App resumed'); // refreshing data and switching to foreground refresh rate
         // App came to foreground, switch to shorter refresh interval
         _startUserDataRefreshTimer(inForeground: true);
 
-        // Immediate refresh when app comes to foreground
-        if (isLoggedIn && !_isOffline) {
+        // Immediate refresh when app comes to foreground only if the timer has run off
+        if (isLoggedIn && !_isOffline && (_lastUserDataRefreshTime == null || now.difference(_lastUserDataRefreshTime!).inMinutes >= 15)) {
           refreshUserData();
           refreshUserLists(showSnackBar: false);
-          // Trigger a manual connectivity check
-          // _connectivityService.checkConnectivity(); already done inside refreshUserLists
-          
-          // Also refresh notifications when app comes to foreground
           _refreshNotifications();
         }
         break;
@@ -182,15 +178,15 @@ extension AnilistProviderBackgroundSync on AnilistProvider {
   /// Refresh notifications in the background
   Future<void> _refreshNotifications() async {
     if (!isLoggedIn || _isOffline) return;
-    
+
     // Don't refresh too frequently
     if (_lastNotificationRefresh != null && now.difference(_lastNotificationRefresh!).inMinutes < 10) {
       return;
     }
     _lastNotificationRefresh = now;
-    
+
     try {
-      // We can't access the context here, but the notification widgets will 
+      // We can't access the context here, but the notification widgets will
       // refresh themselves when they're shown, so we'll just trigger a refresh
       // on the release notification widget if it exists
       final context = rootNavigatorKey.currentContext;

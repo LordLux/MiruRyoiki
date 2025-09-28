@@ -175,7 +175,7 @@ Future<(Color?, bool)> calculateDominantColor(Series series, {bool forceRecalcul
 
   // If no image path found, return null
   if (imagePath == null) {
-    logTrace('   No image available for dominant color extraction');
+    logWarn('   No image available for dominant color extraction');
     return (null, false);
   }
 
@@ -183,7 +183,7 @@ Future<(Color?, bool)> calculateDominantColor(Series series, {bool forceRecalcul
   if ((sourceType == DominantColorSource.poster && series.isAnilistPoster) || (sourceType == DominantColorSource.banner && series.isAnilistBanner)) {
     imagePath = await _getAnilistCachedImagePath(series, poster: sourceType == DominantColorSource.poster);
     if (imagePath == null) {
-      logTrace('   Failed to get cached Anilist image');
+      logWarn('   Failed to get cached Anilist image');
       return (null, false);
     }
   }

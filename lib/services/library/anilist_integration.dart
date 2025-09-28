@@ -132,6 +132,13 @@ extension LibraryAnilistIntegration on Library {
           // Update the series' Anilist data if this is the primary ID
           if (series.primaryAnilistId == anilistId || series.primaryAnilistId == null) {
             series.anilistData = anime;
+            
+            // Fetch episode titles now that AniList data is available
+            try {
+              await EpisodeTitleService.instance.fetchAndUpdateEpisodeTitles(series);
+            } catch (e) {
+              logWarn('Failed to fetch episode titles for ${series.name}: $e');
+            }
           }
         } else {
           // Failed to fetch anime details - preserve existing data

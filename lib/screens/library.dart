@@ -680,7 +680,6 @@ class LibraryScreenState extends State<LibraryScreen> {
     final scrollController = _controller;
     final library = Provider.of<Library>(context, listen: false);
     if (!scrollController.hasClients || library.isIndexing) return null;
-    logInfo('Scrolling to list index $targetIndex');
 
     final currentPosition = scrollController.position.pixels;
 
@@ -694,7 +693,6 @@ class LibraryScreenState extends State<LibraryScreen> {
 
     if (_groupedDataCache != null) {
       final displayOrder = _groupedDataCache!.keys.toList();
-      logInfo('Total groups: ${displayOrder.length}, Target index: $targetIndex');
 
       for (int i = 0; i < targetIndex && i < displayOrder.length; i++) {
         final groupName = displayOrder[i];
@@ -702,12 +700,10 @@ class LibraryScreenState extends State<LibraryScreen> {
 
         // Add header height
         estimatedOffset += estimatedHeaderHeight;
-        logInfo('Group $groupName [$i]: ${seriesInGroup.length} series');
 
         // Add content height (estimate based on number of series and grid layout)
         if (seriesInGroup.isNotEmpty) {
           final rows = ScreenUtils.mainAxisCount(seriesInGroup.length);
-          log('Group $groupName [$i] has ${seriesInGroup.length} series, estimated rows: $rows');
           final cardHeight = ScreenUtils.libraryCardSize.height;
           final contentHeight = rows * cardHeight + (rows + 1) * 8.0 + ScreenUtils.kLibraryHeaderContentSeparatorHeight;
           estimatedOffset += contentHeight;
@@ -717,8 +713,6 @@ class LibraryScreenState extends State<LibraryScreen> {
         if (i < targetIndex - 1) {
           estimatedOffset += estimatedGroupSpacing;
         }
-
-        logInfo('Loop iteration $i: estimatedOffset = $estimatedOffset');
       }
     }
 

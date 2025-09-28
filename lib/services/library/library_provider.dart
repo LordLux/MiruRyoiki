@@ -10,6 +10,7 @@ import 'package:path/path.dart' as p;
 import 'package:path/path.dart' as path;
 import 'package:provider/provider.dart';
 
+import '../../utils/file.dart';
 import '../players/player_manager.dart';
 import '../players/factory.dart';
 import '../../models/players/mediastatus.dart';
@@ -30,6 +31,7 @@ import '../../theme.dart';
 import '../../widgets/dialogs/splash/progress.dart';
 import '../anilist/provider/anilist_provider.dart';
 import '../anilist/queries/anilist_service.dart';
+import '../anilist/episode_title_service.dart';
 import '../file_system/cache.dart';
 import '../../services/navigation/show_info.dart';
 import '../../utils/color.dart' as color_utils;

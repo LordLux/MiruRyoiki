@@ -35,7 +35,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? db]) : super(db ?? _openConnection());
 
   @override
-  int get schemaVersion => 7;
+  int get schemaVersion => 8;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -81,6 +81,10 @@ class AppDatabase extends _$AppDatabase {
           if (from < 7) {
             // Add customListName column for unlinked series custom list selection
             await m.issueCustomQuery('ALTER TABLE series_table ADD COLUMN custom_list_name TEXT;');
+          }
+          if (from < 8) {
+            // Add anilistTitle column for episode titles from AniList
+            await m.issueCustomQuery('ALTER TABLE episodes_table ADD COLUMN anilist_title TEXT;');
           }
         },
         beforeOpen: (details) async {

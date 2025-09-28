@@ -23,7 +23,7 @@ class MyWindowListener extends WindowListener {
   void onWindowFocus() {
     update();
     super.onWindowFocus();
-    logTrace('Window focused');
+    // logTrace('Window focused');
   }
 
   // onWindowBlur

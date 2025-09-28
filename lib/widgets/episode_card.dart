@@ -50,7 +50,7 @@ class _HoverableEpisodeTileState extends State<HoverableEpisodeTile> {
           StatusBarManager().hide();
           setState(() => _isHovering = false);
         },
-        onHover: (_) => StatusBarManager().showDelayed(widget.episode.name),
+        onHover: (_) => StatusBarManager().showDelayed(widget.episode.displayTitle),
         cursor: SystemMouseCursors.click,
         child: AnimatedContainer(
           duration: getDuration(const Duration(milliseconds: 150)),
@@ -106,16 +106,20 @@ class _HoverableEpisodeTileState extends State<HoverableEpisodeTile> {
                             ),
                             child: Padding(
                               padding: const EdgeInsets.only(top: 8.0),
-                              child: Text(
-                                widget.episode.name,
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 12,
-                                ),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                              ),
+                              child: Builder(builder: (context) {
+                                final number = widget.episode.episodeNumber;
+                                final title = widget.episode.displayTitle;
+                                return Text(
+                                  '${number != null ? "$number" : ""}${title.isNotEmpty ? (number != null ? ' - ' : '') + title : ''}',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 12,
+                                  ),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                );
+                              }),
                             ),
                           ),
                         ),

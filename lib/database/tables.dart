@@ -67,6 +67,7 @@ class EpisodesTable extends Table {
   
   TextColumn get metadata => text().map(const MetadataConverter()).nullable()();
   TextColumn get mkvMetadata => text().map(const MkvMetadataConverter()).nullable()();
+  TextColumn get anilistTitle => text().nullable()();
 
   @override
   List<String> get customConstraints => [

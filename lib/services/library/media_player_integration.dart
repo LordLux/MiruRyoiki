@@ -242,7 +242,7 @@ extension LibraryMediaPlayerIntegration on Library {
   /// Handle player status updates
   void _handlePlayerStatusUpdate(MediaStatus status) {
     final currentFile = status.filePath;
-    final currentEpisode = currentFile.isNotEmpty ? _findEpisodeByPath(currentFile) : null;
+    final currentEpisode = currentFile.isNotEmpty ? findEpisodeByPath(currentFile) : null;
 
     // Always update episode progress
     bool progressUpdated = false;
@@ -259,7 +259,7 @@ extension LibraryMediaPlayerIntegration on Library {
 
   /// Find an episode by file path across all series
   /// Tries to optimize search by inferring series from path structure
-  Episode? _findEpisodeByPath(String filePath) {
+  Episode? findEpisodeByPath(String filePath) {
     // Extract the series name from the file path relative to library path
     final libraryPath = _libraryPath;
     if (libraryPath == null) return null;
@@ -362,7 +362,7 @@ extension LibraryMediaPlayerIntegration on Library {
 
       // Only save if we have a valid status and it has changed
       if (currentStatus != null && _hasPlayerStatusChanged(currentStatus)) {
-        final currentEpisode = currentStatus.filePath.isNotEmpty ? _findEpisodeByPath(currentStatus.filePath) : null;
+        final currentEpisode = currentStatus.filePath.isNotEmpty ? findEpisodeByPath(currentStatus.filePath) : null;
 
         if (currentEpisode != null) {
           // Update episode progress with current player status
@@ -431,12 +431,12 @@ extension LibraryMediaPlayerIntegration on Library {
       if (progress > Library.progressThreshold && !episode.watched) {
         // Mark as watched if progress > threshold
         markEpisodeWatched(episode, save: false);
-        logInfo('Auto-marked episode "${episode.name}" as watched (progress: ${(progress * 100).toStringAsFixed(1)}%)');
+        logInfo('Auto-marked episode "${episode.displayTitle}" as watched (progress: ${(progress * 100).toStringAsFixed(1)}%)');
         return true;
       } else if (episode.watched && progress < Library.progressThreshold) {
         // or mark as unwatched if progress < threshold
         markEpisodeWatched(episode, watched: false, save: false);
-        logInfo('Auto-unmarked episode "${episode.name}" as watched (progress: ${(progress * 100).toStringAsFixed(1)}%)');
+        logInfo('Auto-unmarked episode "${episode.displayTitle}" as watched (progress: ${(progress * 100).toStringAsFixed(1)}%)');
         return true;
       }
     }
