@@ -341,6 +341,11 @@ class _CustomKeyboardListenerState extends State<CustomKeyboardListener> {
   }
 
   @override
+  void dispose() {
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Listener(
       onPointerDown: _handlePointerSignal,

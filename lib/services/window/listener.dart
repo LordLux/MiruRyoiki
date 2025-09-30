@@ -1,3 +1,4 @@
+import '../navigation/modifier_key_utils.dart';
 import 'dart:io';
 
 import 'package:miruryoiki/main.dart';
@@ -22,6 +23,8 @@ class MyWindowListener extends WindowListener {
   @override
   void onWindowFocus() {
     update();
+    // Fix stuck modifier keys when regaining focus
+    ModifierKeyUtils.checkAndFixModifierKeys();
     super.onWindowFocus();
     // logTrace('Window focused');
   }

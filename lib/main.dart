@@ -1168,6 +1168,10 @@ Future<void> _registerWindowsUrlScheme(String scheme) async {
   }
 }
 
+// TODO add better anilist error handling
+// TODO fix file logging (truncated strings, missing lines)
+// TODO make 'log out' from anilist not change your current pane
+// TODO change anilist log in button fill color
 // TODO add indicator of which episodes have anilist titles
 // TODO sometimes anilist episode numbering for seasons > 1 continue from previous season, need to handle that
 // TODO add per-episode/season/series toggle to use anilist titles or local titles
