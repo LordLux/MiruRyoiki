@@ -7,6 +7,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:graphql/client.dart' as graphql;
 import 'package:logger/logger.dart';
+import 'package:synchronized/synchronized.dart';
 import 'package:path/path.dart' as p;
 import 'package:package_info_plus/package_info_plus.dart';
 
@@ -32,6 +33,7 @@ class LoggingConfig {
 // Session-based logging variables
 String? _sessionId;
 File? _sessionLogFile;
+final Lock _fileWriteLock = Lock(); // Synchronize file writes
 
 Logger logger = Logger();
 
@@ -60,18 +62,21 @@ Future<void> initializeLoggingSession() async {
     final logFileName = 'log_$_sessionId.txt';
     _sessionLogFile = File(p.join(logsDir.path, logFileName));
 
-    // Write session header
-    await _writeToLogFile('=== MiruRyoiki Log Session Started ===');
-    await _writeToLogFile('Session ID: $_sessionId');
-    await _writeToLogFile('Start Time: ${sessionStart.toIso8601String()}');
-    await _writeToLogFile('App Version: ${packageInfo.version} (${packageInfo.buildNumber})');
-    await _writeToLogFile('Arguments: ${[
+    // Write session header using the new synchronized write method
+    final sessionHeaderContent = StringBuffer();
+    sessionHeaderContent.write('=== MiruRyoiki Log Session Started ===\n');
+    sessionHeaderContent.write('Session ID: $_sessionId\n');
+    sessionHeaderContent.write('Start Time: ${sessionStart.toIso8601String()}\n');
+    sessionHeaderContent.write('App Version: ${packageInfo.version} (${packageInfo.buildNumber})\n');
+    sessionHeaderContent.write('Arguments: ${[
       ...Manager.args,
       ...[if (kDebugMode) '--debug']
-    ]}');
-    await _writeToLogFile('Platform: ${Platform.operatingSystem} ${Platform.operatingSystemVersion}');
-    await _writeToLogFile('File Log Level: ${_getCurrentFileLogLevel().name_}');
-    await _writeToLogFile('===========================================\n');
+    ]}\n');
+    sessionHeaderContent.write('Platform: ${Platform.operatingSystem} ${Platform.operatingSystemVersion}\n');
+    sessionHeaderContent.write('File Log Level: ${_getCurrentFileLogLevel().name_}\n');
+    sessionHeaderContent.write('===========================================\n');
+    
+    await _writeToLogFile(sessionHeaderContent.toString());
   } catch (e) {
     // Fallback logging to console if file operations fail
     _log(LogLevel.error, 'Failed to initialize logging session', error: e);
@@ -224,26 +229,29 @@ void _logWithLevel(
 void _writeLogToSessionFile(LogLevel level, dynamic msg, Object? error, StackTrace? stackTrace) {
   if (_sessionLogFile == null || _sessionId == null) return;
 
-  // Format log entry
+  // Format log entry with complete content built before writing
   final timestamp = DateTime.now().toIso8601String();
   final logContent = StringBuffer();
-  logContent.writeln('[$timestamp] ${level.name_.toUpperCase()}: $msg');
-
+  
+  // Build the complete log entry in memory first
+  logContent.write('[$timestamp] ${level.name_.toUpperCase()}: $msg');
+  
   if (error != null) {
-    logContent.writeln('Exception: $error');
+    logContent.write('\nException: $error');
   }
 
   if (stackTrace != null && (level == LogLevel.error || level == LogLevel.debug || level == LogLevel.trace)) {
-    logContent.writeln('Stack Trace:');
-    logContent.writeln(stackTrace.toString());
+    logContent.write('\nStack Trace:\n$stackTrace');
   }
 
-  logContent.writeln('---');
+  logContent.write('\n---');
 
-  // Write asynchronously without blocking the main thread
+  // Write the complete entry asynchronously with proper error handling
   _writeToLogFile(logContent.toString()).catchError((e) {
     // Silent catch to prevent infinite error loops
-    _log(LogLevel.error, 'Failed to write ${level.name_} to session log', error: e);
+    if (kDebugMode) {
+      developer.log('Failed to write ${level.name_} to session log: $e');
+    }
   });
 }
 
@@ -259,17 +267,19 @@ void logDebug(final dynamic msg, {bool? splitLines}) {
   _logWithLevel(LogLevel.debug, msg, color: Colors.amber, bgColor: Colors.transparent, splitLines: splitLines);
 }
 
-/// Safely write to the session log file with error handling
+/// Safely write to the session log file with error handling and synchronization
 Future<void> _writeToLogFile(String content) async {
   if (_sessionLogFile == null) return;
 
-  try {
-    // Ensure file exists and append content with newline
-    await _sessionLogFile!.writeAsString('$content\n', mode: FileMode.append, flush: true);
-  } catch (e) {
-    // Fallback to console logging if file write fails
-    _log(LogLevel.error, 'Failed to write to log file', error: e);
-  }
+  await _fileWriteLock.synchronized(() async {
+    try {
+      // Ensure file exists and append content with newline in a single atomic operation
+      await _sessionLogFile!.writeAsString('$content\n', mode: FileMode.append, flush: true);
+    } catch (e) {
+      // Fallback to console logging if file write fails
+      _log(LogLevel.error, 'Failed to write to log file', error: e);
+    }
+  });
 }
 
 /// Logs an error message with the specified [msg] and sets the text color to Red.

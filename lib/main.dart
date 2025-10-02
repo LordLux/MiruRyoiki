@@ -1168,8 +1168,9 @@ Future<void> _registerWindowsUrlScheme(String scheme) async {
   }
 }
 
-// TODO add better anilist error handling
-// TODO fix file logging (truncated strings, missing lines)
+// TODO scroll down even if no scheduled releases in the future
+// TODO after linking anilist, fetch episode titles for neolinked series
+// TODO add 'notify me' button to upcoming episodes on home screen
 // TODO make 'log out' from anilist not change your current pane
 // TODO change anilist log in button fill color
 // TODO add indicator of which episodes have anilist titles

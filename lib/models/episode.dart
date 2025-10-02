@@ -17,6 +17,7 @@ class Episode {
   Metadata? metadata;
   MkvMetadata? mkvMetadata;
   String? anilistTitle;
+  bool? _parsableTitle;
 
   Episode({
     this.id,
@@ -61,86 +62,40 @@ class Episode {
   }
 
   /// Parse episode title from filename if possible
+  static final List<RegExp> _episodePatterns = [
+    // Pattern 1: "1 - Title" or "01 - Title" (number at start followed by dash)
+    RegExp(r'^(\d{1,3})\s*-'),
+
+    // Pattern 2: "S01E01" or "S1E1" format anywhere in name
+    RegExp(r'S\d{1,2}E(\d{1,3})', caseSensitive: false),
+
+    // Pattern 3: "Episode 1" or "Ep 1" format
+    RegExp(r'(?:episode|ep)\s*(\d{1,3})', caseSensitive: false),
+
+    // Pattern 4: "[01]" or "(01)" - number in brackets at start or after space
+    RegExp(r'(?:^|\s)[\[\(](\d{1,3})[\]\)]'),
+
+    // Pattern 5: " 01 " - standalone number with spaces (but not years like 2024)
+    RegExp(r'\s(\d{1,2})\s'),
+
+    // Pattern 6: "_01_" or ".01." - number surrounded by separators (prefer 1-2 digits)
+    RegExp(r'[_\.](\d{1,2})[_\.]'),
+
+    // Pattern 7: Start of filename with number (common in downloads)
+    RegExp(r'^(\d{1,3})(?:\s|_|\.|$)'),
+
+    // Pattern 8: first 1-2 digit number in the name (avoid years and resolutions like 1080p)
+    RegExp(r'(\d{1,2})(?!\d)'),
+  ];
+
+  /// Parse episode title from filename if possible
   String? parseEpisodeTitleFromName() {
     if (name.isEmpty) return null;
 
     // Try multiple patterns to remove episode numbers, in order of preference
-    final patterns = [
-      // Pattern 1: "1 - Title" or "01 - Title" (number at start followed by dash)
-      RegExp(r'^(\d{1,3})\s*-'),
 
-      // Pattern 2: "S01E01" or "S1E1" format anywhere in name
-      RegExp(r'S\d{1,2}E(\d{1,3})', caseSensitive: false),
-
-      // Pattern 3: "Episode 1" or "Ep 1" format
-      RegExp(r'(?:episode|ep)\s*(\d{1,3})', caseSensitive: false),
-
-      // Pattern 4: "[01]" or "(01)" - number in brackets at start or after space
-      RegExp(r'(?:^|\s)[\[\(](\d{1,3})[\]\)]'),
-
-      // Pattern 5: " 01 " - standalone number with spaces (but not years like 2024)
-      RegExp(r'\s(\d{1,2})\s'),
-
-      // Pattern 6: "_01_" or ".01." - number surrounded by separators (prefer 1-2 digits)
-      RegExp(r'[_\.](\d{1,2})[_\.]'),
-
-      // Pattern 7: Start of filename with number (common in downloads)
-      RegExp(r'^(\d{1,3})(?:\s|_|\.|$)'),
-
-      // Pattern 8: Last resort - first 1-2 digit number in the name (avoid years)
-      RegExp(r'(\d{1,2})'),
-    ];
-
-    for (int i = 0; i < patterns.length; i++) {
-      final pattern = patterns[i];
-      final match = pattern.firstMatch(name);
-      if (match != null) {
-        final episodeStr = match.group(1);
-        if (episodeStr != null) {
-          final episodeNum = int.tryParse(episodeStr);
-          // Validate reasonable episode numbers (1-999, but prefer 1-99 for most patterns)
-          if (episodeNum != null && episodeNum > 0 && episodeNum <= 999) {
-            return name.replaceFirst(match.group(0)!, '').trim();
-          }
-        }
-      }
-    }
-
-    return null;
-  }
-
-  int? parseEpisodeNumberFromName() {
-    if (name.isEmpty) return null;
-
-    // Try multiple patterns to extract episode numbers, in order of preference
-    final patterns = [
-      // Pattern 1: "1 - Title" or "01 - Title" (number at start followed by dash)
-      RegExp(r'^(\d{1,3})\s*-'),
-
-      // Pattern 2: "S01E01" or "S1E1" format anywhere in name
-      RegExp(r'S\d{1,2}E(\d{1,3})', caseSensitive: false),
-
-      // Pattern 3: "Episode 1" or "Ep 1" format
-      RegExp(r'(?:episode|ep)\s*(\d{1,3})', caseSensitive: false),
-
-      // Pattern 4: "[01]" or "(01)" - number in brackets at start or after space
-      RegExp(r'(?:^|\s)[\[\(](\d{1,3})[\]\)]'),
-
-      // Pattern 5: " 01 " - standalone number with spaces (but not years like 2024)
-      RegExp(r'\s(\d{1,2})\s'),
-
-      // Pattern 6: "_01_" or ".01." - number surrounded by separators (prefer 1-2 digits)
-      RegExp(r'[_\.](\d{1,2})[_\.]'),
-
-      // Pattern 7: Start of filename with number (common in downloads)
-      RegExp(r'^(\d{1,3})(?:\s|_|\.|$)'),
-
-      // Pattern 8: Last resort - first 1-2 digit number in the name (avoid years)
-      RegExp(r'(\d{1,2})'),
-    ];
-
-    for (int i = 0; i < patterns.length; i++) {
-      final pattern = patterns[i];
+    for (int i = 0; i < _episodePatterns.length; i++) {
+      final pattern = _episodePatterns[i];
       final match = pattern.firstMatch(name);
       if (match != null) {
         final episodeStr = match.group(1);
@@ -149,6 +104,30 @@ class Episode {
           // Validate reasonable episode numbers (1-999, but prefer 1-99 for most patterns)
           if (episodeNum != null && episodeNum > 0 && episodeNum <= 999) {
             _episodeNumber = episodeNum;
+            _parsableTitle = true;
+            return name.replaceFirst(match.group(0)!, '').trim();
+          }
+        }
+      }
+    }
+    _parsableTitle = false;
+
+    return null;
+  }
+
+  int? parseEpisodeNumberFromName() {
+    if (name.isEmpty) return null;
+
+    // Try multiple patterns to extract episode numbers, in order of preference
+    for (int i = 0; i < _episodePatterns.length; i++) {
+      final pattern = _episodePatterns[i];
+      final match = pattern.firstMatch(name);
+      if (match != null) {
+        final episodeStr = match.group(1);
+        if (episodeStr != null) {
+          final episodeNum = int.tryParse(episodeStr);
+          // Validate reasonable episode numbers (1-999, but prefer 1-99 for most patterns)
+          if (episodeNum != null && episodeNum > 0 && episodeNum <= 999) {
             return episodeNum;
           }
         }
@@ -278,4 +257,10 @@ class Episode {
     if (path.path.isEmpty) return null;
     return path.getRelativeToMiruRyoikiSaveDirectory?.split(ps).first;
   }
+
+  /// Whether the display title is in a simple format (e.g., "Episode 1")
+  bool get isDisplayTitleSimple => RegExp(r'^(Episode|Ep|E) \d{1,3}$', caseSensitive: false).hasMatch(displayTitle);
+  
+  /// Whether the title was successfully parsed from the filename
+  bool get isTitleParsable => _parsableTitle ?? parseEpisodeTitleFromName() != null;
 }

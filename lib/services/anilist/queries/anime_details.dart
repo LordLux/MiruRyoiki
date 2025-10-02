@@ -64,13 +64,14 @@ extension AnilistServiceAnimeDetails on AnilistService {
 
     try {
       final result = await RetryUtils.retry<AnilistAnime?>(
-        () async {
+        (bool isOffline) async {
           final queryResult = await _client!.query(
             QueryOptions(
               document: gql(detailsQuery),
               variables: {
                 'id': id,
               },
+              fetchPolicy: isOffline ? FetchPolicy.cacheOnly : FetchPolicy.cacheFirst,
             ),
           );
 
@@ -95,6 +96,7 @@ extension AnilistServiceAnimeDetails on AnilistService {
         maxRetries: 3,
         retryIf: RetryUtils.shouldRetryAnilistError,
         operationName: 'getAnimeDetails(id: $id)',
+        isOfflineAware: true,
       );
 
       return result;
@@ -169,13 +171,14 @@ extension AnilistServiceAnimeDetails on AnilistService {
 
     try {
       final result = await RetryUtils.retry<Map<int, AnilistAnime>>(
-        () async {
+        (bool isOffline) async {
           final queryResult = await _client!.query(
             QueryOptions(
               document: gql(batchQuery),
               variables: {
                 'ids': ids,
               },
+              fetchPolicy: isOffline ? FetchPolicy.cacheOnly : FetchPolicy.cacheFirst,
             ),
           );
 
@@ -207,6 +210,7 @@ extension AnilistServiceAnimeDetails on AnilistService {
         maxRetries: 3,
         retryIf: RetryUtils.shouldRetryAnilistError,
         operationName: 'getMultipleAnimesDetails(ids: ${ids.length} items)',
+        isOfflineAware: true,
       );
 
       return result ?? {};
@@ -312,12 +316,12 @@ extension AnilistServiceAnimeDetails on AnilistService {
       }
 
       final result = await RetryUtils.retry<Map<String, AnilistUserList>>(
-        () async {
+        (bool isOffline) async {
           final queryResult = await _client!.query(
             QueryOptions(
               document: gql(listsQuery),
               variables: variables,
-              fetchPolicy: FetchPolicy.noCache,
+              fetchPolicy: isOffline ? FetchPolicy.cacheOnly : FetchPolicy.networkOnly,
             ),
           );
 
@@ -337,9 +341,9 @@ extension AnilistServiceAnimeDetails on AnilistService {
           }
 
           final mediaListCollection = queryResult.data?['MediaListCollection'];
-          if (mediaListCollection == null) return {};
+          if (mediaListCollection == null) return <String, AnilistUserList>{};
 
-          final Map<String, AnilistUserList> lists = {};
+          final Map<String, AnilistUserList> lists = <String, AnilistUserList>{};
 
           final user = mediaListCollection['user'];
           final customListNames = user?['mediaListOptions']?['animeList']?['customLists'];
@@ -419,6 +423,7 @@ extension AnilistServiceAnimeDetails on AnilistService {
         maxRetries: 3,
         retryIf: RetryUtils.shouldRetryAnilistError,
         operationName: 'getUserAnimeLists(user: $userName/$userId)',
+        isOfflineAware: true,
       );
 
       return result ?? {};
@@ -454,12 +459,12 @@ extension AnilistServiceAnimeDetails on AnilistService {
 
     try {
       final result = await RetryUtils.retry<Map<int, AiringEpisode?>>(
-        () async {
+        (bool isOffline) async {
           final queryResult = await _client!.query(
             QueryOptions(
               document: gql(upcomingEpisodesQuery),
               variables: {'ids': animeIds},
-              fetchPolicy: FetchPolicy.noCache, // Always get fresh airing data
+              fetchPolicy: isOffline ? FetchPolicy.cacheOnly : FetchPolicy.cacheFirst,
             ),
           );
 
@@ -496,12 +501,13 @@ extension AnilistServiceAnimeDetails on AnilistService {
             }
           }
 
-          logTrace('Found upcoming episodes for ${upcomingEpisodes.length} series');
+          if (upcomingEpisodes.isNotEmpty) logTrace('  Found ${upcomingEpisodes.length} upcoming episodes for ${upcomingEpisodes.length} series');
           return upcomingEpisodes;
         },
         maxRetries: 3,
         retryIf: RetryUtils.shouldRetryAnilistError,
         operationName: 'getUpcomingEpisodes(${animeIds.length} anime)',
+        isOfflineAware: true,
       );
 
       return result ?? {};
@@ -530,12 +536,12 @@ extension AnilistServiceAnimeDetails on AnilistService {
 
     try {
       final result = await RetryUtils.retry<Map<int, String>>(
-        () async {
+        (bool isOffline) async {
           final queryResult = await _client!.query(
             QueryOptions(
               document: gql(episodeTitlesQuery),
               variables: {'id': animeId},
-              fetchPolicy: FetchPolicy.cacheFirst,
+              fetchPolicy: isOffline ? FetchPolicy.cacheOnly : FetchPolicy.cacheFirst,
             ),
           );
 
@@ -581,6 +587,7 @@ extension AnilistServiceAnimeDetails on AnilistService {
         maxRetries: 3,
         retryIf: RetryUtils.shouldRetryAnilistError,
         operationName: 'getEpisodeTitles(anime: $animeId)',
+        isOfflineAware: true,
       );
 
       return result ?? {};

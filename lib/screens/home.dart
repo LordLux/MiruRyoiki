@@ -145,12 +145,12 @@ class _HomeScreenState extends State<HomeScreen> {
         // Get series for each section
         final (continueWatchingSeries, nextUpSeries) = _getSeriesForSection(watchingSeries, anilistProvider); // $1: started, $2: not started
         final releasedSeries = List<Series>.from(watchingSeries); // series with aired but not downloaded episodes
-        
+
         // TODO filter hidden if 'show hidden' setting is not enabled
-        
+
         // Apply visibility rules
         final showContinueWatching = continueWatchingSeries.isNotEmpty;
-        final showNextUp = nextUpSeries.isNotEmpty/* && !showContinueWatching*/;
+        final showNextUp = nextUpSeries.isNotEmpty /* && !showContinueWatching*/;
         final showEmptyState = !showContinueWatching && nextUpSeries.isEmpty;
 
         final releasedEpisodes = _getReleasedEpisodes();
@@ -248,7 +248,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   /// Filters series for a specific section based on episode progress
-  /// 
+  ///
   /// $1 contains only series whose first non-finished has progress > 0
   /// $2 contains only series whose first non-finished has progress == 0
   (List<Series>, List<Series>) _getSeriesForSection(List<Series> watchingSeries, AnilistProvider anilistProvider) {
@@ -363,19 +363,22 @@ class _HomeScreenState extends State<HomeScreen> {
     final anilistProvider = Provider.of<AnilistProvider>(context);
     final library = Provider.of<Library>(context);
 
-    // Get the "Watching" list from Anilist user lists
-    final watchingList = anilistProvider.userLists[AnilistListApiStatus.CURRENT.name_];
+    // Get the "Watching" + "Planning" lists from Anilist user lists
+    final AnilistUserList? watchingList = anilistProvider.userLists[AnilistListApiStatus.CURRENT.name_];
+    final AnilistUserList? planningList = anilistProvider.userLists[AnilistListApiStatus.PLANNING.name_];
 
-    if (watchingList == null) return _buildEmptyState('No watching list found', 'Unable to find your watching list from Anilist');
+    final list = [...watchingList?.entries ?? [], ...planningList?.entries ?? []];
+
+    if (list.isEmpty) return _buildEmptyState('No watching list found', 'Unable to find your watching/planning lists from Anilist');
 
     // Filter to get only series that are in "Watching" list, linked, and in library
     final watchingSeries = library.series.where((series) {
       // Only consider linked series
       if (!series.isLinked) return false;
 
-      // Check if any of the series' Anilist mappings are in the watching list
+      // Check if any of the series' Anilist mappings are in the watching/planning list
       return series.anilistMappings.any((mapping) {
-        return watchingList.entries.any((entry) => entry.media.id == mapping.anilistId);
+        return list.any((entry) => entry.media.id == mapping.anilistId);
       });
     }).toList();
 
@@ -388,9 +391,9 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildUpcomingEpisodesWithCache(List<Series> watchingSeries, AnilistProvider anilistProvider) {
     // Collect all unique anime IDs from the series
     final Set<int> animeIds = {};
-    for (final series in watchingSeries) {
-      for (final mapping in series.anilistMappings) {
-        animeIds.add(mapping.anilistId);
+    for (final series_ in watchingSeries) {
+      for (final mapping in series_.anilistMappings) {
+        if (mapping.anilistData?.status == 'RELEASING') animeIds.add(mapping.anilistId); // only display RELEASING series that the user is watching
       }
     }
 

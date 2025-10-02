@@ -83,6 +83,7 @@ extension AnilistProviderInitialization on AnilistProvider {
     logDebug('\n_ | Initializing AnilistService (Online Features)...', splitLines: true);
     _isLoading = true;
     notifyListeners();
+    logTrace('_ | AnilistProvider online features initialized.');
 
     final isOnline = await _connectivityService.getConnectivityStatus();
     if (isOnline && isLoggedIn) {
@@ -96,7 +97,7 @@ extension AnilistProviderInitialization on AnilistProvider {
     _isReady = true;
     _isLoading = false;
     notifyListeners();
-    logTrace('_ | AnilistProvider online features initialized.');
+    logTrace('_ | AnilistProvider first sync call successfully done.');
   }
 
   // DISPOSE IS IN MAIN FILE

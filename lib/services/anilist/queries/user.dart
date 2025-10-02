@@ -164,11 +164,12 @@ extension AnilistServiceUser on AnilistService {
   ''';
     try {
       final result = await RetryUtils.retry<AnilistUserData?>(
-        () async {
+        (bool isOffline) async {
           final queryResult = await _client!.query(
             QueryOptions(
               document: gql(userQuery),
-              fetchPolicy: FetchPolicy.noCache,
+              fetchPolicy: isOffline ? FetchPolicy.cacheOnly : FetchPolicy.networkOnly,
+              cacheRereadPolicy: CacheRereadPolicy.ignoreAll,
             ),
           );
 
@@ -187,6 +188,7 @@ extension AnilistServiceUser on AnilistService {
         maxRetries: 3,
         retryIf: RetryUtils.shouldRetryAnilistError,
         operationName: 'getCurrentUserData',
+        isOfflineAware: true,
       );
 
       return result;

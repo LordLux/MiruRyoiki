@@ -293,7 +293,7 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
         dayEntries.sort((a, b) => a.date.compareTo(b.date));
       }
 
-      logTrace('Found ${calendarMap.length} days with entries, total entries: ${calendarMap.values.expand((x) => x).length}');
+      logTrace('  Found ${calendarMap.length} days with entries, total entries: ${calendarMap.values.expand((x) => x).length}');
 
       if (mounted && !_isDisposed) {
         setState(() {
@@ -321,7 +321,7 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
     for (final series in library.series) {
       if (series.anilistMappings.isNotEmpty) {
         for (final mapping in series.anilistMappings) {
-          animeIds.add(mapping.anilistId);
+          if (mapping.anilistData?.status == 'RELEASING') animeIds.add(mapping.anilistId); // only consider RELEASING series
         }
       }
     }
@@ -331,31 +331,33 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
     // Use the same approach as homepage - get cached data first, refresh in background
     final cachedUpcomingEpisodes = anilistProvider.getCachedUpcomingEpisodes(animeIds.toList(), refreshInBackground: true);
 
-    logTrace('Using cached upcoming episodes for ${cachedUpcomingEpisodes.length} anime');
+    logTrace('  Using cached upcoming episodes for ${cachedUpcomingEpisodes.length} anime');
 
     // Process the cached results first
-    for (final series in library.series) {
-      if (_isDisposed) return;
+    if (cachedUpcomingEpisodes.isNotEmpty) {
+      for (final series in library.series) {
+        if (_isDisposed) return;
 
-      if (series.anilistMappings.isNotEmpty) {
-        for (final mapping in series.anilistMappings) {
-          final airingInfo = cachedUpcomingEpisodes[mapping.anilistId];
-          if (airingInfo?.airingAt != null) {
-            final airingDate = DateTime.fromMillisecondsSinceEpoch(airingInfo!.airingAt! * 1000);
-            final dateKey = DateTime(airingDate.year, airingDate.month, airingDate.day);
+        if (series.anilistMappings.isNotEmpty) {
+          for (final mapping in series.anilistMappings) {
+            final airingInfo = cachedUpcomingEpisodes[mapping.anilistId]; // Get airing info for this anime ID
+            if (airingInfo?.airingAt != null) {
+              final airingDate = DateTime.fromMillisecondsSinceEpoch(airingInfo!.airingAt! * 1000);
+              final dateKey = DateTime(airingDate.year, airingDate.month, airingDate.day);
 
-            if ((startDate == null || airingDate.isAfter(startDate)) && (endDate == null || airingDate.isBefore(endDate))) {
-              final episodeInfo = ReleaseEpisodeInfo(
-                series: series,
-                animeData: null, // We don't need full anime data for this
-                airingEpisode: airingInfo,
-                airingDate: airingDate,
-                isWatched: false,
-                isAvailable: false, // TODO Implement availability check
-              );
+              if ((startDate == null || airingDate.isAfter(startDate)) && (endDate == null || airingDate.isBefore(endDate))) {
+                final episodeInfo = ReleaseEpisodeInfo(
+                  series: series,
+                  animeData: null, // We don't need full anime data for this
+                  airingEpisode: airingInfo,
+                  airingDate: airingDate,
+                  isWatched: false,
+                  isAvailable: false, // TODO Implement availability check
+                );
 
-              final calendarEntry = EpisodeCalendarEntry(episodeInfo: episodeInfo);
-              calendarMap.putIfAbsent(dateKey, () => []).add(calendarEntry);
+                final calendarEntry = EpisodeCalendarEntry(episodeInfo: episodeInfo);
+                calendarMap.putIfAbsent(dateKey, () => []).add(calendarEntry);
+              }
             }
           }
         }
@@ -368,8 +370,6 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
         final upcomingEpisodes = await anilistProvider.getUpcomingEpisodes(animeIds.toList());
 
         if (_isDisposed) return;
-
-        logTrace('Fallback: Loaded upcoming episodes for ${upcomingEpisodes.length} anime');
 
         // Process the fresh results
         for (final series in library.series) {
@@ -420,7 +420,7 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
 
       if (_isDisposed) return;
 
-      logTrace('Loaded ${notifications.length} cached notifications');
+      logTrace('  Loaded ${notifications.length} cached notifications');
 
       // Filter notifications for our date range and add them to calendar
       for (final notification in notifications) {
@@ -594,15 +594,15 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
   Widget _buildCalendarGrid(double calendarWidth) {
     final settings = SettingsManager();
     final firstDayOfWeekSetting = settings.firstDayOfWeek;
-    
+
     final daysInMonth = DateTime(_focusedMonth.year, _focusedMonth.month + 1, 0).day;
     final firstDayOfMonth = DateTime(_focusedMonth.year, _focusedMonth.month, 1);
-    
+
     // Calculate start day based on configurable first day of week
     final firstDayWeekdayValue = firstDayOfWeekSetting.toWeekdayValue;
     int startDay = (firstDayOfMonth.weekday - firstDayWeekdayValue) % 7;
     if (startDay < 0) startDay += 7;
-    
+
     // Generate day headers based on first day of week setting
     final dayHeaders = <String>[];
     final allDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -1022,9 +1022,9 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
                                           child: Text(
                                             '${entriesByDate[date]!.length}',
                                             style: Manager.captionStyle.copyWith(
-                                                  fontWeight: FontWeight.w600,
-                                                  color: lighten(Manager.accentColor.lightest),
-                                                ),
+                                              fontWeight: FontWeight.w600,
+                                              color: lighten(Manager.accentColor.lightest),
+                                            ),
                                           ),
                                         ),
                                       ),

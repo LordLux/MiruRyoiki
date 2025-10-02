@@ -172,7 +172,10 @@ class _ContinueEpisodeCardState extends State<ContinueEpisodeCard> {
             StatusBarManager().hide();
             setState(() => _isHovering = false);
           },
-          onHover: (_) => StatusBarManager().showDelayed("Episode ${widget.episode.episodeNumber ?? '?'} - ${widget.episode.displayTitle}"),
+          onHover: (_) {
+            // print('isDisplayTitleSimple: ${widget.episode.isDisplayTitleSimple}, isTitleParsable: ${widget.episode.isTitleParsable}, displayTitle: "${widget.episode.displayTitle}"');
+            StatusBarManager().showDelayed("Episode ${widget.episode.episodeNumber ?? '?'}${!widget.episode.isDisplayTitleSimple && widget.episode.isTitleParsable ? ' - ${widget.episode.displayTitle}' : ''}");
+          },
           cursor: SystemMouseCursors.click,
           child: ClipRRect(
             borderRadius: const BorderRadius.all(Radius.circular(8.02)),
@@ -234,7 +237,7 @@ class _ContinueEpisodeCardState extends State<ContinueEpisodeCard> {
                                   overflow: TextOverflow.ellipsis,
                                 ),
                                 // Show episode title only if it's not a generic "Episode X" title
-                                if (widget.episode.displayTitle.isNotEmpty && !RegExp(r'^(Episode|Ep|E) \d{1,3}$', caseSensitive: false).hasMatch(widget.episode.displayTitle)) ...[
+                                if (widget.episode.displayTitle.isNotEmpty && !widget.episode.isDisplayTitleSimple) ...[
                                   SizedBox(height: 4),
                                   Opacity(
                                     opacity: 0.8,

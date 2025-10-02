@@ -67,7 +67,7 @@ extension AnilistServiceSearch on AnilistService {
 
     try {
       final result = await RetryUtils.retry<List<AnilistAnime>>(
-        () async {
+        (bool isOffline) async {
           final queryResult = await _client!.query(
             QueryOptions(
               document: gql(searchQuery),
@@ -75,6 +75,7 @@ extension AnilistServiceSearch on AnilistService {
                 'search': query,
                 'limit': limit,
               },
+              fetchPolicy: isOffline ? FetchPolicy.cacheOnly : FetchPolicy.cacheFirst,
             ),
           );
 
@@ -88,6 +89,7 @@ extension AnilistServiceSearch on AnilistService {
         maxRetries: 3,
         retryIf: RetryUtils.shouldRetryAnilistError,
         operationName: 'searchAnime(query: $query)',
+        isOfflineAware: true,
       );
 
       return result ?? [];

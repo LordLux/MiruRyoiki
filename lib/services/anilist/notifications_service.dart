@@ -152,18 +152,19 @@ extension AnilistServiceNotifications on AnilistService {
 
     try {
       final result = await RetryUtils.retry<QueryResult>(
-        () async {
+        (bool isOffline) async {
           return await client.query(
             QueryOptions(
               document: gql(_notificationsQuery),
               variables: variables,
-              fetchPolicy: FetchPolicy.noCache,
+              fetchPolicy: isOffline ? FetchPolicy.cacheOnly : FetchPolicy.cacheFirst,
             ),
           );
         },
         maxRetries: 3,
         retryIf: RetryUtils.shouldRetryAnilistError,
         operationName: 'getNotifications(page: $page, perPage: $perPage)',
+        isOfflineAware: true,
       );
 
       if (result == null || result.hasException) throw Exception('Failed to fetch notifications: ${result?.exception}');

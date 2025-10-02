@@ -148,7 +148,7 @@ extension AnilistProviderAnimeCache on AnilistProvider {
       
       // If we have cached data, return it even if fetch failed
       if (hasCachedData) {
-        logTrace('API failed: returning cached upcoming episodes data');
+        logWarn('API failed: returning cached upcoming episodes data');
         return Map.fromEntries(
           animeIds.map((id) => MapEntry(id, _upcomingEpisodesCache[id]))
         );

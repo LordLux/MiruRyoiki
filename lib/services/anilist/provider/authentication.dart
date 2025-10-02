@@ -1,5 +1,3 @@
-// ignore_for_file: invalid_use_of_protected_member
-
 part of 'anilist_provider.dart';
 
 extension AnilistProviderAuthentication on AnilistProvider {
@@ -18,8 +16,13 @@ extension AnilistProviderAuthentication on AnilistProvider {
 
     final success = await _anilistService.handleAuthCallback(callbackUri);
 
-    if (success) //
-      await _loadUserData();
+    // User data will be loaded during initializeOnlineFeatures
+    // if (success) {
+    //   if (_connectivityService.isInitialized) 
+    //     await _loadUserData();
+    //   else 
+    //     logInfo('Connectivity service not initialized yet, deferring user data loading');
+    // }
 
     _isLoading = false;
     notifyListeners();

@@ -15,22 +15,31 @@ extension AnilistServiceMutations on AnilistService {
     ''';
 
     try {
-      final result = await _client!.mutate(
-        MutationOptions(
-          document: gql(mutation),
-          variables: {
-            'mediaId': mediaId,
-            'progress': progress,
-          },
-        ),
+      final result = await RetryUtils.retry<bool>(
+        () async {
+          final mutationResult = await _client!.mutate(
+            MutationOptions(
+              document: gql(mutation),
+              variables: {
+                'mediaId': mediaId,
+                'progress': progress,
+              },
+            ),
+          );
+
+          if (mutationResult.hasException) {
+            logErr('Error updating progress', mutationResult.exception);
+            return false;
+          }
+
+          return mutationResult.data?['SaveMediaListEntry'] != null;
+        },
+        maxRetries: 3,
+        retryIf: RetryUtils.shouldRetryAnilistError,
+        operationName: 'updateProgress(mediaId: $mediaId, progress: $progress)',
       );
 
-      if (result.hasException) {
-        logErr('Error updating progress', result.exception);
-        return false;
-      }
-
-      return result.data?['SaveMediaListEntry'] != null;
+      return result ?? false;
     } catch (e) {
       logErr('Error updating progress', e);
       return false;
@@ -51,22 +60,31 @@ extension AnilistServiceMutations on AnilistService {
     ''';
 
     try {
-      final result = await _client!.mutate(
-        MutationOptions(
-          document: gql(mutation),
-          variables: {
-            'mediaId': mediaId,
-            'status': status.name_,
-          },
-        ),
+      final result = await RetryUtils.retry<bool>(
+        () async {
+          final mutationResult = await _client!.mutate(
+            MutationOptions(
+              document: gql(mutation),
+              variables: {
+                'mediaId': mediaId,
+                'status': status.name_,
+              },
+            ),
+          );
+
+          if (mutationResult.hasException) {
+            logErr('Error updating status', mutationResult.exception);
+            return false;
+          }
+
+          return mutationResult.data?['SaveMediaListEntry'] != null;
+        },
+        maxRetries: 3,
+        retryIf: RetryUtils.shouldRetryAnilistError,
+        operationName: 'updateStatus(mediaId: $mediaId, status: $status)',
       );
 
-      if (result.hasException) {
-        logErr('Error updating status', result.exception);
-        return false;
-      }
-
-      return result.data?['SaveMediaListEntry'] != null;
+      return result ?? false;
     } catch (e) {
       logErr('Error updating status', e);
       return false;
@@ -87,22 +105,31 @@ extension AnilistServiceMutations on AnilistService {
     ''';
 
     try {
-      final result = await _client!.mutate(
-        MutationOptions(
-          document: gql(mutation),
-          variables: {
-            'mediaId': mediaId,
-            'score': score.toDouble(),
-          },
-        ),
+      final result = await RetryUtils.retry<bool>(
+        () async {
+          final mutationResult = await _client!.mutate(
+            MutationOptions(
+              document: gql(mutation),
+              variables: {
+                'mediaId': mediaId,
+                'score': score.toDouble(),
+              },
+            ),
+          );
+
+          if (mutationResult.hasException) {
+            logErr('Error updating score', mutationResult.exception);
+            return false;
+          }
+
+          return mutationResult.data?['SaveMediaListEntry'] != null;
+        },
+        maxRetries: 3,
+        retryIf: RetryUtils.shouldRetryAnilistError,
+        operationName: 'updateScore(mediaId: $mediaId, score: $score)',
       );
 
-      if (result.hasException) {
-        logErr('Error updating score', result.exception);
-        return false;
-      }
-
-      return result.data?['SaveMediaListEntry'] != null;
+      return result ?? false;
     } catch (e) {
       logErr('Error updating score', e);
       return false;

@@ -22,6 +22,9 @@ class ConnectivityService extends ChangeNotifier {
   bool get isOnline => _isOnline;
   bool get isOffline => !_isOnline;
 
+  /// Check if the connectivity service has been initialized
+  bool get isInitialized => _lastConnectivityCheck != null;
+
   /// ValueNotifier for real-time UI updates
   final ValueNotifier<bool> isOnlineNotifier = ValueNotifier<bool>(true);
   bool isCheckingConnectivity = false;
@@ -53,12 +56,11 @@ class ConnectivityService extends ChangeNotifier {
 
   /// Handle connectivity changes from connectivity_plus
   Future<void> _onConnectivityChanged(List<ConnectivityResult> results) async {
-    logTrace('Connectivity changed: $results');
+    // logTrace('Connectivity changed: $results');
 
     // If any connection is available, check actual internet connectivity
     if (_hasActiveConnection(results)) {
       // Don't spam internet checks - wait at least 5 seconds between checks
-      final now = DateTime.now();
       if (_lastConnectivityCheck != null && now.difference(_lastConnectivityCheck!) < _connectivityCheckInterval) {
         logTrace('Skipping internet check - too recent');
         return;
@@ -116,7 +118,7 @@ class ConnectivityService extends ChangeNotifier {
           }
         } catch (e) {
           lastError = e.toString();
-          logTrace('Failed to connect to $host: $e');
+          logTrace('Connectivity Check: Failed to connect to $host: $e');
           continue;
         }
       }
