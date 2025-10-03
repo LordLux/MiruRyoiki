@@ -49,7 +49,21 @@ class _HoverableEpisodeTileState extends State<HoverableEpisodeTile> {
           StatusBarManager().hide();
           setState(() => _isHovering = false);
         },
-        onHover: (_) => StatusBarManager().showDelayed('${widget.episode.episodeNumber} - ${widget.episode.displayTitle ?? widget.episode.path.name!}'),// show original file name
+        onHover: (_) {
+          final number = widget.episode.episodeNumber;
+          final title = widget.episode.displayTitle;
+          final String text;
+          if (title != null && number != null && !widget.episode.isDisplayTitleSimple) {
+            text = "$number - $title";
+          } else if (title == null && number != null) {
+            text = "Episode $number";
+          } else if (widget.episode.isDisplayTitleSimple) {
+            text = title!;
+          } else {
+            text = widget.episode.name; // show original file name
+          }
+          StatusBarManager().showDelayed(text);
+        },
         cursor: SystemMouseCursors.click,
         child: AnimatedContainer(
           duration: getDuration(const Duration(milliseconds: 150)),
@@ -111,14 +125,14 @@ class _HoverableEpisodeTileState extends State<HoverableEpisodeTile> {
                                 final String text;
 
                                 // Show episode title only if it's not a generic "Episode X" title
-                                if (title == null) {
-                                  text = "Episode ${number ?? '?'}";
-                                } else if (widget.episode.isDisplayTitleSimple) {
-                                  text = title;
-                                } else if (widget.episode.isTitleParsable) {
+                                if (title != null && number != null && !widget.episode.isDisplayTitleSimple) {
                                   text = "$number - $title";
+                                } else if (title == null && number != null) {
+                                  text = "Episode $number";
+                                } else if (widget.episode.isTitleParsable) {
+                                  text = title!;
                                 } else {
-                                  text = title;
+                                  text = "Episode ?";
                                 }
                                 return Text(
                                   text,

@@ -161,7 +161,7 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
       final maxScrollExtent = widget.scrollController.position.maxScrollExtent;
       final clampedPosition = (maxScrollExtent - targetOffset + availableSpace).clamp(0.0, maxScrollExtent);
 
-      if (targetOffset <= availableSpace) {
+      if (targetOffset <= availableSpace || scheduledEpisodeCount == 0) {
         widget.scrollController.jumpTo(maxScrollExtent);
         return; // if the target offset fits in available space, no need to scroll up, as the content will be in the lower part of the screen
       }
