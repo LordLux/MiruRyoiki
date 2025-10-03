@@ -3,7 +3,7 @@ import 'dart:ui';
 
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/material.dart' show InkWell, Material;
-import 'package:miruryoiki/services/navigation/statusbar.dart'; 
+import 'package:miruryoiki/services/navigation/statusbar.dart';
 
 import '../manager.dart';
 import '../models/episode.dart';
@@ -49,7 +49,7 @@ class _HoverableEpisodeTileState extends State<HoverableEpisodeTile> {
           StatusBarManager().hide();
           setState(() => _isHovering = false);
         },
-        onHover: (_) => StatusBarManager().showDelayed(widget.episode.displayTitle),
+        onHover: (_) => StatusBarManager().showDelayed('${widget.episode.episodeNumber} - ${widget.episode.displayTitle ?? widget.episode.path.name!}'),// show original file name
         cursor: SystemMouseCursors.click,
         child: AnimatedContainer(
           duration: getDuration(const Duration(milliseconds: 150)),
@@ -108,10 +108,20 @@ class _HoverableEpisodeTileState extends State<HoverableEpisodeTile> {
                               child: Builder(builder: (context) {
                                 final number = widget.episode.episodeNumber;
                                 final title = widget.episode.displayTitle;
+                                final String text;
+
                                 // Show episode title only if it's not a generic "Episode X" title
-                                final showNumber = number != null && !RegExp(r'^(Episode|Ep|E) \d{1,3}$', caseSensitive: false).hasMatch(title);
+                                if (title == null) {
+                                  text = "Episode ${number ?? '?'}";
+                                } else if (widget.episode.isDisplayTitleSimple) {
+                                  text = title;
+                                } else if (widget.episode.isTitleParsable) {
+                                  text = "$number - $title";
+                                } else {
+                                  text = title;
+                                }
                                 return Text(
-                                  '${title.isEmpty ? "Episode " : ""}${showNumber ? "$number" : ""}${title.isNotEmpty ? (showNumber ? ' - ' : '') + title : ''}',
+                                  text,
                                   style: const TextStyle(
                                     color: Colors.white,
                                     fontWeight: FontWeight.w600,

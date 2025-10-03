@@ -1275,10 +1275,10 @@ class LibraryScreenState extends State<LibraryScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(
+            Icon(
               FluentIcons.folder_open,
               size: 48,
-              color: Colors.grey,
+              color: Manager.accentColor,
             ),
             VDiv(16),
             Text(_currentView == LibraryView.linked ? 'No linked series found. Link your series with Anilist first.' : 'No series found in your library'),

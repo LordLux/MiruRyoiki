@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter_anitomy/flutter_anitomy.dart';
 
 import '../services/isolates/thumbnail_manager.dart';
 import '../utils/path.dart';
@@ -16,8 +17,8 @@ class Episode {
   bool thumbnailUnavailable;
   Metadata? metadata;
   MkvMetadata? mkvMetadata;
-  String? anilistTitle;
-  bool? _parsableTitle;
+  String? _anilistTitle;
+  late final ParsedAnime _parsedAnime;
 
   Episode({
     this.id,
@@ -30,9 +31,36 @@ class Episode {
     this.thumbnailUnavailable = false,
     this.metadata,
     this.mkvMetadata,
-    this.anilistTitle,
+    String? anilistTitle,
   })  : _episodeNumber = episodeNumber,
-        _progress = progress;
+        _progress = progress {
+    _parsedAnime = FlutterAnitomy().parse(path.name!);
+    if (path.path.toLowerCase().contains("girls last")) {
+      print('girls last tour: "$displayTitle"');
+    }
+    _episodeNumber ??= int.tryParse(_parsedAnime.episode ?? '');
+    this.anilistTitle = anilistTitle;
+  }
+
+  String? get anilistTitle => _trimEpNumber(_anilistTitle);
+  set anilistTitle(String? value) => _anilistTitle = _trimEpNumber(value);
+  String? _trimEpNumber(String? title) {
+    if (title == null) return null;
+    final trimmed = title.trim();
+    final prefixReg = RegExp(r'^(?:Episode|Ep|E)\s*\d{1,3}', caseSensitive: false);
+    final prefixMatch = prefixReg.firstMatch(trimmed);
+    if (prefixMatch == null) return trimmed;
+
+    final remainder = trimmed.substring(prefixMatch.end).trim();
+    if (remainder.isEmpty) {
+      // No separator/title after the episode number -> keep the episode string
+      return prefixMatch.group(0)!.trim();
+    }
+
+    // If there's a separator and a non-empty title, remove the "Episode N - " prefix and return the title.
+    final sepStripped = remainder.replaceFirst(RegExp(r'^[-–:]\s*'), '').trim();
+    return sepStripped.isEmpty ? prefixMatch.group(0)!.trim() : sepStripped;
+  }
 
   /// Returns progress as a value between 0.0 and 1.0
   double get progress => double.parse(_progress.toStringAsFixed(2));
@@ -45,97 +73,11 @@ class Episode {
   String get progressPercentage => '${(progress * 100).toStringAsFixed(0)}%';
 
   /// Returns the episode number, either from metadata or parsed from the name
-  int? get episodeNumber => _episodeNumber ?? parseEpisodeNumberFromName();
+  int? get episodeNumber => _episodeNumber ?? int.tryParse(_parsedAnime.episode ?? '');
+  set episodeNumber(int? value) => _episodeNumber = value;
 
   /// Returns the display title, prioritizing AniList title over filename
-  String get displayTitle {
-    if (anilistTitle != null && anilistTitle!.isNotEmpty) {
-      // Parse episode name from AniList format "Episode DD - EpisodeName"
-      final match = RegExp(r'^(Episode|E|Ep)\s+\d+\s*-\s*(.+)$', caseSensitive: false).firstMatch(anilistTitle!);
-      if (match != null && match.group(2) != null) return match.group(2)!.trim();
-
-      return anilistTitle!;
-    }
-
-    // Fallback to parsing title from filename
-    return parseEpisodeTitleFromName() ?? name;
-  }
-
-  /// Parse episode title from filename if possible
-  static final List<RegExp> _episodePatterns = [
-    // Pattern 1: "1 - Title" or "01 - Title" (number at start followed by dash)
-    RegExp(r'^(\d{1,3})\s*-'),
-
-    // Pattern 2: "S01E01" or "S1E1" format anywhere in name
-    RegExp(r'S\d{1,2}E(\d{1,3})', caseSensitive: false),
-
-    // Pattern 3: "Episode 1" or "Ep 1" format
-    RegExp(r'(?:episode|ep)\s*(\d{1,3})', caseSensitive: false),
-
-    // Pattern 4: "[01]" or "(01)" - number in brackets at start or after space
-    RegExp(r'(?:^|\s)[\[\(](\d{1,3})[\]\)]'),
-
-    // Pattern 5: " 01 " - standalone number with spaces (but not years like 2024)
-    RegExp(r'\s(\d{1,2})\s'),
-
-    // Pattern 6: "_01_" or ".01." - number surrounded by separators (prefer 1-2 digits)
-    RegExp(r'[_\.](\d{1,2})[_\.]'),
-
-    // Pattern 7: Start of filename with number (common in downloads)
-    RegExp(r'^(\d{1,3})(?:\s|_|\.|$)'),
-
-    // Pattern 8: first 1-2 digit number in the name (avoid years and resolutions like 1080p)
-    RegExp(r'(\d{1,2})(?!\d)'),
-  ];
-
-  /// Parse episode title from filename if possible
-  String? parseEpisodeTitleFromName() {
-    if (name.isEmpty) return null;
-
-    // Try multiple patterns to remove episode numbers, in order of preference
-
-    for (int i = 0; i < _episodePatterns.length; i++) {
-      final pattern = _episodePatterns[i];
-      final match = pattern.firstMatch(name);
-      if (match != null) {
-        final episodeStr = match.group(1);
-        if (episodeStr != null) {
-          final episodeNum = int.tryParse(episodeStr);
-          // Validate reasonable episode numbers (1-999, but prefer 1-99 for most patterns)
-          if (episodeNum != null && episodeNum > 0 && episodeNum <= 999) {
-            _episodeNumber = episodeNum;
-            _parsableTitle = true;
-            return name.replaceFirst(match.group(0)!, '').trim();
-          }
-        }
-      }
-    }
-    _parsableTitle = false;
-
-    return null;
-  }
-
-  int? parseEpisodeNumberFromName() {
-    if (name.isEmpty) return null;
-
-    // Try multiple patterns to extract episode numbers, in order of preference
-    for (int i = 0; i < _episodePatterns.length; i++) {
-      final pattern = _episodePatterns[i];
-      final match = pattern.firstMatch(name);
-      if (match != null) {
-        final episodeStr = match.group(1);
-        if (episodeStr != null) {
-          final episodeNum = int.tryParse(episodeStr);
-          // Validate reasonable episode numbers (1-999, but prefer 1-99 for most patterns)
-          if (episodeNum != null && episodeNum > 0 && episodeNum <= 999) {
-            return episodeNum;
-          }
-        }
-      }
-    }
-
-    return null;
-  }
+  String? get displayTitle => anilistTitle ?? _parsedAnime.episodeTitle;
 
   @override
   String toString() {
@@ -175,7 +117,7 @@ class Episode {
       'thumbnailUnavailable': thumbnailUnavailable,
       'metadata': metadata?.toJson(),
       'mkvMetadata': mkvMetadata?.toJson(),
-      'anilistTitle': anilistTitle,
+      'anilistTitle': anilistTitle, // nullable
     };
   }
 
@@ -259,8 +201,8 @@ class Episode {
   }
 
   /// Whether the display title is in a simple format (e.g., "Episode 1")
-  bool get isDisplayTitleSimple => RegExp(r'^(Episode|Ep|E) \d{1,3}$', caseSensitive: false).hasMatch(displayTitle);
-  
+  bool get isDisplayTitleSimple => RegExp(r'^(Episode|Ep|E) \d{1,3}$', caseSensitive: false).hasMatch(displayTitle ?? '');
+
   /// Whether the title was successfully parsed from the filename
-  bool get isTitleParsable => _parsableTitle ?? parseEpisodeTitleFromName() != null;
+  bool get isTitleParsable => _parsedAnime.episodeTitle != null;
 }

@@ -345,7 +345,7 @@ class _HomeScreenState extends State<HomeScreen> {
       itemBuilder: (context, index) {
         final episode = releasedEpisodes[index];
         return ListTile(
-          title: Text(episode.displayTitle),
+          title: Text(episode.displayTitle ?? 'Episode ${episode.episodeNumber}'),
           subtitle: Text('Released on: '),
           trailing: IconButton(
             icon: Icon(FluentIcons.add),

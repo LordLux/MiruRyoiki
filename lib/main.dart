@@ -1184,6 +1184,7 @@ Future<void> _registerWindowsUrlScheme(String scheme) async {
 // TODO view settings to choose what to show on homepage
 // TODO cache anime info
 // TODO cache Anilist lists to be able to work offline
+// TODO when view is linkedOnly, hideFromUserList series automatically get added to Watching, add category for them
 // TODO make it so custom lists display their items instead of being empty (add toggle to show/hide custom lists in library)
 
 // TODO add ctrl + tab navigation

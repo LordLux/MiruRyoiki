@@ -109,7 +109,7 @@ class UIEpisode {
       return anilistTitle!;
     }
 
-    if (localEpisode != null) return localEpisode!.displayTitle;
+    if (localEpisode != null && localEpisode!.displayTitle != null) return localEpisode!.displayTitle!;
 
     return 'Episode $episodeNumber';
   }

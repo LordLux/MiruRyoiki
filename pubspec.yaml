@@ -87,6 +87,8 @@ dependencies:
   process_monitor:
     path: M:/Projects/process_monitor/
   glossy: ^0.0.5
+  flutter_anitomy:
+    path: M:/Projects/flutter_anitomy/
 
 dev_dependencies:
   flutter_test:
