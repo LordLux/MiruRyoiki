@@ -177,7 +177,10 @@ extension LibrarySeriesManagement on Library {
     if (seriesPath == null) return;
 
     final series = getSeriesByPath(seriesPath);
-    if (series == null) return;
+    if (series == null) {
+      logErr('Series not found for path: ${seriesPath.path}');
+      return;
+    }
 
     // Clear the thumbnail cache for this series
     await ThumbnailManager().clearThumbnailCacheForSeries(seriesPath.path);

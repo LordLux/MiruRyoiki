@@ -105,6 +105,8 @@ class Manager {
 
   static DominantColorSource get dominantColorSource => settings.dominantColorSource;
 
+  static bool get enableAnilistEpisodeTitles => settings.enableAnilistEpisodeTitles;
+
   static double get fontSizeMultiplier => ScreenUtils.textScaleFactor * ((rootNavigatorKey.currentContext != null ? appTheme.fontSize : kDefaultFontSize) / kDefaultFontSize);
 
   /// Checks if the current platform is MacOS

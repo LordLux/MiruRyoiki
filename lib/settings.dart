@@ -94,6 +94,10 @@ class SettingsManager extends ChangeNotifier {
   bool get enableMediaPlayerIntegration => _getBool('enableMediaPlayerIntegration', defaultValue: true);
   set enableMediaPlayerIntegration(bool value) => _setBool('enableMediaPlayerIntegration', value);
 
+  // AniList Episode Titles
+  bool get enableAnilistEpisodeTitles => _getBool('enableAnilistEpisodeTitles', defaultValue: false);
+  set enableAnilistEpisodeTitles(bool value) => _setBool('enableAnilistEpisodeTitles', value);
+
   // // Generic getters with type safety
   bool _getBool(String key, {required bool defaultValue}) {
     if (!_settings.containsKey(key)) {

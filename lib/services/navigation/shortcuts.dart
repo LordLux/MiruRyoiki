@@ -141,15 +141,16 @@ class _CustomKeyboardListenerState extends State<CustomKeyboardListener> {
       // Toggle hidden series
       if (isCtrlPressed && event.logicalKey == LogicalKeyboardKey.keyH) {
         final library = Provider.of<Library>(context, listen: false);
-        if (library.initialized && !library.isIndexing && libraryScreenKey.currentState?.mounted == true && homeKey.currentState?.isSeriesView == false) {
+        if (library.initialized && !library.isIndexing && homeKey.currentState?.isSeriesView == false) {
           Manager.settings.showHiddenSeries = !Manager.settings.showHiddenSeries;
           snackBar(
             Manager.settings.showHiddenSeries ? 'Hidden series are now visible' : 'Hidden series are now hidden',
             severity: InfoBarSeverity.info,
           );
-          libraryScreenKey.currentState!.setState(() {
-            libraryScreenKey.currentState!.invalidateSortCache();
-          });
+
+          // If in library view, invalidate sort cache to refresh the list
+          libraryScreenKey.currentState?.setState(() => libraryScreenKey.currentState?.invalidateSortCache());
+          releaseCalendarScreenKey.currentState?.setState(() {});
         }
       } else
       //
@@ -176,57 +177,77 @@ class _CustomKeyboardListenerState extends State<CustomKeyboardListener> {
           if (homeState != null && homeState.mounted) {
             if (homeState.isSeriesView) {
               final seriesScreenState = getActiveSeriesScreenState();
-              snackBar('Clearing Series thumbnail cache...', severity: InfoBarSeverity.info);
+              snackBar('Clearing Series cache...', severity: InfoBarSeverity.info);
 
-              // Clear thumbnails for the current series if possible
+              // Clear thumbnails for the CURRENT SERIES if possible
               if (seriesScreenState != null && seriesScreenState.widget.seriesPath?.pathMaybe != null) {
-                // Clear thumbnails for this specific series (don't await, do it in background)
-                library.clearThumbnailCacheForSeries(seriesScreenState.widget.seriesPath).then((_) {
-                  logTrace('Cleared thumbnail cache for series: ${seriesScreenState.widget.seriesPath?.path}');
+                seriesScreenState.setState(() => seriesScreenState.isReloadingSeries = true);
 
-                  // Also clear Flutter's image cache
+                // Clear thumbnails and AniList caches for this specific series (don't await, do it in background)
+                Future.wait([
+                  library.clearThumbnailCacheForSeries(seriesScreenState.widget.seriesPath),
+                  library.clearSingleAnilistCache(seriesScreenState.widget.seriesPath),
+                ]).then((_) {
+                  logTrace('Cleared cache for series: ${seriesScreenState.widget.seriesPath?.name}');
                   imageCache.clear();
                   imageCache.clearLiveImages();
                 }).catchError((error) {
-                  logErr('Error clearing thumbnail cache for series: ${seriesScreenState.widget.seriesPath?.path}', error);
+                  logErr('Error clearing cache for series: ${seriesScreenState.widget.seriesPath?.name}', error);
                 });
 
-                library.reloadLibrary(force: true, showSnackBar: false).then((_) => snackBar('Cleared Series thumbnail cache and Reloaded!', severity: InfoBarSeverity.success));
+                library.reloadLibrary(force: true, showSnackBar: false).then((_) {
+                  // Refetch AniList data after reload completes
+                  library.clearSingleAnilistCache(seriesScreenState.widget.seriesPath!).then((_) {
+                    snackBar('Cleared caches and reloaded data!', severity: InfoBarSeverity.success);
+                    seriesScreenState.setState(() => seriesScreenState.isReloadingSeries = false);
+                  }).catchError((error, stacktrace) {
+                    snackBar('Error refetching AniList data after reload', severity: InfoBarSeverity.error, exception: error, stackTrace: stacktrace);
+                  });
+                });
               }
             } else {
-              void clearAllThumbnailCache() {
-                snackBar('Clearing ALL thumbnail cache...', severity: InfoBarSeverity.info);
+              // Not in series view, clear ALL thumbnails after confirmation
+              void clearAllCaches() {
+                snackBar('Clearing cache for All Series...', severity: InfoBarSeverity.info);
 
-                library.clearAllThumbnailCache().then((_) {
-                  logTrace('Cleared all thumbnail cache');
-
-                  // Also clear Flutter's image cache
+                Future.wait([
+                  library.clearAllThumbnailCache(),
+                  library.clearAnilistCaches(),
+                ]).then((_) {
+                  logTrace('Cleared all thumbnail cache and AniList cache');
                   imageCache.clear();
                   imageCache.clearLiveImages();
                 }).catchError((error) {
-                  logErr('Error clearing all thumbnail cache', error);
+                  logErr('Error clearing all thumbnail cache and AniList cache', error);
                 });
 
-                library.reloadLibrary(force: true, showSnackBar: false).then((_) => snackBar('Cleared thumbnail cache and Reloaded!', severity: InfoBarSeverity.success));
+                library.reloadLibrary(force: true, showSnackBar: false).then((_) {
+                  // Refetch AniList data after reload completes
+                  library.clearAnilistCaches(refetchAfterClear: true).then((_) {
+                    snackBar('Cleared caches, reloaded, and refetched AniList data!', severity: InfoBarSeverity.success);
+                  }).catchError((error, stacktrace) {
+                    snackBar('Error refetching AniList data after reload', severity: InfoBarSeverity.error, exception: error, stackTrace: stacktrace);
+                  });
+                });
               }
 
               if (Manager.settings.confirmClearAllThumbnails)
-                clearAllThumbnailCache();
+                clearAllCaches();
               else
                 // Confirm before clearing all thumbnails if the setting is not enabled
                 await showSimpleTickboxManagedDialog<bool>(
                   context: context,
                   id: 'confirm_clear_all_thumbnails',
-                  title: 'Clear All Thumbnails?',
-                  body: 'Are you sure you want to clear ALL thumbnail caches?\nThis will clear the cached thumbnails for all Series in your Library and they will be fetched again when you open a Series.',
+                  title: 'Clear All Caches?',
+                  body: 'Are you sure you want to clear ALL caches?\nThis will clear thumbnails and AniList data for all Series in your Library and they will be refetched when needed.',
                   isPositiveButtonPrimary: true,
                   hideTitle: false,
-                  positiveButtonText: 'Clear All Thumbnails',
+                  positiveButtonText: 'Clear All Caches',
                   negativeButtonText: 'Cancel',
                   tickboxLabel: 'Do not show this again',
                   onPositive: (bool tickbox) {
                     setState(() => Manager.settings.confirmClearAllThumbnails = tickbox);
-                    clearAllThumbnailCache();
+                    clearAllCaches();
                   },
                 );
             }

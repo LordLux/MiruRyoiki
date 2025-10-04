@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter_anitomy/flutter_anitomy.dart';
 
+import '../manager.dart';
 import '../services/isolates/thumbnail_manager.dart';
 import '../utils/path.dart';
 import 'metadata.dart';
@@ -35,9 +36,6 @@ class Episode {
   })  : _episodeNumber = episodeNumber,
         _progress = progress {
     _parsedAnime = FlutterAnitomy().parse(path.name!);
-    if (path.path.toLowerCase().contains("girls last")) {
-      print('girls last tour: "$displayTitle"');
-    }
     _episodeNumber ??= int.tryParse(_parsedAnime.episode ?? '');
     this.anilistTitle = anilistTitle;
   }
@@ -77,7 +75,7 @@ class Episode {
   set episodeNumber(int? value) => _episodeNumber = value;
 
   /// Returns the display title, prioritizing AniList title over filename
-  String? get displayTitle => anilistTitle ?? _parsedAnime.episodeTitle;
+  String? get displayTitle => (Manager.enableAnilistEpisodeTitles ? anilistTitle : null) ?? _parsedAnime.episodeTitle;
 
   @override
   String toString() {

@@ -358,6 +358,12 @@ extension LibraryMediaPlayerIntegration on Library {
 
     // Check and save every 60 seconds if player status has changed
     _forcedSaveTimer = Timer.periodic(const Duration(seconds: 60), (timer) async {
+      if (_playerManager?.isConnected != true) {
+        logTrace('Player disconnected - stopping forced save timer');
+        _stopForcedSaveTimer();
+        return;
+      }
+
       final currentStatus = _playerManager?.lastStatus;
 
       // Only save if we have a valid status and it has changed

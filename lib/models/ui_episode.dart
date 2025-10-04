@@ -1,4 +1,5 @@
 import 'package:fluent_ui/fluent_ui.dart';
+import '../manager.dart';
 import 'episode.dart';
 
 /// Represents the different states an episode can have
@@ -101,7 +102,7 @@ class UIEpisode {
 
   /// Display title for the episode
   String get displayTitle {
-    if (anilistTitle != null && anilistTitle!.isNotEmpty) {
+    if (Manager.enableAnilistEpisodeTitles && anilistTitle != null && anilistTitle!.isNotEmpty) {
       // Parse episode name from AniList format "Episode DD - EpisodeName"
       final match = RegExp(r'^Episode\s+\d+\s*-\s*(.+)$').firstMatch(anilistTitle!);
       if (match != null && match.group(1) != null) return match.group(1)!.trim();

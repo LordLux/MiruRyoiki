@@ -1168,7 +1168,6 @@ Future<void> _registerWindowsUrlScheme(String scheme) async {
   }
 }
 
-// TODO scroll down even if no scheduled releases in the future
 // TODO after linking anilist, fetch episode titles for neolinked series
 // TODO add 'notify me' button to upcoming episodes on home screen
 // TODO make 'log out' from anilist not change your current pane

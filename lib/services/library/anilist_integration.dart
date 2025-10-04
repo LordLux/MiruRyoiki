@@ -89,72 +89,61 @@ extension LibraryAnilistIntegration on Library {
       onProgress?.call(alreadyCached.length, alreadyCached.length + needPosters.length);
     }
 
-    if (needPosters.isEmpty) return;
-
-    logDebug('\n5 | FETCHING Anilist posters for ${needPosters.length} series', splitLines: true);
+    logDebug('\n5 | FETCHING Anilist posters (anilist data) for ${needPosters.length} series', splitLines: true);
 
     // Fetch posters in batches
     int loaded = alreadyCached.length;
     final total = alreadyCached.length + needPosters.length;
 
-    // Fetch posters in batches to avoid overwhelming the API
-    for (int i = 0; i < needPosters.length; i += 5) {
-      final batch = needPosters.sublist(i, i + 5 > needPosters.length ? needPosters.length : i + 5);
+    // Collect all AniList IDs that need fetching
+    final allSeriesToFetch = [...alreadyCached, ...needPosters];
+    final anilistIds = allSeriesToFetch.map((series) => series.primaryAnilistId ?? series.anilistMappings.first.anilistId).toList();
 
-      await Future.wait(batch.map((series) async {
-        final int anilistId = series.primaryAnilistId ?? series.anilistMappings.first.anilistId;
-        final AnilistAnime? anime = await linkService.fetchAnimeDetails(anilistId);
+    // Fetch all anime details in one call
+    final animeMap = await linkService.fetchMultipleAnimeDetails(anilistIds);
+    logTrace('5 | Fetched details for ${animeMap.length} out of ${anilistIds.length} requested AniList IDs');
+    log(animeMap);
 
-        if (anime != null) {
-          // Pre-cache the image if URL exists
-          if (anime.posterImage != null) {
-            // Poster
-            imageCache.cacheImage(anime.posterImage!);
+    // Process each series with the fetched data
+    for (final series in allSeriesToFetch) {
+      final int anilistId = series.primaryAnilistId ?? series.anilistMappings.first.anilistId;
+      final AnilistAnime? anime = animeMap[anilistId];
 
-            // also Banner
-            if (anime.bannerImage != null) //
-              imageCache.cacheImage(anime.bannerImage!);
-          }
+      if (anime != null) {
+        // Pre-cache the image if URL exists
+        if (anime.posterImage != null) {
+          // Poster
+          imageCache.cacheImage(anime.posterImage!);
 
-          // Find the mapping with this ID
-          for (var j = 0; j < series.anilistMappings.length; j++) {
-            if (series.anilistMappings[j].anilistId == anilistId) {
-              series.anilistMappings[j] = AnilistMapping(
-                localPath: series.anilistMappings[j].localPath,
-                anilistId: anilistId,
-                title: series.anilistMappings[j].title,
-                lastSynced: now,
-                anilistData: anime,
-              );
-            }
-          }
-
-          // Update the series' Anilist data if this is the primary ID
-          if (series.primaryAnilistId == anilistId || series.primaryAnilistId == null) {
-            series.anilistData = anime;
-            
-            // Fetch episode titles now that AniList data is available
-            try {
-              await EpisodeTitleService.instance.fetchAndUpdateEpisodeTitles(series);
-            } catch (e) {
-              logWarn('Failed to fetch episode titles for ${series.name}: $e');
-            }
-          }
-        } else {
-          // Failed to fetch anime details - preserve existing data
-          logWarn('Failed to fetch AniList details for ${series.name} (ID: $anilistId) - preserving existing data');
+          // also Banner
+          if (anime.bannerImage != null) //
+            imageCache.cacheImage(anime.bannerImage!);
         }
-        loaded++;
-      }));
 
-      // Notify after each batch so UI updates incrementally
-      notifyListeners();
-      onProgress?.call(loaded, total);
+        // Find the mapping with this ID
+        for (var j = 0; j < series.anilistMappings.length; j++) {
+          if (series.anilistMappings[j].anilistId == anilistId) {
+            series.anilistMappings[j] = AnilistMapping(
+              localPath: series.anilistMappings[j].localPath,
+              anilistId: anilistId,
+              title: series.anilistMappings[j].title,
+              lastSynced: now,
+              anilistData: anime,
+            );
+          }
+        }
 
-      // Add a small delay between batches to be nice to the API
-      if (i + 5 < needPosters.length) {
-        await Future.delayed(const Duration(milliseconds: 500));
+        // Update the series' Anilist data if this is the primary ID
+        if (series.primaryAnilistId == anilistId || series.primaryAnilistId == null) {
+          series.anilistData = anime;
+        }
+      } else {
+        // Failed to fetch anime details - preserve existing data
+        logWarn('Failed to fetch AniList details for ${series.name} (ID: $anilistId) - preserving existing data');
       }
+
+      loaded++;
+      onProgress?.call(loaded, total);
     }
 
     notifyListeners();
@@ -346,6 +335,104 @@ extension LibraryAnilistIntegration on Library {
     } finally {
       saveLockHandle?.dispose();
     }
+  }
+
+  /// Clear all AniList caches and optionally refetch data
+  Future<void> clearAnilistCaches({bool refetchAfterClear = false}) async {
+    logDebug('Clearing all AniList caches...');
+
+    // Clear episode title cache
+    EpisodeTitleService.instance.clearCache();
+
+    // Clear AniList provider caches if available
+    if (rootNavigatorKey.currentContext != null) {
+      final anilistProvider = Provider.of<AnilistProvider>(rootNavigatorKey.currentContext!, listen: false);
+      anilistProvider.clearAllAnilistCaches();
+    }
+
+    if (refetchAfterClear) await _refetchAnilistData();
+
+    logInfo('AniList caches cleared successfully');
+  }
+
+  /// Clear AniList caches for a single series only
+  Future<Series?> clearSingleAnilistCache(PathString? seriesPath) async {
+    if (seriesPath == null) return null;
+    // Find the series by path
+    final series = getSeriesByPath(seriesPath);
+    if (series == null) {
+      logWarn('Cannot clear AniList cache: Series not found at path: ${seriesPath.path}');
+      return null;
+    }
+
+    if (!series.isLinked || series.anilistMappings.isEmpty) {
+      logTrace('Series ${series.name} is not linked to AniList, nothing to clear');
+      return null;
+    }
+
+    logTrace('Clearing AniList caches for series: ${series.name}');
+
+    // Clear episode title cache for this series
+    EpisodeTitleService.instance.clearCacheForSeries(series);
+
+    // Clear AniList provider caches for this series' AniList IDs if available
+    if (rootNavigatorKey.currentContext != null) {
+      final anilistIds = series.anilistMappings.map((mapping) => mapping.anilistId).toList();
+      final anilistProvider = Provider.of<AnilistProvider>(rootNavigatorKey.currentContext!, listen: false);
+      anilistProvider.clearAnimeDetailsCache(anilistIds);
+    }
+
+    logTrace('AniList caches cleared for series: ${series.name}');
+    return series;
+  }
+
+  /// Clear AniList caches for a single series and optionally refetch data
+  Future<void> clearSingleAnilistCacheAndRefetch(PathString seriesPath) async {
+    // Clear the cache first
+    final series = await clearSingleAnilistCache(seriesPath);
+    if (series == null) return;
+
+    // Refetch episode titles for this series only
+    try {
+      final updated = await EpisodeTitleService.instance.fetchAndUpdateEpisodeTitles(series);
+      if (updated) logDebug('Successfully refetched episode titles for series: ${series.name}');
+    } catch (e) {
+      logErr('Failed to refetch episode titles for series: ${series.name}', e);
+    }
+  }
+
+  /// Refetch AniList data for linked series after cache clearing
+  Future<void> _refetchAnilistData() async {
+    logDebug('Refetching AniList data for linked series...');
+
+    // Get linked series
+    final linkedSeries = _series.where((series) => series.isLinked).toList();
+
+    if (linkedSeries.isEmpty) {
+      logTrace('No linked series found, skipping AniList data refetch');
+      return;
+    }
+
+    // Fetch episode titles for linked series
+    try {
+      final results = await EpisodeTitleService.instance.fetchAndUpdateEpisodeTitlesBatch(linkedSeries);
+      final updatedCount = results.values.where((updated) => updated).length;
+      logDebug('Batch episode title refetch completed: $updatedCount out of ${linkedSeries.length} series updated');
+    } catch (e) {
+      logErr('Failed to batch refetch episode titles: $e');
+    }
+
+    // Refresh user lists in background if provider is available
+    if (rootNavigatorKey.currentContext != null) {
+      final anilistProvider = Provider.of<AnilistProvider>(rootNavigatorKey.currentContext!, listen: false);
+      if (anilistProvider.isLoggedIn) {
+        anilistProvider.refreshUserLists().catchError((e) {
+          logWarn('Failed to refresh user lists after cache clear: $e');
+        });
+      }
+    }
+
+    logInfo('AniList data refetch completed');
   }
 
   /// Get Anilist series suggestion

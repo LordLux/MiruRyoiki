@@ -1,6 +1,7 @@
 import 'package:miruryoiki/utils/time.dart';
 import 'package:provider/provider.dart';
 
+import '../../manager.dart';
 import '../../models/anilist/mapping.dart';
 import '../../models/episode.dart';
 import '../../models/series.dart';
@@ -28,6 +29,12 @@ class EpisodeTitleService {
   /// Fetch episode titles for a series and update local episodes
   /// Returns the updated series with episode titles applied and saved to database
   Future<bool> fetchAndUpdateEpisodeTitles(Series series) async {
+    // Check if AniList episode titles are enabled
+    if (!Manager.enableAnilistEpisodeTitles) {
+      logTrace('AniList episode titles are disabled, skipping fetch for series: ${series.name}');
+      return false;
+    }
+
     if (!series.isLinked || series.anilistMappings.isEmpty) {
       logTrace('Series ${series.name} is not linked to AniList, skipping episode title fetch');
       return false;
@@ -74,6 +81,100 @@ class EpisodeTitleService {
     }
 
     return anyUpdated;
+  }
+
+  /// Fetch episode titles for multiple series in batches and update local episodes
+  /// Returns a map of series to whether they were updated
+  Future<Map<Series, bool>> fetchAndUpdateEpisodeTitlesBatch(List<Series> seriesList) async {
+    // Check if AniList episode titles are enabled
+    if (!Manager.enableAnilistEpisodeTitles) {
+      logTrace('AniList episode titles are disabled, skipping batch fetch for ${seriesList.length} series');
+      final Map<Series, bool> results = {};
+      for (final series in seriesList) results[series] = false;
+      return results;
+    }
+
+    final Map<Series, bool> results = {};
+
+    final linkedSeries = seriesList.where((series) => series.isLinked && series.anilistMappings.isNotEmpty).toList();
+
+    if (linkedSeries.isEmpty) {
+      logTrace('No linked series found for batch episode title fetch');
+      for (final series in seriesList) results[series] = false;
+      return results;
+    }
+
+    // Collect all unique AniList ids that need fetching (not in cache)
+    final Set<int> anilistIdsToFetch = {};
+    final Map<int, Set<Series>> anilistIdToSeries = {};
+
+    for (final series in linkedSeries) {
+      for (final mapping in series.anilistMappings) {
+        final anilistId = mapping.anilistId;
+
+        anilistIdToSeries.putIfAbsent(anilistId, () => <Series>{}).add(series);
+
+        // Check if we need to fetch this id
+        if (!_isCacheValid(anilistId)) anilistIdsToFetch.add(anilistId);
+      }
+    }
+
+    logInfo('Batch fetching episode titles for ${anilistIdsToFetch.length} AniList IDs affecting ${linkedSeries.length} series');
+
+    // Fetch episode titles in batch
+    Map<int, Map<int, String>> batchResults = {};
+    if (anilistIdsToFetch.isNotEmpty) {
+      try {
+        batchResults = await _anilistService.getMultipleEpisodeTitles(anilistIdsToFetch.toList());
+
+        // Cache the results
+        for (final entry in batchResults.entries) {
+          final anilistId = entry.key;
+          final episodeTitles = entry.value;
+          _titleCache[anilistId] = episodeTitles;
+          _cacheTimestamps[anilistId] = now;
+        }
+
+        logInfo('Successfully batch fetched episode titles for ${batchResults.length} anime');
+      } catch (e) {
+        logErr('Failed to batch fetch episode titles', e);
+      }
+    }
+
+    // Process each series
+    for (final series in linkedSeries) {
+      bool anyUpdated = false;
+
+      for (final mapping in series.anilistMappings) {
+        final anilistId = mapping.anilistId;
+
+        // Get episode titles (from batch result, cache, or empty if failed)
+        Map<int, String> episodeTitles = {};
+
+        if (batchResults.containsKey(anilistId))
+          episodeTitles = batchResults[anilistId]!;
+        else //
+        if (_isCacheValid(anilistId)) episodeTitles = _titleCache[anilistId]!;
+
+        if (episodeTitles.isNotEmpty)
+          anyUpdated |= await _updateEpisodesWithTitles(series, mapping, episodeTitles);
+        else
+          logTrace('No episode titles available for AniList ID: $anilistId');
+      }
+
+      // Save the series if any episodes were updated
+      if (anyUpdated) await _saveUpdatedSeriesToDatabase(series);
+
+      results[series] = anyUpdated;
+    }
+
+    // Add non-linked series as not updated
+    for (final series in seriesList) {
+      if (!results.containsKey(series)) results[series] = false;
+    }
+
+    logInfo('Batch episode title fetch completed: ${results.values.where((updated) => updated).length} series updated');
+    return results;
   }
 
   /// Update episodes in a series with the fetched titles
@@ -125,7 +226,6 @@ class EpisodeTitleService {
     return anyUpdated;
   }
 
-
   /// Check if cached data is still valid
   bool _isCacheValid(int anilistId) {
     if (!_titleCache.containsKey(anilistId) || !_cacheTimestamps.containsKey(anilistId)) {
@@ -149,6 +249,18 @@ class EpisodeTitleService {
     }
   }
 
+  /// Clear cache for a specific series
+  void clearCacheForSeries(Series series) {
+    if (!series.isLinked || series.anilistMappings.isEmpty) {
+      logTrace('Series ${series.name} is not linked to AniList, nothing to clear');
+      return;
+    }
+
+    for (final mapping in series.anilistMappings) clearCache(mapping.anilistId);
+
+    logTrace('Cleared episode title cache for series: ${series.name}');
+  }
+
   /// Get cached episode titles for an anime (if available)
   Map<int, String>? getCachedTitles(int anilistId) {
     if (_isCacheValid(anilistId)) {
@@ -165,6 +277,16 @@ class EpisodeTitleService {
     }
 
     return await fetchAndUpdateEpisodeTitles(series);
+  }
+
+  /// Force refresh episode titles for multiple series using batch fetching
+  Future<Map<Series, bool>> refreshEpisodeTitlesBatch(List<Series> seriesList) async {
+    // Clear cache for all mappings in these series
+    for (final series in seriesList) {
+      for (final mapping in series.anilistMappings) clearCache(mapping.anilistId);
+    }
+
+    return await fetchAndUpdateEpisodeTitlesBatch(seriesList);
   }
 
   /// Save the updated series to database to persist episode title changes

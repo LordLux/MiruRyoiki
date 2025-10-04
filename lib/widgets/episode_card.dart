@@ -4,6 +4,7 @@ import 'dart:ui';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/material.dart' show InkWell, Material;
 import 'package:miruryoiki/services/navigation/statusbar.dart';
+import 'package:shimmer/shimmer.dart';
 
 import '../manager.dart';
 import '../models/episode.dart';
@@ -20,12 +21,14 @@ class HoverableEpisodeTile extends StatefulWidget {
   final Episode episode;
   final VoidCallback onTap;
   final Series series;
+  final bool isReloadingSeries;
 
   const HoverableEpisodeTile({
     super.key,
     required this.episode,
     required this.onTap,
     required this.series,
+    this.isReloadingSeries = false,
   });
 
   @override
@@ -53,7 +56,9 @@ class _HoverableEpisodeTileState extends State<HoverableEpisodeTile> {
           final number = widget.episode.episodeNumber;
           final title = widget.episode.displayTitle;
           final String text;
-          if (title != null && number != null && !widget.episode.isDisplayTitleSimple) {
+          if (widget.isReloadingSeries) {
+            text = "Reloading series, please wait...";
+          } else if (title != null && number != null && !widget.episode.isDisplayTitleSimple) {
             text = "$number - $title";
           } else if (title == null && number != null) {
             text = "Episode $number";
@@ -133,6 +138,21 @@ class _HoverableEpisodeTileState extends State<HoverableEpisodeTile> {
                                   text = title!;
                                 } else {
                                   text = "Episode ?";
+                                }
+                                if (widget.isReloadingSeries) {
+                                  return Shimmer.fromColors(
+                                    baseColor: Colors.white.withOpacity(0.3),
+                                    highlightColor: Colors.white.withOpacity(0.7),
+                                    child: Container(
+                                      margin: EdgeInsets.only(bottom: 2),
+                                      width: double.infinity,
+                                      height: 10,
+                                      decoration: BoxDecoration(
+                                        borderRadius: BorderRadius.circular(4),
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  );
                                 }
                                 return Text(
                                   text,

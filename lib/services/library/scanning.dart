@@ -24,9 +24,7 @@ extension LibraryScanning on Library {
     );
 
     if (lockHandle == null) {
-      if (showSnack) {
-        snackBar('Library scan is already in progress or another operation is active', severity: InfoBarSeverity.warning);
-      }
+      if (showSnack) snackBar('Library scan is already in progress or another operation is active', severity: InfoBarSeverity.warning);
       return;
     }
 
@@ -35,9 +33,9 @@ extension LibraryScanning on Library {
     notifyListeners();
 
     try {
-      // ===================================================================
-      //        DISCOVERY - Quickly find changes without heavy I/O
-      // ===================================================================
+      // ==============
+      //  Scan changes
+      // ==============
 
       final existingSeriesMap = {for (var s in _series) s.path: s};
       final seriesDirsOnDisk = await _discoverSeriesDirectories(_libraryPath!);
@@ -91,9 +89,9 @@ extension LibraryScanning on Library {
         }
       }
 
-      // ===================================================================
-      //          PROCESSING - Offload heavy work to an isolate
-      // ===================================================================
+      // ============================
+      //  Process changes in isolate
+      // ============================
       Map<PathString, Metadata> scanResult = {};
       if (filesToProcess.isEmpty) {
         logWarn('3 | No files to process, skipping isolate scan.');
@@ -112,7 +110,7 @@ extension LibraryScanning on Library {
           task: processFilesIsolate,
           params: ProcessFilesParams(filesToProcess.toList(), dummySendPort),
           onStart: () {
-          LibraryScanProgressManager().showInLibraryBottom = false;
+            LibraryScanProgressManager().showInLibraryBottom = false;
             LibraryScanProgressManager().resetProgress();
           },
           onProgress: (processed, total) {
@@ -128,17 +126,17 @@ extension LibraryScanning on Library {
         if (LoggingConfig.doLogTrace) for (final result in scanResult.entries) logTrace('  Processed: ${p.basename(result.key.path)} -> ${result.value.duration}');
       }
 
-      // ===================================================================
-      //        MERGING - Apply changes using data from the isolate
-      // ===================================================================
+      // ===============
+      //  Merge results
+      // ===============
       logDebug('3 | Merging scan results...');
       final List<Series> updatedSeriesList = List.from(_series);
 
-      // --- 3a. Delete series that no longer exist ---
+      // -Delete series that no longer exist
       updatedSeriesList.removeWhere((s) => deletedSeriesPaths.contains(s.path));
       if (deletedSeriesPaths.isNotEmpty) logDebug('3 | Removed ${deletedSeriesPaths.length} deleted series.');
 
-      // --- 3b. Add brand new series ---
+      // Add new series
       for (final newSeriesPath in newSeriesPaths) {
         final newSeries = await _buildSeriesFromScan(
           newSeriesPath,
@@ -149,7 +147,7 @@ extension LibraryScanning on Library {
       }
       if (newSeriesPaths.isNotEmpty) logDebug('3 | Added ${newSeriesPaths.length} new series.');
 
-      // --- 3c. Update existing series ---
+      // Update existing series
       for (final seriesPath in existingSeriesPathsToCheck) {
         final originalSeries = existingSeriesMap[seriesPath]!;
         final seriesIndex = updatedSeriesList.indexWhere((s) => s.path == seriesPath);
@@ -216,7 +214,6 @@ extension LibraryScanning on Library {
       }
       logTrace('3 | Updated ${existingSeriesPathsToCheck.length} existing series.');
 
-      // --- 3d. Finalize ---
       _series = updatedSeriesList; // Save the updated series list to memory
 
       await _saveLibrary(); // Save the updated library to database
@@ -437,7 +434,7 @@ extension LibraryScanning on Library {
       relatedMedia: relatedMedia,
     );
   }
-  
+
   /// Check if a directory name matches the season pattern ([S or s]eason (\d){1+} or [S or s](\s){0 or 1}(\d){1+})
   bool _isSeasonDirectory(String name) {
     // Match "[S or s]eason (\d){1+}" - e.g., "Season 1", "season 12", etc.

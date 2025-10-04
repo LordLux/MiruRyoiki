@@ -79,7 +79,7 @@ extension AnilistServiceAnimeDetails on AnilistService {
             if (queryResult.exception is OperationException && //
                 queryResult.exception!.linkException is UnknownException &&
                 queryResult.exception!.linkException!.originalException is TimeoutException) {
-              throw TimeoutException('Anilist anime details GET request timed out', const Duration(seconds: 30));
+              throw TimeoutException('Anilist anime details GET request timed out');
             }
             if (queryResult.exception is OperationException && //
                 queryResult.exception!.linkException is ServerException &&
@@ -110,114 +110,145 @@ extension AnilistServiceAnimeDetails on AnilistService {
   Future<Map<int, AnilistAnime>> getMultipleAnimesDetails(List<int> ids, {int perPage = 50}) async {
     if (_client == null) return {};
 
-    logTrace('Fetching Anilist details for IDs: $ids');
+    // AniList API has a limit of 50 items per page, so we need to chunk large requests
+    final Map<int, AnilistAnime> allResults = {};
 
-    final String batchQuery = '''
-      query GetMultipleAnimesDetails(\$ids: [Int]) {
-        Page(perPage: $perPage) {
-          media(id_in: \$ids, type: ANIME) {
-            id
-            title {
-              romaji
-              english
-              native
-              userPreferred
+    // Process in chunks of maxChunkSize to respect API limits
+    const int maxChunkSize = 50;
+
+    for (int i = 0; i < ids.length; i += maxChunkSize) {
+      final chunkEnd = (i + maxChunkSize < ids.length) ? i + maxChunkSize : ids.length;
+      final chunk = ids.sublist(i, chunkEnd);
+
+      // log('${i ~/ maxChunkSize + 1} | Fetching chunk ${i ~/ maxChunkSize + 1}/${(ids.length / maxChunkSize).ceil()}: ${chunk.length} IDs');
+
+      final String batchQuery = '''
+        query GetMultipleAnimesDetails(\$ids: [Int]) {
+          Page(perPage: $perPage) {
+            media(id_in: \$ids, type: ANIME) {
+              id
+              title {
+                romaji
+                english
+                native
+                userPreferred
+              }
+              bannerImage
+              coverImage {
+                extraLarge
+                color
+              }
+              description
+              meanScore
+              popularity
+              favourites
+              status
+              format
+              episodes
+              seasonYear
+              season
+              genres
+              averageScore
+              trending
+              rankings {
+                rank
+                type
+                context
+              }
+              
+              startDate {
+                year
+                month
+                day
+              }
+              endDate {
+                year
+                month
+                day
+              }
+              updatedAt
+              nextAiringEpisode {
+                airingAt
+                episode
+                timeUntilAiring
+              }
+              isFavourite
+              siteUrl
             }
-            bannerImage
-            coverImage {
-              extraLarge
-              color
-            }
-            description
-            meanScore
-            popularity
-            favourites
-            status
-            format
-            episodes
-            seasonYear
-            season
-            genres
-            averageScore
-            trending
-            rankings {
-              rank
-              type
-              context
-            }
-            
-            startDate {
-              year
-              month
-              day
-            }
-            endDate {
-              year
-              month
-              day
-            }
-            updatedAt
-            nextAiringEpisode {
-              airingAt
-              episode
-              timeUntilAiring
-            }
-            isFavourite
-            siteUrl
           }
         }
+      ''';
+
+      try {
+        final result = await RetryUtils.retry<Map<int, AnilistAnime>>(
+          (bool isOffline) async {
+            final queryResult = await _client!.query(
+              QueryOptions(
+                document: gql(batchQuery),
+                variables: {
+                  'ids': chunk,
+                },
+                fetchPolicy: isOffline ? FetchPolicy.cacheOnly : FetchPolicy.cacheFirst,
+              ),
+            );
+
+            if (queryResult.hasException) {
+              if (queryResult.exception is OperationException && //
+                  queryResult.exception!.linkException is UnknownException &&
+                  queryResult.exception!.linkException!.originalException is TimeoutException) {
+                throw TimeoutException('Anilist animes details GET request timed out');
+              }
+              if (queryResult.exception is OperationException && //
+                  queryResult.exception!.linkException is ServerException &&
+                  queryResult.exception!.linkException!.originalException is HandshakeException ||
+                  queryResult.exception!.linkException!.originalException is ClientException) {
+                throw HandshakeException('Anilist animes details GET request no internet connection');
+              }
+              throw Exception('Error getting anime details: ${queryResult.exception}');
+            }
+
+            final mediaList = queryResult.data?['Page']['media'] as List<dynamic>? ?? [];
+            final Map<int, AnilistAnime> chunkResults = {};
+
+            for (final item in mediaList) {
+              final anime = AnilistAnime.fromJson(item);
+              chunkResults[anime.id] = anime;
+            }
+
+            log('${i ~/ maxChunkSize + 1} | Fetched details for ${chunkResults.length} out of ${chunk.length} requested AniList IDs');
+
+            return chunkResults;
+          },
+          maxRetries: 3,
+          retryIf: RetryUtils.shouldRetryAnilistError,
+          operationName: 'getMultipleAnimesDetails(chunk: ${chunk.length} items)',
+          isOfflineAware: true,
+        );
+
+        // Merge chunk results into the overall results
+        if (result != null) {
+          allResults.addAll(result);
+        }
+
+        // Log missing IDs for this chunk
+        final missingIds = chunk.where((id) => !allResults.containsKey(id)).toList();
+        if (missingIds.isNotEmpty) {
+          for (final missingId in missingIds) {
+            logWarn('Failed to fetch AniList details for ID: $missingId - anime may not exist or be restricted');
+          }
+        }
+      } catch (e) {
+        logErr('Error querying Anilist chunk ${i ~/ maxChunkSize + 1}', e);
+
+        // Log all IDs in this chunk as failed
+        for (final id in chunk) {
+          logWarn('Failed to fetch AniList details for ID: $id - chunk request failed');
+        }
       }
-    ''';
-
-    try {
-      final result = await RetryUtils.retry<Map<int, AnilistAnime>>(
-        (bool isOffline) async {
-          final queryResult = await _client!.query(
-            QueryOptions(
-              document: gql(batchQuery),
-              variables: {
-                'ids': ids,
-              },
-              fetchPolicy: isOffline ? FetchPolicy.cacheOnly : FetchPolicy.cacheFirst,
-            ),
-          );
-
-          if (queryResult.hasException) {
-            if (queryResult.exception is OperationException && //
-                queryResult.exception!.linkException is UnknownException &&
-                queryResult.exception!.linkException!.originalException is TimeoutException) {
-              throw TimeoutException('Anilist animes details GET request timed out', const Duration(seconds: 30));
-            }
-            if (queryResult.exception is OperationException && //
-                queryResult.exception!.linkException is ServerException &&
-                queryResult.exception!.linkException!.originalException is HandshakeException ||
-                queryResult.exception!.linkException!.originalException is ClientException) {
-              throw HandshakeException('Anilist animes details GET request no internet connection');
-            }
-            throw Exception('Error getting anime details: ${queryResult.exception}');
-          }
-
-          final mediaList = queryResult.data?['Page']['media'] as List<dynamic>? ?? [];
-          final Map<int, AnilistAnime> animeMap = {};
-
-          for (final item in mediaList) {
-            final anime = AnilistAnime.fromJson(item);
-            animeMap[anime.id] = anime;
-          }
-
-          return animeMap;
-        },
-        maxRetries: 3,
-        retryIf: RetryUtils.shouldRetryAnilistError,
-        operationName: 'getMultipleAnimesDetails(ids: ${ids.length} items)',
-        isOfflineAware: true,
-      );
-
-      return result ?? {};
-    } catch (e) {
-      logErr('Error querying Anilist', e);
-      return {};
     }
+
+    log('Fetched details for ${allResults.length} out of ${ids.length} requested AniList IDs');
+    return allResults;
   }
 
   /// Get user anime lists (watching, completed, etc.)
@@ -329,7 +360,7 @@ extension AnilistServiceAnimeDetails on AnilistService {
             if (queryResult.exception is OperationException && //
                 queryResult.exception!.linkException is UnknownException &&
                 queryResult.exception!.linkException!.originalException is TimeoutException) {
-              throw TimeoutException('Anilist anime lists GET request timed out', const Duration(seconds: 30));
+              throw TimeoutException('Anilist anime lists GET request timed out');
             }
             if (queryResult.exception is OperationException && //
                 queryResult.exception!.linkException is ServerException &&
@@ -439,82 +470,100 @@ extension AnilistServiceAnimeDetails on AnilistService {
 
     logTrace('Fetching upcoming episodes for anime IDs: $animeIds');
 
-    const String upcomingEpisodesQuery = '''
-      query GetUpcomingEpisodes(\$ids: [Int]) {
-        Page(perPage: 50) {
-          media(id_in: \$ids, type: ANIME) {
-            id
-            nextAiringEpisode {
-              airingAt
-              episode
-              timeUntilAiring
+    // AniList API has a limit of 50 items per page, so we need to chunk large requests
+    final Map<int, AiringEpisode?> allResults = {};
+
+    // Process in chunks of maxChunkSize to respect API limits
+    const int maxChunkSize = 50;
+
+    for (int i = 0; i < animeIds.length; i += maxChunkSize) {
+      final chunkEnd = (i + maxChunkSize < animeIds.length) ? i + maxChunkSize : animeIds.length;
+      final chunk = animeIds.sublist(i, chunkEnd);
+
+      logTrace('Fetching upcoming episodes chunk ${i ~/ maxChunkSize + 1}/${(animeIds.length / maxChunkSize).ceil()}: ${chunk.length} IDs');
+
+      const String upcomingEpisodesQuery = '''
+        query GetUpcomingEpisodes(\$ids: [Int]) {
+          Page(perPage: 50) {
+            media(id_in: \$ids, type: ANIME) {
+              id
+              nextAiringEpisode {
+                airingAt
+                episode
+                timeUntilAiring
+              }
+              status
+              format
+              episodes
             }
-            status
-            format
-            episodes
           }
         }
-      }
-    ''';
+      ''';
 
-    try {
-      final result = await RetryUtils.retry<Map<int, AiringEpisode?>>(
-        (bool isOffline) async {
-          final queryResult = await _client!.query(
-            QueryOptions(
-              document: gql(upcomingEpisodesQuery),
-              variables: {'ids': animeIds},
-              fetchPolicy: isOffline ? FetchPolicy.cacheOnly : FetchPolicy.cacheFirst,
-            ),
-          );
+      try {
+        final result = await RetryUtils.retry<Map<int, AiringEpisode?>>(
+          (bool isOffline) async {
+            final queryResult = await _client!.query(
+              QueryOptions(
+                document: gql(upcomingEpisodesQuery),
+                variables: {'ids': chunk},
+                fetchPolicy: isOffline ? FetchPolicy.cacheOnly : FetchPolicy.cacheFirst,
+              ),
+            );
 
-          if (queryResult.hasException) {
-            if (queryResult.exception is OperationException && //
-                queryResult.exception!.linkException is UnknownException &&
-                queryResult.exception!.linkException!.originalException is TimeoutException) {
-              throw TimeoutException('Anilist upcoming episodes GET request timed out', const Duration(seconds: 30));
+            if (queryResult.hasException) {
+              if (queryResult.exception is OperationException && //
+                  queryResult.exception!.linkException is UnknownException &&
+                  queryResult.exception!.linkException!.originalException is TimeoutException) {
+                throw TimeoutException('Anilist upcoming episodes GET request timed out');
+              }
+              if (queryResult.exception is OperationException && //
+                  queryResult.exception!.linkException is ServerException &&
+                  queryResult.exception!.linkException!.originalException is HandshakeException ||
+                  queryResult.exception!.linkException!.originalException is ClientException) {
+                throw HandshakeException('Anilist upcoming episodes GET request no internet connection');
+              }
+              throw Exception('Error getting upcoming episodes: ${queryResult.exception}');
             }
-            if (queryResult.exception is OperationException && //
-                queryResult.exception!.linkException is ServerException &&
-                queryResult.exception!.linkException!.originalException is HandshakeException ||
-                queryResult.exception!.linkException!.originalException is ClientException) {
-              throw HandshakeException('Anilist upcoming episodes GET request no internet connection');
-            }
-            throw Exception('Error getting upcoming episodes: ${queryResult.exception}');
-          }
 
-          final Map<int, AiringEpisode?> upcomingEpisodes = {};
-          final mediaList = queryResult.data?['Page']?['media'] as List<dynamic>?;
+            final Map<int, AiringEpisode?> chunkResults = {};
+            final mediaList = queryResult.data?['Page']?['media'] as List<dynamic>?;
 
-          if (mediaList != null) {
-            for (final media in mediaList) {
-              final int? id = media['id'];
-              final nextAiringData = media['nextAiringEpisode'];
+            if (mediaList != null) {
+              for (final media in mediaList) {
+                final int? id = media['id'];
+                final nextAiringData = media['nextAiringEpisode'];
 
-              if (id != null) {
-                if (nextAiringData != null) {
-                  upcomingEpisodes[id] = AiringEpisode.fromJson(nextAiringData);
-                } else {
-                  upcomingEpisodes[id] = null; // No upcoming episode
+                if (id != null) {
+                  if (nextAiringData != null) {
+                    chunkResults[id] = AiringEpisode.fromJson(nextAiringData);
+                  } else {
+                    chunkResults[id] = null; // No upcoming episode
+                  }
                 }
               }
             }
-          }
 
-          if (upcomingEpisodes.isNotEmpty) logTrace('  Found ${upcomingEpisodes.length} upcoming episodes for ${upcomingEpisodes.length} series');
-          return upcomingEpisodes;
-        },
-        maxRetries: 3,
-        retryIf: RetryUtils.shouldRetryAnilistError,
-        operationName: 'getUpcomingEpisodes(${animeIds.length} anime)',
-        isOfflineAware: true,
-      );
+            logTrace('Found ${chunkResults.length} upcoming episodes for ${chunk.length} anime in chunk');
+            return chunkResults;
+          },
+          maxRetries: 3,
+          retryIf: RetryUtils.shouldRetryAnilistError,
+          operationName: 'getUpcomingEpisodes(chunk: ${chunk.length} anime)',
+          isOfflineAware: true,
+        );
 
-      return result ?? {};
-    } catch (e) {
-      logErr('Error querying upcoming episodes', e);
-      return {};
+        // Merge chunk results into the overall results
+        if (result != null) {
+          allResults.addAll(result);
+        }
+      } catch (e) {
+        logErr('Error querying upcoming episodes for chunk ${i ~/ maxChunkSize + 1}', e);
+      }
     }
+
+    if (allResults.isNotEmpty) logTrace('Found ${allResults.length} upcoming episodes for ${animeIds.length} anime total');
+    return allResults;
   }
 
   /// Get episode titles for a specific anime using MediaStreamingEpisode
@@ -549,7 +598,7 @@ extension AnilistServiceAnimeDetails on AnilistService {
             if (queryResult.exception is OperationException && //
                 queryResult.exception!.linkException is UnknownException &&
                 queryResult.exception!.linkException!.originalException is TimeoutException) {
-              throw TimeoutException('Anilist episode titles GET request timed out', const Duration(seconds: 30));
+              throw TimeoutException('Anilist episode titles GET request timed out');
             }
             if (queryResult.exception is OperationException && //
                 queryResult.exception!.linkException is ServerException &&
@@ -562,10 +611,10 @@ extension AnilistServiceAnimeDetails on AnilistService {
 
           final Map<int, String> episodeTitles = {};
           final mediaData = queryResult.data?['Media'];
-          
+
           if (mediaData != null) {
             final streamingEpisodes = mediaData['streamingEpisodes'] as List<dynamic>? ?? [];
-            
+
             for (final episodeData in streamingEpisodes) {
               final title = episodeData['title'] as String?;
               if (title != null && title.isNotEmpty) {
@@ -595,5 +644,142 @@ extension AnilistServiceAnimeDetails on AnilistService {
       logErr('Error querying episode titles for anime $animeId', e);
       return {};
     }
+  }
+
+  /// Get episode titles for multiple anime IDs in batches
+  Future<Map<int, Map<int, String>>> getMultipleEpisodeTitles(List<int> animeIds, {int perPage = 50}) async {
+    if (_client == null || animeIds.isEmpty) return {};
+
+    logTrace('Fetching episode titles for ${animeIds.length} anime IDs');
+
+    // AniList API has a limit of 50 items per page, so we need to chunk large requests
+    final Map<int, Map<int, String>> allResults = {};
+
+    // Process in chunks of maxChunkSize to respect API limits
+    const int maxChunkSize = 50;
+
+    for (int i = 0; i < animeIds.length; i += maxChunkSize) {
+      final chunkEnd = (i + maxChunkSize < animeIds.length) ? i + maxChunkSize : animeIds.length;
+      final chunk = animeIds.sublist(i, chunkEnd);
+
+      logTrace('Fetching episode titles chunk ${i ~/ maxChunkSize + 1}/${(animeIds.length / maxChunkSize).ceil()}: ${chunk.length} IDs');
+      log('Fetching following ids: $chunk');
+
+      const String batchEpisodeTitlesQuery = '''
+        query GetMultipleEpisodeTitles(\$ids: [Int]) {
+          Page(perPage: 50) {
+            media(id_in: \$ids, type: ANIME) {
+              id
+              streamingEpisodes {
+                title
+              }
+            }
+          }
+        }
+      ''';
+
+      try {
+        final result = await RetryUtils.retry<Map<int, Map<int, String>>>(
+          (bool isOffline) async {
+            final queryResult = await _client!.query(
+              QueryOptions(
+                document: gql(batchEpisodeTitlesQuery),
+                variables: {'ids': chunk},
+                fetchPolicy: isOffline ? FetchPolicy.cacheOnly : FetchPolicy.cacheFirst,
+              ),
+            );
+
+            if (queryResult.hasException) {
+              if (queryResult.exception is OperationException && //
+                  queryResult.exception!.linkException is UnknownException &&
+                  queryResult.exception!.linkException!.originalException is TimeoutException) {
+                throw TimeoutException('Anilist episode titles batch GET request timed out');
+              }
+              if (queryResult.exception is OperationException && //
+                      queryResult.exception!.linkException is ServerException &&
+                      queryResult.exception!.linkException!.originalException is HandshakeException ||
+                  queryResult.exception!.linkException!.originalException is ClientException) {
+                throw HandshakeException('Anilist episode titles batch GET request no internet connection');
+              }
+              throw Exception('Error fetching episode titles batch: ${queryResult.exception}');
+            }
+
+            final Map<int, Map<int, String>> chunkResults = {};
+            final mediaList = queryResult.data?['Page']?['media'] as List<dynamic>? ?? [];
+            final List<int> animeWithEpisodes = [];
+            final List<int> animeWithoutEpisodes = [];
+            final List<int> animeNotFound = chunk.toList();
+
+            for (final mediaData in mediaList) {
+              final animeId = mediaData['id'] as int?;
+              if (animeId == null) continue;
+
+              // Remove from not found list since we got a response for this ID
+              animeNotFound.remove(animeId);
+
+              final Map<int, String> episodeTitles = {};
+              final streamingEpisodes = mediaData['streamingEpisodes'] as List<dynamic>? ?? [];
+
+              if (streamingEpisodes.isEmpty) {
+                animeWithoutEpisodes.add(animeId);
+              } else {
+                for (final episodeData in streamingEpisodes) {
+                  final title = episodeData['title'] as String?;
+                  if (title != null && title.isNotEmpty) {
+                    // Parse episode number from title (format: "Episode DD - Title")
+                    final match = RegExp(r'^Episode\s+(\d+)').firstMatch(title);
+                    if (match != null) {
+                      final episodeNumber = int.tryParse(match.group(1)!);
+                      if (episodeNumber != null) episodeTitles[episodeNumber] = title;
+                    }
+                  }
+                }
+
+                if (episodeTitles.isNotEmpty) {
+                  chunkResults[animeId] = episodeTitles;
+                  animeWithEpisodes.add(animeId);
+                } else {
+                  // Had streamingEpisodes data but no parseable titles
+                  animeWithoutEpisodes.add(animeId);
+                }
+              }
+            }
+
+            // Log detailed breakdown
+            log('  Chunk ${i ~/ maxChunkSize + 1} episode title results:');
+            log('    ${animeWithEpisodes.length} anime with episode titles: $animeWithEpisodes');
+            if (animeWithoutEpisodes.isNotEmpty) log('    ${animeWithoutEpisodes.length} anime with empty/unparseable episodes: $animeWithoutEpisodes');
+            if (animeNotFound.isNotEmpty) log('    ${animeNotFound.length} anime not found in AniList: $animeNotFound');
+
+            logTrace('Fetched episode titles for ${chunkResults.length} out of ${chunk.length} anime in chunk (${animeWithEpisodes.length} with episodes, ${animeWithoutEpisodes.length} without, ${animeNotFound.length} not found)');
+            return chunkResults;
+          },
+          maxRetries: 3,
+          retryIf: RetryUtils.shouldRetryAnilistError,
+          operationName: 'getMultipleEpisodeTitles(chunk: ${chunk.length} anime)',
+          isOfflineAware: true,
+        );
+
+        // Merge chunk results into the overall results
+        if (result != null) {
+          allResults.addAll(result);
+        }
+      } catch (e) {
+        logErr('Error querying episode titles for chunk ${i ~/ maxChunkSize + 1}', e);
+      }
+    }
+
+    // Calculate final statistics
+    final totalWithEpisodes = allResults.length;
+    final totalRequested = animeIds.length;
+    final totalWithoutEpisodes = totalRequested - totalWithEpisodes;
+
+    log('Episode titles batch summary:');
+    log(' $totalWithEpisodes anime with episode titles');
+    log(' $totalWithoutEpisodes anime without episode titles');
+    log(' Success rate: ${(totalWithEpisodes / totalRequested * 100).toStringAsFixed(1)}%');
+
+    logTrace('Fetched episode titles for $totalWithEpisodes out of $totalRequested anime total');
+    return allResults;
   }
 }

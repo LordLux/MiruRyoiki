@@ -96,6 +96,38 @@ class AnilistProvider extends ChangeNotifier with WidgetsBindingObserver {
   // Last time lists were cached
   DateTime? get lastListsCacheTime => _lastListsCacheTime;
 
+  /// Clear all AniList caches (anime cache, upcoming episodes cache, user lists cache)
+  void clearAllAnilistCaches() {
+    _animeCache.clear();
+    _upcomingEpisodesCache.clear();
+    _lastUpcomingEpisodesFetch = null;
+    _lastListsCacheTime = null;
+    logInfo('Cleared all AniList caches (anime, upcoming episodes, lists timestamps)');
+    notifyListeners();
+  }
+
+  /// Clear anime details cache
+  void clearAnimeCache() {
+    _animeCache.clear();
+    logTrace('Cleared AniList anime cache');
+  }
+
+  /// Clear upcoming episodes cache
+  void clearUpcomingEpisodesCache() {
+    _upcomingEpisodesCache.clear();
+    _lastUpcomingEpisodesFetch = null;
+    logTrace('Cleared AniList upcoming episodes cache');
+  }
+
+  /// Clear anime details cache for specific anime IDs
+  void clearAnimeDetailsCache(List<int> animeIds) {
+    for (final id in animeIds) {
+      _animeCache.remove(id);
+      _upcomingEpisodesCache.remove(id);
+    }
+    logTrace('Cleared AniList cache for specific anime IDs: $animeIds');
+  }
+
   @override
   void dispose() {
     _syncTimer?.cancel();

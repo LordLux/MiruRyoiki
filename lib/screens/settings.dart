@@ -550,7 +550,14 @@ class SettingsScreenState extends State<SettingsScreen> {
         onPositive: () {
           // Refresh the library to show updated structure
           final library = Provider.of<Library>(context, listen: false);
-          library.reloadLibrary(force: true);
+          library.clearAnilistCaches().then((_) {
+            library.reloadLibrary(force: true).then((_) {
+              // Refetch AniList data after reload completes
+              library.clearAnilistCaches(refetchAfterClear: true).catchError((error) {
+                logErr('Error refetching AniList data after formatting', error);
+              });
+            });
+          });
         },
       );
     } catch (e, stackTrace) {
@@ -709,7 +716,14 @@ class SettingsScreenState extends State<SettingsScreen> {
 
         // Refresh the library
         final library = Provider.of<Library>(context, listen: false);
-        library.reloadLibrary();
+        library.clearAnilistCaches().then((_) {
+          library.reloadLibrary().then((_) {
+            // Refetch AniList data after reload completes
+            library.clearAnilistCaches(refetchAfterClear: true).catchError((error) {
+              logErr('Error refetching AniList data after applying formatting', error);
+            });
+          });
+        });
       } else {
         snackBar('Failed to apply formatting', severity: InfoBarSeverity.error);
       }
@@ -892,13 +906,26 @@ class SettingsScreenState extends State<SettingsScreen> {
                           },
                   ),
                   const SizedBox(width: 6),
-                  LoadingButton(
-                    label: 'Scan Library',
-                    onPressed: () => library.reloadLibrary(force: true),
-                    isLoading: library.isIndexing,
-                    isSmall: true,
-                    isBigEvenWithoutLoading: true,
-                  ),
+                  ValueListenableBuilder(
+                      valueListenable: KeyboardState.shiftPressedNotifier,
+                      builder: (context, isShiftPressed, _) {
+                        return LoadingButton(
+                          label: isShiftPressed ? 'Clear Cache and Scan Library' : 'Scan Library',
+                          onPressed: () => isShiftPressed
+                              ? library.reloadLibrary(force: true, showSnackBar: false).then((_) {
+                                  // Refetch AniList data after reload completes
+                                  library.clearAnilistCaches(refetchAfterClear: true).then((_) {
+                                    snackBar('Cleared caches, reloaded, and refetched AniList data!', severity: InfoBarSeverity.success);
+                                  }).catchError((error, stacktrace) {
+                                    snackBar('Error refetching AniList data after reload', severity: InfoBarSeverity.error, exception: error, stackTrace: stacktrace);
+                                  });
+                                })
+                              : library.reloadLibrary(force: true),
+                          isLoading: library.isIndexing,
+                          isSmall: true,
+                          isBigEvenWithoutLoading: true,
+                        );
+                      }),
                   const SizedBox(width: 6),
                   NormalButton(
                     label: 'Browse',
@@ -1411,9 +1438,7 @@ class SettingsScreenState extends State<SettingsScreen> {
                         ToggleSwitch(
                           checked: Manager.defaultPosterSource == ImageSource.autoAnilist,
                           content: Text(Manager.defaultPosterSource == ImageSource.autoAnilist ? 'Prefer Anilist Posters' : 'Prefer Local Posters', style: Manager.bodyStyle),
-                          onChanged: (value) {
-                            settings.defaultPosterSource = value ? ImageSource.autoAnilist : ImageSource.autoLocal;
-                          },
+                          onChanged: (value) => setState(() => settings.defaultPosterSource = value ? ImageSource.autoAnilist : ImageSource.autoLocal),
                         ),
                         disabled: LockManager().hasActiveOperations,
                         tooltip: LockManager().hasActiveOperations ? 'Cannot change while library operations are active' : 'When enabled, Anilist posters will be used when available.\nOtherwise, local posters will be used.',
@@ -1432,12 +1457,29 @@ class SettingsScreenState extends State<SettingsScreen> {
                         ToggleSwitch(
                           checked: Manager.defaultBannerSource == ImageSource.autoAnilist,
                           content: Text(Manager.defaultBannerSource == ImageSource.autoAnilist ? 'Prefer Anilist Banners' : 'Prefer Local Banners', style: Manager.bodyStyle),
-                          onChanged: (value) {
-                            settings.defaultBannerSource = value ? ImageSource.autoAnilist : ImageSource.autoLocal;
-                          },
+                          onChanged: (value) => setState(() => settings.defaultBannerSource = value ? ImageSource.autoAnilist : ImageSource.autoLocal),
                         ),
                         disabled: LockManager().hasActiveOperations,
                         tooltip: LockManager().hasActiveOperations ? 'Cannot change while library operations are active' : 'When enabled, Anilist banners will be used when available.\nOtherwise, local banners will be used.',
+                      ),
+                    ],
+                  ),
+                  HDiv(24),
+                  Column(
+                    children: [
+                      Text(
+                        'Enable AniList episode titles. (Beta)',
+                        style: Manager.bodyStyle,
+                      ),
+                      VDiv(12),
+                      NormalSwitch(
+                        ToggleSwitch(
+                          checked: Manager.enableAnilistEpisodeTitles,
+                          content: Text(Manager.enableAnilistEpisodeTitles ? 'AniList Episode Titles Enabled' : 'AniList Episode Titles Disabled', style: Manager.bodyStyle),
+                          onChanged: (value) => setState(() => settings.enableAnilistEpisodeTitles = value),
+                        ),
+                        disabled: LockManager().hasActiveOperations,
+                        tooltip: LockManager().hasActiveOperations ? 'Cannot change while library operations are active' : 'When enabled, episode titles will be fetched from AniList and displayed.\nWhen disabled, only local/parsed episode titles will be used.',
                       ),
                     ],
                   ),

@@ -16,6 +16,7 @@ class EpisodeGrid extends StatelessWidget {
   final bool collapsable;
   final bool initiallyExpanded;
   final GlobalKey<ExpandingStickyHeaderBuilderState>? expanderKey;
+  final bool isReloadingSeries;
 
   const EpisodeGrid({
     super.key,
@@ -26,6 +27,7 @@ class EpisodeGrid extends StatelessWidget {
     this.initiallyExpanded = true,
     required this.onTap,
     this.expanderKey,
+    this.isReloadingSeries = false,
   });
 
   @override
@@ -102,6 +104,7 @@ class EpisodeGrid extends StatelessWidget {
       episode: episode,
       onTap: () => onTap(episode),
       series: series,
+      isReloadingSeries: isReloadingSeries,
     );
   }
 }

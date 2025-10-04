@@ -59,6 +59,8 @@ class SeriesScreenState extends State<SeriesScreen> {
   bool posterChangeDisabled = false;
   bool bannerChangeDisabled = false;
 
+  bool isReloadingSeries = false;
+
   final Map<int, GlobalKey<ExpandingStickyHeaderBuilderState>> _seasonExpanderKeys = {};
 
   bool _isPosterHovering = false;
@@ -819,6 +821,7 @@ class SeriesScreenState extends State<SeriesScreen> {
             expanderKey: _seasonExpanderKeys[i],
             onTap: (episode) => _playEpisode(episode),
             series: series!,
+            isReloadingSeries: isReloadingSeries,
           ),
         );
       }
