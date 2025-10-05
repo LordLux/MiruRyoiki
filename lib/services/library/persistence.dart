@@ -54,6 +54,9 @@ extension LibraryPersistence on Library {
       _series = loaded;
 
       logDebug('>> Loaded ${_series.length} series from DB');
+      
+      // Initialize hidden series cache after loading
+      _hiddenSeriesService.rebuildCache(_series);
     } catch (e, st) {
       logErr('Error loading library from DB', e, st);
       _series = [];

@@ -3,6 +3,7 @@ import 'package:miruryoiki/widgets/buttons/button.dart';
 
 import '../../manager.dart';
 import '../../screens/settings.dart';
+import '../../utils/color.dart';
 import '../cutout.dart';
 
 class SettingCategoryButton extends StatefulWidget {
@@ -28,8 +29,11 @@ class _SettingCategoryButtonState extends State<SettingCategoryButton> {
     final Icon icon = thisButton["icon"];
     final Color col = icon.color!;
     return Padding(
-      padding: SettingsScreenState.settingsList.length != widget.index ? EdgeInsets.only(bottom: 8.0) : EdgeInsets.zero,
+      padding: SettingsScreenState.settingsList.length -1 != widget.index ? EdgeInsets.only(bottom: 8.0) : EdgeInsets.zero,
       child: StandardButton(
+        isFilled: widget.isSelected,
+        filledColor: col.withOpacity(.15),
+        hoverFillColor: col.withOpacity(.2),
         label: Row(
           mainAxisAlignment: MainAxisAlignment.start,
           children: [
@@ -38,7 +42,7 @@ class _SettingCategoryButtonState extends State<SettingCategoryButton> {
                     width: 35,
                     height: 35,
                     decoration: BoxDecoration(
-                      color: col.withOpacity(.15),
+                      color: col.withOpacity(.25),
                       borderRadius: BorderRadius.circular(8.0),
                     ),
                     child: Center(child: icon),
@@ -52,7 +56,7 @@ class _SettingCategoryButtonState extends State<SettingCategoryButton> {
             const SizedBox(width: 10),
             Text(
               thisButton["title"] ?? "",
-              style: widget.isSelected ? Manager.bodyStrongStyle.copyWith(color: col) : Manager.bodyStyle.copyWith(color: Colors.white.withOpacity(.75)),
+              style: widget.isSelected ? Manager.bodyStrongStyle.copyWith(color: lighten(col, 0.4)) : Manager.bodyStyle.copyWith(color: Colors.white.withOpacity(.75)),
             ),
           ],
         ),

@@ -2,6 +2,7 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:smooth_scroll_multiplatform/smooth_scroll_multiplatform.dart';
 
 import '../../manager.dart';
+import '../../screens/settings.dart';
 import '../../services/navigation/shortcuts.dart';
 import '../../utils/screen.dart';
 import '../../utils/time.dart';
@@ -22,6 +23,10 @@ class MiruRyoikiTemplatePage extends StatefulWidget {
   final bool contentExtraHeaderPadding;
   final VoidCallback? onHeaderCollapse;
   final VoidCallback? onHeaderExpand;
+  final double? infobarHeight;
+  final double? contentHeight;
+  final bool wrapContentWithCard;
+  final EdgeInsets? cardPadding;
 
   const MiruRyoikiTemplatePage({
     super.key,
@@ -37,6 +42,10 @@ class MiruRyoikiTemplatePage extends StatefulWidget {
     this.contentExtraHeaderPadding = false,
     this.onHeaderCollapse,
     this.onHeaderExpand,
+    this.infobarHeight,
+    this.contentHeight,
+    this.wrapContentWithCard = false,
+    this.cardPadding,
   });
 
   @override
@@ -109,11 +118,12 @@ class _MiruRyoikiTemplatePageState extends State<MiruRyoikiTemplatePage> {
                 child: SizedBox(
                   width: ScreenUtils.kMaxContentWidth,
                   child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       // Info bar on the left
                       if (!widget.hideInfoBar)
                         SizedBox(
-                          height: double.infinity,
+                          height: widget.infobarHeight ?? double.infinity,
                           width: ScreenUtils.kInfoBarWidth,
                           child: widget.infobar!(widget.noHeaderBanner),
                         ),
@@ -125,32 +135,43 @@ class _MiruRyoikiTemplatePageState extends State<MiruRyoikiTemplatePage> {
                             padding: EdgeInsets.only(left: 16.0 * Manager.fontSizeMultiplier, top: widget.noHeaderBanner && !widget.contentExtraHeaderPadding ? 0.0 : 16.0, right: 16.0),
                             child: ClipRRect(
                               borderRadius: BorderRadius.circular(ScreenUtils.kStatCardBorderRadius),
-                              child: Builder(builder: (context) {
-                                if (!widget.scrollableContent) return widget.content;
+                              child: SizedBox(
+                                height: widget.contentHeight ?? double.infinity,
+                                child: Builder(
+                                  builder: (context) {
+                                    if (!widget.scrollableContent) return widget.content;
 
-                                return ScrollConfiguration(
-                                  behavior: ScrollConfiguration.of(context).copyWith(overscroll: true, platform: TargetPlatform.windows, scrollbars: false),
-                                  child: DynMouseScroll(
-                                    stopScroll: KeyboardState.ctrlPressedNotifier,
-                                    scrollSpeed: 1.8,
-                                    enableSmoothScroll: Manager.animationsEnabled,
-                                    durationMS: 350,
-                                    animationCurve: Curves.easeOut,
-                                    builder: (context, controller, physics) {
-                                      // Skip if we want a static header
-                                      _scrollController = controller;
-                                      if (_scrollController != null) _setupScrollListener();
+                                    final child = ScrollConfiguration(
+                                      behavior: ScrollConfiguration.of(context).copyWith(overscroll: true, platform: TargetPlatform.windows, scrollbars: false),
+                                      child: DynMouseScroll(
+                                        stopScroll: KeyboardState.ctrlPressedNotifier,
+                                        scrollSpeed: 1.8,
+                                        enableSmoothScroll: Manager.animationsEnabled,
+                                        durationMS: 350,
+                                        animationCurve: Curves.easeOut,
+                                        builder: (context, controller, physics) {
+                                          // Skip if we want a static header
+                                          _scrollController = controller;
+                                          if (_scrollController != null) _setupScrollListener();
 
-                                      // Then use the controller for your scrollable content
-                                      return CustomScrollView(
-                                        controller: controller,
-                                        physics: physics,
-                                        slivers: [SliverToBoxAdapter(child: widget.content)],
+                                          // Then use the controller for your scrollable content
+                                          return CustomScrollView(
+                                            controller: controller,
+                                            physics: physics,
+                                            slivers: [SliverToBoxAdapter(child: widget.content)],
+                                          );
+                                        },
+                                      ),
+                                    );
+                                    if (widget.wrapContentWithCard)
+                                      return SettingsCard(
+                                        children: [Expanded(child: child)],
+                                        padding: widget.cardPadding,
                                       );
-                                    },
-                                  ),
-                                );
-                              }),
+                                    return child;
+                                  },
+                                ),
+                              ),
                             ),
                           ),
                         ),

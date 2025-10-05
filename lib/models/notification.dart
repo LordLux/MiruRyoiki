@@ -67,6 +67,7 @@ class AiringNotification extends AnilistNotification {
   @override
   Map<String, dynamic> toJson() => _$AiringNotificationToJson(this);
 
+  @override
   AiringNotification copyWith({
     int? id,
     NotificationType? type,
@@ -111,6 +112,7 @@ class RelatedMediaAdditionNotification extends AnilistNotification {
   @override
   Map<String, dynamic> toJson() => _$RelatedMediaAdditionNotificationToJson(this);
 
+  @override
   RelatedMediaAdditionNotification copyWith({
     int? id,
     NotificationType? type,
@@ -155,6 +157,7 @@ class MediaDataChangeNotification extends AnilistNotification {
   @override
   Map<String, dynamic> toJson() => _$MediaDataChangeNotificationToJson(this);
 
+  @override
   MediaDataChangeNotification copyWith({
     int? id,
     NotificationType? type,
@@ -203,6 +206,7 @@ class MediaMergeNotification extends AnilistNotification {
   @override
   Map<String, dynamic> toJson() => _$MediaMergeNotificationToJson(this);
 
+  @override
   MediaMergeNotification copyWith({
     int? id,
     NotificationType? type,
@@ -249,6 +253,7 @@ class MediaDeletionNotification extends AnilistNotification {
   @override
   Map<String, dynamic> toJson() => _$MediaDeletionNotificationToJson(this);
 
+  @override
   MediaDeletionNotification copyWith({
     int? id,
     NotificationType? type,

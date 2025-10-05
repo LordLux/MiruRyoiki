@@ -430,18 +430,30 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
 
         if ((((startDate != null && notificationDate.isAfter(startDate)) || startDate == null) && notificationDate.isBefore(endDate))) {
           final dateKey = DateTime(notificationDate.year, notificationDate.month, notificationDate.day);
-
-          // Try to find the associated series for this notification
           Series? associatedSeries;
-          if (notification is AiringNotification) {
-            // Look for a series with matching anilist ID
+          int? anilistIdToCheck;
+
+          // Extract the AniList ID based on notification type
+          anilistIdToCheck = switch (notification) {
+            AiringNotification n => n.animeId,
+            RelatedMediaAdditionNotification n => n.mediaId,
+            MediaDataChangeNotification n => n.mediaId,
+            _ => null,
+          };
+
+          // Look for a series with matching anilist ID
+          if (anilistIdToCheck != null) {
             for (final series in library.series) {
-              if (series.anilistMappings.any((mapping) => mapping.anilistId == notification.animeId)) {
+              if (series.anilistMappings.any((mapping) => mapping.anilistId == anilistIdToCheck)) {
                 associatedSeries = series;
                 break;
               }
             }
           }
+
+          // Check if this notification should be filtered based on hidden series
+          if (anilistIdToCheck != null && library.hiddenSeriesService.shouldFilterAnilistId(anilistIdToCheck)) //
+            continue;
 
           final calendarEntry = NotificationCalendarEntry(
             notification: notification,

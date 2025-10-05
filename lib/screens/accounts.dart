@@ -42,6 +42,7 @@ import '../widgets/page/header_widget.dart';
 import '../widgets/page/infobar.dart';
 import '../widgets/page/page.dart';
 import '../widgets/svg.dart';
+import '../main.dart';
 import 'settings.dart';
 
 class AccountsScreen extends StatefulWidget {
@@ -116,9 +117,7 @@ class AccountsScreenState extends State<AccountsScreen> {
                 Text(anilistProvider.currentUser!.id.toString()),
                 HDiv(8),
               ],
-              Icon(
-                mat.Icons.copy,
-              ),
+              Icon(mat.Icons.copy),
             ],
           ),
         ),
@@ -139,7 +138,7 @@ class AccountsScreenState extends State<AccountsScreen> {
       isProfilePicture: true,
       setStateCallback: () => setState(() {}),
       footer: _buildFooter(anilistProvider: anilistProvider),
-      footerPadding: const EdgeInsets.only(left: 16, right: 16, bottom: 12, top: 12),
+      footerPadding: const EdgeInsets.only(left: 8, right: 8, bottom: 8, top: 8),
       content: anilistProvider.isLoggedIn ? _buildSyncSettings(context, anilistProvider) : const Text('Sign in to access Anilist features'),
       poster: ({ImageProvider<Object>? imageProvider, required double width, required double height, required double squareness, required double offset}) {
         return DeferPointer(
@@ -275,6 +274,11 @@ class AccountsScreenState extends State<AccountsScreen> {
               _showHiddenSeries = value;
               Manager.settings.showHiddenSeries = value;
             });
+
+            libraryScreenKey.currentState?.setState(() => libraryScreenKey.currentState?.invalidateSortCache());
+            releaseCalendarScreenKey.currentState?.setState(() {});
+            homeKey.currentState?.setState(() {});
+            // Notification dialog not needed as it would be closed at the time this widget gets interacted with
           },
         ),
       ),
@@ -291,6 +295,11 @@ class AccountsScreenState extends State<AccountsScreen> {
               _showAnilistHiddenSeries = value;
               Manager.settings.showAnilistHiddenSeries = value;
             });
+
+            libraryScreenKey.currentState?.setState(() => libraryScreenKey.currentState?.invalidateSortCache());
+            releaseCalendarScreenKey.currentState?.setState(() {});
+            homeKey.currentState?.setState(() {});
+            // Notification dialog not needed as it would be closed at the time this widget gets interacted with
           },
         ),
         tooltip: 'Show series hidden from status lists (these will only be visible in custom lists)',

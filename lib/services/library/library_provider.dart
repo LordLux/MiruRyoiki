@@ -42,6 +42,7 @@ import '../isolates/isolate_manager.dart';
 import '../isolates/thumbnail_manager.dart';
 import '../lock_manager.dart';
 import '../processes/monitor.dart' as process_monitor;
+import 'hidden_series_service.dart';
 
 // Include all the parts
 part 'initialization.dart';
@@ -76,6 +77,7 @@ class Library with ChangeNotifier {
   late final AppDatabase _db = AppDatabase();
   late final SeriesDao seriesDao = SeriesDao(_db);
   late final LockManager _lockManager = LockManager();
+  late final HiddenSeriesService _hiddenSeriesService = HiddenSeriesService();
 
   bool _initialized = false;
   bool _cacheValidated = false;
@@ -86,6 +88,7 @@ class Library with ChangeNotifier {
   bool get isIndexing => _isScanning;
   AppDatabase get database => _db;
   LockManager get lockManager => _lockManager;
+  HiddenSeriesService get hiddenSeriesService => _hiddenSeriesService;
 
   static const String settingsFileName = 'settings';
   static const String miruryoikiLibrary = 'library';

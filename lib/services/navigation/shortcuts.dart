@@ -9,6 +9,7 @@ import 'package:provider/provider.dart';
 
 import '../../main.dart';
 import '../../manager.dart';
+import '../../widgets/dialogs/notifications.dart';
 import '../library/library_provider.dart';
 import '../../utils/logging.dart';
 import '../../utils/screen.dart';
@@ -150,7 +151,18 @@ class _CustomKeyboardListenerState extends State<CustomKeyboardListener> {
 
           // If in library view, invalidate sort cache to refresh the list
           libraryScreenKey.currentState?.setState(() => libraryScreenKey.currentState?.invalidateSortCache());
+
+          // Refresh release calendar if visible
           releaseCalendarScreenKey.currentState?.setState(() {});
+
+          // Refresh home screen if visible
+          homeKey.currentState?.setState(() {});
+
+          // Refresh notifications dialog if visible
+          notificationsContentKey.currentState?.setState(() {
+            log('toggled hidden'); // TODO
+            notificationsContentKey.currentState?.refreshNotifications();
+          });
         }
       } else
       //

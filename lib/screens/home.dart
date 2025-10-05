@@ -146,8 +146,6 @@ class _HomeScreenState extends State<HomeScreen> {
         final (continueWatchingSeries, nextUpSeries) = _getSeriesForSection(watchingSeries, anilistProvider); // $1: started, $2: not started
         final releasedSeries = List<Series>.from(watchingSeries); // series with aired but not downloaded episodes
 
-        // TODO filter hidden if 'show hidden' setting is not enabled
-
         // Apply visibility rules
         final showContinueWatching = continueWatchingSeries.isNotEmpty;
         final showNextUp = nextUpSeries.isNotEmpty /* && !showContinueWatching*/;
@@ -220,6 +218,9 @@ class _HomeScreenState extends State<HomeScreen> {
     final watchingSeries = library.series.where((series) {
       // Only consider linked series
       if (!series.isLinked) return false;
+
+      // Filter out hidden series based on current settings
+      if (library.hiddenSeriesService.shouldFilterSeries(series)) return false;
 
       // Check if any of the series' Anilist mappings are in the watching list
       return series.anilistMappings.any((mapping) {

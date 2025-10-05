@@ -61,7 +61,7 @@ class _HeaderWidgetState extends State<HeaderWidget> {
                       if (imageProvider == null) return null;
 
                       return DecorationImage(
-                        alignment: Alignment.topCenter,
+                        alignment: Alignment.center,
                         image: imageProvider,
                         fit: BoxFit.cover,
                         isAntiAlias: true,
@@ -84,7 +84,7 @@ class _HeaderWidgetState extends State<HeaderWidget> {
               final double maximised = 20;
 
               // Calculate value safely and prevent Infinity
-              double result = widget.titleLeftAligned ? math.max(maximised, shrinked) : math.max(maximisedI, shrinkedI);
+              double result = widget.titleLeftAligned ? math.max(maximised, shrinked) : math.max(maximisedI, shrinkedI) - 16;
 
               // Guard against invalid values
               if (result.isInfinite || result.isNaN) return 20.0;

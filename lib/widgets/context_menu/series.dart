@@ -196,6 +196,9 @@ class SeriesContextMenuState extends State<SeriesContextMenu> {
     // Toggle hidden status
     series.isForcedHidden = !series.isForcedHidden;
 
+    // Update the hidden series cache
+    library.hiddenSeriesService.updateSeriesHiddenStatus(series);
+
     // Update the series in the library
     library.updateSeries(series, invalidateCache: true);
 

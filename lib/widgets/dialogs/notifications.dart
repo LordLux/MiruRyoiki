@@ -18,6 +18,8 @@ import '../../utils/time.dart';
 import '../../widgets/buttons/wrapper.dart';
 import '../buttons/rotating_loading_button.dart';
 
+final GlobalKey<NotificationsContentState> notificationsContentKey = GlobalKey<NotificationsContentState>();
+
 class NotificationsDialog extends ManagedDialog {
   final void Function(BuildContext context)? onMorePressed;
 
@@ -29,6 +31,7 @@ class NotificationsDialog extends ManagedDialog {
           title: null, // Remove the static title
           constraints: const BoxConstraints(maxWidth: 480, maxHeight: 500),
           contentBuilder: (context, constraints) => _NotificationsContent(
+            key: notificationsContentKey,
             onMorePressed: onMorePressed,
             constraints: constraints,
           ),
@@ -51,7 +54,7 @@ class _NotificationsContent extends StatefulWidget {
   final void Function(BuildContext context)? onMorePressed;
   final BoxConstraints constraints;
 
-  const _NotificationsContent({this.onMorePressed, required this.constraints});
+  const _NotificationsContent({super.key, this.onMorePressed, required this.constraints});
 
   @override
   NotificationsContentState createState() => NotificationsContentState();
@@ -77,6 +80,42 @@ class NotificationsContentState extends State<_NotificationsContent> {
     _syncNotifications();
   }
 
+  /// Filter notifications to exclude those related to hidden series
+  List<AnilistNotification> _filterNotifications(List<AnilistNotification> notifications) {
+    final library = Provider.of<Library>(context, listen: false);
+
+    /// Return only notifications not related to hidden series (true = keep)
+    return notifications.where((notification) {
+      int? anilistIdToCheck;
+
+      // Extract AniList ID based on notification type
+      switch (notification.runtimeType) {
+        case AiringNotification _:
+          anilistIdToCheck = (notification as AiringNotification).animeId;
+          break;
+        case RelatedMediaAdditionNotification _:
+          anilistIdToCheck = (notification as RelatedMediaAdditionNotification).mediaId;
+          break;
+        case MediaDataChangeNotification _:
+          anilistIdToCheck = (notification as MediaDataChangeNotification).mediaId;
+          break;
+        case MediaMergeNotification _:
+          anilistIdToCheck = (notification as MediaMergeNotification).mediaId;
+          break;
+        case MediaDeletionNotification _:
+          // Deletion notifications don't have an AniList ID, as the media has been deleted
+          return true;
+      }
+
+      // Filter out if the AniList ID is in the hidden cache
+      if (anilistIdToCheck != null && library.hiddenSeriesService.shouldFilterAnilistId(anilistIdToCheck)) {
+        print('hiding: $anilistIdToCheck'); // TODO fix this not updating the ui
+        return false;}
+
+      return true;
+    }).toList();
+  }
+
   Future<void> _loadCachedNotifications() async {
     if (_anilistService == null) return;
 
@@ -85,13 +124,16 @@ class NotificationsContentState extends State<_NotificationsContent> {
     try {
       final notifications = await _anilistService!.getCachedNotifications(
         database: library.database,
-        limit: 5,
+        limit: 20,
       );
       final unreadCount = await _anilistService!.getUnreadCount(library.database);
 
+      // Filter out notifications for hidden series
+      final filteredNotifications = _filterNotifications(notifications);
+
       if (mounted) {
         setState(() {
-          _notifications = notifications;
+          _notifications = filteredNotifications.take(5).toList();
           _unreadCount = unreadCount;
         });
       }
@@ -122,9 +164,12 @@ class NotificationsContentState extends State<_NotificationsContent> {
 
       final unreadCount = await _anilistService!.getUnreadCount(library.database);
 
+      // Filter out notifications for hidden series
+      final filteredNotifications = _filterNotifications(notifications);
+
       if (mounted) {
         setState(() {
-          _notifications = notifications.take(5).toList();
+          _notifications = filteredNotifications.take(5).toList();
           _unreadCount = unreadCount;
           _lastSync = now;
         });
@@ -291,13 +336,13 @@ class NotificationsContentState extends State<_NotificationsContent> {
                         Icon(
                           FluentIcons.ringer,
                           size: 32,
-                          color: Colors.grey.withOpacity(0.5),
+                          color: Colors.white,
                         ),
                         const SizedBox(height: 8),
                         Text(
                           _lastSync == null ? 'Loading notifications...' : 'No recent notifications',
                           style: TextStyle(
-                            color: Colors.grey.withOpacity(0.8),
+                            color: Colors.white,
                           ),
                         ),
                       ],

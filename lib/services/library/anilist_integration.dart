@@ -267,6 +267,9 @@ extension LibraryAnilistIntegration on Library {
     // Set the flag indicating a series was modified
     if (homeKey.currentState != null) homeKey.currentState!.seriesWasModified = true;
 
+    // Update hidden series cache in case AniList hidden status changed
+    _hiddenSeriesService.updateSeriesHiddenStatus(series);
+
     await seriesDao.syncSeries(series);
     notifyListeners();
     Manager.setState();

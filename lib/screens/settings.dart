@@ -105,6 +105,7 @@ class SettingsScreenState extends State<SettingsScreen> {
   bool showAccentLibViewCol = false;
 
   double prevPos = 0;
+  static double settingsInfoBarHeight = settingsList.length * 50 + ((settingsList.length - 1) * 8) + 16;
 
   bool _isSelectingFolder = false;
   bool _isClearingThumbnailCache = false;
@@ -112,36 +113,42 @@ class SettingsScreenState extends State<SettingsScreen> {
   final FocusNode fontSizeFocusNode = FocusNode();
 
   int _selectedSettingCategory = 0;
-  int _rotationCounter = 0;
 
   static List<Map<String, dynamic>> get settingsList => [
         {
           "title": "Library",
-          "icon": Icon(mat.Icons.library_books, color: lighten(Manager.accentColor), size: 23),
+          "icon": Icon(mat.Icons.library_books, color: Manager.accentColor.lighter, size: 23),
+          "desc": "Manage your series library, scanning, and organization settings.",
         },
         {
           "title": "Appearance",
-          "icon": Icon(mat.Icons.palette, color: lighten(Manager.accentColor), size: 23),
+          "icon": Icon(mat.Icons.palette, color: Manager.accentColor.lighter, size: 23),
+          "desc": "Edit how ${Manager.appTitle} looks and feels.",
         },
         {
           "title": "Behavior",
-          "icon": Icon(mat.Icons.tune, color: lighten(Manager.accentColor), size: 23),
+          "icon": Icon(mat.Icons.tune, color: Manager.accentColor.lighter, size: 23),
+          "desc": "Adjust ${Manager.appTitle}'s behavior and interaction settings.",
         },
         {
           "title": "Players",
-          "icon": Icon(mat.Icons.play_circle_outline, color: lighten(Manager.accentColor), size: 23),
+          "icon": Icon(mat.Icons.play_circle_outline, color: Manager.accentColor.lighter, size: 23),
+          "desc": "Configure automatic detection and control of media players like VLC and MPC-HC.",
         },
         {
           "title": "Data & Storage",
-          "icon": Icon(mat.Icons.storage, color: lighten(Manager.accentColor), size: 23),
+          "icon": Icon(mat.Icons.storage, color: Manager.accentColor.lighter, size: 23),
+          "desc": "Manage your application data, database backups, and storage settings.",
         },
         {
           "title": "Advanced",
-          "icon": Icon(mat.Icons.settings, color: lighten(Manager.accentColor), size: 23),
+          "icon": Icon(mat.Icons.settings, color: Manager.accentColor.lighter, size: 23),
+          "desc": "Configure logging behavior for debugging and troubleshooting.",
         },
         {
           "title": "About ${Manager.appTitle}",
-          "icon": Icon(mat.Icons.info, color: lighten(Manager.accentColor), size: 23),
+          "icon": Icon(mat.Icons.info, color: Manager.accentColor.lighter, size: 23),
+          "desc": "View application version, licenses, and acknowledgements.",
         },
       ];
 
@@ -810,13 +817,38 @@ class SettingsScreenState extends State<SettingsScreen> {
 
     return MiruRyoikiTemplatePage(
       headerWidget: HeaderWidget(
-        title: (_, __) => PageHeader(title: Transform.translate(offset: Offset(-5, 0), child: Text('Settings', style: Manager.titleLargeStyle))),
-        headerPadding: EdgeInsets.zero,
+        titleLeftAligned: true,
+        title: (_, __) => Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: Text.rich(
+            TextSpan(
+              children: [
+                WidgetSpan(child: SizedBox(width: ScreenUtils.kInfoBarWidth, child: Transform.translate(offset: Offset(0, 3), child: Text("Settings", style: Manager.titleLargeStyle)))),
+                WidgetSpan(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(settingsList[_selectedSettingCategory]['title'], style: Manager.bodyLargeStyle),
+                      Text(settingsList[_selectedSettingCategory]['desc'], style: Manager.miniBodyStyle.copyWith(fontWeight: FontWeight.normal, color: FluentTheme.of(context).resources.textFillColorSecondary)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
+      infobarHeight: settingsInfoBarHeight,
+      contentHeight: settingsInfoBarHeight,
       infobar: (noHeaderBanner) => _buildInfoBar(noHeaderBanner),
       content: _buildContent(library, settings),
       hideInfoBar: false,
+      headerMinHeight: ScreenUtils.kMinHeaderHeight + 90,
+      headerMaxHeight: ScreenUtils.kMinHeaderHeight + 90,
+      // headerMaxHeight: ScreenUtils.kMaxHeaderHeight, // TODO maybe use this?
       noHeaderBanner: true,
+      wrapContentWithCard: true,
+      cardPadding: EdgeInsets.symmetric(horizontal: 16.0),
     );
   }
 
@@ -831,1319 +863,1191 @@ class SettingsScreenState extends State<SettingsScreen> {
               SettingCategoryButton(
                 i,
                 isSelected: _selectedSettingCategory == i,
-                onCategoryPressed: (index) => setState(() {
-                  _selectedSettingCategory = index;
-                  _rotationCounter++;
-                }),
+                onCategoryPressed: (index) => setState(() => _selectedSettingCategory = index),
               )
           ],
         ),
       ),
       setStateCallback: () => setState(() {}),
-      isProfilePicture: true,
-      getPosterImage: Future.value(WidgetImageProvider(
-        SizedBox(),
-        size: Size(32, 32),
-      )),
-      poster: ({required double width, required double height, required double offset, required double squareness, required ImageProvider<Object>? imageProvider}) => Container(
-        width: width,
-        height: height,
-        color: Colors.transparent,
-        child: Center(
-            child: AnimatedRotation(
-          turns: _rotationCounter.toDouble(),
-          duration: const Duration(milliseconds: 200),
-          child: Transform.scale(scale: 4, child: settingsList[_selectedSettingCategory]["icon"] as Widget),
-        )),
-      ),
       contentPadding: (_) => EdgeInsets.symmetric(horizontal: 8, vertical: 8),
     );
   }
 
   Widget _buildContent(Library library, SettingsManager settings) {
-    final list = switch (_selectedSettingCategory) {
+    final appTheme = context.watch<AppTheme>();
+    final List<Widget> list = switch (_selectedSettingCategory) {
       // Library
       0 => [
-          SettingsCard(
-            children: [
-              Text(
-                settingsList[0]['title'],
-                style: Manager.subtitleStyle,
-              ),
-              VDiv(12),
-              Text(
-                'Select the folder that contains your media library. '
-                'The app will scan this folder for video files.',
-                style: Manager.bodyStyle,
-              ),
-              VDiv(24),
-              Row(
-                children: [
-                  ReadonlyTextBoxWithShiftAltButton(
-                    library.libraryPath,
-                    unshiftTooltip: 'Open Library Folder',
-                    shiftTooltip: 'Copy Library Path',
-                    onPressed: library.libraryPath == null
-                        ? null
-                        : (isShiftPressed) {
-                            if (isShiftPressed) {
-                              // Copy path to clipboard
-                              snackBar('Library path copied to clipboard', severity: InfoBarSeverity.success);
-                              copyToClipboard(library.libraryPath!);
-                              return;
-                            }
-                            // Open path in file explorer
-                            try {
-                              Process.run('explorer', [library.libraryPath!]);
-                            } catch (e, stackTrace) {
-                              snackBar(
-                                'Failed to open library folder: $e',
-                                severity: InfoBarSeverity.error,
-                                exception: e,
-                                stackTrace: stackTrace,
-                              );
-                            }
-                          },
-                  ),
-                  const SizedBox(width: 6),
-                  ValueListenableBuilder(
-                      valueListenable: KeyboardState.shiftPressedNotifier,
-                      builder: (context, isShiftPressed, _) {
-                        return LoadingButton(
-                          label: isShiftPressed ? 'Clear Cache and Scan Library' : 'Scan Library',
-                          onPressed: () => isShiftPressed
-                              ? library.reloadLibrary(force: true, showSnackBar: false).then((_) {
-                                  // Refetch AniList data after reload completes
-                                  library.clearAnilistCaches(refetchAfterClear: true).then((_) {
-                                    snackBar('Cleared caches, reloaded, and refetched AniList data!', severity: InfoBarSeverity.success);
-                                  }).catchError((error, stacktrace) {
-                                    snackBar('Error refetching AniList data after reload', severity: InfoBarSeverity.error, exception: error, stackTrace: stacktrace);
-                                  });
-                                })
-                              : library.reloadLibrary(force: true),
-                          isLoading: library.isIndexing,
-                          isSmall: true,
-                          isBigEvenWithoutLoading: true,
-                        );
-                      }),
-                  const SizedBox(width: 6),
-                  NormalButton(
-                    label: 'Browse',
-                    isFilled: true,
-                    isSmall: true,
-                    tooltip: 'Select Library Folder',
-                    isLoading: _isSelectingFolder,
-                    onPressed: () async {
-                      setState(() => _isSelectingFolder = true);
-
-                      final result = await FilePicker.platform.getDirectoryPath(
-                        dialogTitle: 'Select Library Folder',
-                      );
-
-                      setState(() => _isSelectingFolder = false);
-
-                      if (result != null) library.setLibraryPath(result);
-                    },
-                  ),
-                  const SizedBox(width: 6),
-                  NormalButton(
-                    label: 'Clear Thumbnails',
-                    tooltip: 'Clear all thumbnail cache to regenerate episode thumbnails',
-                    isSmall: true,
-                    isLoading: _isClearingThumbnailCache,
-                    onPressed: () async {
-                      setState(() => _isClearingThumbnailCache = true);
-
-                      try {
-                        // Clear all thumbnail cache using library method
-                        await library.clearAllThumbnailCache();
-
-                        // Also clear Flutter's image cache
-                        imageCache.clear();
-                        imageCache.clearLiveImages();
-
-                        snackBar('Thumbnail cache cleared successfully', severity: InfoBarSeverity.success);
-                      } catch (e, st) {
-                        snackBar('Error clearing thumbnail cache: $e', severity: InfoBarSeverity.error, exception: e, stackTrace: st);
-                      } finally {
-                        setState(() => _isClearingThumbnailCache = false);
-                      }
-                    },
-                  ),
-                ],
-              ),
-              if (library.libraryPath != null) ...[],
-
-              VDiv(24),
-              Text(
-                'Series Formatter',
-                style: Manager.subtitleStyle,
-              ),
-              VDiv(12),
-              Text(
-                'The Series Formatter helps organize your media files into a standardized structure.',
-                style: Manager.bodyStyle,
-              ),
-              VDiv(16),
-              NormalButton(
-                label: 'Format Series',
-                isLoading: _isFormatting,
-                isFilled: true,
-                onPressed: () => _showSeriesFormatterDialog(context),
-              ),
-
-              // This section will show series with formatting issues
-              if (_issuesPreview.isNotEmpty) ...[
-                VDiv(24),
-                Text('Last Scan: ', style: Manager.subtitleStyle),
-                VDiv(12),
-                Expander(
-                  header: Text(
-                    "Series that couldn't be automatically parsed (${_issuesPreview.length})",
-                    style: Manager.bodyStrongStyle,
-                  ),
-                  initiallyExpanded: true,
-                  content: SizedBox(
-                    height: 117.0 * _issuesPreview.length,
-                    child: SingleChildScrollView(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: _issuesPreview.map((preview) {
-                          final series = library.getSeriesByPath(preview.seriesPath);
-                          return _buildSeriesIssueItem(context, preview, series, _issuesPreview, _issuesPreview.indexOf(preview));
-                        }).toList(),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ],
+          Text(
+            'Select the folder that contains your media library. '
+            'The app will scan this folder for video files.',
+            style: Manager.bodyStyle,
           ),
           VDiv(24),
+          Row(
+            children: [
+              ReadonlyTextBoxWithShiftAltButton(
+                library.libraryPath,
+                unshiftTooltip: 'Open Library Folder',
+                shiftTooltip: 'Copy Library Path',
+                onPressed: library.libraryPath == null
+                    ? null
+                    : (isShiftPressed) {
+                        if (isShiftPressed) {
+                          // Copy path to clipboard
+                          snackBar('Library path copied to clipboard', severity: InfoBarSeverity.success);
+                          copyToClipboard(library.libraryPath!);
+                          return;
+                        }
+                        // Open path in file explorer
+                        try {
+                          Process.run('explorer', [library.libraryPath!]);
+                        } catch (e, stackTrace) {
+                          snackBar(
+                            'Failed to open library folder: $e',
+                            severity: InfoBarSeverity.error,
+                            exception: e,
+                            stackTrace: stackTrace,
+                          );
+                        }
+                      },
+              ),
+              const SizedBox(width: 6),
+              ValueListenableBuilder(
+                  valueListenable: KeyboardState.shiftPressedNotifier,
+                  builder: (context, isShiftPressed, _) {
+                    return LoadingButton(
+                      label: isShiftPressed ? 'Clear Cache and Scan Library' : 'Scan Library',
+                      onPressed: () => isShiftPressed
+                          ? library.reloadLibrary(force: true, showSnackBar: false).then((_) {
+                              // Refetch AniList data after reload completes
+                              library.clearAnilistCaches(refetchAfterClear: true).then((_) {
+                                snackBar('Cleared caches, reloaded, and refetched AniList data!', severity: InfoBarSeverity.success);
+                              }).catchError((error, stacktrace) {
+                                snackBar('Error refetching AniList data after reload', severity: InfoBarSeverity.error, exception: error, stackTrace: stacktrace);
+                              });
+                            })
+                          : library.reloadLibrary(force: true),
+                      isLoading: library.isIndexing,
+                      isSmall: true,
+                      isBigEvenWithoutLoading: true,
+                    );
+                  }),
+              const SizedBox(width: 6),
+              NormalButton(
+                label: 'Browse',
+                isFilled: true,
+                isSmall: true,
+                tooltip: 'Select Library Folder',
+                isLoading: _isSelectingFolder,
+                onPressed: () async {
+                  setState(() => _isSelectingFolder = true);
+
+                  final result = await FilePicker.platform.getDirectoryPath(
+                    dialogTitle: 'Select Library Folder',
+                  );
+
+                  setState(() => _isSelectingFolder = false);
+
+                  if (result != null) library.setLibraryPath(result);
+                },
+              ),
+              const SizedBox(width: 6),
+              NormalButton(
+                label: 'Clear Thumbnails',
+                tooltip: 'Clear all thumbnail cache to regenerate episode thumbnails',
+                isSmall: true,
+                isLoading: _isClearingThumbnailCache,
+                onPressed: () async {
+                  setState(() => _isClearingThumbnailCache = true);
+
+                  try {
+                    // Clear all thumbnail cache using library method
+                    await library.clearAllThumbnailCache();
+
+                    // Also clear Flutter's image cache
+                    imageCache.clear();
+                    imageCache.clearLiveImages();
+
+                    snackBar('Thumbnail cache cleared successfully', severity: InfoBarSeverity.success);
+                  } catch (e, st) {
+                    snackBar('Error clearing thumbnail cache: $e', severity: InfoBarSeverity.error, exception: e, stackTrace: st);
+                  } finally {
+                    setState(() => _isClearingThumbnailCache = false);
+                  }
+                },
+              ),
+            ],
+          ),
+          if (library.libraryPath != null) ...[],
+
+          VDiv(24),
+          Text(
+            'Series Formatter',
+            style: Manager.subtitleStyle,
+          ),
+          VDiv(12),
+          Text(
+            'The Series Formatter helps organize your media files into a standardized structure.',
+            style: Manager.bodyStyle,
+          ),
+          VDiv(16),
+          NormalButton(
+            label: 'Format Series',
+            isLoading: _isFormatting,
+            isFilled: true,
+            onPressed: () => _showSeriesFormatterDialog(context),
+          ),
+
+          // This section will show series with formatting issues
+          if (_issuesPreview.isNotEmpty) ...[
+            VDiv(24),
+            Text('Last Scan: ', style: Manager.subtitleStyle),
+            VDiv(12),
+            Expander(
+              header: Text(
+                "Series that couldn't be automatically parsed (${_issuesPreview.length})",
+                style: Manager.bodyStrongStyle,
+              ),
+              initiallyExpanded: true,
+              content: SizedBox(
+                height: 117.0 * _issuesPreview.length,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: _issuesPreview.map((preview) {
+                      final series = library.getSeriesByPath(preview.seriesPath);
+                      return _buildSeriesIssueItem(context, preview, series, _issuesPreview, _issuesPreview.indexOf(preview));
+                    }).toList(),
+                  ),
+                ),
+              ),
+            ),
+          ],
         ],
       // Appearance
       1 => [
-          Builder(builder: (context) {
-            final appTheme = context.watch<AppTheme>();
-
-            return SettingsCard(
+          // Effect
+          ...[
+            Row(
               children: [
-                Text(
-                  settingsList[1]["title"],
-                  style: Manager.subtitleStyle,
-                ),
-                VDiv(6),
-                // Theme and font effect settings
-                ...[
-                  Text('Edit how MiruRyoiki looks and feels.', style: Manager.bodyStyle),
-                  VDiv(24),
-                  // Row(children: [
-                  //   // Theme
-                  //   const Text('Theme:'),
-                  //   const SizedBox(width: 12),
-                  //   ComboBox<ThemeMode>(
-                  //     value: appTheme.mode,
-                  //     items: <ThemeMode>[ThemeMode.system, ThemeMode.light, ThemeMode.dark].map((ThemeMode value) {
-                  //       return ComboBoxItem<ThemeMode>(
-                  //         value: value,
-                  //         child: Text(value.name.titleCase),
-                  //       );
-                  //     }).toList(),
-                  //     onChanged: (ThemeMode? newValue) async {
-                  //       appTheme.mode = newValue!;
-                  //       appTheme.setEffect(appTheme.windowEffect, context);
-                  //       settings.themeMode = newValue;
-
-                  //       await Future.delayed(const Duration(milliseconds: 300));
-                  //       appTheme.setEffect(appTheme.windowEffect, context);
-                  //     },
-                  //   ),
-                  // ]),
-                ],
-                // VDiv(12),
-                // Effect
-                ...[
-                  Row(
+                Expanded(
+                  child: Row(
                     children: [
-                      Expanded(
-                        child: Row(
-                          children: [
-                            Text('Effect:', style: Manager.bodyStyle),
-                            const SizedBox(width: 12),
-                            MouseButtonWrapper(
-                              tooltip: 'Choose a style for the window background.',
-                              child: (_) => ComboBox<WindowEffect>(
-                                value: appTheme.windowEffect,
-                                items: _PlatformWindowEffects.map((WindowEffect value) {
-                                  return ComboBoxItem<WindowEffect>(
-                                    value: value,
-                                    child: Text(value.name_),
-                                  );
-                                }).toList(),
-                                onChanged: (WindowEffect? newValue) {
-                                  appTheme.windowEffect = newValue!;
-                                  appTheme.setEffect(newValue, context);
-                                  settings.windowEffect = newValue;
-                                },
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      if (!Manager.isWin11)
-                        TooltipTheme(
-                          data: TooltipThemeData(waitDuration: const Duration(milliseconds: 100)),
-                          child: Tooltip(
-                            message: 'Mica Effect is unfortunately only available on Windows 11',
-                            child: Opacity(opacity: .5, child: Icon(FluentIcons.info)),
-                          ),
-                        ),
-                    ],
-                  ),
-                ],
-                VDiv(12),
-                // Accent Color
-                ...[
-                  Row(
-                    children: [
-                      Text('Accent Color:', style: Manager.bodyStyle),
-                      const SizedBox(width: 12),
-                      FlyoutTarget(
-                        controller: controller,
-                        child: MouseButtonWrapper(
-                          tooltip: 'Select an accent color for the app theme. When changed, updates the interface highlighting and accent elements.',
-                          child: (_) => GestureDetector(
-                            child: Container(
-                              width: 34,
-                              height: 34,
-                              decoration: BoxDecoration(
-                                color: settings.accentColor.toAccentColor().light,
-                                border: Border.all(
-                                  color: settings.accentColor.lerpWith(Colors.black, .25),
-                                  width: 1.25,
-                                ),
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                            ),
-                            onTapDown: (details) {
-                              final Offset offset = details.localPosition;
-                              final RenderBox renderBox = context.findRenderObject() as RenderBox;
-                              final Offset globalOffset = renderBox.localToGlobal(offset);
-                              final Offset flyoutOffset = Offset(globalOffset.dx, globalOffset.dy + renderBox.size.height / 3);
-
-                              // ignore: avoid_single_cascade_in_expression_statements
-                              controller.showFlyout(
-                                autoModeConfiguration: FlyoutAutoConfiguration(
-                                  preferredMode: FlyoutPlacementMode.right,
-                                  horizontal: true,
-                                ),
-                                barrierDismissible: true,
-                                dismissOnPointerMoveAway: true,
-                                dismissWithEsc: true,
-                                navigatorKey: rootNavigatorKey.currentState,
-                                position: flyoutOffset,
-                                builder: (context) {
-                                  return FlyoutContent(
-                                    child: ColorPicker(
-                                      color: settings.accentColor,
-                                      onChanged: (color) => tempColor = color,
-                                      minValue: 100,
-                                      isAlphaSliderVisible: false,
-                                      colorSpectrumShape: ColorSpectrumShape.ring,
-                                      isMoreButtonVisible: false,
-                                      isColorSliderVisible: false,
-                                      isColorChannelTextInputVisible: false,
-                                      isHexInputVisible: false,
-                                      minSaturation: 80,
-                                      maxSaturation: 80,
-                                      isAlphaEnabled: false,
-                                    ),
-                                  );
-                                },
-                              )..then((_) {
-                                  Manager.setState(() {
-                                    settings.accentColor = tempColor.saturate(300);
-                                    appTheme.color = settings.accentColor.toAccentColor();
-                                    settings.accentColor = settings.accentColor;
-                                  });
-                                });
-                            },
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-                // Extra dim for acrylic and mica
-                if (appTheme.windowEffect == WindowEffect.aero || appTheme.windowEffect == WindowEffect.acrylic || appTheme.windowEffect == WindowEffect.mica) //
-                  ...[
-                  VDiv(12),
-                  Row(
-                    children: [
-                      Text('Dim', style: Manager.bodyStyle),
-                      const SizedBox(width: 12),
-                      EnumToggle<Dim>(
-                        tooltip: 'Adjust the dimming level of the background when using acrylic or mica effects.',
-                        enumValues: Dim.values,
-                        labelExtractor: (value) => value.name_,
-                        currentValue: appTheme.dim,
-                        onChanged: (value) {
-                          Manager.setState(() {
-                            appTheme.dim = value;
-                            settings.dim = value;
-                          });
-                        },
-                      ),
-                    ],
-                  ),
-                ],
-                VDiv(12),
-                // Font Size
-                ...[
-                  Row(
-                    children: [
-                      Text('Font Size:', style: Manager.bodyStyle),
+                      Text('Effect:', style: Manager.bodyStyle),
                       const SizedBox(width: 12),
                       MouseButtonWrapper(
-                        tooltip: 'Adjust the font size throughout the app.',
-                        child: (_) => ComboBox<double>(
-                          focusNode: fontSizeFocusNode,
-                          value: appTheme.fontSize,
-                          items: <double>[for (double i = ScreenUtils.kMinFontSize; i <= ScreenUtils.kMaxFontSize; i += 2) i].map((double value) {
-                            return ComboBoxItem<double>(
+                        tooltip: 'Choose a style for the window background.',
+                        child: (_) => ComboBox<WindowEffect>(
+                          value: appTheme.windowEffect,
+                          items: _PlatformWindowEffects.map((WindowEffect value) {
+                            return ComboBoxItem<WindowEffect>(
                               value: value,
-                              child: Text('$value'),
+                              child: Text(value.name_),
                             );
                           }).toList(),
-                          onChanged: (double? newValue) {
-                            appTheme.fontSize = newValue!;
-                            settings.fontSize = newValue;
+                          onChanged: (WindowEffect? newValue) {
+                            appTheme.windowEffect = newValue!;
+                            appTheme.setEffect(newValue, context);
+                            settings.windowEffect = newValue;
                           },
                         ),
                       ),
                     ],
                   ),
-                ],
-                VDiv(16),
-                // Disable Animations
-                ...[
-                  Row(
-                    children: [
-                      Text(
-                        'Disable Most Animations',
-                        style: Manager.bodyStyle,
-                      ),
-                      const SizedBox(width: 12),
-                      NormalSwitch(
-                        ToggleSwitch(
-                          checked: settings.disableAnimations,
-                          content: Text(settings.disableAnimations ? 'Animations Disabled' : 'Animations Enabled', style: Manager.bodyStyle),
-                          onChanged: (value) {
-                            setState(() => settings.disableAnimations = value);
-                          },
-                        ),
-                        tooltip: 'When enabled, most UI animations will be disabled for a more static experience.',
-                      ),
-                    ],
+                ),
+                if (!Manager.isWin11)
+                  TooltipTheme(
+                    data: TooltipThemeData(waitDuration: const Duration(milliseconds: 100)),
+                    child: Tooltip(
+                      message: 'Mica Effect is unfortunately only available on Windows 11',
+                      child: Opacity(opacity: .5, child: Icon(FluentIcons.info)),
+                    ),
                   ),
-                ],
-                VDiv(12),
-                // Library colors
-                ...[
-                  Row(
-                    children: [
-                      Text(
-                        'Library Cards Colors',
-                        style: Manager.bodyStyle,
-                      ),
-                      const SizedBox(width: 12),
-                      NormalSwitch(
-                        ToggleSwitch(
-                          checked: showAccentLibViewCol,
-                          content: Text(showAccentLibViewCol ? 'Accent' : 'Dominant', style: Manager.bodyStyle),
-                          onChanged: (value) => setState(() {
-                            showAccentLibViewCol = value;
-
-                            // Convert between equivalent modes when toggle changes
-                            switch (settings.libColView) {
-                              case LibraryColorView.alwaysAccent:
-                              case LibraryColorView.alwaysDominant:
-                                settings.libColView = value ? LibraryColorView.alwaysAccent : LibraryColorView.alwaysDominant;
-                                break;
-
-                              case LibraryColorView.hoverAccent:
-                              case LibraryColorView.hoverDominant:
-                                settings.libColView = value ? LibraryColorView.hoverAccent : LibraryColorView.hoverDominant;
-                                break;
-
-                              case LibraryColorView.none:
-                                settings.libColView = LibraryColorView.none;
-                                break;
-                            }
-                          }),
-                        ),
-                        tooltip: 'When enabled, the library cards will use the accent color for their background.\nOtherwise, they will use the dominant color extracted from the series poster.',
-                      ),
-                      const SizedBox(width: 12),
-                      Builder(builder: (context) {
-                        final List<double> customWidths = [140.0, 130, 80.0];
-
-                        // Define the options based on current toggle state
-                        final options = showAccentLibViewCol ? [LibraryColorView.alwaysAccent, LibraryColorView.hoverAccent, LibraryColorView.none] : [LibraryColorView.alwaysDominant, LibraryColorView.hoverDominant, LibraryColorView.none];
-
-                        // Find the correct index in our filtered list
-                        int initialIndex = options.indexOf(settings.libColView);
-                        if (initialIndex < 0) initialIndex = 0; // Fallback
-
-                        return Flexible(
-                          child: MouseButtonWrapper(
-                            tooltip: 'Choose way the library Series cards\' background color looks.\n\n- Always: Always show the color in the card.\n- Hover: Show the color only when hovering over the card.\n- None: Never show any color on the card.',
-                            child: (_) => toggle.ToggleSwitch(
-                              animate: true,
-                              multiLineText: true,
-                              animationDuration: dimDuration.inMilliseconds,
-                              initialLabelIndex: initialIndex,
-                              totalSwitches: 3,
-                              customTextStyles: [
-                                for (var i = 0; i < options.length; i++) Manager.bodyStyle.copyWith(color: initialIndex == i ? getPrimaryColorBasedOnAccent() : null),
-                              ],
-                              activeFgColor: getPrimaryColorBasedOnAccent(),
-                              activeBgColor: [FluentTheme.of(context).accentColor.lighter],
-                              customWidths: customWidths,
-                              labels: options.map((opt) => opt.name_).toList(),
-                              onToggle: (int? value) {
-                                if (value != null && value >= 0 && value < options.length) {
-                                  settings.libColView = options[value];
-                                }
-                              },
-                            ),
-                          ),
-                        );
-                      }),
-                    ],
-                  ),
-                ],
-                VDiv(6),
-                ...[
-                  Row(
-                    children: [
-                      Text('Dominant Color Source', style: Manager.bodyStyle),
-                      const SizedBox(width: 12),
-                      EnumToggle<DominantColorSource>(
-                        disabled: LockManager().hasActiveOperations,
-                        tooltip: LockManager().hasActiveOperations ? 'Cannot change while library operations are active' : 'Choose the source for calculating dominant colors. Changing this will allow you to recalculate all dominant colors using the new source.',
-                        enumValues: DominantColorSource.values,
-                        labelExtractor: (value) => value.name_,
-                        currentValue: settings.dominantColorSource,
-                        onChanged: (value) {
-                          showSimpleManagedDialog(
-                            context: context,
-                            id: 'dominantColorSource',
-                            title: 'Recalculate Colors?',
-                            body: 'Would you like to recalculate all dominant colors using the new source?\n\nThis may take some time depending on the size of your library.',
-                            onPositive: () async {
-                              settings.dominantColorSource = value;
-                              final library = Provider.of<Library>(context, listen: false);
-
-                              snackBar('Recalculating dominant colors using ${value.name_} source...', severity: InfoBarSeverity.info);
-                              await library.calculateDominantColors(forceRecalculate: true);
-                              snackBar('Dominant colors recalculated successfully!', severity: InfoBarSeverity.success);
-                            },
-                          );
-                        },
-                      ),
-                    ],
-                  ),
-                ],
-                VDiv(12),
-                // Airing indicator
-                ...[
-                  Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Series Airing Status Indicator',
-                        style: Manager.bodyStyle,
-                      ),
-                      const SizedBox(height: 8),
-                      Padding(
-                        padding: const EdgeInsets.only(left: 16.0),
-                        child: Row(
-                          children: [
-                            Text('Show Indicator:', style: Manager.bodyStyle),
-                            const SizedBox(width: 12),
-                            NormalSwitch(
-                              ToggleSwitch(
-                                checked: settings.showAiringIndicator,
-                                content: Text(settings.showAiringIndicator ? 'Enabled' : 'Disabled', style: Manager.bodyStyle),
-                                onChanged: (value) {
-                                  setState(() => settings.showAiringIndicator = value);
-                                },
-                              ),
-                              tooltip: 'When enabled, an indicator will be shown on series cards if the series is currently airing or if the series is local.\nOtherwise, no indicator is shown.',
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      if (settings.showAiringIndicator)
-                        Padding(
-                          padding: const EdgeInsets.only(left: 16.0),
-                          child: Row(
-                            children: [
-                              Text('Expand Indicator:', style: Manager.bodyStyle),
-                              const SizedBox(width: 12),
-                              NormalSwitch(
-                                ToggleSwitch(
-                                  checked: settings.hoverExpandAiringIndicator,
-                                  content: Text(settings.hoverExpandAiringIndicator ? 'Enabled' : 'Disabled', style: Manager.bodyStyle),
-                                  onChanged: (value) {
-                                    settings.hoverExpandAiringIndicator = value;
-                                  },
-                                ),
-                                tooltip: 'When enabled, hovering over a series card will display an indicator if the series is currently airing.\nOtherwise, no indicator is shown.',
-                              ),
-                            ],
-                          ),
-                        ),
-                    ],
-                  ),
-                ],
-                //
               ],
-            );
-          }),
-          VDiv(24),
-        ],
-      // Behavior
-      2 => [
-          SettingsCard(
-            children: [
-              Text(
-                settingsList[2]["title"],
-                style: Manager.subtitleStyle,
-              ),
-              VDiv(12),
-              Row(
-                children: [
-                  Column(
-                    children: [
-                      Text(
-                        'Default Poster source for series.',
-                        style: Manager.bodyStyle,
-                      ),
-                      VDiv(12),
-                      NormalSwitch(
-                        ToggleSwitch(
-                          checked: Manager.defaultPosterSource == ImageSource.autoAnilist,
-                          content: Text(Manager.defaultPosterSource == ImageSource.autoAnilist ? 'Prefer Anilist Posters' : 'Prefer Local Posters', style: Manager.bodyStyle),
-                          onChanged: (value) => setState(() => settings.defaultPosterSource = value ? ImageSource.autoAnilist : ImageSource.autoLocal),
+            ),
+          ],
+          VDiv(12),
+          // Accent Color
+          ...[
+            Row(
+              children: [
+                Text('Accent Color:', style: Manager.bodyStyle),
+                const SizedBox(width: 12),
+                FlyoutTarget(
+                  controller: controller,
+                  child: MouseButtonWrapper(
+                    tooltip: 'Select an accent color for the app theme. When changed, updates the interface highlighting and accent elements.',
+                    child: (_) => GestureDetector(
+                      child: Container(
+                        width: 34,
+                        height: 34,
+                        decoration: BoxDecoration(
+                          color: settings.accentColor.toAccentColor().light,
+                          border: Border.all(
+                            color: settings.accentColor.lerpWith(Colors.black, .25),
+                            width: 1.25,
+                          ),
+                          borderRadius: BorderRadius.circular(4),
                         ),
-                        disabled: LockManager().hasActiveOperations,
-                        tooltip: LockManager().hasActiveOperations ? 'Cannot change while library operations are active' : 'When enabled, Anilist posters will be used when available.\nOtherwise, local posters will be used.',
                       ),
-                    ],
-                  ),
-                  HDiv(24),
-                  Column(
-                    children: [
-                      Text(
-                        'Default Banner source for series.',
-                        style: Manager.bodyStyle,
-                      ),
-                      VDiv(12),
-                      NormalSwitch(
-                        ToggleSwitch(
-                          checked: Manager.defaultBannerSource == ImageSource.autoAnilist,
-                          content: Text(Manager.defaultBannerSource == ImageSource.autoAnilist ? 'Prefer Anilist Banners' : 'Prefer Local Banners', style: Manager.bodyStyle),
-                          onChanged: (value) => setState(() => settings.defaultBannerSource = value ? ImageSource.autoAnilist : ImageSource.autoLocal),
-                        ),
-                        disabled: LockManager().hasActiveOperations,
-                        tooltip: LockManager().hasActiveOperations ? 'Cannot change while library operations are active' : 'When enabled, Anilist banners will be used when available.\nOtherwise, local banners will be used.',
-                      ),
-                    ],
-                  ),
-                  HDiv(24),
-                  Column(
-                    children: [
-                      Text(
-                        'Enable AniList episode titles. (Beta)',
-                        style: Manager.bodyStyle,
-                      ),
-                      VDiv(12),
-                      NormalSwitch(
-                        ToggleSwitch(
-                          checked: Manager.enableAnilistEpisodeTitles,
-                          content: Text(Manager.enableAnilistEpisodeTitles ? 'AniList Episode Titles Enabled' : 'AniList Episode Titles Disabled', style: Manager.bodyStyle),
-                          onChanged: (value) => setState(() => settings.enableAnilistEpisodeTitles = value),
-                        ),
-                        disabled: LockManager().hasActiveOperations,
-                        tooltip: LockManager().hasActiveOperations ? 'Cannot change while library operations are active' : 'When enabled, episode titles will be fetched from AniList and displayed.\nWhen disabled, only local/parsed episode titles will be used.',
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-              VDiv(24),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Return to Library after exiting Series Screen from a different Tab',
-                    style: Manager.bodyStyle,
-                  ),
-                  VDiv(12),
-                  NormalSwitch(
-                    ToggleSwitch(
-                      checked: settings.returnToLibraryAfterSeriesScreen,
-                      content: Text(settings.returnToLibraryAfterSeriesScreen ? 'Enabled' : 'Disabled', style: Manager.bodyStyle),
-                      onChanged: (value) {
-                        settings.returnToLibraryAfterSeriesScreen = value;
+                      onTapDown: (details) {
+                        final Offset offset = details.localPosition;
+                        final RenderBox renderBox = context.findRenderObject() as RenderBox;
+                        final Offset globalOffset = renderBox.localToGlobal(offset);
+                        final Offset flyoutOffset = Offset(globalOffset.dx, globalOffset.dy + renderBox.size.height / 3);
+
+                        // ignore: avoid_single_cascade_in_expression_statements
+                        controller.showFlyout(
+                          autoModeConfiguration: FlyoutAutoConfiguration(
+                            preferredMode: FlyoutPlacementMode.right,
+                            horizontal: true,
+                          ),
+                          barrierDismissible: true,
+                          dismissOnPointerMoveAway: true,
+                          dismissWithEsc: true,
+                          navigatorKey: rootNavigatorKey.currentState,
+                          position: flyoutOffset,
+                          builder: (context) {
+                            return FlyoutContent(
+                              child: ColorPicker(
+                                color: settings.accentColor,
+                                onChanged: (color) => tempColor = color,
+                                minValue: 100,
+                                isAlphaSliderVisible: false,
+                                colorSpectrumShape: ColorSpectrumShape.ring,
+                                isMoreButtonVisible: false,
+                                isColorSliderVisible: false,
+                                isColorChannelTextInputVisible: false,
+                                isHexInputVisible: false,
+                                minSaturation: 80,
+                                maxSaturation: 80,
+                                isAlphaEnabled: false,
+                              ),
+                            );
+                          },
+                        )..then((_) {
+                            Manager.setState(() {
+                              settings.accentColor = tempColor.saturate(300);
+                              appTheme.color = settings.accentColor.toAccentColor();
+                              settings.accentColor = settings.accentColor;
+                            });
+                          });
                       },
                     ),
-                    tooltip: 'When enabled, exiting a series screen (e.g., by pressing back) will return you to the main library view, even if you navigated from a different tab.',
                   ),
-                  VDiv(12),
-                  Row(
-                    children: [
-                      Text('First Day of Week', style: Manager.bodyStyle),
-                      const SizedBox(width: 12),
-                      TooltipWrapper(
-                        tooltip: 'Set which day appears first in the release calendar.',
-                        child: (_) {
-                          final list = FirstDayOfWeek.values.sublist(1);
-                          list.add(FirstDayOfWeek.values.first);
+                ),
+              ],
+            ),
+          ],
+          // Extra dim for acrylic and mica
+          if (appTheme.windowEffect == WindowEffect.aero || appTheme.windowEffect == WindowEffect.acrylic || appTheme.windowEffect == WindowEffect.mica) //
+            ...[
+            VDiv(12),
+            Row(
+              children: [
+                Text('Dim', style: Manager.bodyStyle),
+                const SizedBox(width: 12),
+                EnumToggle<Dim>(
+                  tooltip: 'Adjust the dimming level of the background when using acrylic or mica effects.',
+                  enumValues: Dim.values,
+                  labelExtractor: (value) => value.name_,
+                  currentValue: appTheme.dim,
+                  onChanged: (value) {
+                    Manager.setState(() {
+                      appTheme.dim = value;
+                      settings.dim = value;
+                    });
+                  },
+                ),
+              ],
+            ),
+          ],
+          VDiv(12),
+          // Font Size
+          ...[
+            Row(
+              children: [
+                Text('Font Size:', style: Manager.bodyStyle),
+                const SizedBox(width: 12),
+                MouseButtonWrapper(
+                  tooltip: 'Adjust the font size throughout the app.',
+                  child: (_) => ComboBox<double>(
+                    focusNode: fontSizeFocusNode,
+                    value: appTheme.fontSize,
+                    items: <double>[for (double i = ScreenUtils.kMinFontSize; i <= ScreenUtils.kMaxFontSize; i += 2) i].map((double value) {
+                      return ComboBoxItem<double>(
+                        value: value,
+                        child: Text('$value'),
+                      );
+                    }).toList(),
+                    onChanged: (double? newValue) {
+                      appTheme.fontSize = newValue!;
+                      settings.fontSize = newValue;
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ],
+          VDiv(16),
+          // Disable Animations
+          ...[
+            Row(
+              children: [
+                Text(
+                  'Disable Most Animations',
+                  style: Manager.bodyStyle,
+                ),
+                const SizedBox(width: 12),
+                NormalSwitch(
+                  ToggleSwitch(
+                    checked: settings.disableAnimations,
+                    content: Text(settings.disableAnimations ? 'Animations Disabled' : 'Animations Enabled', style: Manager.bodyStyle),
+                    onChanged: (value) {
+                      setState(() => settings.disableAnimations = value);
+                    },
+                  ),
+                  tooltip: 'When enabled, most UI animations will be disabled for a more static experience.',
+                ),
+              ],
+            ),
+          ],
+          VDiv(12),
+          // Library colors
+          ...[
+            Row(
+              children: [
+                Text(
+                  'Library Cards Colors',
+                  style: Manager.bodyStyle,
+                ),
+                const SizedBox(width: 12),
+                NormalSwitch(
+                  ToggleSwitch(
+                    checked: showAccentLibViewCol,
+                    content: Text(showAccentLibViewCol ? 'Accent' : 'Dominant', style: Manager.bodyStyle),
+                    onChanged: (value) => setState(() {
+                      showAccentLibViewCol = value;
 
-                          return ComboBox<FirstDayOfWeek>(
-                            value: settings.firstDayOfWeek,
-                            items: list.map((FirstDayOfWeek value) {
-                              return ComboBoxItem<FirstDayOfWeek>(
-                                value: value,
-                                child: Text(value.displayName),
-                              );
-                            }).toList(),
-                            onChanged: (FirstDayOfWeek? newValue) {
-                              if (newValue != null) settings.firstDayOfWeek = newValue;
-                            },
-                          );
+                      // Convert between equivalent modes when toggle changes
+                      switch (settings.libColView) {
+                        case LibraryColorView.alwaysAccent:
+                        case LibraryColorView.alwaysDominant:
+                          settings.libColView = value ? LibraryColorView.alwaysAccent : LibraryColorView.alwaysDominant;
+                          break;
+
+                        case LibraryColorView.hoverAccent:
+                        case LibraryColorView.hoverDominant:
+                          settings.libColView = value ? LibraryColorView.hoverAccent : LibraryColorView.hoverDominant;
+                          break;
+
+                        case LibraryColorView.none:
+                          settings.libColView = LibraryColorView.none;
+                          break;
+                      }
+                    }),
+                  ),
+                  tooltip: 'When enabled, the library cards will use the accent color for their background.\nOtherwise, they will use the dominant color extracted from the series poster.',
+                ),
+                const SizedBox(width: 12),
+                Builder(builder: (context) {
+                  final List<double> customWidths = [140.0, 130, 80.0];
+
+                  // Define the options based on current toggle state
+                  final options = showAccentLibViewCol ? [LibraryColorView.alwaysAccent, LibraryColorView.hoverAccent, LibraryColorView.none] : [LibraryColorView.alwaysDominant, LibraryColorView.hoverDominant, LibraryColorView.none];
+
+                  // Find the correct index in our filtered list
+                  int initialIndex = options.indexOf(settings.libColView);
+                  if (initialIndex < 0) initialIndex = 0; // Fallback
+
+                  return Flexible(
+                    child: MouseButtonWrapper(
+                      tooltip: 'Choose way the library Series cards\' background color looks.\n\n- Always: Always show the color in the card.\n- Hover: Show the color only when hovering over the card.\n- None: Never show any color on the card.',
+                      child: (_) => toggle.ToggleSwitch(
+                        animate: true,
+                        multiLineText: true,
+                        animationDuration: dimDuration.inMilliseconds,
+                        initialLabelIndex: initialIndex,
+                        totalSwitches: 3,
+                        customTextStyles: [
+                          for (var i = 0; i < options.length; i++) Manager.bodyStyle.copyWith(color: initialIndex == i ? getPrimaryColorBasedOnAccent() : null),
+                        ],
+                        activeFgColor: getPrimaryColorBasedOnAccent(),
+                        activeBgColor: [FluentTheme.of(context).accentColor.lighter],
+                        customWidths: customWidths,
+                        labels: options.map((opt) => opt.name_).toList(),
+                        onToggle: (int? value) {
+                          if (value != null && value >= 0 && value < options.length) {
+                            settings.libColView = options[value];
+                          }
                         },
+                      ),
+                    ),
+                  );
+                }),
+              ],
+            ),
+          ],
+          VDiv(6),
+          ...[
+            Row(
+              children: [
+                Text('Dominant Color Source', style: Manager.bodyStyle),
+                const SizedBox(width: 12),
+                EnumToggle<DominantColorSource>(
+                  disabled: LockManager().hasActiveOperations,
+                  tooltip: LockManager().hasActiveOperations ? 'Cannot change while library operations are active' : 'Choose the source for calculating dominant colors. Changing this will allow you to recalculate all dominant colors using the new source.',
+                  enumValues: DominantColorSource.values,
+                  labelExtractor: (value) => value.name_,
+                  currentValue: settings.dominantColorSource,
+                  onChanged: (value) {
+                    showSimpleManagedDialog(
+                      context: context,
+                      id: 'dominantColorSource',
+                      title: 'Recalculate Colors?',
+                      body: 'Would you like to recalculate all dominant colors using the new source?\n\nThis may take some time depending on the size of your library.',
+                      onPositive: () async {
+                        settings.dominantColorSource = value;
+                        final library = Provider.of<Library>(context, listen: false);
+
+                        snackBar('Recalculating dominant colors using ${value.name_} source...', severity: InfoBarSeverity.info);
+                        await library.calculateDominantColors(forceRecalculate: true);
+                        snackBar('Dominant colors recalculated successfully!', severity: InfoBarSeverity.success);
+                      },
+                    );
+                  },
+                ),
+              ],
+            ),
+          ],
+          VDiv(12),
+          // Airing indicator
+          ...[
+            Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Series Airing Status Indicator',
+                  style: Manager.bodyStyle,
+                ),
+                const SizedBox(height: 8),
+                Padding(
+                  padding: const EdgeInsets.only(left: 16.0),
+                  child: Row(
+                    children: [
+                      Text('Show Indicator:', style: Manager.bodyStyle),
+                      const SizedBox(width: 12),
+                      NormalSwitch(
+                        ToggleSwitch(
+                          checked: settings.showAiringIndicator,
+                          content: Text(settings.showAiringIndicator ? 'Enabled' : 'Disabled', style: Manager.bodyStyle),
+                          onChanged: (value) {
+                            setState(() => settings.showAiringIndicator = value);
+                          },
+                        ),
+                        tooltip: 'When enabled, an indicator will be shown on series cards if the series is currently airing or if the series is local.\nOtherwise, no indicator is shown.',
                       ),
                     ],
                   ),
-                ],
-              ),
-            ],
-          ),
-          SizedBox(height: 24),
-        ],
-      // Media Players
-      3 => [
-          SettingsCard(
-            children: [
-              Text(
-                settingsList[3]["title"],
-                style: Manager.subtitleStyle,
-              ),
-              SizedBox(height: 12),
-              Text(
-                'Configure automatic detection and control of media players like VLC and MPC-HC.',
-                style: Manager.bodyStyle,
-              ),
-              SizedBox(height: 24),
-
-              // Enable Media Player Integration
-              Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                ),
+                const SizedBox(height: 12),
+                if (settings.showAiringIndicator)
+                  Padding(
+                    padding: const EdgeInsets.only(left: 16.0),
+                    child: Row(
                       children: [
-                        Text(
-                          'Enable Media Player Integration',
-                          style: Manager.bodyStrongStyle,
-                        ),
-                        SizedBox(height: 4),
-                        Text(
-                          'Automatically detect and connect to supported media players for playback control and progress tracking.',
-                          style: Manager.bodyStyle.copyWith(color: Colors.white.withOpacity(.5)),
+                        Text('Expand Indicator:', style: Manager.bodyStyle),
+                        const SizedBox(width: 12),
+                        NormalSwitch(
+                          ToggleSwitch(
+                            checked: settings.hoverExpandAiringIndicator,
+                            content: Text(settings.hoverExpandAiringIndicator ? 'Enabled' : 'Disabled', style: Manager.bodyStyle),
+                            onChanged: (value) {
+                              settings.hoverExpandAiringIndicator = value;
+                            },
+                          ),
+                          tooltip: 'When enabled, hovering over a series card will display an indicator if the series is currently airing.\nOtherwise, no indicator is shown.',
                         ),
                       ],
                     ),
                   ),
-                  SizedBox(width: 24),
-                  NormalSwitch(
-                    ToggleSwitch(
-                      checked: settings.enableMediaPlayerIntegration,
-                      content: Text(settings.enableMediaPlayerIntegration ? 'Enabled' : 'Disabled', style: Manager.bodyStyle),
-                      onChanged: (value) {
-                        setState(() {
-                          settings.enableMediaPlayerIntegration = value;
-                          if (value) {
-                            library.initializeMediaPlayerIntegration();
-                          } else {
-                            library.disposeMediaPlayerIntegration();
-                          }
-                        });
-                      },
-                    ),
-                  ),
-                ],
+              ],
+            ),
+          ],
+          //
+        ],
+      // Behavior
+      2 => [
+          Text(
+            'Default Poster source for series.',
+            style: Manager.bodyStyle,
+          ),
+          VDiv(12),
+          NormalSwitch(
+            ToggleSwitch(
+              checked: Manager.defaultPosterSource == ImageSource.autoAnilist,
+              content: Text(Manager.defaultPosterSource == ImageSource.autoAnilist ? 'Prefer Anilist Posters' : 'Prefer Local Posters', style: Manager.bodyStyle),
+              onChanged: (value) => setState(() => settings.defaultPosterSource = value ? ImageSource.autoAnilist : ImageSource.autoLocal),
+            ),
+            disabled: LockManager().hasActiveOperations,
+            tooltip: LockManager().hasActiveOperations ? 'Cannot change while library operations are active' : 'When enabled, Anilist posters will be used when available.\nOtherwise, local posters will be used.',
+          ),
+          HDiv(24),
+          Text(
+            'Default Banner source for series.',
+            style: Manager.bodyStyle,
+          ),
+          VDiv(12),
+          NormalSwitch(
+            ToggleSwitch(
+              checked: Manager.defaultBannerSource == ImageSource.autoAnilist,
+              content: Text(Manager.defaultBannerSource == ImageSource.autoAnilist ? 'Prefer Anilist Banners' : 'Prefer Local Banners', style: Manager.bodyStyle),
+              onChanged: (value) => setState(() => settings.defaultBannerSource = value ? ImageSource.autoAnilist : ImageSource.autoLocal),
+            ),
+            disabled: LockManager().hasActiveOperations,
+            tooltip: LockManager().hasActiveOperations ? 'Cannot change while library operations are active' : 'When enabled, Anilist banners will be used when available.\nOtherwise, local banners will be used.',
+          ),
+          HDiv(24),
+          Text(
+            'Fetch the episode titles from AniList. (Beta)',
+            style: Manager.bodyStyle,
+          ),
+          VDiv(12),
+          NormalSwitch(
+            ToggleSwitch(
+              checked: Manager.enableAnilistEpisodeTitles,
+              content: Text(Manager.enableAnilistEpisodeTitles ? 'AniList Episode Titles Enabled' : 'AniList Episode Titles Disabled', style: Manager.bodyStyle),
+              onChanged: (value) => setState(() => settings.enableAnilistEpisodeTitles = value),
+            ),
+            disabled: LockManager().hasActiveOperations,
+            tooltip: LockManager().hasActiveOperations ? 'Cannot change while library operations are active' : 'When enabled, ${Manager.appTitle} will try to fetch the episode titles from AniList. (This depends only on the availability of the titles on AniList)\nOtherwise, only local episode titles (if available) will be used.',
+          ),
+          VDiv(24),
+          Text(
+            'Return to Library after exiting Series Screen from a different Tab',
+            style: Manager.bodyStyle,
+          ),
+          VDiv(12),
+          NormalSwitch(
+            ToggleSwitch(
+              checked: settings.returnToLibraryAfterSeriesScreen,
+              content: Text(settings.returnToLibraryAfterSeriesScreen ? 'Enabled' : 'Disabled', style: Manager.bodyStyle),
+              onChanged: (value) {
+                settings.returnToLibraryAfterSeriesScreen = value;
+              },
+            ),
+            tooltip: 'When enabled, exiting a series screen (e.g., by pressing back) will return you to the main library view, even if you navigated from a different tab.',
+          ),
+          VDiv(12),
+          Row(
+            children: [
+              Text('First Day of Week', style: Manager.bodyStyle),
+              const SizedBox(width: 12),
+              TooltipWrapper(
+                tooltip: 'Set which day appears first in the release calendar.',
+                child: (_) {
+                  final list = FirstDayOfWeek.values.sublist(1);
+                  list.add(FirstDayOfWeek.values.first);
+
+                  return ComboBox<FirstDayOfWeek>(
+                    value: settings.firstDayOfWeek,
+                    items: list.map((FirstDayOfWeek value) {
+                      return ComboBoxItem<FirstDayOfWeek>(
+                        value: value,
+                        child: Text(value.displayName),
+                      );
+                    }).toList(),
+                    onChanged: (FirstDayOfWeek? newValue) {
+                      if (newValue != null) settings.firstDayOfWeek = newValue;
+                    },
+                  );
+                },
               ),
-
-              // Player Priority
-              AnimatedSwitcher(
-                duration: dimDuration,
-                showChild: settings.enableMediaPlayerIntegration,
-                switchInCurve: Curves.easeInOut,
-                switchOutCurve: Curves.easeInOut,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    SizedBox(height: 24),
-                    Divider(),
-                    SizedBox(height: 12),
-                    Text(
-                      'Connection Status',
-                      style: Manager.bodyStrongStyle,
-                    ),
-                    SizedBox(height: 12),
-                    Consumer<Library>(
-                      builder: (context, lib, child) {
-                        final connectedPlayer = lib.currentConnectedPlayer;
-                        final detectedPlayers = lib.detectedPlayers;
-
-                        return Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                if (connectedPlayer != null)
-                                  Row(
-                                    children: [
-                                      Icon(mat.Icons.check_circle, color: Colors.green, size: 16),
-                                      SizedBox(width: 8),
-                                      Text(
-                                        'Connected to: $connectedPlayer',
-                                        style: Manager.bodyStyle.copyWith(color: Colors.green),
-                                      ),
-                                    ],
-                                  )
-                                else
-                                  Row(
-                                    children: [
-                                      Icon(mat.Icons.error, color: Colors.orange, size: 16),
-                                      SizedBox(width: 8),
-                                      Text(
-                                        'No players connected',
-                                        style: Manager.bodyStyle.copyWith(color: Colors.orange),
-                                      ),
-                                    ],
-                                  ),
-                                SizedBox(height: 12),
-                                if (detectedPlayers.isNotEmpty) ...[
-                                  Text(
-                                    'Installed Players:',
-                                    style: Manager.bodyStyle.copyWith(fontWeight: FontWeight.w600),
-                                  ),
-                                  SizedBox(height: 4),
-                                  ...detectedPlayers.map((player) => Padding(
-                                        padding: EdgeInsets.only(left: 16, bottom: 4),
-                                        child: Card(
-                                          child: Row(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              SizedBox(
-                                                height: 25,
-                                                width: 25,
-                                                child: getPlayerFromId(player.id)?.iconWidget,
-                                              ),
-                                              SizedBox(width: 8),
-                                              Text.rich(
-                                                TextSpan(
-                                                  children: [
-                                                    TextSpan(text: player.name, style: Manager.bodyStrongStyle),
-                                                    TextSpan(text: ' (${player.detectionMethod})', style: Manager.bodyStyle),
-                                                  ],
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      )),
-                                ] else
-                                  Padding(
-                                    padding: EdgeInsets.only(left: 16),
-                                    child: Text(
-                                      'No media players detected\nPlease ensure VLC or MPC-HC is installed.',
-                                      style: Manager.bodyStyle.copyWith(fontSize: 12),
-                                    ),
-                                  ),
-                              ],
-                            ),
-                            LoadingButton(
-                              onPressed: () async {
-                                setState(() => _isRefreshingPlayers = true);
-
-                                await library.refreshMediaPlayers();
-                                await library.playerManager?.disconnect();
-                                await library.playerManager?.autoConnect();
-
-                                snackBar('Video Players Reloaded', severity: InfoBarSeverity.success);
-                                setState(() => _isRefreshingPlayers = false);
-                              },
-                              isLoading: _isRefreshingPlayers,
-                              isFilled: true,
-                              hoverFillColor: Manager.accentColor.lighter,
-                              filledColor: Manager.accentColor.light,
-                              tooltip: 'Refresh Players list and Player configs',
-                              tooltipWaitDuration: const Duration(milliseconds: 200),
-                              label: 'Reload Players',
-                              isBigEvenWithoutLoading: true,
-                            ),
-                          ],
-                        );
-                      },
-                    ),
-                    SizedBox(height: 24),
-                  ],
-                ),
-              ),
-
-              // Connection Status
-              AnimatedSwitcher(
-                duration: dimDuration,
-                showChild: settings.enableMediaPlayerIntegration,
-                switchInCurve: Curves.easeInOut,
-                switchOutCurve: Curves.easeInOut,
+            ],
+          ),
+        ],
+      // Media Players
+      3 => [
+          // Enable Media Player Integration
+          Row(
+            children: [
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Player Priority Order',
+                      'Enable Media Player Integration',
                       style: Manager.bodyStrongStyle,
                     ),
                     SizedBox(height: 4),
                     Text(
-                      'Drag to reorder. The app will try to connect to players in this order of preference.',
+                      'Automatically detect and connect to supported media players for playback control and progress tracking.',
                       style: Manager.bodyStyle.copyWith(color: Colors.white.withOpacity(.5)),
                     ),
-                    SizedBox(height: 12),
-                    ReorderableListView.builder(
-                      shrinkWrap: true,
-                      physics: NeverScrollableScrollPhysics(),
-                      itemCount: settings.mediaPlayerPriority.length,
-                      buildDefaultDragHandles: false,
-                      onReorder: (oldIndex, newIndex) {
-                        setState(() {
-                          if (oldIndex < newIndex) newIndex -= 1;
+                  ],
+                ),
+              ),
+              SizedBox(width: 24),
+              NormalSwitch(
+                ToggleSwitch(
+                  checked: settings.enableMediaPlayerIntegration,
+                  content: Text(settings.enableMediaPlayerIntegration ? 'Enabled' : 'Disabled', style: Manager.bodyStyle),
+                  onChanged: (value) {
+                    setState(() {
+                      settings.enableMediaPlayerIntegration = value;
+                      if (value) {
+                        library.initializeMediaPlayerIntegration();
+                      } else {
+                        library.disposeMediaPlayerIntegration();
+                      }
+                    });
+                  },
+                ),
+              ),
+            ],
+          ),
 
-                          final item = settings.mediaPlayerPriority.removeAt(oldIndex);
-                          if (!settings.mediaPlayerPriority.contains(item)) settings.mediaPlayerPriority.insert(newIndex, item);
-                        });
-                      },
-                      itemBuilder: (context, index) {
-                        final playerId = settings.mediaPlayerPriority[index];
-                        final playerName = playerId == 'vlc'
-                            ? 'VLC Media Player'
-                            : playerId == 'mpc-hc'
-                                ? 'MPC-HC'
-                                : playerId;
+          // Player Priority
+          AnimatedSwitcher(
+            duration: dimDuration,
+            showChild: settings.enableMediaPlayerIntegration,
+            switchInCurve: Curves.easeInOut,
+            switchOutCurve: Curves.easeInOut,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SizedBox(height: 24),
+                Divider(),
+                SizedBox(height: 12),
+                Text(
+                  'Connection Status',
+                  style: Manager.bodyStrongStyle,
+                ),
+                SizedBox(height: 12),
+                Consumer<Library>(
+                  builder: (context, lib, child) {
+                    final connectedPlayer = lib.currentConnectedPlayer;
+                    final detectedPlayers = lib.detectedPlayers;
 
-                        // Get the player instance for this ID
-                        MediaPlayer? player = getPlayerFromId(playerId);
-
-                        return Container(
-                          key: ValueKey('player_priority_${playerId}_$index'),
-                          margin: EdgeInsets.only(bottom: 8),
-                          child: Card(
-                            child: ListTile(
-                              leading: settings.enableMediaPlayerIntegration //
-                                  ? ReorderableDragStartListener(index: index, child: Icon(mat.Icons.drag_handle, color: Colors.white.withOpacity(.5)))
-                                  : null,
-                              title: Row(
+                    return Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (connectedPlayer != null)
+                              Row(
                                 children: [
-                                  if (player?.iconWidget != null)
-                                    Opacity(
-                                      opacity: 0.85,
-                                      child: SizedBox(
-                                        height: 25,
-                                        width: 25,
-                                        child: player!.iconWidget,
-                                      ),
-                                    )
-                                  else
-                                    Icon(mat.Icons.play_arrow, size: 20, color: Manager.accentColor),
-                                  SizedBox(width: 12),
-                                  Text(playerName),
+                                  Icon(mat.Icons.check_circle, color: Colors.green, size: 16),
+                                  SizedBox(width: 8),
+                                  Text(
+                                    'Connected to: $connectedPlayer',
+                                    style: Manager.bodyStyle.copyWith(color: Colors.green),
+                                  ),
+                                ],
+                              )
+                            else
+                              Row(
+                                children: [
+                                  Icon(mat.Icons.error, color: Colors.orange, size: 16),
+                                  SizedBox(width: 8),
+                                  Text(
+                                    'No players connected',
+                                    style: Manager.bodyStyle.copyWith(color: Colors.orange),
+                                  ),
                                 ],
                               ),
+                            SizedBox(height: 12),
+                            if (detectedPlayers.isNotEmpty) ...[
+                              Text(
+                                'Installed Players:',
+                                style: Manager.bodyStyle.copyWith(fontWeight: FontWeight.w600),
+                              ),
+                              SizedBox(height: 4),
+                              ...detectedPlayers.map((player) => Padding(
+                                    padding: EdgeInsets.only(left: 16, bottom: 4),
+                                    child: Card(
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          SizedBox(
+                                            height: 25,
+                                            width: 25,
+                                            child: getPlayerFromId(player.id)?.iconWidget,
+                                          ),
+                                          SizedBox(width: 8),
+                                          Text.rich(
+                                            TextSpan(
+                                              children: [
+                                                TextSpan(text: player.name, style: Manager.bodyStrongStyle),
+                                                TextSpan(text: ' (${player.detectionMethod})', style: Manager.bodyStyle),
+                                              ],
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  )),
+                            ] else
+                              Padding(
+                                padding: EdgeInsets.only(left: 16),
+                                child: Text(
+                                  'No media players detected\nPlease ensure VLC or MPC-HC is installed.',
+                                  style: Manager.bodyStyle.copyWith(fontSize: 12),
+                                ),
+                              ),
+                          ],
+                        ),
+                        LoadingButton(
+                          onPressed: () async {
+                            setState(() => _isRefreshingPlayers = true);
+
+                            await library.refreshMediaPlayers();
+                            await library.playerManager?.disconnect();
+                            await library.playerManager?.autoConnect();
+
+                            snackBar('Video Players Reloaded', severity: InfoBarSeverity.success);
+                            setState(() => _isRefreshingPlayers = false);
+                          },
+                          isLoading: _isRefreshingPlayers,
+                          isFilled: true,
+                          hoverFillColor: Manager.accentColor.lighter,
+                          filledColor: Manager.accentColor.light,
+                          tooltip: 'Refresh Players list and Player configs',
+                          tooltipWaitDuration: const Duration(milliseconds: 200),
+                          label: 'Reload Players',
+                          isBigEvenWithoutLoading: true,
+                        ),
+                      ],
+                    );
+                  },
+                ),
+                SizedBox(height: 24),
+              ],
+            ),
+          ),
+
+          // Connection Status
+          AnimatedSwitcher(
+            duration: dimDuration,
+            showChild: settings.enableMediaPlayerIntegration,
+            switchInCurve: Curves.easeInOut,
+            switchOutCurve: Curves.easeInOut,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Player Priority Order',
+                  style: Manager.bodyStrongStyle,
+                ),
+                SizedBox(height: 4),
+                Text(
+                  'Drag to reorder. The app will try to connect to players in this order of preference.',
+                  style: Manager.bodyStyle.copyWith(color: Colors.white.withOpacity(.5)),
+                ),
+                SizedBox(height: 12),
+                ReorderableListView.builder(
+                  shrinkWrap: true,
+                  physics: NeverScrollableScrollPhysics(),
+                  itemCount: settings.mediaPlayerPriority.length,
+                  buildDefaultDragHandles: false,
+                  onReorder: (oldIndex, newIndex) {
+                    setState(() {
+                      if (oldIndex < newIndex) newIndex -= 1;
+
+                      final item = settings.mediaPlayerPriority.removeAt(oldIndex);
+                      if (!settings.mediaPlayerPriority.contains(item)) settings.mediaPlayerPriority.insert(newIndex, item);
+                    });
+                  },
+                  itemBuilder: (context, index) {
+                    final playerId = settings.mediaPlayerPriority[index];
+                    final playerName = playerId == 'vlc'
+                        ? 'VLC Media Player'
+                        : playerId == 'mpc-hc'
+                            ? 'MPC-HC'
+                            : playerId;
+
+                    // Get the player instance for this ID
+                    MediaPlayer? player = getPlayerFromId(playerId);
+
+                    return Container(
+                      key: ValueKey('player_priority_${playerId}_$index'),
+                      margin: EdgeInsets.only(bottom: 8),
+                      child: Card(
+                        child: ListTile(
+                          leading: settings.enableMediaPlayerIntegration //
+                              ? ReorderableDragStartListener(index: index, child: Icon(mat.Icons.drag_handle, color: Colors.white.withOpacity(.5)))
+                              : null,
+                          title: Row(
+                            children: [
+                              if (player?.iconWidget != null)
+                                Opacity(
+                                  opacity: 0.85,
+                                  child: SizedBox(
+                                    height: 25,
+                                    width: 25,
+                                    child: player!.iconWidget,
+                                  ),
+                                )
+                              else
+                                Icon(mat.Icons.play_arrow, size: 20, color: Manager.accentColor),
+                              SizedBox(width: 12),
+                              Text(playerName),
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
+        ],
+      // Data & Storage
+      4 => [
+          // App Data Location Section
+          Text('App Data Location', style: Manager.bodyStrongStyle),
+          VDiv(8),
+          Row(
+            children: [
+              ReadonlyTextBoxWithShiftAltButton(
+                DataStorageService.getAppDataPath(),
+                onPressed: (isShiftPressed) {
+                  if (isShiftPressed) {
+                    // Copy path to clipboard
+                    snackBar('App Data path copied to clipboard', severity: InfoBarSeverity.success);
+                    copyToClipboard(DataStorageService.getAppDataPath());
+                    return;
+                  }
+                  // Open path in file explorer
+                  try {
+                    Process.run('explorer', [DataStorageService.getAppDataPath()]);
+                  } catch (e, stackTrace) {
+                    snackBar(
+                      'Failed to open app data folder: $e',
+                      severity: InfoBarSeverity.error,
+                      exception: e,
+                      stackTrace: stackTrace,
+                    );
+                  }
+                },
+              ),
+            ],
+          ),
+          VDiv(4),
+          Text(
+            'Database size: ${DataStorageService.getDatabaseSize()} • '
+            'Total app data: ${DataStorageService.getAppDataSize()}',
+            style: Manager.miniBodyStyle,
+          ),
+          VDiv(8),
+          InfoBar(
+            title: SizedBox.shrink(),
+            content: Text('This is where automatic backups, cache files, and application data are stored. '),
+            severity: InfoBarSeverity.info,
+          ),
+          VDiv(24),
+
+          // Backup and Restore Section
+          Text('Backup and Restore', style: Manager.bodyStrongStyle),
+          VDiv(12),
+          Row(
+            children: [
+              Expanded(
+                child: LoadingButton(
+                  label: 'Create Backup',
+                  onPressed: () async {
+                    try {
+                      final backupPath = await DataStorageService.createBackup();
+                      if (backupPath != null) {
+                        snackBar('Backup created successfully', severity: InfoBarSeverity.success);
+                      }
+                    } catch (e) {
+                      snackBar('Failed to create backup: $e', severity: InfoBarSeverity.error);
+                    }
+                  },
+                  isLoading: false,
+                  isSmall: true,
+                ),
+              ),
+              SizedBox(width: 12),
+              Expanded(
+                child: LoadingButton(
+                  label: 'Restore Backup',
+                  onPressed: () => _toggleExpanderTile(),
+                  isLoading: false,
+                  isSmall: true,
+                ),
+              ),
+            ],
+          ),
+          VDiv(12),
+          AnimatedSwitcher(
+            duration: dimDuration,
+            showChild: _showBackupsList,
+            child: AbsorbPointer(
+              absorbing: !_showBackupsList,
+              child: IgnorePointer(
+                ignoring: !_showBackupsList,
+                child: mat.ExpansionTile(
+                  trailing: StandardButton.iconLabel(
+                    isFilled: true,
+                    label: Text('Select Backup from files', style: Manager.bodyStyle.copyWith(color: getPrimaryColorBasedOnAccent())),
+                    icon: Icon(mat.Icons.folder_open, size: 16, color: getPrimaryColorBasedOnAccent()),
+                    onPressed: () async {
+                      // Open file picker to select backup file (default to app data folder)
+                      final FilePickerResult? result = await FilePicker.platform.pickFiles(
+                        dialogTitle: 'Select Backup to Restore',
+                        lockParentWindow: true,
+                        type: FileType.custom,
+                        allowedExtensions: ['db', 'bak'],
+                        initialDirectory: miruRyoikiSaveDirectory.path,
+                      );
+                      if (result == null || result.files.isEmpty || result.files.first.path == null) return; // User cancelled
+
+                      final File backupFile = File(result.files.first.path!);
+                      _restoreBackup(backupFile);
+                    },
+                  ),
+                  controller: expansionTileKey,
+                  title: Text('Available Backups', style: Manager.bodyStyle),
+                  enabled: false,
+                  children: _availableBackups.take(10).map((backup) {
+                    final modified = backup.statSync().modified;
+                    return mat.ListTile(
+                      dense: true,
+                      leading: const Icon(mat.Icons.backup),
+                      title: Text(backup.path.split(Platform.pathSeparator).last),
+                      subtitle: Text('Modified: ${modified.pretty(time: true)}', style: Manager.miniBodyStyle),
+                      trailing: StandardButton(
+                        onPressed: _isRestoringBackup ? null : () => _restoreBackup(backup),
+                        label: Text('Restore', style: Manager.bodyStyle.copyWith(color: Colors.white)),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+            ),
+          ),
+          VDiv(24),
+
+          // Database Recovery Section
+          if (DataStorageService.isDatabaseLocked()) ...[
+            InfoBar(
+              title: Text('Database Lock Detected!', style: Manager.bodyStrongStyle),
+              content: Text('Your database appears to be locked. This usually happens when the app is force-closed during a save operation.', style: Manager.bodyStyle),
+              severity: InfoBarSeverity.warning,
+            ),
+            VDiv(12),
+          ],
+
+          Text('Database Recovery', style: Manager.bodyStrongStyle),
+          VDiv(8),
+          Text(
+            'If you experience database lock issues, use this tool to recover access to your data.',
+            style: Manager.bodyStyle,
+          ),
+          VDiv(12),
+          SizedBox(
+            width: double.infinity,
+            child: LoadingButton(
+              label: 'Database Recovery Tool',
+              onPressed: () async {
+                final result = await showDatabaseRecoveryDialog(context);
+                if (result == true) {
+                  snackBar('Database recovery completed successfully', severity: InfoBarSeverity.success);
+                  setState(() {}); // Refresh the UI
+                }
+              },
+              isLoading: false,
+              isSmall: false,
+            ),
+          ),
+        ],
+      // Advanced
+      5 => [
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'File log level',
+                      style: Manager.bodyStrongStyle,
+                    ),
+                    SizedBox(height: 8),
+                    Text(
+                      'Choose which log messages are written to file. Higher levels include all lower levels.',
+                      style: Manager.bodyStyle,
+                    ),
+                    SizedBox(height: 12),
+                    EnumToggle<LogLevel>(
+                      tooltip: 'Select the minimum log level for file logging. When set to higher levels, more detailed messages are logged.\nOtherwise, only important messages (like errors) are captured.',
+                      enumValues: LogLevel.values,
+                      labelExtractor: (level) => level.displayName,
+                      currentValue: settings.fileLogLevel,
+                      onChanged: (LogLevel newLevel) {
+                        settings.fileLogLevel = newLevel;
+                        setState(() {
+                          if (newLevel == LogLevel.trace)
+                            LoggingConfig.doLogTrace = true;
+                          else
+                            LoggingConfig.doLogTrace = false;
+                        });
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              SizedBox(width: 32),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Log retention',
+                      style: Manager.bodyStrongStyle,
+                    ),
+                    SizedBox(height: 8),
+                    Text(
+                      'Number of days to keep log files. (0 to disable)\nOlder files are automatically deleted.',
+                      style: Manager.bodyStyle,
+                    ),
+                    SizedBox(height: 12),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Expanded(
+                          child: MouseButtonWrapper(
+                            tooltip: 'Set the number of days to keep log files. When enabled, automatically deletes older log files.\nOtherwise, logs are kept indefinitely.',
+                            child: (_) => NumberBox<int>(
+                              value: settings.logRetentionDays,
+                              onChanged: (int? value) {
+                                if (value != null && value >= 0) settings.logRetentionDays = value;
+                              },
+                              min: 0,
+                              max: 365,
+                              mode: SpinButtonPlacementMode.inline,
                             ),
                           ),
-                        );
-                      },
+                        ),
+                        HDiv(8),
+                        Text(
+                          'days',
+                          style: Manager.bodyStyle.copyWith(
+                            color: FluentTheme.of(context).resources.textFillColorSecondary,
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
               ),
             ],
           ),
-          SizedBox(height: 24),
-        ],
-      // Data & Storage
-      4 => [
-          SettingsCard(
+          SizedBox(height: 16),
+          Wrap(
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
               Text(
-                settingsList[4]['title'],
-                style: Manager.subtitleStyle,
-              ),
-              VDiv(12),
-              Text(
-                'Manage your application data, database backups, and storage settings.',
+                'Log files are stored in the ',
                 style: Manager.bodyStyle,
               ),
-              VDiv(24),
-
-              // App Data Location Section
-              Text('App Data Location', style: Manager.bodyStrongStyle),
-              VDiv(8),
-              Row(
-                children: [
-                  ReadonlyTextBoxWithShiftAltButton(
-                    DataStorageService.getAppDataPath(),
-                    onPressed: (isShiftPressed) {
-                      if (isShiftPressed) {
-                        // Copy path to clipboard
-                        snackBar('App Data path copied to clipboard', severity: InfoBarSeverity.success);
-                        copyToClipboard(DataStorageService.getAppDataPath());
-                        return;
-                      }
-                      // Open path in file explorer
-                      try {
-                        Process.run('explorer', [DataStorageService.getAppDataPath()]);
-                      } catch (e, stackTrace) {
-                        snackBar(
-                          'Failed to open app data folder: $e',
-                          severity: InfoBarSeverity.error,
-                          exception: e,
-                          stackTrace: stackTrace,
-                        );
-                      }
-                    },
-                  ),
-                ],
-              ),
-              VDiv(4),
-              Text(
-                'Database size: ${DataStorageService.getDatabaseSize()} • '
-                'Total app data: ${DataStorageService.getAppDataSize()}',
-                style: Manager.miniBodyStyle,
-              ),
-              VDiv(8),
-              InfoBar(
-                title: SizedBox.shrink(),
-                content: Text('This is where automatic backups, cache files, and application data are stored. '),
-                severity: InfoBarSeverity.info,
-              ),
-              VDiv(24),
-
-              // Backup and Restore Section
-              Text('Backup and Restore', style: Manager.bodyStrongStyle),
-              VDiv(12),
-              Row(
-                children: [
-                  Expanded(
-                    child: LoadingButton(
-                      label: 'Create Backup',
-                      onPressed: () async {
-                        try {
-                          final backupPath = await DataStorageService.createBackup();
-                          if (backupPath != null) {
-                            snackBar('Backup created successfully', severity: InfoBarSeverity.success);
-                          }
-                        } catch (e) {
-                          snackBar('Failed to create backup: $e', severity: InfoBarSeverity.error);
-                        }
-                      },
-                      isLoading: false,
-                      isSmall: true,
-                    ),
-                  ),
-                  SizedBox(width: 12),
-                  Expanded(
-                    child: LoadingButton(
-                      label: 'Restore Backup',
-                      onPressed: () => _toggleExpanderTile(),
-                      isLoading: false,
-                      isSmall: true,
-                    ),
-                  ),
-                ],
-              ),
-              VDiv(12),
-              AnimatedSwitcher(
-                duration: dimDuration,
-                showChild: _showBackupsList,
-                child: AbsorbPointer(
-                  absorbing: !_showBackupsList,
-                  child: IgnorePointer(
-                    ignoring: !_showBackupsList,
-                    child: mat.ExpansionTile(
-                      trailing: StandardButton.iconLabel(
-                        isFilled: true,
-                        label: Text('Select Backup from files', style: Manager.bodyStyle.copyWith(color: getPrimaryColorBasedOnAccent())),
-                        icon: Icon(mat.Icons.folder_open, size: 16, color: getPrimaryColorBasedOnAccent()),
-                        onPressed: () async {
-                          // Open file picker to select backup file (default to app data folder)
-                          final FilePickerResult? result = await FilePicker.platform.pickFiles(
-                            dialogTitle: 'Select Backup to Restore',
-                            lockParentWindow: true,
-                            type: FileType.custom,
-                            allowedExtensions: ['db', 'bak'],
-                            initialDirectory: miruRyoikiSaveDirectory.path,
-                          );
-                          if (result == null || result.files.isEmpty || result.files.first.path == null) return; // User cancelled
-
-                          final File backupFile = File(result.files.first.path!);
-                          _restoreBackup(backupFile);
-                        },
-                      ),
-                      controller: expansionTileKey,
-                      title: Text('Available Backups', style: Manager.bodyStyle),
-                      enabled: false,
-                      children: _availableBackups.take(10).map((backup) {
-                        final modified = backup.statSync().modified;
-                        return mat.ListTile(
-                          dense: true,
-                          leading: const Icon(mat.Icons.backup),
-                          title: Text(backup.path.split(Platform.pathSeparator).last),
-                          subtitle: Text('Modified: ${modified.pretty(time: true)}', style: Manager.miniBodyStyle),
-                          trailing: StandardButton(
-                            onPressed: _isRestoringBackup ? null : () => _restoreBackup(backup),
-                            label: Text('Restore', style: Manager.bodyStyle.copyWith(color: Colors.white)),
-                          ),
-                        );
-                      }).toList(),
-                    ),
-                  ),
+              Transform.translate(
+                offset: Offset(10, .5),
+                child: WrappedHyperlinkButton(
+                  text: 'application data directory',
+                  url: "file:///${miruRyoikiSaveDirectory.path}/logs",
+                  icon: Icon(mat.Icons.folder_outlined, size: 19),
+                  style: Manager.bodyStyle,
                 ),
               ),
-              VDiv(24),
-
-              // Database Recovery Section
-              if (DataStorageService.isDatabaseLocked()) ...[
-                InfoBar(
-                  title: Text('Database Lock Detected!', style: Manager.bodyStrongStyle),
-                  content: Text('Your database appears to be locked. This usually happens when the app is force-closed during a save operation.', style: Manager.bodyStyle),
-                  severity: InfoBarSeverity.warning,
-                ),
-                VDiv(12),
-              ],
-
-              Text('Database Recovery', style: Manager.bodyStrongStyle),
-              VDiv(8),
               Text(
-                'If you experience database lock issues, use this tool to recover access to your data.',
+                '. Each session creates a unique log file.',
                 style: Manager.bodyStyle,
-              ),
-              VDiv(12),
-              SizedBox(
-                width: double.infinity,
-                child: LoadingButton(
-                  label: 'Database Recovery Tool',
-                  onPressed: () async {
-                    final result = await showDatabaseRecoveryDialog(context);
-                    if (result == true) {
-                      snackBar('Database recovery completed successfully', severity: InfoBarSeverity.success);
-                      setState(() {}); // Refresh the UI
-                    }
-                  },
-                  isLoading: false,
-                  isSmall: false,
-                ),
               ),
             ],
           ),
-        ],
-      // Advanced
-      5 => [
-          SettingsCard(
-            children: [
-              Text(
-                settingsList[3]["title"],
-                style: Manager.subtitleStyle,
+          if (Manager.args.isNotEmpty) SizedBox(height: 16),
+          if (Manager.args.isNotEmpty)
+            InfoBar(
+              title: Text('Command Line Arguments', style: Manager.bodyStrongStyle),
+              content: Padding(
+                padding: EdgeInsets.only(right: 8.0),
+                child: Text(
+                  'Current session arguments: ${Manager.args.join(', ')}',
+                  style: Manager.bodyStyle,
+                ),
               ),
-              SizedBox(height: 12),
-              Text(
-                'Configure logging behavior for debugging and troubleshooting.',
-                style: Manager.bodyStyle,
-              ),
-              SizedBox(height: 24),
-              Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'File log level',
-                          style: Manager.bodyStrongStyle,
-                        ),
-                        SizedBox(height: 8),
-                        Text(
-                          'Choose which log messages are written to file. Higher levels include all lower levels.',
-                          style: Manager.bodyStyle,
-                        ),
-                        SizedBox(height: 12),
-                        EnumToggle<LogLevel>(
-                          tooltip: 'Select the minimum log level for file logging. When set to higher levels, more detailed messages are logged.\nOtherwise, only important messages (like errors) are captured.',
-                          enumValues: LogLevel.values,
-                          labelExtractor: (level) => level.displayName,
-                          currentValue: settings.fileLogLevel,
-                          onChanged: (LogLevel newLevel) {
-                            settings.fileLogLevel = newLevel;
-                            setState(() {
-                              if (newLevel == LogLevel.trace)
-                                LoggingConfig.doLogTrace = true;
-                              else
-                                LoggingConfig.doLogTrace = false;
-                            });
-                          },
-                        ),
-                      ],
-                    ),
-                  ),
-                  SizedBox(width: 32),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Log retention',
-                          style: Manager.bodyStrongStyle,
-                        ),
-                        SizedBox(height: 8),
-                        Text(
-                          'Number of days to keep log files. (0 to disable)\nOlder files are automatically deleted.',
-                          style: Manager.bodyStyle,
-                        ),
-                        SizedBox(height: 12),
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Expanded(
-                              child: MouseButtonWrapper(
-                                tooltip: 'Set the number of days to keep log files. When enabled, automatically deletes older log files.\nOtherwise, logs are kept indefinitely.',
-                                child: (_) => NumberBox<int>(
-                                  value: settings.logRetentionDays,
-                                  onChanged: (int? value) {
-                                    if (value != null && value >= 0) settings.logRetentionDays = value;
-                                  },
-                                  min: 0,
-                                  max: 365,
-                                  mode: SpinButtonPlacementMode.inline,
-                                ),
-                              ),
-                            ),
-                            HDiv(8),
-                            Text(
-                              'days',
-                              style: Manager.bodyStyle.copyWith(
-                                color: FluentTheme.of(context).resources.textFillColorSecondary,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              SizedBox(height: 16),
-              Wrap(
-                crossAxisAlignment: WrapCrossAlignment.center,
-                children: [
-                  Text(
-                    'Log files are stored in the ',
-                    style: Manager.bodyStyle,
-                  ),
-                  Transform.translate(
-                    offset: Offset(10, .5),
-                    child: WrappedHyperlinkButton(
-                      text: 'application data directory',
-                      url: "file:///${miruRyoikiSaveDirectory.path}/logs",
-                      icon: Icon(mat.Icons.folder_outlined, size: 19),
-                      style: Manager.bodyStyle,
-                    ),
-                  ),
-                  Text(
-                    '. Each session creates a unique log file.',
-                    style: Manager.bodyStyle,
-                  ),
-                ],
-              ),
-              if (Manager.args.isNotEmpty) SizedBox(height: 16),
-              if (Manager.args.isNotEmpty)
-                InfoBar(
-                  title: Text('Command Line Arguments', style: Manager.bodyStrongStyle),
-                  content: Padding(
-                    padding: EdgeInsets.only(right: 8.0),
-                    child: Text(
-                      'Current session arguments: ${Manager.args.join(', ')}',
-                      style: Manager.bodyStyle,
-                    ),
-                  ),
-                  severity: InfoBarSeverity.info,
-                  isLong: Manager.args.isNotEmpty && Manager.args.join(', ').length > 50,
-                )
-            ],
-          ),
-          SizedBox(height: 24),
+              severity: InfoBarSeverity.info,
+              isLong: Manager.args.isNotEmpty && Manager.args.join(', ').length > 50,
+            )
         ],
       // About
       6 => [
-          SettingsCard(
-            children: [
-              Text(settingsList[6]["title"], style: Manager.subtitleStyle),
-              VDiv(12),
-              Text('Version: ${Manager.appVersion}', style: Manager.bodyStyle),
-              MouseButtonWrapper(
-                child: (_) => GestureDetector(
-                  onTap: () => carpaccio(),
-                  child: Text('Build Number: ${Manager.buildNumber}', style: Manager.bodyStyle),
-                ),
+          MouseButtonWrapper(
+            child: (_) => GestureDetector(
+              onTap: () => carpaccio(),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Version', style: Manager.smallSubtitleStyle),
+                  Text('${Manager.appVersion} (${Manager.buildNumber})', style: Manager.bodyStyle),
+                ],
               ),
-              VDiv(6),
-              Text('Last Update: ${Manager.lastUpdate.pretty()}', style: Manager.bodyStyle),
-              VDiv(24),
-              Text(
-                '${Manager.appTitle} is a video tracking application that integrates with '
-                'various media players to track your watched videos.',
+            ),
+          ),
+          VDiv(8),
+          MouseButtonWrapper(
+            child: (_) => GestureDetector(
+              onTap: () {
+                copyToClipboard(Manager.lastUpdate.pretty());
+                snackBar('Date copied to clipboard', severity: InfoBarSeverity.success);
+              },
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Last Update', style: Manager.smallSubtitleStyle.copyWith(fontWeight: FontWeight.normal)),
+                  Text(Manager.lastUpdate.pretty(), style: Manager.bodyStyle),
+                ],
+              ),
+            ),
+          ),
+          VDiv(24),
+          Text(
+            '${Manager.appTitle} is a video tracking application that integrates with '
+            'various media players to track your watched videos.',
+            style: Manager.bodyStyle,
+          ),
+          VDiv(24),
+          InfoBar(
+            title: Text('MPC-HC Integration', style: Manager.bodyStrongStyle),
+            content: Padding(
+              padding: EdgeInsets.only(right: 8.0),
+              child: Text(
+                'This app listens for playback events from various media players to track your watched videos. '
+                'Please ensure your media player is installed and the Web Interface is enabled and configured properly.',
                 style: Manager.bodyStyle,
               ),
-              VDiv(24),
-              InfoBar(
-                title: Text('MPC-HC Integration', style: Manager.bodyStrongStyle),
-                content: Padding(
-                  padding: EdgeInsets.only(right: 8.0),
-                  child: Text(
-                    'This app listens for playback events from various media players to track your watched videos. '
-                    'Please ensure your media player is installed and the Web Interface is enabled and configured properly.',
-                    style: Manager.bodyStyle,
-                  ),
-                ),
-                severity: InfoBarSeverity.info,
-              ),
-            ],
+            ),
+            severity: InfoBarSeverity.info,
           ),
         ],
       _ => <Widget>[],
     };
 
-    return Column(children: list);
+    return Padding(
+      padding: EdgeInsets.only(top: 32, right: 32, bottom: 32, left: 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: list,
+      ),
+    );
   }
 
   Expanded ReadonlyTextBoxWithShiftAltButton(
@@ -2207,24 +2111,28 @@ class SettingsScreenState extends State<SettingsScreen> {
 /// Card with vertically distributed children
 Widget SettingsCard({
   required List<Widget> children,
-  EdgeInsets padding = const EdgeInsets.all(32.0),
+  EdgeInsets? padding,
+  double? minHeight,
 }) {
   return Card(
     borderRadius: BorderRadius.circular(8.0),
     padding: EdgeInsets.zero,
-    child: Padding(
-      padding: padding,
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: children,
+    child: ConstrainedBox(
+      constraints: BoxConstraints(minHeight: minHeight ?? 0),
+      child: Padding(
+        padding: padding ?? const EdgeInsets.all(32.0),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: children,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     ),
   );

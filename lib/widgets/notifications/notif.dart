@@ -60,7 +60,7 @@ class _NotificationCalendarEntryWidgetState extends State<NotificationCalendarEn
       RelatedMediaAdditionNotification related => '${series?.displayTitle ?? related.media?.title ?? 'Unknown anime'} was added to Anilist',
       MediaDataChangeNotification dataChange => '${series?.displayTitle ?? dataChange.media?.title ?? 'Unknown anime'} was updated',
       MediaMergeNotification merge => '${series?.displayTitle ?? merge.media?.title ?? 'Unknown anime'} was merged',
-      MediaDeletionNotification deletion => '${deletion.deletedMediaTitle ?? 'Anime'} was deleted',
+      MediaDeletionNotification deletion => '${deletion.deletedMediaTitle ?? 'Unknown Anime'} was deleted',
       _ => 'Unknown notification',
     };
   }
