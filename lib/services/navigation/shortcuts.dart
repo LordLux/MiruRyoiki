@@ -159,10 +159,7 @@ class _CustomKeyboardListenerState extends State<CustomKeyboardListener> {
           homeKey.currentState?.setState(() {});
 
           // Refresh notifications dialog if visible
-          notificationsContentKey.currentState?.setState(() {
-            log('toggled hidden'); // TODO
-            notificationsContentKey.currentState?.refreshNotifications();
-          });
+          notificationsContentKey.currentState?.setState(() => notificationsContentKey.currentState!.refreshNotifications());
         }
       } else
       //

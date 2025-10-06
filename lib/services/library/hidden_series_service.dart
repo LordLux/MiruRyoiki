@@ -19,7 +19,7 @@ class HiddenSeriesService extends ChangeNotifier {
   /// Check if an AniList ID should be filtered out based on current settings
   bool shouldFilterAnilistId(int? anilistId) {
     if (anilistId == null) return false;
-    return _hiddenAnilistIds.contains(anilistId);
+    return !Manager.settings.showHiddenSeries && _hiddenAnilistIds.contains(anilistId);
   }
 
   /// Check if a series should be filtered out based on current settings

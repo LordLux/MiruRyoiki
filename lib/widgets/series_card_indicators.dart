@@ -29,9 +29,9 @@ class CardIndicators extends StatelessWidget {
     if (indicatorsList.isEmpty) return SizedBox.shrink();
 
     return Padding(
-      padding: isListView ? EdgeInsets.all(12.0) : const EdgeInsets.all(16.0),
+      padding: isListView ? EdgeInsets.all(12.0 * Manager.fontSizeMultiplier) : EdgeInsets.all(16.0 * Manager.fontSizeMultiplier),
       child: LayoutBuilder(builder: (context, constraints) {
-        final indicatorSize = isListView ? 28.0 : 25.0;
+        final indicatorSize = (isListView ? 28.0 : 25.0) * Manager.fontSizeMultiplier;
         final padding = 6.0;
 
         return Directionality(

@@ -77,7 +77,7 @@ class NotificationsContentState extends State<_NotificationsContent> {
   void _initializeService() {
     _anilistService = AnilistService();
     _loadCachedNotifications();
-    _syncNotifications();
+    _syncNotifications(true);
   }
 
   /// Filter notifications to exclude those related to hidden series
@@ -89,28 +89,31 @@ class NotificationsContentState extends State<_NotificationsContent> {
       int? anilistIdToCheck;
 
       // Extract AniList ID based on notification type
-      switch (notification.runtimeType) {
-        case AiringNotification _:
-          anilistIdToCheck = (notification as AiringNotification).animeId;
+      switch (notification) {
+        case AiringNotification airing:
+          anilistIdToCheck = airing.animeId;
           break;
-        case RelatedMediaAdditionNotification _:
-          anilistIdToCheck = (notification as RelatedMediaAdditionNotification).mediaId;
+        case RelatedMediaAdditionNotification related:
+          anilistIdToCheck = related.mediaId;
           break;
-        case MediaDataChangeNotification _:
-          anilistIdToCheck = (notification as MediaDataChangeNotification).mediaId;
+        case MediaDataChangeNotification dataChange:
+          anilistIdToCheck = dataChange.mediaId;
           break;
-        case MediaMergeNotification _:
-          anilistIdToCheck = (notification as MediaMergeNotification).mediaId;
+        case MediaMergeNotification merge:
+          anilistIdToCheck = merge.mediaId;
           break;
         case MediaDeletionNotification _:
           // Deletion notifications don't have an AniList ID, as the media has been deleted
           return true;
+        default:
+          logErr('Unknown notification type: ${notification.runtimeType}');
       }
 
       // Filter out if the AniList ID is in the hidden cache
       if (anilistIdToCheck != null && library.hiddenSeriesService.shouldFilterAnilistId(anilistIdToCheck)) {
         print('hiding: $anilistIdToCheck'); // TODO fix this not updating the ui
-        return false;}
+        return false;
+      }
 
       return true;
     }).toList();
@@ -143,26 +146,31 @@ class NotificationsContentState extends State<_NotificationsContent> {
     }
   }
 
-  Future<void> _syncNotifications() async {
-    if (_anilistService == null) return;
-
+  Future<(List<AnilistNotification>, int)> _fetchNotifications() async {
     final library = Provider.of<Library>(context, listen: false);
 
-    // Don't sync too frequently
-    if (_lastSync != null && now.difference(_lastSync!).inSeconds < 5) //
-      return;
+    // Focus on airing notifications primarily, with some media change notifications
+    final notifications = await _anilistService!.syncNotifications(
+      database: library.database,
+      types: [NotificationType.AIRING, NotificationType.RELATED_MEDIA_ADDITION, NotificationType.MEDIA_DATA_CHANGE],
+      maxPages: 2,
+    );
+
+    final unreadCount = await _anilistService!.getUnreadCount(library.database);
+    return (notifications, unreadCount);
+  }
+
+  Future<void> _syncNotifications([bool forceFetch = false]) async {
+    if (_anilistService == null) return;
 
     setState(() => _isRefreshing = true);
 
     try {
-      // Focus on airing notifications primarily, with some media change notifications
-      final notifications = await _anilistService!.syncNotifications(
-        database: library.database,
-        types: [NotificationType.AIRING, NotificationType.RELATED_MEDIA_ADDITION, NotificationType.MEDIA_DATA_CHANGE],
-        maxPages: 2,
-      );
-
-      final unreadCount = await _anilistService!.getUnreadCount(library.database);
+      List<AnilistNotification> notifications;
+      int unreadCount;
+      final result = await _fetchNotifications();
+      notifications = result.$1;
+      unreadCount = result.$2;
 
       // Filter out notifications for hidden series
       final filteredNotifications = _filterNotifications(notifications);
@@ -182,7 +190,7 @@ class NotificationsContentState extends State<_NotificationsContent> {
   }
 
   // Public method to force refresh notifications
-  void refreshNotifications() => _syncNotifications();
+  void refreshNotifications() => _syncNotifications(true);
 
   // Getter to check if currently refreshing
   bool get isRefreshing => _isRefreshing;

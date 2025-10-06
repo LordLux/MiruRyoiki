@@ -318,10 +318,6 @@ class _SeriesCardState extends State<SeriesCard> {
                     ),
                   ),
 
-                  CardIndicators(series: widget.series),
-
-                  AiringIndicator(series: widget.series, isHovered: _isHovering),
-
                   // Hover overlay
                   Positioned.fill(
                     child: Material(
@@ -344,6 +340,10 @@ class _SeriesCardState extends State<SeriesCard> {
                       ),
                     ),
                   ),
+
+                  CardIndicators(series: widget.series),
+
+                  AiringIndicator(series: widget.series, isHovered: _isHovering),
                 ],
               ),
             ),

@@ -6,6 +6,7 @@ import '../manager.dart';
 import '../models/series.dart';
 import '../services/navigation/statusbar.dart';
 import '../utils/logging.dart';
+import '../utils/text.dart';
 import 'context_menu/series.dart';
 import 'series_card_indicators.dart';
 
@@ -172,7 +173,9 @@ class _SeriesListTileState extends State<SeriesListTile> {
                 ),
                 child: LayoutBuilder(builder: (context, constraints) {
                   final indicatorSpace = 60.0;
+                  final progressTextStyle = Manager.miniBodyStyle.copyWith(color: _isHovering ? mainColor : Manager.bodyStyle.color?.withOpacity(0.7), fontSize: 11 * Manager.fontSizeMultiplier);
                   return Stack(
+                    alignment: Alignment.centerRight,
                     children: [
                       // Main content
                       Padding(
@@ -248,7 +251,7 @@ class _SeriesListTileState extends State<SeriesListTile> {
                               width: 100,
                               child: Text(
                                 progressText,
-                                style: Manager.miniBodyStyle.copyWith(color: _isHovering ? mainColor : Manager.bodyStyle.color?.withOpacity(0.7), fontSize: 11 * Manager.fontSizeMultiplier),
+                                style: progressTextStyle,
                                 textAlign: TextAlign.right,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
@@ -260,10 +263,13 @@ class _SeriesListTileState extends State<SeriesListTile> {
 
                       // Indicators with animation
                       Positioned(
-                        right: 80, // Position to the left of progress text
-                        child: Transform.scale(
-                          scale: 0.85,
-                          child: CardIndicators(series: widget.series, isListView: true),
+                        right: (10 + measureTextWidth(progressText, style: progressTextStyle)), // Position to the left of progress text
+                        child: Align(
+                          alignment: Alignment.centerRight,
+                          child: Transform.scale(
+                            scale: 0.85,
+                            child: CardIndicators(series: widget.series, isListView: true),
+                          ),
                         ),
                       ),
 

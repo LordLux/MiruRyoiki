@@ -366,16 +366,14 @@ extension AnilistServiceNotifications on AnilistService {
           },
         );
       } catch (e) {
-        // If timeout or other error, reset completer and continue
         _notificationsSyncCompleter = null;
         rethrow;
       }
     }
 
-    // Throttle full syncs: if last completed within 5s, just return cached (if any)
-    if (_lastNotificationsSyncAt != null && now.difference(_lastNotificationsSyncAt!).inSeconds < 5) {
+    // If last completed within 5s, just return cached (if any)
+    if (_lastNotificationsSyncAt != null && now.difference(_lastNotificationsSyncAt!).inSeconds < 5) //
       if (_lastNotificationsCache != null) return _lastNotificationsCache!;
-    }
 
     _notificationsSyncCompleter = Completer<List<AnilistNotification>>();
 
@@ -431,7 +429,7 @@ extension AnilistServiceNotifications on AnilistService {
       await notificationsDao.deleteOldNotifications(keepCount: 200); // cleanup
     }
 
-      _lastNotificationsSyncAt = DateTime.now();
+      _lastNotificationsSyncAt = now;
       _lastNotificationsCache = allNotifications; // cache entire result set for popup usage
       _notificationsSyncCompleter!.complete(allNotifications);
       _notificationsSyncCompleter = null;

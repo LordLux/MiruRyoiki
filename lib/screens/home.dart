@@ -91,6 +91,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final library = Provider.of<Library>(context);
+
     final settings = Provider.of<SettingsManager>(context);
 
     return MiruRyoikiTemplatePage(
@@ -278,51 +279,56 @@ class _HomeScreenState extends State<HomeScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         SizedBox(
-          width: 50,
-          height: 280,
-          child: RotatedBox(
-            quarterTurns: -1,
-            child: StandardButton(
-              label: const Text('Random Entry'),
-              onPressed: () => _selectRandomEntry(series),
+          height: 280 * Manager.fontSizeMultiplier,
+          child: AspectRatio(
+            aspectRatio: 0.21,
+            child: RotatedBox(
+              quarterTurns: -1,
+              child: StandardButton(
+                label: const Text('Random Entry'),
+                onPressed: () => _selectRandomEntry(series),
+              ),
             ),
           ),
         ),
         HDiv(12),
         Expanded(
           child: HoverVisibleScrollbar(
-            height: 280,
+            height: 280 * Manager.fontSizeMultiplier,
             builder: (context, scrollController) {
-              return ValueListenableBuilder(
-                valueListenable: KeyboardState.ctrlPressedNotifier,
-                builder: (context, isCtrlPressed, _) {
-                  return ListView.builder(
-                    controller: scrollController,
-                    physics: isCtrlPressed ? const NeverScrollableScrollPhysics() : null,
-                    scrollDirection: Axis.horizontal,
-                    itemCount: series.length,
-                    itemBuilder: (context, index) {
-                      final currentSeries = series[index];
-                      final bool isLast = index == series.length - 1;
-                      // Use the new progress manager to get next episode
-                      final nextEpisode = Manager.anilistProgress.getNextEpisodeToWatchEpisode(currentSeries, anilistProvider);
-                      if (nextEpisode == null) return const SizedBox.shrink();
+              return ClipRRect(
+                borderRadius: BorderRadius.all(Radius.circular(ScreenUtils.kStatCardBorderRadius)),
+                child: ValueListenableBuilder(
+                  valueListenable: KeyboardState.ctrlPressedNotifier,
+                  builder: (context, isCtrlPressed, _) {
+                    return ListView.builder(
+                      controller: scrollController,
+                      physics: isCtrlPressed ? const NeverScrollableScrollPhysics() : null,
+                      scrollDirection: Axis.horizontal,
+                      itemCount: series.length,
+                      itemBuilder: (context, index) {
+                        final currentSeries = series[index];
+                        final bool isLast = index == series.length - 1;
+                        // Use the new progress manager to get next episode
+                        final nextEpisode = Manager.anilistProgress.getNextEpisodeToWatchEpisode(currentSeries, anilistProvider);
+                        if (nextEpisode == null) return const SizedBox.shrink();
 
-                      return Padding(
-                        padding: isLast ? EdgeInsets.zero : const EdgeInsets.only(right: 12),
-                        child: SizedBox(
-                          width: 200,
-                          child: ContinueEpisodeCard(
-                            series: currentSeries,
-                            episode: nextEpisode,
-                            onTap: () => _openEpisode(currentSeries, nextEpisode),
-                            progress: onlyStarted ? nextEpisode.progress : null, // Show progress only if this is "Continue Watching"
+                        return Padding(
+                          padding: isLast ? EdgeInsets.zero : const EdgeInsets.only(right: 12),
+                          child: AspectRatio(
+                            aspectRatio: 1 / ScreenUtils.kDefaultUpcomingEpisodeCardAspectRatio,
+                            child: ContinueEpisodeCard(
+                              series: currentSeries,
+                              episode: nextEpisode,
+                              onTap: () => _openEpisode(currentSeries, nextEpisode),
+                              progress: onlyStarted ? nextEpisode.progress : null, // Show progress only if this is "Continue Watching"
+                            ),
                           ),
-                        ),
-                      );
-                    },
-                  );
-                },
+                        );
+                      },
+                    );
+                  },
+                ),
               );
             },
           ),
@@ -490,39 +496,41 @@ class _HomeScreenState extends State<HomeScreen> {
       return s.anilistMappings.any((mapping) => upcomingEpisodesMap[mapping.anilistId]?.airingAt != null);
     }).toList();
     return HoverVisibleScrollbar(
-      height: 170,
+      height: 280 * Manager.fontSizeMultiplier,
       builder: (context, scrollController) {
-        return ValueListenableBuilder(
-          valueListenable: KeyboardState.ctrlPressedNotifier,
-          builder: (context, isCtrlPressed, _) {
-            return ListView.builder(
-              controller: scrollController,
-              physics: isCtrlPressed ? const NeverScrollableScrollPhysics() : null,
-              scrollDirection: Axis.horizontal,
-              itemCount: onlyUpcomingEpisodes.length,
-              itemBuilder: (context, index) {
-                final currentSeries = onlyUpcomingEpisodes[index];
+        return ClipRRect(
+          borderRadius: BorderRadius.all(Radius.circular(ScreenUtils.kStatCardBorderRadius)),
+          child: ValueListenableBuilder(
+            valueListenable: KeyboardState.ctrlPressedNotifier,
+            builder: (context, isCtrlPressed, _) {
+              return ListView.builder(
+                controller: scrollController,
+                physics: isCtrlPressed ? const NeverScrollableScrollPhysics() : null,
+                scrollDirection: Axis.horizontal,
+                itemCount: onlyUpcomingEpisodes.length,
+                itemBuilder: (context, index) {
+                  final currentSeries = onlyUpcomingEpisodes[index];
 
-                // Get the upcoming episode info for this series
-                AiringEpisode? nextEpisode;
-                for (final mapping in currentSeries.anilistMappings) {
-                  final episode = upcomingEpisodesMap[mapping.anilistId];
-                  if (episode?.airingAt != null) {
-                    nextEpisode = nextEpisode == null ? episode : (episode!.airingAt! < nextEpisode.airingAt! ? episode : nextEpisode);
+                  // Get the upcoming episode info for this series
+                  AiringEpisode? nextEpisode;
+                  for (final mapping in currentSeries.anilistMappings) {
+                    final episode = upcomingEpisodesMap[mapping.anilistId];
+                    if (episode?.airingAt != null) {
+                      nextEpisode = nextEpisode == null ? episode : (episode!.airingAt! < nextEpisode.airingAt! ? episode : nextEpisode);
+                    }
                   }
-                }
 
-                return Padding(
-                  padding: index != onlyUpcomingEpisodes.length - 1 ? const EdgeInsets.only(right: 12) : EdgeInsets.zero,
-                  child: SizedBox(
-                    width: 260,
-                    height: 170,
-                    child: UpcomingEpisodeCard(series: currentSeries, airingEpisode: nextEpisode!),
-                  ),
-                );
-              },
-            );
-          },
+                  return Padding(
+                    padding: index != onlyUpcomingEpisodes.length - 1 ? const EdgeInsets.only(right: 12) : EdgeInsets.zero,
+                    child: AspectRatio(
+                      aspectRatio: 1 / ScreenUtils.kDefaultUpcomingEpisodeCardAspectRatio,
+                      child: UpcomingEpisodeCard(series: currentSeries, airingEpisode: nextEpisode!),
+                    ),
+                  );
+                },
+              );
+            },
+          ),
         );
       },
     );

@@ -102,7 +102,7 @@ extension LibraryAnilistIntegration on Library {
     // Fetch all anime details in one call
     final animeMap = await linkService.fetchMultipleAnimeDetails(anilistIds);
     logTrace('5 | Fetched details for ${animeMap.length} out of ${anilistIds.length} requested AniList IDs');
-    log(animeMap);
+    // log(animeMap);
 
     // Process each series with the fetched data
     for (final series in allSeriesToFetch) {

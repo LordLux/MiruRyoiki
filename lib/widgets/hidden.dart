@@ -1,5 +1,7 @@
 import 'package:fluent_ui/fluent_ui.dart';
 
+import '../manager.dart';
+
 class LocalHidden extends StatelessWidget {
   const LocalHidden({
     super.key,
@@ -17,7 +19,7 @@ class LocalHidden extends StatelessWidget {
         message: 'Hidden inside this app',
         child: Icon(
           FluentIcons.hide2, // or use FluentIcons.hide2 or FluentIcons.eye_hide
-          size: 18,
+          size: 18 * Manager.fontSizeMultiplier,
           color: Colors.white,
         ),
       ),
@@ -42,7 +44,7 @@ class AnilistHidden extends StatelessWidget {
         message: 'Hidden from Anilist status lists',
         child: Icon(
           FluentIcons.hide, // or use FluentIcons.hide2 or FluentIcons.eye_hide
-          size: 18,
+          size: 18 * Manager.fontSizeMultiplier,
           color: Colors.white,
         ),
       ),

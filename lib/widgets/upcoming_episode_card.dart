@@ -12,7 +12,7 @@ import '../utils/logging.dart';
 import '../utils/time.dart';
 import 'context_menu/series.dart';
 import 'frosted_noise.dart';
-import 'hidden.dart';
+import 'series_card_indicators.dart';
 
 class UpcomingEpisodeCard extends StatefulWidget {
   final Series series;
@@ -270,11 +270,6 @@ class _UpcomingEpisodeCardState extends State<UpcomingEpisodeCard> {
                   ),
                 ),
 
-                // Anilist hidden indicator
-                if (widget.series.isAnilistHidden) const AnilistHidden(),
-                // LOCAL hidden indicator
-                if (widget.series.isForcedHidden) const LocalHidden(),
-
                 // Hover overlay
                 Positioned.fill(
                   child: Material(
@@ -297,6 +292,9 @@ class _UpcomingEpisodeCardState extends State<UpcomingEpisodeCard> {
                     ),
                   ),
                 ),
+
+                // Card indicators
+                CardIndicators(series: widget.series),
               ],
             ),
           ),

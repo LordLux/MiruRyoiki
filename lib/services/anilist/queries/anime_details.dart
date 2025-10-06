@@ -215,7 +215,7 @@ extension AnilistServiceAnimeDetails on AnilistService {
               chunkResults[anime.id] = anime;
             }
 
-            log('${i ~/ maxChunkSize + 1} | Fetched details for ${chunkResults.length} out of ${chunk.length} requested AniList IDs');
+            logTrace('${i ~/ maxChunkSize + 1} | Fetched details for ${chunkResults.length} out of ${chunk.length} requested AniList IDs');
 
             return chunkResults;
           },
@@ -247,7 +247,7 @@ extension AnilistServiceAnimeDetails on AnilistService {
       }
     }
 
-    log('Fetched details for ${allResults.length} out of ${ids.length} requested AniList IDs');
+    logTrace('Fetched details for ${allResults.length} out of ${ids.length} requested AniList IDs');
     return allResults;
   }
 
@@ -663,7 +663,7 @@ extension AnilistServiceAnimeDetails on AnilistService {
       final chunk = animeIds.sublist(i, chunkEnd);
 
       logTrace('Fetching episode titles chunk ${i ~/ maxChunkSize + 1}/${(animeIds.length / maxChunkSize).ceil()}: ${chunk.length} IDs');
-      log('Fetching following ids: $chunk');
+      // log('Fetching following ids: $chunk');
 
       const String batchEpisodeTitlesQuery = '''
         query GetMultipleEpisodeTitles(\$ids: [Int]) {
@@ -746,10 +746,10 @@ extension AnilistServiceAnimeDetails on AnilistService {
             }
 
             // Log detailed breakdown
-            log('  Chunk ${i ~/ maxChunkSize + 1} episode title results:');
-            log('    ${animeWithEpisodes.length} anime with episode titles: $animeWithEpisodes');
-            if (animeWithoutEpisodes.isNotEmpty) log('    ${animeWithoutEpisodes.length} anime with empty/unparseable episodes: $animeWithoutEpisodes');
-            if (animeNotFound.isNotEmpty) log('    ${animeNotFound.length} anime not found in AniList: $animeNotFound');
+            logTrace('  Chunk ${i ~/ maxChunkSize + 1} episode title results:');
+            // log('    ${animeWithEpisodes.length} anime with episode titles: $animeWithEpisodes');
+            if (animeWithoutEpisodes.isNotEmpty) logTrace('    ${animeWithoutEpisodes.length} anime with empty/unparseable episodes: $animeWithoutEpisodes');
+            if (animeNotFound.isNotEmpty) logTrace('    ${animeNotFound.length} anime not found in AniList: $animeNotFound');
 
             logTrace('Fetched episode titles for ${chunkResults.length} out of ${chunk.length} anime in chunk (${animeWithEpisodes.length} with episodes, ${animeWithoutEpisodes.length} without, ${animeNotFound.length} not found)');
             return chunkResults;
@@ -774,12 +774,12 @@ extension AnilistServiceAnimeDetails on AnilistService {
     final totalRequested = animeIds.length;
     final totalWithoutEpisodes = totalRequested - totalWithEpisodes;
 
-    log('Episode titles batch summary:');
-    log(' $totalWithEpisodes anime with episode titles');
-    log(' $totalWithoutEpisodes anime without episode titles');
-    log(' Success rate: ${(totalWithEpisodes / totalRequested * 100).toStringAsFixed(1)}%');
+    // logTrace('Episode titles batch summary:');
+    // logTrace(' $totalWithEpisodes anime with episode titles');
+    // logTrace(' $totalWithoutEpisodes anime without episode titles');
+    // logTrace(' Success rate: ${(totalWithEpisodes / totalRequested * 100).toStringAsFixed(1)}%');
 
-    logTrace('Fetched episode titles for $totalWithEpisodes out of $totalRequested anime total');
+    logTrace('Fetched episode titles for $totalWithEpisodes out of $totalRequested anime total ($totalWithoutEpisodes without any streamingepisodes)');
     return allResults;
   }
 }
