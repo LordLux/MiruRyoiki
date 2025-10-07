@@ -88,14 +88,14 @@ class _WindowsIframeWidgetState extends State<WindowsIframeWidget> with Automati
         throw TimeoutException('WebView initialization timed out');
       });
 
-      logTrace('WebView initialized for ${widget.src}');
+      // logTrace('WebView initialized for ${widget.src}');
 
       // Load URL after initialization
       try {
         await _controller.loadUrl(widget.src).timeout(const Duration(seconds: 10), onTimeout: () {
           throw TimeoutException('URL loading timed out');
         });
-        logTrace('URL loaded successfully: ${widget.src}');
+        // logTrace('URL loaded successfully: ${widget.src}');
       } catch (urlError) {
         logErr('Error loading URL ${widget.src}', urlError);
         // Still mark as ready but with an error state

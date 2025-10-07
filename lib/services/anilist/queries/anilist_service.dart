@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:graphql/client.dart';
 import 'package:http/http.dart';
+import 'package:provider/provider.dart';
 import '../../../../models/anilist/anime.dart';
 import '../../../../models/anilist/user_list.dart';
 import '../../../main.dart';
@@ -14,7 +15,9 @@ import '../../../database/daos/notifications_dao.dart';
 import '../../../utils/logging.dart';
 import '../../../utils/retry.dart';
 import '../../../utils/time.dart';
+import '../../library/library_provider.dart';
 import '../auth.dart';
+import '../provider/anilist_provider.dart';
 
 part 'initialization.dart';
 part 'auth.dart';

@@ -97,30 +97,32 @@ class AccountsScreenState extends State<AccountsScreen> {
     return HeaderWidget(
       title: (style, _) => Align(
         alignment: Alignment.centerLeft,
-        child: WrappedHyperlinkButton(
-          tooltipWaitDuration: const Duration(milliseconds: 600),
-          tooltip: 'Copy your Anilist Profile ID',
-          onPressed: () {
-            copyToClipboard(anilistProvider.currentUser!.id.toString());
-            snackBar(
-              'Copied Anilist Profile ID: ${anilistProvider.currentUser!.id}',
-              severity: InfoBarSeverity.info,
-            );
-          },
-          text: anilistProvider.currentUser?.name.titleCase ?? 'Anilist',
-          style: style,
-          iconColor: Manager.accentColor.darkest.lerpWith(Colors.white, 0.8),
-          icon: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (anilistProvider.currentUser != null) ...[
-                Text(anilistProvider.currentUser!.id.toString()),
-                HDiv(8),
-              ],
-              Icon(mat.Icons.copy),
-            ],
-          ),
-        ),
+        child: anilistProvider.isLoggedIn
+            ? WrappedHyperlinkButton(
+                tooltipWaitDuration: const Duration(milliseconds: 600),
+                tooltip: 'Copy your Anilist Profile ID',
+                onPressed: () {
+                  copyToClipboard(anilistProvider.currentUser!.id.toString());
+                  snackBar(
+                    'Copied Anilist Profile ID: ${anilistProvider.currentUser!.id}',
+                    severity: InfoBarSeverity.info,
+                  );
+                },
+                text: anilistProvider.currentUser?.name.titleCase,
+                style: style,
+                iconColor: Manager.accentColor.darkest.lerpWith(Colors.white, 0.8),
+                icon: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (anilistProvider.currentUser != null) ...[
+                      Text(anilistProvider.currentUser!.id.toString()),
+                      HDiv(8),
+                    ],
+                    Icon(mat.Icons.copy),
+                  ],
+                ),
+              )
+            : Text('Accounts', style: style),
       ),
       titleLeftAligned: !isLoggedIn,
       image: anilistProvider.currentUser?.bannerImage != null //
@@ -164,9 +166,7 @@ class AccountsScreenState extends State<AccountsScreen> {
                       borderRadius: BorderRadius.circular(ScreenUtils.kProfilePictureBorderRadius),
                       hoverColor: Manager.accentColor.lightest.withOpacity(0.2),
                       focusColor: Manager.accentColor.lightest.withOpacity(0.2),
-                      onTap: () {
-                        launchUrl(Uri.parse('https://anilist.co/user/${anilistProvider.currentUser!.id}'));
-                      },
+                      onTap: () => launchUrl(Uri.parse('https://anilist.co/user/${anilistProvider.currentUser!.id}')),
                       child: AnimatedOpacity(
                         opacity: isHovering ? 1.0 : 0.0,
                         duration: shortDuration,
@@ -203,6 +203,7 @@ class AccountsScreenState extends State<AccountsScreen> {
           infobar: (_) => infoBar(anilistProvider: anilistProvider),
           content: buildMainContent(anilistProvider),
           hideInfoBar: !isLoggedIn,
+          noHeaderBanner: !isLoggedIn,
         ),
       ),
     );
@@ -361,10 +362,11 @@ class AccountsScreenState extends State<AccountsScreen> {
             body: 'Are you sure you want to logout from Anilist?',
             onPositive: () async {
               await anilistProvider.logout();
-              setState(() => isLocalLoading = false);
-              logInfo('Logged out of Anilist');
+              Manager.setState(() => isLocalLoading = false);
+              logInfo('User logged out of Anilist');
             },
-            onNegative: () => logInfo('Cancelled Anilist logout'),
+            positiveButtonText: 'Yes, Log Out',
+            onNegative: () => logInfo('User cancelled Anilist logout'),
           );
         },
       ),
@@ -381,26 +383,55 @@ class AccountsScreenState extends State<AccountsScreen> {
         // Not logged in
         if (!anilistProvider.isLoggedIn) ...[
           SettingsCard(children: [
-            AnilistCardTitle(),
-            VDiv(12),
-            Text(
-              'Connect your Anilist account to sync your media library.',
-              style: Manager.bodyStyle,
-            ),
-            Align(
-              alignment: Alignment.topRight,
-              child: LoadingButton(
-                isLoading: isButtonDisabled || isLocalLoading || anilistProvider.isLoading,
-                label: 'Connect Anilist',
-                isBigEvenWithoutLoading: true,
-                isFilled: true,
-                onPressed: () async {
-                  if (isLocalLoading) return;
-                  isLocalLoading = true;
-                  await anilistProvider.login();
-                  logInfo('Logging in to Anilist...');
-                },
-              ),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    AnilistCardTitle(),
+                    VDiv(12),
+                    Text(
+                      'Connect your Anilist account to sync your media library.',
+                      style: Manager.bodyStyle,
+                    ),
+                  ],
+                ),
+                Align(
+                  alignment: Alignment.topRight,
+                  child: MouseButtonWrapper(child: (isHovered) {
+                    final isLoadHovering = (isLocalLoading || anilistProvider.isLoading) && isHovered;
+                    return LoadingButton(
+                      isLoading: (isButtonDisabled || isLocalLoading || anilistProvider.isLoading) && !isLoadHovering,
+                      label: isLoadHovering ? ' Cancel Log In ' : 'Connect Anilist',
+                      tooltip: isLoadHovering //
+                          ? 'Cancel the Log in Attempt'
+                          : 'Click to Log into Anilist, this will open your web browser and direct you to the Anilist login page',
+                      isBigEvenWithoutLoading: true,
+                      filledColor: isLoadHovering ? Colors.red.toAccentColor().lighter : null,
+                      hoverFillColor: isLoadHovering ? Colors.red.toAccentColor().lightest : null,
+                      isFilled: true,
+                      onPressed: () async {
+                        if (isLoadHovering) {
+                          // Cancel the login attempt
+                          setState(() => isLocalLoading = false);
+                          anilistProvider.cancelLogin();
+                          return;
+                        }
+
+                        if (isLocalLoading) return;
+                        isLocalLoading = true;
+                        await anilistProvider.login();
+                        logInfo('User logging in to Anilist...');
+                        Manager.setState();
+                      },
+                    );
+                  }),
+                ),
+              ],
             ),
           ])
         ] else ...[
@@ -1369,31 +1400,35 @@ class AccountsScreenState extends State<AccountsScreen> {
 }
 
 class AnilistCardTitle extends StatelessWidget {
-  const AnilistCardTitle({
-    super.key,
-  });
+  const AnilistCardTitle({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      height: 50,
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          SizedBox(
-            width: 50,
-            height: 20,
-            child: Transform.scale(
-              scale: 3,
-              child: anilistLogo,
+    return Padding(
+      padding: EdgeInsets.only(top: 8),
+      child: SizedBox(
+        height: 50,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(
+              width: 70,
+              height: 20,
+              child: Transform.scale(
+                scale: 3,
+                child: anilistLogo,
+              ),
             ),
-          ),
-          const SizedBox(width: 12),
-          Text(
-            'Anilist',
-            style: Manager.subtitleStyle,
-          ),
-        ],
+            const SizedBox(width: 12),
+            Transform.translate(
+              offset: Offset(0, 4),
+              child: Text(
+                'Anilist',
+                style: Manager.subtitleStyle,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

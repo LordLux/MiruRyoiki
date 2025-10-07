@@ -21,7 +21,7 @@ extension LibraryInitialization on Library {
 
     // 4. Initialize Media Player Integration
     await initializeMediaPlayerIntegration();
-    
+
     // 1. Scan Local Library (this now reports progress and manages its own state)
     await scanLocalLibrary();
 
@@ -32,11 +32,13 @@ extension LibraryInitialization on Library {
     await ensureCacheValidated();
 
     // 5. Load posters for library
-    await loadAnilistPostersForLibrary(onProgress: (loaded, total) {
-      if (loaded % 2 == 0 || loaded == total) {
-        // UI can be notified of progress here if needed
-      }
-    });
+    await loadAnilistPostersForLibrary(
+        anilistProvider: anilistProvider,
+        onProgress: (loaded, total) {
+          if (loaded % 2 == 0 || loaded == total) {
+            // UI can be notified of progress here if needed
+          }
+        });
     logTrace('Full library initialization complete.');
   }
 
@@ -51,7 +53,9 @@ extension LibraryInitialization on Library {
 
     await ensureCacheValidated();
 
-    await loadAnilistPostersForLibrary(onProgress: (loaded, total) {
+    await loadAnilistPostersForLibrary(
+      anilistProvider: Provider.of<AnilistProvider>(rootNavigatorKey.currentContext!, listen: false),
+      onProgress: (loaded, total) {
       if (loaded % 2 == 0 || loaded == total) {
         // Force UI refresh every 2 items or on completion
         Manager.setState();

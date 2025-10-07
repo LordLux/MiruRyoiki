@@ -2,10 +2,15 @@ part of 'library_provider.dart';
 
 extension LibraryAnilistIntegration on Library {
   /// Load Anilist posters for series that have links but no local images
-  Future<void> loadAnilistPostersForLibrary({void Function(int loaded, int total)? onProgress}) async {
+  Future<void> loadAnilistPostersForLibrary({void Function(int loaded, int total)? onProgress, required AnilistProvider anilistProvider}) async {
     final linkService = SeriesLinkService();
     final imageCache = ImageCacheService();
     await imageCache.init();
+
+    if (!anilistProvider.isLoggedIn) {
+      logInfo('User is not logged in to Anilist, skipping loading Anilist posters for library.');
+      return;
+    }
 
     final needPosters = <Series>[];
     final alreadyCached = <Series>[];

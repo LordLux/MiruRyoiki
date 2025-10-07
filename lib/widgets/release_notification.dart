@@ -4,6 +4,7 @@ import 'dart:async';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/material.dart' as mat;
 import 'package:material_symbols_icons/material_symbols_icons.dart';
+import 'package:miruryoiki/widgets/tooltip_wrapper.dart';
 import 'package:provider/provider.dart';
 
 import '../main.dart';
@@ -163,9 +164,11 @@ class _ReleaseNotificationWidgetState extends State<ReleaseNotificationWidget> {
         final hasNotifications = _unreadCount > 0;
         final isEnabled = anilistProvider.isLoggedIn;
 
-        return Tooltip(
-          message: isEnabled ? (hasNotifications ? '$_unreadCount unread notification${_unreadCount > 1 ? 's' : ''}' : 'No unread notifications') : 'Login to Anilist to see notifications',
-          child: IconButton(
+        return TooltipWrapper(
+          tooltip: isEnabled ? (hasNotifications ? '$_unreadCount unread notification${_unreadCount > 1 ? 's' : ''}' : 'No unread notifications') : 'Login to Anilist to see notifications',
+          preferBelow: true,
+          waitDuration: const Duration(milliseconds: 200),
+          child: (_) => IconButton(
             icon: Stack(
               clipBehavior: Clip.none,
               children: [

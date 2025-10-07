@@ -255,6 +255,11 @@ extension AnilistServiceAnimeDetails on AnilistService {
   Future<Map<String, AnilistUserList>> getUserAnimeLists({String? userName, int? userId}) async {
     if (_client == null) return {};
 
+    if (userName == null && userId == null) {
+      logWarn('No user identifier provided for fetching anime lists');
+      return {};
+    }
+
     logTrace('2 | Fetching anime lists from Anilist for user $userName ($userId)...');
 
     const listsQuery = r'''

@@ -12,8 +12,19 @@ extension AnilistServiceAuth on AnilistService {
     if (success) {
       Manager.accounts.add('Anilist');
       // ignore: invalid_use_of_protected_member
-      accountsKey.currentState?.setState(() {});
+      Manager.setState(() {});
       _setupGraphQLClient();
+
+      final anilistProvider = Provider.of<AnilistProvider>(rootNavigatorKey.currentContext!, listen: false);
+      await anilistProvider.initializeOnlineFeatures();
+
+      await anilistProvider.refreshUserData();
+      
+      await anilistProvider.refreshUserLists();
+      
+      final library = Provider.of<Library>(rootNavigatorKey.currentContext!, listen: false);
+      await library.loadAnilistPostersForLibrary(anilistProvider: anilistProvider, onProgress: (loaded, total) {});
+      logTrace('Anilist data sync complete after login.');
     } else {
       await logout();
     }

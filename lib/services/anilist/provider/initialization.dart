@@ -97,7 +97,7 @@ extension AnilistProviderInitialization on AnilistProvider {
     _isReady = true;
     _isLoading = false;
     notifyListeners();
-    logTrace('_ | AnilistProvider first sync call successfully done.');
+    logTrace('_ | ${isLoggedIn ? "AnilistProvider first sync call successfully done." : "AnilistProvider is ready but not logged in."}');
   }
 
   // DISPOSE IS IN MAIN FILE

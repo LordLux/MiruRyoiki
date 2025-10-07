@@ -1,6 +1,7 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:miruryoiki/utils/time.dart';
 
+import '../../manager.dart';
 import 'wrapper.dart';
 
 class LoadingButton extends StatefulWidget {
@@ -13,7 +14,7 @@ class LoadingButton extends StatefulWidget {
   final bool isFilled;
   final String? tooltip;
   final Widget? tooltipWidget;
-  final Color filledColor;
+  final Color? filledColor;
   final Color? hoverFillColor;
   final bool expand;
   final Duration? tooltipWaitDuration;
@@ -29,7 +30,7 @@ class LoadingButton extends StatefulWidget {
     this.isFilled = false,
     this.tooltip,
     this.tooltipWidget,
-    this.filledColor = Colors.transparent,
+    this.filledColor,
     this.hoverFillColor,
     this.expand = false,
     this.tooltipWaitDuration,
@@ -52,6 +53,9 @@ class LoadingButtonState extends State<LoadingButton> {
 
   @override
   Widget build(BuildContext context) {
+    final fill = widget.filledColor ?? (widget.isFilled ? Manager.accentColor.lighter : FluentTheme.of(context).resources.cardBackgroundFillColorDefault);
+    final hoverFill = widget.hoverFillColor ?? (widget.isFilled ? Manager.accentColor.lightest : FluentTheme.of(context).resources.cardBackgroundFillColorDefault);
+
     return MouseButtonWrapper(
       isButtonDisabled: widget.isButtonDisabled,
       isLoading: widget.isLoading,
@@ -59,15 +63,16 @@ class LoadingButtonState extends State<LoadingButton> {
       tooltipWaitDuration: widget.tooltipWaitDuration,
       tooltipWidget: widget.tooltipWidget,
       child: (isHovering) {
-        final Color? bg = widget.isLoading ? null : (isHovering ? widget.hoverFillColor : widget.filledColor);
+        final Color? bg = widget.isLoading ? null : (isHovering ? hoverFill : fill);
         final Color fg = widget.isFilled && !widget.isLoading ? Colors.black : Colors.white;
-        
+
         ButtonStyle copy = ButtonStyle(
           padding: WidgetStatePropertyAll(EdgeInsets.zero),
           foregroundColor: WidgetStatePropertyAll<Color>(fg),
           backgroundColor: WidgetStateProperty.all<Color?>(bg),
         );
-        Widget child = SizedBox(
+        Widget child = AnimatedContainer(
+          duration: shortDuration,
           height: widget.isSmall ? 32 : 48,
           child: Stack(
             alignment: Alignment.center,
@@ -86,7 +91,8 @@ class LoadingButtonState extends State<LoadingButton> {
                 child: AnimatedOpacity(
                   opacity: widget.isLoading ? 1.0 : 0.0,
                   duration: mediumDuration,
-                  child: SizedBox(
+                  child: AnimatedContainer(
+                    duration: shortDuration,
                     width: widget.isSmall ? 20 : 25,
                     height: widget.isSmall ? 20 : 25,
                     child: ProgressRing(
@@ -104,7 +110,8 @@ class LoadingButtonState extends State<LoadingButton> {
           child: child,
         );
         if (widget.expand) {
-          return SizedBox(
+          return AnimatedContainer(
+            duration: shortDuration,
             width: double.infinity,
             child: buttonWidget,
           );

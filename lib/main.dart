@@ -2,7 +2,7 @@
 
 import 'dart:io';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart' show Material, MaterialPageRoute, ScaffoldMessenger;
+import 'package:flutter/material.dart' show Icons, Material, MaterialPageRoute, ScaffoldMessenger;
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_acrylic/flutter_acrylic.dart';
@@ -591,7 +591,7 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
                                       ),
                                     ),
                                   ),
-            
+
                                   // Animated container for the SeriesScreen
                                   // will hide only after fade out animation finishes
                                   IgnorePointer(
@@ -616,16 +616,15 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
                                 ],
                               ),
                             ),
-                            if (anilistProvider.isLoggedIn)
-                              buildPaneItem(
-                                calendarIndex,
-                                icon: movedPaneItemIcon(const Icon(FluentIcons.calendar)),
-                                body: ReleaseCalendarScreen(
-                                  key: releaseCalendarScreenKey,
-                                  onSeriesSelected: navigateToSeries,
-                                  scrollController: _calendarMap['controller'] as ScrollController,
-                                ),
+                            buildPaneItem(
+                              calendarIndex,
+                              icon: movedPaneItemIcon(const Icon(FluentIcons.calendar)),
+                              body: ReleaseCalendarScreen(
+                                key: releaseCalendarScreenKey,
+                                onSeriesSelected: navigateToSeries,
+                                scrollController: _calendarMap['controller'] as ScrollController,
                               ),
+                            ),
                           ],
                           footerItems: [
                             PaneItemSeparator(),
@@ -639,9 +638,9 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
                               extra: (isHovered) {
                                 final anilistProvider = Provider.of<AnilistProvider>(context, listen: false);
                                 final user = anilistProvider.currentUser;
-            
+
                                 if (user == null) return null;
-            
+
                                 return Flexible(
                                   child: Align(
                                     alignment: Alignment.centerRight,
@@ -652,7 +651,7 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
                                         padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 8.0),
                                         child: Builder(builder: (context) {
                                           if (user.avatar == null) return CircleAvatar(backgroundColor: Manager.accentColor.withOpacity(0.25));
-            
+
                                           return CircleAvatar(
                                             backgroundImage: CachedNetworkImageProvider(
                                               user.avatar!,
@@ -784,11 +783,19 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
       );
     }
 
+    final bool isEnabled = !(id == calendarIndex && !anilistProvider.isLoggedIn);
+
     return PaneItem(
+      enabled: isEnabled,
       key: ValueKey("pane_item_$id"),
-      mouseCursor: mouseCursorClick ? SystemMouseCursors.click : MouseCursor.defer,
-      title: Text(title, style: Manager.bodyStyle),
+      mouseCursor: mouseCursorClick && isEnabled ? SystemMouseCursors.click : MouseCursor.defer,
+      title: Text(title, style: Manager.bodyStyle.copyWith(color: Colors.white.withOpacity(isEnabled ? 1 : .5))),
       icon: icon,
+      infoBadge: !anilistProvider.isLoggedIn && id == accountsIndex ? InfoBadge(
+        // source: Icon(Icons.priority_high, size: 20),
+        foregroundColor: Colors.white,
+        color: Manager.accentColor.lighter,
+      ) : null,
       body: body,
       trailing: extra?.call(true),
     );
@@ -884,7 +891,7 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
                                           final navManager = Manager.navigation;
 
                                           final item = _navigationMap[calendarIndex]!;
-                                          navManager.clearAndPushPane(item['id'], item['title']);
+                                          navManager.pushPane(item['id'], item['title']);
                                         });
 
                                         // Refresh the release calendar after navigation

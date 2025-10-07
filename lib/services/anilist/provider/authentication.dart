@@ -7,6 +7,13 @@ extension AnilistProviderAuthentication on AnilistProvider {
     notifyListeners();
   }
 
+  /// Cancel the login attempt
+  void cancelLogin() {
+    _isLoading = false;
+    notifyListeners();
+    logInfo('User cancelled Anilist login attempt');
+  }
+
   /// Handle auth callback
   Future<bool> handleAuthCallback(Uri callbackUri) async {
     _isLoading = true;
