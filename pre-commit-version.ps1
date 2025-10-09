@@ -50,7 +50,7 @@ catch {
 
 # No manual version change detected, proceed with auto-increment
 Write-Host "Auto-incrementing patch version..." -ForegroundColor Cyan
-pubversion patch --build none
+pubversion patch --build reset # Increments patch and resets build to 0
 
 if ($LASTEXITCODE -ne 0) {
     Write-Host "Failed to increment version" -ForegroundColor Red

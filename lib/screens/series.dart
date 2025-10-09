@@ -3,6 +3,7 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/material.dart' as mat;
 import 'package:provider/provider.dart';
 import 'package:defer_pointer/defer_pointer.dart';
+import 'package:recase/recase.dart';
 
 import '../main.dart';
 import '../services/library/library_provider.dart';
@@ -72,6 +73,85 @@ class SeriesScreenState extends State<SeriesScreen> {
   Color get dominantColor =>
       series?.dominantColor ?? //
       FluentTheme.of(context).accentColor.defaultBrushFor(FluentTheme.of(context).brightness);
+
+  List<Widget> infos(Series series) => [
+    InfoLabel(
+      label: 'Seasons',
+      labelStyle: Manager.bodyStrongStyle,
+      child: Text('${series.numberOfSeasons}'),
+    ),
+    InfoLabel(
+      label: 'Episodes',
+      labelStyle: Manager.bodyStrongStyle,
+      child: Text('${series.totalEpisodes}'),
+    ),
+    if (series.anilistData?.status != null)
+      InfoLabel(
+        label: 'Status',
+        labelStyle: Manager.bodyStrongStyle,
+        child: Text(series.anilistData!.status!.replaceAll('_', ' ').titleCase),
+      ),
+    if (series.format != null)
+      InfoLabel(
+        label: 'Format',
+        labelStyle: Manager.bodyStrongStyle,
+        child: Text(series.format!),
+      ),
+    if (series.seasonYear != null)
+      InfoLabel(
+        label: 'Year',
+        labelStyle: Manager.bodyStrongStyle,
+        child: Text('${series.seasonYear}'),
+      ),
+    if (series.anilistData?.season != null)
+      InfoLabel(
+        label: 'Season',
+        labelStyle: Manager.bodyStrongStyle,
+        child: Text(series.anilistData!.season!.toLowerCase().titleCase),
+      ),
+    if (series.rating != null)
+      InfoLabel(
+        label: 'Rating',
+        labelStyle: Manager.bodyStrongStyle,
+        child: Text('${series.rating! / 10}/10'),
+      ),
+    if (series.meanScore != null)
+      InfoLabel(
+        label: 'Mean Score',
+        labelStyle: Manager.bodyStrongStyle,
+        child: Text('${series.meanScore! / 10}/10'),
+      ),
+    if (series.highestUserScore != null && series.highestUserScore! > 0)
+      InfoLabel(
+        label: 'User Score',
+        labelStyle: Manager.bodyStrongStyle,
+        child: Text('${series.highestUserScore! / 10}/10'),
+      ),
+    if (series.popularity != null)
+      InfoLabel(
+        label: 'Popularity',
+        labelStyle: Manager.bodyStrongStyle,
+        child: Text('#${series.popularity}'),
+      ),
+    if (series.anilistData?.favourites != null)
+      InfoLabel(
+        label: 'Favourites',
+        labelStyle: Manager.bodyStrongStyle,
+        child: Text('${series.anilistData!.favourites}'),
+      ),
+    if (series.metadata?.duration != null && series.metadata!.duration.inSeconds > 0)
+      InfoLabel(
+        label: 'Duration',
+        labelStyle: Manager.bodyStrongStyle,
+        child: Text(series.metadata!.durationFormatted),
+      ),
+    if (series.relatedMedia.isNotEmpty)
+      InfoLabel(
+        label: 'Related Media',
+        labelStyle: Manager.bodyStrongStyle,
+        child: Text('${series.relatedMedia.length}'),
+      ),
+  ];
 
   //
 
@@ -407,23 +487,23 @@ class SeriesScreenState extends State<SeriesScreen> {
                     const Icon(FluentIcons.back),
                     'Back to Library',
                   ),
-                  _buildButton(
-                    () {
-                      logInfo(series);
-                      showSimpleManagedDialog(
-                        context: context,
-                        id: 'showSeries:${series.hashCode}',
-                        title: 'Series Info',
-                        constraints: const BoxConstraints(
-                          maxWidth: 800,
-                          maxHeight: 500,
-                        ),
-                        body: series.toString(),
-                      );
-                    },
-                    const Icon(FluentIcons.info),
-                    'Print Series',
-                  ),
+                  // _buildButton(
+                  //   () {
+                  //     logInfo(series);
+                  //     showSimpleManagedDialog(
+                  //       context: context,
+                  //       id: 'showSeries:${series.hashCode}',
+                  //       title: 'Series Info',
+                  //       constraints: const BoxConstraints(
+                  //         maxWidth: 800,
+                  //         maxHeight: 500,
+                  //       ),
+                  //       body: series.toString(),
+                  //     );
+                  //   },
+                  //   const Icon(FluentIcons.info),
+                  //   'Print Series',
+                  // ),
                   _buildButton(
                     series.watchedPercentage == 1
                         ? null
@@ -441,22 +521,22 @@ class SeriesScreenState extends State<SeriesScreen> {
                     const Icon(FluentIcons.check_mark),
                     series.watchedPercentage == 1 ? 'You have already watched all episodes' : 'Mark All as Watched',
                   ),
-                  if (context.watch<AnilistProvider>().isLoggedIn)
-                    _buildButton(
-                      series.seasons.isNotEmpty
-                          ? () => linkWithAnilist(
-                                context,
-                                series,
-                                _loadAnilistData,
-                                setState,
-                              )
-                          : null,
-                      Icon(
-                        series.primaryAnilistId != null ? FluentIcons.link : FluentIcons.add_link,
-                        color: Colors.white,
-                      ),
-                      series.primaryAnilistId != null ? 'Update Anilist Link' : 'Link with Anilist',
-                    ),
+                  // if (context.watch<AnilistProvider>().isLoggedIn)
+                  //   _buildButton(
+                  //     series.seasons.isNotEmpty
+                  //         ? () => linkWithAnilist(
+                  //               context,
+                  //               series,
+                  //               _loadAnilistData,
+                  //               setState,
+                  //             )
+                  //         : null,
+                  //     Icon(
+                  //       series.primaryAnilistId != null ? FluentIcons.link : FluentIcons.add_link,
+                  //       color: Colors.white,
+                  //     ),
+                  //     series.primaryAnilistId != null ? 'Update Anilist Link' : 'Link with Anilist',
+                  //   ),
                 ],
               )
             ],
@@ -623,144 +703,125 @@ class SeriesScreenState extends State<SeriesScreen> {
   }
 
   Widget _buildInfoBarContent(Series series) {
-    Provider.of<Library>(context, listen: false);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text('Info', style: FluentTheme.of(context).typography.subtitle),
-        VDiv(8),
-
-        if (series.anilistMappings.length > 1) ...[
-          InfoLabel(
-            label: 'Anilist Source',
-            child: ComboBox<int>(
-              isExpanded: true,
-              placeholder: const Text('Select Anilist source'),
-              items: series.anilistMappings.map((mapping) {
-                final title = mapping.title ?? 'Anilist ID: ${mapping.anilistId}';
-                return ComboBoxItem<int>(
-                  value: mapping.anilistId,
-                  child: SizedBox(
-                    width: ScreenUtils.kInfoBarWidth - 106,
-                    child: Tooltip(
-                      message: title,
-                      child: Text(
-                        title,
-                        style: Manager.captionStyle.copyWith(fontSize: 11),
-                        textAlign: TextAlign.center,
+    final infos_ = infos(series);
+    
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Info', style: FluentTheme.of(context).typography.subtitle),
+            VDiv(8),
+        
+            if (series.anilistMappings.length > 1) ...[
+              InfoLabel(
+                label: 'Anilist Source',
+                child: ComboBox<int>(
+                  isExpanded: true,
+                  placeholder: const Text('Select Anilist source'),
+                  items: series.anilistMappings.map((mapping) {
+                    final title = mapping.title ?? 'Anilist ID: ${mapping.anilistId}';
+                    return ComboBoxItem<int>(
+                      value: mapping.anilistId,
+                      child: SizedBox(
+                        width: ScreenUtils.kInfoBarWidth - 106,
+                        child: Tooltip(
+                          message: title,
+                          child: Text(
+                            title,
+                            style: Manager.captionStyle.copyWith(fontSize: 11),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
                       ),
-                    ),
-                  ),
-                );
-              }).toList(),
-              value: series.primaryAnilistId,
-              onChanged: (value) async {
-                if (value != null) {
-                  setState(() {
-                    series.primaryAnilistId = value;
-                  });
-
-                  if (libraryScreenKey.currentState != null) libraryScreenKey.currentState!.updateSeriesInSortCache(series);
-                  // Fetch and load Anilist data
-                  setState(() {
-                    _loadAnilistData(value);
-                  });
-                }
+                    );
+                  }).toList(),
+                  value: series.primaryAnilistId,
+                  onChanged: (value) async {
+                    if (value != null) {
+                      setState(() {
+                        series.primaryAnilistId = value;
+                      });
+        
+                      if (libraryScreenKey.currentState != null) libraryScreenKey.currentState!.updateSeriesInSortCache(series);
+                      // Fetch and load Anilist data
+                      setState(() {
+                        _loadAnilistData(value);
+                      });
+                    }
+                  },
+                ),
+              ),
+              VDiv(16),
+            ],
+        
+            // Series metadata
+            GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
+                maxCrossAxisExtent: 200,
+                mainAxisSpacing: 8,
+                crossAxisSpacing: 8,
+                childAspectRatio: constraints.maxWidth / 100,
+              ),
+              itemCount: infos_.length,
+              
+              itemBuilder: (context, index) {
+                final info = infos_[index];
+                return info;
               },
             ),
-          ),
-          VDiv(16),
-        ],
-
-        // Series metadata
-        Wrap(
-          alignment: WrapAlignment.spaceBetween,
-          spacing: 24,
-          runSpacing: 12,
-          children: [
-            InfoLabel(
-              label: 'Seasons',
-              child: Text('${series.numberOfSeasons}'),
+        
+            // Genre tags
+            if (series.genres.isNotEmpty) ...[
+              VDiv(16),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: series.genres.map((genre) => Chip(text: (color) => Text(genre, style: Manager.bodyStyle.copyWith(color: color)))).toList(),
+              ),
+            ],
+        
+            // Progress bar
+            VDiv(16),
+            SizedBox(
+              width: 300,
+              child: ProgressBar(
+                value: series.watchedPercentage * 100,
+                activeColor: dominantColor,
+                backgroundColor: Colors.white.withOpacity(.3),
+              ),
             ),
-            InfoLabel(
-              label: 'Episodes',
-              child: Text('${series.totalEpisodes}'),
-            ),
-            if (series.seasonYear != null)
-              InfoLabel(
-                label: 'Year',
-                child: Text('${series.seasonYear}'),
-              ),
-            if (series.format != null)
-              InfoLabel(
-                label: 'Format',
-                child: Text(series.format!),
-              ),
-            if (series.rating != null)
-              InfoLabel(
-                label: 'Rating',
-                child: Text('${series.rating! / 10}/10'),
-              ),
-            if (series.popularity != null)
-              InfoLabel(
-                label: 'Popularity',
-                child: Text('#${series.popularity}'),
-              ),
-            if (series.relatedMedia.isNotEmpty)
-              InfoLabel(
-                label: 'Related Media',
-                child: Text('${series.relatedMedia.length}'),
-              ),
+        
+            if (series.metadata != null) ...[
+              VDiv(16),
+              Wrap(alignment: WrapAlignment.spaceBetween, spacing: 8, runSpacing: 8, children: [
+                InfoLabel(
+                  label: 'Path',
+                  child: Text(
+                    series.path.path,
+                    style: Manager.captionStyle,
+                  ),
+                ),
+                InfoLabel(
+                  label: 'Size',
+                  child: Text(series.metadata!.fileSize(), style: Manager.captionStyle),
+                ),
+                InfoLabel(
+                  label: 'First Downloaded',
+                  child: Text(series.metadata!.creationTime.pretty(), style: Manager.captionStyle),
+                ),
+                InfoLabel(
+                  label: 'Last Modified',
+                  child: Text(series.metadata!.lastModified.pretty(), style: Manager.captionStyle),
+                ),
+              ]),
+              VDiv(16),
+            ],
           ],
-        ),
-
-        // Genre tags
-        if (series.genres.isNotEmpty) ...[
-          VDiv(16),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: series.genres.map((genre) => Chip(text: (color) => Text(genre, style: Manager.bodyStyle.copyWith(color: color)))).toList(),
-          ),
-        ],
-
-        // Progress bar
-        VDiv(16),
-        SizedBox(
-          width: 300,
-          child: ProgressBar(
-            value: series.watchedPercentage * 100,
-            activeColor: dominantColor,
-            backgroundColor: Colors.white.withOpacity(.3),
-          ),
-        ),
-
-        if (series.metadata != null) ...[
-          VDiv(16),
-          Wrap(alignment: WrapAlignment.spaceBetween, spacing: 8, runSpacing: 8, children: [
-            InfoLabel(
-              label: 'Path',
-              child: Text(
-                series.path.path,
-                style: Manager.captionStyle,
-              ),
-            ),
-            InfoLabel(
-              label: 'Size',
-              child: Text(series.metadata!.fileSize(), style: Manager.captionStyle),
-            ),
-            InfoLabel(
-              label: 'First Downloaded',
-              child: Text(series.metadata!.creationTime.pretty(), style: Manager.captionStyle),
-            ),
-            InfoLabel(
-              label: 'Last Modified',
-              child: Text(series.metadata!.lastModified.pretty(), style: Manager.captionStyle),
-            ),
-          ]),
-          VDiv(16),
-        ],
-      ],
+        );
+      }
     );
   }
 

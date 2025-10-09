@@ -18,16 +18,16 @@ extension AnilistProviderAuthentication on AnilistProvider {
   Future<bool> handleAuthCallback(Uri callbackUri) async {
     _isLoading = true;
     notifyListeners();
-    
+
     logInfo('Handling Anilist auth callback: $callbackUri');
 
     final success = await _anilistService.handleAuthCallback(callbackUri);
 
     // User data will be loaded during initializeOnlineFeatures
     // if (success) {
-    //   if (_connectivityService.isInitialized) 
+    //   if (_connectivityService.isInitialized)
     //     await _loadUserData();
-    //   else 
+    //   else
     //     logInfo('Connectivity service not initialized yet, deferring user data loading');
     // }
 
@@ -38,7 +38,7 @@ extension AnilistProviderAuthentication on AnilistProvider {
   }
 
   /// Load user data and lists
-  Future<void> _loadUserData() async {
+  Future<bool> _loadUserData() async {
     _currentUser = await _anilistService.getCurrentUser();
 
     // Also load detailed user data
@@ -58,26 +58,29 @@ extension AnilistProviderAuthentication on AnilistProvider {
       await _saveCurrentUserToCache();
     }
 
-    await _loadUserLists();
+    return await _loadUserLists();
   }
 
-  Future<void> _loadUserLists() async {
+  Future<bool> _loadUserLists() async {
     final newLists = await _anilistService.getUserAnimeLists(userId: _currentUser?.id, userName: _currentUser?.name);
-    
+
     // Only update the user lists if we successfully got data
     // This prevents overriding existing data with empty results on API failure
     if (newLists.isNotEmpty) {
       _userLists = newLists;
       notifyListeners();
       Manager.setState();
+      return true;
     } else if (_userLists.isEmpty) {
       // If we have no existing data and got empty results, still update
       // (this handles the case where the user truly has no lists)
       _userLists = newLists;
       notifyListeners();
       Manager.setState();
+      return true;
     } else {
       logWarn('Failed to load user lists - preserving existing data (${_userLists.length} lists)');
+      return false;
     }
   }
 

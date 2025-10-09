@@ -108,11 +108,14 @@ class LibraryScreen extends StatefulWidget {
   State<LibraryScreen> createState() => LibraryScreenState();
 }
 
-class LibraryScreenState extends State<LibraryScreen> {
+class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveClientMixin {
   LibraryView _currentView = LibraryView.all;
   ViewType _viewType = ViewType.grid;
   SortOrder? _sortOrder;
   GroupBy _groupBy = GroupBy.anilistLists;
+
+  @override
+  bool get wantKeepAlive => true;
 
   bool _sortDescending = false;
   bool _showGrouped = false;
@@ -824,6 +827,8 @@ class LibraryScreenState extends State<LibraryScreen> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context); // for AutomaticKeepAliveClientMixin
+    
     final library = context.watch<Library>();
 
     if (library.libraryPath == null) return _buildLibrarySelector();

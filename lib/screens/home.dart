@@ -40,10 +40,13 @@ class HomeScreen extends StatefulWidget {
 Color get lessGradientColor => shiftHue(Manager.accentColor.lighter, -60);
 Color get moreGradientColor => shiftHue(Manager.accentColor.lighter, 10);
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMixin {
   Timer? _minuteRefreshTimer; // refresh relative times every minute
   Future<Map<int, AiringEpisode?>>? _cachedUpcomingEpisodesFuture;
   List<int>? _lastRequestedAnimeIds;
+
+  @override
+  bool get wantKeepAlive => true;
 
   @override
   void initState() {
@@ -90,6 +93,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context); // for AutomaticKeepAliveClientMixin
+    
     final library = Provider.of<Library>(context);
 
     final settings = Provider.of<SettingsManager>(context);

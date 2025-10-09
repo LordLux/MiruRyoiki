@@ -54,7 +54,7 @@ class AccountsScreen extends StatefulWidget {
   State<AccountsScreen> createState() => AccountsScreenState();
 }
 
-class AccountsScreenState extends State<AccountsScreen> {
+class AccountsScreenState extends State<AccountsScreen> with AutomaticKeepAliveClientMixin {
   bool isLocalLoading = false;
   bool _seriesLoading = false;
   bool _userLoading = false;
@@ -62,6 +62,9 @@ class AccountsScreenState extends State<AccountsScreen> {
 
   bool _showHiddenSeries = false;
   bool _showAnilistHiddenSeries = false;
+
+  @override
+  bool get wantKeepAlive => true;
 
   @override
   void initState() {
@@ -192,6 +195,8 @@ class AccountsScreenState extends State<AccountsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context); // for AutomaticKeepAliveClientMixin
+    
     final anilistProvider = Provider.of<AnilistProvider>(context, listen: true);
     final isLoggedIn = anilistProvider.isLoggedIn;
 
@@ -317,17 +322,13 @@ class AccountsScreenState extends State<AccountsScreen> {
         tooltip: 'Refresh Series Metadata',
         label: 'Refresh Series Metadata',
         onPressed: () async {
-          if (_seriesLoading || anilistProvider.isLoading) return;
-          setState(() {
-            _seriesLoading = true;
-          });
+          if (_seriesLoading || anilistProvider.isLoading || !mounted) return;
+          setState(() => _seriesLoading = true);
 
           final library = Provider.of<Library>(context, listen: false);
           await library.refreshAllMetadata();
 
-          setState(() {
-            _seriesLoading = false;
-          });
+          if (mounted) setState(() => _seriesLoading = false);
         },
       ),
       VDiv(8),

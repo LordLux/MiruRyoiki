@@ -322,14 +322,6 @@ extension LibraryAnilistIntegration on Library {
       }
     }
 
-    final endTime = DateTime.now().millisecondsSinceEpoch;
-    if (endTime - startTime < 1000) await Future.delayed(Duration(milliseconds: 1000 - (endTime - startTime)));
-
-    snackBar(
-      'All Anilist metadata refreshed successfully!',
-      severity: InfoBarSeverity.success,
-    );
-
     // Acquire database save lock
     final saveLockHandle = await _lockManager.acquireLock(
       OperationType.databaseSave,
@@ -342,6 +334,14 @@ extension LibraryAnilistIntegration on Library {
       notifyListeners();
     } finally {
       saveLockHandle?.dispose();
+
+      final endTime = now.millisecondsSinceEpoch;
+      if (endTime - startTime < 1000) await Future.delayed(Duration(milliseconds: 1000 - (endTime - startTime)));
+
+      snackBar(
+        'All Anilist metadata refreshed successfully!',
+        severity: InfoBarSeverity.success,
+      );
     }
   }
 

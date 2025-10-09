@@ -87,8 +87,7 @@ extension AnilistProviderInitialization on AnilistProvider {
 
     final isOnline = await _connectivityService.getConnectivityStatus();
     if (isOnline && isLoggedIn) {
-      await _loadUserData();
-      await _saveListsToCache();
+      if (await _loadUserData()) await _saveListsToCache(); // only cache lists if no problems
       startBackgroundSync();
     } else {
       logInfo('   _ | Skipping online features: ${!isOnline ? "Offline" : "Not logged in"}');

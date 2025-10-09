@@ -85,10 +85,13 @@ List<WindowEffect> get _PlatformWindowEffects => switch (defaultTargetPlatform) 
       _ => [WindowEffect.disabled],
     };
 
-class SettingsScreenState extends State<SettingsScreen> {
+class SettingsScreenState extends State<SettingsScreen> with AutomaticKeepAliveClientMixin {
   FlyoutController controller = FlyoutController();
   Color tempColor = Colors.transparent;
   List<SeriesFormatPreview> _issuesPreview = [];
+
+  @override
+  bool get wantKeepAlive => true;
 
   int _buildClicks = 0;
   Timer? _buildClickTimer;
@@ -813,6 +816,8 @@ class SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context); // for AutomaticKeepAliveClientMixin
+    
     final library = Provider.of<Library>(context);
     final settings = Provider.of<SettingsManager>(context);
 

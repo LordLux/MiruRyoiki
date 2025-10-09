@@ -63,6 +63,7 @@ class RetryUtils {
         final T? result;
         if (isOfflineAware) {
           // Operation expects offline parameter
+          if (isOffline) logTrace('App is currently Offline, running request with cache');
           result = await (operation as Future<T?> Function(bool isOffline))(isOffline);
         } else {
           // Standard operation without offline parameter

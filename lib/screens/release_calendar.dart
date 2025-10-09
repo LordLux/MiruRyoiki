@@ -42,7 +42,7 @@ class ReleaseCalendarScreen extends StatefulWidget {
   State<ReleaseCalendarScreen> createState() => ReleaseCalendarScreenState();
 }
 
-class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
+class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> with AutomaticKeepAliveClientMixin {
   DateTime _selectedDate = now;
   DateTime _focusedMonth = now;
 
@@ -56,6 +56,9 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
   bool _showOlderNotifications = false; // Track if we're showing older notifications when on today
   bool _isDisposed = false;
   bool _isTempHidingResults = false;
+
+  @override
+  bool get wantKeepAlive => true;
 
   @override
   void initState() {
@@ -471,6 +474,8 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context); // for AutomaticKeepAliveClientMixin
+    
     return MiruRyoikiTemplatePage(
       headerWidget: HeaderWidget(
         title: (_, __) => const PageHeader(title: Text('Release Calendar')),
