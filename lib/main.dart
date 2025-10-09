@@ -1177,8 +1177,6 @@ Future<void> _registerWindowsUrlScheme(String scheme) async {
 
 // TODO after linking anilist, fetch episode titles for neolinked series
 // TODO add 'notify me' button to upcoming episodes on home screen
-// TODO make 'log out' from anilist not change your current pane
-// TODO change anilist log in button fill color
 // TODO add indicator of which episodes have anilist titles
 // TODO sometimes anilist episode numbering for seasons > 1 continue from previous season, need to handle that
 // TODO add per-episode/season/series toggle to use anilist titles or local titles

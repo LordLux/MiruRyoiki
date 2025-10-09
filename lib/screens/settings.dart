@@ -21,6 +21,7 @@ import '../main.dart';
 import '../manager.dart';
 import '../models/formatter/action.dart';
 import '../models/series.dart';
+import '../services/anilist/episode_title_service.dart';
 import '../services/data_storage_service.dart';
 import '../services/lock_manager.dart';
 import '../services/navigation/dialogs.dart';
@@ -1419,7 +1420,14 @@ class SettingsScreenState extends State<SettingsScreen> {
             ToggleSwitch(
               checked: Manager.enableAnilistEpisodeTitles,
               content: Text(Manager.enableAnilistEpisodeTitles ? 'AniList Episode Titles Enabled' : 'AniList Episode Titles Disabled', style: Manager.bodyStyle),
-              onChanged: (value) => setState(() => settings.enableAnilistEpisodeTitles = value),
+              onChanged: (value) => setState(() {
+                settings.enableAnilistEpisodeTitles = value;
+                // If disabling, also clear cached titles
+                if (!value) {
+                  // Clear episode title cache
+                  EpisodeTitleService.instance.clearCache();
+                }
+              }),
             ),
             disabled: LockManager().hasActiveOperations,
             tooltip: LockManager().hasActiveOperations ? 'Cannot change while library operations are active' : 'When enabled, ${Manager.appTitle} will try to fetch the episode titles from AniList. (This depends only on the availability of the titles on AniList)\nOtherwise, only local episode titles (if available) will be used.',
