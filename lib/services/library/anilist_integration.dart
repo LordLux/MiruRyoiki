@@ -109,6 +109,9 @@ extension LibraryAnilistIntegration on Library {
     logTrace('5 | Fetched details for ${animeMap.length} out of ${anilistIds.length} requested AniList IDs');
     // log(animeMap);
 
+    // Failed fetches for summary logging
+    final List<String> failedSeries = [];
+
     // Process each series with the fetched data
     for (final series in allSeriesToFetch) {
       final int anilistId = series.primaryAnilistId ?? series.anilistMappings.first.anilistId;
@@ -143,12 +146,22 @@ extension LibraryAnilistIntegration on Library {
           series.anilistData = anime;
         }
       } else {
-        // Failed to fetch anime details - preserve existing data
-        logWarn('Failed to fetch AniList details for ${series.name} (ID: $anilistId) - preserving existing data');
+        // Track failed fetch for summary
+        failedSeries.add('${series.name} (ID: $anilistId)');
       }
 
       loaded++;
       onProgress?.call(loaded, total);
+    }
+
+    if (failedSeries.isNotEmpty) {
+      if (animeMap.isEmpty && anilistIds.isNotEmpty) {
+        // All fetches failed, probably offline
+        logDebug('Failed to fetch AniList details for ${failedSeries.length} series - preserving existing data');
+      } else {
+        // Some fetches failed
+        logWarn('Failed to fetch AniList details for ${failedSeries.length} series - preserving existing data');
+      }
     }
 
     notifyListeners();

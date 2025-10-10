@@ -28,7 +28,10 @@ extension AnilistServiceMutations on AnilistService {
           );
 
           if (mutationResult.hasException) {
-            logErr('Error updating progress', mutationResult.exception);
+            // Check if offline before logging
+            if (!RetryUtils.isExpectedOfflineError(mutationResult.exception)) {
+              logErr('Error updating progress', mutationResult.exception);
+            }
             return false;
           }
 
@@ -41,6 +44,10 @@ extension AnilistServiceMutations on AnilistService {
 
       return result ?? false;
     } catch (e) {
+      if (ConnectivityService().isOffline && RetryUtils.isExpectedOfflineError(e)) {
+        logDebug('Cannot update progress - device is offline');
+        return false;
+      }
       logErr('Error updating progress', e);
       return false;
     }
@@ -73,7 +80,10 @@ extension AnilistServiceMutations on AnilistService {
           );
 
           if (mutationResult.hasException) {
-            logErr('Error updating status', mutationResult.exception);
+            // Check if offline before logging
+            if (!RetryUtils.isExpectedOfflineError(mutationResult.exception)) {
+              logErr('Error updating status', mutationResult.exception);
+            }
             return false;
           }
 
@@ -86,6 +96,10 @@ extension AnilistServiceMutations on AnilistService {
 
       return result ?? false;
     } catch (e) {
+      if (ConnectivityService().isOffline && RetryUtils.isExpectedOfflineError(e)) {
+        logDebug('Cannot update status - device is offline');
+        return false;
+      }
       logErr('Error updating status', e);
       return false;
     }
@@ -118,7 +132,10 @@ extension AnilistServiceMutations on AnilistService {
           );
 
           if (mutationResult.hasException) {
-            logErr('Error updating score', mutationResult.exception);
+            // Check if offline before logging
+            if (!RetryUtils.isExpectedOfflineError(mutationResult.exception)) {
+              logErr('Error updating score', mutationResult.exception);
+            }
             return false;
           }
 
@@ -131,6 +148,10 @@ extension AnilistServiceMutations on AnilistService {
 
       return result ?? false;
     } catch (e) {
+      if (ConnectivityService().isOffline && RetryUtils.isExpectedOfflineError(e)) {
+        logDebug('Cannot update score - device is offline');
+        return false;
+      }
       logErr('Error updating score', e);
       return false;
     }

@@ -183,7 +183,12 @@ class NotificationsContentState extends State<_NotificationsContent> {
         });
       }
     } catch (e) {
-      snackBar("Failed to refresh notifications", exception: e, severity: InfoBarSeverity.error);
+      if (e.toString().toLowerCase().contains('socket is not connected') || //
+          e.toString().toLowerCase().contains('errno = 10057') ||
+          e.toString().toLowerCase().contains('offline')) {
+        logTrace('Failed to refresh notifications - offline');
+      } else
+        snackBar("Failed to refresh notifications", exception: e, severity: InfoBarSeverity.error);
     } finally {
       if (mounted) setState(() => _isRefreshing = false);
     }

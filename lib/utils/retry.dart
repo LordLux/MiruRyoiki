@@ -80,8 +80,8 @@ class RetryUtils {
         // If offline and this is an expected offline error, don't retry and return null gracefully
         if (isOfflineAware) {
           final connectivityService = ConnectivityService();
-          if (connectivityService.isOffline && _isExpectedOfflineError(error)) {
-            logDebug('${operationName ?? 'Operation'} skipped due to offline status: $error');
+          if (connectivityService.isOffline && isExpectedOfflineError(error)) {
+            logDebug('${operationName ?? 'Operation'} skipped due to offline status');
             return null;
           }
         }
@@ -93,7 +93,16 @@ class RetryUtils {
         }
 
         // If we've exceeded max retries, don't retry
-        if (attempt > maxRetries && !(error is HandshakeException || error is TimeoutException || error is ClientException)) {
+        if (attempt >= maxRetries) {
+          // For expected network errors when offline, return null instead of throwing
+          if (isOfflineAware && isExpectedOfflineError(error)) {
+            final connectivityService = ConnectivityService();
+            if (connectivityService.isOffline) {
+              logDebug('${operationName ?? 'Operation'} failed offline after retries, returning null gracefully');
+              return null;
+            }
+          }
+          
           logErr('${operationName ?? 'Operation'} failed after $maxRetries retries.', error, stackTrace);
           break;
         }
@@ -152,7 +161,7 @@ class RetryUtils {
   }
 
   /// Check if an error is expected when offline (to avoid logging as errors)
-  static bool _isExpectedOfflineError(dynamic error) {
+  static bool isExpectedOfflineError(dynamic error) {
     if (error is SocketException) return true;
     if (error is TimeoutException) return true;
     if (error is HandshakeException) return true;
@@ -164,6 +173,13 @@ class RetryUtils {
     if (errorMessage.contains('no internet')) return true;
     if (errorMessage.contains('offline')) return true;
     if (errorMessage.contains('failed host lookup')) return true;
+    if (errorMessage.contains('timeoutexception')) return true;
+    if (errorMessage.contains('operationexception')) return true;
+    if (errorMessage.contains('linkexception')) return true;
+    if (errorMessage.contains('serverexception')) return true;
+    if (errorMessage.contains('no stream event')) return true;
+    if (errorMessage.contains('socket is not connected')) return true;
+    if (errorMessage.contains('errno = 10057')) return true; // Windows socket not connected
 
     return false;
   }

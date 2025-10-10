@@ -15,7 +15,6 @@ import '../services/anilist/queries/anilist_service.dart';
 import '../services/library/library_provider.dart';
 import '../services/navigation/dialogs.dart';
 import '../services/navigation/navigation.dart';
-import '../utils/logging.dart';
 import '../utils/screen.dart';
 import 'animated_icon.dart' as anim_icon;
 import 'dialogs/notifications.dart';
@@ -75,24 +74,30 @@ class _ReleaseNotificationWidgetState extends State<ReleaseNotificationWidget> {
     final library = Provider.of<Library>(context, listen: false);
     try {
       // First, try to sync fresh notifications from the API
-      try {
-        await _anilistService!.syncNotifications(
-          database: library.database,
-          types: [NotificationType.AIRING, NotificationType.RELATED_MEDIA_ADDITION, NotificationType.MEDIA_DATA_CHANGE],
-          maxPages: 2,
-        );
-      } catch (e) {
-        // If sync fails, we'll still get cached notifications below
-        logErr('Failed to sync notifications in notification widget', e);
-      }
+      // This may return null or empty list if offline
+      await _anilistService!.syncNotifications(
+        database: library.database,
+        types: [NotificationType.AIRING, NotificationType.RELATED_MEDIA_ADDITION, NotificationType.MEDIA_DATA_CHANGE],
+        maxPages: 2,
+      );
 
       // Get the actual unread count from database
       final unreadCount = await _anilistService!.getUnreadCount(library.database);
-      setState(() {
-        _unreadCount = unreadCount;
-      });
+      if (mounted) {
+        setState(() {
+          _unreadCount = unreadCount;
+        });
+      }
     } catch (e) {
-      // Handle error silently
+      // If there's any error/we are offline, use cached count
+      try {
+        final unreadCount = await _anilistService!.getUnreadCount(library.database);
+        if (mounted) {
+          setState(() {
+            _unreadCount = unreadCount;
+          });
+        }
+      } catch (_) {}
     }
   }
 

@@ -80,6 +80,9 @@ extension AnilistServiceSearch on AnilistService {
           );
 
           if (queryResult.hasException) {
+            // Check if offline before throwing
+            if (RetryUtils.isExpectedOfflineError(queryResult.exception)) return <AnilistAnime>[];
+
             throw Exception('Error searching Anilist: ${queryResult.exception}');
           }
 
@@ -94,6 +97,10 @@ extension AnilistServiceSearch on AnilistService {
 
       return result ?? [];
     } catch (e) {
+      if (ConnectivityService().isOffline && RetryUtils.isExpectedOfflineError(e)) {
+        logDebug('Skipping anime search - device is offline');
+        return [];
+      }
       logErr('Error querying Anilist', e);
       return [];
     }

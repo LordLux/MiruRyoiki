@@ -6,6 +6,7 @@ import 'package:defer_pointer/defer_pointer.dart';
 import 'package:recase/recase.dart';
 
 import '../main.dart';
+import '../services/connectivity/connectivity_service.dart';
 import '../services/library/library_provider.dart';
 import '../services/navigation/show_info.dart';
 import '../services/navigation/statusbar.dart';
@@ -25,6 +26,7 @@ import '../services/anilist/linking.dart';
 import '../services/navigation/dialogs.dart';
 import '../services/navigation/shortcuts.dart';
 import '../utils/logging.dart';
+import '../utils/retry.dart';
 import '../utils/screen.dart';
 import '../utils/time.dart';
 import '../widgets/episode_grid.dart';
@@ -75,83 +77,83 @@ class SeriesScreenState extends State<SeriesScreen> {
       FluentTheme.of(context).accentColor.defaultBrushFor(FluentTheme.of(context).brightness);
 
   List<Widget> infos(Series series) => [
-    InfoLabel(
-      label: 'Seasons',
-      labelStyle: Manager.bodyStrongStyle,
-      child: Text('${series.numberOfSeasons}'),
-    ),
-    InfoLabel(
-      label: 'Episodes',
-      labelStyle: Manager.bodyStrongStyle,
-      child: Text('${series.totalEpisodes}'),
-    ),
-    if (series.anilistData?.status != null)
-      InfoLabel(
-        label: 'Status',
-        labelStyle: Manager.bodyStrongStyle,
-        child: Text(series.anilistData!.status!.replaceAll('_', ' ').titleCase),
-      ),
-    if (series.format != null)
-      InfoLabel(
-        label: 'Format',
-        labelStyle: Manager.bodyStrongStyle,
-        child: Text(series.format!),
-      ),
-    if (series.seasonYear != null)
-      InfoLabel(
-        label: 'Year',
-        labelStyle: Manager.bodyStrongStyle,
-        child: Text('${series.seasonYear}'),
-      ),
-    if (series.anilistData?.season != null)
-      InfoLabel(
-        label: 'Season',
-        labelStyle: Manager.bodyStrongStyle,
-        child: Text(series.anilistData!.season!.toLowerCase().titleCase),
-      ),
-    if (series.rating != null)
-      InfoLabel(
-        label: 'Rating',
-        labelStyle: Manager.bodyStrongStyle,
-        child: Text('${series.rating! / 10}/10'),
-      ),
-    if (series.meanScore != null)
-      InfoLabel(
-        label: 'Mean Score',
-        labelStyle: Manager.bodyStrongStyle,
-        child: Text('${series.meanScore! / 10}/10'),
-      ),
-    if (series.highestUserScore != null && series.highestUserScore! > 0)
-      InfoLabel(
-        label: 'User Score',
-        labelStyle: Manager.bodyStrongStyle,
-        child: Text('${series.highestUserScore! / 10}/10'),
-      ),
-    if (series.popularity != null)
-      InfoLabel(
-        label: 'Popularity',
-        labelStyle: Manager.bodyStrongStyle,
-        child: Text('#${series.popularity}'),
-      ),
-    if (series.anilistData?.favourites != null)
-      InfoLabel(
-        label: 'Favourites',
-        labelStyle: Manager.bodyStrongStyle,
-        child: Text('${series.anilistData!.favourites}'),
-      ),
-    if (series.metadata?.duration != null && series.metadata!.duration.inSeconds > 0)
-      InfoLabel(
-        label: 'Duration',
-        labelStyle: Manager.bodyStrongStyle,
-        child: Text(series.metadata!.durationFormatted),
-      ),
-    if (series.relatedMedia.isNotEmpty)
-      InfoLabel(
-        label: 'Related Media',
-        labelStyle: Manager.bodyStrongStyle,
-        child: Text('${series.relatedMedia.length}'),
-      ),
-  ];
+        InfoLabel(
+          label: 'Seasons',
+          labelStyle: Manager.bodyStrongStyle,
+          child: Text('${series.numberOfSeasons}'),
+        ),
+        InfoLabel(
+          label: 'Episodes',
+          labelStyle: Manager.bodyStrongStyle,
+          child: Text('${series.totalEpisodes}'),
+        ),
+        if (series.anilistData?.status != null)
+          InfoLabel(
+            label: 'Status',
+            labelStyle: Manager.bodyStrongStyle,
+            child: Text(series.anilistData!.status!.replaceAll('_', ' ').titleCase),
+          ),
+        if (series.format != null)
+          InfoLabel(
+            label: 'Format',
+            labelStyle: Manager.bodyStrongStyle,
+            child: Text(series.format!),
+          ),
+        if (series.seasonYear != null)
+          InfoLabel(
+            label: 'Year',
+            labelStyle: Manager.bodyStrongStyle,
+            child: Text('${series.seasonYear}'),
+          ),
+        if (series.anilistData?.season != null)
+          InfoLabel(
+            label: 'Season',
+            labelStyle: Manager.bodyStrongStyle,
+            child: Text(series.anilistData!.season!.toLowerCase().titleCase),
+          ),
+        if (series.rating != null)
+          InfoLabel(
+            label: 'Rating',
+            labelStyle: Manager.bodyStrongStyle,
+            child: Text('${series.rating! / 10}/10'),
+          ),
+        if (series.meanScore != null)
+          InfoLabel(
+            label: 'Mean Score',
+            labelStyle: Manager.bodyStrongStyle,
+            child: Text('${series.meanScore! / 10}/10'),
+          ),
+        if (series.highestUserScore != null && series.highestUserScore! > 0)
+          InfoLabel(
+            label: 'User Score',
+            labelStyle: Manager.bodyStrongStyle,
+            child: Text('${series.highestUserScore! / 10}/10'),
+          ),
+        if (series.popularity != null)
+          InfoLabel(
+            label: 'Popularity',
+            labelStyle: Manager.bodyStrongStyle,
+            child: Text('#${series.popularity}'),
+          ),
+        if (series.anilistData?.favourites != null)
+          InfoLabel(
+            label: 'Favourites',
+            labelStyle: Manager.bodyStrongStyle,
+            child: Text('${series.anilistData!.favourites}'),
+          ),
+        if (series.metadata?.duration != null && series.metadata!.duration.inSeconds > 0)
+          InfoLabel(
+            label: 'Duration',
+            labelStyle: Manager.bodyStrongStyle,
+            child: Text(series.metadata!.durationFormatted),
+          ),
+        if (series.relatedMedia.isNotEmpty)
+          InfoLabel(
+            label: 'Related Media',
+            labelStyle: Manager.bodyStrongStyle,
+            child: Text('${series.relatedMedia.length}'),
+          ),
+      ];
 
   //
 
@@ -245,76 +247,87 @@ class SeriesScreenState extends State<SeriesScreen> {
     final series = this.series;
     if (series == null) return;
 
-    final anime = await SeriesLinkService().fetchAnimeDetails(anilistId);
+    try {
+      final anime = await SeriesLinkService().fetchAnimeDetails(anilistId);
 
-    if (anime != null) {
-      // Store the original dominant color to check if it changes
-      final Color? originalDominantColor = series.dominantColor;
+      if (anime != null) {
+        // Store the original dominant color to check if it changes
+        final Color? originalDominantColor = series.dominantColor;
 
-      setState(() {
-        // Find the mapping with this ID
-        for (var i = 0; i < series.anilistMappings.length; i++) {
-          if (series.anilistMappings[i].anilistId == anilistId) {
-            series.anilistMappings[i] = AnilistMapping(
-              localPath: series.anilistMappings[i].localPath,
-              anilistId: anilistId,
-              title: series.anilistMappings[i].title,
-              lastSynced: now,
-              anilistData: anime,
-            );
+        setState(() {
+          // Find the mapping with this ID
+          for (var i = 0; i < series.anilistMappings.length; i++) {
+            if (series.anilistMappings[i].anilistId == anilistId) {
+              series.anilistMappings[i] = AnilistMapping(
+                localPath: series.anilistMappings[i].localPath,
+                anilistId: anilistId,
+                title: series.anilistMappings[i].title,
+                lastSynced: now,
+                anilistData: anime,
+              );
 
-            // Also update the series.anilistData if this is the primary
-            if (series.primaryAnilistId == anilistId || series.primaryAnilistId == null) {
-              series.anilistData = anime;
+              // Also update the series.anilistData if this is the primary
+              if (series.primaryAnilistId == anilistId || series.primaryAnilistId == null) {
+                series.anilistData = anime;
+              }
+
+              break; // Break after updating the mapping
             }
+          }
+        });
 
-            break; // Break after updating the mapping
+        // Calculate dominant color (this will update it if needed)
+        await series.calculateDominantColor(forceRecalculate: true);
+
+        if (!mounted || this.series == null) return; // in case series was disposed during the async operation
+
+        // Fetch episode titles from AniList
+        try {
+          final episodeTitlesUpdated = await Manager.episodeTitleService.fetchAndUpdateEpisodeTitles(series);
+          if (episodeTitlesUpdated && mounted) {
+            logTrace('Episode titles updated, refreshing UI');
+            setState(() {}); // Refresh UI to show updated episode titles
+          }
+        } catch (e) {
+          logErr('Error fetching episode titles', e);
+        }
+
+        // Only save if dominant color changed or was newly set
+        if (originalDominantColor?.value != series.dominantColor?.value) {
+          // Save the updated series to the library
+
+          final BuildContext? ctx;
+          if (mounted)
+            ctx = context;
+          else
+            ctx = rootNavigatorKey.currentContext;
+
+          if (ctx != null && ctx.mounted) {
+            try {
+              final library = Provider.of<Library>(ctx, listen: false);
+              await library.updateSeries(series, invalidateCache: false);
+
+              if (libraryScreenKey.currentState != null) {
+                libraryScreenKey.currentState!.updateSeriesInSortCache(series);
+              }
+              logTrace('Dominant color changed, saving series');
+            } catch (e) {
+              logErr('Error updating series: $e');
+            }
           }
         }
-      });
-
-      // Calculate dominant color (this will update it if needed)
-      await series.calculateDominantColor(forceRecalculate: true);
-
-      if (!mounted || this.series == null) return; // in case series was disposed during the async operation
-
-      // Fetch episode titles from AniList
-      try {
-        final episodeTitlesUpdated = await Manager.episodeTitleService.fetchAndUpdateEpisodeTitles(series);
-        if (episodeTitlesUpdated && mounted) {
-          logTrace('Episode titles updated, refreshing UI');
-          setState(() {}); // Refresh UI to show updated episode titles
-        }
-      } catch (e) {
-        logErr('Error fetching episode titles', e);
+      } else if (ConnectivityService().isOffline) {
+        logWarn('Failed to fetch AniList details for ID: $anilistId - device is offline');
+      } else {
+        logErr('Failed to load Anilist data for ID: $anilistId');
       }
-
-      // Only save if dominant color changed or was newly set
-      if (originalDominantColor?.value != series.dominantColor?.value) {
-        // Save the updated series to the library
-
-        final BuildContext? ctx;
-        if (mounted)
-          ctx = context;
-        else
-          ctx = rootNavigatorKey.currentContext;
-
-        if (ctx != null && ctx.mounted) {
-          try {
-            final library = Provider.of<Library>(ctx, listen: false);
-            await library.updateSeries(series, invalidateCache: false);
-
-            if (libraryScreenKey.currentState != null) {
-              libraryScreenKey.currentState!.updateSeriesInSortCache(series);
-            }
-            logTrace('Dominant color changed, saving series');
-          } catch (e) {
-            logErr('Error updating series: $e');
-          }
-        }
+    } catch (e) {
+      // Check if it's an expected offline error
+      if (!RetryUtils.isExpectedOfflineError(e)) {
+        logErr('Failed to load Anilist data for ID: $anilistId', e);
+      } else {
+        logDebug('Skipping Anilist data fetch - device is offline');
       }
-    } else {
-      logErr('Failed to load Anilist data for ID: $anilistId');
     }
   }
 
@@ -704,125 +717,122 @@ class SeriesScreenState extends State<SeriesScreen> {
 
   Widget _buildInfoBarContent(Series series) {
     final infos_ = infos(series);
-    
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Info', style: FluentTheme.of(context).typography.subtitle),
-            VDiv(8),
-        
-            if (series.anilistMappings.length > 1) ...[
-              InfoLabel(
-                label: 'Anilist Source',
-                child: ComboBox<int>(
-                  isExpanded: true,
-                  placeholder: const Text('Select Anilist source'),
-                  items: series.anilistMappings.map((mapping) {
-                    final title = mapping.title ?? 'Anilist ID: ${mapping.anilistId}';
-                    return ComboBoxItem<int>(
-                      value: mapping.anilistId,
-                      child: SizedBox(
-                        width: ScreenUtils.kInfoBarWidth - 106,
-                        child: Tooltip(
-                          message: title,
-                          child: Text(
-                            title,
-                            style: Manager.captionStyle.copyWith(fontSize: 11),
-                            textAlign: TextAlign.center,
-                          ),
+
+    return LayoutBuilder(builder: (context, constraints) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Info', style: FluentTheme.of(context).typography.subtitle),
+          VDiv(8),
+
+          if (series.anilistMappings.length > 1) ...[
+            InfoLabel(
+              label: 'Anilist Source',
+              child: ComboBox<int>(
+                isExpanded: true,
+                placeholder: const Text('Select Anilist source'),
+                items: series.anilistMappings.map((mapping) {
+                  final title = mapping.title ?? 'Anilist ID: ${mapping.anilistId}';
+                  return ComboBoxItem<int>(
+                    value: mapping.anilistId,
+                    child: SizedBox(
+                      width: ScreenUtils.kInfoBarWidth - 106,
+                      child: Tooltip(
+                        message: title,
+                        child: Text(
+                          title,
+                          style: Manager.captionStyle.copyWith(fontSize: 11),
+                          textAlign: TextAlign.center,
                         ),
                       ),
-                    );
-                  }).toList(),
-                  value: series.primaryAnilistId,
-                  onChanged: (value) async {
-                    if (value != null) {
-                      setState(() {
-                        series.primaryAnilistId = value;
-                      });
-        
-                      if (libraryScreenKey.currentState != null) libraryScreenKey.currentState!.updateSeriesInSortCache(series);
-                      // Fetch and load Anilist data
-                      setState(() {
-                        _loadAnilistData(value);
-                      });
-                    }
-                  },
-                ),
+                    ),
+                  );
+                }).toList(),
+                value: series.primaryAnilistId,
+                onChanged: (value) async {
+                  if (value != null) {
+                    setState(() {
+                      series.primaryAnilistId = value;
+                    });
+
+                    if (libraryScreenKey.currentState != null) libraryScreenKey.currentState!.updateSeriesInSortCache(series);
+                    // Fetch and load Anilist data
+                    setState(() {
+                      _loadAnilistData(value);
+                    });
+                  }
+                },
               ),
-              VDiv(16),
-            ],
-        
-            // Series metadata
-            GridView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
-                maxCrossAxisExtent: 200,
-                mainAxisSpacing: 8,
-                crossAxisSpacing: 8,
-                childAspectRatio: constraints.maxWidth / 100,
-              ),
-              itemCount: infos_.length,
-              
-              itemBuilder: (context, index) {
-                final info = infos_[index];
-                return info;
-              },
             ),
-        
-            // Genre tags
-            if (series.genres.isNotEmpty) ...[
-              VDiv(16),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: series.genres.map((genre) => Chip(text: (color) => Text(genre, style: Manager.bodyStyle.copyWith(color: color)))).toList(),
-              ),
-            ],
-        
-            // Progress bar
             VDiv(16),
-            SizedBox(
-              width: 300,
-              child: ProgressBar(
-                value: series.watchedPercentage * 100,
-                activeColor: dominantColor,
-                backgroundColor: Colors.white.withOpacity(.3),
-              ),
-            ),
-        
-            if (series.metadata != null) ...[
-              VDiv(16),
-              Wrap(alignment: WrapAlignment.spaceBetween, spacing: 8, runSpacing: 8, children: [
-                InfoLabel(
-                  label: 'Path',
-                  child: Text(
-                    series.path.path,
-                    style: Manager.captionStyle,
-                  ),
-                ),
-                InfoLabel(
-                  label: 'Size',
-                  child: Text(series.metadata!.fileSize(), style: Manager.captionStyle),
-                ),
-                InfoLabel(
-                  label: 'First Downloaded',
-                  child: Text(series.metadata!.creationTime.pretty(), style: Manager.captionStyle),
-                ),
-                InfoLabel(
-                  label: 'Last Modified',
-                  child: Text(series.metadata!.lastModified.pretty(), style: Manager.captionStyle),
-                ),
-              ]),
-              VDiv(16),
-            ],
           ],
-        );
-      }
-    );
+
+          // Series metadata
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
+              maxCrossAxisExtent: 200,
+              mainAxisSpacing: 8,
+              crossAxisSpacing: 8,
+              childAspectRatio: constraints.maxWidth / 100,
+            ),
+            itemCount: infos_.length,
+            itemBuilder: (context, index) {
+              final info = infos_[index];
+              return info;
+            },
+          ),
+
+          // Genre tags
+          if (series.genres.isNotEmpty) ...[
+            VDiv(16),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: series.genres.map((genre) => Chip(text: (color) => Text(genre, style: Manager.bodyStyle.copyWith(color: color)))).toList(),
+            ),
+          ],
+
+          // Progress bar
+          VDiv(16),
+          SizedBox(
+            width: 300,
+            child: ProgressBar(
+              value: series.watchedPercentage * 100,
+              activeColor: dominantColor,
+              backgroundColor: Colors.white.withOpacity(.3),
+            ),
+          ),
+
+          if (series.metadata != null) ...[
+            VDiv(16),
+            Wrap(alignment: WrapAlignment.spaceBetween, spacing: 8, runSpacing: 8, children: [
+              InfoLabel(
+                label: 'Path',
+                child: Text(
+                  series.path.path,
+                  style: Manager.captionStyle,
+                ),
+              ),
+              InfoLabel(
+                label: 'Size',
+                child: Text(series.metadata!.fileSize(), style: Manager.captionStyle),
+              ),
+              InfoLabel(
+                label: 'First Downloaded',
+                child: Text(series.metadata!.creationTime.pretty(), style: Manager.captionStyle),
+              ),
+              InfoLabel(
+                label: 'Last Modified',
+                child: Text(series.metadata!.lastModified.pretty(), style: Manager.captionStyle),
+              ),
+            ]),
+            VDiv(16),
+          ],
+        ],
+      );
+    });
   }
 
   Widget _buildButton(void Function()? onTap, Widget child, String label) {

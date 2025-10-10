@@ -15,6 +15,7 @@ import '../../../database/daos/notifications_dao.dart';
 import '../../../utils/logging.dart';
 import '../../../utils/retry.dart';
 import '../../../utils/time.dart';
+import '../../connectivity/connectivity_service.dart';
 import '../../library/library_provider.dart';
 import '../auth.dart';
 import '../provider/anilist_provider.dart';

@@ -157,7 +157,7 @@ extension AnilistServiceNotifications on AnilistService {
             QueryOptions(
               document: gql(_notificationsQuery),
               variables: variables,
-              fetchPolicy: isOffline ? FetchPolicy.cacheOnly : FetchPolicy.cacheFirst,
+              fetchPolicy: isOffline ? FetchPolicy.cacheOnly : FetchPolicy.networkOnly,
             ),
           );
         },
@@ -167,7 +167,20 @@ extension AnilistServiceNotifications on AnilistService {
         isOfflineAware: true,
       );
 
-      if (result == null || result.hasException) throw Exception('Failed to fetch notifications: ${result?.exception}');
+      if (result == null) {
+        // When offline and no cached data, return empty list instead of throwing
+        logDebug('No notifications available (offline with no cache)');
+        return [];
+      }
+      
+      if (result.hasException) {
+        // If the error itself indicates offline, treat as offline
+        if (RetryUtils.isExpectedOfflineError(result.exception)) {
+          logTrace('Skipping notification fetch - offline error detected');
+          return [];
+        }
+        throw Exception('Failed to fetch notifications: ${result.exception}');
+      }
 
       final notificationsData = result.data?['Page']?['notifications'] as List<dynamic>? ?? [];
       final notifications = <AnilistNotification>[];
@@ -187,6 +200,16 @@ extension AnilistServiceNotifications on AnilistService {
       _lastNotificationsTypes = types == null ? null : List.of(types);
       return notifications;
     } catch (e) {
+      // Check if this is an expected offline error
+      final isOfflineError = RetryUtils.isExpectedOfflineError(e);
+      
+      if (ConnectivityService().isOffline && isOfflineError) {
+        // When offline, return empty list
+        logTrace('Skipping notification fetch - device is offline');
+        return [];
+      }
+      
+      // real errors
       logErr('Error fetching notifications from Anilist', e);
       throw Exception('Failed to fetch notifications: $e');
     }

@@ -118,7 +118,7 @@ class ConnectivityService extends ChangeNotifier {
           }
         } catch (e) {
           lastError = e.toString();
-          logTrace('Connectivity Check: Failed to connect to $host: $e');
+          // logTrace('Connectivity Check: Failed to connect to $host: $e');
           continue;
         }
       }

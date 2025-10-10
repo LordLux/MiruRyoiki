@@ -199,7 +199,11 @@ extension AnilistProviderBackgroundSync on AnilistProvider {
         );
       }
     } catch (e) {
-      logErr('Background notification refresh failed', e);
+      if (!RetryUtils.isExpectedOfflineError(e)) {
+        logErr('Background notification refresh failed', e);
+      } else {
+        logTrace('Background notification refresh skipped - offline');
+      }
     }
   }
 }
