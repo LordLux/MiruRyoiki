@@ -19,6 +19,7 @@ AiringNotification _$AiringNotificationFromJson(Map<String, dynamic> json) =>
       media: json['media'] == null
           ? null
           : MediaInfo.fromJson(json['media'] as Map<String, dynamic>),
+      format: json['format'] as String?,
     );
 
 Map<String, dynamic> _$AiringNotificationToJson(AiringNotification instance) =>
@@ -31,6 +32,7 @@ Map<String, dynamic> _$AiringNotificationToJson(AiringNotification instance) =>
       'episode': instance.episode,
       'contexts': instance.contexts,
       'media': instance.media,
+      'format': instance.format,
     };
 
 const _$NotificationTypeEnumMap = {

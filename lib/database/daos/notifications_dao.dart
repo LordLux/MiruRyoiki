@@ -153,8 +153,8 @@ class NotificationsDao extends DatabaseAccessor<AppDatabase> with _$Notification
       for (final notification in notifications) {
         // customStatement expects raw serializable values (no Variable<> wrappers)
         await customStatement(
-          'INSERT OR REPLACE INTO notifications (id, type, created_at, is_read, anime_id, episode, contexts, media_id, context, reason, deleted_media_titles, deleted_media_title, media_info, local_created_at, local_updated_at) '
-          'VALUES (?, ?, ?, COALESCE((SELECT is_read FROM notifications WHERE id = ?), ?), ?, ?, ?, ?, ?, ?, ?, ?, ?, (strftime(\'%s\',\'now\')*1000), (strftime(\'%s\',\'now\')*1000))',
+          'INSERT OR REPLACE INTO notifications (id, type, created_at, is_read, anime_id, episode, contexts, format, media_id, context, reason, deleted_media_titles, deleted_media_title, media_info, local_created_at, local_updated_at) '
+          'VALUES (?, ?, ?, COALESCE((SELECT is_read FROM notifications WHERE id = ?), ?), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, (strftime(\'%s\',\'now\')*1000), (strftime(\'%s\',\'now\')*1000))',
           [
             notification.id,                      // 1 id
             notification.type.index,              // 2 type
@@ -164,12 +164,13 @@ class NotificationsDao extends DatabaseAccessor<AppDatabase> with _$Notification
             _getAnimeId(notification),            // 6 anime_id
             _getEpisode(notification),            // 7 episode
             _getContexts(notification),           // 8 contexts (JSON string or null)
-            _getMediaId(notification),            // 9 media_id
-            _getContext(notification),            // 10 context
-            _getReason(notification),             // 11 reason
-            _getDeletedMediaTitles(notification), // 12 deleted_media_titles (JSON string)
-            _getDeletedMediaTitle(notification),  // 13 deleted_media_title
-            _getMediaInfo(notification),          // 14 media_info (JSON string)
+            _getFormat(notification),             // 9 format
+            _getMediaId(notification),            // 10 media_id
+            _getContext(notification),            // 11 context
+            _getReason(notification),             // 12 reason
+            _getDeletedMediaTitles(notification), // 13 deleted_media_titles (JSON string)
+            _getDeletedMediaTitle(notification),  // 14 deleted_media_title
+            _getMediaInfo(notification),          // 15 media_info (JSON string)
           ],
         );
       }
@@ -190,6 +191,10 @@ class NotificationsDao extends DatabaseAccessor<AppDatabase> with _$Notification
       return notification.contexts.isEmpty ? null : jsonEncode(notification.contexts);
     }
     return null;
+  }
+
+  String? _getFormat(AnilistNotification notification) {
+    return notification is AiringNotification ? notification.format : null;
   }
 
   int? _getMediaId(AnilistNotification notification) {
@@ -293,6 +298,7 @@ class NotificationsDao extends DatabaseAccessor<AppDatabase> with _$Notification
           animeId: Value(airing.animeId),
           episode: Value(airing.episode),
           contexts: Value(airing.contexts),
+          format: Value(airing.format),
           mediaInfo: Value(airing.media),
         );
       case RelatedMediaAdditionNotification related:
@@ -356,6 +362,7 @@ class NotificationsDao extends DatabaseAccessor<AppDatabase> with _$Notification
           episode: data.episode ?? 0,
           contexts: data.contexts ?? [],
           media: data.mediaInfo,
+          format: data.format,
         );
       case NotificationType.RELATED_MEDIA_ADDITION:
         return RelatedMediaAdditionNotification(

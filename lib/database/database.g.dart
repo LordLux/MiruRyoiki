@@ -2410,6 +2410,11 @@ class $NotificationsTableTable extends NotificationsTable
               type: DriftSqlType.string, requiredDuringInsert: false)
           .withConverter<List<String>?>(
               $NotificationsTableTable.$convertercontexts);
+  static const VerificationMeta _formatMeta = const VerificationMeta('format');
+  @override
+  late final GeneratedColumn<String> format = GeneratedColumn<String>(
+      'format', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
   static const VerificationMeta _mediaIdMeta =
       const VerificationMeta('mediaId');
   @override
@@ -2471,6 +2476,7 @@ class $NotificationsTableTable extends NotificationsTable
         animeId,
         episode,
         contexts,
+        format,
         mediaId,
         context,
         reason,
@@ -2511,6 +2517,10 @@ class $NotificationsTableTable extends NotificationsTable
     if (data.containsKey('episode')) {
       context.handle(_episodeMeta,
           episode.isAcceptableOrUnknown(data['episode']!, _episodeMeta));
+    }
+    if (data.containsKey('format')) {
+      context.handle(_formatMeta,
+          format.isAcceptableOrUnknown(data['format']!, _formatMeta));
     }
     if (data.containsKey('media_id')) {
       context.handle(_mediaIdMeta,
@@ -2567,6 +2577,8 @@ class $NotificationsTableTable extends NotificationsTable
       contexts: $NotificationsTableTable.$convertercontexts.fromSql(
           attachedDatabase.typeMapping
               .read(DriftSqlType.string, data['${effectivePrefix}contexts'])),
+      format: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}format']),
       mediaId: attachedDatabase.typeMapping
           .read(DriftSqlType.int, data['${effectivePrefix}media_id']),
       context: attachedDatabase.typeMapping
@@ -2612,6 +2624,7 @@ class NotificationsTableData extends DataClass
   final int? animeId;
   final int? episode;
   final List<String>? contexts;
+  final String? format;
   final int? mediaId;
   final String? context;
   final String? reason;
@@ -2628,6 +2641,7 @@ class NotificationsTableData extends DataClass
       this.animeId,
       this.episode,
       this.contexts,
+      this.format,
       this.mediaId,
       this.context,
       this.reason,
@@ -2655,6 +2669,9 @@ class NotificationsTableData extends DataClass
     if (!nullToAbsent || contexts != null) {
       map['contexts'] = Variable<String>(
           $NotificationsTableTable.$convertercontexts.toSql(contexts));
+    }
+    if (!nullToAbsent || format != null) {
+      map['format'] = Variable<String>(format);
     }
     if (!nullToAbsent || mediaId != null) {
       map['media_id'] = Variable<int>(mediaId);
@@ -2697,6 +2714,8 @@ class NotificationsTableData extends DataClass
       contexts: contexts == null && nullToAbsent
           ? const Value.absent()
           : Value(contexts),
+      format:
+          format == null && nullToAbsent ? const Value.absent() : Value(format),
       mediaId: mediaId == null && nullToAbsent
           ? const Value.absent()
           : Value(mediaId),
@@ -2730,6 +2749,7 @@ class NotificationsTableData extends DataClass
       animeId: serializer.fromJson<int?>(json['animeId']),
       episode: serializer.fromJson<int?>(json['episode']),
       contexts: serializer.fromJson<List<String>?>(json['contexts']),
+      format: serializer.fromJson<String?>(json['format']),
       mediaId: serializer.fromJson<int?>(json['mediaId']),
       context: serializer.fromJson<String?>(json['context']),
       reason: serializer.fromJson<String?>(json['reason']),
@@ -2753,6 +2773,7 @@ class NotificationsTableData extends DataClass
       'animeId': serializer.toJson<int?>(animeId),
       'episode': serializer.toJson<int?>(episode),
       'contexts': serializer.toJson<List<String>?>(contexts),
+      'format': serializer.toJson<String?>(format),
       'mediaId': serializer.toJson<int?>(mediaId),
       'context': serializer.toJson<String?>(context),
       'reason': serializer.toJson<String?>(reason),
@@ -2773,6 +2794,7 @@ class NotificationsTableData extends DataClass
           Value<int?> animeId = const Value.absent(),
           Value<int?> episode = const Value.absent(),
           Value<List<String>?> contexts = const Value.absent(),
+          Value<String?> format = const Value.absent(),
           Value<int?> mediaId = const Value.absent(),
           Value<String?> context = const Value.absent(),
           Value<String?> reason = const Value.absent(),
@@ -2789,6 +2811,7 @@ class NotificationsTableData extends DataClass
         animeId: animeId.present ? animeId.value : this.animeId,
         episode: episode.present ? episode.value : this.episode,
         contexts: contexts.present ? contexts.value : this.contexts,
+        format: format.present ? format.value : this.format,
         mediaId: mediaId.present ? mediaId.value : this.mediaId,
         context: context.present ? context.value : this.context,
         reason: reason.present ? reason.value : this.reason,
@@ -2811,6 +2834,7 @@ class NotificationsTableData extends DataClass
       animeId: data.animeId.present ? data.animeId.value : this.animeId,
       episode: data.episode.present ? data.episode.value : this.episode,
       contexts: data.contexts.present ? data.contexts.value : this.contexts,
+      format: data.format.present ? data.format.value : this.format,
       mediaId: data.mediaId.present ? data.mediaId.value : this.mediaId,
       context: data.context.present ? data.context.value : this.context,
       reason: data.reason.present ? data.reason.value : this.reason,
@@ -2840,6 +2864,7 @@ class NotificationsTableData extends DataClass
           ..write('animeId: $animeId, ')
           ..write('episode: $episode, ')
           ..write('contexts: $contexts, ')
+          ..write('format: $format, ')
           ..write('mediaId: $mediaId, ')
           ..write('context: $context, ')
           ..write('reason: $reason, ')
@@ -2861,6 +2886,7 @@ class NotificationsTableData extends DataClass
       animeId,
       episode,
       contexts,
+      format,
       mediaId,
       context,
       reason,
@@ -2880,6 +2906,7 @@ class NotificationsTableData extends DataClass
           other.animeId == this.animeId &&
           other.episode == this.episode &&
           other.contexts == this.contexts &&
+          other.format == this.format &&
           other.mediaId == this.mediaId &&
           other.context == this.context &&
           other.reason == this.reason &&
@@ -2899,6 +2926,7 @@ class NotificationsTableCompanion
   final Value<int?> animeId;
   final Value<int?> episode;
   final Value<List<String>?> contexts;
+  final Value<String?> format;
   final Value<int?> mediaId;
   final Value<String?> context;
   final Value<String?> reason;
@@ -2915,6 +2943,7 @@ class NotificationsTableCompanion
     this.animeId = const Value.absent(),
     this.episode = const Value.absent(),
     this.contexts = const Value.absent(),
+    this.format = const Value.absent(),
     this.mediaId = const Value.absent(),
     this.context = const Value.absent(),
     this.reason = const Value.absent(),
@@ -2932,6 +2961,7 @@ class NotificationsTableCompanion
     this.animeId = const Value.absent(),
     this.episode = const Value.absent(),
     this.contexts = const Value.absent(),
+    this.format = const Value.absent(),
     this.mediaId = const Value.absent(),
     this.context = const Value.absent(),
     this.reason = const Value.absent(),
@@ -2950,6 +2980,7 @@ class NotificationsTableCompanion
     Expression<int>? animeId,
     Expression<int>? episode,
     Expression<String>? contexts,
+    Expression<String>? format,
     Expression<int>? mediaId,
     Expression<String>? context,
     Expression<String>? reason,
@@ -2967,6 +2998,7 @@ class NotificationsTableCompanion
       if (animeId != null) 'anime_id': animeId,
       if (episode != null) 'episode': episode,
       if (contexts != null) 'contexts': contexts,
+      if (format != null) 'format': format,
       if (mediaId != null) 'media_id': mediaId,
       if (context != null) 'context': context,
       if (reason != null) 'reason': reason,
@@ -2987,6 +3019,7 @@ class NotificationsTableCompanion
       Value<int?>? animeId,
       Value<int?>? episode,
       Value<List<String>?>? contexts,
+      Value<String?>? format,
       Value<int?>? mediaId,
       Value<String?>? context,
       Value<String?>? reason,
@@ -3003,6 +3036,7 @@ class NotificationsTableCompanion
       animeId: animeId ?? this.animeId,
       episode: episode ?? this.episode,
       contexts: contexts ?? this.contexts,
+      format: format ?? this.format,
       mediaId: mediaId ?? this.mediaId,
       context: context ?? this.context,
       reason: reason ?? this.reason,
@@ -3039,6 +3073,9 @@ class NotificationsTableCompanion
     if (contexts.present) {
       map['contexts'] = Variable<String>(
           $NotificationsTableTable.$convertercontexts.toSql(contexts.value));
+    }
+    if (format.present) {
+      map['format'] = Variable<String>(format.value);
     }
     if (mediaId.present) {
       map['media_id'] = Variable<int>(mediaId.value);
@@ -3080,6 +3117,7 @@ class NotificationsTableCompanion
           ..write('animeId: $animeId, ')
           ..write('episode: $episode, ')
           ..write('contexts: $contexts, ')
+          ..write('format: $format, ')
           ..write('mediaId: $mediaId, ')
           ..write('context: $context, ')
           ..write('reason: $reason, ')
@@ -4865,6 +4903,7 @@ typedef $$NotificationsTableTableCreateCompanionBuilder
   Value<int?> animeId,
   Value<int?> episode,
   Value<List<String>?> contexts,
+  Value<String?> format,
   Value<int?> mediaId,
   Value<String?> context,
   Value<String?> reason,
@@ -4883,6 +4922,7 @@ typedef $$NotificationsTableTableUpdateCompanionBuilder
   Value<int?> animeId,
   Value<int?> episode,
   Value<List<String>?> contexts,
+  Value<String?> format,
   Value<int?> mediaId,
   Value<String?> context,
   Value<String?> reason,
@@ -4926,6 +4966,9 @@ class $$NotificationsTableTableFilterComposer
       get contexts => $composableBuilder(
           column: $table.contexts,
           builder: (column) => ColumnWithTypeConverterFilters(column));
+
+  ColumnFilters<String> get format => $composableBuilder(
+      column: $table.format, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<int> get mediaId => $composableBuilder(
       column: $table.mediaId, builder: (column) => ColumnFilters(column));
@@ -4989,6 +5032,9 @@ class $$NotificationsTableTableOrderingComposer
   ColumnOrderings<String> get contexts => $composableBuilder(
       column: $table.contexts, builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<String> get format => $composableBuilder(
+      column: $table.format, builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<int> get mediaId => $composableBuilder(
       column: $table.mediaId, builder: (column) => ColumnOrderings(column));
 
@@ -5047,6 +5093,9 @@ class $$NotificationsTableTableAnnotationComposer
 
   GeneratedColumnWithTypeConverter<List<String>?, String> get contexts =>
       $composableBuilder(column: $table.contexts, builder: (column) => column);
+
+  GeneratedColumn<String> get format =>
+      $composableBuilder(column: $table.format, builder: (column) => column);
 
   GeneratedColumn<int> get mediaId =>
       $composableBuilder(column: $table.mediaId, builder: (column) => column);
@@ -5110,6 +5159,7 @@ class $$NotificationsTableTableTableManager extends RootTableManager<
             Value<int?> animeId = const Value.absent(),
             Value<int?> episode = const Value.absent(),
             Value<List<String>?> contexts = const Value.absent(),
+            Value<String?> format = const Value.absent(),
             Value<int?> mediaId = const Value.absent(),
             Value<String?> context = const Value.absent(),
             Value<String?> reason = const Value.absent(),
@@ -5127,6 +5177,7 @@ class $$NotificationsTableTableTableManager extends RootTableManager<
             animeId: animeId,
             episode: episode,
             contexts: contexts,
+            format: format,
             mediaId: mediaId,
             context: context,
             reason: reason,
@@ -5144,6 +5195,7 @@ class $$NotificationsTableTableTableManager extends RootTableManager<
             Value<int?> animeId = const Value.absent(),
             Value<int?> episode = const Value.absent(),
             Value<List<String>?> contexts = const Value.absent(),
+            Value<String?> format = const Value.absent(),
             Value<int?> mediaId = const Value.absent(),
             Value<String?> context = const Value.absent(),
             Value<String?> reason = const Value.absent(),
@@ -5161,6 +5213,7 @@ class $$NotificationsTableTableTableManager extends RootTableManager<
             animeId: animeId,
             episode: episode,
             contexts: contexts,
+            format: format,
             mediaId: mediaId,
             context: context,
             reason: reason,

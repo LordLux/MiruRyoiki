@@ -24,16 +24,18 @@ class NotificationCalendarEntryWidget extends StatefulWidget {
   final Function(int) onRelatedMediaAdditionNotificationTapped;
   final Function(int) onAddedToList;
   final Function(int, int) onDownloadButton;
+  final bool isDense;
 
   const NotificationCalendarEntryWidget(
     this.notification,
     this.series, {
+    super.key,
     required this.onSeriesSelected,
     required this.onNotificationRead,
     required this.onRelatedMediaAdditionNotificationTapped,
     required this.onAddedToList,
     required this.onDownloadButton,
-    super.key,
+    this.isDense = false,
   });
 
   @override
@@ -55,8 +57,7 @@ class _NotificationCalendarEntryWidgetState extends State<NotificationCalendarEn
 
   String _getNotificationTitle(AnilistNotification notification, Series? series) {
     return switch (notification) {
-      // TODO crossreference with seriesId to find entry type (TV/ONA/OVA or MOVIE) and adjust wording accordingly (e.g. "Movie released" instead of "Episode X released")
-      AiringNotification airing => 'Episode ${airing.episode} - ${series?.displayTitle ?? airing.media?.title ?? 'Unknown anime'}',
+      AiringNotification airing => airing.getFormattedTitle(series?.displayTitle),
       RelatedMediaAdditionNotification related => '${series?.displayTitle ?? related.media?.title ?? 'Unknown anime'} was added to Anilist',
       MediaDataChangeNotification dataChange => '${series?.displayTitle ?? dataChange.media?.title ?? 'Unknown anime'} was updated',
       MediaMergeNotification merge => '${series?.displayTitle ?? merge.media?.title ?? 'Unknown anime'} was merged',
@@ -81,7 +82,7 @@ class _NotificationCalendarEntryWidgetState extends State<NotificationCalendarEn
     final timeAgo = now.difference(notificationDate);
     final bool hasEpisodeNumber = widget.notification is AiringNotification;
     final double offset = hasEpisodeNumber ? calculateOffset((widget.notification as AiringNotification).episode.toString().length) : 0.0;
-    
+
     return NotificationListTile(
       leading: MouseRegion(
         onEnter: (_) => setState(() => _isHovered = true),

@@ -116,6 +116,7 @@ class NotificationsTable extends Table {
   IntColumn get animeId => integer().nullable()();
   IntColumn get episode => integer().nullable()();
   TextColumn get contexts => text().map(const StringListConverter()).nullable()(); // JSON array of strings
+  TextColumn get format => text().nullable()(); // Anime format (TV, MOVIE, OVA, ONA, etc.)
   
   // MediaDataChangeNotification, MediaMergeNotification specific fields
   IntColumn get mediaId => integer().nullable()();

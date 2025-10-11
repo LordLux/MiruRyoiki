@@ -35,7 +35,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? db]) : super(db ?? _openConnection());
 
   @override
-  int get schemaVersion => 8;
+  int get schemaVersion => 9;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -85,6 +85,10 @@ class AppDatabase extends _$AppDatabase {
           if (from < 8) {
             // Add anilistTitle column for episode titles from AniList
             await m.issueCustomQuery('ALTER TABLE episodes_table ADD COLUMN anilist_title TEXT;');
+          }
+          if (from < 9) {
+            // Add format column to notifications table for anime format (MOVIE, TV, OVA, etc.)
+            await m.issueCustomQuery('ALTER TABLE notifications ADD COLUMN format TEXT;');
           }
         },
         beforeOpen: (details) async {

@@ -50,6 +50,7 @@ class AiringNotification extends AnilistNotification {
   final int episode;
   final List<String> contexts;
   final MediaInfo? media;
+  final String? format; // Format of the anime (TV, MOVIE, OVA, ONA, etc.)
 
   const AiringNotification({
     required super.id,
@@ -60,12 +61,25 @@ class AiringNotification extends AnilistNotification {
     required this.episode,
     required this.contexts,
     this.media,
+    this.format,
   });
 
   factory AiringNotification.fromJson(Map<String, dynamic> json) => _$AiringNotificationFromJson(json);
 
   @override
   Map<String, dynamic> toJson() => _$AiringNotificationToJson(this);
+
+  /// Returns true if this notification is for a movie (based on format)
+  bool get isMovie => format?.toUpperCase() == 'MOVIE';
+
+  /// Returns a formatted title for display based on the anime format
+  /// - For movies: "Movie - {title}"
+  /// - For TV/OVA/ONA/etc: "Episode {episode} - {title}"
+  String getFormattedTitle(String? fallbackTitle) {
+    final title = media?.title ?? fallbackTitle ?? 'Unknown anime';
+    if (isMovie) return 'Movie - $title';
+    return 'Episode $episode - $title';
+  }
 
   @override
   AiringNotification copyWith({
@@ -77,6 +91,7 @@ class AiringNotification extends AnilistNotification {
     int? episode,
     List<String>? contexts,
     MediaInfo? media,
+    String? format,
   }) {
     return AiringNotification(
       id: id ?? this.id,
@@ -87,6 +102,7 @@ class AiringNotification extends AnilistNotification {
       episode: episode ?? this.episode,
       contexts: contexts ?? this.contexts,
       media: media ?? this.media,
+      format: format ?? this.format,
     );
   }
 }

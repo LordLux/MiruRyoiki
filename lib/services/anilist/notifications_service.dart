@@ -250,6 +250,7 @@ extension AnilistServiceNotifications on AnilistService {
         final animeId = json['animeId'] as int? ?? 0;
         final episode = json['episode'] as int? ?? 0;
         final contexts = (json['contexts'] as List<dynamic>?)?.cast<String>() ?? [];
+        final format = mediaJson?['format'] as String?;
 
         return AiringNotification(
           id: id,
@@ -259,6 +260,7 @@ extension AnilistServiceNotifications on AnilistService {
           episode: episode,
           contexts: contexts,
           media: mediaInfo,
+          format: format,
         );
       case NotificationType.RELATED_MEDIA_ADDITION:
         final mediaId = json['mediaId'] as int? ?? 0;

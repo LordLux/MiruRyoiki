@@ -1176,11 +1176,8 @@ Future<void> _registerWindowsUrlScheme(String scheme) async {
 }
 
 // TODO use name and poster from the released episode in the notification instead of using the one from local series (example 'Girls Band Cry' (local) instead of 'GIRLS BAND CRY: Seishun Kyousoukyoku'(notification))
-// TODO after linking anilist, fetch episode titles for neolinked series
 // TODO add 'notify me' button to upcoming episodes on home screen
-// TODO add indicator of which episodes have anilist titles
 // TODO sometimes anilist episode numbering for seasons > 1 continue from previous season, need to handle that
-// TODO add per-episode/season/series toggle to use anilist titles or local titles
 // TODO replace notification popup notification entry with new widget from 'notif.dart'
 // TODO change text 'wait while library is getting indexed' to 'scanning' when library scan is in progress
 // TODO fix library scanning that keeps finding the same files every time even though they were already there
@@ -1191,6 +1188,11 @@ Future<void> _registerWindowsUrlScheme(String scheme) async {
 // TODO cache Anilist lists to be able to work offline
 // TODO when view is linkedOnly, hideFromUserList series automatically get added to Watching, add category for them
 // TODO make it so custom lists display their items instead of being empty (add toggle to show/hide custom lists in library)
+
+// beta
+// TODO after linking anilist, fetch episode titles for neolinked series
+// TODO add indicator of which episodes have anilist titles
+// TODO add per-episode/season/series toggle to use anilist titles or local titles
 
 // TODO add ctrl + tab navigation
 // TODO Local 'Unlinked' auto connect to Anilist 'About to Watch' (allow custom name to search for)

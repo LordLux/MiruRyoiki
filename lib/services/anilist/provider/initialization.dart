@@ -3,7 +3,7 @@ part of 'anilist_provider.dart';
 extension AnilistProviderInitialization on AnilistProvider {
   /// Initialize connectivity service
   Future<void> _initializeConnectivity() async {
-    logDebug('Initializing connectivity service...');
+    // logDebug('Initializing connectivity service...');
 
     // Initialize connectivity service
     await _connectivityService.initialize();
