@@ -80,15 +80,30 @@ class AppDatabase extends _$AppDatabase {
           }
           if (from < 7) {
             // Add customListName column for unlinked series custom list selection
-            await m.issueCustomQuery('ALTER TABLE series_table ADD COLUMN custom_list_name TEXT;');
+            try {
+              await m.issueCustomQuery('ALTER TABLE series_table ADD COLUMN custom_list_name TEXT;');
+            } catch (e) {
+              // Column might already exist if migration was interrupted, ignore error
+              if (!e.toString().contains('duplicate column name')) rethrow;
+            }
           }
           if (from < 8) {
             // Add anilistTitle column for episode titles from AniList
-            await m.issueCustomQuery('ALTER TABLE episodes_table ADD COLUMN anilist_title TEXT;');
+            try {
+              await m.issueCustomQuery('ALTER TABLE episodes_table ADD COLUMN anilist_title TEXT;');
+            } catch (e) {
+              // Column might already exist if migration was interrupted, ignore error
+              if (!e.toString().contains('duplicate column name')) rethrow;
+            }
           }
           if (from < 9) {
             // Add format column to notifications table for anime format (MOVIE, TV, OVA, etc.)
-            await m.issueCustomQuery('ALTER TABLE notifications ADD COLUMN format TEXT;');
+            try {
+              await m.issueCustomQuery('ALTER TABLE notifications ADD COLUMN format TEXT;');
+            } catch (e) {
+              // Column might already exist if migration was interrupted, ignore error
+              if (!e.toString().contains('duplicate column name')) rethrow;
+            }
           }
         },
         beforeOpen: (details) async {

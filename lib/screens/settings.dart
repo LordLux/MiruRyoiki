@@ -817,7 +817,7 @@ class SettingsScreenState extends State<SettingsScreen> with AutomaticKeepAliveC
   @override
   Widget build(BuildContext context) {
     super.build(context); // for AutomaticKeepAliveClientMixin
-    
+
     final library = Provider.of<Library>(context);
     final settings = Provider.of<SettingsManager>(context);
 
@@ -885,15 +885,16 @@ class SettingsScreenState extends State<SettingsScreen> with AutomaticKeepAliveC
       // Library
       0 => [
           Text(
-            'Select the folder that contains your media library. '
-            'The app will scan this folder for video files.',
+            'Select the folder that contains your media library.',
             style: Manager.bodyStyle,
           ),
           VDiv(24),
           Row(
             children: [
               ReadonlyTextBoxWithShiftAltButton(
+                isDisabled: library.libraryPath == null,
                 library.libraryPath,
+                disabledTooltip: 'Library path not set, please select a folder.',
                 unshiftTooltip: 'Open Library Folder',
                 shiftTooltip: 'Copy Library Path',
                 onPressed: library.libraryPath == null
@@ -918,11 +919,15 @@ class SettingsScreenState extends State<SettingsScreen> with AutomaticKeepAliveC
                         }
                       },
               ),
-              const SizedBox(width: 6),
-              ValueListenableBuilder(
+              if (library.libraryPath != null) const SizedBox(width: 6),
+              if (library.libraryPath != null) ValueListenableBuilder(
                   valueListenable: KeyboardState.shiftPressedNotifier,
                   builder: (context, isShiftPressed, _) {
                     return LoadingButton(
+                      tooltip: isShiftPressed //
+                              ? 'Clear Cache and Scan Library'
+                              : 'Scan Library',
+                      isButtonDisabled:  library.isIndexing,
                       label: isShiftPressed ? 'Clear Cache and Scan Library' : 'Scan Library',
                       onPressed: () => isShiftPressed
                           ? library.reloadLibrary(force: true, showSnackBar: false).then((_) {
@@ -2068,6 +2073,8 @@ class SettingsScreenState extends State<SettingsScreen> with AutomaticKeepAliveC
     String unshiftTooltip = "",
     String shiftTooltip = "",
     Function(bool)? onPressed,
+    bool isDisabled = false,
+    String disabledTooltip = 'No folder selected',
   }) {
     return Expanded(
       child: SizedBox(
@@ -2077,18 +2084,19 @@ class SettingsScreenState extends State<SettingsScreen> with AutomaticKeepAliveC
           children: [
             //TODO make this go above if the horizontal space is too small
             TextBox(
-              placeholder: 'No folder selected',
+              placeholder: disabledTooltip,
               controller: TextEditingController(text: textboxText ?? ''),
               readOnly: true,
               enabled: false,
             ),
-            Padding(
+            if (!isDisabled) Padding(
               padding: const EdgeInsets.all(3),
               child: ValueListenableBuilder(
                   valueListenable: KeyboardState.shiftPressedNotifier,
                   builder: (context, isShiftPressed, _) {
                     return MouseButtonWrapper(
-                      tooltip: isShiftPressed ? shiftTooltip : unshiftTooltip,
+                      tooltip: isDisabled ? disabledTooltip : (isShiftPressed ? shiftTooltip : unshiftTooltip),
+                      isButtonDisabled: isDisabled,
                       child: (_) => SizedBox(
                         height: 28,
                         child: MouseRegion(

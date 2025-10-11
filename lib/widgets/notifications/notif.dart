@@ -167,7 +167,7 @@ class _NotificationCalendarEntryWidgetState extends State<NotificationCalendarEn
                 ),
               ),
             ),
-          if (isRelatedMediaAdditionNotification)
+          if (isRelatedMediaAdditionNotification && !widget.isDense) // Hide "Add to lists" button in dense mode to save space
             Padding(
               padding: const EdgeInsets.only(right: 8.0),
               child: Builder(
@@ -182,7 +182,7 @@ class _NotificationCalendarEntryWidgetState extends State<NotificationCalendarEn
                 },
               ),
             ),
-          if (isNewEpisodeNotification) // TODO show download button when the episode has not been downloaded yet
+          if (isNewEpisodeNotification && !widget.isDense) // TODO show download button when the episode has not been downloaded yet
             Padding(
               padding: const EdgeInsets.only(right: 8.0),
               child: Builder(
@@ -203,7 +203,7 @@ class _NotificationCalendarEntryWidgetState extends State<NotificationCalendarEn
               tooltip: 'View Series details',
               child: (_) => const Icon(FluentIcons.chevron_right),
             ) //
-          else
+          else if (!widget.isDense) // Show chevron only if not in dense mode to save space
             isRelatedMediaAdditionNotification //
                 ? TooltipWrapper(
                     waitDuration: const Duration(milliseconds: 400),
