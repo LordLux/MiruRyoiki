@@ -119,6 +119,13 @@ extension LogLevelX on LogLevel {
     }
   }
 
+  // Check if this message level should be logged given the configured threshold
+  // Lower priority numbers = more important/less verbose
+  // When threshold is ERROR (1),   log messages with priority <= 1 (just ERROR and NONE)
+  // When threshold is WARNING (2), log messages with priority <= 2 (ERROR, WARNING)
+  // When threshold is INFO (3),    log messages with priority <= 3 (ERROR, WARNING, INFO)
+  // When threshold is DEBUG (4),   log messages with priority <= 4 (ERROR, WARNING, INFO, DEBUG)
+  // When threshold is TRACE (5),   log messages with priority <= 5 (everything)
   bool shouldLog(LogLevel currentLevel) => priority <= currentLevel.priority;
 
   static LogLevel fromString(String value, {LogLevel? defaultValue}) => fromStringX<LogLevel>(

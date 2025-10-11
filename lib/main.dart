@@ -89,6 +89,8 @@ SeriesScreenState? getActiveSeriesScreenState() {
 void main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  Manager.parseArgs();
+
   // Ensures there's only one instance of the program
   _ensureSingleInstance();
 
@@ -98,12 +100,13 @@ void main(List<String> args) async {
   // Initializes the MiruRyoiki save directory
   await initializeMiruRyoikiSaveDirectory();
 
+  // Initialize settings
+  await _settings.init();
+
   // Initialize session-based error logging
   await initializeLoggingSession();
 
   Manager.init();
-
-  Manager.parseArgs();
 
   // Gets the root isolate token
   rootIsolateToken = ServicesBinding.rootIsolateToken;
@@ -130,9 +133,6 @@ void main(List<String> args) async {
   await imageCache.init();
 
   await initializeSVGs();
-
-  // Initialize settings
-  await _settings.init();
 
   // Run the app
   runApp(
@@ -1175,6 +1175,7 @@ Future<void> _registerWindowsUrlScheme(String scheme) async {
   }
 }
 
+// TODO use name and poster from the released episode in the notification instead of using the one from local series (example 'Girls Band Cry' (local) instead of 'GIRLS BAND CRY: Seishun Kyousoukyoku'(notification))
 // TODO after linking anilist, fetch episode titles for neolinked series
 // TODO add 'notify me' button to upcoming episodes on home screen
 // TODO add indicator of which episodes have anilist titles

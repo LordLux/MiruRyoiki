@@ -4,6 +4,8 @@ import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
+import 'logging.dart';
+
 class PathUtils {
   /// Normalize file paths for consistent comparison
   static String? normalizePath(String? path) {
@@ -54,11 +56,11 @@ class PathString {
   /// this returns "assets/icons/anilist/logo.si".
   String? get asset {
     if (pathMaybe == null || pathMaybe!.isEmpty) return null;
-    
+
     final parts = path.split(ps);
     final assetsIndex = parts.indexOf('assets');
     if (assetsIndex == -1) return null;
-    
+
     return parts.sublist(assetsIndex).join('/');
   }
 
@@ -120,7 +122,8 @@ Future<void> initializeMiruRyoikiSaveDirectory() async {
   if (_miruRyoiokiSaveDirectoryPath != null) return; // Already initialized
   final appDataDir = await getApplicationSupportDirectory();
   final parentPath = appDataDir.path.split('com.lordlux').first;
-  final miruRyoiokiDir = Directory('${parentPath}MiruRyoiki');
+  final name = kDebugMode ? 'MiruRyoikiDev' : 'MiruRyoiki'; // Separate folder for dev builds
+  final miruRyoiokiDir = Directory('$parentPath$name');
   if (!await miruRyoiokiDir.exists()) await miruRyoiokiDir.create(recursive: true);
   _miruRyoiokiSaveDirectoryPath = miruRyoiokiDir.path;
 }
@@ -129,15 +132,16 @@ Future<void> initializeMiruRyoikiSaveDirectory() async {
 ///
 /// Throws if [initializeMiruRyoikiSaveDirectory] has not been called.
 Directory get miruRyoikiSaveDirectory {
-  if (_miruRyoiokiSaveDirectoryPath == null) {
-    if (kDebugMode) {
-      return Directory(r'C:\Users\LordLux\AppData\Roaming\MiruRyoiki');
-    } else {
-      throw StateError('miruRyoiokiSaveDirectoryPath not initialized. initializeMiruRyoiokiSaveDirectory() has to be called first.');
-    }
+  if (_miruRyoiokiSaveDirectoryPath != null) return Directory(_miruRyoiokiSaveDirectoryPath!);
+
+  // For debug builds, return a fixed path to avoid initialization issues
+  if (kDebugMode) {
+    logErr('miruRyoiokiSaveDirectoryPath not initialized, returning default debug path');
+    return Directory(r'C:\Users\LordLux\AppData\Roaming\MiruRyoikiDev');
   }
 
-  return Directory(_miruRyoiokiSaveDirectoryPath!);
+  // In release builds, throw if not initialized
+  throw StateError('miruRyoiokiSaveDirectoryPath not initialized. initializeMiruRyoiokiSaveDirectory() has to be called first.');
 }
 
 String substringSafe(String text, int start, [int? end, String wrap = '']) => //

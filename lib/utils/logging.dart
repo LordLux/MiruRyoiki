@@ -58,6 +58,14 @@ Future<void> initializeLoggingSession() async {
     // Clean up old log files before creating new session
     await _cleanupOldLogs(logsDir);
 
+    final logLevel = _getCurrentFileLogLevel();
+    if (logLevel == LogLevel.none) {
+      // If log level is none, skip creating log file
+      _sessionId = null;
+      _sessionLogFile = null;
+      return;
+    }
+
     // Create session log file
     final logFileName = 'log_$_sessionId.txt';
     _sessionLogFile = File(p.join(logsDir.path, logFileName));
@@ -73,9 +81,9 @@ Future<void> initializeLoggingSession() async {
       ...[if (kDebugMode) '--debug']
     ]}\n');
     sessionHeaderContent.write('Platform: ${Platform.operatingSystem} ${Platform.operatingSystemVersion}\n');
-    sessionHeaderContent.write('File Log Level: ${_getCurrentFileLogLevel().name_}\n');
+    sessionHeaderContent.write('File Log Level: ${logLevel.name_}\n');
     sessionHeaderContent.write('===========================================\n');
-    
+
     await _writeToLogFile(sessionHeaderContent.toString());
   } catch (e) {
     // Fallback logging to console if file operations fail
@@ -215,14 +223,26 @@ void _logWithLevel(
   StackTrace? stackTrace,
   bool? splitLines = false,
 }) {
-  // Always do console logging with existing logic
-  log(msg, color: color, bgColor: bgColor, error: error, stackTrace: stackTrace, splitLines: splitLines, level: level);
+  // Console logging with LoggingConfig checks
+  bool shouldLogToConsole = true;
+
+  // Apply LoggingConfig filtering for console output
+  if (level == LogLevel.trace && !LoggingConfig.doLogTrace) shouldLogToConsole = false; // Skip trace logs if disabled
+  if (level == LogLevel.debug && !LoggingConfig.doLogRelease && !kDebugMode) shouldLogToConsole = false; // Skip debug logs in release mode if disabled
+
+  if (shouldLogToConsole) log(msg, color: color, bgColor: bgColor, error: error, stackTrace: stackTrace, splitLines: splitLines, level: level);
 
   // Check if we should write to file
   final currentFileLevel = _getCurrentFileLogLevel();
-  if (level.shouldLog(currentFileLevel)) {
-    _writeLogToSessionFile(level, msg, error, stackTrace);
-  }
+
+  // If file log level is none don't create log files at all
+  if (currentFileLevel == LogLevel.none) return; // Don't write anything to file
+
+  // Check if this message level should be logged based on the threshold
+  // Message logs if its priority <= threshold priority
+  // es. ERROR (1) <= ERROR (1) → true, TRACE (5) <= ERROR (1) → false
+  // When threshold is TRACE (5), everything logs: ERROR (1) <= TRACE (5) → true
+  if (level.shouldLog(currentFileLevel)) _writeLogToSessionFile(level, msg, error, stackTrace);
 }
 
 /// Write log entry to the session log file
@@ -232,10 +252,10 @@ void _writeLogToSessionFile(LogLevel level, dynamic msg, Object? error, StackTra
   // Format log entry with complete content built before writing
   final timestamp = DateTime.now().toIso8601String();
   final logContent = StringBuffer();
-  
+
   // Build the complete log entry in memory first
   logContent.write('[$timestamp] ${level.name_.toUpperCase()}: $msg');
-  
+
   if (error != null) {
     logContent.write('\nException: $error');
   }
@@ -257,13 +277,11 @@ void _writeLogToSessionFile(LogLevel level, dynamic msg, Object? error, StackTra
 
 /// Logs a trace message with the specified [msg] and sets the text color to Teal.
 void logTrace(final dynamic msg, {bool? splitLines}) {
-  if (!LoggingConfig.doLogTrace) return;
   _logWithLevel(LogLevel.trace, msg, color: Colors.tealAccent, splitLines: splitLines);
 }
 
 /// Logs a debug message with the specified [msg]
 void logDebug(final dynamic msg, {bool? splitLines}) {
-  if (!LoggingConfig.doLogRelease && !kDebugMode) return;
   _logWithLevel(LogLevel.debug, msg, color: Colors.amber, bgColor: Colors.transparent, splitLines: splitLines);
 }
 
@@ -279,6 +297,22 @@ Future<void> _writeToLogFile(String content) async {
       // Fallback to console logging if file write fails
       _log(LogLevel.error, 'Failed to write to log file', error: e);
     }
+  });
+}
+
+/// Log a message when file log level setting is changed
+void logFileSettingChanged(LogLevel oldLevel, LogLevel newLevel) {
+  if (_sessionLogFile == null || _sessionId == null) return;
+
+  final timestamp = now.toIso8601String();
+  final logContent = StringBuffer();
+
+  logContent.write('[$timestamp] *** LOG LEVEL CHANGED: ${oldLevel.displayName} → ${newLevel.displayName} ***');
+  logContent.write('\n---');
+
+  // Always write directly the message about logging changes
+  _writeToLogFile(logContent.toString()).catchError((e) {
+    if (kDebugMode) developer.log('Failed to write log level change message: $e');
   });
 }
 

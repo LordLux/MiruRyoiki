@@ -24,6 +24,7 @@ class Manager {
     buildNumber = packageInfo.buildNumber;
     lastUpdate = packageInfo.updateTime;
   }
+  
   static const String appTitle = "MiruRyoiki";
   static late final String appVersion;
   static late final String buildNumber;

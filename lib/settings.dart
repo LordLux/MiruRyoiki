@@ -8,6 +8,7 @@ import 'enums.dart';
 import 'manager.dart';
 import 'theme.dart';
 import 'utils/time.dart';
+import 'utils/logging.dart';
 
 class SettingsManager extends ChangeNotifier {
   static final SettingsManager _instance = SettingsManager._internal();
@@ -76,7 +77,12 @@ class SettingsManager extends ChangeNotifier {
 
   // Logging
   LogLevel get fileLogLevel => LogLevelX.fromString(_getString('fileLogLevel', defaultValue: LogLevel.error.name_));
-  set fileLogLevel(LogLevel value) => _setString('fileLogLevel', value.name_);
+  set fileLogLevel(LogLevel value) {
+    final oldLevel = fileLogLevel;
+    _setString('fileLogLevel', value.name_);
+    // Log the change to the file
+    if (oldLevel != value) logFileSettingChanged(oldLevel, value);
+  }
 
   int get logRetentionDays => _getInt('logRetentionDays', defaultValue: 7);
   set logRetentionDays(int value) => _setInt('logRetentionDays', value);
@@ -194,7 +200,7 @@ class SettingsManager extends ChangeNotifier {
 
   void set(String key, dynamic value) {
     if (_settings[key] == value) return;
-    
+
     _settings[key] = value;
     _saveToPrefs(key, value.toString());
     notifyListeners();
@@ -202,7 +208,7 @@ class SettingsManager extends ChangeNotifier {
 
   Future<void> init() async {
     if (_initialized) return;
-    
+
     _prefs = await SharedPreferences.getInstance();
     await loadSettings();
     _initialized = true;
