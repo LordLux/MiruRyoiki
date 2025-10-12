@@ -417,16 +417,7 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
             }
           }
 
-          if (highestPriorityList != null) {
-            final displayName = StatusStatistic.statusNameToPretty(highestPriorityList);
-            if (groups.containsKey(displayName)) {
-              groups[displayName]?.add(series);
-              continue;
-            }
-          }
-
-          // Check custom lists
-          bool foundInCustomList = false;
+          // Check custom lists first (these are non-exclusive, so series can be in multiple lists)
           for (final mapping in series.anilistMappings) {
             for (final entry in anilistProvider.userLists.entries) {
               final listName = entry.key;
@@ -434,22 +425,28 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
 
               final list = entry.value;
               if (list.entries.any((listEntry) => listEntry.media.id == mapping.anilistId)) {
-                groups[StatusStatistic.statusNameToPretty(listName)]?.add(series);
-                foundInCustomList = true;
-                break;
+                final prettyListName = StatusStatistic.statusNameToPretty(listName);
+                if (groups.containsKey(prettyListName)) {
+                  groups[prettyListName]?.add(series);
+                }
               }
             }
-            if (foundInCustomList) break;
           }
 
-          if (foundInCustomList) continue;
-
-          // Add to Unlinked if not found
-          final unlinkedKey = groups.keys.firstWhere(
-            (k) => k == 'Unlinked',
-            orElse: () => groups.keys.first,
-          );
-          groups[unlinkedKey]?.add(series);
+          // Add to standard list (or Unlinked if not found)
+          if (highestPriorityList != null) {
+            final displayName = StatusStatistic.statusNameToPretty(highestPriorityList);
+            if (groups.containsKey(displayName)) {
+              groups[displayName]?.add(series);
+            }
+          } else {
+            // Add to Unlinked if not found in any standard list
+            final unlinkedKey = groups.keys.firstWhere(
+              (k) => k == 'Unlinked',
+              orElse: () => groups.keys.first,
+            );
+            groups[unlinkedKey]?.add(series);
+          }
         }
       } else {
         // Unlinked series - use custom list name if specified and exists, otherwise use 'Unlinked'
@@ -1029,10 +1026,27 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
     if (_customListOrder.isEmpty) {
       _customListOrder = List.from(allLists);
     } else {
-      // Ensure all current lists are present in _customListOrder, add missing ones at the end
-      for (final listName in allLists) {
+      // Ensure all current lists are present in _customListOrder
+      // Add missing lists at their position from allLists (not at the end)
+      for (int i = 0; i < allLists.length; i++) {
+        final listName = allLists[i];
         if (!_customListOrder.contains(listName)) {
-          _customListOrder.add(listName);
+          // Find the best insertion position
+          // Look for adjacent lists that exist in _customListOrder
+          int insertIndex = _customListOrder.length; // default to end
+          
+          // Look backwards in allLists to find a list that exists in _customListOrder
+          for (int j = i - 1; j >= 0; j--) {
+            final prevListName = allLists[j];
+            final prevIndex = _customListOrder.indexOf(prevListName);
+            if (prevIndex != -1) {
+              // Insert after this list
+              insertIndex = prevIndex + 1;
+              break;
+            }
+          }
+          
+          _customListOrder.insert(insertIndex, listName);
         }
       }
       // Remove any lists that no longer exist

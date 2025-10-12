@@ -622,7 +622,7 @@ class StatusStatistic {
 
   String? get statusApi => statusNameToApi(statusPretty ?? '');
 
-  // Helper method to format list names for display
+  // Helper method to convert display names to API names
   static String statusNameToApi(String listName) {
     if (listName == AnilistService.statusListNamesPretty[0]) return AnilistService.statusListNamesApi[0]; // Watching -> CURRENT
     if (listName == AnilistService.statusListNamesPretty[1]) return AnilistService.statusListNamesApi[1]; // Completed -> COMPLETED
@@ -631,8 +631,10 @@ class StatusStatistic {
     if (listName == AnilistService.statusListNamesPretty[4]) return AnilistService.statusListNamesApi[4]; // On Hold -> PAUSED
     if (listName == AnilistService.statusListNamesPretty[5]) return AnilistService.statusListNamesApi[5]; // Rewatching -> REPEATING
     if (listName == 'Unlinked') return AnilistService.statusListNameUnlinked;
-    if (listName.startsWith(AnilistService.statusListPrefixCustom)) return listName.substring(7); // Remove 'custom_' prefix
-    return listName;
+    // If already has the custom_ prefix, return as-is (already API format)
+    if (listName.startsWith(AnilistService.statusListPrefixCustom)) return listName;
+    // Otherwise, assume it's a custom list display name and add the prefix
+    return '${AnilistService.statusListPrefixCustom}$listName';
   }
 
   static String statusNameToPretty(String displayName) {
