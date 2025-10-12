@@ -8,10 +8,10 @@ extension LibraryInitialization on Library {
     }
 
     // Asynchronously start the full loading process after the UI is built
-    await startBackgroundLoading(context);
     nextFrame(() {
       final appTheme = Provider.of<AppTheme>(context, listen: false);
       appTheme.setEffect(appTheme.windowEffect, rootNavigatorKey.currentContext!);
+      startBackgroundLoading(context);
     });
   }
 

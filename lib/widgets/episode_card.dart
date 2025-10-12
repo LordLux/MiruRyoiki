@@ -271,54 +271,68 @@ class _HoverableEpisodeTileState extends State<HoverableEpisodeTile> {
     return FutureBuilder<PathString?>(
       future: episode.getThumbnail(),
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          // Loading: show spinner, no blur
-          return Center(
-            child: ProgressRing(
-              strokeWidth: 2,
-              activeColor: Manager.accentColor,
-            ),
-          );
-        }
-
         final PathString? thumbnailPath = snapshot.data;
+        final bool isLoading = snapshot.connectionState == ConnectionState.waiting;
+        final bool hasThumbnail = thumbnailPath != null && 
+                                   thumbnailPath.pathMaybe != null && 
+                                   File(thumbnailPath.path).existsSync();
 
-        if (thumbnailPath == null || thumbnailPath.pathMaybe == null || !File(thumbnailPath.path).existsSync()) {
-          // No thumbnail: show fallback icon, no blur
-          return Icon(
-            FluentIcons.video,
-            size: 32,
-            color: FluentTheme.of(context).resources.textFillColorSecondary,
-          );
-        }
+        return AnimatedSwitcher(
+          duration: getDuration(const Duration(milliseconds: 300)),
+          switchInCurve: Curves.easeIn,
+          switchOutCurve: Curves.easeOut,
+          child: Builder(
+            key: ValueKey(isLoading ? 'loading' : hasThumbnail ? 'thumbnail' : 'fallback'),
+            builder: (context) {
+              if (isLoading) {
+                // Loading: show spinner, no blur
+                return Center(
+                  child: ProgressRing(
+                    strokeWidth: 2,
+                    activeColor: Manager.accentColor,
+                  ),
+                );
+              }
 
-        try {
-          // Thumbnail loaded: always blur
-          final thumbnailWidget = Container(
-            decoration: BoxDecoration(
-              image: DecorationImage(
-                image: FileImage(File(thumbnailPath.path)),
-                fit: BoxFit.cover,
-              ),
-            ),
-            child: child,
-          );
-          return ImageFiltered(
-            imageFilter: ImageFilter.blur(
-              sigmaX: widget.episode.watched ? 0 : 15,
-              sigmaY: widget.episode.watched ? 0 : 15,
-              tileMode: TileMode.mirror,
-            ),
-            child: thumbnailWidget,
-          );
-        } catch (e, stackTrace) {
-          logErr('Error displaying episode thumbnail', e, stackTrace);
-          return Icon(
-            FluentIcons.error,
-            size: 32,
-            color: FluentTheme.of(context).resources.textFillColorSecondary,
-          );
-        }
+              if (!hasThumbnail) {
+                // No thumbnail: show fallback icon, no blur
+                return Icon(
+                  FluentIcons.video,
+                  size: 32,
+                  color: FluentTheme.of(context).resources.textFillColorSecondary,
+                );
+              }
+
+              try {
+                // Thumbnail loaded: always blur
+                final thumbnailWidget = Container(
+                  decoration: BoxDecoration(
+                    image: DecorationImage(
+                      image: FileImage(File(thumbnailPath.path)),
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                  child: child,
+                );
+                return ImageFiltered(
+                  imageFilter: ImageFilter.blur(
+                    sigmaX: widget.episode.watched ? 0 : 15,
+                    sigmaY: widget.episode.watched ? 0 : 15,
+                    tileMode: TileMode.mirror,
+                  ),
+                  child: thumbnailWidget,
+                );
+              } catch (e, stackTrace) {
+                logErr('Error displaying episode thumbnail', e, stackTrace);
+                return Icon(
+                  FluentIcons.error,
+                  size: 32,
+                  color: FluentTheme.of(context).resources.textFillColorSecondary,
+                );
+              }
+            },
+          ),
+        );
       },
     );
   }

@@ -20,7 +20,7 @@ class LoggingConfig {
   static bool doLogRelease = true; // Set to true to enable logging in release mode
   static bool doLogTrace = true; // Set to true to enable trace logging; dotrace
   static bool doLogComplexError = false; // Set to true to enable complex error logging
-  static bool usePrintForLogging = true; // If true, uses print() for all logging instead of logger package
+  static bool usePrintForLogging = false; // If true, uses print() for all logging instead of logger package
 
   static void doTrace() => doLogTrace = true;
   static void doComplex() => doLogComplexError = true;

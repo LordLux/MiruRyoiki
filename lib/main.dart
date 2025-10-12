@@ -1183,6 +1183,7 @@ Future<void> _registerWindowsUrlScheme(String scheme) async {
   }
 }
 
+// TODO update dominant color when changing primary anilist id
 // TODO use name and poster from the released episode in the notification instead of using the one from local series (example 'Girls Band Cry' (local) instead of 'GIRLS BAND CRY: Seishun Kyousoukyoku'(notification))
 // TODO add 'notify me' button to upcoming episodes on home screen
 // TODO sometimes anilist episode numbering for seasons > 1 continue from previous season, need to handle that
@@ -1191,6 +1192,8 @@ Future<void> _registerWindowsUrlScheme(String scheme) async {
 // TODO fix library scanning that keeps finding the same files every time even though they were already there
 // TODO fix settings players order not actually changing + add cursor to reordering handles
 // TODO move hidden series switches to settings
+// TODO 'no episodes found for this season' should be 'no episodes found for this series' when there are no episodes in any season
+// TODO add 'mark all previous as watched' in episode context menu
 // TODO view settings to choose what to show on homepage
 // TODO cache anime info
 // TODO cache Anilist lists to be able to work offline
