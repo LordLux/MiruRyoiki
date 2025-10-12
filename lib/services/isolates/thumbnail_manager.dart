@@ -231,7 +231,7 @@ class ThumbnailIsolateManager {
   }
 
   Future<PathString?> generateThumbnail(PathString videoPath, PathString outputPath) async {
-    if (!_isInitialized) await _init();
+    await _init();
     if (_sendPort == null) throw ThumbnailIsolateException('Thumbnail isolate not initialized');
 
     final id = '${DateTime.now().millisecondsSinceEpoch}_${videoPath.hashCode}';

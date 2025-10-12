@@ -2,6 +2,7 @@
 
 import 'dart:io';
 import 'package:path/path.dart' as p;
+import 'package:video_data_utils/video_data_utils.dart';
 
 import '../utils/logging.dart';
 import 'dart:ffi';
@@ -13,6 +14,11 @@ import 'path.dart';
 const int SEE_MASK_INVOKEIDLIST = 0x0000000C;
 const int SEE_MASK_NO_CONSOLE = 0x00008000;
 const int SEE_MASK_FLAG_DDEWAIT = 0x00000100;
+
+// GUIDs for IShellLink
+const String IID_IShellLinkW = '{000214F9-0000-0000-C000-000000000046}';
+const String CLSID_ShellLink = '{00021401-0000-0000-C000-000000000046}';
+const String IID_IPersistFile = '{0000010B-0000-0000-C000-000000000046}';
 
 class ShellUtils {
   /// Opens the Windows "Open With" dialog for a file
@@ -90,4 +96,27 @@ class ShellUtils {
 
   static Future<ProcessResult> runFFmpeg(List<String> args) async => //
       await Process.run('ffmpeg', args);
+
+  /// testing method to resolve shortcut
+  /// example input: "M:\Videos\SeriesTest\A Place Further Than The Universe - Shortcut.lnk"
+  /// output: "M:\Videos\Series\A Place Further Than The Universe\"
+  static String resolveShortcutInternal(String shortcutPath) {
+    shortcutPath = shortcutPath.replaceAll(" - Shortcut.lnk", "");
+    final path = PathString(shortcutPath);
+    return r"M:\Videos\Series\" + path.name!;
+  }
+
+  /// Resolves a Windows shortcut (.lnk) file to its target path
+  /// Returns null if the file is not a shortcut or if resolution fails
+  /// Based on the official Microsoft documentation approach using Resolve + GetPath
+  static Future<String?> resolveShortcut(String shortcutPath) async {
+    if (!Platform.isWindows) return null;
+    if (!shortcutPath.toLowerCase().endsWith('.lnk')) return null;
+    if (!File(shortcutPath).existsSync()) return null;
+    
+    return await VideoDataUtils().resolveShortcutPath(shortcutPath: shortcutPath);
+  }
+
+  /// Check if a path is a Windows shortcut file
+  static bool isShortcut(String path) => Platform.isWindows && path.toLowerCase().endsWith('.lnk');
 }

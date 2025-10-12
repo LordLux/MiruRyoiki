@@ -238,7 +238,7 @@ extension LibraryScanning on Library {
   /// Creates a consistent key from metadata for matching renamed files.
   String _createMetadataKey(Metadata meta) => '${meta.size}_${meta.duration.inMilliseconds}';
 
-  /// Discovers all first-level directories (series) and their video files.
+  /// Discovers all first-level directories and .lnk (series), and their video files.
   Future<Map<PathString, Set<PathString>>> _discoverSeriesDirectories(String libraryPath) async {
     final seriesMap = <PathString, Set<PathString>>{};
     final dir = Directory(libraryPath);
@@ -250,7 +250,9 @@ extension LibraryScanning on Library {
     // logDebug('Scanning library directory: $libraryPath');
     int seriesCount = 0;
 
-    await for (final entity in dir.list()) {
+    final entities = await dir.list().toList();
+
+    for (final entity in entities) {
       if (entity is Directory) {
         seriesCount++;
         final seriesPath = PathString(entity.path);
@@ -260,15 +262,64 @@ extension LibraryScanning on Library {
         seriesMap[seriesPath] = <PathString>{};
         int fileCount = 0;
 
-        await for (final file in entity.list(recursive: true)) {
-          if (file is File && FileUtils.isVideoFile(file.path)) {
-            fileCount++;
-            seriesMap[seriesPath]!.add(PathString(file.path));
-            logTrace('  Found video file: ${p.basename(file.path)}');
+        try {
+          final files = await entity.list(recursive: true, followLinks: false).toList();
+          for (final file in files) {
+            if (file is File && FileUtils.isVideoFile(file.path)) {
+              fileCount++;
+              seriesMap[seriesPath]!.add(PathString(file.path));
+              logTrace('  Found video file: ${p.basename(file.path)}');
+            }
           }
+        } catch (e) {
+          logErr('Error scanning series directory: $seriesName', e);
         }
 
         logTrace('Series "$seriesName" has $fileCount video files');
+      } else if (entity is File && ShellUtils.isShortcut(entity.path)) {
+        // Handle Windows shortcut files
+        final shortcutName = p.basenameWithoutExtension(entity.path);
+        logTrace('Found shortcut: $shortcutName.lnk');
+
+        try {
+          final targetPath = await ShellUtils.resolveShortcut(entity.path);
+          if (targetPath != null && targetPath.isNotEmpty) {
+            final targetDir = Directory(targetPath);
+            if (targetDir.existsSync()) {
+              seriesCount++;
+              // Use the target directory path as the series key (not the shortcut path)
+              final seriesPath = PathString(targetPath);
+              
+              logTrace('  Resolved to: $targetPath');
+              logTrace('  Scanning target directory...');
+
+              seriesMap[seriesPath] = <PathString>{};
+              int fileCount = 0;
+
+              // Scan the target directory recursively
+              try {
+                final files = await targetDir.list(recursive: true, followLinks: false).toList();
+                for (final file in files) {
+                  if (file is File && FileUtils.isVideoFile(file.path)) {
+                    fileCount++;
+                    seriesMap[seriesPath]!.add(PathString(file.path));
+                    logTrace('    Found video file: ${p.basename(file.path)}');
+                  }
+                }
+              } catch (e) {
+                logErr('Error scanning shortcut target directory: $targetPath', e);
+              }
+
+              logTrace('  Series "$shortcutName" (via shortcut) has $fileCount video files');
+            } else {
+              logWarn('Shortcut target directory does not exist: $targetPath');
+            }
+          } else {
+            logWarn('Could not resolve shortcut: $shortcutName.lnk');
+          }
+        } catch (e, st) {
+          logErr('Error processing shortcut: $shortcutName.lnk', e, st);
+        }
       }
     }
 

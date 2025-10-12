@@ -10,9 +10,7 @@
             "type": "dart",
             "flutterMode": "debug",
             "program": "lib/main.dart",
-            "args": [
-                "--skip-registry-indexing"
-            ],
+            "args": [],
         },
         {
             "name": "miruryoiki (profile mode)",
@@ -20,9 +18,7 @@
             "type": "dart",
             "flutterMode": "profile",
             "program": "lib/main.dart",
-            "args": [
-                "--skip-registry-indexing"
-            ],
+            "args": [],
         },
         {
             "name": "miruryoiki (release mode)",
@@ -30,9 +26,7 @@
             "type": "dart",
             "flutterMode": "release",
             "program": "lib/main.dart",
-            "args": [
-                "--skip-registry-indexing"
-            ],
+            "args": [],
         }
     ]
 }

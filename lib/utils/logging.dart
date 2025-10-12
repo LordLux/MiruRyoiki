@@ -20,14 +20,17 @@ class LoggingConfig {
   static bool doLogRelease = true; // Set to true to enable logging in release mode
   static bool doLogTrace = true; // Set to true to enable trace logging; dotrace
   static bool doLogComplexError = false; // Set to true to enable complex error logging
+  static bool usePrintForLogging = true; // If true, uses print() for all logging instead of logger package
 
   static void doTrace() => doLogTrace = true;
   static void doComplex() => doLogComplexError = true;
   static void doRelease() => doLogRelease = true;
+  static void usePrint() => usePrintForLogging = true;
 
   static void disableTrace() => doLogTrace = false;
   static void disableComplex() => doLogComplexError = false;
   static void disableRelease() => doLogRelease = false;
+  static void disablePrint() => usePrintForLogging = false;
 }
 
 // Session-based logging variables
@@ -175,6 +178,16 @@ void _log(LogLevel level, String msg, {Object? error, StackTrace? stackTrace, Da
 /// The `bgColor` parameter is the background color of the message (default is [Colors.transparent]).
 void log(final dynamic msg, {final Color color = Colors.purpleAccent, final Color bgColor = Colors.transparent, Object? error, StackTrace? stackTrace, bool? splitLines = false, LogLevel level = LogLevel.none}) {
   if (!LoggingConfig.doLogRelease && !kDebugMode) return;
+  if (LoggingConfig.usePrintForLogging) {
+    // Simple print logging without colors or timestamps
+    if (error != null) {
+      print('$msg\nError: $error');
+      if (stackTrace != null) print('Stack Trace:\n$stackTrace');
+      return;
+    }
+    print(msg);
+    return;
+  }
   String escapeCode = getColorEscapeCode(color);
   String bgEscapeCode = getColorEscapeCodeBg(bgColor);
 

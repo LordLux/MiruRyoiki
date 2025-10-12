@@ -8,10 +8,10 @@ extension LibraryInitialization on Library {
     }
 
     // Asynchronously start the full loading process after the UI is built
+    await startBackgroundLoading(context);
     nextFrame(() {
       final appTheme = Provider.of<AppTheme>(context, listen: false);
       appTheme.setEffect(appTheme.windowEffect, rootNavigatorKey.currentContext!);
-      startBackgroundLoading(context);
     });
   }
 
@@ -54,13 +54,13 @@ extension LibraryInitialization on Library {
     await ensureCacheValidated();
 
     await loadAnilistPostersForLibrary(
-      anilistProvider: Provider.of<AnilistProvider>(rootNavigatorKey.currentContext!, listen: false),
-      onProgress: (loaded, total) {
-      if (loaded % 2 == 0 || loaded == total) {
-        // Force UI refresh every 2 items or on completion
-        Manager.setState();
-      }
-    });
+        anilistProvider: Provider.of<AnilistProvider>(rootNavigatorKey.currentContext!, listen: false),
+        onProgress: (loaded, total) {
+          if (loaded % 2 == 0 || loaded == total) {
+            // Force UI refresh every 2 items or on completion
+            Manager.setState();
+          }
+        });
 
     logDebug('Finished Reloading Library');
     if (showSnackBar) snackBar('Library Reloaded', severity: InfoBarSeverity.success);

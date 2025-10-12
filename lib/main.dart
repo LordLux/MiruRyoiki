@@ -1,5 +1,6 @@
 // ignore_for_file: use_build_context_synchronously
 
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart' show Icons, Material, MaterialPageRoute, ScaffoldMessenger;
@@ -87,66 +88,71 @@ SeriesScreenState? getActiveSeriesScreenState() {
 }
 
 void main(List<String> args) async {
-  WidgetsFlutterBinding.ensureInitialized();
+  runZonedGuarded(
+    () async {
+      WidgetsFlutterBinding.ensureInitialized();
 
-  Manager.parseArgs();
+      Manager.parseArgs();
 
-  // Ensures there's only one instance of the program
-  _ensureSingleInstance();
+      // Ensures there's only one instance of the program
+      _ensureSingleInstance();
 
-  // Only run on Windows and MacOS
-  if (!(Platform.isWindows || Platform.isMacOS)) throw UnimplementedError('This app is only supported on Windows (for now).');
+      // Only run on Windows and MacOS
+      if (!(Platform.isWindows || Platform.isMacOS)) throw UnimplementedError('This app is only supported on Windows (for now).');
 
-  // Initializes the MiruRyoiki save directory
-  await initializeMiruRyoikiSaveDirectory();
+      // Initializes the MiruRyoiki save directory
+      await initializeMiruRyoikiSaveDirectory();
 
-  // Initialize settings
-  await _settings.init();
+      // Initialize settings
+      await _settings.init();
 
-  // Initialize session-based error logging
-  await initializeLoggingSession();
+      // Initialize session-based error logging
+      await initializeLoggingSession();
 
-  Manager.init();
+      Manager.init();
 
-  // Gets the root isolate token
-  rootIsolateToken = ServicesBinding.rootIsolateToken;
+      // Gets the root isolate token
+      rootIsolateToken = ServicesBinding.rootIsolateToken;
 
-  // Load custom mouse cursors
-  await initSystemMouseCursor();
-  await disposeSystemMouseCursor();
-  await initSystemMouseCursor();
+      // Load custom mouse cursors
+      await initSystemMouseCursor();
+      await disposeSystemMouseCursor();
+      await initSystemMouseCursor();
 
-  // Load environment variables
-  await dotenv.load(fileName: '.env');
+      // Load environment variables
+      await dotenv.load(fileName: '.env');
 
-  // Register custom URL scheme for deep linking
-  await _registerUrlScheme(mRyoikiAnilistScheme);
+      // Register custom URL scheme for deep linking
+      await _registerUrlScheme(mRyoikiAnilistScheme);
 
-  // Load system theme color
-  if (!kIsWeb && defaultTargetPlatform == TargetPlatform.windows) SystemTheme.accentColor.load();
+      // Load system theme color
+      if (!kIsWeb && defaultTargetPlatform == TargetPlatform.windows) SystemTheme.accentColor.load();
 
-  // Initialize Window Manager
-  _initializeSplashScreenWindow();
+      // Initialize Window Manager
+      _initializeSplashScreenWindow();
 
-  // Initialize image cache
-  final imageCache = ImageCacheService();
-  await imageCache.init();
+      // Initialize image cache
+      final imageCache = ImageCacheService();
+      await imageCache.init();
 
-  await initializeSVGs();
+      await initializeSVGs();
 
-  // Run the app
-  runApp(
-    MultiProvider(
-      providers: [
-        ChangeNotifierProvider(create: (_) => Library(_settings), lazy: false),
-        ChangeNotifierProvider(create: (_) => ConnectivityService(), lazy: false),
-        ChangeNotifierProvider(create: (_) => AnilistProvider()),
-        ChangeNotifierProvider.value(value: _appTheme),
-        ChangeNotifierProvider.value(value: _settings),
-        ChangeNotifierProvider.value(value: _navigationManager),
-      ],
-      child: const MyApp(),
-    ),
+      // Run the app
+      runApp(
+        MultiProvider(
+          providers: [
+            ChangeNotifierProvider(create: (_) => Library(_settings), lazy: false),
+            ChangeNotifierProvider(create: (_) => ConnectivityService(), lazy: false),
+            ChangeNotifierProvider(create: (_) => AnilistProvider()),
+            ChangeNotifierProvider.value(value: _appTheme),
+            ChangeNotifierProvider.value(value: _settings),
+            ChangeNotifierProvider.value(value: _navigationManager),
+          ],
+          child: const MyApp(),
+        ),
+      );
+    },
+    (error, stackTrace) => logErr('Uncaught error in main isolate', error, stackTrace),
   );
 }
 
@@ -791,11 +797,13 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
       mouseCursor: mouseCursorClick && isEnabled ? SystemMouseCursors.click : MouseCursor.defer,
       title: Text(title, style: Manager.bodyStyle.copyWith(color: Colors.white.withOpacity(isEnabled ? 1 : .5))),
       icon: icon,
-      infoBadge: !anilistProvider.isLoggedIn && id == accountsIndex ? InfoBadge(
-        // source: Icon(Icons.priority_high, size: 20),
-        foregroundColor: Colors.white,
-        color: Manager.accentColor.lighter,
-      ) : null,
+      infoBadge: !anilistProvider.isLoggedIn && id == accountsIndex
+          ? InfoBadge(
+              // source: Icon(Icons.priority_high, size: 20),
+              foregroundColor: Colors.white,
+              color: Manager.accentColor.lighter,
+            )
+          : null,
       body: body,
       trailing: extra?.call(true),
     );

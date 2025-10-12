@@ -37,6 +37,7 @@ import '../../services/navigation/show_info.dart';
 import '../../utils/color.dart' as color_utils;
 import '../../utils/logging.dart';
 import '../../utils/path.dart';
+import '../../utils/shell.dart';
 import '../../utils/time.dart';
 import '../isolates/isolate_manager.dart';
 import '../isolates/thumbnail_manager.dart';
