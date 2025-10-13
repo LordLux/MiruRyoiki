@@ -35,6 +35,7 @@ import '../widgets/page/infobar.dart';
 import '../widgets/page/page.dart';
 import '../widgets/series_card.dart';
 import '../widgets/series_list_tile.dart';
+import '../widgets/tooltip_wrapper.dart';
 
 // Cache parameters to track when cache needs invalidation
 class _CacheParameters {
@@ -46,6 +47,7 @@ class _CacheParameters {
   final bool showHiddenSeries;
   final bool showAnilistHiddenSeries;
   final List<String> customListOrder;
+  final Set<String> hiddenLists;
 
   _CacheParameters({
     required this.currentView,
@@ -56,6 +58,7 @@ class _CacheParameters {
     required this.showHiddenSeries,
     required this.showAnilistHiddenSeries,
     required this.customListOrder,
+    required this.hiddenLists,
   });
 
   @override
@@ -70,7 +73,8 @@ class _CacheParameters {
           showGrouped == other.showGrouped &&
           showHiddenSeries == other.showHiddenSeries &&
           showAnilistHiddenSeries == other.showAnilistHiddenSeries &&
-          _listEquals(customListOrder, other.customListOrder);
+          _listEquals(customListOrder, other.customListOrder) &&
+          _setEquals(hiddenLists, other.hiddenLists);
 
   @override
   int get hashCode =>
@@ -81,7 +85,8 @@ class _CacheParameters {
       showGrouped.hashCode ^
       showHiddenSeries.hashCode ^
       showAnilistHiddenSeries.hashCode ^
-      customListOrder.hashCode;
+      customListOrder.hashCode ^
+      hiddenLists.hashCode;
 
   static bool _listEquals<T>(List<T>? a, List<T>? b) {
     if (a == null) return b == null;
@@ -91,6 +96,13 @@ class _CacheParameters {
       if (a[index] != b[index]) return false;
     }
     return true;
+  }
+
+  static bool _setEquals<T>(Set<T>? a, Set<T>? b) {
+    if (a == null) return b == null;
+    if (b == null) return false;
+    if (a.length != b.length) return false;
+    return a.containsAll(b);
   }
 }
 
@@ -131,6 +143,7 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
   final Map<String, GlobalKey> _groupKeys = {};
 
   List<String> _customListOrder = [];
+  Set<String> _hiddenLists = {}; // API names of hidden lists
   List<Series> displayedSeries = [];
 
   // Cache system
@@ -193,6 +206,7 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
       showHiddenSeries: Manager.settings.showHiddenSeries,
       showAnilistHiddenSeries: Manager.settings.showAnilistHiddenSeries,
       customListOrder: List.from(_customListOrder),
+      hiddenLists: Set.from(_hiddenLists),
     );
 
     return _cacheParameters == currentParams;
@@ -344,6 +358,7 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
       showHiddenSeries: Manager.settings.showHiddenSeries,
       showAnilistHiddenSeries: Manager.settings.showAnilistHiddenSeries,
       customListOrder: List.from(_customListOrder),
+      hiddenLists: Set.from(_hiddenLists),
     );
   }
 
@@ -352,9 +367,11 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
     final anilistProvider = Provider.of<AnilistProvider>(context, listen: false);
     final groups = <String, List<Series>>{};
 
-    // Initialize groups based on custom list order
+    // Initialize groups based on custom list order (excluding hidden lists)
     for (final listName in _customListOrder) {
-      groups[_getDisplayName(listName)] = [];
+      if (!_hiddenLists.contains(listName)) {
+        groups[_getDisplayName(listName)] = [];
+      }
     }
 
     // Sort series into groups (using existing grouping logic)
@@ -526,6 +543,7 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
     settings.set('library_group_by', _groupBy.toString());
     settings.set('library_show_grouped', _showGrouped);
     settings.set('library_list_order', json.encode(_customListOrder));
+    settings.set('library_hidden_lists', json.encode(_hiddenLists.toList()));
   }
 
   /// Load preferences
@@ -577,6 +595,16 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
         if (decoded is List) _customListOrder = List<String>.from(decoded);
       } catch (_) {
         _customListOrder = [];
+      }
+
+      // Load hidden lists
+      final hiddenListsString = manager.get('library_hidden_lists', defaultValue: '[]');
+
+      try {
+        final decoded = json.decode(hiddenListsString);
+        if (decoded is List) _hiddenLists = Set<String>.from(decoded);
+      } catch (_) {
+        _hiddenLists = {};
       }
     });
   }
@@ -825,7 +853,7 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
   @override
   Widget build(BuildContext context) {
     super.build(context); // for AutomaticKeepAliveClientMixin
-    
+
     final library = context.watch<Library>();
 
     if (library.libraryPath == null) return _buildLibrarySelector();
@@ -844,6 +872,7 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
 
   MiruRyoikiInfobar _buildFiltersSidebar() {
     final bool isResetDisabled = _listEquals(_customListOrder, _previousCustomListOrder);
+    final library = Provider.of<Library>(context, listen: false);
 
     return MiruRyoikiInfobar(
       content: ValueListenableBuilder(
@@ -950,14 +979,17 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
                       height: 22,
                       width: 22,
                       child: MouseButtonWrapper(
+                        isButtonDisabled: library.isIndexing,
                         tooltipWaitDuration: const Duration(milliseconds: 250),
                         tooltip: _editListsEnabled ? 'Save Changes' : 'Edit List Order',
                         child: (_) => IconButton(
                           icon: Icon(_editListsEnabled ? FluentIcons.check_mark : FluentIcons.edit, size: 11 * Manager.fontSizeMultiplier, color: Manager.pastelDominantColor),
-                          onPressed: () {
-                            setState(() => _editListsEnabled = !_editListsEnabled);
-                            if (_editListsEnabled) _previousCustomListOrder = List.from(_customListOrder);
-                          },
+                          onPressed: library.isIndexing
+                              ? null
+                              : () {
+                                  setState(() => _editListsEnabled = !_editListsEnabled);
+                                  if (_editListsEnabled) _previousCustomListOrder = List.from(_customListOrder);
+                                },
                         ),
                       ),
                     ),
@@ -1034,7 +1066,7 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
           // Find the best insertion position
           // Look for adjacent lists that exist in _customListOrder
           int insertIndex = _customListOrder.length; // default to end
-          
+
           // Look backwards in allLists to find a list that exists in _customListOrder
           for (int j = i - 1; j >= 0; j--) {
             final prevListName = allLists[j];
@@ -1045,7 +1077,7 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
               break;
             }
           }
-          
+
           _customListOrder.insert(insertIndex, listName);
         }
       }
@@ -1053,10 +1085,14 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
       _customListOrder.removeWhere((listName) => !allLists.contains(listName));
     }
 
+    // Filter out hidden lists when not in edit mode for display purposes
+    final displayListOrder = _editListsEnabled ? _customListOrder : _customListOrder.where((listName) => !_hiddenLists.contains(listName)).toList();
+
     final double childHeight = 40;
+    final library = Provider.of<Library>(context, listen: false);
 
     return SizedBox(
-      height: _customListOrder.length * childHeight,
+      height: displayListOrder.length * childHeight,
       child: ValueListenableBuilder(
         valueListenable: KeyboardState.ctrlPressedNotifier,
         builder: (context, isCtrlPressed, _) {
@@ -1064,21 +1100,25 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
           if (!_editListsEnabled) {
             return ListView.builder(
               physics: const NeverScrollableScrollPhysics(),
-              itemCount: _customListOrder.length,
+              itemCount: displayListOrder.length,
               prototypeItem: SizedBox(height: childHeight),
               itemBuilder: (context, index) {
-                final listName = _customListOrder[index];
+                final listName = displayListOrder[index];
                 final displayName = _getDisplayName(listName);
+                
+                // Check if list is empty by checking grouped data cache
+                final isEmpty = _groupedDataCache != null && (_groupedDataCache![displayName]?.isEmpty ?? true);
 
                 return AnimatedReorderableTile(
                   key: ValueKey(listName),
                   listName: listName,
                   displayName: displayName,
-                  onPressed: (i) => _scrollToList(displayName),
+                  onPressed: library.isIndexing ? null : (i) => _scrollToList(displayName),
                   index: index,
                   selected: false,
                   isReordering: false,
                   reorderable: false,
+                  isEmpty: isEmpty,
                 );
               },
             );
@@ -1087,12 +1127,14 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
           // Reorderable view when editing is enabled
           return ReorderableListView.builder(
             physics: isCtrlPressed ? const NeverScrollableScrollPhysics() : null,
-            itemCount: _customListOrder.length,
+            itemCount: displayListOrder.length,
             buildDefaultDragHandles: false,
             clipBehavior: Clip.none,
             proxyDecorator: (child, index, animation) {
-              final listName = _customListOrder[index];
+              final listName = displayListOrder[index];
               final displayName = _getDisplayName(listName);
+              final isHidden = _hiddenLists.contains(listName);
+              final isEmpty = _groupedDataCache != null && (_groupedDataCache![displayName]?.isEmpty ?? true);
 
               return AnimatedReorderableTile(
                 key: ValueKey('${listName}_dragging'),
@@ -1101,6 +1143,8 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
                 index: index,
                 selected: true,
                 initialAnimation: true,
+                isHidden: isHidden,
+                isEmpty: isEmpty,
                 isReordering: true,
                 reorderable: true,
               );
@@ -1111,21 +1155,82 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
               setState(() {
                 if (oldIndex < newIndex) newIndex -= 1;
 
-                final item = _customListOrder.removeAt(oldIndex);
-                _customListOrder.insert(newIndex, item);
+                // Get the items being reordered
+                final item = displayListOrder[oldIndex];
+
+                // Find their positions in the full _customListOrder
+                final actualOldIndex = _customListOrder.indexOf(item);
+
+                // Calculate actual new index in _customListOrder
+                int actualNewIndex;
+                if (newIndex >= displayListOrder.length - 1) {
+                  // Moving to the end: find the last visible item's position and place after it
+                  final lastVisibleItem = displayListOrder.last;
+                  actualNewIndex = _customListOrder.indexOf(lastVisibleItem);
+                  if (actualOldIndex < actualNewIndex) {
+                    actualNewIndex--; // Adjust for removal
+                  }
+                } else {
+                  // Moving to a specific position: find the target item in _customListOrder
+                  final targetItem = displayListOrder[newIndex];
+                  actualNewIndex = _customListOrder.indexOf(targetItem);
+                  if (actualOldIndex < actualNewIndex) {
+                    actualNewIndex--; // Adjust for removal
+                  }
+                }
+
+                _customListOrder.removeAt(actualOldIndex);
+                _customListOrder.insert(actualNewIndex, item);
                 invalidateSortCache();
                 _saveUserPreferences();
               });
             },
             prototypeItem: SizedBox(height: childHeight),
             itemBuilder: (context, index) {
-              final listName = _customListOrder[index];
+              final listName = displayListOrder[index];
               final displayName = _getDisplayName(listName);
+              final isHidden = _hiddenLists.contains(listName);
+              final isEmpty = _groupedDataCache != null && (_groupedDataCache![displayName]?.isEmpty ?? true);
 
               return AnimatedReorderableTile(
                 key: ValueKey(listName),
                 listName: listName,
                 displayName: displayName,
+                isHidden: isHidden,
+                isEmpty: isEmpty,
+                trailing: (isHovering) {
+                  return MouseRegion(
+                    cursor: SystemMouseCursors.click,
+                    child: AnimatedSwitcher(
+                      duration: shortDuration / 2,
+                      child: isHovering || isHidden
+                          ? TooltipWrapper(
+                            tooltip: isHidden ? 'Unhide List' : 'Hide List',
+                            child: (_) => IconButton(
+                                icon: Icon(
+                                  isHidden ? mat.Icons.visibility_off : mat.Icons.visibility,
+                                  size: 16,
+                                  color: isHidden ? Colors.red.withOpacity(.6) : Colors.white.withOpacity(.5),
+                                ),
+                                onPressed: library.isIndexing ? null : () {
+                                  setState(() {
+                                    if (isHidden)
+                                      _hiddenLists.remove(listName);
+                                    else
+                                      _hiddenLists.add(listName);
+                                  });
+                            
+                                  _saveUserPreferences();
+                                  nextFrame(() {
+                                    invalidateSortCache();
+                                  });
+                                },
+                              ),
+                          )
+                          : null,
+                    ),
+                  );
+                },
                 index: index,
                 selected: false,
                 isReordering: _isReordering,
@@ -1781,10 +1886,8 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
                                 Text(groupName, style: Manager.subtitleStyle),
                                 Row(
                                   mainAxisSize: MainAxisSize.min,
-                                  children:[
-                                    Transform.translate(
-                                      offset: const Offset(0, -1.5),
-                                      child: Text('${seriesInGroup.length} Series', style: Manager.captionStyle)),
+                                  children: [
+                                    Transform.translate(offset: const Offset(0, -1.5), child: Text('${seriesInGroup.length} Series', style: Manager.captionStyle)),
                                     const SizedBox(width: 8),
                                     AnimatedRotation(turns: isExpanded ? 0 : .5, duration: shortDuration, child: const Icon(mat.Icons.expand_more)),
                                   ],

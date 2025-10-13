@@ -1,4 +1,5 @@
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:flutter/services.dart';
 
 class MouseButtonWrapper extends StatefulWidget {
   final Widget Function(bool isHovering) child;
@@ -7,6 +8,7 @@ class MouseButtonWrapper extends StatefulWidget {
   final String? tooltip;
   final Widget? tooltipWidget;
   final Duration? tooltipWaitDuration;
+  final MouseCursor? cursor;
 
   const MouseButtonWrapper({
     super.key,
@@ -16,6 +18,7 @@ class MouseButtonWrapper extends StatefulWidget {
     this.tooltip,
     this.tooltipWidget,
     this.tooltipWaitDuration = const Duration(milliseconds: 400),
+    this.cursor,
   });
 
   @override
@@ -33,11 +36,12 @@ class _MouseButtonWrapperState extends State<MouseButtonWrapper> {
         Widget button = MouseRegion(
           onEnter: (_) => setState(() => _isHovering = true),
           onExit: (_) => setState(() => _isHovering = false),
-          cursor: widget.isButtonDisabled
-              ? SystemMouseCursors.forbidden
-              : widget.isLoading
-                  ? SystemMouseCursors.progress
-                  : SystemMouseCursors.click,
+          cursor: widget.cursor ??
+              (widget.isButtonDisabled
+                  ? SystemMouseCursors.forbidden
+                  : widget.isLoading
+                      ? SystemMouseCursors.progress
+                      : SystemMouseCursors.click),
           child: AbsorbPointer(
             absorbing: widget.isButtonDisabled || widget.isLoading,
             child: widget.child(_isHovering),

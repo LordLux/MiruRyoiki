@@ -1183,6 +1183,8 @@ Future<void> _registerWindowsUrlScheme(String scheme) async {
   }
 }
 
+// TODO prevent from editing while waiting for indexing
+// TODO after new data from fetching userdata or series data, invalidate cache for library screen and reload
 // TODO update dominant color when changing primary anilist id
 // TODO use name and poster from the released episode in the notification instead of using the one from local series (example 'Girls Band Cry' (local) instead of 'GIRLS BAND CRY: Seishun Kyousoukyoku'(notification))
 // TODO add 'notify me' button to upcoming episodes on home screen

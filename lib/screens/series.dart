@@ -280,6 +280,7 @@ class SeriesScreenState extends State<SeriesScreen> {
         await series.calculateDominantColor(forceRecalculate: true);
 
         if (!mounted || this.series == null) return; // in case series was disposed during the async operation
+        Manager.setState(() => Manager.currentDominantColor = series.dominantColor);
 
         // Fetch episode titles from AniList
         try {
@@ -1025,7 +1026,7 @@ void linkWithAnilist(BuildContext context, Series? series, Future<void> Function
 
         // Update the series with the new mappings
         Manager.currentDominantColor = series.dominantColor;
-        setState(() {});
+        if (context.mounted) setState(() {});
       },
     ),
   );
