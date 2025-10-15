@@ -3,7 +3,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart' show Icons, Material, MaterialPageRoute, ScaffoldMessenger;
+import 'package:flutter/material.dart' show Material, MaterialPageRoute, ScaffoldMessenger;
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_acrylic/flutter_acrylic.dart';
@@ -1183,12 +1183,11 @@ Future<void> _registerWindowsUrlScheme(String scheme) async {
   }
 }
 
-// TODO prevent from editing while waiting for indexing
+// TODO prevent from editing while waiting for indexing -> remove shimmer
 // TODO after new data from fetching userdata or series data, invalidate cache for library screen and reload
 // TODO update dominant color when changing primary anilist id
 // TODO use name and poster from the released episode in the notification instead of using the one from local series (example 'Girls Band Cry' (local) instead of 'GIRLS BAND CRY: Seishun Kyousoukyoku'(notification))
 // TODO add 'notify me' button to upcoming episodes on home screen
-// TODO sometimes anilist episode numbering for seasons > 1 continue from previous season, need to handle that
 // TODO replace notification popup notification entry with new widget from 'notif.dart'
 // TODO change text 'wait while library is getting indexed' to 'scanning' when library scan is in progress
 // TODO fix library scanning that keeps finding the same files every time even though they were already there
@@ -1196,16 +1195,18 @@ Future<void> _registerWindowsUrlScheme(String scheme) async {
 // TODO move hidden series switches to settings
 // TODO 'no episodes found for this season' should be 'no episodes found for this series' when there are no episodes in any season
 // TODO add 'mark all previous as watched' in episode context menu
+// TODO released section in homepage to show release but not yet downloaded
+// TODO add 'open series folder' to series screen
 // TODO view settings to choose what to show on homepage
 // TODO cache anime info
 // TODO cache Anilist lists to be able to work offline
 // TODO when view is linkedOnly, hideFromUserList series automatically get added to Watching, add category for them
-// TODO make it so custom lists display their items instead of being empty (add toggle to show/hide custom lists in library)
 
 // beta
 // TODO after linking anilist, fetch episode titles for neolinked series
 // TODO add indicator of which episodes have anilist titles
 // TODO add per-episode/season/series toggle to use anilist titles or local titles
+// TODO sometimes anilist episode numbering for seasons > 1 continue from previous season, need to handle that
 
 // TODO add ctrl + tab navigation
 // TODO Local 'Unlinked' auto connect to Anilist 'About to Watch' (allow custom name to search for)

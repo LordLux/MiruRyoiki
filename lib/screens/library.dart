@@ -435,6 +435,9 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
           }
 
           // Check custom lists first (these are non-exclusive, so series can be in multiple lists)
+          // Track which custom lists this series has been added to (to prevent duplicates)
+          final addedToCustomLists = <String>{};
+
           for (final mapping in series.anilistMappings) {
             for (final entry in anilistProvider.userLists.entries) {
               final listName = entry.key;
@@ -443,8 +446,10 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
               final list = entry.value;
               if (list.entries.any((listEntry) => listEntry.media.id == mapping.anilistId)) {
                 final prettyListName = StatusStatistic.statusNameToPretty(listName);
-                if (groups.containsKey(prettyListName)) {
+                // Only add if we haven't already added this series to this custom list
+                if (groups.containsKey(prettyListName) && !addedToCustomLists.contains(prettyListName)) {
                   groups[prettyListName]?.add(series);
+                  addedToCustomLists.add(prettyListName);
                 }
               }
             }
@@ -886,6 +891,7 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
               label: 'View',
               labelStyle: Manager.smallSubtitleStyle.copyWith(color: Manager.pastelDominantColor),
               child: MouseButtonWrapper(
+                tooltip: _currentView == LibraryView.all ? 'Show all series' : 'Show only series linked to AniList',
                 child: (_) => ComboBox<LibraryView>(
                   isExpanded: true,
                   value: _currentView,
@@ -901,6 +907,7 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
 
             // Grouping Toggle
             MouseButtonWrapper(
+              tooltip: _showGrouped ? 'Display series grouped by AniList lists' : 'Display series in a flat list',
               child: (_) => ToggleSwitch(
                 checked: _showGrouped,
                 content: Expanded(child: Text('Group by AniList Lists', style: Manager.bodyStyle, maxLines: 2, overflow: TextOverflow.ellipsis)),
@@ -932,13 +939,17 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
               child: Row(
                 children: [
                   Expanded(
-                    child: MouseButtonWrapper(
-                      child: (_) => ComboBox<SortOrder>(
-                        isExpanded: true,
-                        value: _sortOrder,
-                        placeholder: const Text('Sort By'),
-                        items: SortOrder.values.map((order) => ComboBoxItem(value: order, child: Text(_getSortText(order)))).toList(),
-                        onChanged: _onSortOrderChanged,
+                    child: TooltipWrapper(
+                      tooltip: _sortOrder?.name_,
+                      child: (_) => MouseButtonWrapper(
+                        isButtonDisabled: library.isIndexing,
+                        child: (_) => ComboBox<SortOrder>(
+                          isExpanded: true,
+                          value: _sortOrder,
+                          placeholder: const Text('Sort By'),
+                          items: SortOrder.values.map((order) => ComboBoxItem(value: order, child: Text(_getSortText(order)))).toList(),
+                          onChanged: _onSortOrderChanged,
+                        ),
                       ),
                     ),
                   ),
@@ -947,7 +958,8 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
                       height: 34,
                       width: 34,
                       child: StandardButton(
-                        tooltip: 'Sort results ${!_sortDescending ? "Ascendingly" : "Descendingly"}',
+                        isButtonDisabled: library.isIndexing,
+                        tooltip: 'Sort results in ${!_sortDescending ? "Ascending" : "Descending"} order',
                         tooltipWaitDuration: Duration(milliseconds: 150),
                         padding: EdgeInsets.zero,
                         label: Center(
@@ -1105,7 +1117,7 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
               itemBuilder: (context, index) {
                 final listName = displayListOrder[index];
                 final displayName = _getDisplayName(listName);
-                
+
                 // Check if list is empty by checking grouped data cache
                 final isEmpty = _groupedDataCache != null && (_groupedDataCache![displayName]?.isEmpty ?? true);
 
@@ -1205,28 +1217,33 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
                       duration: shortDuration / 2,
                       child: isHovering || isHidden
                           ? TooltipWrapper(
-                            tooltip: isHidden ? 'Unhide List' : 'Hide List',
-                            child: (_) => IconButton(
+                              tooltip: isHidden ? 'Unhide List' : 'Hide List',
+                              child: (_) => IconButton(
+                                style: ButtonStyle(
+                                  padding: ButtonState.all(EdgeInsets.zero),
+                                ),
                                 icon: Icon(
                                   isHidden ? mat.Icons.visibility_off : mat.Icons.visibility,
                                   size: 16,
                                   color: isHidden ? Colors.red.withOpacity(.6) : Colors.white.withOpacity(.5),
                                 ),
-                                onPressed: library.isIndexing ? null : () {
-                                  setState(() {
-                                    if (isHidden)
-                                      _hiddenLists.remove(listName);
-                                    else
-                                      _hiddenLists.add(listName);
-                                  });
-                            
-                                  _saveUserPreferences();
-                                  nextFrame(() {
-                                    invalidateSortCache();
-                                  });
-                                },
+                                onPressed: library.isIndexing
+                                    ? null
+                                    : () {
+                                        setState(() {
+                                          if (isHidden)
+                                            _hiddenLists.remove(listName);
+                                          else
+                                            _hiddenLists.add(listName);
+                                        });
+                  
+                                        _saveUserPreferences();
+                                        nextFrame(() {
+                                          invalidateSortCache();
+                                        });
+                                      },
                               ),
-                          )
+                            )
                           : null,
                     ),
                   );
@@ -1508,7 +1525,7 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
                 mainAxisSpacing: ScreenUtils.cardPadding,
               ),
               controller: isNestedInScrollable ? null : controller,
-              physics: isNestedInScrollable ? const NeverScrollableScrollPhysics() : (shimmer ? const NeverScrollableScrollPhysics() : physics),
+              physics: (isNestedInScrollable || shimmer) ? const NeverScrollableScrollPhysics() : physics,
               shrinkWrap: isNestedInScrollable, // Only shrinkWrap when nested
               children: children,
             ),
@@ -1686,7 +1703,7 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
 
               return ListView.builder(
                 controller: controller,
-                physics: physics,
+                physics: shimmer ? const NeverScrollableScrollPhysics() : physics,
                 padding: EdgeInsets.zero,
                 itemCount: displayOrder.length,
                 itemBuilder: (context, index) {
@@ -1774,7 +1791,7 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
 
   Widget _buildShimmerList() {
     return ScrollConfiguration(
-      behavior: ScrollBehavior().copyWith(overscroll: false, scrollbars: false),
+      behavior: ScrollBehavior().copyWith(overscroll: false, scrollbars: false, physics: const NeverScrollableScrollPhysics(), dragDevices: {}),
       child: ListView.builder(
         padding: EdgeInsets.zero,
         physics: const NeverScrollableScrollPhysics(),

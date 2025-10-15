@@ -49,7 +49,6 @@ import '../widgets/page/header_widget.dart';
 import '../widgets/page/page.dart';
 import '../widgets/series_image.dart';
 import '../widgets/tooltip_wrapper.dart';
-import '../widgets/widget_image_provider.dart';
 
 class SettingsScreen extends StatefulWidget {
   final ScrollController scrollController;

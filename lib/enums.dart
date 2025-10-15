@@ -296,7 +296,7 @@ extension HexString on String {
   }
 }
 
-enum LibraryView { all, linked }
+enum LibraryView { all, linked } // TODO add anilist/remote (not caring about local files)
 
 enum ViewType { grid, detailedList }
 
@@ -311,6 +311,16 @@ enum SortOrder {
   averageScore,
   releaseDate,
   popularity,
+}
+
+extension SortOrderX on SortOrder {
+  String get name_ => enumToString(this);
+
+  static SortOrder fromString(String value, {SortOrder? defaultValue}) => fromStringX<SortOrder>(
+        value,
+        SortOrder.values,
+        defaultValue,
+      );
 }
 
 enum GroupBy { none, anilistLists }

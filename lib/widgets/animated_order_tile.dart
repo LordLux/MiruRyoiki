@@ -2,6 +2,7 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/material.dart' show Icons;
 import 'package:flutter_custom_cursor/flutter_custom_cursor.dart';
 import 'package:miruryoiki/widgets/buttons/wrapper.dart';
+import 'package:miruryoiki/widgets/tooltip_wrapper.dart';
 
 import '../manager.dart';
 import '../utils/time.dart';
@@ -95,39 +96,40 @@ class _AnimatedReorderableTileState extends State<AnimatedReorderableTile> with 
       padding: const EdgeInsets.only(top: 4.0),
       child: ReorderableDragStartListener(
         index: widget.index,
-        child: MouseButtonWrapper(
-          tooltipWidget: Text.rich(
-            TextSpan(children: [
-              TextSpan(text: widget.displayName),
-              if (widget.isHidden) TextSpan(text: '\nThis item is hidden', style: Manager.miniBodyStyle.copyWith(fontStyle: FontStyle.italic)),
-              if (widget.isEmpty) TextSpan(text: '\nThis item is empty', style: Manager.miniBodyStyle.copyWith(fontStyle: FontStyle.italic)),
-            ])
-          ),
-          cursor: nullify ? SystemMouseCursors.basic : (widget.reorderable ? FlutterCustomMemoryImageCursor(key: widget.isReordering ? systemMouseCursorGrabbing : systemMouseCursorGrab) : SystemMouseCursors.click),
-          child: (isHovering) => AnimatedBuilder(
-            animation: _animationController,
-            builder: (context, child) {
-              // Get animated color based on selection state
-              final Color tileColor = widget.selected
-                  ? _colorAnimation.value!
-                  : _animationController.isDismissed
-                      ? Colors.white.withOpacity(.05)
-                      : _colorAnimation.value!;
+        child: TooltipWrapper(
+          useMousePosition: true,
+          tooltip: Text.rich(TextSpan(children: [
+            TextSpan(text: widget.displayName),
+            if (widget.isHidden) TextSpan(text: '\nThis item is hidden', style: Manager.miniBodyStyle.copyWith(fontStyle: FontStyle.italic)),
+            if (widget.isEmpty) TextSpan(text: '\nThis item is empty', style: Manager.miniBodyStyle.copyWith(fontStyle: FontStyle.italic)),
+          ])),
+          child: (_) => MouseButtonWrapper(
+            cursor: widget.onPressed == null || nullify ? SystemMouseCursors.basic : (widget.reorderable ? FlutterCustomMemoryImageCursor(key: widget.isReordering ? systemMouseCursorGrabbing : systemMouseCursorGrab) : SystemMouseCursors.click),
+            child: (isHovering) => AnimatedBuilder(
+              animation: _animationController,
+              builder: (context, child) {
+                // Get animated color based on selection state
+                final Color tileColor = widget.selected
+                    ? _colorAnimation.value!
+                    : _animationController.isDismissed
+                        ? Colors.white.withOpacity(.05)
+                        : _colorAnimation.value!;
 
-              // Calculate final opacity: hidden = 0.5, empty = 0.5, both = 0.5, normal = 1.0
-              final double textOpacity = nullify ? 0.5 : 1.0;
+                // Calculate final opacity: hidden = 0.5, empty = 0.5, both = 0.5, normal = 1.0
+                final double textOpacity = nullify ? 0.5 : 1.0;
 
-              return ListTile(
-                margin: EdgeInsets.zero,
-                onPressed: nullify ? null : () => widget.onPressed?.call(widget.index),
-                tileColor: WidgetStatePropertyAll(tileColor),
-                title: Text(widget.displayName, style: Manager.bodyStyle.copyWith(decoration: widget.isHidden ? TextDecoration.lineThrough : null, color: Colors.white.withOpacity(textOpacity))),
-                leading: widget.reorderable ? Icon(!widget.selected ? Icons.drag_handle : FluentIcons.drag_object, size: 12 * Manager.fontSizeMultiplier) : null,
-                contentPadding: widget.reorderable ? kDefaultListTilePadding : EdgeInsets.symmetric(horizontal: 6),
-                trailing: widget.trailing?.call(isHovering),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-              );
-            },
+                return ListTile(
+                  margin: EdgeInsets.zero,
+                  onPressed: nullify ? null : () => widget.onPressed?.call(widget.index),
+                  tileColor: WidgetStatePropertyAll(tileColor),
+                  title: Text(widget.displayName, style: Manager.bodyStyle.copyWith(decoration: widget.isHidden ? TextDecoration.lineThrough : null, color: Colors.white.withOpacity(textOpacity))),
+                  leading: widget.reorderable ? Icon(!widget.selected ? Icons.drag_handle : FluentIcons.drag_object, size: 12 * Manager.fontSizeMultiplier) : null,
+                  contentPadding: widget.reorderable ? kDefaultListTilePadding : EdgeInsets.symmetric(horizontal: 6),
+                  trailing: widget.trailing?.call(isHovering),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                );
+              },
+            ),
           ),
         ),
       ),

@@ -44,7 +44,7 @@ class AnilistProgressManager {
     if (total == 0) return 0.0;
 
     final watched = getWatchedEpisodesFromAnilist(series, provider);
-    return watched / total;
+    return (watched / total).clamp(0.0, 1.0); // Ensure within bounds
   }
 
   /// Get the episode number the user should watch next
