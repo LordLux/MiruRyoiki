@@ -104,7 +104,16 @@ extension LibrarySeriesManagement on Library {
     }
   }
 
-  void markEpisodeWatched(Episode episode, {bool watched = true, bool save = true, bool overrideProgress = false}) {
+  void markEpisodeWatched(
+    /// The episode to mark
+    Episode episode, {
+    /// True to mark as watched, false to unmark
+    bool watched = true,
+    /// Whether to save the library after marking
+    bool save = true,
+    /// Whether to override progress when marking as unwatched
+    bool overrideProgress = false,
+  }) {
     // Check if user actions are disabled
     if (_lockManager.shouldDisableAction(UserAction.markEpisodeWatched)) {
       snackBar(
@@ -117,6 +126,30 @@ extension LibrarySeriesManagement on Library {
     episode.watched = watched;
     if (watched) episode.progress = 1.0; // always override to 1 when watched, but not when unwatching
     if (overrideProgress && !watched) episode.progress = 0.0; // reset progress when unmarking as watched and overrideProgress is true
+
+    if (save) {
+      // Set the flag indicating a series was modified
+      if (homeKey.currentState != null) homeKey.currentState!.seriesWasModified = true;
+
+      _saveLibrary();
+      notifyListeners();
+    }
+  }
+
+  void markEpisodesWatched(List<Episode> episodes, {bool watched = true, bool save = true, bool overrideProgress = false}) {
+    // Check if user actions are disabled
+    if (_lockManager.shouldDisableAction(UserAction.markEpisodeWatched)) {
+      snackBar(
+        _lockManager.getDisabledReason(UserAction.markEpisodeWatched),
+        severity: InfoBarSeverity.warning,
+      );
+      return;
+    }
+    for (final episode in episodes) {
+      episode.watched = watched;
+      if (watched) episode.progress = 1.0; // always override to 1 when watched, but not when unwatching
+      if (overrideProgress && !watched) episode.progress = 0.0; // reset progress when unmarking as watched and overrideProgress is true
+    }
 
     if (save) {
       // Set the flag indicating a series was modified

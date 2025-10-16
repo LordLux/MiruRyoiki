@@ -57,7 +57,7 @@ class _ShiftClickableHoverState extends State<ShiftClickableHover> {
     // 3) If pointer is inside AND the shift state actually flipped…
     if (_isHovered && isShift != _lastShift) {
       // …then re-fire your hover/enter logic on the next frame
-      WidgetsBinding.instance.addPostFrameCallback((_) {
+      nextFrame(() {
         if (widget.onHover != null) {
           widget.onHover!();
         } else {

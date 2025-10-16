@@ -536,7 +536,7 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
                                   return AnimatedContainer(
                                     duration: mediumDuration,
                                     color: getDimmableWhite(context),
-                                    height: ScreenUtils.kStatusBarHeight,
+                                    height: isShowing ? ScreenUtils.kStatusBarHeight : 0,
                                   );
                                 },
                               )

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'dart:ui' as ui;
 
+import '../utils/time.dart';
+
 /// A widget that creates a squircle (rounded rectangle) cutout overlay with a child widget
 /// rendered inside the cutout area.
 /// 
@@ -92,14 +94,14 @@ class _SquircleCutoutBuilderState extends State<_SquircleCutoutBuilder> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _captureChildImage());
+    nextFrame(() => _captureChildImage());
   }
 
   @override
   void didUpdateWidget(_SquircleCutoutBuilder oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.child != widget.child) {
-      WidgetsBinding.instance.addPostFrameCallback((_) => _captureChildImage());
+      nextFrame(() => _captureChildImage());
     }
   }
 

@@ -1,5 +1,6 @@
 import '../../models/episode.dart';
 import '../../models/series.dart';
+import '../../utils/logging.dart';
 import '../../utils/path.dart';
 
 class EpisodeNavigator {
@@ -145,5 +146,25 @@ class EpisodeNavigator {
     }
 
     return null;
+  }
+
+  bool? arePreviousEpisodesWatched(dynamic episode, Series series) {
+    if (episode is int) {
+      final ep = getEpisodeInSeries(series, episode);
+      if (ep == null) return null;
+      return arePreviousEpisodesWatched(ep, series);
+    }
+    if (episode is! Episode) return null;
+
+    final episodeNumber = episode.episodeNumber;
+    if (episodeNumber == null || episodeNumber <= 1) return null;
+
+    final season = EpisodeNavigator.instance.findSeasonForEpisode(episode, series);
+    for (final ep in season?.episodes ?? []) {
+      if (ep.episodeNumber != null && ep.episodeNumber! < episodeNumber) {
+        if (!ep.watched) return false;
+      }
+    }
+    return true;
   }
 }

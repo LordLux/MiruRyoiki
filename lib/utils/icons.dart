@@ -1,5 +1,7 @@
 import 'path.dart';
 
+/// file:///M:/Projects/MiruRyoiki/miruryoiki/assets/system/
+
 String get anilistPath => "$assets/icons/anilist"; // using assetbundle
 String get contextMenuPath => "$assets/system/context"; // using file path
 String get videoPlayersPath => "$assets/system/players"; // using assetbundle
@@ -13,6 +15,7 @@ String get icon_offline => PathString("$anilistPath/offline.si").asset!;
 String get anilist => PathString("$contextMenuPath/anilist.png").path;
 String get check => PathString("$contextMenuPath/check.png").path;
 String get check_all => PathString("$contextMenuPath/check_all.png").path;
+String get checkPrevious => PathString("$contextMenuPath/check_previous.png").path;
 String get copy => PathString("$contextMenuPath/copy.ico").path;
 String get folder_info => PathString("$contextMenuPath/folder_info.ico").path;
 String get folder_open => PathString("$contextMenuPath/folder_open.ico").path;

@@ -79,7 +79,16 @@ class _MiruRyoikiTemplatePageState extends State<MiruRyoikiTemplatePage> {
           newHeight = _maxHeaderHeight;
           widget.onHeaderExpand?.call();
         }
-        if (mounted) setState(() => _headerHeight = newHeight);
+
+        if (!mounted) return;
+
+        try {
+          setState(() => _headerHeight = newHeight);
+        } catch (e) {
+          nextFrame(() {
+            if (mounted) setState(() => _headerHeight = newHeight);
+          });
+        }
       });
     }
   }

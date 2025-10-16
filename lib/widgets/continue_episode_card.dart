@@ -48,7 +48,7 @@ class _ContinueEpisodeCardState extends State<ContinueEpisodeCard> {
     super.initState();
     _loadImage();
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    nextFrame(() {
       if (widget.series.effectivePosterPath != null && //
           widget.series.preferredPosterSource == ImageSource.autoAnilist &&
           widget.series.anilistPosterUrl != null) {

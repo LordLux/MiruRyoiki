@@ -101,7 +101,7 @@ class _AnimatedReorderableTileState extends State<AnimatedReorderableTile> with 
           tooltip: Text.rich(TextSpan(children: [
             TextSpan(text: widget.displayName),
             if (widget.isHidden) TextSpan(text: '\nThis item is hidden', style: Manager.miniBodyStyle.copyWith(fontStyle: FontStyle.italic)),
-            if (widget.isEmpty) TextSpan(text: '\nThis item is empty', style: Manager.miniBodyStyle.copyWith(fontStyle: FontStyle.italic)),
+            if (widget.isEmpty && !widget.isHidden) TextSpan(text: '\nThis item is empty', style: Manager.miniBodyStyle.copyWith(fontStyle: FontStyle.italic)), // Only show empty if not hidden
           ])),
           child: (_) => MouseButtonWrapper(
             cursor: widget.onPressed == null || nullify ? SystemMouseCursors.basic : (widget.reorderable ? FlutterCustomMemoryImageCursor(key: widget.isReordering ? systemMouseCursorGrabbing : systemMouseCursorGrab) : SystemMouseCursors.click),
