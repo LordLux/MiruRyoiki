@@ -28,8 +28,6 @@ class LibraryScanProgressManager {
   bool get isShowing => _isShowingNotifier.value;
   Color get style => _styleNotifier.value;
   double get progress => _progress.value;
-  
-  bool showInLibraryBottom = true;
 
   /// Expose the notifiers for widgets to listen to
   ValueNotifier<bool> get showingNotifier => _isShowingNotifier;

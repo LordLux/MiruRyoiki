@@ -362,10 +362,6 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
 
   PathString? get selectedSeriesPath => _selectedSeriesPath;
 
-  bool get showLibraryScanProgressIndicatorBottom => (LibraryScanProgressManager().showInLibraryBottom || _selectedIndex != libraryIndex) && LibraryScanProgressManager().showingNotifier.value;
-
-  bool get showLibraryScanProgressIndicatorCenter => _selectedIndex == libraryIndex && LibraryScanProgressManager().showingNotifier.value;
-
   final GlobalKey<NavigationViewState> _paneKey = GlobalKey<NavigationViewState>();
 
   Widget anilistIcon(bool offline) {
@@ -540,7 +536,7 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
                                   return AnimatedContainer(
                                     duration: mediumDuration,
                                     color: getDimmableWhite(context),
-                                    height: showLibraryScanProgressIndicatorBottom ? ScreenUtils.kStatusBarHeight : 0,
+                                    height: ScreenUtils.kStatusBarHeight,
                                   );
                                 },
                               )
@@ -736,15 +732,15 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
                     ),
                   ),
                 ),
-                const StatusBarWidget(),
+                const StatusBarWidget(), // ep/series name, zoom, etc.
                 ValueListenableBuilder(
                   valueListenable: LibraryScanProgressManager().showingNotifier,
                   builder: (context, isShowing, _) {
                     return AnimatedPositioned(
                       duration: mediumDuration,
-                      bottom: showLibraryScanProgressIndicatorBottom ? 0 : -ScreenUtils.kStatusBarHeight,
+                      bottom: 0,
                       right: 8,
-                      child: const LibraryScanProgressIndicator(),
+                      child: const LibraryScanProgressIndicator(), // Bottom right library scan progress indicator
                     );
                   },
                 ),
@@ -1183,10 +1179,8 @@ Future<void> _registerWindowsUrlScheme(String scheme) async {
   }
 }
 
-// TODO prevent from editing while waiting for indexing -> remove shimmer
+// TODO fix 'aired X ago' is 1 day off -> remove 'aired X ago' when over a week (?)
 // TODO after new data from fetching userdata or series data, invalidate cache for library screen and reload
-// TODO update dominant color when changing primary anilist id
-// TODO use name and poster from the released episode in the notification instead of using the one from local series (example 'Girls Band Cry' (local) instead of 'GIRLS BAND CRY: Seishun Kyousoukyoku'(notification))
 // TODO add 'notify me' button to upcoming episodes on home screen
 // TODO replace notification popup notification entry with new widget from 'notif.dart'
 // TODO change text 'wait while library is getting indexed' to 'scanning' when library scan is in progress
@@ -1196,11 +1190,11 @@ Future<void> _registerWindowsUrlScheme(String scheme) async {
 // TODO 'no episodes found for this season' should be 'no episodes found for this series' when there are no episodes in any season
 // TODO add 'mark all previous as watched' in episode context menu
 // TODO released section in homepage to show release but not yet downloaded
-// TODO add 'open series folder' to series screen
+// TODO add 'open series folder' button to series screen
 // TODO view settings to choose what to show on homepage
-// TODO cache anime info
+// TODO cache anime info + fix image cache not working (es when changing primary id)
 // TODO cache Anilist lists to be able to work offline
-// TODO when view is linkedOnly, hideFromUserList series automatically get added to Watching, add category for them
+// TODO when view is linkedOnly, hideFromUserList series automatically get added to Watching -> add category for them
 
 // beta
 // TODO after linking anilist, fetch episode titles for neolinked series
@@ -1208,6 +1202,9 @@ Future<void> _registerWindowsUrlScheme(String scheme) async {
 // TODO add per-episode/season/series toggle to use anilist titles or local titles
 // TODO sometimes anilist episode numbering for seasons > 1 continue from previous season, need to handle that
 
+// TODO add marquee to notification titles
+// TODO add torrents/downloads pane
+// TODO add network settings for torrents
 // TODO add ctrl + tab navigation
 // TODO Local 'Unlinked' auto connect to Anilist 'About to Watch' (allow custom name to search for)
 // TODO fix back mouse button navigation

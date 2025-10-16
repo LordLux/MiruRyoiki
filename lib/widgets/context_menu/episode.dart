@@ -49,6 +49,9 @@ class EpisodeContextMenuState extends State<EpisodeContextMenu> {
     required final BuildContext context,
     required final Episode episode,
   }) {
+    final library = Provider.of<Library>(context, listen: false);
+    final shouldDisable = library.isIndexing;
+    
     return Menu(
       items: [
         MenuItem(
@@ -83,6 +86,7 @@ class EpisodeContextMenuState extends State<EpisodeContextMenu> {
           label: episode.watched ? 'Unmark as Watched' : 'Mark as Watched',
           shortcutKey: 'w',
           icon: episode.watched ? icons.unwatch : icons.check,
+          disabled: shouldDisable,
           onClick: (_) => _toggleWatched(context),
         ),
       ],

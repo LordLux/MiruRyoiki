@@ -712,8 +712,7 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
 
   Future<int?> _scrollToListByIndex(int targetIndex) async {
     final scrollController = _controller;
-    final library = Provider.of<Library>(context, listen: false);
-    if (!scrollController.hasClients || library.isIndexing) return null;
+    if (!scrollController.hasClients) return null;
 
     final currentPosition = scrollController.position.pixels;
 
@@ -939,17 +938,14 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
               child: Row(
                 children: [
                   Expanded(
-                    child: TooltipWrapper(
-                      tooltip: _sortOrder?.name_,
-                      child: (_) => MouseButtonWrapper(
-                        isButtonDisabled: library.isIndexing,
-                        child: (_) => ComboBox<SortOrder>(
-                          isExpanded: true,
-                          value: _sortOrder,
-                          placeholder: const Text('Sort By'),
-                          items: SortOrder.values.map((order) => ComboBoxItem(value: order, child: Text(_getSortText(order)))).toList(),
-                          onChanged: _onSortOrderChanged,
-                        ),
+                    child: MouseButtonWrapper(
+                    tooltip: _sortOrder?.name_,
+                      child: (_) => ComboBox<SortOrder>(
+                        isExpanded: true,
+                        value: _sortOrder,
+                        placeholder: const Text('Sort By'),
+                        items: SortOrder.values.map((order) => ComboBoxItem(value: order, child: Text(_getSortText(order)))).toList(),
+                        onChanged: _onSortOrderChanged,
                       ),
                     ),
                   ),
@@ -958,7 +954,6 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
                       height: 34,
                       width: 34,
                       child: StandardButton(
-                        isButtonDisabled: library.isIndexing,
                         tooltip: 'Sort results in ${!_sortDescending ? "Ascending" : "Descending"} order',
                         tooltipWaitDuration: Duration(milliseconds: 150),
                         padding: EdgeInsets.zero,
@@ -991,14 +986,11 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
                       height: 22,
                       width: 22,
                       child: MouseButtonWrapper(
-                        isButtonDisabled: library.isIndexing,
                         tooltipWaitDuration: const Duration(milliseconds: 250),
                         tooltip: _editListsEnabled ? 'Save Changes' : 'Edit List Order',
                         child: (_) => IconButton(
                           icon: Icon(_editListsEnabled ? FluentIcons.check_mark : FluentIcons.edit, size: 11 * Manager.fontSizeMultiplier, color: Manager.pastelDominantColor),
-                          onPressed: library.isIndexing
-                              ? null
-                              : () {
+                          onPressed:() {
                                   setState(() => _editListsEnabled = !_editListsEnabled);
                                   if (_editListsEnabled) _previousCustomListOrder = List.from(_customListOrder);
                                 },
@@ -1125,7 +1117,7 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
                   key: ValueKey(listName),
                   listName: listName,
                   displayName: displayName,
-                  onPressed: library.isIndexing ? null : (i) => _scrollToList(displayName),
+                  onPressed: (i) => _scrollToList(displayName),
                   index: index,
                   selected: false,
                   isReordering: false,
@@ -1227,9 +1219,7 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
                                   size: 16,
                                   color: isHidden ? Colors.red.withOpacity(.6) : Colors.white.withOpacity(.5),
                                 ),
-                                onPressed: library.isIndexing
-                                    ? null
-                                    : () {
+                                onPressed: () {
                                         setState(() {
                                           if (isHidden)
                                             _hiddenLists.remove(listName);
@@ -1436,7 +1426,9 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
       );
 
     return LayoutBuilder(builder: (context, constraints) {
-      final bool hideLibrary = library.isIndexing;
+      // Only hide library content if it's an initial scan (first time or new path)
+      // For normal scans show the library with disabled actions
+      final bool hideLibrary = library.isIndexing && library.isInitialScan;
       if (homeKey.currentState?.isStartedTransitioning == false) {
         ScreenUtils.libraryContentWidthWithoutPadding = constraints.maxWidth; // account for right padding
         // log('updated contentWidth: ${ScreenUtils.libraryContentWidthWithoutPadding}');
@@ -1452,7 +1444,7 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
               child: _buildSeriesGrid(displayedSeries, constraints.maxWidth, groupedData: groupedData, shimmer: false),
             ),
           ),
-          // LOADING
+          // Shimmer only on initial scan
           if (hideLibrary) ...[
             Positioned.fill(child: _buildSeriesGrid(displayedSeries, constraints.maxWidth, groupedData: groupedData, shimmer: true)),
             Positioned.fill(
@@ -1484,7 +1476,7 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
   }
 
   Widget _buildGridView(List<Series> series, double maxWidth, {Map<String, List<Series>>? groupedData, bool shimmer = false}) {
-    Widget episodesGrid(List<Series> list, ScrollController? controller, ScrollPhysics? physics, bool includePadding, {bool allowMeasurement = false, bool shimmer = false, bool isNestedInScrollable = false}) {
+    Widget episodesGrid(List list, ScrollController? controller, ScrollPhysics? physics, bool includePadding, {bool allowMeasurement = false, bool shimmer = false, bool isNestedInScrollable = false}) {
       assert(shimmer || (controller != null && physics != null));
       return ValueListenableBuilder(
         valueListenable: previousGridColumnCount,
@@ -1501,7 +1493,7 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
                 ),
               );
 
-            final Series series_ = list[index % list.length];
+            final Series series_ = (list as List<Series>)[index % list.length];
 
             if (index == 0) {
               // Measure the first card to determine the number of columns
@@ -1537,12 +1529,13 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
     // Shimmer view (loading)
     if (shimmer) //
       return LayoutBuilder(builder: (context, constraints) {
+        final mockList = List.generate(50, (index) => index);
         return SizedBox(
           height: math.min(constraints.maxHeight, ScreenUtils.height - ScreenUtils.kMinHeaderHeight - ScreenUtils.kTitleBarHeight - 32),
           child: Shimmer.fromColors(
             baseColor: Colors.white.withOpacity(0.15),
             highlightColor: Colors.white,
-            child: episodesGrid(series, null, null, true, allowMeasurement: false, shimmer: true),
+            child: episodesGrid(mockList, null, null, true, allowMeasurement: false, shimmer: true),
           ),
         );
       });
@@ -1602,7 +1595,7 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
   }
 
   Widget _buildListView(List<Series> series, double maxWidth, {Map<String, List<Series>>? groupedData, bool shimmer = false}) {
-    Widget buildListContent(List<Series> list, ScrollController? controller, ScrollPhysics? physics, bool includePadding) {
+    Widget buildListContent(List list, ScrollController? controller, ScrollPhysics? physics, bool includePadding) {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1658,7 +1651,7 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
                     padding: includePadding ? const EdgeInsets.all(12) : EdgeInsets.zero,
                     itemCount: list.length,
                     itemBuilder: (context, index) {
-                      final series = list[index];
+                      final series = (list as List<Series>)[index];
                       return Padding(
                         padding: EdgeInsets.only(bottom: 2.5, top: index == 0 ? 2.5 : 0),
                         child: SeriesListTile(

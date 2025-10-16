@@ -8,6 +8,7 @@ import 'package:recase/recase.dart';
 import '../main.dart';
 import '../services/connectivity/connectivity_service.dart';
 import '../services/library/library_provider.dart';
+import '../services/lock_manager.dart';
 import '../services/navigation/show_info.dart';
 import '../services/navigation/statusbar.dart';
 import '../utils/path.dart';
@@ -209,6 +210,17 @@ class SeriesScreenState extends State<SeriesScreen> {
       ]);
 
   void selectImage(BuildContext context, {required bool isBanner}) {
+    final library = Provider.of<Library>(context, listen: false);
+    
+    // Check if the action should be disabled during indexing
+    if (library.lockManager.shouldDisableAction(UserAction.seriesImageSelection)) {
+      snackBar(
+        library.lockManager.getDisabledReason(UserAction.seriesImageSelection),
+        severity: InfoBarSeverity.warning,
+      );
+      return;
+    }
+    
     showManagedDialog<ImageSource?>(
       context: context,
       id: isBanner ? 'bannerSelection:${series!.path}' : 'posterSelection:${series!.path}',
@@ -518,22 +530,42 @@ class SeriesScreenState extends State<SeriesScreen> {
                   //   const Icon(FluentIcons.info),
                   //   'Print Series',
                   // ),
-                  _buildButton(
-                    series.watchedPercentage == 1
-                        ? null
-                        : () => showSimpleManagedDialog(
-                              context: context,
-                              id: 'confirmWatchAll',
-                              title: 'Confirm Watch All',
-                              body: 'Are you sure you want to mark all episodes of "${series.displayTitle}" as watched?',
-                              positiveButtonText: 'Confirm',
-                              onPositive: () {
-                                final library = context.read<Library>();
-                                library.markSeriesWatched(series);
+                  Builder(
+                    builder: (context) {
+                      final library = context.watch<Library>();
+                      final isIndexing = library.isIndexing;
+                      final isWatched = series.watchedPercentage == 1;
+                      
+                      return _buildButton(
+                        (isWatched || isIndexing)
+                            ? null
+                            : () {
+                                // Check if the action should be disabled during indexing
+                                if (library.lockManager.shouldDisableAction(UserAction.markSeriesWatched)) {
+                                  snackBar(
+                                    library.lockManager.getDisabledReason(UserAction.markSeriesWatched),
+                                    severity: InfoBarSeverity.warning,
+                                  );
+                                  return;
+                                }
+                                
+                                showSimpleManagedDialog(
+                                  context: context,
+                                  id: 'confirmWatchAll',
+                                  title: 'Confirm Watch All',
+                                  body: 'Are you sure you want to mark all episodes of "${series.displayTitle}" as watched?',
+                                  positiveButtonText: 'Confirm',
+                                  onPositive: () => library.markSeriesWatched(series),
+                                );
                               },
-                            ),
-                    const Icon(FluentIcons.check_mark),
-                    series.watchedPercentage == 1 ? 'You have already watched all episodes' : 'Mark All as Watched',
+                        const Icon(FluentIcons.check_mark),
+                        isIndexing 
+                            ? 'Cannot mark while library is indexing, please wait.' 
+                            : (isWatched 
+                                ? 'You have already watched all episodes' 
+                                : 'Mark All as Watched'),
+                      );
+                    },
                   ),
                   // if (context.watch<AnilistProvider>().isLoggedIn)
                   //   _buildButton(
@@ -599,22 +631,42 @@ class SeriesScreenState extends State<SeriesScreen> {
       footerPadding: EdgeInsets.all(8.0),
       footer: [
         if (series.seasons.isNotEmpty && anilistProvider.isLoggedIn)
-          StandardButton(
-            expand: true,
-            tooltip: !series.isLinked ? 'Link with Anilist' : 'Manage Anilist Links',
-            label: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(series.isLinked ? FluentIcons.link : FluentIcons.add_link),
-                HDiv(4),
-                Text(
-                  !series.isLinked ? 'Link with Anilist' : 'Manage Anilist Links',
-                  style: getStyleBasedOnAccent(false),
+          Builder(
+            builder: (context) {
+              final library = context.watch<Library>();
+              final isIndexing = library.isIndexing;
+              
+              return StandardButton(
+                expand: true,
+                tooltip: isIndexing 
+                    ? 'Cannot link while library is indexing, please wait.'
+                    : (!series.isLinked ? 'Link with Anilist' : 'Manage Anilist Links'),
+                label: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(series.isLinked ? FluentIcons.link : FluentIcons.add_link),
+                    HDiv(4),
+                    Text(
+                      !series.isLinked ? 'Link with Anilist' : 'Manage Anilist Links',
+                      style: getStyleBasedOnAccent(false),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-            onPressed: () => linkWithAnilist(context, series, _loadAnilistData, setState),
-            isButtonDisabled: anilistProvider.isOffline,
+                onPressed: () {
+                  // Check if the action should be disabled during indexing
+                  if (library.lockManager.shouldDisableAction(UserAction.anilistOperations)) {
+                    snackBar(
+                      library.lockManager.getDisabledReason(UserAction.anilistOperations),
+                      severity: InfoBarSeverity.warning,
+                    );
+                    return;
+                  }
+                  
+                  linkWithAnilist(context, series, _loadAnilistData, setState);
+                },
+                isButtonDisabled: anilistProvider.isOffline || isIndexing,
+              );
+            },
           ),
       ],
       poster: ({required imageProvider, required width, required height, required squareness, required offset}) {
@@ -981,6 +1033,15 @@ void linkWithAnilist(BuildContext context, Series? series, Future<void> Function
 
         // if dialog was closed with a result, and it was successful, update the series mappings
         final library = Provider.of<Library>(context, listen: false);
+
+        // Check if the action should be disabled during indexing
+        if (library.lockManager.shouldDisableAction(UserAction.anilistOperations)) {
+          snackBar(
+            library.lockManager.getDisabledReason(UserAction.anilistOperations),
+            severity: InfoBarSeverity.warning,
+          );
+          return;
+        }
 
         // Calculate the number of new mappings
         final oldMappings = series.anilistMappings;

@@ -3,6 +3,7 @@ part of 'library_provider.dart';
 extension LibraryScanning on Library {
   Future<void> setLibraryPath(String path) async {
     _libraryPath = path;
+    _isInitialScan = true;
     await _saveSettings();
     await reloadLibrary();
   }
@@ -110,7 +111,6 @@ extension LibraryScanning on Library {
           task: processFilesIsolate,
           params: ProcessFilesParams(filesToProcess.toList(), dummySendPort),
           onStart: () {
-            LibraryScanProgressManager().showInLibraryBottom = false;
             LibraryScanProgressManager().resetProgress();
           },
           onProgress: (processed, total) {
@@ -120,7 +120,7 @@ extension LibraryScanning on Library {
           },
         );
 
-        Future.delayed(Duration(milliseconds: 1000), () => LibraryScanProgressManager().hide()); // NOT awaited
+        // Future.delayed(Duration(milliseconds: 1000), () => LibraryScanProgressManager().hide()); // NOT awaited
 
         logDebug('3 | Isolate processing complete. Found metadata for ${scanResult.length} files.');
         if (LoggingConfig.doLogTrace) for (final result in scanResult.entries) logTrace('  Processed: ${p.basename(result.key.path)} -> ${result.value.duration}');
@@ -228,8 +228,10 @@ extension LibraryScanning on Library {
       else
         logErr('Error scanning library', e, stackTrace);
     } finally {
+      LibraryScanProgressManager().hide();
       lockHandle.dispose();
       _isScanning = false;
+      _isInitialScan = false;
       scanProgress.value = null;
       notifyListeners();
     }
@@ -598,7 +600,6 @@ extension LibraryScanning on Library {
         forceRecalculate: forceRecalculate,
         dominantColorSourceIndex: Manager.settings.dominantColorSource.index,
         onStart: () {
-          LibraryScanProgressManager().showInLibraryBottom = true;
           LibraryScanProgressManager().resetProgress();
           logTrace('Starting dominant color calculation in isolate');
         },
@@ -648,8 +649,6 @@ extension LibraryScanning on Library {
       }
       libraryScreenKey.currentState?.updateColorsInSortCache();
 
-      // Hide progress indicator
-      LibraryScanProgressManager().hide();
 
       // Save and notify when done
       if (anyChanged || forceRecalculate) {
@@ -658,7 +657,6 @@ extension LibraryScanning on Library {
         logTrace('Finished calculating dominant colors for $successCount series');
       }
     } catch (e, st) {
-      LibraryScanProgressManager().hide();
       logErr('Error during batch dominant color calculation', e, st);
       snackBar(
         'Error calculating dominant colors: $e',
@@ -666,6 +664,9 @@ extension LibraryScanning on Library {
       );
     } finally {
       lockHandle.dispose();
+      
+      // Hide progress indicator
+      LibraryScanProgressManager().hide();
     }
   }
 }

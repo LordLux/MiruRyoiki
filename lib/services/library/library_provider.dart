@@ -54,48 +54,110 @@ part 'anilist_integration.dart';
 part 'media_player_integration.dart';
 
 class Library with ChangeNotifier {
+  /// All series in the library
   List<Series> _series = [];
+
+  /// Path to the library directory
   String? _libraryPath;
+
+  /// If a scan is currently in progress
   bool _isScanning = false;
+
+  /// If this is the first scan after selecting a library path
+  bool _isInitialScan = false;
+
+  /// (current, total)
   final ValueNotifier<(int, int)?> scanProgress = ValueNotifier(null);
-  
+
+  //
   // Media player integration fields
+  /// Manages media player connections
   PlayerManager? _playerManager;
+
+  /// Timer for periodic connection checks
   Timer? _connectionTimer;
+
+  /// Timer for saving progress
   Timer? _progressSaveTimer;
+
+  /// Timer for forced saves during playback
   Timer? _forcedSaveTimer;
-  // ignore: prefer_final_fields
-  List<DetectedPlayer> _detectedPlayers = [];
+
+  /// List of detected media players
+  final List<DetectedPlayer> _detectedPlayers = [];
+
+  /// Name of the currently connected player
   String? _currentConnectedPlayer;
+
+  /// Subscription to player status updates
   StreamSubscription? _playerStatusSubscription;
-  
+
+  //
   // State tracking for immediate saves
+  /// Last file path used for playback
   String? _lastFilePath;
+
+  /// Last known playing state
   bool? _lastPlayingState;
+
+  /// Last episode being played
   Episode? _lastEpisode;
-  
+
+  //
+  // Services and utilities
   final SettingsManager _settings;
   late final AppDatabase _db = AppDatabase();
   late final SeriesDao seriesDao = SeriesDao(_db);
   late final LockManager _lockManager = LockManager();
   late final HiddenSeriesService _hiddenSeriesService = HiddenSeriesService();
 
+  //
+  // State flags
+  /// Whether the library has been initialized
   bool _initialized = false;
+
+  /// Whether the cache has been validated
   bool _cacheValidated = false;
 
+  //
+  // Getters
+  /// Unmodifiable list of all series in the library
   List<Series> get series => List.unmodifiable(_series);
+
+  /// Path to the library directory
   String? get libraryPath => _libraryPath;
+
+  /// Whether the library has been initialized
   bool get initialized => _initialized;
+
+  /// Whether a scan is currently in progress
   bool get isIndexing => _isScanning;
+
+  /// Whether this is the first scan after selecting a library path
+  bool get isInitialScan => _isInitialScan; // Also whether shimmer should be shown during scan
+  
+  /// Database instance
   AppDatabase get database => _db;
+
+  /// Lock manager instance
   LockManager get lockManager => _lockManager;
+
+  /// Service for managing hidden series
   HiddenSeriesService get hiddenSeriesService => _hiddenSeriesService;
 
-  static const String settingsFileName = 'settings';
+  //
+  // Static constants
+  /// Settings file name
+  static const String settingsFileName = 'settings'; //.json
+
+  /// Library directory name
   static const String miruryoikiLibrary = 'library';
 
+  /// Threshold for considering an episode as watched
   static double progressThreshold = 0.95;
 
+  //
+  /// Constructor
   Library(this._settings);
 
   @override

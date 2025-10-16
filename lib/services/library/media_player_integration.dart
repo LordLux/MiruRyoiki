@@ -364,6 +364,12 @@ extension LibraryMediaPlayerIntegration on Library {
         return;
       }
 
+      // Don't save during library indexing to prevent conflicts
+      if (_lockManager.shouldDisableAction(UserAction.markEpisodeWatched)) {
+        logTrace('Skipping periodic save from player - library is indexing');
+        return;
+      }
+
       final currentStatus = _playerManager?.lastStatus;
 
       // Only save if we have a valid status and it has changed
@@ -415,6 +421,12 @@ extension LibraryMediaPlayerIntegration on Library {
 
   /// Immediately save the library and cancel any pending saves
   Future<void> _saveImmediately() async {
+    // Don't save during library indexing to prevent conflicts
+    if (_lockManager.shouldDisableAction(UserAction.markEpisodeWatched)) {
+      logTrace('Skipping immediate save from player - library is indexing');
+      return;
+    }
+
     _progressSaveTimer?.cancel();
     _progressSaveTimer = null;
 
@@ -428,6 +440,12 @@ extension LibraryMediaPlayerIntegration on Library {
   /// Update episode information based on player status
   /// Returns true if the episode was set as watched/unwatched, false otherwise.
   bool _updateEpisodeFromPlayerStatus(Episode episode, MediaStatus status) {
+    // Don't update episodes during library indexing to prevent conflicts
+    if (_lockManager.shouldDisableAction(UserAction.markEpisodeWatched)) {
+      logTrace('Skipping episode update from player - library is indexing');
+      return false;
+    }
+
     // Calculate progress percentage
     if (status.totalDuration.inMilliseconds > 0) {
       final progress = status.currentPosition.inMilliseconds / status.totalDuration.inMilliseconds;

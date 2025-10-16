@@ -31,7 +31,7 @@ class TooltipWrapper extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (tooltip == null) return child('');
-    if (this.tooltip is String)
+    if (tooltip is String)
       return Tooltip(
         message: tooltip,
         enableFeedback: enableFeedback,

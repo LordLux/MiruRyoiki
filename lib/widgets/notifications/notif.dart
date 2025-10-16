@@ -80,7 +80,7 @@ class _NotificationCalendarEntryWidgetState extends State<NotificationCalendarEn
   @override
   Widget build(BuildContext context) {
     final timeAgo = now.difference(notificationDate);
-    final bool hasEpisodeNumber = widget.notification is AiringNotification;
+    final bool hasEpisodeNumber = widget.notification is AiringNotification && !(widget.notification as AiringNotification).isMovie;
     final double offset = hasEpisodeNumber ? calculateOffset((widget.notification as AiringNotification).episode.toString().length) : 0.0;
 
     return NotificationListTile(
@@ -112,7 +112,7 @@ class _NotificationCalendarEntryWidgetState extends State<NotificationCalendarEn
               SizedBox(
                 width: 50,
                 height: 64,
-                child: hasEpisodeNumber
+                child: hasEpisodeNumber 
                     ? AnimatedTranslate(
                         duration: shortDuration,
                         curve: Curves.easeInOut,
@@ -127,13 +127,14 @@ class _NotificationCalendarEntryWidgetState extends State<NotificationCalendarEn
       ),
       title: _getNotificationTitle(widget.notification, widget.series),
       contentBuilder: (context, child) {
-        if (!hasEpisodeNumber) return child;
-        return AnimatedTranslate(
-          duration: shortDuration,
-          curve: Curves.easeInOut,
-          offset: _isHovered ? Offset(offset, 0) : Offset.zero,
-          child: child,
-        );
+        if (hasEpisodeNumber)
+          return AnimatedTranslate(
+            duration: shortDuration,
+            curve: Curves.easeInOut,
+            offset: _isHovered ? Offset(offset, 0) : Offset.zero,
+            child: child,
+          );
+        return child;
       },
       subtitle: formatTimeAgo(widget.notification, timeAgo),
       timestamp: DateFormat.yMMMd().add_jm().format(notificationDate),
