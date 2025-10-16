@@ -6,6 +6,7 @@ import 'package:recase/recase.dart';
 import 'package:intl/intl.dart';
 
 import 'models/anilist/user_list.dart';
+import 'utils/time.dart';
 
 // ENUMS
 enum Dim { dimmed, normal, brightened }
@@ -326,10 +327,10 @@ extension SortOrderX on SortOrder {
 enum GroupBy { none, anilistLists }
 
 extension DateTimeX on DateTime? {
-  String pretty({bool time = false}) {
+  String pretty({bool time = false, bool seconds = false, bool forceYear = false}) {
     if (this == null) return 'null';
-    final dateFormat = DateFormat('dd MMM yyyy', 'en');
-    final timeFormat = DateFormat('HH:mm:ss', 'en');
+    final dateFormat = DateFormat('dd MMM${(forceYear || this!.year != now.year) ? ' yyyy' : ''}', 'en');
+    final timeFormat = DateFormat('HH:mm${seconds ? ':ss' : ''}', 'en');
     return '${dateFormat.format(this!)}${time ? ' ${timeFormat.format(this!)}' : ''}';
   }
 

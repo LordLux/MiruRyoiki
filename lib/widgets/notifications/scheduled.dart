@@ -8,6 +8,7 @@ import '../../models/series.dart';
 import '../../screens/release_calendar.dart';
 import '../../services/library/library_provider.dart';
 import '../../utils/color.dart';
+import '../../utils/text.dart';
 import '../../utils/time.dart';
 import '../animated_translate.dart';
 import '../buttons/animated_icon_label_button.dart';
@@ -52,8 +53,8 @@ class _NotificationItemState2 extends State<ScheduledEpisodeCalendarEntryWidget>
   Widget build(BuildContext context) {
     final timeUntil = widget.episodeEntry.episodeInfo.airingDate.difference(now);
     final isUpcoming = widget.episodeEntry.episodeInfo.airingDate.isAfter(now.subtract(const Duration(hours: 1)));
-    
-    final offset = calculateOffset(widget.episodeEntry.episodeInfo.airingEpisode.episode?.toString().length);
+
+    final offset = 12.0 + measureTextWidth(widget.episodeEntry.episodeInfo.airingEpisode.episode?.toString() ?? '?');
     return NotificationListTile(
       leading: MouseRegion(
         onEnter: (_) => setState(() => _isHovered = true),
@@ -109,7 +110,7 @@ class _NotificationItemState2 extends State<ScheduledEpisodeCalendarEntryWidget>
           tooltip: 'Get notified when this episode airs',
         ),
       ),
-      subtitle: isUpcoming ? _formatDuration(timeUntil) : formatTimeAgo(null, timeUntil.abs()),
+      subtitle: isUpcoming ? _formatDuration(timeUntil) : formatTimeAgo(null, now, false),
       timestamp: DateFormat.yMMMd().add_jm().format(widget.episodeEntry.episodeInfo.airingDate),
       onTap: () {},
       isTileColored: false,

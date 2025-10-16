@@ -9,7 +9,6 @@ import 'package:provider/provider.dart';
 
 import '../../manager.dart';
 import '../../models/notification.dart';
-import '../../models/series.dart';
 import '../../services/anilist/queries/anilist_service.dart';
 import '../../services/library/library_provider.dart';
 import '../../services/navigation/dialogs.dart';
@@ -17,6 +16,7 @@ import '../../utils/color.dart';
 import '../../utils/time.dart';
 import '../../widgets/buttons/wrapper.dart';
 import '../buttons/rotating_loading_button.dart';
+import '../notifications/notif.dart';
 
 final GlobalKey<NotificationsContentState> notificationsContentKey = GlobalKey<NotificationsContentState>();
 
@@ -29,7 +29,7 @@ class NotificationsDialog extends ManagedDialog {
     this.onMorePressed,
   }) : super(
           title: null, // Remove the static title
-          constraints: const BoxConstraints(maxWidth: 480, maxHeight: 500),
+          constraints: const BoxConstraints(maxWidth: 480, maxHeight: 508),
           contentBuilder: (context, constraints) => _NotificationsContent(
             key: notificationsContentKey,
             onMorePressed: onMorePressed,
@@ -315,6 +315,7 @@ class NotificationsContentState extends State<_NotificationsContent> {
                       ),
                     ),
                   RotatingLoadingButton(
+                    tooltip: 'Refresh notifications',
                     icon: const Icon(FluentIcons.refresh, size: 12),
                     isLoading: _isRefreshing,
                     onPressed: () => _syncNotifications(),
@@ -364,14 +365,16 @@ class NotificationsContentState extends State<_NotificationsContent> {
                 )
               : ListView.builder(
                   shrinkWrap: true,
-                  itemCount: _notifications.length,
+                  itemCount: _notifications.length + 2,
                   itemBuilder: (context, index) {
-                    final notification = _notifications[index];
+                    if (index == 0 || index == _notifications.length + 1) return const SizedBox(height: 4);
+
+                    final notification = _notifications[index - 1];
                     return _buildNotificationItem(notification);
                   },
                 ),
         ),
-        Divider(),
+        Opacity(opacity: 0.7, child: Container(height: 2, decoration: DividerTheme.of(context).decoration),),
 
         const SizedBox(height: 8),
 
@@ -380,7 +383,7 @@ class NotificationsContentState extends State<_NotificationsContent> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               const Icon(FluentIcons.calendar, size: 12),
-              const SizedBox(width: 6),
+              const SizedBox(width: 7),
               Text('View Release Calendar'),
             ],
           ),
@@ -391,218 +394,14 @@ class NotificationsContentState extends State<_NotificationsContent> {
   }
 
   Widget _buildNotificationItem(AnilistNotification notification) {
-    return ListTile(
-      leading: _buildNotificationIcon(notification),
-      title: Text(
-        _getNotificationTitle(notification),
-        style: TextStyle(
-          fontSize: 13,
-          fontWeight: notification.isRead ? FontWeight.normal : FontWeight.w500,
-        ),
-        maxLines: 2,
-        overflow: TextOverflow.ellipsis,
-      ),
-      subtitle: Text(
-        _formatNotificationTime(notification.createdAt),
-        style: TextStyle(fontSize: 11, color: Colors.white.withOpacity(0.6)),
-      ),
-      trailing: notification.isRead
-          ? null
-          : Icon(
-              FluentIcons.circle_fill,
-              size: 7,
-              color: Manager.currentDominantColor ?? Manager.accentColor.light,
-            ),
-      onPressed: () {
-        _markAsRead(notification.id);
+    return NotificationCalendarEntryWidget(
+      notification,
+      null, // Series will be looked up internally
+      isDense: true,
+      onNotificationRead: (id) {
+        _markAsRead(id);
         // TODO: Navigate to series screen or download content pane
       },
     );
-  }
-
-  Widget _buildNotificationIcon(AnilistNotification notification) {
-    // Find the associated series for this notification
-    final library = Provider.of<Library>(context, listen: false);
-    Series? associatedSeries;
-
-    if (notification is AiringNotification) {
-      // Look for a series with matching anilist ID
-      for (final series in library.series) {
-        if (series.anilistMappings.any((mapping) => mapping.anilistId == notification.animeId)) {
-          associatedSeries = series;
-          break;
-        }
-      }
-    }
-
-    final a = switch (notification) {
-      AiringNotification airing => _buildMediaImage(airing.media?.coverImage, associatedSeries),
-      MediaDataChangeNotification dataChange => _buildMediaImage(dataChange.media?.coverImage, associatedSeries),
-      RelatedMediaAdditionNotification related => _buildMediaImage(related.media?.coverImage, associatedSeries),
-      MediaMergeNotification merge => _buildMediaImage(merge.media?.coverImage, associatedSeries),
-      MediaDeletionNotification _ => Container(
-          width: 32,
-          height: 24,
-          decoration: BoxDecoration(color: Colors.red.withOpacity(0.7), borderRadius: BorderRadius.circular(3)),
-          child: const Icon(
-            FluentIcons.delete,
-            size: 14,
-            color: Colors.white,
-          ),
-        ),
-      AnilistNotification() => throw UnimplementedError(),
-    };
-    return Row(children: [
-      Container(
-        decoration: BoxDecoration(
-            color: notification.isRead ? Colors.transparent : Manager.currentDominantColor ?? Manager.accentColor,
-            borderRadius: BorderRadius.only(
-              topLeft: Radius.circular(3),
-              bottomLeft: Radius.circular(3),
-            )),
-        height: 54,
-        width: 2.5,
-      ),
-      const SizedBox(width: 2.3),
-      a,
-    ]);
-  }
-
-  Widget _buildMediaImage(String? imageUrl, Series? associatedSeries) {
-    return SizedBox(
-      width: 54 * 0.71,
-      height: 54,
-      child: associatedSeries != null
-          ? ClipRRect(
-              borderRadius: BorderRadius.circular(3),
-              child: FutureBuilder<ImageProvider?>(
-                future: associatedSeries.getPosterImage(),
-                builder: (context, snapshot) {
-                  if (snapshot.hasData && snapshot.data != null) {
-                    return Image(
-                      image: snapshot.data!,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        return Container(
-                          decoration: BoxDecoration(
-                            color: Colors.grey.withOpacity(0.3),
-                            borderRadius: BorderRadius.circular(3),
-                          ),
-                          child: const Icon(
-                            FluentIcons.image_pixel,
-                            size: 14,
-                            color: Colors.white,
-                          ),
-                        );
-                      },
-                    );
-                  } else if (snapshot.hasError || imageUrl == null) {
-                    return Container(
-                      decoration: BoxDecoration(
-                        color: Colors.grey.withOpacity(0.3),
-                        borderRadius: BorderRadius.circular(3),
-                      ),
-                      child: const Icon(
-                        FluentIcons.image_pixel,
-                        size: 14,
-                        color: Colors.white,
-                      ),
-                    );
-                  } else {
-                    // Fallback to Anilist cover image while loading
-                    return Image.network(
-                      imageUrl,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        return Container(
-                          decoration: BoxDecoration(
-                            color: Colors.grey.withOpacity(0.3),
-                            borderRadius: BorderRadius.circular(3),
-                          ),
-                          child: const Icon(
-                            FluentIcons.image_pixel,
-                            size: 14,
-                            color: Colors.white,
-                          ),
-                        );
-                      },
-                    );
-                  }
-                },
-              ),
-            )
-          : imageUrl != null
-              ? ClipRRect(
-                  borderRadius: BorderRadius.circular(3),
-                  child: Image.network(
-                    imageUrl,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) {
-                      return Container(
-                        decoration: BoxDecoration(
-                          color: Colors.grey.withOpacity(0.3),
-                          borderRadius: BorderRadius.circular(3),
-                        ),
-                        child: const Icon(
-                          FluentIcons.image_pixel,
-                          size: 14,
-                          color: Colors.white,
-                        ),
-                      );
-                    },
-                  ),
-                )
-              : Container(
-                  decoration: BoxDecoration(
-                    color: Colors.grey.withOpacity(0.3),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: const Icon(
-                    FluentIcons.image_pixel,
-                    size: 14,
-                    color: Colors.white,
-                  ),
-                ),
-    );
-  }
-
-  String _getNotificationTitle(AnilistNotification notification) {
-    switch (notification) {
-      case AiringNotification airing:
-        final title = airing.media?.title ?? 'Unknown anime';
-        return 'Episode ${airing.episode} of $title aired';
-      case RelatedMediaAdditionNotification related:
-        final title = related.media?.title ?? 'Unknown anime';
-        return '$title was added to Anilist';
-      case MediaDataChangeNotification dataChange:
-        final title = dataChange.media?.title ?? 'Unknown anime';
-        return '$title data was updated';
-      case MediaMergeNotification merge:
-        final title = merge.media?.title ?? 'Unknown anime';
-        return '$title was merged with other entries';
-      case MediaDeletionNotification deletion:
-        final title = deletion.deletedMediaTitle ?? 'Unknown anime';
-        return '$title was deleted';
-      default:
-        return 'Unknown notification';
-    }
-  }
-
-  String _formatNotificationTime(int timestamp) {
-    final date = DateTime.fromMillisecondsSinceEpoch(timestamp * 1000);
-    final now = DateTime.now();
-    final difference = now.difference(date);
-
-    if (difference.inMinutes < 1) {
-      return 'Just now';
-    } else if (difference.inHours < 1) {
-      return '${difference.inMinutes}m ago';
-    } else if (difference.inDays < 1) {
-      return '${difference.inHours}h ago';
-    } else if (difference.inDays < 7) {
-      return '${difference.inDays}d ago';
-    } else {
-      return '${date.day}/${date.month}/${date.year}';
-    }
   }
 }

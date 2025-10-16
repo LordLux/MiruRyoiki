@@ -775,9 +775,6 @@ class SeriesScreenState extends State<SeriesScreen> {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Info', style: FluentTheme.of(context).typography.subtitle),
-          VDiv(8),
-
           if (series.anilistMappings.length > 1) ...[
             InfoLabel(
               label: 'Anilist Source',

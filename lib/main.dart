@@ -1179,22 +1179,22 @@ Future<void> _registerWindowsUrlScheme(String scheme) async {
   }
 }
 
-// TODO fix 'aired X ago' is 1 day off -> remove 'aired X ago' when over a week (?)
+// TODO setstate change of Manager.dominantColor after changing poster/banner image
+// TODO add small padding between notifications in notifications dialog
+// TODO update release calendar screen page when reading a notification from the notifications dialog
+// TODO add 'open series folder' button to series screen
 // TODO after new data from fetching userdata or series data, invalidate cache for library screen and reload
 // TODO add 'notify me' button to upcoming episodes on home screen
-// TODO replace notification popup notification entry with new widget from 'notif.dart'
 // TODO change text 'wait while library is getting indexed' to 'scanning' when library scan is in progress
-// TODO fix library scanning that keeps finding the same files every time even though they were already there
-// TODO fix settings players order not actually changing + add cursor to reordering handles
 // TODO move hidden series switches to settings
 // TODO 'no episodes found for this season' should be 'no episodes found for this series' when there are no episodes in any season
-// TODO add 'mark all previous as watched' in episode context menu
+// TODO when view is linkedOnly, hideFromUserList series automatically get added to Watching -> add category for them
 // TODO released section in homepage to show release but not yet downloaded
-// TODO add 'open series folder' button to series screen
 // TODO view settings to choose what to show on homepage
+// TODO fix settings players order not actually changing + add cursor to reordering handles
 // TODO cache anime info + fix image cache not working (es when changing primary id)
 // TODO cache Anilist lists to be able to work offline
-// TODO when view is linkedOnly, hideFromUserList series automatically get added to Watching -> add category for them
+// TODO fix library scanning that keeps finding the same files every time even though they were already there
 
 // beta
 // TODO after linking anilist, fetch episode titles for neolinked series
@@ -1205,6 +1205,7 @@ Future<void> _registerWindowsUrlScheme(String scheme) async {
 // TODO add marquee to notification titles
 // TODO add torrents/downloads pane
 // TODO add network settings for torrents
+// TODO remove hardcoded filtering for only the local series for scheduled releases notifications as we'll have the ability to download them
 // TODO add ctrl + tab navigation
 // TODO Local 'Unlinked' auto connect to Anilist 'About to Watch' (allow custom name to search for)
 // TODO fix back mouse button navigation

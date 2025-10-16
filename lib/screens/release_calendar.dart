@@ -1078,12 +1078,12 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> with Autom
           onSeriesSelected: widget.onSeriesSelected,
           onDownloadButton: (animeId, episodeId) {
             // TODO callback for when user wants to download this episode -> go to download page with preselected anime/episode
-            print('Download button clicked for episode $episodeId of anime ID: $animeId');
+            log('Download button clicked for episode $episodeId of anime ID: $animeId');
             snackBar('Download feature not implemented yet', severity: InfoBarSeverity.warning);
           },
           onAddedToList: (animeId) {
             // TODO show anilist dialog with list preselected to Plan to Watch
-            print('Add to list clicked for anime ID: $animeId');
+            log('Add to list clicked for anime ID: $animeId');
             snackBar('Add to list feature not implemented yet', severity: InfoBarSeverity.warning);
           },
           onRelatedMediaAdditionNotificationTapped: (animeId) {
@@ -1116,7 +1116,7 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> with Autom
           episodeEntry: episodeEntry,
           onNotificationButtonToggled: (series) /* we have the DB id of the series, not anilist id */ {
             // TODO callback for when user wants to be notified about this episode(remember to account for when seriesId is -1)
-            print('Notification button toggled for episode ${episodeEntry.episodeInfo.airingEpisode.episode} of series: ${series?.name}');
+            log('Notification button toggled for episode ${episodeEntry.episodeInfo.airingEpisode.episode} of series: ${series?.name}');
             snackBar('Notification feature not implemented yet', severity: InfoBarSeverity.warning);
           },
         ),

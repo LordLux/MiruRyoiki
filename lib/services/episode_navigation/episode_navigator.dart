@@ -1,6 +1,5 @@
 import '../../models/episode.dart';
 import '../../models/series.dart';
-import '../../utils/logging.dart';
 import '../../utils/path.dart';
 
 class EpisodeNavigator {

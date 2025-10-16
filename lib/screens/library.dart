@@ -876,7 +876,6 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
 
   MiruRyoikiInfobar _buildFiltersSidebar() {
     final bool isResetDisabled = _listEquals(_customListOrder, _previousCustomListOrder);
-    final library = Provider.of<Library>(context, listen: false);
 
     return MiruRyoikiInfobar(
       content: ValueListenableBuilder(
@@ -1093,7 +1092,6 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
     final displayListOrder = _editListsEnabled ? _customListOrder : _customListOrder.where((listName) => !_hiddenLists.contains(listName)).toList();
 
     final double childHeight = 40;
-    final library = Provider.of<Library>(context, listen: false);
 
     return SizedBox(
       height: displayListOrder.length * childHeight,

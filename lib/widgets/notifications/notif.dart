@@ -1,6 +1,7 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:intl/intl.dart';
 import 'package:material_symbols_icons/material_symbols_icons.dart';
+import 'package:miruryoiki/utils/text.dart';
 
 import '../../manager.dart';
 import '../../models/notification.dart';
@@ -19,24 +20,25 @@ import '../tooltip_wrapper.dart';
 class NotificationCalendarEntryWidget extends StatefulWidget {
   final AnilistNotification notification;
   final Series? series;
-  final Function(PathString) onSeriesSelected;
-  final Function(int) onNotificationRead;
-  final Function(int) onRelatedMediaAdditionNotificationTapped;
-  final Function(int) onAddedToList;
-  final Function(int, int) onDownloadButton;
+  final Function(PathString)? onSeriesSelected;
+  final Function(int)? onNotificationRead;
+  final Function(int)? onRelatedMediaAdditionNotificationTapped;
+  final Function(int)? onAddedToList;
+  final Function(int, int)? onDownloadButton;
   final bool isDense;
 
   const NotificationCalendarEntryWidget(
     this.notification,
     this.series, {
     super.key,
-    required this.onSeriesSelected,
-    required this.onNotificationRead,
-    required this.onRelatedMediaAdditionNotificationTapped,
-    required this.onAddedToList,
-    required this.onDownloadButton,
+    this.onSeriesSelected,
+    this.onNotificationRead,
+    this.onRelatedMediaAdditionNotificationTapped,
+    this.onAddedToList,
+    this.onDownloadButton,
     this.isDense = false,
-  });
+  }) : // Ensure that if isDense is false then all callbacks are non-null
+        assert(isDense || (onSeriesSelected != null && onNotificationRead != null && onRelatedMediaAdditionNotificationTapped != null && onAddedToList != null && onDownloadButton != null), 'All callbacks must be provided when isDense is false');
 
   @override
   State<NotificationCalendarEntryWidget> createState() => _NotificationCalendarEntryWidgetState();
@@ -79,9 +81,8 @@ class _NotificationCalendarEntryWidgetState extends State<NotificationCalendarEn
 
   @override
   Widget build(BuildContext context) {
-    final timeAgo = now.difference(notificationDate);
     final bool hasEpisodeNumber = widget.notification is AiringNotification && !(widget.notification as AiringNotification).isMovie;
-    final double offset = hasEpisodeNumber ? calculateOffset((widget.notification as AiringNotification).episode.toString().length) : 0.0;
+    final double offset = hasEpisodeNumber ? 12.0 + measureTextWidth((widget.notification as AiringNotification).episode.toString()) : 0.0;
 
     return NotificationListTile(
       leading: MouseRegion(
@@ -112,7 +113,7 @@ class _NotificationCalendarEntryWidgetState extends State<NotificationCalendarEn
               SizedBox(
                 width: 50,
                 height: 64,
-                child: hasEpisodeNumber 
+                child: hasEpisodeNumber
                     ? AnimatedTranslate(
                         duration: shortDuration,
                         curve: Curves.easeInOut,
@@ -136,8 +137,10 @@ class _NotificationCalendarEntryWidgetState extends State<NotificationCalendarEn
           );
         return child;
       },
-      subtitle: formatTimeAgo(widget.notification, timeAgo),
-      timestamp: DateFormat.yMMMd().add_jm().format(notificationDate),
+      subtitle: formatTimeAgo(widget.notification, notificationDate, widget.isDense),
+      subtitleTooltip: widget.isDense ? notificationDate : null,
+      timestamp: widget.isDense ? null : DateFormat.yMMMd().add_jm().format(notificationDate),
+      isRead: widget.notification.isRead,
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -162,7 +165,7 @@ class _NotificationCalendarEntryWidgetState extends State<NotificationCalendarEn
                       isSmall: true,
                       icon: const Icon(Symbols.check),
                       padding: EdgeInsets.symmetric(horizontal: 8, vertical: 0),
-                      onPressed: () async => widget.onNotificationRead(widget.notification.id),
+                      onPressed: () async => widget.onNotificationRead!(widget.notification.id),
                     );
                   },
                 ),
@@ -176,7 +179,7 @@ class _NotificationCalendarEntryWidgetState extends State<NotificationCalendarEn
                   return AnimatedIconLabelButton(
                     label: 'Add to lists',
                     icon: (isHovered) => anim.AnimatedIcon(Icon(Symbols.add, color: isHovered ? Colors.white : Manager.accentColor.light, weight: 400, grade: 0, opticalSize: 24, size: 18)),
-                    onPressed: () => widget.onAddedToList((widget.notification as RelatedMediaAdditionNotification).mediaId),
+                    onPressed: () => widget.onAddedToList!((widget.notification as RelatedMediaAdditionNotification).mediaId),
                     tooltipWaitDuration: const Duration(milliseconds: 700),
                     tooltip: 'Add this entry to Plan to Watch in your Library',
                   );
@@ -191,7 +194,7 @@ class _NotificationCalendarEntryWidgetState extends State<NotificationCalendarEn
                   return AnimatedIconLabelButton(
                     label: 'Download',
                     icon: (isHovered) => anim.AnimatedIcon(Icon(Symbols.download, color: isHovered ? Colors.white : Manager.accentColor.light, weight: 400, grade: 0, opticalSize: 24, size: 18)),
-                    onPressed: () async => widget.onDownloadButton((widget.notification as AiringNotification).animeId, (widget.notification as AiringNotification).episode),
+                    onPressed: () async => widget.onDownloadButton!((widget.notification as AiringNotification).animeId, (widget.notification as AiringNotification).episode),
                     tooltipWaitDuration: const Duration(milliseconds: 700),
                     tooltip: 'Download this episode',
                   );
@@ -214,20 +217,34 @@ class _NotificationCalendarEntryWidgetState extends State<NotificationCalendarEn
                 : SizedBox(width: 18),
         ],
       ),
-      onTap: () => widget.series != null //
-          ? widget.onSeriesSelected(widget.series!.path)
-          : isRelatedMediaAdditionNotification
-              ? widget.onRelatedMediaAdditionNotificationTapped((widget.notification as RelatedMediaAdditionNotification).mediaId)
-              : null,
+      onTap: () => widget.isDense
+          ? widget.onNotificationRead!(widget.notification.id)
+          : widget.series != null //
+              ? widget.onSeriesSelected!(widget.series!.path)
+              : isRelatedMediaAdditionNotification
+                  ? widget.onRelatedMediaAdditionNotificationTapped!((widget.notification as RelatedMediaAdditionNotification).mediaId)
+                  : null,
       isTileColored: !widget.notification.isRead, // Highlight unread notifications
     );
   }
 }
 
-double calculateOffset(int? length) {
-  // Calculate offset based on text length (1 to 4 characters)
-  final titleLength = length ?? 1;
-  return 8.0 + 9.5 * titleLength; // Base offset + per-character offset
+String formatTimeAgo(AnilistNotification? notification, DateTime notificationDate, bool isDense) {
+  String str = "";
+  final compareNowDate = now;
+  final compareTodayDate = DateTime(compareNowDate.year, compareNowDate.month, compareNowDate.day);
+  final difference = (compareNowDate).difference(notificationDate);
+  final duration = (difference.inDays > 7 ? difference : compareTodayDate.difference(notificationDate)).abs();
+
+  if (duration.inDays > 0)
+    str = '${duration.inDays} day${duration.inDays > 1 ? 's' : ''} ago';
+  else if (duration.inHours > 0)
+    str = '${duration.inHours} hour${duration.inHours > 1 ? 's' : ''} ago';
+  else
+    str = '${duration.inMinutes} minute${duration.inMinutes > 1 ? 's' : ''} ago';
+
+  if (notification == null || notification is! RelatedMediaAdditionNotification) str = 'Aired $str';
+  return str;
 }
 
 Widget buildNotificationImage(String? imageUrl, Series? series) {
@@ -274,17 +291,4 @@ Widget buildNotificationImage(String? imageUrl, Series? series) {
   } else {
     return const NoImageWidget();
   }
-}
-
-String formatTimeAgo(AnilistNotification? notification, Duration duration) {
-  String str = "";
-  if (duration.inDays > 0)
-    str = '${duration.inDays} day${duration.inDays > 1 ? 's' : ''} ago';
-  else if (duration.inHours > 0)
-    str = '${duration.inHours} hour${duration.inHours > 1 ? 's' : ''} ago';
-  else
-    str = '${duration.inMinutes} minute${duration.inMinutes > 1 ? 's' : ''} ago';
-
-  if (notification == null || notification is! RelatedMediaAdditionNotification) str = 'Aired $str';
-  return str;
 }
