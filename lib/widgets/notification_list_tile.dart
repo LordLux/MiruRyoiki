@@ -40,6 +40,7 @@ class NotificationListTile extends StatefulWidget {
 }
 
 class _NotificationListTileState extends State<NotificationListTile> {
+  final color = (Manager.currentDominantColor?.toAccentColor() ?? Manager.accentColor);
   @override
   Widget build(BuildContext context) {
     return SizedBox(
@@ -47,16 +48,16 @@ class _NotificationListTileState extends State<NotificationListTile> {
       child: Opacity(
         opacity: widget.lowOpacity ? 0.7 : 1.0,
         child: mat.Material(
-          color: widget.isTileColored ? Manager.accentColor.lighter.withOpacity(.1) : Colors.transparent,
+          color: widget.isTileColored ? color.lighter.withOpacity(.1) : Colors.transparent,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
           child: MouseRegion(
             cursor: widget.onTap != null ? SystemMouseCursors.click : MouseCursor.defer,
             child: mat.InkWell(
               borderRadius: BorderRadius.circular(8),
               splashFactory: mat.InkSparkle.constantTurbulenceSeedSplashFactory,
-              highlightColor: Manager.accentColor.light.withOpacity(.2), // splash body
+              highlightColor: color.light.withOpacity(.2), // splash body
               splashColor: Colors.white.withOpacity(.2), // splash crest
-              hoverColor: Manager.accentColor.lighter.withOpacity(.2), // hover
+              hoverColor: color.lighter.withOpacity(.2), // hover
               onTap: widget.onTap,
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(6),
@@ -100,7 +101,7 @@ class _NotificationListTileState extends State<NotificationListTile> {
                                       preferBelow: true,
                                       child: (_) => Text(
                                         widget.subtitle,
-                                        style: Manager.bodyStyle.copyWith(color: widget.isRead ? Colors.white.withOpacity(.7) : Manager.accentColor.lightest),
+                                        style: Manager.bodyStyle.copyWith(color: widget.isRead ? Colors.white.withOpacity(.7) : color.lightest),
                                         overflow: TextOverflow.ellipsis,
                                       ),
                                     ),

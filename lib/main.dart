@@ -1179,8 +1179,6 @@ Future<void> _registerWindowsUrlScheme(String scheme) async {
   }
 }
 
-// TODO setstate change of Manager.dominantColor after changing poster/banner image
-// TODO add small padding between notifications in notifications dialog
 // TODO update release calendar screen page when reading a notification from the notifications dialog
 // TODO add 'open series folder' button to series screen
 // TODO after new data from fetching userdata or series data, invalidate cache for library screen and reload

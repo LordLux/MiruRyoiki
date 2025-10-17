@@ -29,7 +29,7 @@ class NotificationsDialog extends ManagedDialog {
     this.onMorePressed,
   }) : super(
           title: null, // Remove the static title
-          constraints: const BoxConstraints(maxWidth: 480, maxHeight: 508),
+          constraints: const BoxConstraints(maxWidth: 480, maxHeight: 513),
           contentBuilder: (context, constraints) => _NotificationsContent(
             key: notificationsContentKey,
             onMorePressed: onMorePressed,
@@ -270,7 +270,7 @@ class NotificationsContentState extends State<_NotificationsContent> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.all(12.0),
+          padding: const EdgeInsets.only(left: 8.0, right: 0.0, bottom: 12.0, top: 7.0),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -355,9 +355,7 @@ class NotificationsContentState extends State<_NotificationsContent> {
                         const SizedBox(height: 8),
                         Text(
                           _lastSync == null ? 'Loading notifications...' : 'No recent notifications',
-                          style: TextStyle(
-                            color: Colors.white,
-                          ),
+                          style: Manager.bodyStyle,
                         ),
                       ],
                     ),
@@ -370,11 +368,14 @@ class NotificationsContentState extends State<_NotificationsContent> {
                     if (index == 0 || index == _notifications.length + 1) return const SizedBox(height: 4);
 
                     final notification = _notifications[index - 1];
-                    return _buildNotificationItem(notification);
+                    return Padding(
+                      padding: const EdgeInsets.only(top: 2.0),
+                      child: _buildNotificationItem(notification),
+                    );
                   },
                 ),
         ),
-        Opacity(opacity: 0.7, child: Container(height: 2, decoration: DividerTheme.of(context).decoration),),
+        Opacity(opacity: 0.7, child: Container(height: 2, decoration: DividerTheme.of(context).decoration)),
 
         const SizedBox(height: 8),
 
@@ -384,7 +385,7 @@ class NotificationsContentState extends State<_NotificationsContent> {
             children: [
               const Icon(FluentIcons.calendar, size: 12),
               const SizedBox(width: 7),
-              Text('View Release Calendar'),
+              Text('View Release Calendar', style: Manager.bodyStyle),
             ],
           ),
           onPressed: () => widget.onMorePressed?.call(context),

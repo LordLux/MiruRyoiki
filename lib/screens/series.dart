@@ -1084,7 +1084,7 @@ void linkWithAnilist(BuildContext context, Series? series, Future<void> Function
 
         // Update the series with the new mappings
         Manager.currentDominantColor = series.dominantColor;
-        if (context.mounted) setState(() {});
+        Manager.setState();
       },
     ),
   );

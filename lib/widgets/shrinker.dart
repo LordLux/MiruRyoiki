@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:fluent_ui/fluent_ui.dart' as fluent;
+import 'package:miruryoiki/utils/color.dart';
 import 'package:miruryoiki/widgets/gradient_mask.dart';
 
 import '../manager.dart';
@@ -160,7 +161,7 @@ class _ShrinkerState extends State<Shrinker> with SingleTickerProviderStateMixin
             filledColor: widget.buttonBackgroundColor ?? Manager.currentDominantColor ?? Manager.accentColor,
             hoverFillColor: widget.buttonBackgroundColor?.toAccentColor().light ?? Manager.currentDominantColor?.toAccentColor().light ?? Manager.accentColor.light,
             onPressed: () => readMore ? _controller.expand() : _controller.collapse(),
-            label: Text(readMore ? 'Read More' : 'Read Less', style: Manager.miniBodyStyle),
+            label: Text(readMore ? 'Read More' : 'Read Less', style: Manager.miniBodyStyle.copyWith(color: readMore ? getTextColor(widget.buttonBackgroundColor ?? Manager.currentDominantColor ?? Manager.accentColor) : Colors.white)),
           ),
         ),
       ),

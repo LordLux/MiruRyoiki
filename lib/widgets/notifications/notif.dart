@@ -26,6 +26,7 @@ class NotificationCalendarEntryWidget extends StatefulWidget {
   final Function(int)? onAddedToList;
   final Function(int, int)? onDownloadButton;
   final bool isDense;
+  final AccentColor? color;
 
   const NotificationCalendarEntryWidget(
     this.notification,
@@ -37,6 +38,7 @@ class NotificationCalendarEntryWidget extends StatefulWidget {
     this.onAddedToList,
     this.onDownloadButton,
     this.isDense = false,
+    this.color,
   }) : // Ensure that if isDense is false then all callbacks are non-null
         assert(isDense || (onSeriesSelected != null && onNotificationRead != null && onRelatedMediaAdditionNotificationTapped != null && onAddedToList != null && onDownloadButton != null), 'All callbacks must be provided when isDense is false');
 
@@ -101,7 +103,7 @@ class _NotificationCalendarEntryWidgetState extends State<NotificationCalendarEn
                     child: (message) => Text(
                       message,
                       style: Manager.bodyStyle.copyWith(
-                        color: lighten(Manager.accentColor.lightest),
+                        color: lighten((Manager.currentDominantColor?.toAccentColor() ?? Manager.accentColor).lightest),
                         fontWeight: FontWeight.w900,
                       ),
                       textAlign: TextAlign.center,
@@ -157,7 +159,7 @@ class _NotificationCalendarEntryWidgetState extends State<NotificationCalendarEn
                         padding: const EdgeInsets.all(12.0),
                         child: Icon(
                           FluentIcons.circle_fill,
-                          color: Manager.accentColor.light,
+                          color: (Manager.currentDominantColor?.toAccentColor() ?? Manager.accentColor).light,
                           size: 8,
                         ),
                       );

@@ -71,6 +71,7 @@ class ImageSelectionDialog extends ManagedDialog {
                   seriesScreenState.posterChangeDisabled = false;
                   seriesScreenState.bannerChangeDisabled = false;
                 }
+                Manager.currentDominantColor = seriesScreenState!.series?.dominantColor;
                 Manager.setState();
               });
             },
@@ -223,7 +224,7 @@ class _ImageSelectionContentState extends State<_ImageSelectionContent> {
   Widget build(BuildContext context) {
     final s = widget.series;
     final bool isAvailable;
-    
+
     if (widget.isBanner)
       isAvailable = s.isAnilistBanner ? s.effectiveBannerPath != null : false; // Only available if linked to Anilist and actually has a banner on Anilist
     else
@@ -234,7 +235,7 @@ class _ImageSelectionContentState extends State<_ImageSelectionContent> {
       children: [
         Text(
           'Choose the ${widget.isBanner ? 'banner' : 'poster'} image source for "${widget.series.name}"',
-          style: FluentTheme.of(context).typography.bodyLarge,
+          style: Manager.bodyStyle,
         ),
         SizedBox(height: 20),
 
@@ -286,11 +287,11 @@ class _ImageSelectionContentState extends State<_ImageSelectionContent> {
                 TextSpan(children: [
                   TextSpan(
                     text: 'New preference: ',
-                    style: FluentTheme.of(context).typography.bodyStrong,
+                    style: Manager.bodyStrongStyle,
                   ),
                   TextSpan(
                     text: _getSourceDisplayName(_selectedSource),
-                    style: FluentTheme.of(context).typography.bodyStrong!.copyWith(color: Manager.accentColor.lighter),
+                    style: Manager.bodyStrongStyle.copyWith(color: Manager.accentColor.lighter),
                   ),
                 ]),
               )
@@ -298,11 +299,11 @@ class _ImageSelectionContentState extends State<_ImageSelectionContent> {
                 TextSpan(children: [
                   TextSpan(
                     text: 'Current preference: ',
-                    style: FluentTheme.of(context).typography.bodyStrong,
+                    style: Manager.bodyStrongStyle,
                   ),
                   TextSpan(
                     text: widget.isBanner ? _getSourceDisplayName(widget.series.preferredBannerSource ?? Manager.defaultPosterSource) : _getSourceDisplayName(widget.series.preferredPosterSource ?? Manager.defaultPosterSource),
-                    style: FluentTheme.of(context).typography.bodyStrong,
+                    style: Manager.bodyStrongStyle,
                   ),
                 ]),
               ),
@@ -432,10 +433,7 @@ class _ImageSelectionContentState extends State<_ImageSelectionContent> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              title,
-              style: FluentTheme.of(context).typography.bodyStrong,
-            ),
+            Text(title, style: Manager.bodyStrongStyle),
             SizedBox(height: 12),
             Expanded(
               child: isAvailable
@@ -447,24 +445,24 @@ class _ImageSelectionContentState extends State<_ImageSelectionContent> {
                             fit: BoxFit.contain,
                             fadeInDuration: const Duration(milliseconds: 300),
                             fadeInCurve: Curves.easeIn,
-                            errorWidget: Text('Failed to load image', style: FluentTheme.of(context).typography.body),
+                            errorWidget: Text('Failed to load image', style: Manager.bodyStyle),
                             skipLoadingIndicator: true,
                           ),
                         )
-                      : Center(child: Text('No image available', style: FluentTheme.of(context).typography.body))
+                      : Center(child: Text('No image available', style: Manager.bodyStyle))
                   : Center(
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Icon(FluentIcons.error, size: 32, color: Manager.accentColor.lightest),
                           SizedBox(height: 8),
-                          Text(unavailableMessage, textAlign: TextAlign.center),
+                          Text(unavailableMessage, textAlign: TextAlign.center, style: Manager.bodyStyle),
                           if (needsAnilistLink && linkToAnilistAction != null)
                             Padding(
                               padding: const EdgeInsets.only(top: 16.0),
                               child: FilledButton(
                                 onPressed: linkToAnilistAction,
-                                child: Text('Link to Anilist'),
+                                child: Text('Link to Anilist', style: Manager.bodyStyle),
                               ),
                             ),
                         ],
@@ -488,13 +486,13 @@ class _ImageSelectionContentState extends State<_ImageSelectionContent> {
                     },
                   ),
                   SizedBox(width: 8),
-                  Text('Use Anilist image'),
+                  Text('Use Anilist image', style: Manager.bodyStyle),
                 ],
               ),
             if (!isAvailable)
               Text(
                 'Not available',
-                style: FluentTheme.of(context).typography.caption,
+                style: Manager.captionStyle,
               ),
           ],
         ),
@@ -509,11 +507,7 @@ class _ImageSelectionContentState extends State<_ImageSelectionContent> {
 
     return StatefulBuilder(builder: (context, setStateLocal) {
       return GestureDetector(
-        onTap: () {
-          setState(() {
-            _selectedSource = ImageSource.local;
-          });
-        },
+        onTap: () => setState(() => _selectedSource = ImageSource.local),
         child: Card(
           padding: EdgeInsets.all(12),
           borderRadius: BorderRadius.circular(8),
@@ -522,10 +516,7 @@ class _ImageSelectionContentState extends State<_ImageSelectionContent> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                'Local Folder Images (${_localImageFiles.length})',
-                style: FluentTheme.of(context).typography.bodyStrong,
-              ),
+              Text('Local Folder Images (${_localImageFiles.length})', style: Manager.bodyStrongStyle),
               SizedBox(height: 12),
               Expanded(
                 child: _localImageLoading
@@ -616,7 +607,7 @@ class _ImageSelectionContentState extends State<_ImageSelectionContent> {
                                                           padding: const EdgeInsets.only(left: 6.0),
                                                           child: Text(
                                                             fileName,
-                                                            style: FluentTheme.of(context).typography.body,
+                                                            style: Manager.bodyStyle,
                                                             maxLines: 1,
                                                             overflow: TextOverflow.ellipsis,
                                                           ),
@@ -643,7 +634,7 @@ class _ImageSelectionContentState extends State<_ImageSelectionContent> {
                                                           padding: const EdgeInsets.only(right: 6.0),
                                                           child: Text(
                                                             dimensions,
-                                                            style: FluentTheme.of(context).typography.body,
+                                                            style: Manager.bodyStyle,
                                                             maxLines: 1,
                                                             textAlign: TextAlign.end,
                                                             overflow: TextOverflow.ellipsis,
@@ -703,7 +694,7 @@ class _ImageSelectionContentState extends State<_ImageSelectionContent> {
                             padding: EdgeInsets.symmetric(vertical: 4),
                             child: Text(
                               hoveredImageName ?? '',
-                              style: FluentTheme.of(context).typography.caption,
+                              style: Manager.captionStyle,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -716,14 +707,10 @@ class _ImageSelectionContentState extends State<_ImageSelectionContent> {
                 children: [
                   RadioButton(
                     checked: _selectedSource == ImageSource.local,
-                    onChanged: (_) {
-                      setState(() {
-                        _selectedSource = ImageSource.local;
-                      });
-                    },
+                    onChanged: (_) => setState(() => _selectedSource = ImageSource.local),
                   ),
                   SizedBox(width: 8),
-                  Text('Use ${_localImageFiles.isEmpty ? "selected local image" : _selectedLocalImageIndex != null ? _localImageFiles[_selectedLocalImageIndex!].path.split(Platform.pathSeparator).last : "Local Image"}'),
+                  Text('Use ${_localImageFiles.isEmpty ? "selected local image" : _selectedLocalImageIndex != null ? _localImageFiles[_selectedLocalImageIndex!].path.split(Platform.pathSeparator).last : "Local Image"}', style: Manager.bodyStyle),
                 ],
               ),
             ],
