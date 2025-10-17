@@ -1,9 +1,11 @@
 import 'dart:async';
+import 'dart:math' show max;
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/material.dart' as mat;
 import 'package:provider/provider.dart';
 import 'package:defer_pointer/defer_pointer.dart';
 import 'package:recase/recase.dart';
+import 'package:visibility_detector/visibility_detector.dart';
 
 import '../main.dart';
 import '../services/connectivity/connectivity_service.dart';
@@ -38,6 +40,7 @@ import '../widgets/page/page.dart';
 import '../widgets/shift_clickable_hover.dart';
 import '../widgets/shrinker.dart';
 import '../widgets/simple_html_parser.dart';
+import '../widgets/tooltip_wrapper.dart';
 import '../widgets/transparency_shadow_image.dart';
 import 'anilist_settings.dart';
 
@@ -65,6 +68,8 @@ class SeriesScreenState extends State<SeriesScreen> {
 
   bool isReloadingSeries = false;
 
+  int _highestVisibleEpisodeGridIndex = 0;
+  final Set<int> _visibleEpisodeGridIndices = {};
   final Map<int, GlobalKey<ExpandingStickyHeaderBuilderState>> _seasonExpanderKeys = {};
 
   bool _isPosterHovering = false;
@@ -158,6 +163,20 @@ class SeriesScreenState extends State<SeriesScreen> {
 
   //
 
+  void _onEpisodeGridVisibilityChanged(int index, bool isVisible) {
+    if (mounted) setState(() {
+      if (isVisible) {
+        _visibleEpisodeGridIndices.add(index);
+      } else {
+        _visibleEpisodeGridIndices.remove(index);
+      }
+
+      // Update highest visible index
+      _highestVisibleEpisodeGridIndex = _visibleEpisodeGridIndices.isEmpty ? 0 : _visibleEpisodeGridIndices.reduce(max);
+      log(_highestVisibleEpisodeGridIndex); // TODO remove after implementing color change
+    });
+  }
+
   @override
   void initState() {
     super.initState();
@@ -211,7 +230,7 @@ class SeriesScreenState extends State<SeriesScreen> {
 
   void selectImage(BuildContext context, {required bool isBanner}) {
     final library = Provider.of<Library>(context, listen: false);
-    
+
     // Check if the action should be disabled during indexing
     if (library.lockManager.shouldDisableAction(UserAction.seriesImageSelection)) {
       snackBar(
@@ -220,7 +239,7 @@ class SeriesScreenState extends State<SeriesScreen> {
       );
       return;
     }
-    
+
     showManagedDialog<ImageSource?>(
       context: context,
       id: isBanner ? 'bannerSelection:${series!.path}' : 'posterSelection:${series!.path}',
@@ -266,7 +285,7 @@ class SeriesScreenState extends State<SeriesScreen> {
         // Store the original dominant color to check if it changes
         final Color? originalDominantColor = series.dominantColor;
 
-        setState(() {
+        if (mounted) setState(() {
           // Find the mapping with this ID
           for (var i = 0; i < series.anilistMappings.length; i++) {
             if (series.anilistMappings[i].anilistId == anilistId) {
@@ -347,9 +366,7 @@ class SeriesScreenState extends State<SeriesScreen> {
   void toggleSeasonExpander(int seasonNumber) {
     final expanderKey = _seasonExpanderKeys[seasonNumber];
     if (expanderKey?.currentState != null) {
-      setState(() {
-        expanderKey?.currentState!.toggle();
-      });
+      if (mounted) setState(() => expanderKey?.currentState!.toggle());
     } else {
       logWarn('No expander key found for season $seasonNumber');
     }
@@ -535,7 +552,7 @@ class SeriesScreenState extends State<SeriesScreen> {
                       final library = context.watch<Library>();
                       final isIndexing = library.isIndexing;
                       final isWatched = series.watchedPercentage == 1;
-                      
+
                       return _buildButton(
                         (isWatched || isIndexing)
                             ? null
@@ -548,7 +565,7 @@ class SeriesScreenState extends State<SeriesScreen> {
                                   );
                                   return;
                                 }
-                                
+
                                 showSimpleManagedDialog(
                                   context: context,
                                   id: 'confirmWatchAll',
@@ -559,11 +576,7 @@ class SeriesScreenState extends State<SeriesScreen> {
                                 );
                               },
                         const Icon(FluentIcons.check_mark),
-                        isIndexing 
-                            ? 'Cannot mark while library is indexing, please wait.' 
-                            : (isWatched 
-                                ? 'You have already watched all episodes' 
-                                : 'Mark All as Watched'),
+                        isIndexing ? 'Cannot mark while library is indexing, please wait.' : (isWatched ? 'You have already watched all episodes' : 'Mark All as Watched'),
                       );
                     },
                   ),
@@ -626,48 +639,100 @@ class SeriesScreenState extends State<SeriesScreen> {
       getPosterImage: series.getPosterImage(),
       isProfilePicture: false,
       contentPadding: (posterExtraVertical) => EdgeInsets.only(left: 24.0, right: 24.0, bottom: 16.0, top: 16.0 + posterExtraVertical),
-      setStateCallback: () => setState(() {}),
+      setStateCallback: () {
+        if (mounted) setState(() {});
+      },
       content: _buildInfoBarContent(series),
       footerPadding: EdgeInsets.all(8.0),
       footer: [
-        if (series.seasons.isNotEmpty && anilistProvider.isLoggedIn)
-          Builder(
-            builder: (context) {
-              final library = context.watch<Library>();
-              final isIndexing = library.isIndexing;
-              
-              return StandardButton(
-                expand: true,
-                tooltip: isIndexing 
-                    ? 'Cannot link while library is indexing, please wait.'
-                    : (!series.isLinked ? 'Link with Anilist' : 'Manage Anilist Links'),
-                label: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(series.isLinked ? FluentIcons.link : FluentIcons.add_link),
-                    HDiv(4),
-                    Text(
-                      !series.isLinked ? 'Link with Anilist' : 'Manage Anilist Links',
-                      style: getStyleBasedOnAccent(false),
+        if (series.anilistMappings.length > 1) ...[
+          ComboBox<int>(
+            isExpanded: true,
+            placeholder: const Text('Select Anilist source'),
+            disabledPlaceholder: const Text('No Anilist mappings available'),
+            items: series.anilistMappings.map((mapping) {
+              final title = mapping.title ?? 'Anilist ID: ${mapping.anilistId}';
+              return ComboBoxItem<int>(
+                value: mapping.anilistId,
+                child: Center(
+                  child: TooltipWrapper(
+                    tooltip: title,
+                    child: (txt) => Text(
+                      txt,
+                      style: Manager.captionStyle.copyWith(fontSize: 11),
                     ),
-                  ],
+                  ),
                 ),
-                onPressed: () {
-                  // Check if the action should be disabled during indexing
-                  if (library.lockManager.shouldDisableAction(UserAction.anilistOperations)) {
-                    snackBar(
-                      library.lockManager.getDisabledReason(UserAction.anilistOperations),
-                      severity: InfoBarSeverity.warning,
-                    );
-                    return;
-                  }
-                  
-                  linkWithAnilist(context, series, _loadAnilistData, setState);
-                },
-                isButtonDisabled: anilistProvider.isOffline || isIndexing,
               );
+            }).toList(),
+            value: series.primaryAnilistId,
+            onChanged: (value) async {
+              if (value != null) {
+                if (mounted) setState(() => series.primaryAnilistId = value);
+
+                if (libraryScreenKey.currentState != null) libraryScreenKey.currentState!.updateSeriesInSortCache(series);
+                
+                // Fetch and load Anilist data
+                if (mounted) setState(() => _loadAnilistData(value));
+              }
             },
           ),
+          VDiv(8),
+        ],
+        Builder(
+          builder: (context) {
+            final library = context.watch<Library>();
+            final isIndexing = library.isIndexing;
+
+            // Compute tooltip with switch-case outside of the widget
+            String tooltipKey;
+            if (!anilistProvider.isLoggedIn)
+              tooltipKey = 'notLoggedIn';
+            else if (isIndexing)
+              tooltipKey = 'indexing';
+            else if (!series.isLinked)
+              tooltipKey = 'notLinked';
+            else
+              tooltipKey = 'linked';
+
+            String tooltipText = switch (tooltipKey) {
+              'indexing' => 'Cannot link while library is indexing, please wait.',
+              'notLinked' => 'Link with Anilist',
+              'linked' => 'Manage Anilist Links',
+              'notLoggedIn' => 'You must be logged in to Anilist to link series.',
+              _ => '',
+            };
+
+            return StandardButton(
+              expand: true,
+              tooltip: tooltipText,
+              label: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(series.isLinked ? FluentIcons.link : FluentIcons.add_link),
+                  HDiv(4),
+                  Text(
+                    !series.isLinked ? 'Link with Anilist' : 'Manage Anilist Links',
+                    style: getStyleBasedOnAccent(false),
+                  ),
+                ],
+              ),
+              onPressed: () {
+                // Check if the action should be disabled during indexing
+                if (library.lockManager.shouldDisableAction(UserAction.anilistOperations)) {
+                  snackBar(
+                    library.lockManager.getDisabledReason(UserAction.anilistOperations),
+                    severity: InfoBarSeverity.warning,
+                  );
+                  return;
+                }
+
+                linkWithAnilist(context, series, _loadAnilistData, setState);
+              },
+              isButtonDisabled: anilistProvider.isOffline || isIndexing,
+            );
+          },
+        ),
       ],
       poster: ({required imageProvider, required width, required height, required squareness, required offset}) {
         return DeferPointer(
@@ -775,48 +840,6 @@ class SeriesScreenState extends State<SeriesScreen> {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (series.anilistMappings.length > 1) ...[
-            InfoLabel(
-              label: 'Anilist Source',
-              child: ComboBox<int>(
-                isExpanded: true,
-                placeholder: const Text('Select Anilist source'),
-                items: series.anilistMappings.map((mapping) {
-                  final title = mapping.title ?? 'Anilist ID: ${mapping.anilistId}';
-                  return ComboBoxItem<int>(
-                    value: mapping.anilistId,
-                    child: SizedBox(
-                      width: ScreenUtils.kInfoBarWidth - 106,
-                      child: Tooltip(
-                        message: title,
-                        child: Text(
-                          title,
-                          style: Manager.captionStyle.copyWith(fontSize: 11),
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                    ),
-                  );
-                }).toList(),
-                value: series.primaryAnilistId,
-                onChanged: (value) async {
-                  if (value != null) {
-                    setState(() {
-                      series.primaryAnilistId = value;
-                    });
-
-                    if (libraryScreenKey.currentState != null) libraryScreenKey.currentState!.updateSeriesInSortCache(series);
-                    // Fetch and load Anilist data
-                    setState(() {
-                      _loadAnilistData(value);
-                    });
-                  }
-                },
-              ),
-            ),
-            VDiv(16),
-          ],
-
           // Series metadata
           GridView.builder(
             shrinkWrap: true,
@@ -935,14 +958,19 @@ class SeriesScreenState extends State<SeriesScreen> {
         final seasonName = series!.seasons[i - 1].prettyName;
         // Display all seasons, even if they're empty
         seasonWidgets.add(
-          EpisodeGrid(
-            title: seasonName,
-            episodes: seasonEpisodes,
-            initiallyExpanded: true,
+          _VisibilityTrackedEpisodeGrid(
+            seasonIndex: i,
             expanderKey: _seasonExpanderKeys[i],
-            onTap: (episode) => _playEpisode(episode),
-            series: series!,
-            isReloadingSeries: isReloadingSeries,
+            onVisibilityChanged: _onEpisodeGridVisibilityChanged,
+            episodeGrid: EpisodeGrid(
+              title: seasonName,
+              episodes: seasonEpisodes,
+              initiallyExpanded: true,
+              expanderKey: _seasonExpanderKeys[i],
+              onTap: (episode) => _playEpisode(episode),
+              series: series!,
+              isReloadingSeries: isReloadingSeries,
+            ),
           ),
         );
       }
@@ -1088,4 +1116,50 @@ void linkWithAnilist(BuildContext context, Series? series, Future<void> Function
       },
     ),
   );
+}
+
+class _VisibilityTrackedEpisodeGrid extends StatelessWidget {
+  final int seasonIndex;
+  final EpisodeGrid episodeGrid;
+  final GlobalKey<ExpandingStickyHeaderBuilderState>? expanderKey;
+  final Function(int index, bool isVisible) onVisibilityChanged;
+
+  const _VisibilityTrackedEpisodeGrid({
+    required this.seasonIndex,
+    required this.episodeGrid,
+    required this.expanderKey,
+    required this.onVisibilityChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    // Key for the tracking point (will be at bottom-right)
+    final trackingKey = GlobalKey();
+
+    return Column(
+      children: [
+        episodeGrid,
+        // Invisible tracking widget at the bottom-right
+        VisibilityDetector(
+          key: Key('episode_grid_visibility_$seasonIndex'),
+          onVisibilityChanged: (info) {
+            // Get the expansion state
+            final isExpanded = expanderKey?.currentState?.isExpanded ?? true;
+
+            // Check if bottom-right corner is visible
+            // We consider it visible if visibleFraction > 0
+            final isVisible = info.visibleFraction > 0;
+
+            onVisibilityChanged(seasonIndex, isVisible);
+          },
+          child: Container(
+            key: trackingKey,
+            height: 1, // Minimal height marker
+            width: 1, // At the bottom-right corner
+            alignment: Alignment.bottomRight,
+          ),
+        ),
+      ],
+    );
+  }
 }

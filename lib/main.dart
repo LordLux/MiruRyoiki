@@ -1179,6 +1179,7 @@ Future<void> _registerWindowsUrlScheme(String scheme) async {
   }
 }
 
+// TODO disable temporarily change of primary id combobox after changing it until data is fetched
 // TODO add 'open series folder' button to series screen
 // TODO after new data from fetching userdata or series data, invalidate cache for library screen and reload
 // TODO add 'notify me' button to upcoming episodes on home screen
