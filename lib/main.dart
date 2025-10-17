@@ -1179,7 +1179,6 @@ Future<void> _registerWindowsUrlScheme(String scheme) async {
   }
 }
 
-// TODO update release calendar screen page when reading a notification from the notifications dialog
 // TODO add 'open series folder' button to series screen
 // TODO after new data from fetching userdata or series data, invalidate cache for library screen and reload
 // TODO add 'notify me' button to upcoming episodes on home screen

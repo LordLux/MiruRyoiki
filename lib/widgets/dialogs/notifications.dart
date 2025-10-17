@@ -7,6 +7,7 @@ import 'package:miruryoiki/utils/logging.dart';
 import 'package:miruryoiki/widgets/buttons/button.dart';
 import 'package:provider/provider.dart';
 
+import '../../main.dart';
 import '../../manager.dart';
 import '../../models/notification.dart';
 import '../../services/anilist/queries/anilist_service.dart';
@@ -225,6 +226,9 @@ class NotificationsContentState extends State<_NotificationsContent> {
         }
         _unreadCount = (_unreadCount - 1).clamp(0, double.infinity).toInt();
       });
+
+      // Update the release calendar screen if it's open
+      releaseCalendarScreenKey.currentState?.updateNotificationReadStatus(notificationId);
     } catch (e) {
       logErr("Error marking notification $notificationId as read: $e");
     }
@@ -257,6 +261,9 @@ class NotificationsContentState extends State<_NotificationsContent> {
             .toList();
         _unreadCount = 0;
       });
+
+      // Update the release calendar screen if it's open
+      releaseCalendarScreenKey.currentState?.markAllNotificationsAsRead();
     } catch (e) {
       // Handle error silently
       logErr("Error marking all notifications as read: $e");

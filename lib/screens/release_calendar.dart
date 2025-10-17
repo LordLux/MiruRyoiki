@@ -115,6 +115,50 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> with Autom
     }
   }
 
+  /// Update the read status of a notification in the calendar cache
+  void updateNotificationReadStatus(int notificationId) {
+    if (mounted && !_isDisposed) {
+      Manager.setState(() {
+        // Iterate through all dates in the calendar cache
+        for (final dateKey in _calendarCache.keys) {
+          final entriesForDate = _calendarCache[dateKey];
+          if (entriesForDate != null) {
+            // Update the entry if it matches the notification ID
+            _calendarCache[dateKey] = entriesForDate.map((e) {
+              if (e is NotificationCalendarEntry && e.notification.id == notificationId) {
+                final updatedNotification = e.notification.copyWith(isRead: true);
+                return NotificationCalendarEntry(notification: updatedNotification, series: e.series);
+              }
+              return e;
+            }).toList();
+          }
+        }
+      });
+    }
+  }
+
+  /// Mark all notifications as read in the calendar cache
+  void markAllNotificationsAsRead() {
+    if (mounted && !_isDisposed) {
+      Manager.setState(() {
+        // Iterate through all dates in the calendar cache
+        for (final dateKey in _calendarCache.keys) {
+          final entriesForDate = _calendarCache[dateKey];
+          if (entriesForDate != null) {
+            // Update all notification entries to mark them as read
+            _calendarCache[dateKey] = entriesForDate.map((e) {
+              if (e is NotificationCalendarEntry && !e.notification.isRead) {
+                final updatedNotification = e.notification.copyWith(isRead: true);
+                return NotificationCalendarEntry(notification: updatedNotification, series: e.series);
+              }
+              return e;
+            }).toList();
+          }
+        }
+      });
+    }
+  }
+
   void scrollTo(double offset) {
     if (widget.scrollController.hasClients) {
       widget.scrollController.animateTo(
