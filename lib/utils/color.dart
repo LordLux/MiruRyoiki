@@ -8,6 +8,7 @@ import 'package:provider/provider.dart';
 
 import '../enums.dart';
 import '../manager.dart';
+import '../models/anilist/mapping.dart';
 import '../models/series.dart';
 import '../services/file_system/cache.dart';
 import '../services/isolates/isolate_manager.dart';
@@ -134,16 +135,110 @@ Color getTextColor(
 }
 
 /// Calculate and cache the dominant color from the image
-/// Returns the color and whether we need to overwrite the cached color
-Future<(Color?, bool)> calculateDominantColor(Series series, {bool forceRecalculate = false}) async {
+/// Returns the colors and whether we need to overwrite the cached color
+Future<((Color?, Color?)?, bool)> calculateLocalDominantColors(Series series, {bool forceRecalculate = false}) async {
   // If color already calculated and not forced, return cached color
-  if (series.dominantColor != null && !forceRecalculate) {
-    logTrace('   No need to extract color, using cached dominant color: ${series.dominantColor?.toHex()}!');
-    return (series.dominantColor, false);
+  if (series.localPosterColor != null && series.localBannerColor != null && !forceRecalculate) {
+    logTrace('   No need to extract color, using cached dominant colors: Pos${series.localPosterColor?.toHex()}, Ban${series.localBannerColor?.toHex()}!');
+    return ((series.localPosterColor, series.localBannerColor), false);
   }
 
   // Skip if binding not initialized or no poster path
   try {
+    //  final binding = WidgetsBinding.instance;
+    //  if (!binding.isRootWidgetAttached) {
+    if (!WidgetsBinding.instance.isRootWidgetAttached) {
+      logDebug('   WidgetsBinding not initialized, initializing...');
+      WidgetsFlutterBinding.ensureInitialized();
+    }
+  } catch (e) {
+    // If we're in an isolate or WidgetsBinding is not available, skip this check
+    logWarn('   WidgetsBinding not available (possibly in isolate), continuing...');
+  }
+
+
+  
+  String? localPosterPath = PathString(series.posterImage).pathMaybe;
+  String? localBannerPath = PathString(series.bannerImage).pathMaybe;
+
+  // If no image path found, return null
+  if (localPosterPath == null && localBannerPath == null) {
+    logWarn('   No image available for dominant color extraction');
+    return (null, false);
+  }
+
+  final imageCache = ImageCacheService();
+  await imageCache.init();
+
+  final cachedLocalPosterPath = await imageCache.getCachedImagePath(localPosterPath);
+  final cachedLocalBannerPath = await imageCache.getCachedImagePath(localBannerPath);
+  
+  if (cachedLocalPosterPath == null && cachedLocalBannerPath == null) {
+    logWarn('   Failed to get local cached image(s)');
+    return (null, false);
+  }
+
+  final localPosterColor = await _extractColor(cachedLocalPosterPath);
+  final localBannerColor = await _extractColor(cachedLocalBannerPath);
+  
+  return ((localPosterColor, localBannerColor), true);
+}
+
+/// Calculate dominant color for an Anilist mapping from its poster or banner image
+/// Returns the colors and whether we need to overwrite the cached color
+/// Pass [calculatePoster] and/or [calculateBanner] to specify which colors to calculate
+Future<((Color?, Color?), bool)> calculateLinkColors(
+  AnilistMapping mapping, {
+  bool calculatePoster = false,
+  bool calculateBanner = false,
+  bool forceRecalculate = false,
+}) async {
+  // If neither is requested, return null
+  if (!calculatePoster && !calculateBanner) {
+    logWarn('   No color source specified for extraction');
+    return ((null, null), false);
+  }
+
+  // Check if we already have cached colors and don't need to recalculate
+  final hasPosterColor = mapping.posterColor != null;
+  final hasBannerColor = mapping.bannerColor != null;
+  
+  final needsPosterCalculation = calculatePoster && (forceRecalculate || !hasPosterColor);
+  final needsBannerCalculation = calculateBanner && (forceRecalculate || !hasBannerColor);
+
+  if (!needsPosterCalculation && !needsBannerCalculation) {
+    logTrace('   No need to extract color, using cached link colors: Pos${mapping.posterColor?.toHex()}, Ban${mapping.bannerColor?.toHex()}!');
+    return ((mapping.posterColor, mapping.bannerColor), false);
+  }
+
+  // Calculate colors as needed
+  Color? posterColor = hasPosterColor ? mapping.posterColor : null;
+  Color? bannerColor = hasBannerColor ? mapping.bannerColor : null;
+  bool updated = false;
+
+  if (needsPosterCalculation) {
+    posterColor = await _calculateLinkColor(mapping, source: DominantColorSource.poster, forceRecalculate: forceRecalculate);
+    updated = true;
+  }
+
+  if (needsBannerCalculation) {
+    bannerColor = await _calculateLinkColor(mapping, source: DominantColorSource.banner, forceRecalculate: forceRecalculate);
+    updated = true;
+  }
+
+  return ((posterColor, bannerColor), updated);
+}
+
+/// Calculate a single dominant color for an Anilist mapping
+Future<Color?> _calculateLinkColor(
+  AnilistMapping mapping, {
+  required DominantColorSource source,
+  bool forceRecalculate = false,
+}) async {
+  // Skip if binding not initialized
+  try {
+    //  final binding = WidgetsBinding.instance;
+    //  if (!binding.isRootWidgetAttached) {
     if (!WidgetsBinding.instance.isRootWidgetAttached) {
       logDebug('   WidgetsBinding not initialized, initializing...');
       WidgetsFlutterBinding.ensureInitialized();
@@ -153,64 +248,50 @@ Future<(Color?, bool)> calculateDominantColor(Series series, {bool forceRecalcul
     logTrace('   WidgetsBinding not available (possibly in isolate), continuing...');
   }
 
-  // Get source type
-  final DominantColorSource sourceType = Manager.dominantColorSource;
-  logTrace('  Calculating dominant color for ${substringSafe(series.name, 0, 20, '"')} with source ${sourceType == DominantColorSource.poster ? "poster" : "banner"}...');
+  // Get the appropriate image path based on source
   String? imagePath;
-
-  // Use the existing logic from effectivePosterPath/effectiveBannerPath
-  if (sourceType == DominantColorSource.poster) {
-    // For poster source, use the effectivePosterPath
-    imagePath = series.effectivePosterPath;
-    if (imagePath != null) {
-      logTrace(series.isAnilistPoster ? '   Using Anilist poster for dominant color calculation' : '   Using local poster for dominant color calculation: "$imagePath"');
-    }
+  if (source == DominantColorSource.poster) {
+    imagePath = mapping.anilistData?.posterImage;
   } else {
-    // For banner source, use the effectiveBannerPath
-    imagePath = series.effectiveBannerPath;
-    if (imagePath != null) {
-      logTrace(series.isAnilistBanner ? '   Using Anilist banner for dominant color calculation' : '   Using local banner for dominant color calculation: "$imagePath"');
-    }
+    imagePath = mapping.anilistData?.bannerImage;
   }
 
   // If no image path found, return null
   if (imagePath == null) {
-    logWarn('   No image available for dominant color extraction');
-    return (null, false);
+    logWarn('   No ${source == DominantColorSource.poster ? "poster" : "banner"} image available for dominant color extraction');
+    return null;
   }
 
-  // For Anilist images, we need to get the cached path
-  if ((sourceType == DominantColorSource.poster && series.isAnilistPoster) || (sourceType == DominantColorSource.banner && series.isAnilistBanner)) {
-    imagePath = await _getAnilistCachedImagePath(series, poster: sourceType == DominantColorSource.poster);
-    if (imagePath == null) {
-      logWarn('   Failed to get cached Anilist image');
-      return (null, false);
-    }
+  final imageCache = ImageCacheService();
+  await imageCache.init();
+
+  imagePath = await imageCache.getCachedImagePath(imagePath);
+  if (imagePath == null) {
+    logWarn('   Failed to get cached Anilist image');
+    return null;
   }
 
-  return await _extractColorFromPath(series, imagePath);
+  return await _extractColor(imagePath);
 }
 
 /// Calculate dominant colors for multiple series using isolate manager with progress
-/// Returns a map of series ID to dominant color and whether it was updated
-Future<Map<String, Map<String, dynamic>>> calculateDominantColorsWithProgress({
-  required List<Series> series,
+/// Returns a map of anilist ID to dominant color and whether it was updated
+Future<Map<int, Map<String, dynamic>>> calculateMappingDominantColorsWithProgress({
+  required List<AnilistMapping> mappings,
   required bool forceRecalculate,
-  required int dominantColorSourceIndex,
   void Function()? onStart,
   void Function(int processed, int total)? onProgress,
 }) async {
   final isolateManager = IsolateManager();
 
   // Serialize series for the isolate
-  final serializedSeries = series.map((s) => s.toJson()).toList();
+  final serializedMappings = mappings.map((s) => s.toJson()).toList();
 
-  return await isolateManager.runIsolateWithProgress<CalculateDominantColorsParams, Map<String, Map<String, dynamic>>>(
+  return await isolateManager.runIsolateWithProgress<CalculateDominantColorsParams, Map<int, Map<String, dynamic>>>(
     task: calculateDominantColorsIsolate,
     params: CalculateDominantColorsParams(
-      serializedSeries: serializedSeries,
+      serializedMappings: serializedMappings,
       forceRecalculate: forceRecalculate,
-      dominantColorSourceIndex: dominantColorSourceIndex,
       replyPort: ReceivePort().sendPort, // This will be replaced by the isolate manager
     ),
     onStart: onStart,
@@ -218,40 +299,10 @@ Future<Map<String, Map<String, dynamic>>> calculateDominantColorsWithProgress({
   );
 }
 
-/// Helper method to get cached Anilist images
-Future<String?> _getAnilistCachedImagePath(Series series, {bool poster = true}) async {
-  final anilistData = series.anilistData;
-  if (anilistData == null) return null;
-
-  final imageCache = ImageCacheService();
-  await imageCache.init();
-
-  if (poster) {
-    // Try poster first
-    if (anilistData.posterImage != null) {
-      final path = await imageCache.getCachedImagePath(anilistData.posterImage!);
-      if (path != null) return path;
-    }
-
-    // Try banner next
-    if (anilistData.bannerImage != null) return await imageCache.getCachedImagePath(anilistData.bannerImage!);
-  } else {
-    // Try banner first
-    if (anilistData.bannerImage != null) {
-      final path = await imageCache.getCachedImagePath(anilistData.bannerImage!);
-      if (path != null) return path;
-    }
-
-    // Try poster next
-    if (anilistData.posterImage != null) return await imageCache.getCachedImagePath(anilistData.posterImage!);
-  }
-
-  // No cached image found
-  return null;
-}
-
 /// Extract dominant color from an image file
-Future<(Color?, bool)> _extractColorFromPath(Series series, String imagePath) async {
+Future<Color?> _extractColor(String? imagePath) async {
+  if (imagePath == null) return null;
+  
   // Use the unified color extraction system
   try {
     final imageFile = File(imagePath);
@@ -271,14 +322,10 @@ Future<(Color?, bool)> _extractColorFromPath(Series series, String imagePath) as
         [newColor?.toHex(), getTextColor(newColor ?? Colors.white), newColor ?? Colors.black],
       ]);
 
-      // Only update if the color actually changed
-      if (newColor != null && (series.dominantColor?.value != newColor.value)) {
-        return (newColor, true);
-      }
-      return (series.dominantColor, false);
+      return newColor;
     }
   } catch (e) {
     logErr('Error extracting dominant color', e);
   }
-  return (null, false);
+  return null;
 }

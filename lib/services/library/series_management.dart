@@ -60,9 +60,15 @@ extension LibrarySeriesManagement on Library {
         oldSeries.preferredBannerSource != series.preferredBannerSource;
 
     // Recalculate dominant color if relevant changes occurred
-    if (posterChanged || bannerChanged || anilistChanged || preferenceChanged) {
-      logDebug('Image source changed for ${series.name} - updating dominant color');
-      await series.calculateDominantColor(forceRecalculate: true);
+    if (posterChanged && !bannerChanged) {
+      logDebug('Image source changed for ${series.name} - updating dominant colors');
+      await series.calculateLocalPosterDominantColor(forceRecalculate: true);
+    } else if (bannerChanged && !posterChanged) {
+      logDebug('Image source changed for ${series.name} - updating dominant colors');
+      await series.calculateLocalBannerDominantColor(forceRecalculate: true);
+    } else if (anilistChanged || preferenceChanged) {
+      logDebug('Anilist mapping or preference changed for ${series.name} - updating dominant colors');
+      await series.calculateLocalDominantColors(forceRecalculate: true);
     }
 
     // Update the series

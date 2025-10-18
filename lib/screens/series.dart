@@ -13,6 +13,7 @@ import '../services/library/library_provider.dart';
 import '../services/lock_manager.dart';
 import '../services/navigation/show_info.dart';
 import '../services/navigation/statusbar.dart';
+import '../utils/color.dart' as ColorUtils;
 import '../utils/path.dart';
 import '../utils/text.dart';
 import '../widgets/buttons/button.dart';
@@ -79,7 +80,7 @@ class SeriesScreenState extends State<SeriesScreen> {
   Series? get series => Provider.of<Library>(context, listen: false).getSeriesByPath(widget.seriesPath!);
 
   Color get dominantColor =>
-      series?.dominantColor ?? //
+      series?.localPosterColor ?? //
       FluentTheme.of(context).accentColor.defaultBrushFor(FluentTheme.of(context).brightness);
 
   List<Widget> infos(Series series) => [
@@ -164,17 +165,18 @@ class SeriesScreenState extends State<SeriesScreen> {
   //
 
   void _onEpisodeGridVisibilityChanged(int index, bool isVisible) {
-    if (mounted) setState(() {
-      if (isVisible) {
-        _visibleEpisodeGridIndices.add(index);
-      } else {
-        _visibleEpisodeGridIndices.remove(index);
-      }
+    if (mounted)
+      setState(() {
+        if (isVisible) {
+          _visibleEpisodeGridIndices.add(index);
+        } else {
+          _visibleEpisodeGridIndices.remove(index);
+        }
 
-      // Update highest visible index
-      _highestVisibleEpisodeGridIndex = _visibleEpisodeGridIndices.isEmpty ? 0 : _visibleEpisodeGridIndices.reduce(max);
-      log(_highestVisibleEpisodeGridIndex); // TODO remove after implementing color change
-    });
+        // Update highest visible index
+        _highestVisibleEpisodeGridIndex = _visibleEpisodeGridIndices.isEmpty ? 0 : _visibleEpisodeGridIndices.reduce(max);
+        log(_highestVisibleEpisodeGridIndex); // TODO remove after implementing color change
+      });
   }
 
   @override
@@ -283,49 +285,51 @@ class SeriesScreenState extends State<SeriesScreen> {
 
       if (anime != null) {
         // Store the original dominant color to check if it changes
-        final Color? originalDominantColor = series.dominantColor;
+        final Color? originalDominantColor = series.localPosterColor;
 
-        if (mounted) setState(() {
-          // Find the mapping with this ID
-          for (var i = 0; i < series.anilistMappings.length; i++) {
-            if (series.anilistMappings[i].anilistId == anilistId) {
-              series.anilistMappings[i] = AnilistMapping(
-                localPath: series.anilistMappings[i].localPath,
-                anilistId: anilistId,
-                title: series.anilistMappings[i].title,
-                lastSynced: now,
-                anilistData: anime,
-              );
+        // Update the mapping data
+        // Find the mapping with this ID
+        for (var i = 0; i < series.anilistMappings.length; i++) {
+          if (series.anilistMappings[i].anilistId == anilistId) {
+            series.anilistMappings[i] = AnilistMapping(
+              localPath: series.anilistMappings[i].localPath,
+              anilistId: anilistId,
+              title: series.anilistMappings[i].title,
+              lastSynced: now,
+              anilistData: anime,
+            );
 
-              // Also update the series.anilistData if this is the primary
-              if (series.primaryAnilistId == anilistId || series.primaryAnilistId == null) {
-                series.anilistData = anime;
-              }
-
-              break; // Break after updating the mapping
+            // Also update the series.anilistData if this is the primary
+            if (series.primaryAnilistId == anilistId || series.primaryAnilistId == null) {
+              series.anilistData = anime;
             }
+
+            break; // Break after updating the mapping
           }
-        });
+        }
 
         // Calculate dominant color (this will update it if needed)
-        await series.calculateDominantColor(forceRecalculate: true);
+        if (series.isAnilistPoster || series.isAnilistBanner) {
+          await series.anilistMappings.firstWhere((m) => m.anilistId == anilistId).calculateDominantColors();
+        } else {
+          await series.calculateLocalDominantColors(forceRecalculate: true);
+        }
 
         if (!mounted || this.series == null) return; // in case series was disposed during the async operation
-        Manager.setState(() => Manager.currentDominantColor = series.dominantColor);
+        Manager.currentDominantColor = series.localPosterColor;
 
         // Fetch episode titles from AniList
         try {
           final episodeTitlesUpdated = await Manager.episodeTitleService.fetchAndUpdateEpisodeTitles(series);
           if (episodeTitlesUpdated && mounted) {
             logTrace('Episode titles updated, refreshing UI');
-            setState(() {}); // Refresh UI to show updated episode titles
           }
         } catch (e) {
           logErr('Error fetching episode titles', e);
         }
 
         // Only save if dominant color changed or was newly set
-        if (originalDominantColor?.value != series.dominantColor?.value) {
+        if (originalDominantColor?.value != series.localPosterColor?.value) {
           // Save the updated series to the library
 
           final BuildContext? ctx;
@@ -348,6 +352,8 @@ class SeriesScreenState extends State<SeriesScreen> {
             }
           }
         }
+
+        if (mounted) Manager.setState();
       } else if (ConnectivityService().isOffline) {
         logWarn('Failed to fetch AniList details for ID: $anilistId - device is offline');
       } else {
@@ -461,7 +467,7 @@ class SeriesScreenState extends State<SeriesScreen> {
                                 Colors.transparent,
                               ],
                             ),
-                            color: enabled ? (series.dominantColor ?? Manager.accentColor).withOpacity(0.75) : Colors.transparent,
+                            color: enabled ? (series.localPosterColor ?? Manager.accentColor).withOpacity(0.75) : Colors.transparent,
                             image: _getBannerDecoration(snapshot.data),
                           ),
                           padding: const EdgeInsets.only(bottom: 16.0),
@@ -613,7 +619,7 @@ class SeriesScreenState extends State<SeriesScreen> {
             maxHeight: 150,
             minHeight: 45,
             controller: _descriptionController,
-            child: parser.parse(series.description!, selectable: true, selectionColor: series.dominantColor),
+            child: parser.parse(series.description!, selectable: true, selectionColor: series.localPosterColor),
           ),
         ],
       ],
@@ -671,9 +677,10 @@ class SeriesScreenState extends State<SeriesScreen> {
                 if (mounted) setState(() => series.primaryAnilistId = value);
 
                 if (libraryScreenKey.currentState != null) libraryScreenKey.currentState!.updateSeriesInSortCache(series);
-                
+
                 // Fetch and load Anilist data
-                if (mounted) setState(() => _loadAnilistData(value));
+                await _loadAnilistData(value);
+                if (mounted) setState(() {});
               }
             },
           ),
@@ -1030,7 +1037,7 @@ void linkWithAnilist(BuildContext context, Series? series, Future<void> Function
     id: 'linkAnilist:${series.path}',
     title: 'Link to Anilist',
     data: series.path,
-    barrierColor: series.dominantColor?.withOpacity(0.5),
+    barrierColor: series.localPosterColor?.withOpacity(0.5),
     canUserPopDialog: true,
     closeExistingDialogs: true,
     dialogDoPopCheck: () => Manager.canPopDialog, // Allow popping only when in view mode
@@ -1111,7 +1118,7 @@ void linkWithAnilist(BuildContext context, Series? series, Future<void> Function
         }
 
         // Update the series with the new mappings
-        Manager.currentDominantColor = series.dominantColor;
+        Manager.currentDominantColor = series.localPosterColor;
         Manager.setState();
       },
     ),

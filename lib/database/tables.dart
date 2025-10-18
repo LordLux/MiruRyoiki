@@ -18,8 +18,9 @@ class SeriesTable extends Table {
   /// Custom list name for unlinked series
   TextColumn get customListName => text().nullable()();
 
-  // JSON color
-  TextColumn get dominantColor => text().nullable()();
+  // JSON colors
+  TextColumn get localPosterColor => text().nullable()();
+  TextColumn get localBannerColor => text().nullable()();
 
   // Preferred sources + cached URLs
   TextColumn get preferredPosterSource => text().nullable()();
@@ -88,6 +89,10 @@ class AnilistMappingsTable extends Table {
   TextColumn get title => text().nullable()();
 
   DateTimeColumn get lastSynced => dateTime().nullable()();
+  
+  // JSON colors
+  TextColumn get posterColor => text().nullable()();
+  TextColumn get bannerColor => text().nullable()();
 
   // JSON cached data
   TextColumn get anilistData => text().nullable()();

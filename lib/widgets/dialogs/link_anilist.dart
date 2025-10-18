@@ -323,7 +323,7 @@ class AnilistLinkMultiContentState extends State<_AnilistLinkMultiContent> {
 
   Widget _buildMappingItem(AnilistMapping mapping) {
     return UnselectableTile(
-      color: _isNewlyAddedMapping(mapping) ? null : widget.series.dominantColor,
+      color: _isNewlyAddedMapping(mapping) ? null : widget.series.localPosterColor,
       // use the series effective poster if available
       icon: _isNewlyAddedMapping(mapping)
           ? Icon(FluentIcons.add_link, color: Manager.accentColor)
@@ -344,7 +344,7 @@ class AnilistLinkMultiContentState extends State<_AnilistLinkMultiContent> {
             child: Icon(
               FluentIcons.blocked12,
               size: 18,
-              color: _isNewlyAddedMapping(mapping) ? Manager.accentColor : widget.series.dominantColor,
+              color: _isNewlyAddedMapping(mapping) ? Manager.accentColor : widget.series.localPosterColor,
             ),
           ),
           onPressed: () {

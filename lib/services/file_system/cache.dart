@@ -91,7 +91,9 @@ class ImageCacheService {
   }
 
   // Get file path if cached, otherwise null
-  Future<String?> getCachedImagePath(String url) async {
+  Future<String?> getCachedImagePath(String? url) async {
+    if (url == null) return null;
+
     final file = await getCachedImageFile(url);
     return file?.path;
   }

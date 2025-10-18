@@ -35,7 +35,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? db]) : super(db ?? _openConnection());
 
   @override
-  int get schemaVersion => 9;
+  int get schemaVersion => 10;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -100,6 +100,37 @@ class AppDatabase extends _$AppDatabase {
             // Add format column to notifications table for anime format (MOVIE, TV, OVA, etc.)
             try {
               await m.issueCustomQuery('ALTER TABLE notifications ADD COLUMN format TEXT;');
+            } catch (e) {
+              // Column might already exist if migration was interrupted, ignore error
+              if (!e.toString().contains('duplicate column name')) rethrow;
+            }
+          }
+          if (from < 10) {
+            // Rename dominant_color to local_poster_color and add local_banner_color in series_table
+            // Add poster_color and banner_color columns to anilist_mappings_table
+            try {
+              await m.issueCustomQuery('ALTER TABLE series_table RENAME COLUMN dominant_color TO local_poster_color;');
+            } catch (e) {
+              // Column might already be renamed if migration was interrupted, ignore error
+              if (!e.toString().contains('no such column') && !e.toString().contains('duplicate column name')) rethrow;
+            }
+            
+            try {
+              await m.issueCustomQuery('ALTER TABLE series_table ADD COLUMN local_banner_color TEXT;');
+            } catch (e) {
+              // Column might already exist if migration was interrupted, ignore error
+              if (!e.toString().contains('duplicate column name')) rethrow;
+            }
+            
+            try {
+              await m.issueCustomQuery('ALTER TABLE anilist_mappings_table ADD COLUMN poster_color TEXT;');
+            } catch (e) {
+              // Column might already exist if migration was interrupted, ignore error
+              if (!e.toString().contains('duplicate column name')) rethrow;
+            }
+            
+            try {
+              await m.issueCustomQuery('ALTER TABLE anilist_mappings_table ADD COLUMN banner_color TEXT;');
             } catch (e) {
               // Column might already exist if migration was interrupted, ignore error
               if (!e.toString().contains('duplicate column name')) rethrow;

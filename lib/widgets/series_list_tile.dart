@@ -127,10 +127,10 @@ class _SeriesListTileState extends State<SeriesListTile> {
     final Color mainColor;
     switch (Manager.settings.libColView) {
       case LibraryColorView.alwaysDominant:
-        mainColor = widget.series.dominantColor ?? Manager.genericGray;
+        mainColor = widget.series.localPosterColor ?? Manager.genericGray;
         break;
       case LibraryColorView.hoverDominant:
-        mainColor = _isHovering ? (widget.series.dominantColor ?? Manager.genericGray) : Manager.genericGray;
+        mainColor = _isHovering ? (widget.series.localPosterColor ?? Manager.genericGray) : Manager.genericGray;
         break;
       case LibraryColorView.alwaysAccent:
         mainColor = Manager.accentColor;
@@ -149,7 +149,7 @@ class _SeriesListTileState extends State<SeriesListTile> {
       final progressText = '${widget.series.watchedEpisodes} / ${widget.series.totalEpisodes}$extra';
 
       return KeyedSubtree(
-        key: ValueKey('${widget.series.path}-${widget.series.dominantColor?.value ?? 0}-list'),
+        key: ValueKey('${widget.series.path}-${widget.series.localPosterColor?.value ?? 0}-list'),
         child: SeriesContextMenu(
           key: _contextMenuKey,
           series: widget.series,
@@ -225,14 +225,14 @@ class _SeriesListTileState extends State<SeriesListTile> {
                                             height: 2.5,
                                             decoration: BoxDecoration(
                                               borderRadius: BorderRadius.circular(8),
-                                              color: Color.lerp(Colors.black.withOpacity(0.2), widget.series.dominantColor, .4),
+                                              color: Color.lerp(Colors.black.withOpacity(0.2), widget.series.localPosterColor, .4),
                                             ),
                                             child: Align(
                                               alignment: Alignment.topLeft,
                                               child: Container(
                                                 decoration: BoxDecoration(
                                                   borderRadius: BorderRadius.circular(8),
-                                                  color: widget.series.watchedPercentage == 0 ? Colors.transparent : widget.series.dominantColor,
+                                                  color: widget.series.watchedPercentage == 0 ? Colors.transparent : widget.series.localPosterColor,
                                                 ),
                                                 width: constraints.maxWidth * widget.series.watchedPercentage,
                                               ),

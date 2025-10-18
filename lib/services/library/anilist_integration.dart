@@ -259,7 +259,8 @@ extension LibraryAnilistIntegration on Library {
       series.primaryAnilistId = anilistId;
 
       // When first linked, update dominant color according to effective source
-      await series.calculateDominantColor(forceRecalculate: true);
+      await series.calculateLocalDominantColors(forceRecalculate: true);
+      // TODO calculate anilist colors
     }
 
     await seriesDao.syncSeries(series);

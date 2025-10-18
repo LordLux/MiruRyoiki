@@ -141,10 +141,10 @@ class _SeriesCardState extends State<SeriesCard> {
     final Color mainColor;
     switch (Manager.settings.libColView) {
       case LibraryColorView.alwaysDominant:
-        mainColor = widget.series.dominantColor ?? Manager.genericGray;
+        mainColor = widget.series.localPosterColor ?? Manager.genericGray;
         break;
       case LibraryColorView.hoverDominant:
-        mainColor = _isHovering ? (widget.series.dominantColor ?? Manager.genericGray) : Manager.genericGray;
+        mainColor = _isHovering ? (widget.series.localPosterColor ?? Manager.genericGray) : Manager.genericGray;
         break;
       case LibraryColorView.alwaysAccent:
         mainColor = Manager.accentColor;
@@ -157,7 +157,7 @@ class _SeriesCardState extends State<SeriesCard> {
         break;
     }
     return KeyedSubtree(
-      key: ValueKey('${widget.series.path}-${widget.series.dominantColor?.value ?? 0}'),
+      key: ValueKey('${widget.series.path}-${widget.series.localPosterColor?.value ?? 0}'),
       child: SeriesContextMenu(
         key: _contextMenuKey,
         series: widget.series,
@@ -223,12 +223,12 @@ class _SeriesCardState extends State<SeriesCard> {
                                 duration: getDuration(const Duration(milliseconds: 400)),
                                 width: constraints.maxWidth,
                                 height: 4,
-                                color: Color.lerp(Colors.black.withOpacity(0.2), widget.series.dominantColor, .4),
+                                color: Color.lerp(Colors.black.withOpacity(0.2), widget.series.localPosterColor, .4),
                                 child: Align(
                                   alignment: Alignment.topLeft,
                                   child: AnimatedContainer(
                                     duration: getDuration(const Duration(milliseconds: 400)),
-                                    color: widget.series.watchedPercentage == 0 ? Colors.transparent : widget.series.dominantColor,
+                                    color: widget.series.watchedPercentage == 0 ? Colors.transparent : widget.series.localPosterColor,
                                     width: constraints.maxWidth * widget.series.watchedPercentage,
                                   ),
                                 ),
@@ -276,12 +276,12 @@ class _SeriesCardState extends State<SeriesCard> {
                                       children: [
                                         Text(
                                           '${widget.series.watchedEpisodes} / ${widget.series.totalEpisodes} Episodes',
-                                          style: Manager.miniBodyStyle.copyWith(color: Color.lerp(widget.series.dominantColor, Colors.white, .7)),
+                                          style: Manager.miniBodyStyle.copyWith(color: Color.lerp(widget.series.localPosterColor, Colors.white, .7)),
                                         ),
                                         const Spacer(),
                                         Text(
                                           '${(widget.series.watchedPercentage * 100).round()}%',
-                                          style: Manager.miniBodyStyle.copyWith(color: Color.lerp(widget.series.dominantColor, Colors.white, .7)),
+                                          style: Manager.miniBodyStyle.copyWith(color: Color.lerp(widget.series.localPosterColor, Colors.white, .7)),
                                         ),
                                       ],
                                     ),

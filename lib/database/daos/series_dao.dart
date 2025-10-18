@@ -201,6 +201,8 @@ class SeriesDao extends DatabaseAccessor<AppDatabase> with _$SeriesDaoMixin {
       anilistId: Value(m.anilistId),
       title: Value(m.title),
       lastSynced: Value(m.lastSynced),
+      posterColor: Value(const ColorJsonConverter().toSql(m.posterColor)),
+      bannerColor: Value(const ColorJsonConverter().toSql(m.bannerColor)),
       anilistData: Value(m.anilistData != null ? jsonEncode(m.anilistData!.toJson()) : null),
     );
   }
@@ -226,7 +228,8 @@ class SeriesDao extends DatabaseAccessor<AppDatabase> with _$SeriesDaoMixin {
     PathString? folderPosterPath,
     PathString? folderBannerPath,
     double? watchedPercentage,
-    Color? dominantColor,
+    Color? localPosterColor,
+    Color? localBannerColor,
     ImageSource? preferredPosterSource,
     ImageSource? preferredBannerSource,
     String? anilistPosterUrl,
@@ -245,9 +248,12 @@ class SeriesDao extends DatabaseAccessor<AppDatabase> with _$SeriesDaoMixin {
       watchedPercentage: watchedPercentage == null //
           ? const Value.absent()
           : Value(watchedPercentage),
-      dominantColor: dominantColor == null //
+      localPosterColor: localPosterColor == null //
           ? const Value.absent()
-          : Value(const ColorJsonConverter().toSql(dominantColor)),
+          : Value(const ColorJsonConverter().toSql(localPosterColor)),
+      localBannerColor: localBannerColor == null //
+          ? const Value.absent()
+          : Value(const ColorJsonConverter().toSql(localBannerColor)),
       preferredPosterSource: preferredPosterSource == null //
           ? const Value.absent()
           : Value(preferredPosterSource.name),
@@ -281,7 +287,8 @@ class SeriesDao extends DatabaseAccessor<AppDatabase> with _$SeriesDaoMixin {
       primaryAnilistId: Value(s.primaryAnilistId),
       isHidden: Value(s.isForcedHidden),
       customListName: Value(s.customListName),
-      dominantColor: Value(const ColorJsonConverter().toSql(s.dominantColor)),
+      localPosterColor: Value(const ColorJsonConverter().toSql(s.localPosterColor)),
+      localBannerColor: Value(const ColorJsonConverter().toSql(s.localBannerColor)),
       preferredPosterSource: Value(s.preferredPosterSource?.name),
       preferredBannerSource: Value(s.preferredBannerSource?.name),
       anilistPosterUrl: Value(s.anilistPosterUrl),
@@ -324,6 +331,8 @@ class SeriesDao extends DatabaseAccessor<AppDatabase> with _$SeriesDaoMixin {
         anilistId: d.anilistId,
         title: d.title,
         lastSynced: d.lastSynced,
+        posterColor: const ColorJsonConverter().fromSql(d.posterColor),
+        bannerColor: const ColorJsonConverter().fromSql(d.bannerColor),
         anilistData: d.anilistData == null ? null : AnilistAnime.fromJson(jsonDecode(d.anilistData!)),
       );
 
@@ -339,7 +348,8 @@ class SeriesDao extends DatabaseAccessor<AppDatabase> with _$SeriesDaoMixin {
     )).toList(),
       relatedMedia: const [], // gestisci se necessario come season speciale
       anilistMappings: mappings,
-      dominantColor: const ColorJsonConverter().fromSql(row.dominantColor),
+      posterColor: const ColorJsonConverter().fromSql(row.localPosterColor),
+      bannerColor: const ColorJsonConverter().fromSql(row.localBannerColor),
       preferredPosterSource: const ImageSourceConverter().fromSql(row.preferredPosterSource),
       preferredBannerSource: const ImageSourceConverter().fromSql(row.preferredBannerSource),
       anilistPoster: row.anilistPosterUrl,

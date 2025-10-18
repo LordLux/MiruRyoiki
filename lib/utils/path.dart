@@ -78,6 +78,8 @@ class PathString {
     final saveDir = miruRyoikiSaveDirectory;
     return PathUtils.relativePath(path, saveDir.path);
   }
+  
+  static bool valid(PathString? thisPath) => thisPath != null && thisPath.pathMaybe != null && thisPath.pathMaybe!.isNotEmpty;
 
   @override
   String toString() => "$pathMaybe";

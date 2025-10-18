@@ -71,7 +71,7 @@ class ImageSelectionDialog extends ManagedDialog {
                   seriesScreenState.posterChangeDisabled = false;
                   seriesScreenState.bannerChangeDisabled = false;
                 }
-                Manager.currentDominantColor = seriesScreenState!.series?.dominantColor;
+                Manager.currentDominantColor = seriesScreenState!.series?.localPosterColor;
                 Manager.setState();
               });
             },

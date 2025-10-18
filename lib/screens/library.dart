@@ -780,9 +780,9 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
         final cachedSeries = _sortedSeriesCache![i];
         final liveSeries = liveSeriesMap[cachedSeries.path.path];
 
-        if (liveSeries != null && liveSeries.dominantColor != cachedSeries.dominantColor) {
+        if (liveSeries != null && liveSeries.localPosterColor != cachedSeries.localPosterColor) {
           // Update the cached series with the new dominant color
-          _sortedSeriesCache![i] = cachedSeries.copyWith(dominantColor: liveSeries.dominantColor);
+          _sortedSeriesCache![i] = cachedSeries.copyWith(posterColor: liveSeries.localPosterColor);
         } else {
           logTrace('No live series found for path: ${cachedSeries.path.path}');
         }
@@ -799,7 +799,7 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
 
             if (liveSeries != null) {
               // Update the cached series with the new dominant color
-              groupSeriesList[i] = cachedSeries.copyWith(dominantColor: liveSeries.dominantColor);
+              groupSeriesList[i] = cachedSeries.copyWith(posterColor: liveSeries.localPosterColor);
             } else {
               logTrace('No live series found for path: ${cachedSeries.path.path}');
             }

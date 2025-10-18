@@ -64,11 +64,17 @@ class $SeriesTableTable extends SeriesTable
   late final GeneratedColumn<String> customListName = GeneratedColumn<String>(
       'custom_list_name', aliasedName, true,
       type: DriftSqlType.string, requiredDuringInsert: false);
-  static const VerificationMeta _dominantColorMeta =
-      const VerificationMeta('dominantColor');
+  static const VerificationMeta _localPosterColorMeta =
+      const VerificationMeta('localPosterColor');
   @override
-  late final GeneratedColumn<String> dominantColor = GeneratedColumn<String>(
-      'dominant_color', aliasedName, true,
+  late final GeneratedColumn<String> localPosterColor = GeneratedColumn<String>(
+      'local_poster_color', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _localBannerColorMeta =
+      const VerificationMeta('localBannerColor');
+  @override
+  late final GeneratedColumn<String> localBannerColor = GeneratedColumn<String>(
+      'local_banner_color', aliasedName, true,
       type: DriftSqlType.string, requiredDuringInsert: false);
   static const VerificationMeta _preferredPosterSourceMeta =
       const VerificationMeta('preferredPosterSource');
@@ -128,7 +134,8 @@ class $SeriesTableTable extends SeriesTable
         primaryAnilistId,
         isHidden,
         customListName,
-        dominantColor,
+        localPosterColor,
+        localBannerColor,
         preferredPosterSource,
         preferredBannerSource,
         anilistPosterUrl,
@@ -172,11 +179,17 @@ class $SeriesTableTable extends SeriesTable
           customListName.isAcceptableOrUnknown(
               data['custom_list_name']!, _customListNameMeta));
     }
-    if (data.containsKey('dominant_color')) {
+    if (data.containsKey('local_poster_color')) {
       context.handle(
-          _dominantColorMeta,
-          dominantColor.isAcceptableOrUnknown(
-              data['dominant_color']!, _dominantColorMeta));
+          _localPosterColorMeta,
+          localPosterColor.isAcceptableOrUnknown(
+              data['local_poster_color']!, _localPosterColorMeta));
+    }
+    if (data.containsKey('local_banner_color')) {
+      context.handle(
+          _localBannerColorMeta,
+          localBannerColor.isAcceptableOrUnknown(
+              data['local_banner_color']!, _localBannerColorMeta));
     }
     if (data.containsKey('preferred_poster_source')) {
       context.handle(
@@ -244,8 +257,10 @@ class $SeriesTableTable extends SeriesTable
           .read(DriftSqlType.bool, data['${effectivePrefix}is_hidden'])!,
       customListName: attachedDatabase.typeMapping.read(
           DriftSqlType.string, data['${effectivePrefix}custom_list_name']),
-      dominantColor: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}dominant_color']),
+      localPosterColor: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}local_poster_color']),
+      localBannerColor: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}local_banner_color']),
       preferredPosterSource: attachedDatabase.typeMapping.read(
           DriftSqlType.string,
           data['${effectivePrefix}preferred_poster_source']),
@@ -293,7 +308,8 @@ class SeriesTableData extends DataClass implements Insertable<SeriesTableData> {
 
   /// Custom list name for unlinked series
   final String? customListName;
-  final String? dominantColor;
+  final String? localPosterColor;
+  final String? localBannerColor;
   final String? preferredPosterSource;
   final String? preferredBannerSource;
   final String? anilistPosterUrl;
@@ -310,7 +326,8 @@ class SeriesTableData extends DataClass implements Insertable<SeriesTableData> {
       this.primaryAnilistId,
       required this.isHidden,
       this.customListName,
-      this.dominantColor,
+      this.localPosterColor,
+      this.localBannerColor,
       this.preferredPosterSource,
       this.preferredBannerSource,
       this.anilistPosterUrl,
@@ -344,8 +361,11 @@ class SeriesTableData extends DataClass implements Insertable<SeriesTableData> {
     if (!nullToAbsent || customListName != null) {
       map['custom_list_name'] = Variable<String>(customListName);
     }
-    if (!nullToAbsent || dominantColor != null) {
-      map['dominant_color'] = Variable<String>(dominantColor);
+    if (!nullToAbsent || localPosterColor != null) {
+      map['local_poster_color'] = Variable<String>(localPosterColor);
+    }
+    if (!nullToAbsent || localBannerColor != null) {
+      map['local_banner_color'] = Variable<String>(localBannerColor);
     }
     if (!nullToAbsent || preferredPosterSource != null) {
       map['preferred_poster_source'] = Variable<String>(preferredPosterSource);
@@ -383,9 +403,12 @@ class SeriesTableData extends DataClass implements Insertable<SeriesTableData> {
       customListName: customListName == null && nullToAbsent
           ? const Value.absent()
           : Value(customListName),
-      dominantColor: dominantColor == null && nullToAbsent
+      localPosterColor: localPosterColor == null && nullToAbsent
           ? const Value.absent()
-          : Value(dominantColor),
+          : Value(localPosterColor),
+      localBannerColor: localBannerColor == null && nullToAbsent
+          ? const Value.absent()
+          : Value(localBannerColor),
       preferredPosterSource: preferredPosterSource == null && nullToAbsent
           ? const Value.absent()
           : Value(preferredPosterSource),
@@ -418,7 +441,8 @@ class SeriesTableData extends DataClass implements Insertable<SeriesTableData> {
       primaryAnilistId: serializer.fromJson<int?>(json['primaryAnilistId']),
       isHidden: serializer.fromJson<bool>(json['isHidden']),
       customListName: serializer.fromJson<String?>(json['customListName']),
-      dominantColor: serializer.fromJson<String?>(json['dominantColor']),
+      localPosterColor: serializer.fromJson<String?>(json['localPosterColor']),
+      localBannerColor: serializer.fromJson<String?>(json['localBannerColor']),
       preferredPosterSource:
           serializer.fromJson<String?>(json['preferredPosterSource']),
       preferredBannerSource:
@@ -442,7 +466,8 @@ class SeriesTableData extends DataClass implements Insertable<SeriesTableData> {
       'primaryAnilistId': serializer.toJson<int?>(primaryAnilistId),
       'isHidden': serializer.toJson<bool>(isHidden),
       'customListName': serializer.toJson<String?>(customListName),
-      'dominantColor': serializer.toJson<String?>(dominantColor),
+      'localPosterColor': serializer.toJson<String?>(localPosterColor),
+      'localBannerColor': serializer.toJson<String?>(localBannerColor),
       'preferredPosterSource':
           serializer.toJson<String?>(preferredPosterSource),
       'preferredBannerSource':
@@ -464,7 +489,8 @@ class SeriesTableData extends DataClass implements Insertable<SeriesTableData> {
           Value<int?> primaryAnilistId = const Value.absent(),
           bool? isHidden,
           Value<String?> customListName = const Value.absent(),
-          Value<String?> dominantColor = const Value.absent(),
+          Value<String?> localPosterColor = const Value.absent(),
+          Value<String?> localBannerColor = const Value.absent(),
           Value<String?> preferredPosterSource = const Value.absent(),
           Value<String?> preferredBannerSource = const Value.absent(),
           Value<String?> anilistPosterUrl = const Value.absent(),
@@ -488,8 +514,12 @@ class SeriesTableData extends DataClass implements Insertable<SeriesTableData> {
         isHidden: isHidden ?? this.isHidden,
         customListName:
             customListName.present ? customListName.value : this.customListName,
-        dominantColor:
-            dominantColor.present ? dominantColor.value : this.dominantColor,
+        localPosterColor: localPosterColor.present
+            ? localPosterColor.value
+            : this.localPosterColor,
+        localBannerColor: localBannerColor.present
+            ? localBannerColor.value
+            : this.localBannerColor,
         preferredPosterSource: preferredPosterSource.present
             ? preferredPosterSource.value
             : this.preferredPosterSource,
@@ -524,9 +554,12 @@ class SeriesTableData extends DataClass implements Insertable<SeriesTableData> {
       customListName: data.customListName.present
           ? data.customListName.value
           : this.customListName,
-      dominantColor: data.dominantColor.present
-          ? data.dominantColor.value
-          : this.dominantColor,
+      localPosterColor: data.localPosterColor.present
+          ? data.localPosterColor.value
+          : this.localPosterColor,
+      localBannerColor: data.localBannerColor.present
+          ? data.localBannerColor.value
+          : this.localBannerColor,
       preferredPosterSource: data.preferredPosterSource.present
           ? data.preferredPosterSource.value
           : this.preferredPosterSource,
@@ -558,7 +591,8 @@ class SeriesTableData extends DataClass implements Insertable<SeriesTableData> {
           ..write('primaryAnilistId: $primaryAnilistId, ')
           ..write('isHidden: $isHidden, ')
           ..write('customListName: $customListName, ')
-          ..write('dominantColor: $dominantColor, ')
+          ..write('localPosterColor: $localPosterColor, ')
+          ..write('localBannerColor: $localBannerColor, ')
           ..write('preferredPosterSource: $preferredPosterSource, ')
           ..write('preferredBannerSource: $preferredBannerSource, ')
           ..write('anilistPosterUrl: $anilistPosterUrl, ')
@@ -580,7 +614,8 @@ class SeriesTableData extends DataClass implements Insertable<SeriesTableData> {
       primaryAnilistId,
       isHidden,
       customListName,
-      dominantColor,
+      localPosterColor,
+      localBannerColor,
       preferredPosterSource,
       preferredBannerSource,
       anilistPosterUrl,
@@ -600,7 +635,8 @@ class SeriesTableData extends DataClass implements Insertable<SeriesTableData> {
           other.primaryAnilistId == this.primaryAnilistId &&
           other.isHidden == this.isHidden &&
           other.customListName == this.customListName &&
-          other.dominantColor == this.dominantColor &&
+          other.localPosterColor == this.localPosterColor &&
+          other.localBannerColor == this.localBannerColor &&
           other.preferredPosterSource == this.preferredPosterSource &&
           other.preferredBannerSource == this.preferredBannerSource &&
           other.anilistPosterUrl == this.anilistPosterUrl &&
@@ -619,7 +655,8 @@ class SeriesTableCompanion extends UpdateCompanion<SeriesTableData> {
   final Value<int?> primaryAnilistId;
   final Value<bool> isHidden;
   final Value<String?> customListName;
-  final Value<String?> dominantColor;
+  final Value<String?> localPosterColor;
+  final Value<String?> localBannerColor;
   final Value<String?> preferredPosterSource;
   final Value<String?> preferredBannerSource;
   final Value<String?> anilistPosterUrl;
@@ -636,7 +673,8 @@ class SeriesTableCompanion extends UpdateCompanion<SeriesTableData> {
     this.primaryAnilistId = const Value.absent(),
     this.isHidden = const Value.absent(),
     this.customListName = const Value.absent(),
-    this.dominantColor = const Value.absent(),
+    this.localPosterColor = const Value.absent(),
+    this.localBannerColor = const Value.absent(),
     this.preferredPosterSource = const Value.absent(),
     this.preferredBannerSource = const Value.absent(),
     this.anilistPosterUrl = const Value.absent(),
@@ -654,7 +692,8 @@ class SeriesTableCompanion extends UpdateCompanion<SeriesTableData> {
     this.primaryAnilistId = const Value.absent(),
     this.isHidden = const Value.absent(),
     this.customListName = const Value.absent(),
-    this.dominantColor = const Value.absent(),
+    this.localPosterColor = const Value.absent(),
+    this.localBannerColor = const Value.absent(),
     this.preferredPosterSource = const Value.absent(),
     this.preferredBannerSource = const Value.absent(),
     this.anilistPosterUrl = const Value.absent(),
@@ -673,7 +712,8 @@ class SeriesTableCompanion extends UpdateCompanion<SeriesTableData> {
     Expression<int>? primaryAnilistId,
     Expression<bool>? isHidden,
     Expression<String>? customListName,
-    Expression<String>? dominantColor,
+    Expression<String>? localPosterColor,
+    Expression<String>? localBannerColor,
     Expression<String>? preferredPosterSource,
     Expression<String>? preferredBannerSource,
     Expression<String>? anilistPosterUrl,
@@ -691,7 +731,8 @@ class SeriesTableCompanion extends UpdateCompanion<SeriesTableData> {
       if (primaryAnilistId != null) 'primary_anilist_id': primaryAnilistId,
       if (isHidden != null) 'is_hidden': isHidden,
       if (customListName != null) 'custom_list_name': customListName,
-      if (dominantColor != null) 'dominant_color': dominantColor,
+      if (localPosterColor != null) 'local_poster_color': localPosterColor,
+      if (localBannerColor != null) 'local_banner_color': localBannerColor,
       if (preferredPosterSource != null)
         'preferred_poster_source': preferredPosterSource,
       if (preferredBannerSource != null)
@@ -713,7 +754,8 @@ class SeriesTableCompanion extends UpdateCompanion<SeriesTableData> {
       Value<int?>? primaryAnilistId,
       Value<bool>? isHidden,
       Value<String?>? customListName,
-      Value<String?>? dominantColor,
+      Value<String?>? localPosterColor,
+      Value<String?>? localBannerColor,
       Value<String?>? preferredPosterSource,
       Value<String?>? preferredBannerSource,
       Value<String?>? anilistPosterUrl,
@@ -730,7 +772,8 @@ class SeriesTableCompanion extends UpdateCompanion<SeriesTableData> {
       primaryAnilistId: primaryAnilistId ?? this.primaryAnilistId,
       isHidden: isHidden ?? this.isHidden,
       customListName: customListName ?? this.customListName,
-      dominantColor: dominantColor ?? this.dominantColor,
+      localPosterColor: localPosterColor ?? this.localPosterColor,
+      localBannerColor: localBannerColor ?? this.localBannerColor,
       preferredPosterSource:
           preferredPosterSource ?? this.preferredPosterSource,
       preferredBannerSource:
@@ -775,8 +818,11 @@ class SeriesTableCompanion extends UpdateCompanion<SeriesTableData> {
     if (customListName.present) {
       map['custom_list_name'] = Variable<String>(customListName.value);
     }
-    if (dominantColor.present) {
-      map['dominant_color'] = Variable<String>(dominantColor.value);
+    if (localPosterColor.present) {
+      map['local_poster_color'] = Variable<String>(localPosterColor.value);
+    }
+    if (localBannerColor.present) {
+      map['local_banner_color'] = Variable<String>(localBannerColor.value);
     }
     if (preferredPosterSource.present) {
       map['preferred_poster_source'] =
@@ -815,7 +861,8 @@ class SeriesTableCompanion extends UpdateCompanion<SeriesTableData> {
           ..write('primaryAnilistId: $primaryAnilistId, ')
           ..write('isHidden: $isHidden, ')
           ..write('customListName: $customListName, ')
-          ..write('dominantColor: $dominantColor, ')
+          ..write('localPosterColor: $localPosterColor, ')
+          ..write('localBannerColor: $localBannerColor, ')
           ..write('preferredPosterSource: $preferredPosterSource, ')
           ..write('preferredBannerSource: $preferredBannerSource, ')
           ..write('anilistPosterUrl: $anilistPosterUrl, ')
@@ -1714,6 +1761,18 @@ class $AnilistMappingsTableTable extends AnilistMappingsTable
   late final GeneratedColumn<DateTime> lastSynced = GeneratedColumn<DateTime>(
       'last_synced', aliasedName, true,
       type: DriftSqlType.dateTime, requiredDuringInsert: false);
+  static const VerificationMeta _posterColorMeta =
+      const VerificationMeta('posterColor');
+  @override
+  late final GeneratedColumn<String> posterColor = GeneratedColumn<String>(
+      'poster_color', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _bannerColorMeta =
+      const VerificationMeta('bannerColor');
+  @override
+  late final GeneratedColumn<String> bannerColor = GeneratedColumn<String>(
+      'banner_color', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
   static const VerificationMeta _anilistDataMeta =
       const VerificationMeta('anilistData');
   @override
@@ -1721,8 +1780,17 @@ class $AnilistMappingsTableTable extends AnilistMappingsTable
       'anilist_data', aliasedName, true,
       type: DriftSqlType.string, requiredDuringInsert: false);
   @override
-  List<GeneratedColumn> get $columns =>
-      [id, seriesId, localPath, anilistId, title, lastSynced, anilistData];
+  List<GeneratedColumn> get $columns => [
+        id,
+        seriesId,
+        localPath,
+        anilistId,
+        title,
+        lastSynced,
+        posterColor,
+        bannerColor,
+        anilistData
+      ];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -1759,6 +1827,18 @@ class $AnilistMappingsTableTable extends AnilistMappingsTable
           lastSynced.isAcceptableOrUnknown(
               data['last_synced']!, _lastSyncedMeta));
     }
+    if (data.containsKey('poster_color')) {
+      context.handle(
+          _posterColorMeta,
+          posterColor.isAcceptableOrUnknown(
+              data['poster_color']!, _posterColorMeta));
+    }
+    if (data.containsKey('banner_color')) {
+      context.handle(
+          _bannerColorMeta,
+          bannerColor.isAcceptableOrUnknown(
+              data['banner_color']!, _bannerColorMeta));
+    }
     if (data.containsKey('anilist_data')) {
       context.handle(
           _anilistDataMeta,
@@ -1788,6 +1868,10 @@ class $AnilistMappingsTableTable extends AnilistMappingsTable
           .read(DriftSqlType.string, data['${effectivePrefix}title']),
       lastSynced: attachedDatabase.typeMapping
           .read(DriftSqlType.dateTime, data['${effectivePrefix}last_synced']),
+      posterColor: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}poster_color']),
+      bannerColor: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}banner_color']),
       anilistData: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}anilist_data']),
     );
@@ -1810,6 +1894,8 @@ class AnilistMappingsTableData extends DataClass
   final int anilistId;
   final String? title;
   final DateTime? lastSynced;
+  final String? posterColor;
+  final String? bannerColor;
   final String? anilistData;
   const AnilistMappingsTableData(
       {required this.id,
@@ -1818,6 +1904,8 @@ class AnilistMappingsTableData extends DataClass
       required this.anilistId,
       this.title,
       this.lastSynced,
+      this.posterColor,
+      this.bannerColor,
       this.anilistData});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -1834,6 +1922,12 @@ class AnilistMappingsTableData extends DataClass
     }
     if (!nullToAbsent || lastSynced != null) {
       map['last_synced'] = Variable<DateTime>(lastSynced);
+    }
+    if (!nullToAbsent || posterColor != null) {
+      map['poster_color'] = Variable<String>(posterColor);
+    }
+    if (!nullToAbsent || bannerColor != null) {
+      map['banner_color'] = Variable<String>(bannerColor);
     }
     if (!nullToAbsent || anilistData != null) {
       map['anilist_data'] = Variable<String>(anilistData);
@@ -1852,6 +1946,12 @@ class AnilistMappingsTableData extends DataClass
       lastSynced: lastSynced == null && nullToAbsent
           ? const Value.absent()
           : Value(lastSynced),
+      posterColor: posterColor == null && nullToAbsent
+          ? const Value.absent()
+          : Value(posterColor),
+      bannerColor: bannerColor == null && nullToAbsent
+          ? const Value.absent()
+          : Value(bannerColor),
       anilistData: anilistData == null && nullToAbsent
           ? const Value.absent()
           : Value(anilistData),
@@ -1868,6 +1968,8 @@ class AnilistMappingsTableData extends DataClass
       anilistId: serializer.fromJson<int>(json['anilistId']),
       title: serializer.fromJson<String?>(json['title']),
       lastSynced: serializer.fromJson<DateTime?>(json['lastSynced']),
+      posterColor: serializer.fromJson<String?>(json['posterColor']),
+      bannerColor: serializer.fromJson<String?>(json['bannerColor']),
       anilistData: serializer.fromJson<String?>(json['anilistData']),
     );
   }
@@ -1881,6 +1983,8 @@ class AnilistMappingsTableData extends DataClass
       'anilistId': serializer.toJson<int>(anilistId),
       'title': serializer.toJson<String?>(title),
       'lastSynced': serializer.toJson<DateTime?>(lastSynced),
+      'posterColor': serializer.toJson<String?>(posterColor),
+      'bannerColor': serializer.toJson<String?>(bannerColor),
       'anilistData': serializer.toJson<String?>(anilistData),
     };
   }
@@ -1892,6 +1996,8 @@ class AnilistMappingsTableData extends DataClass
           int? anilistId,
           Value<String?> title = const Value.absent(),
           Value<DateTime?> lastSynced = const Value.absent(),
+          Value<String?> posterColor = const Value.absent(),
+          Value<String?> bannerColor = const Value.absent(),
           Value<String?> anilistData = const Value.absent()}) =>
       AnilistMappingsTableData(
         id: id ?? this.id,
@@ -1900,6 +2006,8 @@ class AnilistMappingsTableData extends DataClass
         anilistId: anilistId ?? this.anilistId,
         title: title.present ? title.value : this.title,
         lastSynced: lastSynced.present ? lastSynced.value : this.lastSynced,
+        posterColor: posterColor.present ? posterColor.value : this.posterColor,
+        bannerColor: bannerColor.present ? bannerColor.value : this.bannerColor,
         anilistData: anilistData.present ? anilistData.value : this.anilistData,
       );
   AnilistMappingsTableData copyWithCompanion(
@@ -1912,6 +2020,10 @@ class AnilistMappingsTableData extends DataClass
       title: data.title.present ? data.title.value : this.title,
       lastSynced:
           data.lastSynced.present ? data.lastSynced.value : this.lastSynced,
+      posterColor:
+          data.posterColor.present ? data.posterColor.value : this.posterColor,
+      bannerColor:
+          data.bannerColor.present ? data.bannerColor.value : this.bannerColor,
       anilistData:
           data.anilistData.present ? data.anilistData.value : this.anilistData,
     );
@@ -1926,14 +2038,16 @@ class AnilistMappingsTableData extends DataClass
           ..write('anilistId: $anilistId, ')
           ..write('title: $title, ')
           ..write('lastSynced: $lastSynced, ')
+          ..write('posterColor: $posterColor, ')
+          ..write('bannerColor: $bannerColor, ')
           ..write('anilistData: $anilistData')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(
-      id, seriesId, localPath, anilistId, title, lastSynced, anilistData);
+  int get hashCode => Object.hash(id, seriesId, localPath, anilistId, title,
+      lastSynced, posterColor, bannerColor, anilistData);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -1944,6 +2058,8 @@ class AnilistMappingsTableData extends DataClass
           other.anilistId == this.anilistId &&
           other.title == this.title &&
           other.lastSynced == this.lastSynced &&
+          other.posterColor == this.posterColor &&
+          other.bannerColor == this.bannerColor &&
           other.anilistData == this.anilistData);
 }
 
@@ -1955,6 +2071,8 @@ class AnilistMappingsTableCompanion
   final Value<int> anilistId;
   final Value<String?> title;
   final Value<DateTime?> lastSynced;
+  final Value<String?> posterColor;
+  final Value<String?> bannerColor;
   final Value<String?> anilistData;
   const AnilistMappingsTableCompanion({
     this.id = const Value.absent(),
@@ -1963,6 +2081,8 @@ class AnilistMappingsTableCompanion
     this.anilistId = const Value.absent(),
     this.title = const Value.absent(),
     this.lastSynced = const Value.absent(),
+    this.posterColor = const Value.absent(),
+    this.bannerColor = const Value.absent(),
     this.anilistData = const Value.absent(),
   });
   AnilistMappingsTableCompanion.insert({
@@ -1972,6 +2092,8 @@ class AnilistMappingsTableCompanion
     required int anilistId,
     this.title = const Value.absent(),
     this.lastSynced = const Value.absent(),
+    this.posterColor = const Value.absent(),
+    this.bannerColor = const Value.absent(),
     this.anilistData = const Value.absent(),
   })  : seriesId = Value(seriesId),
         localPath = Value(localPath),
@@ -1983,6 +2105,8 @@ class AnilistMappingsTableCompanion
     Expression<int>? anilistId,
     Expression<String>? title,
     Expression<DateTime>? lastSynced,
+    Expression<String>? posterColor,
+    Expression<String>? bannerColor,
     Expression<String>? anilistData,
   }) {
     return RawValuesInsertable({
@@ -1992,6 +2116,8 @@ class AnilistMappingsTableCompanion
       if (anilistId != null) 'anilist_id': anilistId,
       if (title != null) 'title': title,
       if (lastSynced != null) 'last_synced': lastSynced,
+      if (posterColor != null) 'poster_color': posterColor,
+      if (bannerColor != null) 'banner_color': bannerColor,
       if (anilistData != null) 'anilist_data': anilistData,
     });
   }
@@ -2003,6 +2129,8 @@ class AnilistMappingsTableCompanion
       Value<int>? anilistId,
       Value<String?>? title,
       Value<DateTime?>? lastSynced,
+      Value<String?>? posterColor,
+      Value<String?>? bannerColor,
       Value<String?>? anilistData}) {
     return AnilistMappingsTableCompanion(
       id: id ?? this.id,
@@ -2011,6 +2139,8 @@ class AnilistMappingsTableCompanion
       anilistId: anilistId ?? this.anilistId,
       title: title ?? this.title,
       lastSynced: lastSynced ?? this.lastSynced,
+      posterColor: posterColor ?? this.posterColor,
+      bannerColor: bannerColor ?? this.bannerColor,
       anilistData: anilistData ?? this.anilistData,
     );
   }
@@ -2038,6 +2168,12 @@ class AnilistMappingsTableCompanion
     if (lastSynced.present) {
       map['last_synced'] = Variable<DateTime>(lastSynced.value);
     }
+    if (posterColor.present) {
+      map['poster_color'] = Variable<String>(posterColor.value);
+    }
+    if (bannerColor.present) {
+      map['banner_color'] = Variable<String>(bannerColor.value);
+    }
     if (anilistData.present) {
       map['anilist_data'] = Variable<String>(anilistData.value);
     }
@@ -2053,6 +2189,8 @@ class AnilistMappingsTableCompanion
           ..write('anilistId: $anilistId, ')
           ..write('title: $title, ')
           ..write('lastSynced: $lastSynced, ')
+          ..write('posterColor: $posterColor, ')
+          ..write('bannerColor: $bannerColor, ')
           ..write('anilistData: $anilistData')
           ..write(')'))
         .toString();
@@ -3198,7 +3336,8 @@ typedef $$SeriesTableTableCreateCompanionBuilder = SeriesTableCompanion
   Value<int?> primaryAnilistId,
   Value<bool> isHidden,
   Value<String?> customListName,
-  Value<String?> dominantColor,
+  Value<String?> localPosterColor,
+  Value<String?> localBannerColor,
   Value<String?> preferredPosterSource,
   Value<String?> preferredBannerSource,
   Value<String?> anilistPosterUrl,
@@ -3217,7 +3356,8 @@ typedef $$SeriesTableTableUpdateCompanionBuilder = SeriesTableCompanion
   Value<int?> primaryAnilistId,
   Value<bool> isHidden,
   Value<String?> customListName,
-  Value<String?> dominantColor,
+  Value<String?> localPosterColor,
+  Value<String?> localBannerColor,
   Value<String?> preferredPosterSource,
   Value<String?> preferredBannerSource,
   Value<String?> anilistPosterUrl,
@@ -3307,8 +3447,13 @@ class $$SeriesTableTableFilterComposer
       column: $table.customListName,
       builder: (column) => ColumnFilters(column));
 
-  ColumnFilters<String> get dominantColor => $composableBuilder(
-      column: $table.dominantColor, builder: (column) => ColumnFilters(column));
+  ColumnFilters<String> get localPosterColor => $composableBuilder(
+      column: $table.localPosterColor,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get localBannerColor => $composableBuilder(
+      column: $table.localBannerColor,
+      builder: (column) => ColumnFilters(column));
 
   ColumnFilters<String> get preferredPosterSource => $composableBuilder(
       column: $table.preferredPosterSource,
@@ -3417,8 +3562,12 @@ class $$SeriesTableTableOrderingComposer
       column: $table.customListName,
       builder: (column) => ColumnOrderings(column));
 
-  ColumnOrderings<String> get dominantColor => $composableBuilder(
-      column: $table.dominantColor,
+  ColumnOrderings<String> get localPosterColor => $composableBuilder(
+      column: $table.localPosterColor,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get localBannerColor => $composableBuilder(
+      column: $table.localBannerColor,
       builder: (column) => ColumnOrderings(column));
 
   ColumnOrderings<String> get preferredPosterSource => $composableBuilder(
@@ -3483,8 +3632,11 @@ class $$SeriesTableTableAnnotationComposer
   GeneratedColumn<String> get customListName => $composableBuilder(
       column: $table.customListName, builder: (column) => column);
 
-  GeneratedColumn<String> get dominantColor => $composableBuilder(
-      column: $table.dominantColor, builder: (column) => column);
+  GeneratedColumn<String> get localPosterColor => $composableBuilder(
+      column: $table.localPosterColor, builder: (column) => column);
+
+  GeneratedColumn<String> get localBannerColor => $composableBuilder(
+      column: $table.localBannerColor, builder: (column) => column);
 
   GeneratedColumn<String> get preferredPosterSource => $composableBuilder(
       column: $table.preferredPosterSource, builder: (column) => column);
@@ -3584,7 +3736,8 @@ class $$SeriesTableTableTableManager extends RootTableManager<
             Value<int?> primaryAnilistId = const Value.absent(),
             Value<bool> isHidden = const Value.absent(),
             Value<String?> customListName = const Value.absent(),
-            Value<String?> dominantColor = const Value.absent(),
+            Value<String?> localPosterColor = const Value.absent(),
+            Value<String?> localBannerColor = const Value.absent(),
             Value<String?> preferredPosterSource = const Value.absent(),
             Value<String?> preferredBannerSource = const Value.absent(),
             Value<String?> anilistPosterUrl = const Value.absent(),
@@ -3602,7 +3755,8 @@ class $$SeriesTableTableTableManager extends RootTableManager<
             primaryAnilistId: primaryAnilistId,
             isHidden: isHidden,
             customListName: customListName,
-            dominantColor: dominantColor,
+            localPosterColor: localPosterColor,
+            localBannerColor: localBannerColor,
             preferredPosterSource: preferredPosterSource,
             preferredBannerSource: preferredBannerSource,
             anilistPosterUrl: anilistPosterUrl,
@@ -3620,7 +3774,8 @@ class $$SeriesTableTableTableManager extends RootTableManager<
             Value<int?> primaryAnilistId = const Value.absent(),
             Value<bool> isHidden = const Value.absent(),
             Value<String?> customListName = const Value.absent(),
-            Value<String?> dominantColor = const Value.absent(),
+            Value<String?> localPosterColor = const Value.absent(),
+            Value<String?> localBannerColor = const Value.absent(),
             Value<String?> preferredPosterSource = const Value.absent(),
             Value<String?> preferredBannerSource = const Value.absent(),
             Value<String?> anilistPosterUrl = const Value.absent(),
@@ -3638,7 +3793,8 @@ class $$SeriesTableTableTableManager extends RootTableManager<
             primaryAnilistId: primaryAnilistId,
             isHidden: isHidden,
             customListName: customListName,
-            dominantColor: dominantColor,
+            localPosterColor: localPosterColor,
+            localBannerColor: localBannerColor,
             preferredPosterSource: preferredPosterSource,
             preferredBannerSource: preferredBannerSource,
             anilistPosterUrl: anilistPosterUrl,
@@ -4424,6 +4580,8 @@ typedef $$AnilistMappingsTableTableCreateCompanionBuilder
   required int anilistId,
   Value<String?> title,
   Value<DateTime?> lastSynced,
+  Value<String?> posterColor,
+  Value<String?> bannerColor,
   Value<String?> anilistData,
 });
 typedef $$AnilistMappingsTableTableUpdateCompanionBuilder
@@ -4434,6 +4592,8 @@ typedef $$AnilistMappingsTableTableUpdateCompanionBuilder
   Value<int> anilistId,
   Value<String?> title,
   Value<DateTime?> lastSynced,
+  Value<String?> posterColor,
+  Value<String?> bannerColor,
   Value<String?> anilistData,
 });
 
@@ -4484,6 +4644,12 @@ class $$AnilistMappingsTableTableFilterComposer
   ColumnFilters<DateTime> get lastSynced => $composableBuilder(
       column: $table.lastSynced, builder: (column) => ColumnFilters(column));
 
+  ColumnFilters<String> get posterColor => $composableBuilder(
+      column: $table.posterColor, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get bannerColor => $composableBuilder(
+      column: $table.bannerColor, builder: (column) => ColumnFilters(column));
+
   ColumnFilters<String> get anilistData => $composableBuilder(
       column: $table.anilistData, builder: (column) => ColumnFilters(column));
 
@@ -4532,6 +4698,12 @@ class $$AnilistMappingsTableTableOrderingComposer
   ColumnOrderings<DateTime> get lastSynced => $composableBuilder(
       column: $table.lastSynced, builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<String> get posterColor => $composableBuilder(
+      column: $table.posterColor, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get bannerColor => $composableBuilder(
+      column: $table.bannerColor, builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<String> get anilistData => $composableBuilder(
       column: $table.anilistData, builder: (column) => ColumnOrderings(column));
 
@@ -4579,6 +4751,12 @@ class $$AnilistMappingsTableTableAnnotationComposer
 
   GeneratedColumn<DateTime> get lastSynced => $composableBuilder(
       column: $table.lastSynced, builder: (column) => column);
+
+  GeneratedColumn<String> get posterColor => $composableBuilder(
+      column: $table.posterColor, builder: (column) => column);
+
+  GeneratedColumn<String> get bannerColor => $composableBuilder(
+      column: $table.bannerColor, builder: (column) => column);
 
   GeneratedColumn<String> get anilistData => $composableBuilder(
       column: $table.anilistData, builder: (column) => column);
@@ -4636,6 +4814,8 @@ class $$AnilistMappingsTableTableTableManager extends RootTableManager<
             Value<int> anilistId = const Value.absent(),
             Value<String?> title = const Value.absent(),
             Value<DateTime?> lastSynced = const Value.absent(),
+            Value<String?> posterColor = const Value.absent(),
+            Value<String?> bannerColor = const Value.absent(),
             Value<String?> anilistData = const Value.absent(),
           }) =>
               AnilistMappingsTableCompanion(
@@ -4645,6 +4825,8 @@ class $$AnilistMappingsTableTableTableManager extends RootTableManager<
             anilistId: anilistId,
             title: title,
             lastSynced: lastSynced,
+            posterColor: posterColor,
+            bannerColor: bannerColor,
             anilistData: anilistData,
           ),
           createCompanionCallback: ({
@@ -4654,6 +4836,8 @@ class $$AnilistMappingsTableTableTableManager extends RootTableManager<
             required int anilistId,
             Value<String?> title = const Value.absent(),
             Value<DateTime?> lastSynced = const Value.absent(),
+            Value<String?> posterColor = const Value.absent(),
+            Value<String?> bannerColor = const Value.absent(),
             Value<String?> anilistData = const Value.absent(),
           }) =>
               AnilistMappingsTableCompanion.insert(
@@ -4663,6 +4847,8 @@ class $$AnilistMappingsTableTableTableManager extends RootTableManager<
             anilistId: anilistId,
             title: title,
             lastSynced: lastSynced,
+            posterColor: posterColor,
+            bannerColor: bannerColor,
             anilistData: anilistData,
           ),
           withReferenceMapper: (p0) => p0

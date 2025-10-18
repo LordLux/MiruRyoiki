@@ -77,7 +77,7 @@ class _HoverableEpisodeTileState extends State<HoverableEpisodeTile> {
             boxShadow: _isHovering
                 ? [
                     BoxShadow(
-                      color: widget.series.dominantColor?.withOpacity(0.05) ?? Colors.black.withOpacity(0.1),
+                      color: widget.series.localPosterColor?.withOpacity(0.05) ?? Colors.black.withOpacity(0.1),
                       blurRadius: 8,
                       spreadRadius: 1,
                     )
@@ -196,7 +196,7 @@ class _HoverableEpisodeTileState extends State<HoverableEpisodeTile> {
                                   duration: shortStickyHeaderDuration,
                                   decoration: BoxDecoration(
                                     borderRadius: BorderRadius.only(bottomLeft: Radius.circular(ScreenUtils.kEpisodeCardBorderRadius), bottomRight: Radius.circular(ScreenUtils.kEpisodeCardBorderRadius)),
-                                    color: widget.series.dominantColor,
+                                    color: widget.series.localPosterColor,
                                   ),
                                   height: 3.5,
                                   width: (widget.episode.progress > Library.progressThreshold ? 1 : widget.episode.progress) * constraints.maxWidth,
@@ -216,7 +216,7 @@ class _HoverableEpisodeTileState extends State<HoverableEpisodeTile> {
                       onSecondaryTapDown: (_) => _contextMenuKey.currentState?.openMenu(),
                       child: InkWell(
                         onTap: widget.onTap,
-                        splashColor: widget.series.dominantColor?.withOpacity(0.3),
+                        splashColor: widget.series.localPosterColor?.withOpacity(0.3),
                         highlightColor: Colors.white.withOpacity(0.05),
                         borderRadius: BorderRadius.circular(ScreenUtils.kEpisodeCardBorderRadius),
                         child: AnimatedContainer(

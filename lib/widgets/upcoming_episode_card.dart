@@ -140,10 +140,10 @@ class _UpcomingEpisodeCardState extends State<UpcomingEpisodeCard> {
     final Color mainColor;
     switch (Manager.settings.libColView) {
       case LibraryColorView.alwaysDominant:
-        mainColor = widget.series.dominantColor ?? Manager.genericGray;
+        mainColor = widget.series.localPosterColor ?? Manager.genericGray;
         break;
       case LibraryColorView.hoverDominant:
-        mainColor = _isHovering ? (widget.series.dominantColor ?? Manager.genericGray) : Manager.genericGray;
+        mainColor = _isHovering ? (widget.series.localPosterColor ?? Manager.genericGray) : Manager.genericGray;
         break;
       case LibraryColorView.alwaysAccent:
         mainColor = Manager.accentColor;
@@ -156,7 +156,7 @@ class _UpcomingEpisodeCardState extends State<UpcomingEpisodeCard> {
         break;
     }
     return KeyedSubtree(
-      key: ValueKey('${widget.series.path}-${widget.series.dominantColor?.value ?? 0}'),
+      key: ValueKey('${widget.series.path}-${widget.series.localPosterColor?.value ?? 0}'),
       child: MouseRegion(
         onEnter: (_) => setState(() => _isHovering = true),
         onExit: (_) {
@@ -230,7 +230,7 @@ class _UpcomingEpisodeCardState extends State<UpcomingEpisodeCard> {
                                   Text(
                                     _formatAiringTime(widget.airingEpisode.airingAt!),
                                     style: FluentTheme.of(context).typography.caption?.copyWith(
-                                          color: widget.series.dominantColor ?? FluentTheme.of(context).resources.textFillColorSecondary,
+                                          color: widget.series.localPosterColor ?? FluentTheme.of(context).resources.textFillColorSecondary,
                                         ),
                                     overflow: TextOverflow.ellipsis,
                                   ),
@@ -239,7 +239,7 @@ class _UpcomingEpisodeCardState extends State<UpcomingEpisodeCard> {
                                     'Episode ${widget.airingEpisode.episode ?? '?'}',
                                     style: FluentTheme.of(context).typography.caption?.copyWith(
                                           fontWeight: FontWeight.w600,
-                                          color: lighten(widget.series.dominantColor ?? FluentTheme.of(context).resources.textFillColorSecondary, .4),
+                                          color: lighten(widget.series.localPosterColor ?? FluentTheme.of(context).resources.textFillColorSecondary, .4),
                                         ),
                                     overflow: TextOverflow.ellipsis,
                                   ),

@@ -191,7 +191,10 @@ class Series {
   int? _primaryAnilistId;
 
   /// Cached dominant color from poster image
-  Color? _dominantColor;
+  Color? _localPosterDominantColor;
+
+  /// Cached dominant color from banner image
+  Color? _localBannerDominantColor;
 
   /// Preferred source for the Poster
   ImageSource? preferredPosterSource;
@@ -249,7 +252,8 @@ class Series {
     this.relatedMedia = const [],
     this.anilistMappings = const [],
     AnilistAnime? anilistData,
-    Color? dominantColor,
+    Color? posterColor,
+    Color? bannerColor,
     this.preferredPosterSource,
     this.preferredBannerSource,
     String? anilistPoster,
@@ -259,7 +263,8 @@ class Series {
     this.customListName,
     Metadata? metadata,
   })  : isForcedHidden = isHidden,
-        _dominantColor = dominantColor,
+        _localPosterDominantColor = posterColor,
+        _localBannerDominantColor = bannerColor,
         _anilistPosterUrl = anilistPoster,
         _anilistBannerUrl = anilistBanner,
         _primaryAnilistId = primaryAnilistId ?? anilistMappings.firstOrNull?.anilistId,
@@ -276,7 +281,8 @@ class Series {
     List<Episode>? relatedMedia,
     List<AnilistMapping>? anilistMappings,
     AnilistAnime? anilistData,
-    Color? dominantColor,
+    Color? posterColor,
+    Color? bannerColor,
     ImageSource? preferredPosterSource,
     ImageSource? preferredBannerSource,
     int? primaryAnilistId,
@@ -296,7 +302,8 @@ class Series {
       relatedMedia: relatedMedia ?? this.relatedMedia,
       anilistMappings: anilistMappings ?? this.anilistMappings,
       anilistData: anilistData ?? anilistData,
-      dominantColor: dominantColor ?? _dominantColor,
+      posterColor: posterColor ?? _localPosterDominantColor,
+      bannerColor: bannerColor ?? _localBannerDominantColor,
       preferredPosterSource: preferredPosterSource ?? this.preferredPosterSource,
       preferredBannerSource: preferredBannerSource ?? this.preferredBannerSource,
       primaryAnilistId: primaryAnilistId ?? _primaryAnilistId,
@@ -319,7 +326,8 @@ class Series {
       'seasons': seasons.map((s) => s.toJson()).toList(),
       'relatedMedia': relatedMedia.map((e) => e.toJson()).toList(),
       'anilistMappings': anilistMappings.map((m) => m.toJson()).toList(),
-      'dominantColor': _dominantColor?.value, // nullable
+      'posterColor': _localPosterDominantColor?.value, // nullable
+      'bannerColor': _localBannerDominantColor?.value, // nullable
       'primaryAnilistId': _primaryAnilistId,
       'anilistPosterUrl': _anilistPosterUrl ?? anilistData?.posterImage, // nullable
       'anilistBannerUrl': _anilistBannerUrl ?? anilistData?.bannerImage, // nullable
@@ -448,7 +456,7 @@ class Series {
         seasons: seasons,
         relatedMedia: relatedMedia,
         anilistMappings: mappings,
-        dominantColor: dominantColor,
+        posterColor: dominantColor,
         anilistPoster: json['anilistPosterUrl'] as String?,
         anilistBanner: json['anilistBannerUrl'] as String?,
         metadata: json['metadata'] != null ? Metadata.fromJson(json['metadata']) : null,
@@ -532,7 +540,7 @@ class Series {
   End Date:                  ${latestEndDate.pretty()},
   Highest User Score:   $highestUserScore,
   Highest Popularity:    $highestPopularity,
-  Dominant Color:        ${dominantColor?.toHex()},
+  Dominant Color:        ${localPosterColor?.toHex()},
   Hidden:                   $isForcedHidden,
 )''';
   }
@@ -564,17 +572,44 @@ class Series {
   }
 
   /// Get primary color from the series poster image
-  Color? get dominantColor {
+  Color? get localPosterColor {
     // Always prioritize locally calculated color which respects DominantColorSource
-    if (_dominantColor != null) return _dominantColor;
+    if (_localPosterDominantColor != null) return _localPosterDominantColor;
 
     // Fall back to Anilist color if locally calculated color is not available
     return anilistData?.dominantColor?.fromHex();
   }
 
-  Future<void> calculateDominantColor({bool forceRecalculate = false}) async {
-    final result = await colorUtils.calculateDominantColor(this, forceRecalculate: forceRecalculate);
-    if (result.$2 == true) _dominantColor = result.$1;
+  /// Get primary color from the series poster image
+  Color? get localBannerColor {
+    // Always prioritize locally calculated color which respects DominantColorSource
+    if (_localBannerDominantColor != null) return _localBannerDominantColor;
+
+    // Fall back to Anilist color if locally calculated color is not available
+    return anilistData?.dominantColor?.fromHex();
+  }
+
+  Future<void> calculateLocalPosterDominantColor({bool forceRecalculate = false}) async {
+    final result = await colorUtils.calculateLocalDominantColors(this, forceRecalculate: forceRecalculate);
+    if (result.$2 == true) _localPosterDominantColor = result.$1?.$1 ?? _localPosterDominantColor; // override if new, othewise keep old
+  }
+
+  Future<void> calculateLocalBannerDominantColor({bool forceRecalculate = false}) async {
+    final result = await colorUtils.calculateLocalDominantColors(this, forceRecalculate: forceRecalculate);
+    if (result.$2 == true) _localBannerDominantColor = result.$1?.$2 ?? _localBannerDominantColor; // override if new, othewise keep old
+  }
+  
+  Future<void> calculateLocalDominantColors({bool forceRecalculate = false}) async {
+    final result = await colorUtils.calculateLocalDominantColors(this, forceRecalculate: forceRecalculate);
+    if (result.$2 == true) {
+      _localPosterDominantColor = result.$1?.$1 ?? _localPosterDominantColor; // override if new, othewise keep old
+      _localBannerDominantColor = result.$1?.$2 ?? _localBannerDominantColor; // override if new, othewise keep old
+    }
+  }
+  
+  Future<void> clearCachedDominantColors() async {
+    _localPosterDominantColor = null;
+    _localBannerDominantColor = null;
   }
 
   /// Get the Anilist poster URL

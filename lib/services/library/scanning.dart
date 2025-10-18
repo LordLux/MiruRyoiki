@@ -291,7 +291,7 @@ extension LibraryScanning on Library {
               seriesCount++;
               // Use the target directory path as the series key (not the shortcut path)
               final seriesPath = PathString(targetPath);
-              
+
               logTrace('  Resolved to: $targetPath');
               logTrace('  Scanning target directory...');
 
@@ -583,22 +583,23 @@ extension LibraryScanning on Library {
 
     try {
       // Determine which series need processing
-      final seriesToProcess = forceRecalculate //
-          ? _series
-          : _series.where((s) => s.dominantColor == null).toList();
+      final mappingsToProcess = forceRecalculate
+          ? _series.expand((s) => s.anilistMappings).toList()
+          : _series
+              .expand((s) => s.anilistMappings.where((m) => !(Manager.settings.dominantColorSource == DominantColorSource.banner ? m.bannerColor != null : m.posterColor != null)))
+              .toList();
 
-      if (seriesToProcess.isEmpty) {
+      if (mappingsToProcess.isEmpty) {
         logTrace('No series need dominant color calculation');
         return;
       }
 
-      logTrace('Calculating dominant colors for ${seriesToProcess.length} series using isolate manager');
+      logTrace('Calculating dominant colors for ${mappingsToProcess.length} series using isolate manager');
 
       // Use the isolate-based approach with progress tracking
-      final results = await color_utils.calculateDominantColorsWithProgress(
-        series: seriesToProcess,
+      final results = await color_utils.calculateMappingDominantColorsWithProgress(
+        mappings: mappingsToProcess,
         forceRecalculate: forceRecalculate,
-        dominantColorSourceIndex: Manager.settings.dominantColorSource.index,
         onStart: () {
           LibraryScanProgressManager().resetProgress();
           logTrace('Starting dominant color calculation in isolate');
@@ -616,39 +617,62 @@ extension LibraryScanning on Library {
       bool anyChanged = false;
 
       for (final entry in results.entries) {
-        final seriesPath = entry.key;
+        final anilistId = entry.key;
         final result = entry.value;
 
-        // Find the series with this path
-        final series = _series.firstWhereOrNull((s) => s.path.path == seriesPath);
-        if (series == null) continue;
+        if (result.containsKey('error')) {
+          if ((result['error'] as String).contains('No image source available'))
+        logWarn('Skipped dominant color calculation for AnilistId $anilistId: ${result['error']}');
+          else
+        logErr('Error calculating dominant color for AnilistId $anilistId: ${result['error']}');
+          continue;
+        }
 
-        if (result.containsKey('dominantColor') && result['changed'] == true) {
-          final colorValue = result['dominantColor'] as int;
-          final oldColor = series.dominantColor;
+        if (result['changed'] != true) continue;
 
-          // Use reflection-like approach to set the private field
-          final newColor = Color(colorValue);
-          final updatedSeries = series.copyWith(dominantColor: newColor);
+        final posterColorValue = result['posterColor'] as int?;
+        final bannerColorValue = result['bannerColor'] as int?;
 
-          // Replace the series in the list
-          final seriesIndex = _series.indexWhere((s) => s.path.path == seriesPath);
-          if (seriesIndex != -1) {
-            _series[seriesIndex] = updatedSeries;
-            if (oldColor != newColor) {
-              anyChanged = true;
-              successCount++;
+        if (posterColorValue == null && bannerColorValue == null) continue;
+
+        final newPosterColor = posterColorValue != null ? Color(posterColorValue) : null;
+        final newBannerColor = bannerColorValue != null ? Color(bannerColorValue) : null;
+
+        // Find all series that have mappings with this anilistId
+        for (int seriesIndex = 0; seriesIndex < _series.length; seriesIndex++) {
+          final series = _series[seriesIndex];
+          final mappingsWithId = series.anilistMappings.where((m) => m.anilistId == anilistId).toList();
+          
+          if (mappingsWithId.isEmpty) continue;
+
+          // Update all mappings with this anilistId
+          final updatedMappings = series.anilistMappings.map((m) {
+        if (m.anilistId == anilistId) {
+          final oldPosterColor = m.posterColor;
+          final oldBannerColor = m.bannerColor;
+          
+          final updated = m.copyWith(
+            posterColor: newPosterColor ?? m.posterColor,
+            bannerColor: newBannerColor ?? m.bannerColor,
+          );
+
+          if (oldPosterColor != newPosterColor || oldBannerColor != newBannerColor) {
+            anyChanged = true;
+            if (!mappingsWithId.any((mapping) => mapping == m && successCount > 0)) {
+          successCount++;
             }
           }
-        } else if (result.containsKey('error')) {
-          if ((result['error'] as String).contains('No image source available'))
-            logWarn('Skipped dominant color calculation for ${series.name}: ${result['error']}');
-          else
-            logErr('Error calculating dominant color for ${series.name}: ${result['error']}');
+
+          return updated;
+        }
+        return m;
+          }).toList();
+
+          _series[seriesIndex] = series.copyWith(anilistMappings: updatedMappings);
         }
       }
+      
       libraryScreenKey.currentState?.updateColorsInSortCache();
-
 
       // Save and notify when done
       if (anyChanged || forceRecalculate) {
@@ -656,7 +680,7 @@ extension LibraryScanning on Library {
         notifyListeners();
         logTrace('Finished calculating dominant colors for $successCount series');
       }
-    } catch (e, st) {
+        } catch (e, st) {
       logErr('Error during batch dominant color calculation', e, st);
       snackBar(
         'Error calculating dominant colors: $e',
@@ -664,7 +688,7 @@ extension LibraryScanning on Library {
       );
     } finally {
       lockHandle.dispose();
-      
+
       // Hide progress indicator
       LibraryScanProgressManager().hide();
     }

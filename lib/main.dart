@@ -88,8 +88,8 @@ SeriesScreenState? getActiveSeriesScreenState() {
 }
 
 void main(List<String> args) async {
-  runZonedGuarded(
-    () async {
+  // runZonedGuarded(
+  //   () async {
       WidgetsFlutterBinding.ensureInitialized();
 
       Manager.parseArgs();
@@ -151,10 +151,11 @@ void main(List<String> args) async {
           child: const MyApp(),
         ),
       );
-    },
-    (error, stackTrace) => logErr('Uncaught error in main isolate', error, stackTrace),
-  );
-}
+    }
+//     ,
+//     (error, stackTrace) => logErr('Uncaught error in main isolate', error, stackTrace),
+//   );
+// }
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
@@ -963,7 +964,7 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
 
     setState(() {
       _selectedSeriesPath = seriesPath;
-      Manager.currentDominantColor = series?.dominantColor;
+      Manager.currentDominantColor = series?.localPosterColor;
       _isSeriesView = true;
       _isFinishedTransitioningToLibrary = false;
     });

@@ -145,10 +145,10 @@ class _ContinueEpisodeCardState extends State<ContinueEpisodeCard> {
     final Color mainColor;
     switch (Manager.settings.libColView) {
       case LibraryColorView.alwaysDominant:
-        mainColor = widget.series.dominantColor ?? Manager.genericGray;
+        mainColor = widget.series.localPosterColor ?? Manager.genericGray;
         break;
       case LibraryColorView.hoverDominant:
-        mainColor = _isHovering ? (widget.series.dominantColor ?? Manager.genericGray) : Manager.genericGray;
+        mainColor = _isHovering ? (widget.series.localPosterColor ?? Manager.genericGray) : Manager.genericGray;
         break;
       case LibraryColorView.alwaysAccent:
         mainColor = Manager.accentColor;
@@ -161,7 +161,7 @@ class _ContinueEpisodeCardState extends State<ContinueEpisodeCard> {
         break;
     }
     return KeyedSubtree(
-      key: ValueKey('${widget.series.path}-${widget.series.dominantColor?.value ?? 0}'),
+      key: ValueKey('${widget.series.path}-${widget.series.localPosterColor?.value ?? 0}'),
       child: SeriesContextMenu(
         key: _contextMenuKey,
         series: widget.series,
@@ -262,7 +262,7 @@ class _ContinueEpisodeCardState extends State<ContinueEpisodeCard> {
                                       'Episode ${widget.episode.episodeNumber ?? '?'}',
                                       style: Manager.captionStyle.copyWith(
                                         fontWeight: FontWeight.w600,
-                                        color: lighten(widget.series.dominantColor ?? FluentTheme.of(context).resources.textFillColorSecondary, .4),
+                                        color: lighten(widget.series.localPosterColor ?? FluentTheme.of(context).resources.textFillColorSecondary, .4),
                                       ),
                                       overflow: TextOverflow.ellipsis,
                                     ),
@@ -275,8 +275,8 @@ class _ContinueEpisodeCardState extends State<ContinueEpisodeCard> {
                                     child: ProgressBar(
                                       strokeWidth: 3.5,
                                       value: widget.series.watchedPercentage * 100,
-                                      activeColor: widget.series.watchedPercentage == 0 ? Colors.transparent : widget.series.dominantColor,
-                                      backgroundColor: Color.lerp(Colors.black.withOpacity(0.2), widget.series.dominantColor, 0),
+                                      activeColor: widget.series.watchedPercentage == 0 ? Colors.transparent : widget.series.localPosterColor,
+                                      backgroundColor: Color.lerp(Colors.black.withOpacity(0.2), widget.series.localPosterColor, 0),
                                     ),
                                   ),
                                 ]

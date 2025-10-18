@@ -41,19 +41,17 @@ Future<void> main() async {
       primaryAnilistId: 99426,
     );
 
-    await _calculateDominantColor(testSeries, true);
-    await _calculateDominantColor(testSeries, false);
+    await _calculateDominantColor(testSeries.anilistMappings.first, true);
   });
 }
 
-Future<void> _calculateDominantColor(Series series, bool isPoster) async {
+Future<void> _calculateDominantColor(AnilistMapping mapping, bool isPoster) async {
   // Test the calculateDominantColorsWithProgress function
-  print('Testing color calculation with ${isPoster ? "Poster" : "Banner"} source...: ${await ImageCacheService().getCachedImagePath(series.anilistBannerUrl ?? '')}');
+  // print('Testing color calculation with ${isPoster ? "Poster" : "Banner"} source...: ${await ImageCacheService().getCachedImagePath(mapping.anilistData?.coverImage?.url ?? '')}');
 
-  final results = await calculateDominantColorsWithProgress(
-    series: [series],
+  final results = await calculateMappingDominantColorsWithProgress(
+    mappings: [mapping],
     forceRecalculate: true,
-    dominantColorSourceIndex: isPoster ? DominantColorSource.poster.index : DominantColorSource.banner.index,
     onStart: () => print('Starting calculation...'),
     onProgress: (processed, total) => print('Progress: $processed/$total'),
   );
