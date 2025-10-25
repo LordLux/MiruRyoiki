@@ -137,16 +137,31 @@ Color getTextColor(
 /// Calculate and cache the dominant color from the image
 /// Returns the colors and whether we need to overwrite the cached color
 Future<((Color?, Color?)?, bool)> calculateLocalDominantColors(Series series, {bool forceRecalculate = false}) async {
-  // If color already calculated and not forced, return cached color
-  if (series.localPosterColor != null && series.localBannerColor != null && !forceRecalculate) {
+  // Check if we have paths for poster or banner
+  final bool hasLocalPosterPath = series.localPosterPath != null;
+  final bool hasLocalBannerPath = series.localBannerPath != null;
+
+  // If no local images exist, return cached values (which might be null)
+  if (!hasLocalPosterPath && !hasLocalBannerPath) {
+    logTrace('   No local images available for color extraction');
+    return ((series.localPosterColor, series.localBannerColor), false);
+  }
+
+  // Check if colors are already calculated and we don't need to force recalculate
+  final bool hasCachedPosterColor = series.localPosterColor != null;
+  final bool hasCachedBannerColor = series.localBannerColor != null;
+
+  // Only skip if we have all the colors we need for the images that exist
+  final bool posterColorCached = !hasLocalPosterPath || hasCachedPosterColor;
+  final bool bannerColorCached = !hasLocalBannerPath || hasCachedBannerColor;
+
+  if (posterColorCached && bannerColorCached && !forceRecalculate) {
     logTrace('   No need to extract color, using cached dominant colors: Pos${series.localPosterColor?.toHex()}, Ban${series.localBannerColor?.toHex()}!');
     return ((series.localPosterColor, series.localBannerColor), false);
   }
 
   // Skip if binding not initialized or no poster path
   try {
-    //  final binding = WidgetsBinding.instance;
-    //  if (!binding.isRootWidgetAttached) {
     if (!WidgetsBinding.instance.isRootWidgetAttached) {
       logDebug('   WidgetsBinding not initialized, initializing...');
       WidgetsFlutterBinding.ensureInitialized();
@@ -156,8 +171,6 @@ Future<((Color?, Color?)?, bool)> calculateLocalDominantColors(Series series, {b
     logWarn('   WidgetsBinding not available (possibly in isolate), continuing...');
   }
 
-
-  
   String? localPosterPath = PathString(series.posterImage).pathMaybe;
   String? localBannerPath = PathString(series.bannerImage).pathMaybe;
 
@@ -172,16 +185,31 @@ Future<((Color?, Color?)?, bool)> calculateLocalDominantColors(Series series, {b
 
   final cachedLocalPosterPath = await imageCache.getCachedImagePath(localPosterPath);
   final cachedLocalBannerPath = await imageCache.getCachedImagePath(localBannerPath);
-  
-  if (cachedLocalPosterPath == null && cachedLocalBannerPath == null) {
-    logWarn('   Failed to get local cached image(s)');
-    return (null, false);
+
+  // Calculate colors only for images that exist and need calculation
+  Color? localPosterColor = series.localPosterColor; // Keep existing by default
+  Color? localBannerColor = series.localBannerColor; // Keep existing by default
+  bool updated = false;
+
+  if (hasLocalPosterPath && (forceRecalculate || !hasCachedPosterColor)) {
+    if (cachedLocalPosterPath != null) {
+      localPosterColor = await _extractColor(cachedLocalPosterPath);
+      updated = true;
+    } else {
+      logWarn('   Failed to get local cached poster image');
+    }
   }
 
-  final localPosterColor = await _extractColor(cachedLocalPosterPath);
-  final localBannerColor = await _extractColor(cachedLocalBannerPath);
-  
-  return ((localPosterColor, localBannerColor), true);
+  if (hasLocalBannerPath && (forceRecalculate || !hasCachedBannerColor)) {
+    if (cachedLocalBannerPath != null) {
+      localBannerColor = await _extractColor(cachedLocalBannerPath);
+      updated = true;
+    } else {
+      logWarn('   Failed to get local cached banner image');
+    }
+  }
+
+  return ((localPosterColor, localBannerColor), updated);
 }
 
 /// Calculate dominant color for an Anilist mapping from its poster or banner image
@@ -202,12 +230,12 @@ Future<((Color?, Color?), bool)> calculateLinkColors(
   // Check if we already have cached colors and don't need to recalculate
   final hasPosterColor = mapping.posterColor != null;
   final hasBannerColor = mapping.bannerColor != null;
-  
+
   final needsPosterCalculation = calculatePoster && (forceRecalculate || !hasPosterColor);
   final needsBannerCalculation = calculateBanner && (forceRecalculate || !hasBannerColor);
 
   if (!needsPosterCalculation && !needsBannerCalculation) {
-    logTrace('   No need to extract color, using cached link colors: Pos${mapping.posterColor?.toHex()}, Ban${mapping.bannerColor?.toHex()}!');
+    // logTrace('   No need to extract color, using cached link colors: Pos${mapping.posterColor?.toHex()}, Ban${mapping.bannerColor?.toHex()}!');
     return ((mapping.posterColor, mapping.bannerColor), false);
   }
 
@@ -237,8 +265,6 @@ Future<Color?> _calculateLinkColor(
 }) async {
   // Skip if binding not initialized
   try {
-    //  final binding = WidgetsBinding.instance;
-    //  if (!binding.isRootWidgetAttached) {
     if (!WidgetsBinding.instance.isRootWidgetAttached) {
       logDebug('   WidgetsBinding not initialized, initializing...');
       WidgetsFlutterBinding.ensureInitialized();
@@ -258,7 +284,7 @@ Future<Color?> _calculateLinkColor(
 
   // If no image path found, return null
   if (imagePath == null) {
-    logWarn('   No ${source == DominantColorSource.poster ? "poster" : "banner"} image available for dominant color extraction');
+    logWarn('   No ${source == DominantColorSource.poster ? "poster" : "banner"} image available for dominant color extraction for anilist id ${mapping.anilistId}');
     return null;
   }
 
@@ -267,7 +293,7 @@ Future<Color?> _calculateLinkColor(
 
   imagePath = await imageCache.getCachedImagePath(imagePath);
   if (imagePath == null) {
-    logWarn('   Failed to get cached Anilist image');
+    logWarn('   Failed to get cached Anilist image for anilist id ${mapping.anilistId}');
     return null;
   }
 
@@ -302,7 +328,7 @@ Future<Map<int, Map<String, dynamic>>> calculateMappingDominantColorsWithProgres
 /// Extract dominant color from an image file
 Future<Color?> _extractColor(String? imagePath) async {
   if (imagePath == null) return null;
-  
+
   // Use the unified color extraction system
   try {
     final imageFile = File(imagePath);
@@ -316,16 +342,31 @@ Future<Color?> _extractColor(String? imagePath) async {
         imagePath,
         preferBackground: preferBackground,
       );
+      
+      final adjustedColor = adjustDominantColor(newColor);
 
       logMulti([
         ['   Dominant color calculated: '],
-        [newColor?.toHex(), getTextColor(newColor ?? Colors.white), newColor ?? Colors.black],
+        [adjustedColor?.toHex(), getTextColor(adjustedColor ?? Colors.white), adjustedColor ?? Colors.black],
       ]);
 
-      return newColor;
+      return adjustedColor;
     }
   } catch (e) {
     logErr('Error extracting dominant color', e);
   }
   return null;
+}
+
+Color? adjustDominantColor(Color? color) {
+  if (color == null) return null;
+  
+  // Make the color lighter, but prevent infinite loop
+  int maxIterations = 200;
+  int count = 0;
+  while (color!.computeLuminance() < 0.15 && count < maxIterations) {
+    color = lighten(color, 0.005);
+    count++;
+  }
+  return color;
 }

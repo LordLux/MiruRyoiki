@@ -924,7 +924,7 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
             // View Type Selector
             InfoLabel(
               label: 'Display',
-              labelStyle: Manager.smallSubtitleStyle.copyWith(color: Manager.pastelDominantColor),
+              labelStyle: Manager.smallSubtitleStyle.copyWith(color: Manager.pastelAccentColor),
               child: _buildViewTypePills(),
             ),
 
@@ -933,7 +933,7 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
             // Sort Order
             InfoLabel(
               label: 'Sort by',
-              labelStyle: Manager.smallSubtitleStyle.copyWith(color: Manager.pastelDominantColor),
+              labelStyle: Manager.smallSubtitleStyle.copyWith(color: Manager.pastelAccentColor),
               child: Row(
                 children: [
                   Expanded(
@@ -960,7 +960,7 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
                           child: AnimatedRotation(
                             duration: shortStickyHeaderDuration,
                             turns: _sortDescending ? 0 : 1,
-                            child: Icon(_sortDescending ? FluentIcons.sort_lines : FluentIcons.sort_lines_ascending, color: Manager.pastelDominantColor),
+                            child: Icon(_sortDescending ? FluentIcons.sort_lines : FluentIcons.sort_lines_ascending, color: Manager.pastelAccentColor),
                           ),
                         ),
                         onPressed: _onSortDirectionChanged,
@@ -976,7 +976,7 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
                 children: [
                   Text(
                     'Lists',
-                    style: Manager.smallSubtitleStyle.copyWith(color: Manager.pastelDominantColor),
+                    style: Manager.smallSubtitleStyle.copyWith(color: Manager.pastelAccentColor),
                   ),
                   const SizedBox(width: 4),
                   Transform.translate(
@@ -988,7 +988,7 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
                         tooltipWaitDuration: const Duration(milliseconds: 250),
                         tooltip: _editListsEnabled ? 'Save Changes' : 'Edit List Order',
                         child: (_) => IconButton(
-                          icon: Icon(_editListsEnabled ? FluentIcons.check_mark : FluentIcons.edit, size: 11 * Manager.fontSizeMultiplier, color: Manager.pastelDominantColor),
+                          icon: Icon(_editListsEnabled ? FluentIcons.check_mark : FluentIcons.edit, size: 11 * Manager.fontSizeMultiplier, color: Manager.pastelAccentColor),
                           onPressed:() {
                                   setState(() => _editListsEnabled = !_editListsEnabled);
                                   if (_editListsEnabled) _previousCustomListOrder = List.from(_customListOrder);
@@ -1009,7 +1009,7 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
                           tooltipWaitDuration: const Duration(milliseconds: 250),
                           tooltip: 'Cancel Changes',
                           child: (_) => IconButton(
-                            icon: Icon(Symbols.rotate_left, size: 11, color: Manager.pastelDominantColor),
+                            icon: Icon(Symbols.rotate_left, size: 11, color: Manager.pastelAccentColor),
                             onPressed: isResetDisabled
                                 ? null
                                 : () {

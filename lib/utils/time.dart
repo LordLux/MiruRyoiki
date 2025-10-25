@@ -23,6 +23,8 @@ Duration get shortStickyHeaderDuration => Duration(milliseconds: stickyHeaderDur
 
 Duration get mediumDuration => getDuration(const Duration(milliseconds: 300));
 
+Duration get longDuration => getDuration(const Duration(milliseconds: 700));
+
 Duration get dimDuration => getDuration(const Duration(milliseconds: 200));
 
 Duration get shortDuration => getDuration(const Duration(milliseconds: 150));

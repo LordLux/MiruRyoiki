@@ -37,7 +37,7 @@ import '../theme.dart';
 import '../utils/path.dart';
 import '../utils/screen.dart';
 import '../utils/time.dart';
-import '../widgets/animated_switcher.dart';
+import '../widgets/animated_hider.dart';
 import '../widgets/buttons/button.dart';
 import '../widgets/buttons/hyperlink.dart';
 import '../widgets/buttons/setting_category_button.dart';
@@ -805,7 +805,7 @@ class SettingsScreenState extends State<SettingsScreen> with AutomaticKeepAliveC
       setState(() => _isRestoringBackup = true);
       final backupPath = await DataStorageService.restoreFromBackup(backupFile);
 
-      if (backupPath != null) snackBar('Database restored successfully. Please restart the app.', severity: InfoBarSeverity.success);
+      if (backupPath != null) snackBar('Database restored successfully. Please restart the app.', severity: InfoBarSeverity.success, autoHide: false);
     } catch (e) {
       snackBar('Failed to restore backup: $e', severity: InfoBarSeverity.error);
     } finally {
@@ -1102,10 +1102,9 @@ class SettingsScreenState extends State<SettingsScreen> with AutomaticKeepAliveC
                         ),
                       ),
                       onTapDown: (details) {
-                        final Offset offset = details.localPosition;
-                        final RenderBox renderBox = context.findRenderObject() as RenderBox;
-                        final Offset globalOffset = renderBox.localToGlobal(offset);
-                        final Offset flyoutOffset = Offset(globalOffset.dx, globalOffset.dy + renderBox.size.height / 3);
+                        final Offset globalOffset = details.globalPosition;
+                        // final Offset globalOffset = renderBox.localToGlobal(offset);
+                        final Offset flyoutOffset = Offset(globalOffset.dx + 10, globalOffset.dy);
 
                         // ignore: avoid_single_cascade_in_expression_statements
                         controller.showFlyout(
@@ -1321,7 +1320,7 @@ class SettingsScreenState extends State<SettingsScreen> with AutomaticKeepAliveC
                         settings.dominantColorSource = value;
                         final library = Provider.of<Library>(context, listen: false);
 
-                        snackBar('Recalculating dominant colors using ${value.name_} source...', severity: InfoBarSeverity.info);
+                        snackBar('Recalculating dominant colors using ${value.name_} source...', severity: InfoBarSeverity.info, autoHide: false);
                         await library.calculateDominantColors(forceRecalculate: true);
                         snackBar('Dominant colors recalculated successfully!', severity: InfoBarSeverity.success);
                       },
@@ -1527,9 +1526,9 @@ class SettingsScreenState extends State<SettingsScreen> with AutomaticKeepAliveC
           ),
 
           // Player Priority
-          AnimatedSwitcher(
+          AnimatedHider(
             duration: dimDuration,
-            showChild: settings.enableMediaPlayerIntegration,
+            shouldShowChild: settings.enableMediaPlayerIntegration,
             switchInCurve: Curves.easeInOut,
             switchOutCurve: Curves.easeInOut,
             child: Column(
@@ -1648,9 +1647,9 @@ class SettingsScreenState extends State<SettingsScreen> with AutomaticKeepAliveC
           ),
 
           // Connection Status
-          AnimatedSwitcher(
+          AnimatedHider(
             duration: dimDuration,
-            showChild: settings.enableMediaPlayerIntegration,
+            shouldShowChild: settings.enableMediaPlayerIntegration,
             switchInCurve: Curves.easeInOut,
             switchOutCurve: Curves.easeInOut,
             child: Column(
@@ -1803,9 +1802,9 @@ class SettingsScreenState extends State<SettingsScreen> with AutomaticKeepAliveC
             ],
           ),
           VDiv(12),
-          AnimatedSwitcher(
+          AnimatedHider(
             duration: dimDuration,
-            showChild: _showBackupsList,
+            shouldShowChild: _showBackupsList,
             child: AbsorbPointer(
               absorbing: !_showBackupsList,
               child: IgnorePointer(

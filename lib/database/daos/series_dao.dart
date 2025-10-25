@@ -2,6 +2,7 @@
 import 'dart:convert';
 import 'dart:ui';
 import 'package:drift/drift.dart';
+import '../../models/season.dart';
 import '../database.dart';
 import '../tables.dart';
 import '../../models/series.dart';
@@ -282,8 +283,8 @@ class SeriesDao extends DatabaseAccessor<AppDatabase> with _$SeriesDaoMixin {
     return SeriesTableCompanion(
       name: Value(s.name),
       path: Value(s.path),
-      folderPosterPath: Value(s.folderPosterPath),
-      folderBannerPath: Value(s.folderBannerPath),
+      folderPosterPath: Value(s.localPosterPath),
+      folderBannerPath: Value(s.localBannerPath),
       primaryAnilistId: Value(s.primaryAnilistId),
       isHidden: Value(s.isForcedHidden),
       customListName: Value(s.customListName),
@@ -341,12 +342,12 @@ class SeriesDao extends DatabaseAccessor<AppDatabase> with _$SeriesDaoMixin {
       id: row.id,
       name: row.name,
       path: row.path,
-      folderPosterPath: row.folderPosterPath,
-      folderBannerPath: row.folderBannerPath,
+      localPosterPath: row.folderPosterPath, // TODO rename
+      localBannerPath: row.folderBannerPath,
       seasons: seasons.map((season) => season.copyWith(
-      seriesId: row.id,           // NEW: Set parent ID
+      seriesId: row.id,
     )).toList(),
-      relatedMedia: const [], // gestisci se necessario come season speciale
+      relatedMedia: const [],
       anilistMappings: mappings,
       posterColor: const ColorJsonConverter().fromSql(row.localPosterColor),
       bannerColor: const ColorJsonConverter().fromSql(row.localBannerColor),

@@ -335,6 +335,18 @@ extension DateTimeX on DateTime? {
   }
 
   static DateTime get epoch => DateTime.fromMillisecondsSinceEpoch(0);
+
+  static DateTime? isBeforeMaybe(DateTime? this_, DateTime? other) {
+    if (this_ == null) return other;
+    if (other == null) return this_;
+    return this_.isBefore(other) ? this_ : other;
+  }
+
+  static DateTime? isAfterMaybe(DateTime? this_, DateTime? other) {
+    if (this_ == null) return other;
+    if (other == null) return this_;
+    return this_.isAfter(other) ? this_ : other;
+  }
 }
 
 extension ListSeries on List<String> {

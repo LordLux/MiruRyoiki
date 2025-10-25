@@ -3,10 +3,10 @@ import 'package:provider/provider.dart';
 
 import '../../manager.dart';
 import '../../models/anilist/mapping.dart';
-import '../../models/episode.dart';
 import '../../models/series.dart';
 import '../../utils/logging.dart';
 import '../../main.dart';
+import '../../utils/path.dart';
 import '../episode_navigation/episode_navigator.dart';
 import '../library/library_provider.dart';
 import 'queries/anilist_service.dart';
@@ -28,6 +28,7 @@ class EpisodeTitleService {
 
   /// Fetch episode titles for a series and update local episodes
   /// Returns the updated series with episode titles applied and saved to database
+  @Deprecated('Use fetchAndUpdateEpisodeTitlesFromMapping instead')
   Future<bool> fetchAndUpdateEpisodeTitles(Series series) async {
     // Check if AniList episode titles are enabled
     if (!Manager.enableAnilistEpisodeTitles) {
@@ -51,7 +52,7 @@ class EpisodeTitleService {
       // Check cache first
       if (_isCacheValid(anilistId)) {
         logTrace('Using cached episode titles for AniList ID: $anilistId');
-        anyUpdated |= await _updateEpisodesWithTitles(series, mapping, _titleCache[anilistId]!);
+        anyUpdated |= _applyEpisodeTitlesToSeries(series, mapping, _titleCache[anilistId]!);
         continue;
       }
 
@@ -64,7 +65,7 @@ class EpisodeTitleService {
           _cacheTimestamps[anilistId] = now;
 
           // Update episodes with fetched titles
-          anyUpdated |= await _updateEpisodesWithTitles(series, mapping, episodeTitles);
+          anyUpdated |= _applyEpisodeTitlesToSeries(series, mapping, episodeTitles);
 
           logInfo('Successfully fetched ${episodeTitles.length} episode titles for ${series.name}');
         } else {
@@ -85,6 +86,7 @@ class EpisodeTitleService {
 
   /// Fetch episode titles for multiple series in batches and update local episodes
   /// Returns a map of series to whether they were updated
+  @Deprecated('Use fetchAndUpdateEpisodeTitlesBatch instead')
   Future<Map<Series, bool>> fetchAndUpdateEpisodeTitlesBatch(List<Series> seriesList) async {
     // Check if AniList episode titles are enabled
     if (!Manager.enableAnilistEpisodeTitles) {
@@ -157,7 +159,7 @@ class EpisodeTitleService {
         if (_isCacheValid(anilistId)) episodeTitles = _titleCache[anilistId]!;
 
         if (episodeTitles.isNotEmpty)
-          anyUpdated |= await _updateEpisodesWithTitles(series, mapping, episodeTitles);
+          anyUpdated |= _applyEpisodeTitlesToSeries(series, mapping, episodeTitles);
         else
           logTrace('No episode titles available for AniList ID: $anilistId');
       }
@@ -177,27 +179,77 @@ class EpisodeTitleService {
     return results;
   }
 
-  /// Update episodes in a series with the fetched titles
-  Future<bool> _updateEpisodesWithTitles(Series series, AnilistMapping mapping, Map<int, String> episodeTitles) async {
+  /// Fetch episode titles for a series and update local episodes
+  /// Returns true if any episodes were updated
+  Future<(Series?, bool)> fetchAndUpdateEpisodeTitlesFromMapping(AnilistMapping mapping, {bool updateSeries = false}) async {
+    // Check if AniList episode titles are enabled
+    if (!Manager.enableAnilistEpisodeTitles) {
+      logTrace('AniList episode titles are disabled, skipping fetch for series: ${mapping.title}');
+      return (null, false);
+    }
+
+    logTrace('Processing ${mapping.title} AniList mapping for episode titles');
+
+    final anilistId = mapping.anilistId;
+
+    // Get episode titles
+    Map<int, String> episodeTitles;
+
+    // Check cache first
+    if (_isCacheValid(anilistId)) {
+      logTrace('Using cached episode titles for AniList ID: $anilistId');
+      episodeTitles = _titleCache[anilistId]!;
+    } else {
+      try {
+        episodeTitles = await _anilistService.getEpisodeTitles(anilistId);
+
+        if (episodeTitles.isNotEmpty) {
+          // Cache the results
+          _titleCache[anilistId] = episodeTitles;
+          _cacheTimestamps[anilistId] = now;
+          logInfo('Successfully fetched ${episodeTitles.length} episode titles for ${mapping.title}');
+        } else {
+          logTrace('No episode titles found for AniList ID: $anilistId');
+          return (null, false);
+        }
+      } catch (e) {
+        logErr('Failed to fetch episode titles for AniList ID: $anilistId', e);
+        return (null, false);
+      }
+    }
+
+    if (!updateSeries) return (null, false);
+
+    final library = Provider.of<Library>(rootNavigatorKey.currentContext!, listen: false);
+
+    // Apply the episode titles to the actual series in state management
+    final anyUpdated = library.applyFunctionToSeriesByAnilistId(anilistId, (series) {
+      return _applyEpisodeTitlesToSeries(series, mapping, episodeTitles);
+    });
+
+    // If any episodes were updated, save the series to the database
+    Series? series;
+    if (anyUpdated == true) {
+      series = library.getSeriesByAnilistId(anilistId);
+      if (series != null) await library.updateSeries(series, invalidateCache: false);
+    }
+
+    return (series, anyUpdated ?? false);
+  }
+
+  /// Apply episode titles to a series and return true if any episodes were updated
+  bool _applyEpisodeTitlesToSeries(Series series, AnilistMapping mapping, Map<int, String> episodeTitles) {
     bool anyUpdated = false;
 
     logTrace('Applying episode titles for mapping: ${mapping.localPath.path}');
 
     // Get all episodes linked to this mapping using the new approach
-    final linkedPaths = mapping.linkedEpisodePaths;
+    final List<PathString> linkedPaths = mapping.linkedEpisodePaths;
     logTrace('Found ${linkedPaths.length} linked episode paths for mapping');
 
     // Build episode-to-mapping relationship
-    final linkedEpisodes = <Episode>[];
-    for (final path in linkedPaths) {
-      final episode = EpisodeNavigator.instance.findEpisodeByPath(path, series);
-      if (episode != null) {
-        linkedEpisodes.add(episode);
-        logTrace('Linked episode: ${episode.path.path}');
-      } else {
-        logTrace('Could not find episode for path: ${path.path}');
-      }
-    }
+    final linkedEpisodes = EpisodeNavigator.instance.findEpisodesByPath(linkedPaths, series);
+    logTrace('Mapped to ${linkedEpisodes.length} episodes in series: ${series.name}');
 
     // Apply episode titles only to linked episodes
     for (final episode in linkedEpisodes) {

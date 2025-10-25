@@ -1,4 +1,3 @@
-
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/material.dart' show Material;
 import 'package:provider/provider.dart';
@@ -289,12 +288,18 @@ class ManagedDialogButton extends StatelessWidget {
   final String text;
   final BuildContext popContext;
   final bool isPrimary;
+  final bool isDisabled;
+  final String? tooltip;
+  final bool isLoading;
 
   const ManagedDialogButton({
     super.key,
     this.onPressed = kEmptyVoidCallBack,
     this.text = 'Cancel',
     this.isPrimary = false,
+    this.isDisabled = false,
+    this.isLoading = false,
+    this.tooltip,
     required this.popContext,
   });
 
@@ -309,6 +314,9 @@ class ManagedDialogButton extends StatelessWidget {
     }
 
     return MouseButtonWrapper(
+      isButtonDisabled: isDisabled,
+      isLoading: isLoading,
+      tooltip: tooltip,
       child: (_) => Builder(builder: (context) {
         if (isPrimary)
           return FilledButton(

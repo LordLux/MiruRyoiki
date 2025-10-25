@@ -36,16 +36,21 @@ class _MouseButtonWrapperState extends State<MouseButtonWrapper> {
           onEnter: (_) => setState(() => _isHovering = true),
           onExit: (_) => setState(() => _isHovering = false),
           cursor: widget.cursor ??
-              (widget.isButtonDisabled
-                  ? SystemMouseCursors.forbidden
-                  : widget.isLoading
-                      ? SystemMouseCursors.progress
+              (widget.isLoading //
+                  ? SystemMouseCursors.progress
+                  : widget.isButtonDisabled
+                      ? SystemMouseCursors.forbidden
                       : SystemMouseCursors.click),
           child: AbsorbPointer(
             absorbing: widget.isButtonDisabled || widget.isLoading,
-            child: widget.child(_isHovering),
+            child: AnimatedOpacity(
+              opacity: widget.isButtonDisabled ? 0.75 : 1.0,
+              duration: const Duration(milliseconds: 200),
+              child: widget.child(_isHovering),
+            ),
           ),
         );
+        
         // no tooltip
         if (widget.tooltip == null && widget.tooltipWidget == null) return button;
 

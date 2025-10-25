@@ -38,7 +38,7 @@ class SettingsManager extends ChangeNotifier {
   ThemeMode get themeMode => ThemeX.fromString(_getString('themeMode', defaultValue: ThemeMode.dark.name_));
   set themeMode(ThemeMode value) => _setString('themeMode', value.name_);
 
-  Color get accentColor => _getString('accentColor', defaultValue: Color(0xFF0078d4).toHex()).fromHex();
+  Color get accentColor => _getString('accentColor', defaultValue: Color(0xFF7c52ff).toHex()).fromHex();
   set accentColor(Color value) => _setString('accentColor', value.toHex());
 
   bool get disableAnimations => _getBool('disableAnimations', defaultValue: false);

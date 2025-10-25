@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:flutter/foundation.dart';
 import 'package:miruryoiki/main.dart';
 import 'package:miruryoiki/services/navigation/navigation.dart';
 import 'package:provider/provider.dart';
@@ -93,7 +94,7 @@ class Manager {
     return _cachedAppTheme ?? (_cachedAppTheme = AppTheme());
   }
 
-  static AccentColor get accentColor => settings.accentColor.toAccentColor();
+  static AccentColor get accentColor => kDebugMode ? Colors.red : settings.accentColor.toAccentColor();
   static Color get genericGray => FluentTheme.of(context).acrylicBackgroundColor.lerpWith(const Color.fromARGB(255, 35, 35, 35), 0.5);
   static Color get pastelDominantColor => Color.lerp(currentDominantColor ?? accentColor, Colors.white, .8)!;
   static Color get pastelAccentColor => Color.lerp(accentColor, Colors.white, .8)!;
@@ -102,9 +103,9 @@ class Manager {
 
   static ImageSource get defaultBannerSource => settings.defaultBannerSource;
 
-  static bool get animationsEnabled => !settings.disableAnimations;
-
   static DominantColorSource get dominantColorSource => settings.dominantColorSource;
+
+  static bool get animationsEnabled => !settings.disableAnimations;
 
   static bool get enableAnilistEpisodeTitles => settings.enableAnilistEpisodeTitles;
 

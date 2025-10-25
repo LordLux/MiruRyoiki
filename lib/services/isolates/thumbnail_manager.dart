@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:isolate';
 
+import 'package:miruryoiki/utils/time.dart';
 import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
 import 'package:video_data_utils/video_data_utils.dart';
@@ -232,9 +233,10 @@ class ThumbnailIsolateManager {
 
   Future<PathString?> generateThumbnail(PathString videoPath, PathString outputPath) async {
     await _init();
+
     if (_sendPort == null) throw ThumbnailIsolateException('Thumbnail isolate not initialized');
 
-    final id = '${DateTime.now().millisecondsSinceEpoch}_${videoPath.hashCode}';
+    final id = '${now.millisecondsSinceEpoch}_${videoPath.hashCode}';
     final job = ThumbnailJob(id, videoPath, outputPath);
 
     final completer = Completer<PathString?>();

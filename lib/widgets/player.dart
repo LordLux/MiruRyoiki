@@ -132,7 +132,7 @@ class _PlayerState extends State<Player> with TickerProviderStateMixin {
               Opacity(
                 opacity: 0.2,
                 child: AnimatedAcrylic(
-                  duration: mediumDuration * 2,
+                  duration: gradientChangeDuration,
                   tint: Manager.accentColor,
                   blurAmount: 30,
                   elevation: 4,

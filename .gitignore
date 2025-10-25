@@ -11,6 +11,7 @@
 .svn/
 .swiftpm/
 migrate_working_dir/
+/backup_mapping_color_scroll/
 
 # IntelliJ related
 *.iml

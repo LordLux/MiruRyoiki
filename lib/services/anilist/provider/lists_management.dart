@@ -10,6 +10,7 @@ extension AnilistProviderListsManagement on AnilistProvider {
     if (showSnackBar) snackBar(
       'Refreshing user lists...',
       severity: InfoBarSeverity.info,
+      autoHide: false,
     );
 
     _isLoading = true;

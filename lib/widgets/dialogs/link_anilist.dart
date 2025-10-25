@@ -3,21 +3,28 @@
 import 'dart:io';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/material.dart' show Icons;
+import 'package:miruryoiki/utils/icons.dart' as icons;
 import 'package:miruryoiki/utils/time.dart';
 import 'package:miruryoiki/widgets/series_image.dart';
+import 'package:provider/provider.dart';
 
 import '../../main.dart';
 import '../../manager.dart';
 import '../../models/anilist/mapping.dart';
 import '../../models/series.dart';
+import '../../screens/series.dart';
 import '../../services/anilist/linking.dart';
 import '../../services/file_system/cache.dart';
+import '../../services/library/library_provider.dart';
 import '../../services/navigation/dialogs.dart';
 import '../../services/navigation/shortcuts.dart';
 import '../../services/navigation/show_info.dart';
 import '../../utils/color.dart';
 import '../../utils/path.dart';
+import '../../utils/shell.dart';
+import '../buttons/button.dart';
 import '../buttons/wrapper.dart';
+import '../tooltip_wrapper.dart';
 import 'search_panel.dart';
 
 final GlobalKey<AnilistLinkMultiContentState> linkMultiDialogKey = GlobalKey<AnilistLinkMultiContentState>();
@@ -35,9 +42,9 @@ class AnilistLinkMultiDialog extends ManagedDialog {
     this.onLink,
     required super.popContext,
     this.onDialogComplete,
-    super.title = const Text('Link Local entry to Anilist entry'),
     super.constraints = const BoxConstraints(maxWidth: 1400, maxHeight: 700),
   }) : super(
+          title: Text('Anilist Links for ${series.displayTitle}', overflow: TextOverflow.ellipsis),
           contentBuilder: (context, constraints) => _AnilistLinkMultiContent(
             key: linkMultiDialogKey,
             series: series,
@@ -88,6 +95,8 @@ class AnilistLinkMultiContentState extends State<_AnilistLinkMultiContent> {
   PathString? selectedLocalPath;
   int? selectedAnilistId;
   String? selectedTitle;
+
+  bool _isFakeLoading = false;
 
   // For duplicate checking
   bool _isExactDuplicate = false;
@@ -250,11 +259,19 @@ class AnilistLinkMultiContentState extends State<_AnilistLinkMultiContent> {
 
   // View mode
   Widget _buildMappingsList() {
+    final library = Provider.of<Library>(context, listen: false);
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text('Current Anilist Links:'),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text('Current Anilist Links:'),
+          ],
+        ),
         SizedBox(height: 10),
         Expanded(
           //TODO remove a bit of left padding for the image + add borderradius to poster
@@ -291,28 +308,100 @@ class AnilistLinkMultiContentState extends State<_AnilistLinkMultiContent> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            ManagedDialogButton(
-              text: 'Cancel',
-              popContext: context,
-              onPressed: () => widget.onCancel.call(),
+            TooltipWrapper(
+              tooltip: _mappingsChanged ? 'Cancel and close Dialog': 'Close Dialog',
+              child: (_) => ManagedDialogButton(
+                text: _mappingsChanged ? 'Cancel' : 'Close',
+                popContext: context,
+                onPressed: () => widget.onCancel.call(),
+              ),
             ),
-            Row(
-              children: [
-                MouseButtonWrapper(
-                  child: (_) => Button(
-                    onPressed: _switchToAddMode,
-                    child: Text('Add New Link'),
+            if (widget.series.anilistMappings.length > 1) ...[
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                  child: FluentTheme(
+                    data: FluentTheme.of(context).copyWith(accentColor: SeriesScreenContainerState.mainDominantColor?.toAccentColor() ?? Manager.accentColor),
+                    child: TooltipWrapper(
+                      tooltip: 'Select primary Anilist source',
+                      waitDuration: mediumDuration,
+                      useMousePosition: false,
+                      child: (_) => MouseButtonWrapper(
+                        isLoading: library.isIndexing,
+                        isButtonDisabled: library.isIndexing,
+                        child: (_) => ComboBox<int>(
+                          isExpanded: true,
+                          placeholder: const Text('Select Anilist source'),
+                          disabledPlaceholder: const Text('No Anilist mappings available'),
+                          style: Manager.bodyStyle,
+                          items: widget.series.anilistMappings.map((mapping) {
+                            final title = mapping.title ?? 'Anilist ID: ${mapping.anilistId}';
+                            return ComboBoxItem<int>(
+                              value: mapping.anilistId,
+                              child: Center(
+                                child: TooltipWrapper(
+                                  tooltip: title,
+                                  child: (txt) => Text(
+                                    txt,
+                                    style: Manager.captionStyle.copyWith(fontSize: 11),
+                                  ),
+                                ),
+                              ),
+                            );
+                          }).toList(),
+                          value: widget.series.primaryAnilistId,
+                          onChanged: (value) async {
+                            if (value != null) {
+                              if (mounted) setState(() => widget.series.primaryAnilistId = value);
+
+                              if (libraryScreenKey.currentState != null) libraryScreenKey.currentState!.updateSeriesInSortCache(widget.series);
+
+                              // Fetch and load Anilist data for the selected mapping
+                              await seriesScreenContainerKey.currentState!.seriesScreenKey!.currentState!.changePrimaryId(value);
+                              if (mounted) setState(() {});
+                            }
+                          },
+                        ),
+                      ),
+                    ),
                   ),
                 ),
-                SizedBox(width: 8),
-                ManagedDialogButton(
-                  text: mappings.isEmpty && oldMappings.isNotEmpty //
-                      ? 'Remove All Links'
-                      : 'Save Changes',
-                  isPrimary: true,
-                  popContext: context,
-                  onPressed: _mappingsChanged ? () => widget.onSave(mappings) : null,
+              ),
+            ],
+            Row(
+              children: [
+                TooltipWrapper(
+                  tooltip: 'Add a new Anilist link',
+                  child: (_) => MouseButtonWrapper(
+                    child: (_) => StandardButton(
+                      onPressed: _switchToAddMode,
+                      isFilled: !_mappingsChanged,
+                      filledColor: SeriesScreenContainerState.mainDominantColor,
+                      hoverFillColor: SeriesScreenContainerState.mainDominantColor?.toAccentColor().light,
+                      label: Text('Add New Link', style: Manager.bodyStyle.copyWith(color: getTextColor(!_mappingsChanged ? SeriesScreenContainerState.mainDominantColor ?? Manager.accentColor : Colors.black))),
+                    ),
+                  ),
                 ),
+                if (_mappingsChanged) ...[
+                  SizedBox(width: 8),
+                  Builder(builder: (context) {
+                    final library = Provider.of<Library>(context);
+                    final bool indexing = library.isIndexing;
+                    return TooltipWrapper(
+                      tooltip: indexing ? 'Please wait for indexing to complete before saving changes.' : 'Save changes',
+                      child: (_) => ManagedDialogButton(
+                          text: mappings.isEmpty && oldMappings.isNotEmpty //
+                              ? 'Remove All Links'
+                              : 'Save Changes',
+                          isPrimary: true,
+                          isLoading: indexing,
+                          isDisabled: indexing,
+                          popContext: context,
+                          onPressed: _mappingsChanged ? () => widget.onSave(mappings) : null,
+                        )
+                    );
+                  }),
+                ],
               ],
             ),
           ],
@@ -322,36 +411,93 @@ class AnilistLinkMultiContentState extends State<_AnilistLinkMultiContent> {
   }
 
   Widget _buildMappingItem(AnilistMapping mapping) {
-    return UnselectableTile(
-      color: _isNewlyAddedMapping(mapping) ? null : widget.series.localPosterColor,
-      // use the series effective poster if available
-      icon: _isNewlyAddedMapping(mapping)
-          ? Icon(FluentIcons.add_link, color: Manager.accentColor)
-          : mapping.anilistData?.posterImage != null
-              ? SeriesImageBuilder(
-                  imageProviderFuture: ImageCacheService().getImageProvider(mapping.anilistData!.posterImage!),
-                  width: 40,
-                  fit: BoxFit.cover,
-                )
-              : Icon(FluentIcons.document, color: Colors.white),
-      title: Text(mapping.title ?? 'Anilist ID: ${mapping.anilistId}'),
-      subtitle: Text('Linked to: ${_getDisplayPath(mapping.localPath)}'),
-      trailing: MouseButtonWrapper(
-        tooltip: 'Remove this link',
-        child: (_) => IconButton(
-          icon: Transform.translate(
-            offset: const Offset(1, -1),
-            child: Icon(
-              FluentIcons.blocked12,
-              size: 18,
-              color: _isNewlyAddedMapping(mapping) ? Manager.accentColor : widget.series.localPosterColor,
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 2.0),
+      child: UnselectableTile(
+        color: _isNewlyAddedMapping(mapping) ? Colors.white.withOpacity(0.05) : SeriesScreenContainerState.mainDominantColor,
+        // use the series effective poster if available
+        icon: _isNewlyAddedMapping(mapping)
+            ? SizedBox(width: 30, child: Icon(FluentIcons.add_link, color: Colors.white))
+            : mapping.anilistData?.posterImage != null
+                ? Transform.translate(
+                    offset: const Offset(-6, 0),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(4),
+                      child: SeriesImageBuilder(
+                        imageProviderFuture: ImageCacheService().getImageProvider(mapping.anilistData!.posterImage!),
+                        width: 40,
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                  )
+                : Icon(FluentIcons.document, color: Colors.white),
+
+        title: Transform.translate(
+          offset: !_isNewlyAddedMapping(mapping) ? const Offset(-10, 0) : const Offset(0, 0),
+          child: Text(mapping.title ?? 'Anilist ID: ${mapping.anilistId}', style: Manager.bodyStyle),
+        ),
+        subtitle: Transform.translate(
+          offset: !_isNewlyAddedMapping(mapping) ? const Offset(-10, 0) : const Offset(0, 0),
+          child: Padding(
+            padding: const EdgeInsets.only(top: 2.0),
+            child: RichText(
+              text: TextSpan(
+                children: [
+                  TextSpan(
+                    text: 'Linked to: ',
+                    style: Manager.bodyStyle.copyWith(color: Colors.white.withOpacity(0.5)),
+                  ),
+                  WidgetSpan(
+                    child: Transform.translate(
+                      offset: const Offset(0, 2),
+                      child: StandardButton(
+                        isSmall: true,
+                        padding: EdgeInsets.symmetric(horizontal: 8),
+                        isLoading: _isFakeLoading,
+                        forcedHeight: 18,
+                        tooltip: 'Open this path in Explorer',
+                        onPressed: () {
+                          setState(() => _isFakeLoading = true);
+                          ShellUtils.openFileExplorerAndSelect(mapping.localPath);
+                          Future.delayed(Duration(milliseconds: 1200)).then((_) {
+                            if (mounted) setState(() => _isFakeLoading = false);
+                          });
+                        },
+                        label: Transform.translate(
+                          offset: const Offset(0, -0.75),
+                          child: Text(
+                            '$ps${_getDisplayPath(mapping.localPath)}',
+                            style: Manager.bodyStyle.copyWith(
+                              // fontStyle: FontStyle.italic,
+                              color: Colors.white.withOpacity(0.5),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
-          onPressed: () {
-            setState(() {
-              mappings.remove(mapping);
-            });
-          },
+        ),
+        trailing: MouseButtonWrapper(
+          tooltip: 'Remove this link',
+          child: (_) => IconButton(
+            icon: Transform.translate(
+              offset: const Offset(1, -1),
+              child: Icon(
+                FluentIcons.blocked12,
+                size: 18,
+                color: _isNewlyAddedMapping(mapping) ? Colors.white : SeriesScreenContainerState.mainDominantColor,
+              ),
+            ),
+            onPressed: () {
+              setState(() {
+                mappings.remove(mapping);
+              });
+            },
+          ),
         ),
       ),
     );
@@ -564,9 +710,7 @@ class AnilistLinkMultiContentState extends State<_AnilistLinkMultiContent> {
   String _getDisplayPath(PathString path) {
     final seriesPath = widget.series.path;
     if (path == seriesPath) return '(Main Series Folder)';
-    if (path.path.startsWith(seriesPath.path)) {
-      return path.path.substring(seriesPath.path.length + 1);
-    }
+    if (path.path.startsWith(seriesPath.path)) return path.path.substring(seriesPath.path.length + 1);
     return path.path;
   }
 
@@ -608,53 +752,56 @@ class AnilistLinkMultiContentState extends State<_AnilistLinkMultiContent> {
             child: ValueListenableBuilder(
                 valueListenable: KeyboardState.ctrlPressedNotifier,
                 builder: (context, isCtrlPressed, _) {
-                  return ListView.builder(
-                    physics: isCtrlPressed ? const NeverScrollableScrollPhysics() : null,
-                    itemCount: folderContents.length + 1, // +1 for current folder option
-                    itemBuilder: (context, index) {
-                      if (index == 0) {
-                        // Option to select the current directory itself
-                        final isSelected = selectedLocalPath == currentDirectory;
-                        // Option to select the current directory itself
+                  return Padding(
+                    padding: EdgeInsets.only(top: 2.0),
+                    child: ListView.builder(
+                      physics: isCtrlPressed ? const NeverScrollableScrollPhysics() : null,
+                      itemCount: folderContents.length + 1, // +1 for current folder option
+                      itemBuilder: (context, index) {
+                        if (index == 0) {
+                          // Option to select the current directory itself
+                          final isSelected = selectedLocalPath == currentDirectory;
+                          // Option to select the current directory itself
+                          return SelectableTile(
+                            icon: FileEntityIcon(context, true, isSelected),
+                            isSelected: isSelected,
+                            title: Text('(This Folder)', style: isSelected ? TextStyle(fontWeight: FontWeight.bold) : null),
+                            onTap: () {
+                              setState(() {
+                                selectedLocalPath = currentDirectory;
+                              });
+                              _checkForDuplicates();
+                            },
+                          );
+                        }
+
+                        final entity = folderContents[index - 1];
+                        final isDir = entity is Directory;
+                        final fileName = entity.path.split(Platform.pathSeparator).last;
+                        final isSelected = selectedLocalPath == PathString(entity.path);
+
                         return SelectableTile(
-                          icon: FileEntityIcon(context, true, isSelected),
+                          title: Text(fileName, style: isSelected ? TextStyle(fontWeight: FontWeight.bold) : null),
+                          icon: FileEntityIcon(context, isDir, isSelected),
                           isSelected: isSelected,
-                          title: Text('(This Folder)', style: isSelected ? TextStyle(fontWeight: FontWeight.bold) : null),
                           onTap: () {
-                            setState(() {
-                              selectedLocalPath = currentDirectory;
-                            });
+                            if (isDir) {
+                              setState(() {
+                                // Both select and navigate to the folder
+                                selectedLocalPath = PathString(entity.path);
+                                currentDirectory = PathString(entity.path);
+                                _loadFolderContents();
+                              });
+                            } else {
+                              setState(() {
+                                selectedLocalPath = PathString(entity.path);
+                              });
+                            }
                             _checkForDuplicates();
                           },
                         );
-                      }
-
-                      final entity = folderContents[index - 1];
-                      final isDir = entity is Directory;
-                      final fileName = entity.path.split(Platform.pathSeparator).last;
-                      final isSelected = selectedLocalPath == PathString(entity.path);
-
-                      return SelectableTile(
-                        title: Text(fileName, style: isSelected ? TextStyle(fontWeight: FontWeight.bold) : null),
-                        icon: FileEntityIcon(context, isDir, isSelected),
-                        isSelected: isSelected,
-                        onTap: () {
-                          if (isDir) {
-                            setState(() {
-                              // Both select and navigate to the folder
-                              selectedLocalPath = PathString(entity.path);
-                              currentDirectory = PathString(entity.path);
-                              _loadFolderContents();
-                            });
-                          } else {
-                            setState(() {
-                              selectedLocalPath = PathString(entity.path);
-                            });
-                          }
-                          _checkForDuplicates();
-                        },
-                      );
-                    },
+                      },
+                    ),
                   );
                 }),
           ),
@@ -692,9 +839,7 @@ class AnilistLinkMultiContentState extends State<_AnilistLinkMultiContent> {
     );
   }
 
-  Color accent(double value) {
-    return Colors.grey.lerpWith(Manager.accentColor, value);
-  }
+  Color accent(double value) => Colors.grey.lerpWith(Manager.accentColor, value);
 
   Widget Circle(dynamic value) {
     return Container(
@@ -805,6 +950,7 @@ class _UnselectableTileState extends State<UnselectableTile> {
         borderRadius: BorderRadius.circular(8),
         backgroundColor: backgroundColor.withOpacity(isHovered ? 0.1 : 0.05),
         child: ListTile(
+          margin: EdgeInsets.zero,
           cursor: widget.cursor,
           leading: widget.icon,
           trailing: widget.trailing,

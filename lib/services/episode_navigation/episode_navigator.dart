@@ -1,4 +1,5 @@
 import '../../models/episode.dart';
+import '../../models/season.dart';
 import '../../models/series.dart';
 import '../../utils/path.dart';
 
@@ -145,6 +146,25 @@ class EpisodeNavigator {
     }
 
     return null;
+  }
+  
+  /// Find episode by file path within a series
+  List<Episode> findEpisodesByPath(List<PathString> paths, Series series) {
+    final foundEpisodes = <Episode>[];
+    
+    // Search in all seasons
+    for (final season in series.seasons) {
+      for (final episode in season.episodes) {
+        if (paths.any((path) => episode.path.path == path.path)) foundEpisodes.add(episode);
+      }
+    }
+
+    // Search in related media
+    for (final episode in series.relatedMedia) {
+      if (paths.any((path) => episode.path.path == path.path)) foundEpisodes.add(episode);
+    }
+
+    return foundEpisodes;
   }
 
   bool? arePreviousEpisodesWatched(dynamic episode, Series series) {

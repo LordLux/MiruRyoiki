@@ -22,6 +22,7 @@ class StandardButton extends StatefulWidget {
   final EdgeInsets? padding;
   final Color filledColor;
   final Color hoverFillColor;
+  final double? forcedHeight;
 
   StandardButton({
     super.key,
@@ -37,6 +38,7 @@ class StandardButton extends StatefulWidget {
     this.expand = false,
     this.tooltipWaitDuration,
     this.padding,
+    this.forcedHeight,
     Color? filledColor,
     Color? hoverFillColor,
   })  : filledColor = filledColor ?? Manager.accentColor.lighter,
@@ -83,7 +85,7 @@ class StandardButton extends StatefulWidget {
       filledColor: filledColor,
       hoverFillColor: hoverFillColor,
     );
-  }
+}
   
   factory StandardButton.icon({
     required Widget icon,
@@ -187,7 +189,7 @@ class _StandardButtonState extends State<StandardButton> {
                           : ButtonStyle())
                       .copyWith(padding: WidgetStatePropertyAll(EdgeInsets.zero)),
                   child: SizedBox(
-                    height: widget.isSmall ? 32 : 48,
+                    height: widget.forcedHeight ?? (widget.isSmall ? 32 : 48),
                     child: Stack(
                       alignment: Alignment.center,
                       children: [

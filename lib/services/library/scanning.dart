@@ -340,7 +340,7 @@ extension LibraryScanning on Library {
         .whereNotNull()
         .toList();
 
-    final series = Series(name: name, path: seriesPath, seasons: [], folderPosterPath: posterPath, folderBannerPath: bannerPath);
+    final series = Series(name: name, path: seriesPath, seasons: [], localPosterPath: posterPath, localBannerPath: bannerPath);
     return await _organizeEpisodesIntoSeasons(series, episodes);
   }
 
@@ -583,9 +583,9 @@ extension LibraryScanning on Library {
 
     try {
       // Determine which series need processing
-      final mappingsToProcess = forceRecalculate
+      final mappingsToProcess = forceRecalculate //
           ? _series.expand((s) => s.anilistMappings).toList()
-          : _series
+          : _series //
               .expand((s) => s.anilistMappings.where((m) => !(Manager.settings.dominantColorSource == DominantColorSource.banner ? m.bannerColor != null : m.posterColor != null)))
               .toList();
 
@@ -605,7 +605,7 @@ extension LibraryScanning on Library {
           logTrace('Starting dominant color calculation in isolate');
         },
         onProgress: (processed, total) {
-          final progress = processed.toDouble() / total.toDouble();
+          final progress = (processed / total).clamp(0, 1).toDouble();
           LibraryScanProgressManager().show(progress);
           logTrace('Dominant color progress: $processed/$total (${(progress * 100).toStringAsFixed(1)}%)');
           notifyListeners();
@@ -622,9 +622,9 @@ extension LibraryScanning on Library {
 
         if (result.containsKey('error')) {
           if ((result['error'] as String).contains('No image source available'))
-        logWarn('Skipped dominant color calculation for AnilistId $anilistId: ${result['error']}');
+            logWarn('Skipped dominant color calculation for AnilistId $anilistId: ${result['error']}');
           else
-        logErr('Error calculating dominant color for AnilistId $anilistId: ${result['error']}');
+            logErr('Error calculating dominant color for AnilistId $anilistId: ${result['error']}');
           continue;
         }
 
@@ -642,36 +642,36 @@ extension LibraryScanning on Library {
         for (int seriesIndex = 0; seriesIndex < _series.length; seriesIndex++) {
           final series = _series[seriesIndex];
           final mappingsWithId = series.anilistMappings.where((m) => m.anilistId == anilistId).toList();
-          
+
           if (mappingsWithId.isEmpty) continue;
 
           // Update all mappings with this anilistId
           final updatedMappings = series.anilistMappings.map((m) {
-        if (m.anilistId == anilistId) {
-          final oldPosterColor = m.posterColor;
-          final oldBannerColor = m.bannerColor;
-          
-          final updated = m.copyWith(
-            posterColor: newPosterColor ?? m.posterColor,
-            bannerColor: newBannerColor ?? m.bannerColor,
-          );
+            if (m.anilistId == anilistId) {
+              final oldPosterColor = m.posterColor;
+              final oldBannerColor = m.bannerColor;
 
-          if (oldPosterColor != newPosterColor || oldBannerColor != newBannerColor) {
-            anyChanged = true;
-            if (!mappingsWithId.any((mapping) => mapping == m && successCount > 0)) {
-          successCount++;
+              final updated = m.copyWith(
+                posterColor: newPosterColor ?? m.posterColor,
+                bannerColor: newBannerColor ?? m.bannerColor,
+              );
+
+              if (oldPosterColor != newPosterColor || oldBannerColor != newBannerColor) {
+                anyChanged = true;
+                if (!mappingsWithId.any((mapping) => mapping == m && successCount > 0)) {
+                  successCount++;
+                }
+              }
+
+              return updated;
             }
-          }
-
-          return updated;
-        }
-        return m;
+            return m;
           }).toList();
 
           _series[seriesIndex] = series.copyWith(anilistMappings: updatedMappings);
         }
       }
-      
+
       libraryScreenKey.currentState?.updateColorsInSortCache();
 
       // Save and notify when done
@@ -680,7 +680,7 @@ extension LibraryScanning on Library {
         notifyListeners();
         logTrace('Finished calculating dominant colors for $successCount series');
       }
-        } catch (e, st) {
+    } catch (e, st) {
       logErr('Error during batch dominant color calculation', e, st);
       snackBar(
         'Error calculating dominant colors: $e',

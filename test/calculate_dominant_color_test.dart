@@ -7,7 +7,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:miruryoiki/main.dart';
 import 'package:miruryoiki/models/anilist/anime.dart';
 import 'package:miruryoiki/models/anilist/mapping.dart';
-import 'package:miruryoiki/services/file_system/cache.dart';
 import 'package:miruryoiki/utils/logging.dart';
 import 'package:miruryoiki/utils/path.dart';
 import 'package:miruryoiki/utils/time.dart';
@@ -47,8 +46,6 @@ Future<void> main() async {
 
 Future<void> _calculateDominantColor(AnilistMapping mapping, bool isPoster) async {
   // Test the calculateDominantColorsWithProgress function
-  // print('Testing color calculation with ${isPoster ? "Poster" : "Banner"} source...: ${await ImageCacheService().getCachedImagePath(mapping.anilistData?.coverImage?.url ?? '')}');
-
   final results = await calculateMappingDominantColorsWithProgress(
     mappings: [mapping],
     forceRecalculate: true,

@@ -210,7 +210,7 @@ class _UpcomingEpisodeCardState extends State<UpcomingEpisodeCard> {
 
                       // Series info
                       Builder(builder: (context) {
-                        final double value = widget.series.isAnilistPoster ? .76 : .9;
+                        final double value = widget.series.isAnilistPosterBeingUsed ? .76 : .9;
                         final Color nicerColor = mainColor.lerpWith(Colors.grey, value);
 
                         Widget child = Padding(
@@ -248,7 +248,7 @@ class _UpcomingEpisodeCardState extends State<UpcomingEpisodeCard> {
                             ],
                           ),
                         );
-                        if (widget.series.isAnilistPoster) {
+                        if (widget.series.isAnilistPosterBeingUsed) {
                           return Transform.scale(
                             scale: 1.02,
                             child: Transform.translate(

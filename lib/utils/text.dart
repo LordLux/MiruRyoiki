@@ -26,3 +26,19 @@ double measureTextHeight(String text, {TextStyle? style, int maxLines = 1, TextD
 
 double measureTextWidth(String text, {TextStyle? style, int maxLines = 1, TextDirection? textDirection, double minWidth = 0, double maxWidth = double.infinity}) => //
     measureText(text, style: style, maxLines: maxLines, textDirection: textDirection, minWidth: minWidth, maxWidth: maxWidth).width;
+
+String parseFormat(String? format) {
+  return switch (format?.toUpperCase()) {
+    'TV' => 'TV',
+    'TV_SHORT' => 'TV Short',
+    'MOVIE' => 'Movie',
+    'SPECIAL' => 'Special',
+    'OVA' => 'OVA',
+    'ONA' => 'ONA',
+    'MUSIC' => 'Music',
+    // 'MANGA' => 'Manga',
+    // 'NOVEL' => 'Novel',
+    // 'ONE_SHOT' => 'One Shot',
+    _ => '',
+  };
+}

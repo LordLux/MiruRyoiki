@@ -3,12 +3,12 @@ import 'dart:isolate';
 import 'dart:io';
 import 'dart:convert';
 
+import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:crypto/crypto.dart';
 import 'package:miruryoiki/models/anilist/mapping.dart';
-import 'package:provider/provider.dart';
 import 'package:video_data_utils/video_data_utils.dart';
-import '../../main.dart' show rootIsolateToken, rootNavigatorKey;
+import '../../main.dart' show rootIsolateToken;
 import '../../models/metadata.dart';
 import '../../models/series.dart';
 import '../../enums.dart';
@@ -17,7 +17,6 @@ import '../../utils/color.dart';
 import '../../utils/logging.dart';
 import '../../utils/path.dart';
 import '../../utils/image_color_extractor.dart';
-import '../library/library_provider.dart';
 
 class _IsolateProgressUpdate {
   final int processed;
@@ -165,8 +164,8 @@ class IsolateManager {
           final processedIndex = message.processed - 4;
           if (processedIndex >= 0 && processedIndex < actualParams.serializedMappings.length) {
             final mappingTitle = actualParams.serializedMappings[processedIndex]['title'] ?? 'Unknown';
-            print(actualParams.serializedMappings);
-            print("${actualParams.serializedMappings[processedIndex]['posterColor']}  ${actualParams.serializedMappings[processedIndex]['posterColor'].runtimeType}");
+            // print(actualParams.serializedMappings);
+            // print("${actualParams.serializedMappings[processedIndex]['posterColor']}  ${actualParams.serializedMappings[processedIndex]['posterColor'].runtimeType}");
             final String posterColor = (actualParams.serializedMappings[processedIndex]['posterColor'] ?? "#000000").replaceAll('#', '');
             final String bannerColor = (actualParams.serializedMappings[processedIndex]['bannerColor'] ?? "#000000").replaceAll('#', '');
             final finalPosterColor = Color(int.parse('0xFF${posterColor.substring(posterColor.length - 6, posterColor.length)}'));
@@ -360,6 +359,13 @@ Future<void> sortSeriesIsolate(SortSeriesParams params) async {
 
 /// Isolate task that calculates dominant colors and sends progress updates.
 Future<void> calculateDominantColorsIsolate(CalculateDominantColorsParams params) async {
+  try {
+    WidgetsFlutterBinding.ensureInitialized();
+    logDebug('   WidgetsBinding not initialized, initializing...');
+  } catch (e) {
+    // If we're in an isolate or WidgetsBinding is not available, skip this check
+    logTrace('   WidgetsBinding not available (possibly in isolate), continuing...');
+  }
   final results = <int, Map<String, dynamic>>{};
   final totalMappings = params.serializedMappings.length;
   int processedCount = 0;
@@ -369,7 +375,7 @@ Future<void> calculateDominantColorsIsolate(CalculateDominantColorsParams params
       // Check if we need to process this series before deserializing
       final hasPosterDominantColor = serializedMapping['posterColor'] != null;
       final hasBannerDominantColor = serializedMapping['bannerColor'] != null;
-      if (!params.forceRecalculate && (hasPosterDominantColor || hasBannerDominantColor)) {
+      if (/*!params.forceRecalculate &&*/ (hasPosterDominantColor && hasBannerDominantColor)) {
         processedCount++;
         continue;
       }
@@ -435,8 +441,8 @@ Future<(Color?, (bool, String?))> _calculateDominantColorInIsolate(Series series
     }
 
     // Fall back to local poster if no AniList image or not cached
-    if (imagePath == null && series.folderPosterPath != null) {
-      imagePath = series.folderPosterPath;
+    if (imagePath == null && series.localPosterPath != null) {
+      imagePath = series.localPosterPath;
     }
   } else {
     // Banner source - same logic
@@ -446,8 +452,8 @@ Future<(Color?, (bool, String?))> _calculateDominantColorInIsolate(Series series
     }
 
     // Fall back to local banner if no AniList image or not cached
-    if (imagePath == null && series.folderBannerPath != null) {
-      imagePath = series.folderBannerPath;
+    if (imagePath == null && series.localBannerPath != null) {
+      imagePath = series.localBannerPath;
     }
   }
 
@@ -471,23 +477,17 @@ Future<(Color?, (bool, String?))> _calculateDominantColorInIsolate(Series series
 
 /// Helper function to calculate dominant color in isolate
 Future<((Color?, Color?)?, (bool, String?))> _calculateMappingDominantColorsInIsolate(AnilistMapping mapping) async {
-  final String? posterPath;
+  String? posterPath;
   // Try to get the cached AniList image path
   if (mapping.anilistData?.posterImage != null) {
     posterPath = mapping.anilistData!.posterImage!;
-  } else {
-    final library = Provider.of<Library>(rootNavigatorKey.currentContext!, listen: false);
-    posterPath = library.getSeriesByAnilistId(mapping.anilistId)?.anilistPosterUrl;
   }
 
-  final String? bannerPath;
+  String? bannerPath;
   // Banner source - same logic
   if (mapping.anilistData?.bannerImage != null) {
     // Try to get the cached AniList image path
     bannerPath = mapping.anilistData!.bannerImage!;
-  } else {
-    final library = Provider.of<Library>(rootNavigatorKey.currentContext!, listen: false);
-    bannerPath = library.getSeriesByAnilistId(mapping.anilistId)?.anilistBannerUrl;
   }
 
   if (bannerPath == null && posterPath == null) return (null, (false, 'No AniList poster URL available'));
@@ -527,6 +527,7 @@ Future<((Color?, Color?)?, (bool, String?))> _calculateMappingDominantColorsInIs
 /// Helper to get cached AniList image path in isolate (simplified version)
 Future<PathString?> _getCachedAnilistImagePath(String? url) async {
   if (url == null) return null;
+  await initializeMiruRyoikiSaveDirectory();
 
   try {
     // Recreate the same caching logic used by ImageCacheService

@@ -9,6 +9,8 @@ import 'package:provider/provider.dart';
 
 import '../../main.dart';
 import '../../manager.dart';
+import '../../screens/inner_series.dart';
+import '../../screens/series.dart';
 import '../../widgets/dialogs/notifications.dart';
 import '../library/library_provider.dart';
 import '../../utils/logging.dart';
@@ -185,8 +187,8 @@ class _CustomKeyboardListenerState extends State<CustomKeyboardListener> {
 
           if (homeState != null && homeState.mounted) {
             if (homeState.isSeriesView) {
-              final seriesScreenState = getActiveSeriesScreenState();
-              snackBar('Clearing Series cache...', severity: InfoBarSeverity.info);
+              final seriesScreenState = getActiveSeriesScreenContainerState();
+              snackBar('Clearing Series cache...', severity: InfoBarSeverity.info, autoHide: false);
 
               // Clear thumbnails for the CURRENT SERIES if possible
               if (seriesScreenState != null && seriesScreenState.widget.seriesPath?.pathMaybe != null) {
@@ -217,7 +219,7 @@ class _CustomKeyboardListenerState extends State<CustomKeyboardListener> {
             } else {
               // Not in series view, clear ALL thumbnails after confirmation
               void clearAllCaches() {
-                snackBar('Clearing cache for All Series...', severity: InfoBarSeverity.info);
+                snackBar('Clearing cache for All Series...', severity: InfoBarSeverity.info, autoHide: false);
 
                 Future.wait([
                   library.clearAllThumbnailCache(),
@@ -293,30 +295,32 @@ class _CustomKeyboardListenerState extends State<CustomKeyboardListener> {
       // Modify path
       if (event.logicalKey == LogicalKeyboardKey.f4) {
         logTrace('F4 pressed: Modify path');
-      } else
+      } 
+      // else
       //
       // ctrl + N to expand/collapse Nth season
-      if (isCtrlPressed && event.logicalKey == LogicalKeyboardKey.digit1) {
-        _toggleSeason(1);
-      } else if (isCtrlPressed && event.logicalKey == LogicalKeyboardKey.digit2) {
-        _toggleSeason(2);
-      } else if (isCtrlPressed && event.logicalKey == LogicalKeyboardKey.digit3) {
-        _toggleSeason(3);
-      } else if (isCtrlPressed && event.logicalKey == LogicalKeyboardKey.digit4) {
-        _toggleSeason(4);
-      } else if (isCtrlPressed && event.logicalKey == LogicalKeyboardKey.digit5) {
-        _toggleSeason(5);
-      } else if (isCtrlPressed && event.logicalKey == LogicalKeyboardKey.digit6) {
-        _toggleSeason(6);
-      } else if (isCtrlPressed && event.logicalKey == LogicalKeyboardKey.digit7) {
-        _toggleSeason(7);
-      } else if (isCtrlPressed && event.logicalKey == LogicalKeyboardKey.digit8) {
-        _toggleSeason(8);
-      } else if (isCtrlPressed && event.logicalKey == LogicalKeyboardKey.digit9) {
-        _toggleSeason(9);
-      } else if (isCtrlPressed && event.logicalKey == LogicalKeyboardKey.digit0) {
-        _toggleSeason(0);
-      } else if (event.logicalKey == LogicalKeyboardKey.f11) {
+      // if (isCtrlPressed && event.logicalKey == LogicalKeyboardKey.digit1) {
+      //   _toggleSeason(1);
+      // } else if (isCtrlPressed && event.logicalKey == LogicalKeyboardKey.digit2) {
+      //   _toggleSeason(2);
+      // } else if (isCtrlPressed && event.logicalKey == LogicalKeyboardKey.digit3) {
+      //   _toggleSeason(3);
+      // } else if (isCtrlPressed && event.logicalKey == LogicalKeyboardKey.digit4) {
+      //   _toggleSeason(4);
+      // } else if (isCtrlPressed && event.logicalKey == LogicalKeyboardKey.digit5) {
+      //   _toggleSeason(5);
+      // } else if (isCtrlPressed && event.logicalKey == LogicalKeyboardKey.digit6) {
+      //   _toggleSeason(6);
+      // } else if (isCtrlPressed && event.logicalKey == LogicalKeyboardKey.digit7) {
+      //   _toggleSeason(7);
+      // } else if (isCtrlPressed && event.logicalKey == LogicalKeyboardKey.digit8) {
+      //   _toggleSeason(8);
+      // } else if (isCtrlPressed && event.logicalKey == LogicalKeyboardKey.digit9) {
+      //   _toggleSeason(9);
+      // } else if (isCtrlPressed && event.logicalKey == LogicalKeyboardKey.digit0) {
+      //   _toggleSeason(0);
+      // } else
+      if (event.logicalKey == LogicalKeyboardKey.f11) {
         WindowStateService.toggleFullScreen();
       }
     } else if (event is RawKeyUpEvent) {
@@ -356,19 +360,19 @@ class _CustomKeyboardListenerState extends State<CustomKeyboardListener> {
     // You'd need to track forward history separately
   }
 
-  void _toggleSeason(int season) {
-    final homeState = homeKey.currentState;
-    if (homeState != null && homeState.mounted && homeState.isSeriesView) {
-      final seriesScreenState = getActiveSeriesScreenState();
+  // void _toggleSeason(int season) {
+  //   final homeState = homeKey.currentState;
+  //   if (homeState != null && homeState.mounted && homeState.isSeriesView) {
+  //     final seriesScreenState = getActiveSeriesScreenState();
 
-      if (seriesScreenState != null) {
-        logTrace('Ctrl + $season pressed: Toggling season $season');
-        seriesScreenState.toggleSeasonExpander(season);
-      } else {
-        logDebug('SeriesScreenState not found');
-      }
-    }
-  }
+  //     if (seriesScreenState != null) {
+  //       logTrace('Ctrl + $season pressed: Toggling season $season');
+  //       seriesScreenState.toggleSeasonExpander(season);
+  //     } else {
+  //       logDebug('SeriesScreenState not found');
+  //     }
+  //   }
+  // }
 
   @override
   void dispose() {

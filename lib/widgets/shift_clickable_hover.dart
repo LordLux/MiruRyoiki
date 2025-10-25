@@ -4,14 +4,13 @@ import 'package:flutter/material.dart' as mat;
 import 'package:miruryoiki/utils/screen.dart';
 
 import '../manager.dart';
-import '../models/series.dart';
 import '../services/navigation/shortcuts.dart';
 import '../utils/time.dart';
 
 class ShiftClickableHover extends StatefulWidget {
   const ShiftClickableHover({
     super.key,
-    required this.series,
+    this.color,
     required this.enabled,
     required this.onEnter,
     required this.onHover,
@@ -20,7 +19,7 @@ class ShiftClickableHover extends StatefulWidget {
     required this.finalChild,
   });
 
-  final Series series;
+  final Color? color;
   final bool enabled;
   final VoidCallback onEnter;
   final VoidCallback? onHover;
@@ -93,12 +92,12 @@ class _ShiftClickableHoverState extends State<ShiftClickableHover> {
         color: Colors.transparent,
         child: mat.InkWell(
           onTap: isShiftPressed && widget.enabled ? () => widget.onTap?.call(context) : null,
-          splashColor: (widget.series.localPosterColor ?? Manager.accentColor).withOpacity(1),
+          splashColor: (widget.color ?? Manager.accentColor).withOpacity(1),
           borderRadius: BorderRadius.circular(ScreenUtils.kEpisodeCardBorderRadius),
           child: AnimatedContainer(
             duration: shortStickyHeaderDuration,
             decoration: BoxDecoration(
-              color: (widget.series.localPosterColor ?? Manager.accentColor).withOpacity(
+              color: (widget.color ?? Manager.accentColor).withOpacity(
                 isShiftPressed && widget.enabled ? .15 : 0,
               ),
               borderRadius: BorderRadius.circular(ScreenUtils.kEpisodeCardBorderRadius),

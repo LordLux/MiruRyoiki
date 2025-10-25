@@ -3,7 +3,8 @@ import 'dart:io';
 
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:miruryoiki/enums.dart';
-import '../../utils/color.dart' as ColorUtils;
+import '../../manager.dart';
+import '../../utils/color.dart' as color_utils;
 
 import '../../utils/file.dart';
 import '../../utils/logging.dart';
@@ -29,7 +30,7 @@ class AnilistMapping {
     Color? bannerColor,
   })  : _posterColor = posterColor,
         _bannerColor = bannerColor;
-        
+
   Future<Color?> get posterColorFuture => _posterColor != null ? Future.value(_posterColor) : calculatePosterColor();
   Future<Color?> get bannerColorFuture => _bannerColor != null ? Future.value(_bannerColor) : calculateBannerColor();
 
@@ -37,16 +38,17 @@ class AnilistMapping {
   Color? get bannerColor => _bannerColor;
 
   Future<Color?> calculatePosterColor() async {
-    _posterColor = (await ColorUtils.calculateLinkColors(this, calculatePoster: true, forceRecalculate: true)).$1.$1;
+    _posterColor = (await color_utils.calculateLinkColors(this, calculatePoster: true, forceRecalculate: true)).$1.$1;
     return _posterColor;
   }
+
   Future<Color?> calculateBannerColor() async {
-    _bannerColor = (await ColorUtils.calculateLinkColors(this, calculateBanner: true, forceRecalculate: true)).$1.$2;
+    _bannerColor = (await color_utils.calculateLinkColors(this, calculateBanner: true, forceRecalculate: true)).$1.$2;
     return _bannerColor;
   }
-  
-  Future<void> calculateDominantColors() async {
-    final colors = await ColorUtils.calculateLinkColors(this, calculatePoster: true, calculateBanner: true, forceRecalculate: true);
+
+  Future<void> calculateDominantColors({bool forceRecalculate = true}) async {
+    final colors = await color_utils.calculateLinkColors(this, calculatePoster: true, calculateBanner: true, forceRecalculate: forceRecalculate);
     _posterColor = colors.$1.$1;
     _bannerColor = colors.$1.$2;
   }
@@ -55,6 +57,7 @@ class AnilistMapping {
         'localPath': localPath.path, // not nullable
         'anilistId': anilistId,
         'title': title,
+        'anilistData': anilistData?.toJson(),
         'lastSynced': lastSynced?.toIso8601String(),
         'posterColor': _posterColor?.toHex(),
         'bannerColor': _bannerColor?.toHex(),
@@ -65,9 +68,10 @@ class AnilistMapping {
         localPath: PathString.fromJson(json['localPath'])!,
         anilistId: json['anilistId'],
         title: json['title'],
+        anilistData: json['anilistData'] != null ? AnilistAnime.fromJson(json['anilistData']) : null,
         lastSynced: json['lastSynced'] != null ? DateTime.parse(json['lastSynced']) : null,
-        posterColor: json['posterColor']?.fromHex(),
-        bannerColor: json['bannerColor']?.fromHex(),
+        posterColor: json['posterColor'] != null ? (json['posterColor'] as String).fromHex() : null,
+        bannerColor: json['bannerColor'] != null ? (json['bannerColor'] as String).fromHex() : null,
       );
 
   @override
@@ -75,8 +79,32 @@ class AnilistMapping {
     return 'AnilistMapping(localPath: $localPath, anilistId: $anilistId, title: $title, lastSynced: $lastSynced)';
   }
 
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+
+    return other is AnilistMapping && //
+        other.localPath == localPath &&
+        other.anilistId == anilistId &&
+        other.title == title &&
+        other.lastSynced == lastSynced &&
+        other._posterColor == _posterColor &&
+        other._bannerColor == _bannerColor;
+  }
+
+  @override
+  int get hashCode =>
+      localPath.hashCode ^ //
+      anilistId.hashCode ^
+      title.hashCode ^
+      lastSynced.hashCode ^
+      _posterColor.hashCode ^
+      _bannerColor.hashCode;
+
   /// Get all episode file paths linked to this mapping
+  /// 
   /// If mapping points to a file: returns [that file]
+  /// 
   /// If mapping points to a directory: returns all video files directly in that directory
   List<PathString> get linkedEpisodePaths {
     final localFile = File(localPath.path); // File
@@ -104,6 +132,8 @@ class AnilistMapping {
     return [];
   }
 
+  bool get isLinked => anilistData != null;
+
   // For easier debugging and logging
   String toJsonString() => jsonEncode(toJson());
 
@@ -128,4 +158,20 @@ class AnilistMapping {
       bannerColor: bannerColor ?? _bannerColor,
     );
   }
+
+  /// Get the effective primary color based on settings and available images
+  Future<Color?> effectivePrimaryColor({bool forceRecalculate = false}) async {
+    // DominantColorSource.poster
+    if (Manager.settings.dominantColorSource == DominantColorSource.poster) {
+      if (forceRecalculate) return await calculatePosterColor();
+      return await posterColorFuture;
+    }
+    // DominantColorSource.banner
+    if (forceRecalculate) return await calculateBannerColor();
+    return await bannerColorFuture;
+  }
+
+  /// Get the effective primary color based on settings and available images
+  Color? effectivePrimaryColorSync() => //
+      Manager.settings.dominantColorSource == DominantColorSource.poster ? posterColor : bannerColor;
 }

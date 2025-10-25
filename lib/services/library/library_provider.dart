@@ -10,6 +10,8 @@ import 'package:path/path.dart' as p;
 import 'package:path/path.dart' as path;
 import 'package:provider/provider.dart';
 
+import '../../models/mapping_target.dart';
+import '../../models/season.dart';
 import '../../utils/file.dart';
 import '../players/player_manager.dart';
 import '../players/factory.dart';

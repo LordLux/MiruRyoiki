@@ -1,21 +1,20 @@
 import 'dart:async';
-import 'dart:math' show max;
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/material.dart' as mat;
 import 'package:provider/provider.dart';
 import 'package:defer_pointer/defer_pointer.dart';
-import 'package:recase/recase.dart';
-import 'package:visibility_detector/visibility_detector.dart';
 
 import '../main.dart';
+import '../models/anilist/anime.dart';
 import '../services/connectivity/connectivity_service.dart';
 import '../services/library/library_provider.dart';
 import '../services/lock_manager.dart';
 import '../services/navigation/show_info.dart';
 import '../services/navigation/statusbar.dart';
-import '../utils/color.dart' as ColorUtils;
 import '../utils/path.dart';
+import '../utils/shell.dart';
 import '../utils/text.dart';
+import '../widgets/animated_color_wrapper.dart';
 import '../widgets/buttons/button.dart';
 import '../services/anilist/provider/anilist_provider.dart';
 import '../widgets/buttons/wrapper.dart';
@@ -25,7 +24,6 @@ import '../enums.dart';
 import '../manager.dart';
 import '../models/anilist/mapping.dart';
 import '../models/series.dart';
-import '../models/episode.dart';
 import '../services/anilist/linking.dart';
 import '../services/navigation/dialogs.dart';
 import '../services/navigation/shortcuts.dart';
@@ -33,26 +31,191 @@ import '../utils/logging.dart';
 import '../utils/retry.dart';
 import '../utils/screen.dart';
 import '../utils/time.dart';
-import '../widgets/episode_grid.dart';
 import '../widgets/page/header_widget.dart';
-import 'package:sticky_headers/sticky_headers.dart';
 import '../widgets/page/infobar.dart';
 import '../widgets/page/page.dart';
+import '../widgets/mapping_card.dart';
 import '../widgets/shift_clickable_hover.dart';
 import '../widgets/shrinker.dart';
 import '../widgets/simple_html_parser.dart';
 import '../widgets/tooltip_wrapper.dart';
 import '../widgets/transparency_shadow_image.dart';
+import '../models/mapping_target.dart';
+import '../services/navigation/navigation.dart';
 import 'anilist_settings.dart';
+import 'inner_series.dart';
+
+/// Duration for which AniList data is considered fresh and doesn't need refetching
+const Duration kAnilistCacheDuration = Duration(minutes: 30);
+
+/// Wrapper that manages navigation between SeriesScreen (grid of mappings) and InnerSeriesScreen (single mapping)
+class SeriesScreenContainer extends StatefulWidget {
+  final PathString? seriesPath;
+  final VoidCallback onBack;
+
+  const SeriesScreenContainer({
+    super.key,
+    required this.seriesPath,
+    required this.onBack,
+  });
+
+  @override
+  SeriesScreenContainerState createState() => SeriesScreenContainerState();
+}
+
+class SeriesScreenContainerState extends State<SeriesScreenContainer> {
+  AnilistMapping? _selectedMapping;
+  MappingTarget? _selectedTarget;
+  static Color? mainDominantColor;
+
+  final GlobalKey<SeriesScreenState> _seriesScreenKey = GlobalKey<SeriesScreenState>();
+  final GlobalKey<InnerSeriesScreenState> _innerSeriesScreenKey = GlobalKey<InnerSeriesScreenState>();
+
+  bool _navigateToMappingFinish = false;
+  bool _mainSeriesScreenOpacityHideStart = false;
+
+  /// Get the isReloadingSeries property from the currently active screen
+  bool get isReloadingSeries {
+    if (_selectedMapping != null && _selectedTarget != null) {
+      // Inner series screen is active
+      return _innerSeriesScreenKey.currentState?.isReloadingSeries ?? false;
+    } else {
+      // Main series screen is active
+      return _seriesScreenKey.currentState?.isReloadingSeries ?? false;
+    }
+  }
+
+  GlobalKey<SeriesScreenState>? get seriesScreenKey {
+    if (isShowingInnerScreen) return null;
+    return _seriesScreenKey;
+  }
+
+  GlobalKey<InnerSeriesScreenState>? get innerSeriesScreenKey {
+    if (isShowingMainScreen) return null;
+    return _innerSeriesScreenKey;
+  }
+
+  /// Check if we're currently showing the inner series screen
+  bool get isShowingInnerScreen => _selectedMapping != null && _selectedTarget != null;
+
+  /// Check if we're currently showing the main series screen
+  bool get isShowingMainScreen => !isShowingInnerScreen;
+
+  bool get showInnerScreen => _selectedMapping != null && _selectedTarget != null;
+
+  void navigateToMapping(AnilistMapping mapping, MappingTarget target) {
+    if (!mounted) return;
+
+    final navManager = Provider.of<NavigationManager>(context, listen: false);
+    final mappingName = target.displayName;
+
+    // Push the inner mapping page to navigation stack
+    navManager.pushPage(
+      'mapping:${mapping.localPath}',
+      mappingName,
+      data: mapping.localPath,
+    );
+
+    setState(() {
+      _selectedMapping = mapping;
+      _selectedTarget = target;
+      SeriesScreenContainerState.mainDominantColor = mainDominantColor ?? Manager.accentColor;
+    });
+
+    nextFrame(delay: 15, () {
+      setState(() => _mainSeriesScreenOpacityHideStart = true);
+    });
+  }
+
+  void exitMapping() {
+    if (!mounted) return;
+
+    final navManager = Provider.of<NavigationManager>(context, listen: false);
+
+    // Pop the mapping page from navigation stack
+    if (navManager.currentView?.level == NavigationLevel.page && navManager.currentView?.id.startsWith('mapping:') == true) {
+      navManager.goBack();
+    }
+
+    setState(() {
+      _selectedMapping = null;
+      _mainSeriesScreenOpacityHideStart = false;
+      _selectedTarget = null;
+      SeriesScreenContainerState.mainDominantColor = mainDominantColor ?? Manager.accentColor;
+      Manager.currentDominantColor = mainDominantColor;
+    });
+  }
+
+  void onNavigateToMappingFinish() {
+    if (!mounted) return;
+    setState(() => _navigateToMappingFinish = showInnerScreen);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Use IndexedStack to keep both screens alive and preserve state
+    return Stack(
+      children: [
+        // Main series screen (grid of mappings)
+        Offstage(
+          offstage: showInnerScreen && _navigateToMappingFinish,
+          child: AnimatedOpacity(
+            duration: getDuration(const Duration(milliseconds: 300)),
+            opacity: showInnerScreen && _mainSeriesScreenOpacityHideStart ? 0.0 : 1.0,
+            child: IgnorePointer(
+              ignoring: showInnerScreen,
+              child: AbsorbPointer(
+                absorbing: showInnerScreen,
+                child: SeriesScreen(
+                  key: _seriesScreenKey,
+                  seriesPath: widget.seriesPath,
+                  onBack: widget.onBack,
+                  onNavigateToMapping: navigateToMapping,
+                ),
+              ),
+            ),
+          ),
+        ),
+
+        // Inner series screen (single mapping detail)
+        AbsorbPointer(
+          absorbing: !showInnerScreen,
+          child: IgnorePointer(
+            ignoring: !showInnerScreen,
+            child: AnimatedOpacity(
+              duration: getDuration(const Duration(milliseconds: 300)),
+              opacity: showInnerScreen ? 1.0 : 0.0,
+              onEnd: () => onNavigateToMappingFinish(),
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 300),
+                child: showInnerScreen
+                    ? InnerSeriesScreen(
+                        key: _innerSeriesScreenKey,
+                        seriesPath: widget.seriesPath!,
+                        target: _selectedTarget!,
+                        mapping: _selectedMapping!,
+                        onBack: exitMapping,
+                      )
+                    : const SizedBox.shrink(),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
 
 class SeriesScreen extends StatefulWidget {
   final PathString? seriesPath;
   final VoidCallback onBack;
+  final Function(AnilistMapping mapping, MappingTarget target)? onNavigateToMapping;
 
   const SeriesScreen({
     super.key,
     required this.seriesPath,
     required this.onBack,
+    this.onNavigateToMapping,
   });
 
   @override
@@ -69,19 +232,14 @@ class SeriesScreenState extends State<SeriesScreen> {
 
   bool isReloadingSeries = false;
 
-  int _highestVisibleEpisodeGridIndex = 0;
-  final Set<int> _visibleEpisodeGridIndices = {};
-  final Map<int, GlobalKey<ExpandingStickyHeaderBuilderState>> _seasonExpanderKeys = {};
-
   bool _isPosterHovering = false;
-  DeferredPointerHandlerLink? deferredPointerLink;
   bool _isBannerHovering = false;
+  DeferredPointerHandlerLink? deferredPointerLink;
 
-  Series? get series => Provider.of<Library>(context, listen: false).getSeriesByPath(widget.seriesPath!);
+  /// Cached reference to the current series, updated via Selector in build()
+  Series? _cachedSeries;
 
-  Color get dominantColor =>
-      series?.localPosterColor ?? //
-      FluentTheme.of(context).accentColor.defaultBrushFor(FluentTheme.of(context).brightness);
+  // Color? dominantColor;
 
   List<Widget> infos(Series series) => [
         InfoLabel(
@@ -94,41 +252,29 @@ class SeriesScreenState extends State<SeriesScreen> {
           labelStyle: Manager.bodyStrongStyle,
           child: Text('${series.totalEpisodes}'),
         ),
-        if (series.anilistData?.status != null)
+        if (series.relatedMedia.isNotEmpty)
+          InfoLabel(
+            label: 'Related Media',
+            labelStyle: Manager.bodyStrongStyle,
+            child: Text('${series.relatedMedia.length}'),
+          ),
+        if (series.effectiveStatus != null)
           InfoLabel(
             label: 'Status',
             labelStyle: Manager.bodyStrongStyle,
-            child: Text(series.anilistData!.status!.replaceAll('_', ' ').titleCase),
+            child: Text(series.effectiveStatus!),
           ),
-        if (series.format != null)
+        if (series.formats != null)
           InfoLabel(
-            label: 'Format',
+            label: 'Formats',
             labelStyle: Manager.bodyStrongStyle,
-            child: Text(series.format!),
+            child: Text(series.formats!),
           ),
-        if (series.seasonYear != null)
+        if (series.seasonAndSeasonYearRange != null)
           InfoLabel(
-            label: 'Year',
+            label: 'Years',
             labelStyle: Manager.bodyStrongStyle,
-            child: Text('${series.seasonYear}'),
-          ),
-        if (series.anilistData?.season != null)
-          InfoLabel(
-            label: 'Season',
-            labelStyle: Manager.bodyStrongStyle,
-            child: Text(series.anilistData!.season!.toLowerCase().titleCase),
-          ),
-        if (series.rating != null)
-          InfoLabel(
-            label: 'Rating',
-            labelStyle: Manager.bodyStrongStyle,
-            child: Text('${series.rating! / 10}/10'),
-          ),
-        if (series.meanScore != null)
-          InfoLabel(
-            label: 'Mean Score',
-            labelStyle: Manager.bodyStrongStyle,
-            child: Text('${series.meanScore! / 10}/10'),
+            child: Text('${series.seasonAndSeasonYearRange}'),
           ),
         if (series.highestUserScore != null && series.highestUserScore! > 0)
           InfoLabel(
@@ -136,57 +282,22 @@ class SeriesScreenState extends State<SeriesScreen> {
             labelStyle: Manager.bodyStrongStyle,
             child: Text('${series.highestUserScore! / 10}/10'),
           ),
-        if (series.popularity != null)
-          InfoLabel(
-            label: 'Popularity',
-            labelStyle: Manager.bodyStrongStyle,
-            child: Text('#${series.popularity}'),
-          ),
-        if (series.anilistData?.favourites != null)
-          InfoLabel(
-            label: 'Favourites',
-            labelStyle: Manager.bodyStrongStyle,
-            child: Text('${series.anilistData!.favourites}'),
-          ),
         if (series.metadata?.duration != null && series.metadata!.duration.inSeconds > 0)
           InfoLabel(
             label: 'Duration',
             labelStyle: Manager.bodyStrongStyle,
             child: Text(series.metadata!.durationFormatted),
           ),
-        if (series.relatedMedia.isNotEmpty)
-          InfoLabel(
-            label: 'Related Media',
-            labelStyle: Manager.bodyStrongStyle,
-            child: Text('${series.relatedMedia.length}'),
-          ),
       ];
 
   //
-
-  void _onEpisodeGridVisibilityChanged(int index, bool isVisible) {
-    if (mounted)
-      setState(() {
-        if (isVisible) {
-          _visibleEpisodeGridIndices.add(index);
-        } else {
-          _visibleEpisodeGridIndices.remove(index);
-        }
-
-        // Update highest visible index
-        _highestVisibleEpisodeGridIndex = _visibleEpisodeGridIndices.isEmpty ? 0 : _visibleEpisodeGridIndices.reduce(max);
-        log(_highestVisibleEpisodeGridIndex); // TODO remove after implementing color change
-      });
-  }
 
   @override
   void initState() {
     super.initState();
     if (widget.seriesPath != null) {
       deferredPointerLink = DeferredPointerHandlerLink();
-      nextFrame(() {
-        _loadAnilistDataForCurrentSeries();
-      });
+      nextFrame(() => _loadAnilistDataForCurrentSeries());
     }
     parser = SimpleHtmlParser(context);
   }
@@ -198,9 +309,7 @@ class SeriesScreenState extends State<SeriesScreen> {
       // Series changed, load new data
       if (widget.seriesPath != null) {
         deferredPointerLink ??= DeferredPointerHandlerLink();
-        nextFrame(() {
-          _loadAnilistDataForCurrentSeries();
-        });
+        nextFrame(() => _loadAnilistDataForCurrentSeries());
       }
     }
   }
@@ -215,10 +324,8 @@ class SeriesScreenState extends State<SeriesScreen> {
   didChangeDependencies() {
     super.didChangeDependencies();
     // If series changes while dependencies change, reload Anilist data
-    if (widget.seriesPath != null && series != null && !series!.isLinked) {
-      nextFrame(() {
-        _loadAnilistDataForCurrentSeries();
-      });
+    if (widget.seriesPath != null && _cachedSeries != null && !_cachedSeries!.isLinked) {
+      nextFrame(() => _loadAnilistDataForCurrentSeries());
     }
   }
 
@@ -232,6 +339,7 @@ class SeriesScreenState extends State<SeriesScreen> {
 
   void selectImage(BuildContext context, {required bool isBanner}) {
     final library = Provider.of<Library>(context, listen: false);
+    if (_cachedSeries == null) return;
 
     // Check if the action should be disabled during indexing
     if (library.lockManager.shouldDisableAction(UserAction.seriesImageSelection)) {
@@ -244,11 +352,11 @@ class SeriesScreenState extends State<SeriesScreen> {
 
     showManagedDialog<ImageSource?>(
       context: context,
-      id: isBanner ? 'bannerSelection:${series!.path}' : 'posterSelection:${series!.path}',
+      id: isBanner ? 'bannerSelection:${_cachedSeries!.path}' : 'posterSelection:${_cachedSeries!.path}',
       title: isBanner ? 'Select Banner' : 'Select Poster',
       dialogDoPopCheck: () => true,
       builder: (context) => ImageSelectionDialog(
-        series: series!,
+        series: _cachedSeries!,
         popContext: context,
         isBanner: isBanner,
       ),
@@ -258,8 +366,7 @@ class SeriesScreenState extends State<SeriesScreen> {
   }
 
   Future<void> _loadAnilistDataForCurrentSeries() async {
-    // TODO cancel fetch if screen gets disposed
-    final series = this.series; // get current series
+    final series = _cachedSeries; // get current series
     if (!mounted || widget.seriesPath == null || series == null) return;
 
     if (!series.isLinked) {
@@ -269,134 +376,218 @@ class SeriesScreenState extends State<SeriesScreen> {
       return;
     }
 
-    // Load data for the primary mapping (or first mapping if no primary)
-    final anilistId = series.primaryAnilistId ?? series.anilistMappings.first.anilistId;
-    await _loadAnilistData(anilistId);
+    // Load data for all mappings
+    await _loadAnilistData(anilistIDs);
   }
 
-  Future<void> loadAnilistData(int id) async => await _loadAnilistData(id);
+  List<int> get anilistIDs => _cachedSeries?.anilistMappings.map((e) => e.anilistId).whereType<int>().toSet().toList() ?? [];
 
-  Future<void> _loadAnilistData(int anilistId) async {
-    final series = this.series;
+  Future<void> loadAnilistData(int id) async => await _loadAnilistData([id], force: true); // force reload for single ID
+  
+  /// Change the primary AniList ID for the current series
+  /// 
+  /// Assumes the anilistData of the mapping is already loaded
+  Future<void> changePrimaryId(int id) async {
+    final series = _cachedSeries;
     if (series == null) return;
 
-    try {
-      final anime = await SeriesLinkService().fetchAnimeDetails(anilistId);
+    final mapping = series.anilistMappings.firstWhere(
+      (m) => m.anilistId == id,
+      orElse: () => series.anilistMappings.first, // fallback, shouldn't happen
+    );
 
-      if (anime != null) {
-        // Store the original dominant color to check if it changes
-        final Color? originalDominantColor = series.localPosterColor;
+    setState(() {
+      series.primaryAnilistId = mapping.anilistId;
+      series.anilistData = mapping.anilistData;
+      SeriesScreenContainerState.mainDominantColor = mapping.effectivePrimaryColorSync();
+      Manager.currentDominantColor = SeriesScreenContainerState.mainDominantColor;
+    });
 
-        // Update the mapping data
-        // Find the mapping with this ID
-        for (var i = 0; i < series.anilistMappings.length; i++) {
-          if (series.anilistMappings[i].anilistId == anilistId) {
-            series.anilistMappings[i] = AnilistMapping(
-              localPath: series.anilistMappings[i].localPath,
-              anilistId: anilistId,
-              title: series.anilistMappings[i].title,
-              lastSynced: now,
-              anilistData: anime,
-            );
+    // Save the updated series to the library
+    final BuildContext? ctx;
+    if (mounted)
+      ctx = context;
+    else
+      ctx = rootNavigatorKey.currentContext;
 
-            // Also update the series.anilistData if this is the primary
-            if (series.primaryAnilistId == anilistId || series.primaryAnilistId == null) {
-              series.anilistData = anime;
-            }
+    if (ctx != null && ctx.mounted) {
+      try {
+        final library = Provider.of<Library>(ctx, listen: false);
 
-            break; // Break after updating the mapping
-          }
-        }
+        // Update the series mappings with the new primary ID
+        await library.updateSeriesMappings(series, series.anilistMappings);
 
-        // Calculate dominant color (this will update it if needed)
-        if (series.isAnilistPoster || series.isAnilistBanner) {
-          await series.anilistMappings.firstWhere((m) => m.anilistId == anilistId).calculateDominantColors();
-        } else {
-          await series.calculateLocalDominantColors(forceRecalculate: true);
-        }
+        // Also update the series
+        await library.updateSeries(series, invalidateCache: false);
 
-        if (!mounted || this.series == null) return; // in case series was disposed during the async operation
-        Manager.currentDominantColor = series.localPosterColor;
+        if (libraryScreenKey.currentState != null) libraryScreenKey.currentState!.updateSeriesInSortCache(series);
 
-        // Fetch episode titles from AniList
-        try {
-          final episodeTitlesUpdated = await Manager.episodeTitleService.fetchAndUpdateEpisodeTitles(series);
-          if (episodeTitlesUpdated && mounted) {
-            logTrace('Episode titles updated, refreshing UI');
-          }
-        } catch (e) {
-          logErr('Error fetching episode titles', e);
-        }
+        logTrace('Changed primary AniList ID to $id, saved to library');
+      } catch (e) {
+        logErr('Error updating series primary AniList ID: $e');
+      }
+    }
+  }
 
-        // Only save if dominant color changed or was newly set
-        if (originalDominantColor?.value != series.localPosterColor?.value) {
-          // Save the updated series to the library
+  Future<void> _loadAnilistData(List<int> anilistIDs, {bool force = false}) async {
+    final series = _cachedSeries;
+    if (series == null) return;
 
-          final BuildContext? ctx;
-          if (mounted)
-            ctx = context;
-          else
-            ctx = rootNavigatorKey.currentContext;
+    // Filter out IDs that were recently synced (within cache duration)
+    final currentTime = now;
+    final List<int> idsToFetch = [];
 
-          if (ctx != null && ctx.mounted) {
-            try {
-              final library = Provider.of<Library>(ctx, listen: false);
-              await library.updateSeries(series, invalidateCache: false);
+    // Store the original dominant color to check if it changes after calculating the new one
+    final Color? originalDominantColor = series.effectivePrimaryColorSync();
+    if (originalDominantColor != null) {
+      SeriesScreenContainerState.mainDominantColor = originalDominantColor;
+    }
 
-              if (libraryScreenKey.currentState != null) {
-                libraryScreenKey.currentState!.updateSeriesInSortCache(series);
-              }
-              logTrace('Dominant color changed, saving series');
-            } catch (e) {
-              logErr('Error updating series: $e');
-            }
-          }
-        }
+    for (final id in anilistIDs) {
+      final mapping = series.anilistMappings.firstWhere(
+        (m) => m.anilistId == id,
+        orElse: () => series.anilistMappings.first, // fallback, shouldn't happen
+      );
 
-        if (mounted) Manager.setState();
-      } else if (ConnectivityService().isOffline) {
-        logWarn('Failed to fetch AniList details for ID: $anilistId - device is offline');
+      // Check if this mapping needs to be refreshed
+      if (force || mapping.lastSynced == null || currentTime.difference(mapping.lastSynced!) > kAnilistCacheDuration || mapping.anilistData?.posterImage == null || mapping.anilistData?.bannerImage == null) {
+        idsToFetch.add(id);
       } else {
-        logErr('Failed to load Anilist data for ID: $anilistId');
+        logTrace('Skipping AniList fetch for ID $id - synced ${currentTime.difference(mapping.lastSynced!).inMinutes} minutes ago');
+      }
+    }
+
+    // If no IDs need fetching, return early
+    if (idsToFetch.isEmpty) {
+      logTrace('All AniList data is up to date, skipping fetch');
+      return;
+    }
+
+    logTrace('Fetching AniList data for ${idsToFetch.length} IDs: ${idsToFetch.join(', ')}');
+
+    try {
+      final Map<int, AnilistAnime?> anime = await SeriesLinkService().fetchMultipleAnimeDetails(idsToFetch);
+
+      bool anyUpdatesOccurred = false;
+      bool dominantColorChanged = false;
+
+      if (mounted) {
+        setState(() {
+          // Process each anime in the map
+          for (final entry in anime.entries) {
+            final anilistId = entry.key;
+            final anilistAnime = entry.value;
+
+            if (anilistAnime != null) {
+              // Find the mapping with this ID
+              for (var i = 0; i < series.anilistMappings.length; i++) {
+                if (series.anilistMappings[i].anilistId == anilistId) {
+                  final oldMapping = series.anilistMappings[i];
+                  series.anilistMappings[i] = series.anilistMappings[i].copyWith(
+                    anilistId: anilistId,
+                    lastSynced: now,
+                    anilistData: anilistAnime,
+                  );
+
+                  // Also update the series.anilistData if this is the primary
+                  if (series.primaryAnilistId == anilistId || series.primaryAnilistId == null) {
+                    series.anilistData = anilistAnime;
+                  }
+
+                  anyUpdatesOccurred = oldMapping.anilistData != anilistAnime;
+                  break; // Break after updating the mapping
+                }
+              }
+            } else if (ConnectivityService().isOffline) {
+              logWarn('Failed to fetch AniList details for ID: $anilistId - device is offline');
+            } else {
+              logErr('Failed to load Anilist data for ID: $anilistId');
+            }
+          }
+        });
+      }
+
+      // Update dominant color if any updates occurred
+      if (anyUpdatesOccurred) {
+        final dominantColor = await series.effectivePrimaryColor(forceRecalculate: true);
+        if (dominantColor != null) SeriesScreenContainerState.mainDominantColor = dominantColor;
+
+        if (!mounted || _cachedSeries == null) {
+          // in case series was disposed during the async operation
+          logTrace('Series disposed before updating dominant color');
+          return;
+        }
+
+        Manager.setState(() => Manager.currentDominantColor = dominantColor);
+
+        // Check if dominant color changed
+        dominantColorChanged = originalDominantColor?.value != series.effectivePrimaryColorSync()?.value;
+
+        Manager.setState();
+      }
+
+      // Save if any updates occurred (mappings or dominant color changed)
+      if (anyUpdatesOccurred || dominantColorChanged) {
+        // Save the updated series to the library
+        final BuildContext? ctx;
+        if (mounted)
+          ctx = context;
+        else
+          ctx = rootNavigatorKey.currentContext;
+
+        if (ctx != null && ctx.mounted) {
+          try {
+            final library = Provider.of<Library>(ctx, listen: false);
+
+            // Update the series mappings with the new AnilistData
+            await library.updateSeriesMappings(series, series.anilistMappings);
+
+            // Also update the series
+            await library.updateSeries(series, invalidateCache: false);
+
+            if (libraryScreenKey.currentState != null) libraryScreenKey.currentState!.updateSeriesInSortCache(series);
+
+            logTrace('Updated ${anyUpdatesOccurred ? 'mappings' : ''}${anyUpdatesOccurred && dominantColorChanged ? ' and ' : ''}${dominantColorChanged ? 'dominant color' : ''}, saved to library');
+          } catch (e) {
+            logErr('Error updating series: $e');
+          }
+        }
       }
     } catch (e) {
       // Check if it's an expected offline error
       if (!RetryUtils.isExpectedOfflineError(e)) {
-        logErr('Failed to load Anilist data for ID: $anilistId', e);
+        logErr('Failed to load Anilist data for multiple IDs: ${anilistIDs.join(', ')}', e);
       } else {
         logDebug('Skipping Anilist data fetch - device is offline');
       }
     }
   }
 
-  void toggleSeasonExpander(int seasonNumber) {
-    final expanderKey = _seasonExpanderKeys[seasonNumber];
-    if (expanderKey?.currentState != null) {
-      if (mounted) setState(() => expanderKey?.currentState!.toggle());
-    } else {
-      logWarn('No expander key found for season $seasonNumber');
-    }
-  }
-
-  void _ensureSeasonKeys(Series series) {
-    // For numbered seasons
-    for (int i = 1; i <= 10; i++) {
-      // Support up to 10 seasons
-      _seasonExpanderKeys.putIfAbsent(i, () => GlobalKey<ExpandingStickyHeaderBuilderState>());
-    }
-
-    // For "Other Episodes" (season 0)
-    _seasonExpanderKeys.putIfAbsent(0, () => GlobalKey<ExpandingStickyHeaderBuilderState>());
-  }
-
   @override
   Widget build(BuildContext context) {
-    if (widget.seriesPath == null) return Container(color: Colors.red);
+    if (widget.seriesPath == null)
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text('No series selected', style: Manager.subtitleStyle),
+            VDiv(16),
+            NormalButton(
+              onPressed: widget.onBack,
+              tooltip: 'Go back to the library',
+              label: 'Back to Library',
+            ),
+          ],
+        ),
+      );
 
     return Selector<Library, Series?>(
       selector: (_, library) => library.getSeriesByPath(widget.seriesPath!),
       shouldRebuild: (prev, next) => prev != next,
       builder: (context, series, child) {
+        // Update the cached series reference
+        _cachedSeries = series;
+
         if (series == null) {
           return Center(
             child: Column(
@@ -420,9 +611,10 @@ class SeriesScreenState extends State<SeriesScreen> {
           child: MiruRyoikiTemplatePage(
             headerWidget: _buildHeader(context, series),
             infobar: (_) => _buildInfoBar(context, series),
-            content: _buildEpisodesList(context),
-            backgroundColor: dominantColor,
+            content: _buildContentGrid(context, series),
+            backgroundColor: SeriesScreenContainerState.mainDominantColor,
             onHeaderCollapse: () => _descriptionController.collapse(),
+            scrollableContent: false,
           ),
         );
       },
@@ -438,7 +630,7 @@ class SeriesScreenState extends State<SeriesScreen> {
             children: [
               // Banner
               ShiftClickableHover(
-                series: series,
+                color: SeriesScreenContainerState.mainDominantColor,
                 enabled: _isBannerHovering && !bannerChangeDisabled,
                 onTap: (context) => selectImage(context, isBanner: true),
                 onEnter: bannerChangeDisabled ? () {} : () => setState(() => _isBannerHovering = true),
@@ -463,11 +655,11 @@ class SeriesScreenState extends State<SeriesScreen> {
                               begin: Alignment.topCenter,
                               end: Alignment.bottomCenter,
                               colors: [
-                                dominantColor.withOpacity(0.27),
+                                (SeriesScreenContainerState.mainDominantColor ?? Manager.accentColor).withOpacity(0.27),
                                 Colors.transparent,
                               ],
                             ),
-                            color: enabled ? (series.localPosterColor ?? Manager.accentColor).withOpacity(0.75) : Colors.transparent,
+                            color: enabled ? (SeriesScreenContainerState.mainDominantColor ?? Manager.accentColor).withOpacity(0.75) : Colors.transparent,
                             image: _getBannerDecoration(snapshot.data),
                           ),
                           padding: const EdgeInsets.only(bottom: 16.0),
@@ -619,7 +811,7 @@ class SeriesScreenState extends State<SeriesScreen> {
             maxHeight: 150,
             minHeight: 45,
             controller: _descriptionController,
-            child: parser.parse(series.description!, selectable: true, selectionColor: series.localPosterColor),
+            child: parser.parse(series.description!, selectable: true, selectionColor: SeriesScreenContainerState.mainDominantColor),
           ),
         ],
       ],
@@ -649,61 +841,40 @@ class SeriesScreenState extends State<SeriesScreen> {
         if (mounted) setState(() {});
       },
       content: _buildInfoBarContent(series),
-      footerPadding: EdgeInsets.all(8.0),
+      footerPadding: EdgeInsets.all(6.0),
       footer: [
-        if (series.anilistMappings.length > 1) ...[
-          ComboBox<int>(
-            isExpanded: true,
-            placeholder: const Text('Select Anilist source'),
-            disabledPlaceholder: const Text('No Anilist mappings available'),
-            items: series.anilistMappings.map((mapping) {
-              final title = mapping.title ?? 'Anilist ID: ${mapping.anilistId}';
-              return ComboBoxItem<int>(
-                value: mapping.anilistId,
-                child: Center(
-                  child: TooltipWrapper(
-                    tooltip: title,
-                    child: (txt) => Text(
-                      txt,
-                      style: Manager.captionStyle.copyWith(fontSize: 11),
-                    ),
-                  ),
-                ),
-              );
-            }).toList(),
-            value: series.primaryAnilistId,
-            onChanged: (value) async {
-              if (value != null) {
-                if (mounted) setState(() => series.primaryAnilistId = value);
-
-                if (libraryScreenKey.currentState != null) libraryScreenKey.currentState!.updateSeriesInSortCache(series);
-
-                // Fetch and load Anilist data
-                await _loadAnilistData(value);
-                if (mounted) setState(() {});
-              }
-            },
+        StandardButton(
+          label: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(mat.Icons.folder_open),
+              HDiv(4),
+              Text(
+                'Open Series Folder',
+                style: getStyleBasedOnAccent(false),
+              ),
+            ],
           ),
-          VDiv(8),
-        ],
+          expand: true,
+          tooltip: 'Open the series folder in your file explorer',
+          onPressed: () => ShellUtils.openFolder(series.path.path),
+        ),
+        SizedBox(height: 6.0),
         Builder(
           builder: (context) {
-            final library = context.watch<Library>();
-            final isIndexing = library.isIndexing;
-
             // Compute tooltip with switch-case outside of the widget
             String tooltipKey;
             if (!anilistProvider.isLoggedIn)
               tooltipKey = 'notLoggedIn';
-            else if (isIndexing)
-              tooltipKey = 'indexing';
+            // else if (isIndexing)
+            //   tooltipKey = 'indexing';
             else if (!series.isLinked)
               tooltipKey = 'notLinked';
             else
               tooltipKey = 'linked';
 
             String tooltipText = switch (tooltipKey) {
-              'indexing' => 'Cannot link while library is indexing, please wait.',
+              // 'indexing' => 'Cannot link while library is indexing, please wait.',
               'notLinked' => 'Link with Anilist',
               'linked' => 'Manage Anilist Links',
               'notLoggedIn' => 'You must be logged in to Anilist to link series.',
@@ -725,18 +896,18 @@ class SeriesScreenState extends State<SeriesScreen> {
                 ],
               ),
               onPressed: () {
-                // Check if the action should be disabled during indexing
-                if (library.lockManager.shouldDisableAction(UserAction.anilistOperations)) {
-                  snackBar(
-                    library.lockManager.getDisabledReason(UserAction.anilistOperations),
-                    severity: InfoBarSeverity.warning,
-                  );
-                  return;
-                }
+                // // Check if the action should be disabled during indexing
+                // if (library.lockManager.shouldDisableAction(UserAction.anilistOperations)) {
+                //   snackBar(
+                //     library.lockManager.getDisabledReason(UserAction.anilistOperations),
+                //     severity: InfoBarSeverity.warning,
+                //   );
+                //   return;
+                // }
 
-                linkWithAnilist(context, series, _loadAnilistData, setState);
+                linkWithAnilist(context, series, loadAnilistData, setState);
               },
-              isButtonDisabled: anilistProvider.isOffline || isIndexing,
+              isButtonDisabled: anilistProvider.isOffline,
             );
           },
         ),
@@ -749,7 +920,7 @@ class SeriesScreenState extends State<SeriesScreen> {
             height: height - offset,
             width: width,
             child: ShiftClickableHover(
-              series: series,
+              color: SeriesScreenContainerState.mainDominantColor,
               enabled: _isPosterHovering && !posterChangeDisabled,
               onTap: (context) => selectImage(context, isBanner: false),
               onEnter: posterChangeDisabled ? () {} : () => setState(() => _isPosterHovering = true),
@@ -812,7 +983,7 @@ class SeriesScreenState extends State<SeriesScreen> {
                             gradient: RadialGradient(
                               colors: [
                                 Colors.black.withOpacity(.95),
-                                dominantColor.withOpacity(.2),
+                                (SeriesScreenContainerState.mainDominantColor ?? Manager.accentColor).withOpacity(.2),
                               ],
                               radius: 0.5,
                               center: Alignment.center,
@@ -878,11 +1049,16 @@ class SeriesScreenState extends State<SeriesScreen> {
           VDiv(16),
           SizedBox(
             width: 300,
-            child: ProgressBar(
-              value: series.watchedPercentage * 100,
-              activeColor: dominantColor,
-              backgroundColor: Colors.white.withOpacity(.3),
-            ),
+            child: AnimatedColor(
+                color: SeriesScreenContainerState.mainDominantColor,
+                duration: gradientChangeDuration,
+                builder: (color) {
+                  return ProgressBar(
+                    value: series.watchedPercentage * 100,
+                    activeColor: color,
+                    backgroundColor: Colors.white.withOpacity(.3),
+                  );
+                }),
           ),
 
           if (series.metadata != null) ...[
@@ -925,7 +1101,7 @@ class SeriesScreenState extends State<SeriesScreen> {
           ),
         ),
         decoration: BoxDecoration(
-          color: Color.lerp(Color.lerp(Colors.black, Colors.white, 0.2)!, dominantColor, 0.4)!.withOpacity(0.8),
+          color: Color.lerp(Color.lerp(Colors.black, Colors.white, 0.2)!, SeriesScreenContainerState.mainDominantColor, 0.4)!.withOpacity(0.8),
           borderRadius: BorderRadius.circular(5.0),
         ),
         preferBelow: true,
@@ -951,77 +1127,69 @@ class SeriesScreenState extends State<SeriesScreen> {
     );
   }
 
-  Widget _buildEpisodesList(BuildContext context) {
-    // Make sure we have the season keys initialized
-    _ensureSeasonKeys(series!);
+  Widget _buildContentGrid(BuildContext context, Series series) {
+    // Create MappingTarget for each AnilistMapping using the helper method
+    final List<(AnilistMapping, MappingTarget?)> mappingsWithTargets = series.anilistMappings.map((mapping) => (mapping, series.getTargetForMapping(mapping))).toList();
 
-    if (series!.seasons.isNotEmpty) {
-      // Multiple seasons - display by season
-      final List<Widget> seasonWidgets = [];
+    // Filter out mappings without valid targets
+    final validMappings = mappingsWithTargets.where((tuple) => tuple.$2 != null).toList();
 
-      // Add a section for each season
-      for (int i = 1; i <= series!.seasons.length; i++) {
-        final seasonEpisodes = series!.getEpisodesForSeason(i);
-        final seasonName = series!.seasons[i - 1].prettyName;
-        // Display all seasons, even if they're empty
-        seasonWidgets.add(
-          _VisibilityTrackedEpisodeGrid(
-            seasonIndex: i,
-            expanderKey: _seasonExpanderKeys[i],
-            onVisibilityChanged: _onEpisodeGridVisibilityChanged,
-            episodeGrid: EpisodeGrid(
-              title: seasonName,
-              episodes: seasonEpisodes,
-              initiallyExpanded: true,
-              expanderKey: _seasonExpanderKeys[i],
-              onTap: (episode) => _playEpisode(episode),
-              series: series!,
-              isReloadingSeries: isReloadingSeries,
-            ),
+    if (validMappings.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(FluentIcons.info, size: 48, color: series.effectivePrimaryColorSync() ?? Manager.accentColor),
+              VDiv(16),
+              Text('No linked mappings found', style: Manager.subtitleStyle),
+              VDiv(8),
+              Text(
+                'Link the correct path with an AniList entry to see seasons and episodes', // TODO add counter that tracks how many times the mappings manager was opened while the valid mappings have been empty
+                style: Manager.captionStyle,
+                textAlign: TextAlign.center,
+              ),
+            ],
           ),
-        );
-      }
-
-      // Add uncategorized episodes if any
-      final uncategorizedEpisodes = series!.getUncategorizedEpisodes();
-      if (uncategorizedEpisodes.isNotEmpty) {
-        seasonWidgets.add(
-          EpisodeGrid(
-            title: 'Others',
-            episodes: uncategorizedEpisodes,
-            initiallyExpanded: true,
-            expanderKey: _seasonExpanderKeys[0],
-            onTap: (episode) => _playEpisode(episode),
-            series: series!,
-          ),
-        );
-      }
-
-      return Align(
-        alignment: Alignment.topCenter,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.start,
-          spacing: 12.0,
-          children: seasonWidgets,
-        ),
-      );
-    } else {
-      // Single season - show simple grid
-      return Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16.0),
-        child: EpisodeGrid(
-          collapsable: false,
-          episodes: series!.getEpisodesForSeason(1),
-          onTap: (episode) => _playEpisode(episode),
-          series: series!,
         ),
       );
     }
-  }
 
-  void _playEpisode(Episode episode) {
-    final library = Provider.of<Library>(context, listen: false);
-    library.playEpisode(episode);
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final List<Widget> children = validMappings.map((tuple) {
+          final mapping = tuple.$1;
+          final target = tuple.$2!;
+
+          return MappingCard(
+            key: ValueKey('${mapping.localPath}:${mapping.anilistId}'),
+            target: target,
+            mapping: mapping,
+            onTap: () {
+              if (widget.onNavigateToMapping != null)
+                widget.onNavigateToMapping!(mapping, target);
+              else
+                logWarn('onNavigateToMapping callback is null');
+            },
+          );
+        }).toList();
+
+        return ScrollConfiguration(
+          behavior: ScrollBehavior().copyWith(overscroll: false, scrollbars: false),
+          child: GridView(
+            padding: EdgeInsets.zero,
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: ScreenUtils.crossAxisCount(constraints.maxWidth),
+              childAspectRatio: ScreenUtils.kDefaultAspectRatio,
+              crossAxisSpacing: ScreenUtils.cardPadding,
+              mainAxisSpacing: ScreenUtils.cardPadding,
+            ),
+            children: children,
+          ),
+        );
+      },
+    );
   }
 }
 
@@ -1037,7 +1205,7 @@ void linkWithAnilist(BuildContext context, Series? series, Future<void> Function
     id: 'linkAnilist:${series.path}',
     title: 'Link to Anilist',
     data: series.path,
-    barrierColor: series.localPosterColor?.withOpacity(0.5),
+    barrierColor: Manager.currentDominantColor?.withOpacity(0.5),
     canUserPopDialog: true,
     closeExistingDialogs: true,
     dialogDoPopCheck: () => Manager.canPopDialog, // Allow popping only when in view mode
@@ -1118,55 +1286,9 @@ void linkWithAnilist(BuildContext context, Series? series, Future<void> Function
         }
 
         // Update the series with the new mappings
-        Manager.currentDominantColor = series.localPosterColor;
+        Manager.currentDominantColor = await series.effectivePrimaryColor();
         Manager.setState();
       },
     ),
   );
-}
-
-class _VisibilityTrackedEpisodeGrid extends StatelessWidget {
-  final int seasonIndex;
-  final EpisodeGrid episodeGrid;
-  final GlobalKey<ExpandingStickyHeaderBuilderState>? expanderKey;
-  final Function(int index, bool isVisible) onVisibilityChanged;
-
-  const _VisibilityTrackedEpisodeGrid({
-    required this.seasonIndex,
-    required this.episodeGrid,
-    required this.expanderKey,
-    required this.onVisibilityChanged,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    // Key for the tracking point (will be at bottom-right)
-    final trackingKey = GlobalKey();
-
-    return Column(
-      children: [
-        episodeGrid,
-        // Invisible tracking widget at the bottom-right
-        VisibilityDetector(
-          key: Key('episode_grid_visibility_$seasonIndex'),
-          onVisibilityChanged: (info) {
-            // Get the expansion state
-            final isExpanded = expanderKey?.currentState?.isExpanded ?? true;
-
-            // Check if bottom-right corner is visible
-            // We consider it visible if visibleFraction > 0
-            final isVisible = info.visibleFraction > 0;
-
-            onVisibilityChanged(seasonIndex, isVisible);
-          },
-          child: Container(
-            key: trackingKey,
-            height: 1, // Minimal height marker
-            width: 1, // At the bottom-right corner
-            alignment: Alignment.bottomRight,
-          ),
-        ),
-      ],
-    );
-  }
 }

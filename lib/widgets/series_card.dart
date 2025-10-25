@@ -38,6 +38,7 @@ class _SeriesCardState extends State<SeriesCard> {
   ImageProvider? _posterImageProvider;
   ImageSource? _lastKnownDefaultSource;
   final GlobalKey<SeriesContextMenuState> _contextMenuKey = GlobalKey<SeriesContextMenuState>();
+  Color? _dominantColor;
 
   @override
   void initState() {
@@ -74,6 +75,11 @@ class _SeriesCardState extends State<SeriesCard> {
     }
   }
 
+  Future<void> _loadDominantColor() async {
+    final color = await widget.series.effectivePrimaryColor();
+    if (mounted) setState(() => _dominantColor = color);
+  }
+
   Future<void> _loadImage() async {
     if (!mounted) return;
 
@@ -91,6 +97,7 @@ class _SeriesCardState extends State<SeriesCard> {
     }
 
     if (mounted) setState(() => _loading = false);
+    _loadDominantColor();
   }
 
   Widget _getSeriesImage() {
@@ -138,13 +145,14 @@ class _SeriesCardState extends State<SeriesCard> {
 
   @override
   Widget build(BuildContext context) {
+    final Color? cachedPrimaryColor = widget.series.effectivePrimaryColorSync();
     final Color mainColor;
     switch (Manager.settings.libColView) {
       case LibraryColorView.alwaysDominant:
-        mainColor = widget.series.localPosterColor ?? Manager.genericGray;
+        mainColor = _dominantColor ?? cachedPrimaryColor ?? Manager.genericGray;
         break;
       case LibraryColorView.hoverDominant:
-        mainColor = _isHovering ? (widget.series.localPosterColor ?? Manager.genericGray) : Manager.genericGray;
+        mainColor = _isHovering ? (_dominantColor ?? cachedPrimaryColor ?? Manager.genericGray) : Manager.genericGray;
         break;
       case LibraryColorView.alwaysAccent:
         mainColor = Manager.accentColor;
@@ -157,7 +165,7 @@ class _SeriesCardState extends State<SeriesCard> {
         break;
     }
     return KeyedSubtree(
-      key: ValueKey('${widget.series.path}-${widget.series.localPosterColor?.value ?? 0}'),
+      key: ValueKey('${widget.series.path}-${_dominantColor ?? cachedPrimaryColor?.value ?? 0}'),
       child: SeriesContextMenu(
         key: _contextMenuKey,
         series: widget.series,
@@ -223,12 +231,12 @@ class _SeriesCardState extends State<SeriesCard> {
                                 duration: getDuration(const Duration(milliseconds: 400)),
                                 width: constraints.maxWidth,
                                 height: 4,
-                                color: Color.lerp(Colors.black.withOpacity(0.2), widget.series.localPosterColor, .4),
+                                color: Color.lerp(Colors.black.withOpacity(0.2), _dominantColor ?? cachedPrimaryColor, .4),
                                 child: Align(
                                   alignment: Alignment.topLeft,
                                   child: AnimatedContainer(
                                     duration: getDuration(const Duration(milliseconds: 400)),
-                                    color: widget.series.watchedPercentage == 0 ? Colors.transparent : widget.series.localPosterColor,
+                                    color: widget.series.watchedPercentage == 0 ? Colors.transparent : _dominantColor ?? cachedPrimaryColor,
                                     width: constraints.maxWidth * widget.series.watchedPercentage,
                                   ),
                                 ),
@@ -239,7 +247,7 @@ class _SeriesCardState extends State<SeriesCard> {
 
                         // Series info
                         Builder(builder: (context) {
-                          final double value = widget.series.isAnilistPoster ? .76 : .9;
+                          final double value = widget.series.isAnilistPosterBeingUsed ? .76 : .9;
                           final Color nicerColor = mainColor.lerpWith(Colors.grey, value);
 
                           Widget child = AnimatedContainer(
@@ -276,12 +284,12 @@ class _SeriesCardState extends State<SeriesCard> {
                                       children: [
                                         Text(
                                           '${widget.series.watchedEpisodes} / ${widget.series.totalEpisodes} Episodes',
-                                          style: Manager.miniBodyStyle.copyWith(color: Color.lerp(widget.series.localPosterColor, Colors.white, .7)),
+                                          style: Manager.miniBodyStyle.copyWith(color: Color.lerp(_dominantColor ?? cachedPrimaryColor, Colors.white, .7)),
                                         ),
                                         const Spacer(),
                                         Text(
                                           '${(widget.series.watchedPercentage * 100).round()}%',
-                                          style: Manager.miniBodyStyle.copyWith(color: Color.lerp(widget.series.localPosterColor, Colors.white, .7)),
+                                          style: Manager.miniBodyStyle.copyWith(color: Color.lerp(_dominantColor ?? cachedPrimaryColor, Colors.white, .7)),
                                         ),
                                       ],
                                     ),
@@ -290,7 +298,7 @@ class _SeriesCardState extends State<SeriesCard> {
                               ),
                             ),
                           );
-                          if (widget.series.isAnilistPoster) {
+                          if (widget.series.isAnilistPosterBeingUsed) {
                             return Transform.scale(
                               scale: 1.02,
                               child: Transform.translate(

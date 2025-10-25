@@ -1,5 +1,41 @@
+// ignore_for_file: constant_identifier_names
+
 import 'package:miruryoiki/enums.dart';
 import 'package:path/path.dart';
+import 'package:recase/recase.dart';
+
+enum AnilistAnimeStatus {
+  FINISHED,
+  RELEASING,
+  NOT_YET_RELEASED,
+  CANCELLED,
+  HIATUS,
+}
+
+extension AnilistAnimeStatusX on AnilistAnimeStatus {
+  String get name_ {
+    return switch (this) {
+      AnilistAnimeStatus.FINISHED => 'FINISHED'.titleCase,
+      AnilistAnimeStatus.RELEASING => 'RELEASING'.titleCase,
+      AnilistAnimeStatus.NOT_YET_RELEASED => 'NOT YET RELEASED'.titleCase,
+      AnilistAnimeStatus.CANCELLED => 'CANCELLED'.titleCase,
+      AnilistAnimeStatus.HIATUS => 'HIATUS'.titleCase,
+    };
+  }
+}
+
+extension AnilistAnimeStatusExtension on String {
+  AnilistAnimeStatus? toAnimeStatus() {
+    return switch (this.toUpperCase().replaceAll("_", " ")) {
+      'FINISHED' => AnilistAnimeStatus.FINISHED,
+      'RELEASING' => AnilistAnimeStatus.RELEASING,
+      'NOT YET RELEASED' => AnilistAnimeStatus.NOT_YET_RELEASED,
+      'CANCELLED' => AnilistAnimeStatus.CANCELLED,
+      'HIATUS' => AnilistAnimeStatus.HIATUS,
+      _ => null,
+    };
+  }
+}
 
 class AnilistAnime {
   final int id;
@@ -9,13 +45,13 @@ class AnilistAnime {
   final AnilistTitle title;
   final String? description;
   final int? meanScore;
-  final int? popularity;
+  final int? popularity; // Number of users who have added to their list
   final int? favourites;
-  final String? status;
-  final String? format;
+  final String? status; // FINISHED, RELEASING, NOT_YET_RELEASED, CANCELLED, HIATUS
+  final String? format; // TV, MOVIE, OVA, etc.
   final int? episodes;
   final int? seasonYear;
-  final String? season;
+  final String? season; // Winter, Spring, Summer, Fall
   final List<String> genres;
   final int? averageScore;
   final int? trending;
@@ -192,13 +228,13 @@ class AnilistAnime {
 
   static int? getRankings(Map<String, dynamic> json) {
     final rawRankings = json['rankings'];
-    
+
     if (rawRankings is List && rawRankings.isNotEmpty)
       return (rawRankings.first['rank'] as int?);
     //
     else if (rawRankings is int) //
       return rawRankings;
-      
+
     return null;
   }
 

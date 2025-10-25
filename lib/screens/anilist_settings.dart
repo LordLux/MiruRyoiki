@@ -1,5 +1,6 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:miruryoiki/utils/color.dart';
+import 'package:miruryoiki/utils/time.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
@@ -211,7 +212,8 @@ Widget Chip({
   Widget? trailing,
   Color? backgroundColor,
 }) {
-  return Container(
+  return AnimatedContainer(
+    duration: gradientChangeDuration,
     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
     decoration: BoxDecoration(
       color: backgroundColor ?? Manager.currentDominantColor,

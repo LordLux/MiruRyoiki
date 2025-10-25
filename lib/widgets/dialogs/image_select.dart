@@ -39,15 +39,51 @@ class ImageSelectionDialog extends ManagedDialog {
               // Save the selection
               final library = Provider.of<Library>(popContext, listen: false);
 
+              final bool isLocalSource = source == ImageSource.local;
+              Color? newLocalPosterColor;
+              Color? newLocalBannerColor;
+              PathString? newFolderPosterPath;
+              PathString? newFolderBannerPath;
+              
+              if (!isBanner) {
+                // Poster
+                if (isLocalSource) {
+                  // Set local poster path and keep local color
+                  newFolderPosterPath = PathString(path);
+                  newLocalPosterColor = series.localPosterColor; // Will recalculate below
+                } else {
+                  // Switching to Anilist
+                  newFolderPosterPath = series.localPosterPath;
+                  newLocalPosterColor = null; // Clear local color
+                }
+                newFolderBannerPath = series.localBannerPath;
+                newLocalBannerColor = series.localBannerColor;
+              } else {
+                // Banner
+                if (isLocalSource) {
+                  // Set local banner path and keep local color
+                  newFolderBannerPath = PathString(path);
+                  newLocalBannerColor = series.localBannerColor; // Will recalculate below
+                } else {
+                  // Switching to Anilist
+                  newFolderBannerPath = series.localBannerPath;
+                  newLocalBannerColor = null; // Clear local color
+                }
+                newFolderPosterPath = series.localPosterPath;
+                newLocalPosterColor = series.localPosterColor;
+              }
+              
               final Series updatedSeries = series.copyWith(
-                folderPosterPath: isBanner ? series.folderPosterPath : (source == ImageSource.local ? PathString(path) : series.folderPosterPath),
-                folderBannerPath: isBanner ? (source == ImageSource.local ? PathString(path) : series.folderBannerPath) : series.folderBannerPath,
+                folderPosterPath: newFolderPosterPath,
+                folderBannerPath: newFolderBannerPath,
+                posterColor: newLocalPosterColor,
+                bannerColor: newLocalBannerColor,
                 preferredPosterSource: isBanner ? series.preferredPosterSource : source,
                 preferredBannerSource: isBanner ? source : series.preferredBannerSource,
               );
 
-              final seriesScreenState = getActiveSeriesScreenState();
-              if (seriesScreenState != null) {
+              final seriesScreenState = getActiveSeriesScreenContainerState();
+              if (seriesScreenState != null && seriesScreenState is SeriesScreenState) {
                 // log('Disabling poster/banner change buttons');
                 seriesScreenState.posterChangeDisabled = !isBanner;
                 seriesScreenState.bannerChangeDisabled = isBanner;
@@ -59,19 +95,30 @@ class ImageSelectionDialog extends ManagedDialog {
                 'Saving preference...',
                 severity: InfoBarSeverity.info,
               );
+
+              // Calculate dominant color for local images
+              if (isLocalSource) {
+                if (!isBanner) {
+                  await updatedSeries.calculateLocalPosterDominantColor(forceRecalculate: true);
+                } else {
+                  await updatedSeries.calculateLocalBannerDominantColor(forceRecalculate: true);
+                }
+              }
+
+              Manager.setState(() => Manager.currentDominantColor = updatedSeries.effectivePrimaryColorSync());
+
               // Explicitly save the entire series and show confirmation
               library.updateSeries(updatedSeries, invalidateCache: false).then((_) {
                 snackBar(
                   isBanner ? 'Banner preference saved' : 'Poster preference saved',
                   severity: InfoBarSeverity.success,
                 );
-                final seriesScreenState = getActiveSeriesScreenState();
-                if (seriesScreenState != null) {
+                final seriesScreenState = getActiveSeriesScreenContainerState();
+                if (seriesScreenState != null && seriesScreenState is SeriesScreenState) {
                   // log('Enabling poster/banner change buttons');
                   seriesScreenState.posterChangeDisabled = false;
                   seriesScreenState.bannerChangeDisabled = false;
                 }
-                Manager.currentDominantColor = seriesScreenState!.series?.localPosterColor;
                 Manager.setState();
               });
             },
@@ -158,12 +205,12 @@ class _ImageSelectionContentState extends State<_ImageSelectionContent> {
     }).toList();
 
     // Set selected index to current poster if it exists
-    if (_selectedSource == ImageSource.local && widget.isBanner && widget.series.folderBannerPath != null) {
-      final index = _localImageFiles.indexWhere((f) => PathString(f.path) == widget.series.folderBannerPath);
+    if (_selectedSource == ImageSource.local && widget.isBanner && widget.series.localBannerPath != null) {
+      final index = _localImageFiles.indexWhere((f) => PathString(f.path) == widget.series.localBannerPath);
       if (index >= 0) _selectedLocalImageIndex = index;
       // Set selected index to current bannerif it exists
-    } else if (_selectedSource == ImageSource.local && !widget.isBanner && widget.series.folderPosterPath != null) {
-      final index = _localImageFiles.indexWhere((f) => PathString(f.path) == widget.series.folderPosterPath);
+    } else if (_selectedSource == ImageSource.local && !widget.isBanner && widget.series.localPosterPath != null) {
+      final index = _localImageFiles.indexWhere((f) => PathString(f.path) == widget.series.localPosterPath);
       if (index >= 0) _selectedLocalImageIndex = index;
     }
 
@@ -188,7 +235,7 @@ class _ImageSelectionContentState extends State<_ImageSelectionContent> {
 
     // Load Anilist image using the centralized method
     if (widget.isBanner) {
-      if (widget.series.isAnilistBanner) {
+      if (widget.series.isAnilistBannerBeingUsed) {
         final anilistImageProvider = await widget.series.getBannerImage();
         _anilistImageProvider = anilistImageProvider ?? (widget.series.effectiveBannerPath != null ? CachedNetworkImageProvider(widget.series.effectiveBannerPath!) : null);
       } else {
@@ -196,7 +243,7 @@ class _ImageSelectionContentState extends State<_ImageSelectionContent> {
         if (url != null) _anilistImageProvider = CachedNetworkImageProvider(url);
       }
     } else {
-      if (widget.series.isAnilistPoster) {
+      if (widget.series.isAnilistPosterBeingUsed) {
         final anilistImageProvider = await widget.series.getPosterImage();
         _anilistImageProvider = anilistImageProvider ?? (widget.series.effectivePosterPath != null ? CachedNetworkImageProvider(widget.series.effectivePosterPath!) : null);
       } else {
@@ -226,9 +273,9 @@ class _ImageSelectionContentState extends State<_ImageSelectionContent> {
     final bool isAvailable;
 
     if (widget.isBanner)
-      isAvailable = s.isAnilistBanner ? s.effectiveBannerPath != null : false; // Only available if linked to Anilist and actually has a banner on Anilist
+      isAvailable = s.isAnilistBannerBeingUsed ? s.effectiveBannerPath != null : false; // Only available if linked to Anilist and actually has a banner on Anilist
     else
-      isAvailable = s.isAnilistPoster ? s.effectivePosterPath != null : false; // Only available if linked to Anilist and actually has a poster on Anilist
+      isAvailable = s.isAnilistPosterBeingUsed ? s.effectivePosterPath != null : false; // Only available if linked to Anilist and actually has a poster on Anilist
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -270,8 +317,8 @@ class _ImageSelectionContentState extends State<_ImageSelectionContent> {
                     linkWithAnilist(
                       context,
                       widget.series,
-                      (id) => getActiveSeriesScreenState()!.loadAnilistData(id),
-                      (_) => getActiveSeriesScreenState()?.setState(() {}),
+                      (id) => (getActiveSeriesScreenContainerState() as SeriesScreenState).loadAnilistData(id),
+                      (_) => getActiveSeriesScreenContainerState()?.setState(() {}),
                     );
                   },
                 ),
@@ -710,7 +757,9 @@ class _ImageSelectionContentState extends State<_ImageSelectionContent> {
                     onChanged: (_) => setState(() => _selectedSource = ImageSource.local),
                   ),
                   SizedBox(width: 8),
-                  Text('Use ${_localImageFiles.isEmpty ? "selected local image" : _selectedLocalImageIndex != null ? _localImageFiles[_selectedLocalImageIndex!].path.split(Platform.pathSeparator).last : "Local Image"}', style: Manager.bodyStyle),
+                  Text(
+                      'Use ${_localImageFiles.isEmpty ? "selected local image" : _selectedLocalImageIndex != null ? _localImageFiles[_selectedLocalImageIndex!].path.split(Platform.pathSeparator).last : "Local Image"}',
+                      style: Manager.bodyStyle),
                 ],
               ),
             ],

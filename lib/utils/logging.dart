@@ -46,7 +46,7 @@ Future<void> initializeLoggingSession() async {
   try {
     PackageInfo packageInfo = await PackageInfo.fromPlatform();
     // Create session ID with timestamp that's safe for filenames
-    final sessionStart = DateTime.now();
+    final sessionStart = now;
     _sessionId = '${sessionStart.year}${sessionStart.month.toString().padLeft(2, '0')}${sessionStart.day.toString().padLeft(2, '0')}_${sessionStart.hour.toString().padLeft(2, '0')}${sessionStart.minute.toString().padLeft(2, '0')}${sessionStart.second.toString().padLeft(2, '0')}';
 
     // Ensure MiruRyoiki directory exists
@@ -263,11 +263,24 @@ void _writeLogToSessionFile(LogLevel level, dynamic msg, Object? error, StackTra
   if (_sessionLogFile == null || _sessionId == null) return;
 
   // Format log entry with complete content built before writing
-  final timestamp = DateTime.now().toIso8601String();
+  final timestamp = now.toIso8601String();
   final logContent = StringBuffer();
 
+  String formattedMsg = msg.toString();
+
+  // Intercept any colors written as #RRGGBB and apply color formatting using escape codes via getColorEscapeCode()
+  final colorRegex = RegExp(r'#([A-Fa-f0-9]{6})');
+  formattedMsg = formattedMsg.replaceAllMapped(colorRegex, (match) {
+    final hexColor = match.group(0)!;
+    final r = int.parse(hexColor.substring(1, 3), radix: 16);
+    final g = int.parse(hexColor.substring(3, 5), radix: 16);
+    final b = int.parse(hexColor.substring(5, 7), radix: 16);
+    final color = Color.fromARGB(255, r, g, b);
+    return getColorEscapeCode(color);
+  });
+
   // Build the complete log entry in memory first
-  logContent.write('[$timestamp] ${level.name_.toUpperCase()}: $msg');
+  logContent.write('[$timestamp] ${level.name_.toUpperCase()}: $formattedMsg');
 
   if (error != null) {
     logContent.write('\nException: $error');
@@ -282,9 +295,7 @@ void _writeLogToSessionFile(LogLevel level, dynamic msg, Object? error, StackTra
   // Write the complete entry asynchronously with proper error handling
   _writeToLogFile(logContent.toString()).catchError((e) {
     // Silent catch to prevent infinite error loops
-    if (kDebugMode) {
-      developer.log('Failed to write ${level.name_} to session log: $e');
-    }
+    if (kDebugMode) developer.log('Failed to write ${level.name_} to session log: $e');
   });
 }
 
@@ -393,7 +404,7 @@ String getColorEscapeCodeBg(Color color) {
 /// ]);
 /// ```
 /// This will log three messages with different text and background colors.
-void logMulti(List<List<dynamic>> messages, {bool showTime = true}) {
+void logMulti(List<List<dynamic>> messages, {bool showTime = true, LogLevel level = LogLevel.none}) {
   if (!LoggingConfig.doLogRelease && !kDebugMode) return; // Skip logging in release mode if disabled
   String logMessage = '';
   for (var innerList in messages) {
@@ -407,7 +418,7 @@ void logMulti(List<List<dynamic>> messages, {bool showTime = true}) {
     logMessage += '$escapeCode$bgEscapeCode$msg';
   }
   if (showTime) logMessage = '$nowFormatted | $logMessage';
-  _log(LogLevel.none, logMessage);
+  _log(level, logMessage);
 }
 
 /// Parses known Anilist API errors and logs appropriate warnings.

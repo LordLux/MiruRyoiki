@@ -9,6 +9,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_acrylic/flutter_acrylic.dart';
 import 'package:flutter_acrylic/window.dart' as flutter_acrylic;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:miruryoiki/enums.dart';
 import 'package:miruryoiki/widgets/frosted_noise.dart';
 import 'package:provider/provider.dart';
 import 'package:app_links/app_links.dart';
@@ -64,25 +65,24 @@ RootIsolateToken? rootIsolateToken;
 
 final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
 final GlobalKey<_MiruRyoikiState> homeKey = GlobalKey<_MiruRyoikiState>();
-final GlobalKey<SeriesScreenState> seriesScreenKey = GlobalKey<SeriesScreenState>();
-final GlobalKey<SeriesScreenState> librarySeriesScreenKey = GlobalKey<SeriesScreenState>();
+final GlobalKey<SeriesScreenContainerState> seriesScreenContainerKey = GlobalKey<SeriesScreenContainerState>();
 final GlobalKey<LibraryScreenState> libraryScreenKey = GlobalKey<LibraryScreenState>();
 final GlobalKey<ReleaseCalendarScreenState> releaseCalendarScreenKey = GlobalKey<ReleaseCalendarScreenState>();
 final GlobalKey<AccountsScreenState> accountsKey = GlobalKey<AccountsScreenState>();
 
 final GlobalKey<State<StatefulWidget>> paletteOverlayKey = GlobalKey<State<StatefulWidget>>();
 
-/// Get the currently active SeriesScreenState based on which tab is selected
-SeriesScreenState? getActiveSeriesScreenState() {
-  final miruRyoikiState = homeKey.currentState;
-  if (miruRyoikiState == null) return null;
+/// Get the currently active SeriesScreenContainerState based on which page is open
+dynamic getActiveSeriesScreenContainerState() {
+  // Check the current navigation view to determine which screen is active
+  final currentView = _navigationManager.currentView;
+  if (currentView == null) return null;
 
-  // Check which tab is currently selected
-  if (miruRyoikiState.selectedIndex == _MiruRyoikiState.homeIndex) {
-    return seriesScreenKey.currentState;
-  } else if (miruRyoikiState.selectedIndex == _MiruRyoikiState.libraryIndex) {
-    return librarySeriesScreenKey.currentState;
-  }
+  // If we're on a mapping page (inner series screen within the container)
+  if (currentView.id.startsWith('mapping:')) return seriesScreenContainerKey.currentState!.innerSeriesScreenKey!.currentState;
+
+  // If we're on a series page (main series screen showing grid)
+  if (currentView.id.startsWith('series:')) return seriesScreenContainerKey.currentState!.seriesScreenKey!.currentState;
 
   return null;
 }
@@ -90,68 +90,68 @@ SeriesScreenState? getActiveSeriesScreenState() {
 void main(List<String> args) async {
   // runZonedGuarded(
   //   () async {
-      WidgetsFlutterBinding.ensureInitialized();
+  WidgetsFlutterBinding.ensureInitialized();
 
-      Manager.parseArgs();
+  Manager.parseArgs();
 
-      // Ensures there's only one instance of the program
-      _ensureSingleInstance();
+  // Ensures there's only one instance of the program
+  _ensureSingleInstance();
 
-      // Only run on Windows and MacOS
-      if (!(Platform.isWindows || Platform.isMacOS)) throw UnimplementedError('This app is only supported on Windows (for now).');
+  // Only run on Windows and MacOS
+  if (!(Platform.isWindows || Platform.isMacOS)) throw UnimplementedError('This app is only supported on Windows (for now).');
 
-      // Initializes the MiruRyoiki save directory
-      await initializeMiruRyoikiSaveDirectory();
+  // Initializes the MiruRyoiki save directory
+  await initializeMiruRyoikiSaveDirectory();
 
-      // Initialize settings
-      await _settings.init();
+  // Initialize settings
+  await _settings.init();
 
-      // Initialize session-based error logging
-      await initializeLoggingSession();
+  // Initialize session-based error logging
+  await initializeLoggingSession();
 
-      Manager.init();
+  Manager.init();
 
-      // Gets the root isolate token
-      rootIsolateToken = ServicesBinding.rootIsolateToken;
+  // Gets the root isolate token
+  rootIsolateToken = ServicesBinding.rootIsolateToken;
 
-      // Load custom mouse cursors
-      await initSystemMouseCursor();
-      await disposeSystemMouseCursor();
-      await initSystemMouseCursor();
+  // Load custom mouse cursors
+  await initSystemMouseCursor();
+  await disposeSystemMouseCursor();
+  await initSystemMouseCursor();
 
-      // Load environment variables
-      await dotenv.load(fileName: '.env');
+  // Load environment variables
+  await dotenv.load(fileName: '.env');
 
-      // Register custom URL scheme for deep linking
-      await _registerUrlScheme(mRyoikiAnilistScheme);
+  // Register custom URL scheme for deep linking
+  await _registerUrlScheme(mRyoikiAnilistScheme);
 
-      // Load system theme color
-      if (!kIsWeb && defaultTargetPlatform == TargetPlatform.windows) SystemTheme.accentColor.load();
+  // Load system theme color
+  if (!kIsWeb && defaultTargetPlatform == TargetPlatform.windows) SystemTheme.accentColor.load();
 
-      // Initialize Window Manager
-      _initializeSplashScreenWindow();
+  // Initialize Window Manager
+  _initializeSplashScreenWindow();
 
-      // Initialize image cache
-      final imageCache = ImageCacheService();
-      await imageCache.init();
+  // Initialize image cache
+  final imageCache = ImageCacheService();
+  await imageCache.init();
 
-      await initializeSVGs();
+  await initializeSVGs();
 
-      // Run the app
-      runApp(
-        MultiProvider(
-          providers: [
-            ChangeNotifierProvider(create: (_) => Library(_settings), lazy: false),
-            ChangeNotifierProvider(create: (_) => ConnectivityService(), lazy: false),
-            ChangeNotifierProvider(create: (_) => AnilistProvider()),
-            ChangeNotifierProvider.value(value: _appTheme),
-            ChangeNotifierProvider.value(value: _settings),
-            ChangeNotifierProvider.value(value: _navigationManager),
-          ],
-          child: const MyApp(),
-        ),
-      );
-    }
+  // Run the app
+  runApp(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => Library(_settings), lazy: false),
+        ChangeNotifierProvider(create: (_) => ConnectivityService(), lazy: false),
+        ChangeNotifierProvider(create: (_) => AnilistProvider()),
+        ChangeNotifierProvider.value(value: _appTheme),
+        ChangeNotifierProvider.value(value: _settings),
+        ChangeNotifierProvider.value(value: _navigationManager),
+      ],
+      child: const MyApp(),
+    ),
+  );
+}
 //     ,
 //     (error, stackTrace) => logErr('Uncaught error in main isolate', error, stackTrace),
 //   );
@@ -608,8 +608,8 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
                                         onEnd: onEndTransitionSeriesScreen,
                                         child: _isFinishedTransitioningToLibrary
                                             ? const SizedBox.shrink()
-                                            : SeriesScreen(
-                                                key: librarySeriesScreenKey,
+                                            : SeriesScreenContainer(
+                                                key: seriesScreenContainerKey,
                                                 seriesPath: _selectedSeriesPath,
                                                 onBack: exitSeriesView,
                                               ),
@@ -816,7 +816,7 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
         builder: (context, _, __) {
           return AnimatedContainer(
             duration: dimDuration,
-            color: Manager.navigation.hasDialog && Manager.navigation.currentView?.id != "notifications" ? getBarrierColor(Manager.currentDominantColor) : Colors.transparent,
+            color: Manager.navigation.hasDialog && Manager.navigation.currentView?.id != "notifications" ? getBarrierColor(Manager.currentDominantColor).withOpacity(.25) : Colors.transparent,
             child: Stack(
               children: [
                 Positioned.fill(
@@ -964,10 +964,12 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
 
     setState(() {
       _selectedSeriesPath = seriesPath;
-      Manager.currentDominantColor = series?.localPosterColor;
       _isSeriesView = true;
       _isFinishedTransitioningToLibrary = false;
     });
+
+    Manager.currentDominantColor = await series?.effectivePrimaryColor();
+    if (Manager.currentDominantColor != null) SeriesScreenContainerState.mainDominantColor = Manager.currentDominantColor;
 
     Manager.setState();
   }
@@ -1033,15 +1035,26 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
       return true;
     } else if (_isSeriesView) {
       if (!navManager.hasDialog) {
-        // Coming back from series view
-        logTrace('Going back in navigation stack! -> Library');
-        exitSeriesView();
+        if (navManager.currentView?.id.startsWith("mapping:") ?? false) {
+          // Coming back from mapping view
+          seriesScreenContainerKey.currentState?.exitMapping();
+          logTrace('Going back in navigation stack! Mapping -> Series');
+        } else if (navManager.currentView?.id.startsWith("series:") ?? false) {
+          // Coming back from series view
+          logTrace('Going back in navigation stack! Series -> Library');
+          exitSeriesView();
+        } else {
+          logWarn('Unknown navigation state while in series view: ${navManager.currentView?.id}');
+        }
       } else {
         if (!Manager.canPopDialog) {
           if (navManager.currentView?.id.startsWith('linkAnilist') ?? false) {
             logTrace('Link Anilist dialog is open, switching to view mode');
             nextFrame(() => linkMultiDialogKey.currentState?.switchToViewMode());
           }
+        } else {
+          logTrace('Closing dialog from back navigation in series view');
+          closeDialog(rootNavigatorKey.currentContext!);
         }
       }
       return true;
@@ -1180,18 +1193,21 @@ Future<void> _registerWindowsUrlScheme(String scheme) async {
   }
 }
 
-// TODO disable temporarily change of primary id combobox after changing it until data is fetched
-// TODO add 'open series folder' button to series screen
+// TODO add context menu to MappingCard
+// TODO change scanning: any folders [names] will remain as is and only loose files will be moved to 'Related Media'
+// TODO create widget for Smooth scrolling scroll controllers
+// TODO create superclass for series type cards (continue watching, library series, search results, etc.) to share code between them and avoid duplication
 // TODO after new data from fetching userdata or series data, invalidate cache for library screen and reload
 // TODO add 'notify me' button to upcoming episodes on home screen
 // TODO change text 'wait while library is getting indexed' to 'scanning' when library scan is in progress
+// TODO add 'play episode' button on continue watching series card -> click on card simply opens series
 // TODO move hidden series switches to settings
 // TODO 'no episodes found for this season' should be 'no episodes found for this series' when there are no episodes in any season
 // TODO when view is linkedOnly, hideFromUserList series automatically get added to Watching -> add category for them
 // TODO released section in homepage to show release but not yet downloaded
 // TODO view settings to choose what to show on homepage
 // TODO fix settings players order not actually changing + add cursor to reordering handles
-// TODO cache anime info + fix image cache not working (es when changing primary id)
+// TODO fix image cache not working (es when changing primary id)
 // TODO cache Anilist lists to be able to work offline
 // TODO fix library scanning that keeps finding the same files every time even though they were already there
 

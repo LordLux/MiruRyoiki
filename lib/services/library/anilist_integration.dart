@@ -62,13 +62,13 @@ extension LibraryAnilistIntegration on Library {
               // Need to recalculate the dominant color for this series
               recalculateColor.add(series);
             }
-          } else if (shouldUseAnilist || series.folderPosterPath == null) {
+          } else if (shouldUseAnilist || series.localPosterPath == null) {
             logTrace('5 | Poster for ${substringSafe(series.name, 0, 20, '"')} is not cached, needs fetching: ${series.anilistPosterUrl}');
             // Not cached -> need to fetch if we should use Anilist or have no local poster
             needPosters.add(series);
           }
-        } else if (shouldUseAnilist || series.folderPosterPath == null) {
-          logTrace('5 | No poster image for ${substringSafe(series.name, 0, 20, '"')}, needs fetching from Anilist\npath: "${series.folderPosterPath}", shouldUseAnilist: $shouldUseAnilist');
+        } else if (shouldUseAnilist || series.localPosterPath == null) {
+          logTrace('5 | No poster image for ${substringSafe(series.name, 0, 20, '"')}, needs fetching from Anilist\npath: "${series.localPosterPath}", shouldUseAnilist: $shouldUseAnilist');
           // No anilistData or no posterImage -> need to fetch
           needPosters.add(series);
         } else {
@@ -131,13 +131,14 @@ extension LibraryAnilistIntegration on Library {
         // Find the mapping with this ID
         for (var j = 0; j < series.anilistMappings.length; j++) {
           if (series.anilistMappings[j].anilistId == anilistId) {
-            series.anilistMappings[j] = AnilistMapping(
-              localPath: series.anilistMappings[j].localPath,
+            series.anilistMappings[j] = series.anilistMappings[j].copyWith(
               anilistId: anilistId,
-              title: series.anilistMappings[j].title,
               lastSynced: now,
               anilistData: anime,
             );
+
+            // Calculate dominant colors for the mapping
+            await series.anilistMappings[j].calculateDominantColors(forceRecalculate: false);
           }
         }
 
@@ -178,7 +179,7 @@ extension LibraryAnilistIntegration on Library {
         if (series.isLinked) {
           refreshSeries.add(series);
         }
-      } else if (series.folderPosterPath == null && series.isLinked) {
+      } else if (series.localPosterPath == null && series.isLinked) {
         refreshSeries.add(series);
       }
     }
@@ -203,6 +204,9 @@ extension LibraryAnilistIntegration on Library {
                 lastSynced: now,
                 anilistData: anime,
               );
+              
+              // Calculate dominant colors for the mapping
+              if (anime.posterImage != null) await series.anilistMappings[j].calculateDominantColors(forceRecalculate: false);
             }
           }
 
@@ -301,6 +305,7 @@ extension LibraryAnilistIntegration on Library {
     snackBar(
       'Refreshing all Anilist metadata, this may take a while...',
       severity: InfoBarSeverity.info,
+      autoHide: false,
     );
     final startTime = DateTime.now().millisecondsSinceEpoch;
 

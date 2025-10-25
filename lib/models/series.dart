@@ -6,6 +6,7 @@ import 'package:flutter/widgets.dart' hide Image;
 import 'package:miruryoiki/models/metadata.dart';
 import 'package:collection/collection.dart';
 import 'package:provider/provider.dart';
+import 'package:recase/recase.dart';
 
 import '../manager.dart';
 import '../services/anilist/provider/anilist_provider.dart';
@@ -14,159 +15,14 @@ import '../services/file_system/cache.dart';
 import '../utils/color.dart' as colorUtils;
 import '../utils/logging.dart';
 import '../utils/path.dart';
+import '../utils/text.dart';
 import 'anilist/anime.dart';
 import 'anilist/mapping.dart';
 import 'anilist/user_list.dart';
 import 'episode.dart';
 import '../enums.dart';
-
-class Season {
-  /// Database ID
-  final int? id;
-
-  /// Database ID for parent Series
-  final int? seriesId;
-
-  /// Name of the season
-  final String name;
-
-  /// Path for the season from the File System
-  final PathString path;
-
-  /// List of Episodes for the season
-  final List<Episode> episodes;
-
-  Season({
-    this.id,
-    this.seriesId,
-    required this.name,
-    required this.path,
-    required this.episodes,
-    Metadata? metadata,
-  }) : _metadata = metadata;
-
-  @override
-  String toString() {
-    return '''
-      Season(
-        name: $name, path: $path,
-        episodes: $episodes
-      )
-    ''';
-  }
-
-  int get watchedCount => episodes.where((e) => e.watched).length;
-  int get totalCount => episodes.length;
-  double get watchedPercentage => totalCount > 0 ? watchedCount / totalCount : 0.0;
-
-  String get prettyName {
-    if (name.isEmpty) return 'Season';
-
-    final seasonNum = seasonNumber; // Use the parsed season number if available
-    if (seasonNum != null) return 'Season $seasonNum';
-
-    // if no valid season number found, return the original name
-    return name;
-  }
-
-  int? get seasonNumber {
-    // Pattern to match "Season \d+" or "S\s?\d+"
-    final seasonPattern = RegExp(r'^[Ss](?:eason)?\s*(\d+)$');
-    final match = seasonPattern.firstMatch(name.trim());
-
-    if (match != null) return int.parse(match.group(1)!); // Return as integer
-
-    return null; // Return null if no valid season number found
-  }
-
-  Metadata? _metadata;
-
-  Metadata? get metadata => _metadata ?? _getMetadata();
-
-  Metadata? _getMetadata() {
-    if (_metadata != null) return _metadata;
-
-    // Get total duration
-    int totSize = 0;
-    Duration totDuration = Duration.zero;
-    DateTime? creationDate; // earliest creation date among all episodes
-    DateTime? lastModifiedDate; // latest modification date among all episodes
-    DateTime? lastAccessedDate; // latest access date among all episodes
-
-    // Populate variables
-    for (final episode in episodes) {
-      final metadata = episode.metadata;
-      if (metadata != null) {
-        totSize += metadata.size;
-        totDuration += metadata.duration;
-        creationDate ??= _minDate(creationDate, metadata.creationTime);
-        lastModifiedDate ??= _maxDate(lastModifiedDate, metadata.lastModified);
-        lastAccessedDate ??= _maxDate(lastAccessedDate, metadata.lastAccessed);
-      }
-    }
-
-    _metadata = Metadata(
-      size: totSize,
-      duration: totDuration,
-      creationTime: creationDate,
-      lastModified: lastModifiedDate,
-      lastAccessed: lastAccessedDate,
-    );
-
-    return _metadata;
-  }
-
-  // For JSON serialization
-  Map<String, dynamic> toJson() {
-    return {
-      'id': id, // Database ID
-      'seriesId': seriesId, // Parent series ID
-      'name': name,
-      'path': path.path, // not nullable
-      'episodes': episodes.map((e) => e.toJson()).toList(),
-      'metadata': _metadata?.toJson(),
-    };
-  }
-
-  // For JSON deserialization
-  factory Season.fromJson(Map<String, dynamic> json) {
-    return Season(
-      id: json['id'], // Database ID
-      seriesId: json['seriesId'], // Parent series ID
-      name: json['name'],
-      path: PathString.fromJson(json['path'])!,
-      episodes: (json['episodes'] as List).map((e) => Episode.fromJson(e)).toList(),
-      metadata: json['metadata'] != null ? Metadata.fromJson(json['metadata']) : null,
-    );
-  }
-
-  Season copyWith({
-    int? id,
-    int? seriesId,
-    String? name,
-    PathString? path,
-    List<Episode>? episodes,
-    Metadata? metadata,
-  }) {
-    return Season(
-      id: id ?? this.id,
-      seriesId: seriesId ?? this.seriesId,
-      name: name ?? this.name,
-      path: path ?? this.path,
-      episodes: episodes ?? this.episodes,
-      metadata: metadata ?? this.metadata,
-    );
-  }
-
-  /// Get episode by ID within this season
-  Episode? getEpisodeById(int episodeId) => episodes.firstWhereOrNull((episode) => episode.id == episodeId);
-
-  /// Get episode by number within this season
-  Episode? getEpisodeByNumber(int episodeNumber) => episodes.firstWhereOrNull((episode) => episode.episodeNumber == episodeNumber);
-
-  /// Get episode by path within this season
-  Episode? getEpisodeByPath(PathString episodePath) => episodes.firstWhereOrNull((episode) => episode.path == episodePath);
-}
+import 'season.dart';
+import 'mapping_target.dart';
 
 class Series {
   /// Database ID
@@ -209,10 +65,10 @@ class Series {
   String? _anilistBannerUrl;
 
   /// Poster path for the series from the File System
-  PathString? folderPosterPath;
+  PathString? localPosterPath;
 
   /// Poster path for the series from the File System
-  PathString? folderBannerPath;
+  PathString? localBannerPath;
 
   /// Whether the series is hidden from the library (only when not linked to Anilist)
   bool isForcedHidden;
@@ -220,6 +76,11 @@ class Series {
   /// Custom list name for unlinked series (null -> default to 'Unlinked')
   /// ignored if linked
   String? customListName;
+
+  /// User's custom ordering of episode grids.
+  /// If null, use default order (seasons 1->N, then uncategorized).
+  /// Each string is a grid identifier like 'season_1', 'special_uncategorized', etc.
+  List<String>? customGridOrder;
 
   /// Get the effective list name for this unlinked series, with validation and fallback
   String getEffectiveListName(List<String> availableListNames) {
@@ -246,8 +107,8 @@ class Series {
     this.id,
     required this.name,
     required this.path,
-    this.folderPosterPath,
-    this.folderBannerPath,
+    this.localPosterPath,
+    this.localBannerPath,
     required this.seasons,
     this.relatedMedia = const [],
     this.anilistMappings = const [],
@@ -261,6 +122,7 @@ class Series {
     int? primaryAnilistId,
     bool isHidden = false,
     this.customListName,
+    this.customGridOrder,
     Metadata? metadata,
   })  : isForcedHidden = isHidden,
         _localPosterDominantColor = posterColor,
@@ -290,14 +152,15 @@ class Series {
     String? anilistBanner,
     bool? isHidden,
     String? customListName,
+    List<String>? customGridOrder,
     Metadata? metadata,
   }) {
     return Series(
       id: id ?? this.id,
       name: name ?? this.name,
       path: path ?? this.path,
-      folderPosterPath: folderPosterPath ?? this.folderPosterPath,
-      folderBannerPath: folderBannerPath ?? this.folderBannerPath,
+      localPosterPath: folderPosterPath ?? this.localPosterPath,
+      localBannerPath: folderBannerPath ?? this.localBannerPath,
       seasons: seasons ?? this.seasons,
       relatedMedia: relatedMedia ?? this.relatedMedia,
       anilistMappings: anilistMappings ?? this.anilistMappings,
@@ -311,6 +174,7 @@ class Series {
       anilistBanner: anilistBanner ?? _anilistBannerUrl,
       isHidden: isHidden ?? this.isForcedHidden,
       customListName: customListName ?? this.customListName,
+      customGridOrder: customGridOrder ?? this.customGridOrder,
       metadata: metadata ?? _metadata,
     );
   }
@@ -321,8 +185,8 @@ class Series {
       'id': id,
       'name': name,
       'path': path.path, //not nullable
-      'posterPath': folderPosterPath?.pathMaybe, // nullable
-      'bannerPath': folderBannerPath?.pathMaybe, // nullable
+      'posterPath': localPosterPath?.pathMaybe, // nullable
+      'bannerPath': localBannerPath?.pathMaybe, // nullable
       'seasons': seasons.map((s) => s.toJson()).toList(),
       'relatedMedia': relatedMedia.map((e) => e.toJson()).toList(),
       'anilistMappings': anilistMappings.map((m) => m.toJson()).toList(),
@@ -335,6 +199,7 @@ class Series {
       'preferredBannerSource': preferredBannerSource?.name_, // nullable
       'isHidden': isForcedHidden,
       'customListName': customListName, // nullable
+      'customGridOrder': customGridOrder, // nullable
       'metadata': _metadata?.toJson(), // nullable
     };
   }
@@ -451,8 +316,8 @@ class Series {
         id: json['id'] as int?,
         name: name,
         path: path,
-        folderPosterPath: PathString.fromJson(json['posterPath']),
-        folderBannerPath: PathString.fromJson(json['bannerPath']),
+        localPosterPath: PathString.fromJson(json['posterPath']),
+        localBannerPath: PathString.fromJson(json['bannerPath']),
         seasons: seasons,
         relatedMedia: relatedMedia,
         anilistMappings: mappings,
@@ -471,6 +336,16 @@ class Series {
         series.customListName = json['customListName'] as String?;
       } catch (e, st) {
         logErr('Error setting customListName', e, st);
+      }
+
+      // Set custom grid order if available
+      try {
+        if (json.containsKey('customGridOrder') && json['customGridOrder'] != null) {
+          final orderJson = json['customGridOrder'];
+          if (orderJson is List) series.customGridOrder = orderJson.cast<String>();
+        }
+      } catch (e, st) {
+        logErr('Error setting customGridOrder', e, st);
       }
 
       // Set primary Anilist ID if available
@@ -545,6 +420,51 @@ class Series {
 )''';
   }
 
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    if (other is! Series) return false;
+    final listEquality = const DeepCollectionEquality().equals;
+    return other.id == id &&
+        other.name == name &&
+        other.path == path &&
+        listEquality(other.seasons, seasons) &&
+        listEquality(other.relatedMedia, relatedMedia) &&
+        listEquality(other.anilistMappings, anilistMappings) &&
+        other._primaryAnilistId == _primaryAnilistId &&
+        other._localPosterDominantColor == _localPosterDominantColor &&
+        other._localBannerDominantColor == _localBannerDominantColor &&
+        other.preferredPosterSource == preferredPosterSource &&
+        other.preferredBannerSource == preferredBannerSource &&
+        other._anilistPosterUrl == _anilistPosterUrl &&
+        other._anilistBannerUrl == _anilistBannerUrl &&
+        other.localPosterPath == localPosterPath &&
+        other.localBannerPath == localBannerPath &&
+        other.isForcedHidden == isForcedHidden &&
+        other.customListName == customListName;
+  }
+
+  @override
+  int get hashCode => Object.hash(
+        id,
+        name,
+        path,
+        Object.hashAll(seasons),
+        Object.hashAll(relatedMedia),
+        Object.hashAll(anilistMappings),
+        _primaryAnilistId,
+        _localPosterDominantColor,
+        _localBannerDominantColor,
+        preferredPosterSource,
+        preferredBannerSource,
+        _anilistPosterUrl,
+        _anilistBannerUrl,
+        localPosterPath,
+        localBannerPath,
+        isForcedHidden,
+        customListName,
+      );
+
   /// Getter and setter for primaryAnilistId
   int? get primaryAnilistId => _primaryAnilistId ?? (isLinked ? anilistMappings.firstOrNull?.anilistId : null); // Fall back to the first mapping
   /// Set the primary Anilist ID
@@ -598,7 +518,7 @@ class Series {
     final result = await colorUtils.calculateLocalDominantColors(this, forceRecalculate: forceRecalculate);
     if (result.$2 == true) _localBannerDominantColor = result.$1?.$2 ?? _localBannerDominantColor; // override if new, othewise keep old
   }
-  
+
   Future<void> calculateLocalDominantColors({bool forceRecalculate = false}) async {
     final result = await colorUtils.calculateLocalDominantColors(this, forceRecalculate: forceRecalculate);
     if (result.$2 == true) {
@@ -606,7 +526,7 @@ class Series {
       _localBannerDominantColor = result.$1?.$2 ?? _localBannerDominantColor; // override if new, othewise keep old
     }
   }
-  
+
   Future<void> clearCachedDominantColors() async {
     _localPosterDominantColor = null;
     _localBannerDominantColor = null;
@@ -835,7 +755,7 @@ class Series {
     return null;
   }
 
-  /// Getters for seasons and episodes
+  // Getters for seasons and episodes
 
   /// Get episode by database ID (searches all seasons and related media)
   Episode? getEpisodeById(int episodeId) {
@@ -894,6 +814,74 @@ class Series {
     return relatedMedia.where((e) => !categorizedEpisodes.contains(e)).toList();
   }
 
+  // Grid Ordering Methods
+
+  /// Generate a grid identifier for a season number
+  /// Format: 'season_N' for regular seasons, 'special_uncategorized' for uncategorized
+  static String getGridIdentifier(int seasonNumber) {
+    if (seasonNumber == 0) return 'special_uncategorized';
+    return 'season_$seasonNumber';
+  }
+
+  /// Parse a season number from a grid identifier
+  /// Returns null if not a valid season identifier
+  static int? parseSeasonNumber(String gridId) {
+    if (gridId == 'special_uncategorized') return 0;
+    if (gridId.startsWith('season_')) return int.tryParse(gridId.substring(7));
+
+    return null;
+  }
+
+  /// Get the display order of grids, either custom or default
+  /// Returns a list of grid identifiers in display order
+  List<String> getGridDisplayOrder() {
+    // If custom order is set, validate and return it
+    if (customGridOrder != null && customGridOrder!.isNotEmpty) {
+      // Validate that all grids in custom order still exist
+      final validatedOrder = <String>[];
+      final availableGrids = _getAvailableGrids();
+
+      for (final gridId in customGridOrder!) //
+        if (availableGrids.contains(gridId)) validatedOrder.add(gridId);
+
+      // Add any new grids that weren't in the custom order
+      for (final gridId in availableGrids) //
+        if (!validatedOrder.contains(gridId)) validatedOrder.add(gridId);
+
+      return validatedOrder;
+    }
+
+    // Default order
+    return _getAvailableGrids();
+  }
+
+  /// Get list of all available grids in default order
+  List<String> _getAvailableGrids() {
+    final grids = <String>[];
+
+    // Add regular seasons
+    for (int i = 1; i <= seasons.length; i++) grids.add(getGridIdentifier(i));
+
+    // Add uncategorized if it has episodes
+    if (getUncategorizedEpisodes().isNotEmpty) grids.add(getGridIdentifier(0));
+
+    return grids;
+  }
+
+  /// Set custom grid display order
+  /// Pass null to reset to default order
+  void setGridDisplayOrder(List<String>? order) => customGridOrder = order;
+
+  /// Check if a grid identifier is valid for this series
+  bool isValidGridId(String gridId) {
+    final seasonNum = parseSeasonNumber(gridId);
+    if (seasonNum == null) return false;
+
+    if (seasonNum == 0) return getUncategorizedEpisodes().isNotEmpty;
+
+    return seasonNum > 0 && seasonNum <= seasons.length;
+  }
+
   /// Get the current Anilist data based on the primary Anilist ID
   AnilistAnime? get currentAnilistData {
     if (_primaryAnilistId == null) return anilistData;
@@ -902,9 +890,7 @@ class Series {
     final mapping = anilistMappings.firstWhereOrNull((m) => m.anilistId == _primaryAnilistId);
 
     // If found and has data, return it
-    if (mapping != null && mapping.anilistData != null) {
-      return mapping.anilistData;
-    }
+    if (mapping != null && mapping.anilistData != null) return mapping.anilistData;
 
     // Fall back to the first mapping's data
     return anilistData;
@@ -964,11 +950,54 @@ class Series {
   /// Format from Anilist (TV, Movie, etc)
   String? get format => currentAnilistData?.format;
 
+  /// List of all formats from all Anilist mappings
+  String? get formats => anilistMappings.map((m) => parseFormat(m.anilistData?.format)).whereType<String>().toSet().join(', ');
+
   /// Genres from Anilist
   List<String> get genres => currentAnilistData?.genres ?? [];
 
   /// The season year from Anilist
   int? get seasonYear => currentAnilistData?.seasonYear;
+
+  String? get seasonsYearRange {
+    if (!isLinked) return null;
+    final years = anilistMappings.map((m) => m.anilistData?.seasonYear).whereType<int>().toSet().toList()..sort();
+    if (years.isEmpty) return null;
+    if (years.length == 1) return years.first.toString();
+    return '${years.first} - ${years.last}';
+  }
+
+  String? get seasonAndSeasonYearRange {
+    if (!isLinked) return null;
+
+    // Get all season-year combinations
+    final seasonYearPairs = <(String, int)>[];
+    for (final mapping in anilistMappings) {
+      final season = mapping.anilistData?.season?.titleCase;
+      final year = mapping.anilistData?.seasonYear;
+      if (season != null && year != null) {
+        seasonYearPairs.add((season, year));
+      }
+    }
+
+    if (seasonYearPairs.isEmpty) return null;
+
+    // Sort by year, then by season order (Winter, Spring, Summer, Fall)
+    final seasonOrder = {'Winter': 0, 'Spring': 1, 'Summer': 2, 'Fall': 3};
+    seasonYearPairs.sort((a, b) {
+      final yearComparison = a.$2.compareTo(b.$2);
+      if (yearComparison != 0) return yearComparison;
+      return (seasonOrder[a.$1] ?? 0).compareTo(seasonOrder[b.$1] ?? 0);
+    });
+
+    if (seasonYearPairs.length == 1) {
+      return '${seasonYearPairs.first.$1} ${seasonYearPairs.first.$2}';
+    }
+
+    final first = seasonYearPairs.first;
+    final last = seasonYearPairs.last;
+    return '${first.$1} ${first.$2} - ${last.$1} ${last.$2}';
+  }
 
   /// Checks if any Anilist mapping has the "hide from status lists" flag set
   bool get isAnilistHidden => isLinked && mediaListEntries.values.any((entry) => entry?.hiddenFromStatusLists == true);
@@ -978,43 +1007,27 @@ class Series {
     final ImageSource effectiveSource = preferredPosterSource ?? Manager.defaultPosterSource;
 
     // Determine available options
-    final bool hasLocalPoster = folderPosterPath != null;
+    final bool hasLocalPoster = localPosterPath != null;
     final bool hasAnilistPoster = anilistPosterUrl != null;
 
     // Apply fallback logic based on source preference
     switch (effectiveSource) {
       case ImageSource.autoLocal:
       case ImageSource.local:
-        return hasLocalPoster ? folderPosterPath?.pathMaybe : (hasAnilistPoster ? anilistPosterUrl : null);
+        return hasLocalPoster ? localPosterPath?.pathMaybe : (hasAnilistPoster ? anilistPosterUrl : null);
 
       case ImageSource.autoAnilist:
       case ImageSource.anilist:
-        return hasAnilistPoster ? anilistPosterUrl : (hasLocalPoster ? folderPosterPath?.pathMaybe : null);
+        return hasAnilistPoster ? anilistPosterUrl : (hasLocalPoster ? localPosterPath?.pathMaybe : null);
     }
-  }
-
-  /// Getter to check if the poster actually being used is from Anilist
-  bool get isAnilistPoster {
-    if (effectivePosterPath == null) return false;
-    return effectivePosterPath == anilistPosterUrl;
-  }
-
-  /// Getter to check if the poster actually being used is from a local file
-  bool get isLocalPoster {
-    if (effectivePosterPath == null) return false;
-    return effectivePosterPath == folderPosterPath?.pathMaybe;
   }
 
   /// Get the effective poster image as an ImageProvider
   Future<ImageProvider?> getPosterImage() async {
     final path = effectivePosterPath;
     if (path == null) return null;
-
-    if (isLocalPoster) {
-      return FileImage(File(path));
-    } else if (isAnilistPoster) {
-      return await ImageCacheService().getImageProvider(path);
-    }
+    if (isLocalPosterBeingUsed) return FileImage(File(path));
+    if (isAnilistPosterBeingUsed) return await ImageCacheService().getImageProvider(path);
     return null;
   }
 
@@ -1025,43 +1038,113 @@ class Series {
     final ImageSource effectiveSource = preferredBannerSource ?? Manager.defaultBannerSource;
 
     // Determine available options
-    final bool hasLocalBanner = folderBannerPath != null;
+    final bool hasLocalBanner = localBannerPath != null;
     final bool hasAnilistBanner = anilistBannerUrl != null;
 
     // Apply fallback logic based on source preference
     switch (effectiveSource) {
       case ImageSource.autoLocal:
       case ImageSource.local:
-        return hasLocalBanner ? folderBannerPath?.pathMaybe : (hasAnilistBanner ? anilistBannerUrl : null);
+        return hasLocalBanner ? localBannerPath?.pathMaybe : (hasAnilistBanner ? anilistBannerUrl : null);
 
       case ImageSource.autoAnilist:
       case ImageSource.anilist:
-        return hasAnilistBanner ? anilistBannerUrl : (hasLocalBanner ? folderBannerPath?.pathMaybe : null);
+        return hasAnilistBanner ? anilistBannerUrl : (hasLocalBanner ? localBannerPath?.pathMaybe : null);
+    }
+  }
+
+  /// Get the effective primary color based on settings and available images
+  Future<Color?> effectivePrimaryColor({int? anilistId, bool forceRecalculate = false, bool? overrideIsPoster}) async {
+    // Determine available options
+    final bool hasLocalBanner = localBannerPath != null;
+    final bool hasAnilistBanner = anilistBannerUrl != null;
+
+    // Apply fallback logic based on source preference
+    if (overrideIsPoster ?? (Manager.settings.dominantColorSource == DominantColorSource.poster)) {
+      switch (preferredPosterSource ?? Manager.defaultPosterSource) {
+        case ImageSource.autoLocal:
+        case ImageSource.local:
+          return hasLocalBanner ? _localPosterDominantColor : (hasAnilistBanner ? anilistData?.dominantColor?.fromHex() : null);
+
+        case ImageSource.autoAnilist:
+        case ImageSource.anilist:
+          final res = anilistMappings.firstWhereOrNull((m) => m.anilistId == (anilistId ?? primaryAnilistId));
+          if (forceRecalculate) return await res?.calculatePosterColor();
+          return await res?.posterColorFuture;
+      }
+    } else {
+      switch (preferredBannerSource ?? Manager.defaultBannerSource) {
+        case ImageSource.autoLocal:
+        case ImageSource.local:
+          return hasLocalBanner ? _localBannerDominantColor : (hasAnilistBanner ? anilistData?.dominantColor?.fromHex() : null);
+        case ImageSource.autoAnilist:
+        case ImageSource.anilist:
+          final a = anilistMappings.firstWhereOrNull((m) => m.anilistId == (anilistId ?? primaryAnilistId));
+          if (forceRecalculate) return await a?.calculateBannerColor();
+          return await a?.bannerColorFuture;
+      }
+    }
+  }
+
+  /// Get the effective primary color based on settings and available images
+  Color? effectivePrimaryColorSync([int? anilistId]) {
+    // Determine available options
+    final bool hasLocalBanner = localBannerPath != null;
+    final bool hasAnilistBanner = anilistBannerUrl != null;
+
+    // Apply fallback logic based on source preference
+    if (Manager.settings.dominantColorSource == DominantColorSource.poster) {
+      switch (preferredPosterSource ?? Manager.defaultPosterSource) {
+        case ImageSource.autoLocal:
+        case ImageSource.local:
+          return hasLocalBanner ? _localPosterDominantColor : (hasAnilistBanner ? anilistData?.dominantColor?.fromHex() : null);
+
+        case ImageSource.autoAnilist:
+        case ImageSource.anilist:
+          return anilistMappings.firstWhereOrNull((m) => m.anilistId == anilistId)?.posterColor;
+      }
+    } else {
+      switch (preferredBannerSource ?? Manager.defaultBannerSource) {
+        case ImageSource.autoLocal:
+        case ImageSource.local:
+          return hasLocalBanner ? _localBannerDominantColor : (hasAnilistBanner ? anilistData?.dominantColor?.fromHex() : null);
+        case ImageSource.autoAnilist:
+        case ImageSource.anilist:
+          return anilistMappings.firstWhereOrNull((m) => m.anilistId == anilistId)?.bannerColor;
+      }
     }
   }
 
   /// Getter to check if the banner actually being used is from Anilist
-  bool get isAnilistBanner {
+  bool get isAnilistBannerBeingUsed {
     if (effectiveBannerPath == null) return false;
     return effectiveBannerPath == anilistBannerUrl;
   }
 
   /// Getter to check if the banner actually being used is from a local file
-  bool get isLocalBanner {
+  bool get isLocalBannerBeingUsed {
     if (effectiveBannerPath == null) return false;
-    return effectiveBannerPath == folderBannerPath?.pathMaybe;
+    return effectiveBannerPath == localBannerPath?.pathMaybe;
+  }
+
+  /// Getter to check if the poster actually being used is from Anilist
+  bool get isAnilistPosterBeingUsed {
+    if (effectivePosterPath == null) return false;
+    return effectivePosterPath == anilistPosterUrl;
+  }
+
+  /// Getter to check if the poster actually being used is from a local file
+  bool get isLocalPosterBeingUsed {
+    if (effectivePosterPath == null) return false;
+    return effectivePosterPath == localPosterPath?.pathMaybe;
   }
 
   /// Get the effective banner image as an ImageProvider
   Future<ImageProvider?> getBannerImage() async {
     final path = effectiveBannerPath;
     if (path == null) return null;
-
-    if (isLocalBanner) {
-      return FileImage(File(path));
-    } else if (isAnilistBanner) {
-      return await ImageCacheService().getImageProvider(path);
-    }
+    if (isLocalBannerBeingUsed) return FileImage(File(path));
+    if (isAnilistBannerBeingUsed) return await ImageCacheService().getImageProvider(path);
     return null;
   }
 
@@ -1110,9 +1193,9 @@ class Series {
       totSize += season.metadata?.size ?? 0;
       totDuration += season.metadata?.duration ?? Duration.zero;
 
-      creationDate = _minDate(creationDate, season.metadata?.creationTime);
-      lastModifiedDate = _maxDate(lastModifiedDate, season.metadata?.lastModified);
-      lastAccessedDate = _maxDate(lastAccessedDate, season.metadata?.lastAccessed);
+      creationDate = DateTimeX.isBeforeMaybe(creationDate, season.metadata?.creationTime);
+      lastModifiedDate = DateTimeX.isAfterMaybe(lastModifiedDate, season.metadata?.lastModified);
+      lastAccessedDate = DateTimeX.isAfterMaybe(lastAccessedDate, season.metadata?.lastAccessed);
     }
 
     _metadata = Metadata(
@@ -1215,16 +1298,82 @@ class Series {
     // Otherwise, return the total count of all seasons
     return seasons.length;
   }
-}
 
-DateTime? _minDate(DateTime? date1, DateTime? date2) {
-  if (date1 == null) return date2;
-  if (date2 == null) return date1;
-  return date1.isBefore(date2) ? date1 : date2;
-}
+  /// Get the effective status of the series based on Anilist mappings
+  String? get effectiveStatus {
+    if (!isLinked) return null;
 
-DateTime? _maxDate(DateTime? date1, DateTime? date2) {
-  if (date1 == null) return date2;
-  if (date2 == null) return date1;
-  return date1.isAfter(date2) ? date1 : date2;
+    final priority = [
+      AnilistAnimeStatus.CANCELLED, // if any mapping is cancelled, take that
+      AnilistAnimeStatus.HIATUS, // if there are no cancelled, and any mapping is on hiatus, take that
+      AnilistAnimeStatus.RELEASING, // if there are no cancelled or on hiatus, and any mapping is releasing, take that
+      AnilistAnimeStatus.NOT_YET_RELEASED, // if there are no releasing or cancelled or on hiatus, and any mapping is not yet released, take that
+      AnilistAnimeStatus.FINISHED, // if all mappings are finished, take that
+    ];
+
+    // Get all statuses from anilist mappings
+    final statuses = anilistMappings.map((mapping) => mapping.anilistData?.status?.toAnimeStatus()).whereType<AnilistAnimeStatus>().toSet();
+
+    if (statuses.isEmpty) return null;
+
+    // Return the highest priority status found
+    for (final priorityStatus in priority) {
+      if (statuses.contains(priorityStatus)) return priorityStatus.name_;
+    }
+
+    return null;
+  }
+
+  bool updateEpisodes(List<Episode> newEpisodes) {
+    bool updated = false;
+
+    // Map new episodes by their path string for quick lookup
+    final Map<String, Episode> newByPath = {for (final e in newEpisodes) e.path.path: e};
+
+    // Replace episodes inside seasons
+    for (final season in seasons) {
+      for (int i = 0; i < season.episodes.length; i++) {
+        final existing = season.episodes[i];
+        final replacement = newByPath[existing.path.path];
+        if (replacement != null && !identical(replacement, existing)) {
+          season.episodes[i] = replacement;
+          updated = true;
+        }
+      }
+    }
+
+    // Replace episodes inside relatedMedia
+    for (int i = 0; i < relatedMedia.length; i++) {
+      final existing = relatedMedia[i];
+      final replacement = newByPath[existing.path.path];
+      if (replacement != null && !identical(replacement, existing)) {
+        relatedMedia[i] = replacement;
+        updated = true;
+      }
+    }
+
+    return updated;
+  }
+
+  /// Get MappingTarget for a given AnilistMapping
+  /// Returns null if the mapping path doesn't correspond to any season or episode
+  MappingTarget? getTargetForMapping(AnilistMapping mapping) {
+    // Check if mapping points to a season folder
+    for (final season in seasons) {
+      if (season.path == mapping.localPath) return MappingTarget.season(season);
+    }
+
+    // Check if mapping points to a related media episode
+    for (final episode in relatedMedia) {
+      if (episode.path == mapping.localPath) return MappingTarget.episode(episode);
+    }
+    // Check if mapping points to an episode within a season
+    for (final season in seasons) {
+      for (final episode in season.episodes) {
+        if (episode.path == mapping.localPath) return MappingTarget.episode(episode);
+      }
+    }
+    logTrace('No target found for mapping with Anilist ID ${mapping.anilistId} and path ${mapping.localPath}');
+    return null;
+  }
 }

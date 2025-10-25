@@ -48,7 +48,7 @@ extension LibraryInitialization on Library {
     if (!force && _isScanning) return;
     logDebug('Reloading Library...');
 
-    if (showSnackBar) snackBar('Reloading Library...', severity: InfoBarSeverity.info);
+    if (showSnackBar) snackBar('Reloading Library...', severity: InfoBarSeverity.info, autoHide: false);
     await scanLocalLibrary();
 
     await ensureCacheValidated();

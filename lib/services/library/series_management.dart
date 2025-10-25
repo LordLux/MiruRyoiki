@@ -20,7 +20,38 @@ extension LibrarySeriesManagement on Library {
     });
   }
 
-  Series? getSeriesByAnilistId(int anilistId) => _series.firstWhereOrNull((s) => s.primaryAnilistId == anilistId);
+  Series? getSeriesByAnilistId(int anilistId) => _series.firstWhereOrNull((s) => s.anilistMappings.any((m) => m.anilistId == anilistId));
+
+  T? applyFunctionToSeriesByAnilistId<T>(int anilistId, T Function(Series series) func) {
+    // Check if user actions are disabled
+    if (_lockManager.shouldDisableAction(UserAction.updateSeriesInfo)) {
+      snackBar(
+        _lockManager.getDisabledReason(UserAction.updateSeriesInfo),
+        severity: InfoBarSeverity.warning,
+      );
+      null;
+    }
+
+    for (final series in _series) {
+      if (series.anilistMappings.any((m) => m.anilistId == anilistId)) {
+        return func(series); // Returns after first match
+      }
+    }
+    return null; // No match found
+  }
+
+  T? applyFunctionToSeriesById<T>(int id, T Function(Series series) func) {
+    for (final series in _series) {
+      if (series.id == id) return func(series); // Returns after first match
+    }
+    return null; // No match found
+  }
+
+  T? applyFunctionToSeriesByPath<T>(PathString path, T Function(Series series) func) {
+    final series = getSeriesByPath(path);
+    if (series != null) return func(series);
+    return null;
+  }
 
   Series? getSeriesById(int id) => _series.firstWhereOrNull((s) => s.id == id);
 
@@ -38,23 +69,14 @@ extension LibrarySeriesManagement on Library {
 
   /// Save a single series with updated properties
   Future<void> updateSeries(Series series, {bool invalidateCache = true}) async {
-    // Check if user actions are disabled
-    if (_lockManager.shouldDisableAction(UserAction.updateSeriesInfo)) {
-      snackBar(
-        _lockManager.getDisabledReason(UserAction.updateSeriesInfo),
-        severity: InfoBarSeverity.warning,
-      );
-      return;
-    }
-
     final index = _series.indexWhere((s) => s.path == series.path);
     if (index < 0) return;
 
     final oldSeries = _series[index];
 
     // Check if images changed
-    bool posterChanged = oldSeries.folderPosterPath != series.folderPosterPath;
-    bool bannerChanged = oldSeries.folderBannerPath != series.folderBannerPath;
+    bool posterChanged = oldSeries.localPosterPath != series.localPosterPath;
+    bool bannerChanged = oldSeries.localBannerPath != series.localBannerPath;
     bool anilistChanged = oldSeries.primaryAnilistId != series.primaryAnilistId;
     bool preferenceChanged = oldSeries.preferredPosterSource != series.preferredPosterSource || //
         oldSeries.preferredBannerSource != series.preferredBannerSource;
@@ -62,21 +84,20 @@ extension LibrarySeriesManagement on Library {
     // Recalculate dominant color if relevant changes occurred
     if (posterChanged && !bannerChanged) {
       logDebug('Image source changed for ${series.name} - updating dominant colors');
-      await series.calculateLocalPosterDominantColor(forceRecalculate: true);
+      await series.effectivePrimaryColor(forceRecalculate: true, overrideIsPoster: true); // poster
     } else if (bannerChanged && !posterChanged) {
       logDebug('Image source changed for ${series.name} - updating dominant colors');
-      await series.calculateLocalBannerDominantColor(forceRecalculate: true);
+      await series.effectivePrimaryColor(forceRecalculate: true, overrideIsPoster: false); // banner
     } else if (anilistChanged || preferenceChanged) {
       logDebug('Anilist mapping or preference changed for ${series.name} - updating dominant colors');
-      await series.calculateLocalDominantColors(forceRecalculate: true);
+      await series.effectivePrimaryColor(forceRecalculate: true, overrideIsPoster: true); // poster
+      await series.effectivePrimaryColor(forceRecalculate: true, overrideIsPoster: false); // banner
     }
 
     // Update the series
     _series[index] = series;
 
-    if (invalidateCache && homeKey.currentState != null) {
-      homeKey.currentState!.seriesWasModified = true;
-    }
+    if (invalidateCache && homeKey.currentState != null) homeKey.currentState!.seriesWasModified = true;
 
     logTrace('Series updated: ${series.name}, ${PathUtils.getFileName(series.effectivePosterPath ?? '')}, ${PathUtils.getFileName(series.effectiveBannerPath ?? '')}');
 
@@ -115,8 +136,10 @@ extension LibrarySeriesManagement on Library {
     Episode episode, {
     /// True to mark as watched, false to unmark
     bool watched = true,
+
     /// Whether to save the library after marking
     bool save = true,
+
     /// Whether to override progress when marking as unwatched
     bool overrideProgress = false,
   }) {
@@ -198,14 +221,36 @@ extension LibrarySeriesManagement on Library {
     for (final season in series.seasons) //
       markSeasonWatched(season, watched: watched, save: false);
 
-    for (final episode in series.relatedMedia) {
+    for (final episode in series.relatedMedia) //
       markEpisodeWatched(episode, watched: watched, save: false, overrideProgress: true);
+
+    // Set the flag indicating a series was modified
+    if (homeKey.currentState != null) homeKey.currentState!.seriesWasModified = true;
+
+    _saveLibrary();
+    notifyListeners();
+  }
+
+  void markTargetWatched(MappingTarget target, {bool watched = true}) {
+    // Check if user actions are disabled
+    if (_lockManager.shouldDisableAction(UserAction.markSeriesWatched)) {
+      snackBar(
+        _lockManager.getDisabledReason(UserAction.markSeriesWatched),
+        severity: InfoBarSeverity.warning,
+      );
+      return;
+    }
+
+    if (target.isSeason) {
+      final season = target.asSeason;
+      if (season != null) markSeasonWatched(season, watched: watched, save: false);
+    } else {
+      final episode = target.asEpisode;
+      if (episode != null) markEpisodeWatched(episode, watched: watched, save: false, overrideProgress: true);
     }
 
     // Set the flag indicating a series was modified
-    if (homeKey.currentState != null) {
-      homeKey.currentState!.seriesWasModified = true;
-    }
+    if (homeKey.currentState != null) homeKey.currentState!.seriesWasModified = true;
 
     _saveLibrary();
     notifyListeners();

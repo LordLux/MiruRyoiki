@@ -103,7 +103,7 @@ class _MiruRyoikiTemplatePageState extends State<MiruRyoikiTemplatePage> {
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
           colors: [
-            widget.backgroundColor ?? Manager.accentColor.withOpacity(0.15),
+            widget.backgroundColor ?? Manager.accentColor.withOpacity(0.35),
             Colors.transparent,
           ],
         ),
