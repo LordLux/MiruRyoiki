@@ -11,15 +11,18 @@ import '../enums.dart';
 import '../manager.dart';
 
 import '../models/mapping_target.dart';
+import '../models/series.dart';
 import '../services/file_system/cache.dart';
 import '../services/navigation/statusbar.dart';
 import '../utils/logging.dart';
 import '../utils/screen.dart';
 import '../utils/time.dart';
+import 'context_menu/mapping.dart';
 
 class MappingCard extends StatefulWidget {
   final MappingTarget target;
   final AnilistMapping mapping;
+  final Series series;
   final VoidCallback onTap;
   final BorderRadius borderRadius;
 
@@ -28,6 +31,7 @@ class MappingCard extends StatefulWidget {
     required this.target,
     required this.mapping,
     required this.onTap,
+    required this.series,
     this.borderRadius = const BorderRadius.all(Radius.circular(8.0)),
   });
 
@@ -179,175 +183,180 @@ class _MappingCardState extends State<MappingCard> {
 
     return KeyedSubtree(
       key: ValueKey('${widget.mapping.localPath}-${_dominantColor ?? widget.mapping.effectivePrimaryColorSync()?.value ?? 0}'),
-      child: MouseRegion(
-        onEnter: (_) => setState(() => _isHovering = true),
-        onExit: (_) {
-          StatusBarManager().hide();
-          setState(() => _isHovering = false);
-        },
-        onHover: (_) => StatusBarManager().showDelayed(_displayTitle),
-        cursor: SystemMouseCursors.click,
-        child: ClipRRect(
-          borderRadius: widget.borderRadius,
-          child: AnimatedContainer(
-            duration: getDuration(const Duration(milliseconds: 150)),
-            decoration: BoxDecoration(
-              borderRadius: widget.borderRadius,
-              color: Colors.transparent,
-              boxShadow: _isHovering
-                  ? [
-                      BoxShadow(
-                        color: mainColor.withOpacity(0.05),
-                        blurRadius: 8,
-                        spreadRadius: 1,
-                      )
-                    ]
-                  : null,
-            ),
-            child: Stack(
-              children: [
-                // Poster image
-                Positioned.fill(
-                  top: 0,
-                  child: Container(
-                    child: _getPosterWidget(),
+      child: MappingContextMenu(
+        series: widget.series,
+        target: widget.target,
+        context: context,
+        child: MouseRegion(
+          onEnter: (_) => setState(() => _isHovering = true),
+          onExit: (_) {
+            StatusBarManager().hide();
+            setState(() => _isHovering = false);
+          },
+          onHover: (_) => StatusBarManager().showDelayed(_displayTitle),
+          cursor: SystemMouseCursors.click,
+          child: ClipRRect(
+            borderRadius: widget.borderRadius,
+            child: AnimatedContainer(
+              duration: getDuration(const Duration(milliseconds: 150)),
+              decoration: BoxDecoration(
+                borderRadius: widget.borderRadius,
+                color: Colors.transparent,
+                boxShadow: _isHovering
+                    ? [
+                        BoxShadow(
+                          color: mainColor.withOpacity(0.05),
+                          blurRadius: 8,
+                          spreadRadius: 1,
+                        )
+                      ]
+                    : null,
+              ),
+              child: Stack(
+                children: [
+                  // Poster image
+                  Positioned.fill(
+                    top: 0,
+                    child: Container(
+                      child: _getPosterWidget(),
+                    ),
                   ),
-                ),
-                Card(
-                  padding: EdgeInsets.zero,
-                  borderRadius: widget.borderRadius,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Poster image space
-                      Expanded(child: SizedBox.shrink()),
-
-                      // Progress bar
-                      LayoutBuilder(builder: (context, constraints) {
-                        return Transform.scale(
-                          scale: 1.01,
-                          child: Transform.translate(
-                            offset: Offset(0, .5),
-                            child: AnimatedContainer(
-                              duration: getDuration(const Duration(milliseconds: 400)),
-                              width: constraints.maxWidth,
-                              height: 4,
-                              color: Color.lerp(Colors.black.withOpacity(0.2), _dominantColor ?? widget.mapping.effectivePrimaryColorSync(), .4),
-                              child: Align(
-                                alignment: Alignment.topLeft,
-                                child: AnimatedContainer(
-                                  duration: getDuration(const Duration(milliseconds: 400)),
-                                  color: widget.target.watchedPercentage == 0 ? Colors.transparent : _dominantColor ?? widget.mapping.effectivePrimaryColorSync(),
-                                  width: constraints.maxWidth * widget.target.watchedPercentage,
-                                ),
-                              ),
-                            ),
-                          ),
-                        );
-                      }),
-
-                      // Mapping info
-                      Builder(builder: (context) {
-                        final double value = (_posterImageProvider != null) ? .76 : .9;
-                        final Color nicerColor = mainColor.lerpWith(Colors.grey, value);
-
-                        Widget child = AnimatedContainer(
-                          duration: getDuration(const Duration(milliseconds: 400)),
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [
-                                Colors.black.withOpacity(.3),
-                                Colors.transparent,
-                                Colors.transparent,
-                                Colors.transparent,
-                              ],
-                              begin: Alignment.topCenter,
-                              end: Alignment.bottomCenter,
-                            ),
-                          ),
-                          child: Padding(
-                            padding: EdgeInsets.all(12.0 * Manager.fontSizeMultiplier),
-                            child: AnimatedContainer(
-                              duration: getDuration(const Duration(milliseconds: 400)),
-                              constraints: BoxConstraints(minHeight: 42 * min(Manager.fontSizeMultiplier, 1)),
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    _displayTitle,
-                                    style: Manager.bodyStrongStyle.copyWith(fontSize: 12 * Manager.fontSizeMultiplier),
-                                    maxLines: 3,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                  VDiv(4),
-                                  Row(
-                                    children: [
-                                      Text(
-                                        '${widget.target.watchedCount} / ${widget.target.totalCount} Episodes',
-                                        style: Manager.miniBodyStyle.copyWith(color: Color.lerp(_dominantColor ?? widget.mapping.effectivePrimaryColorSync(), Colors.white, .7)),
-                                      ),
-                                      const Spacer(),
-                                      Text(
-                                        '${(widget.target.watchedPercentage * 100).round()}%',
-                                        style: Manager.miniBodyStyle.copyWith(color: Color.lerp(_dominantColor ?? widget.mapping.effectivePrimaryColorSync(), Colors.white, .7)),
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        );
-
-                        if (_posterImageProvider != null) {
+                  Card(
+                    padding: EdgeInsets.zero,
+                    borderRadius: widget.borderRadius,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Poster image space
+                        Expanded(child: SizedBox.shrink()),
+        
+                        // Progress bar
+                        LayoutBuilder(builder: (context, constraints) {
                           return Transform.scale(
-                            scale: 1.02,
+                            scale: 1.01,
                             child: Transform.translate(
-                              offset: Offset(0, 1),
-                              child: Acrylic(
-                                blurAmount: 2,
-                                tint: nicerColor.lerpWith(Colors.grey, 0.2),
-                                elevation: 0.5,
-                                tintAlpha: 0.5,
-                                luminosityAlpha: 0.8,
-                                child: FrostedNoise(
-                                  child: child,
+                              offset: Offset(0, .5),
+                              child: AnimatedContainer(
+                                duration: getDuration(const Duration(milliseconds: 400)),
+                                width: constraints.maxWidth,
+                                height: 4,
+                                color: Color.lerp(Colors.black.withOpacity(0.2), _dominantColor ?? widget.mapping.effectivePrimaryColorSync(), .4),
+                                child: Align(
+                                  alignment: Alignment.topLeft,
+                                  child: AnimatedContainer(
+                                    duration: getDuration(const Duration(milliseconds: 400)),
+                                    color: widget.target.watchedPercentage == 0 ? Colors.transparent : _dominantColor ?? widget.mapping.effectivePrimaryColorSync(),
+                                    width: constraints.maxWidth * widget.target.watchedPercentage,
+                                  ),
                                 ),
                               ),
                             ),
                           );
-                        }
-                        return AnimatedContainer(
-                          duration: getDuration(const Duration(milliseconds: 400)),
-                          color: nicerColor,
-                          child: child,
-                        );
-                      }),
-                    ],
+                        }),
+        
+                        // Mapping info
+                        Builder(builder: (context) {
+                          final double value = (_posterImageProvider != null) ? .76 : .9;
+                          final Color nicerColor = mainColor.lerpWith(Colors.grey, value);
+        
+                          Widget child = AnimatedContainer(
+                            duration: getDuration(const Duration(milliseconds: 400)),
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [
+                                  Colors.black.withOpacity(.3),
+                                  Colors.transparent,
+                                  Colors.transparent,
+                                  Colors.transparent,
+                                ],
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                              ),
+                            ),
+                            child: Padding(
+                              padding: EdgeInsets.all(12.0 * Manager.fontSizeMultiplier),
+                              child: AnimatedContainer(
+                                duration: getDuration(const Duration(milliseconds: 400)),
+                                constraints: BoxConstraints(minHeight: 42 * min(Manager.fontSizeMultiplier, 1)),
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      _displayTitle,
+                                      style: Manager.bodyStrongStyle.copyWith(fontSize: 12 * Manager.fontSizeMultiplier),
+                                      maxLines: 3,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    VDiv(4),
+                                    Row(
+                                      children: [
+                                        Text(
+                                          '${widget.target.watchedCount} / ${widget.target.totalCount} Episodes',
+                                          style: Manager.miniBodyStyle.copyWith(color: Color.lerp(_dominantColor ?? widget.mapping.effectivePrimaryColorSync(), Colors.white, .7)),
+                                        ),
+                                        const Spacer(),
+                                        Text(
+                                          '${(widget.target.watchedPercentage * 100).round()}%',
+                                          style: Manager.miniBodyStyle.copyWith(color: Color.lerp(_dominantColor ?? widget.mapping.effectivePrimaryColorSync(), Colors.white, .7)),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          );
+        
+                          if (_posterImageProvider != null) {
+                            return Transform.scale(
+                              scale: 1.02,
+                              child: Transform.translate(
+                                offset: Offset(0, 1),
+                                child: Acrylic(
+                                  blurAmount: 2,
+                                  tint: nicerColor.lerpWith(Colors.grey, 0.2),
+                                  elevation: 0.5,
+                                  tintAlpha: 0.5,
+                                  luminosityAlpha: 0.8,
+                                  child: FrostedNoise(
+                                    child: child,
+                                  ),
+                                ),
+                              ),
+                            );
+                          }
+                          return AnimatedContainer(
+                            duration: getDuration(const Duration(milliseconds: 400)),
+                            color: nicerColor,
+                            child: child,
+                          );
+                        }),
+                      ],
+                    ),
                   ),
-                ),
-
-                // Hover overlay
-                Positioned.fill(
-                  child: Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      onTap: widget.onTap,
-                      splashColor: mainColor.withOpacity(0.1),
-                      highlightColor: mainColor.withOpacity(0.05),
-                      borderRadius: widget.borderRadius,
-                      child: AnimatedContainer(
-                        duration: getDuration(const Duration(milliseconds: 150)),
-                        decoration: BoxDecoration(
-                          borderRadius: widget.borderRadius,
-                          color: _isHovering ? mainColor.withOpacity(0.1) : Colors.transparent,
+        
+                  // Hover overlay
+                  Positioned.fill(
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: widget.onTap,
+                        splashColor: mainColor.withOpacity(0.1),
+                        highlightColor: mainColor.withOpacity(0.05),
+                        borderRadius: widget.borderRadius,
+                        child: AnimatedContainer(
+                          duration: getDuration(const Duration(milliseconds: 150)),
+                          decoration: BoxDecoration(
+                            borderRadius: widget.borderRadius,
+                            color: _isHovering ? mainColor.withOpacity(0.1) : Colors.transparent,
+                          ),
                         ),
                       ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),

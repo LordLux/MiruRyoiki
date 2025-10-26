@@ -2,11 +2,12 @@
 
 import 'dart:io';
 import 'package:fluent_ui/fluent_ui.dart';
-import 'package:flutter/material.dart' show Icons;
+import 'package:flutter/material.dart' show Icons, InkWell;
 import 'package:miruryoiki/utils/icons.dart' as icons;
 import 'package:miruryoiki/utils/time.dart';
 import 'package:miruryoiki/widgets/series_image.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../main.dart';
 import '../../manager.dart';
@@ -23,6 +24,7 @@ import '../../utils/color.dart';
 import '../../utils/path.dart';
 import '../../utils/shell.dart';
 import '../buttons/button.dart';
+import '../buttons/hyperlink.dart';
 import '../buttons/wrapper.dart';
 import '../tooltip_wrapper.dart';
 import 'search_panel.dart';
@@ -158,9 +160,8 @@ class AnilistLinkMultiContentState extends State<_AnilistLinkMultiContent> {
     });
   }
 
-  bool _isNewlyAddedMapping(AnilistMapping mapping) {
-    return !oldMappings.any((m) => m.anilistId == mapping.anilistId && m.localPath == mapping.localPath);
-  }
+  bool _isNewlyAddedMapping(AnilistMapping mapping) => //
+      !oldMappings.any((m) => m.anilistId == mapping.anilistId && m.localPath == mapping.localPath);
 
   @override
   void initState() {
@@ -309,7 +310,7 @@ class AnilistLinkMultiContentState extends State<_AnilistLinkMultiContent> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             TooltipWrapper(
-              tooltip: _mappingsChanged ? 'Cancel and close Dialog': 'Close Dialog',
+              tooltip: _mappingsChanged ? 'Cancel and close Dialog' : 'Close Dialog',
               child: (_) => ManagedDialogButton(
                 text: _mappingsChanged ? 'Cancel' : 'Close',
                 popContext: context,
@@ -323,7 +324,7 @@ class AnilistLinkMultiContentState extends State<_AnilistLinkMultiContent> {
                   child: FluentTheme(
                     data: FluentTheme.of(context).copyWith(accentColor: SeriesScreenContainerState.mainDominantColor?.toAccentColor() ?? Manager.accentColor),
                     child: TooltipWrapper(
-                      tooltip: 'Select primary Anilist source',
+                      tooltip: library.isIndexing ? 'The Library is indexing. Please wait...' : 'Select primary Anilist source',
                       waitDuration: mediumDuration,
                       useMousePosition: false,
                       child: (_) => MouseButtonWrapper(
@@ -388,18 +389,17 @@ class AnilistLinkMultiContentState extends State<_AnilistLinkMultiContent> {
                     final library = Provider.of<Library>(context);
                     final bool indexing = library.isIndexing;
                     return TooltipWrapper(
-                      tooltip: indexing ? 'Please wait for indexing to complete before saving changes.' : 'Save changes',
-                      child: (_) => ManagedDialogButton(
-                          text: mappings.isEmpty && oldMappings.isNotEmpty //
-                              ? 'Remove All Links'
-                              : 'Save Changes',
-                          isPrimary: true,
-                          isLoading: indexing,
-                          isDisabled: indexing,
-                          popContext: context,
-                          onPressed: _mappingsChanged ? () => widget.onSave(mappings) : null,
-                        )
-                    );
+                        tooltip: indexing ? 'Please wait for indexing to complete before saving changes.' : 'Save changes',
+                        child: (_) => ManagedDialogButton(
+                              text: mappings.isEmpty && oldMappings.isNotEmpty //
+                                  ? 'Remove All Links'
+                                  : 'Save Changes',
+                              isPrimary: true,
+                              isLoading: indexing,
+                              isDisabled: indexing,
+                              popContext: context,
+                              onPressed: _mappingsChanged ? () => widget.onSave(mappings) : null,
+                            ));
                   }),
                 ],
               ],
@@ -411,12 +411,13 @@ class AnilistLinkMultiContentState extends State<_AnilistLinkMultiContent> {
   }
 
   Widget _buildMappingItem(AnilistMapping mapping) {
+    final isNewlyAddedMapping = _isNewlyAddedMapping(mapping);
     return Padding(
       padding: const EdgeInsets.only(bottom: 2.0),
       child: UnselectableTile(
-        color: _isNewlyAddedMapping(mapping) ? Colors.white.withOpacity(0.05) : SeriesScreenContainerState.mainDominantColor,
+        color: isNewlyAddedMapping ? Colors.white.withOpacity(0.05) : SeriesScreenContainerState.mainDominantColor,
         // use the series effective poster if available
-        icon: _isNewlyAddedMapping(mapping)
+        icon: isNewlyAddedMapping
             ? SizedBox(width: 30, child: Icon(FluentIcons.add_link, color: Colors.white))
             : mapping.anilistData?.posterImage != null
                 ? Transform.translate(
@@ -433,11 +434,22 @@ class AnilistLinkMultiContentState extends State<_AnilistLinkMultiContent> {
                 : Icon(FluentIcons.document, color: Colors.white),
 
         title: Transform.translate(
-          offset: !_isNewlyAddedMapping(mapping) ? const Offset(-10, 0) : const Offset(0, 0),
-          child: Text(mapping.title ?? 'Anilist ID: ${mapping.anilistId}', style: Manager.bodyStyle),
+          offset: isNewlyAddedMapping ? const Offset(0, 0) : const Offset(-10, 0),
+          child: WrappedHyperlinkButton(
+            tooltip: 'Open Anilist page for ${mapping.title ?? 'Anilist ID: ${mapping.anilistId}'}',
+            url: "https://anilist.co/anime/${mapping.anilistId}",
+            hoverColor: isNewlyAddedMapping ? Colors.white : SeriesScreenContainerState.mainDominantColor,
+            text: mapping.title ?? 'Anilist ID: ${mapping.anilistId}',
+            style: Manager.bodyStyle,
+            iconColor: isNewlyAddedMapping ? Colors.white : SeriesScreenContainerState.mainDominantColor,
+            icon: Icon(
+              Icons.open_in_new,
+              color: isNewlyAddedMapping ? Colors.white : SeriesScreenContainerState.mainDominantColor,
+            ),
+          ),
         ),
         subtitle: Transform.translate(
-          offset: !_isNewlyAddedMapping(mapping) ? const Offset(-10, 0) : const Offset(0, 0),
+          offset: isNewlyAddedMapping ? const Offset(0, 0) : const Offset(-10, 0),
           child: Padding(
             padding: const EdgeInsets.only(top: 2.0),
             child: RichText(
@@ -484,19 +496,12 @@ class AnilistLinkMultiContentState extends State<_AnilistLinkMultiContent> {
         trailing: MouseButtonWrapper(
           tooltip: 'Remove this link',
           child: (_) => IconButton(
-            icon: Transform.translate(
-              offset: const Offset(1, -1),
-              child: Icon(
-                FluentIcons.blocked12,
-                size: 18,
-                color: _isNewlyAddedMapping(mapping) ? Colors.white : SeriesScreenContainerState.mainDominantColor,
-              ),
+            icon: Icon(
+              Icons.link_off_outlined,
+              size: 18,
+              color: isNewlyAddedMapping ? Colors.white : SeriesScreenContainerState.mainDominantColor,
             ),
-            onPressed: () {
-              setState(() {
-                mappings.remove(mapping);
-              });
-            },
+            onPressed: () => setState(() => mappings.remove(mapping)),
           ),
         ),
       ),

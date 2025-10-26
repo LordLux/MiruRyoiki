@@ -2,7 +2,9 @@ import 'dart:io';
 
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/foundation.dart';
+import 'package:miruryoiki/database/database.dart';
 import 'package:miruryoiki/main.dart';
+import 'package:miruryoiki/services/library/library_provider.dart';
 import 'package:miruryoiki/services/navigation/navigation.dart';
 import 'package:provider/provider.dart';
 import 'package:args/args.dart';
@@ -25,7 +27,11 @@ class Manager {
     buildNumber = packageInfo.buildNumber;
     lastUpdate = packageInfo.updateTime;
   }
-  
+
+  static Future<void> closeDB() async => await db.close();
+
+  static AppDatabase get db => Provider.of<Library>(context, listen: false).database;
+
   static const String appTitle = "MiruRyoiki";
   static late final String appVersion;
   static late final String buildNumber;
@@ -98,6 +104,9 @@ class Manager {
   static Color get genericGray => FluentTheme.of(context).acrylicBackgroundColor.lerpWith(const Color.fromARGB(255, 35, 35, 35), 0.5);
   static Color get pastelDominantColor => Color.lerp(currentDominantColor ?? accentColor, Colors.white, .8)!;
   static Color get pastelAccentColor => Color.lerp(accentColor, Colors.white, .8)!;
+
+  /// A notifier that indicates whether the database is currently being saved.
+  static final ValueNotifier<bool> isDatabaseSaving = ValueNotifier(false);
 
   static ImageSource get defaultPosterSource => settings.defaultPosterSource;
 

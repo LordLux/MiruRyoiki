@@ -67,6 +67,10 @@ extension LibraryPersistence on Library {
   /// Perform the actual save operation
   Future<void> _saveLibrary() async {
     logDebug('>> Syncing library with database...');
+    
+    // Show indeterminate progress bar
+    LibraryScanProgressManager().showIndeterminate(text: 'Saving changes...');
+
     try {
       final dbSeriesRows = await seriesDao.getAllSeriesRows();
       final dbSeriesPaths = dbSeriesRows.map((row) => row.path.path).toSet();
@@ -88,6 +92,8 @@ extension LibraryPersistence on Library {
       logDebug('>> Library sync with DB complete.');
     } catch (e, st) {
       logErr('Error syncing library to DB', e, st);
+    } finally {
+      LibraryScanProgressManager().hide();
     }
   }
 

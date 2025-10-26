@@ -17,6 +17,7 @@ class WrappedHyperlinkButton extends StatelessWidget {
   final String? tooltip;
   final Widget? tooltipWidget;
   final Duration tooltipWaitDuration;
+  final Color? hoverColor;
 
   const WrappedHyperlinkButton({
     super.key,
@@ -30,6 +31,7 @@ class WrappedHyperlinkButton extends StatelessWidget {
     this.tooltip,
     this.tooltipWidget,
     this.tooltipWaitDuration = const Duration(milliseconds: 350),
+    this.hoverColor,
   });
 
   @override
@@ -43,12 +45,13 @@ class WrappedHyperlinkButton extends StatelessWidget {
         child: (isHovering) => HyperlinkButton(
           style: ButtonStyle(
             backgroundColor: WidgetStateProperty.resolveWith((states) {
+              final hoverCol = hoverColor?.toAccentColor() ?? Manager.accentColor;
               if (states.isDisabled) {
-                return Manager.accentColor.darker.withOpacity(.2);
+                return hoverCol.darker.withOpacity(.2);
               } else if (states.isPressed) {
-                return Manager.accentColor.lightest.withOpacity(.2);
+                return hoverCol.lightest.withOpacity(.2);
               } else if (states.isHovered) {
-                return Manager.accentColor.light.withOpacity(.2);
+                return hoverCol.light.withOpacity(.2);
               } else {
                 return null;
               }

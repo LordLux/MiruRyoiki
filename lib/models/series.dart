@@ -1376,4 +1376,17 @@ class Series {
     logTrace('No target found for mapping with Anilist ID ${mapping.anilistId} and path ${mapping.localPath}');
     return null;
   }
+
+  bool removeMapping(MappingTarget target) {
+    for (final mapping in anilistMappings) {
+      if (mapping.localPath == target.path) {
+        anilistMappings.remove(mapping);
+        // Invalidate cached media list entries
+        _mediaListEntries = null;
+        _cachedSeriesInfo = null;
+        return true;
+      }
+    }
+    return false;
+  }
 }

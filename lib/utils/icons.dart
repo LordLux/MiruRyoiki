@@ -22,6 +22,7 @@ String get folder_open => PathString("$contextMenuPath/folder_open.ico").path;
 String get hide => PathString("$contextMenuPath/hide.ico").path;
 String get list => PathString("$contextMenuPath/list.png").path;
 String get play => PathString("$contextMenuPath/play.png").path;
+String get remove_link => PathString("$contextMenuPath/remove_link.png").path;
 String get series => PathString("$contextMenuPath/series.ico").path;
 String get unhide => PathString("$contextMenuPath/unhide.ico").path;
 String get unwatch => PathString("$contextMenuPath/unwatch.ico").path;

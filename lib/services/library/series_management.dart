@@ -131,6 +131,15 @@ extension LibrarySeriesManagement on Library {
     }
   }
 
+  void playNextEpisode(MappingTarget target) {
+    for (final episode in target.episodes) {
+      if (episode.watched == false) {
+        playEpisode(episode);
+        return;
+      }
+    }
+  }
+
   void markEpisodeWatched(
     /// The episode to mark
     Episode episode, {
@@ -254,6 +263,29 @@ extension LibrarySeriesManagement on Library {
 
     _saveLibrary();
     notifyListeners();
+  }
+
+  void removeMapping(Series series, MappingTarget target) {
+    // Check if user actions are disabled
+    if (_lockManager.shouldDisableAction(UserAction.updateSeriesInfo)) {
+      snackBar(
+        _lockManager.getDisabledReason(UserAction.updateSeriesInfo),
+        severity: InfoBarSeverity.warning,
+      );
+      return;
+    }
+
+    // Remove the mapping from the series inside the _series list
+    final index = _series.indexWhere((s) => s.path == series.path);
+    bool success = false;
+    if (index != -1) success = _series[index].removeMapping(target);
+
+    if (success) {
+      snackBar('Mapping removed', severity: InfoBarSeverity.success);
+    } else {
+      snackBar('Failed to remove mapping', severity: InfoBarSeverity.error);
+    }
+    Manager.setState();
   }
 
   /// Clear thumbnail cache for a specific series and reset episode thumbnail statuses

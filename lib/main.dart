@@ -1194,6 +1194,8 @@ Future<void> _registerWindowsUrlScheme(String scheme) async {
 }
 
 // TODO add context menu to MappingCard
+// TODO change color of save changes button in linking dialog to series dominant colors
+// TODO change 'Manage Anilist Links' tooltip when indexing
 // TODO change scanning: any folders [names] will remain as is and only loose files will be moved to 'Related Media'
 // TODO create widget for Smooth scrolling scroll controllers
 // TODO create superclass for series type cards (continue watching, library series, search results, etc.) to share code between them and avoid duplication

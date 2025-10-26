@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
 import 'package:miruryoiki/database/converters.dart';
+import '../manager.dart';
 import '../models/metadata.dart';
 import '../models/mkv_metadata.dart';
 import '../models/notification.dart';
@@ -36,6 +37,16 @@ class AppDatabase extends _$AppDatabase {
 
   @override
   int get schemaVersion => 10;
+
+  @override
+  Future<void> close() async {
+    Manager.isDatabaseSaving.value = true;
+    try {
+      await super.close();
+    } finally {
+      Manager.isDatabaseSaving.value = false;
+    }
+  }
 
   @override
   MigrationStrategy get migration => MigrationStrategy(

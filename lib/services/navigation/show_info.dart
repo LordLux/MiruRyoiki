@@ -153,7 +153,7 @@ class SnackBarManager {
 
                       // Auto-hide after duration if enabled
                       if (autoHide) {
-                        logTrace('InfoBar will auto-hide after $duration');
+                        // logTrace('InfoBar will auto-hide after $duration');
                         final checkInterval = const Duration(milliseconds: 250);
                         var elapsed = Duration.zero;
                         while (elapsed < duration && !_isClosing) {

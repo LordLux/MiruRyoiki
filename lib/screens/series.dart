@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/material.dart' as mat;
+import 'package:miruryoiki/widgets/frosted_noise.dart';
 import 'package:provider/provider.dart';
 import 'package:defer_pointer/defer_pointer.dart';
 
@@ -383,9 +384,9 @@ class SeriesScreenState extends State<SeriesScreen> {
   List<int> get anilistIDs => _cachedSeries?.anilistMappings.map((e) => e.anilistId).whereType<int>().toSet().toList() ?? [];
 
   Future<void> loadAnilistData(int id) async => await _loadAnilistData([id], force: true); // force reload for single ID
-  
+
   /// Change the primary AniList ID for the current series
-  /// 
+  ///
   /// Assumes the anilistData of the mapping is already loaded
   Future<void> changePrimaryId(int id) async {
     final series = _cachedSeries;
@@ -1094,14 +1095,11 @@ class SeriesScreenState extends State<SeriesScreen> {
   Widget _buildButton(void Function()? onTap, Widget child, String label) {
     return MouseButtonWrapper(
       child: (_) => mat.Tooltip(
-        richMessage: WidgetSpan(
-          child: Text(
-            label,
-            style: TextStyle(color: Colors.white),
-          ),
-        ),
-        decoration: BoxDecoration(
-          color: Color.lerp(Color.lerp(Colors.black, Colors.white, 0.2)!, SeriesScreenContainerState.mainDominantColor, 0.4)!.withOpacity(0.8),
+        message: label,
+        textStyle: TextStyle(color: Colors.white),
+        decoration: FrostedNoiseDecoration(
+          intensity: .35,
+          backgroundColor: Color.lerp(Color.lerp(Colors.black, Colors.white, 0.2)!, SeriesScreenContainerState.mainDominantColor, 0.4)!.withOpacity(0.8),
           borderRadius: BorderRadius.circular(5.0),
         ),
         preferBelow: true,
@@ -1112,9 +1110,7 @@ class SeriesScreenState extends State<SeriesScreen> {
             style: ButtonStyle(
               foregroundColor: ButtonState.all(Colors.white.withOpacity(onTap != null ? 1 : 0)),
               elevation: ButtonState.all(0),
-              shape: ButtonState.all(RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(5.0),
-              )),
+              shape: ButtonState.all(RoundedRectangleBorder(borderRadius: BorderRadius.circular(5.0))),
             ),
             icon: Padding(
               padding: const EdgeInsets.all(6.0),
@@ -1165,6 +1161,7 @@ class SeriesScreenState extends State<SeriesScreen> {
           return MappingCard(
             key: ValueKey('${mapping.localPath}:${mapping.anilistId}'),
             target: target,
+            series: series,
             mapping: mapping,
             onTap: () {
               if (widget.onNavigateToMapping != null)

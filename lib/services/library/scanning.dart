@@ -16,6 +16,9 @@ extension LibraryScanning on Library {
     }
     if (_isScanning) return;
 
+    // Show progress bar with initial text
+    LibraryScanProgressManager().show(0, text: 'Indexing library...');
+
     // Try to acquire a lock for library scanning
     final lockHandle = await _lockManager.acquireLock(
       OperationType.libraryScanning,

@@ -280,6 +280,38 @@ Future<T?> showSimpleOneButtonManagedDialog<T>({
   );
 }
 
+Future<T?> showSimpleNoButtonManagedDialog<T>({
+  required BuildContext context,
+  required String id,
+  required String title,
+  String? body,
+  Widget Function(BuildContext)? builder,
+  BoxConstraints? constraints,
+
+  /// Callback for the positive button, automatically closes the dialog
+  Function()? onPositive,
+}) async {
+  assert(
+    (body == null && builder != null) || (body != null && builder == null),
+    'Only one of body or builder should be provided',
+  );
+  return showManagedDialog(
+    context: context,
+    id: id,
+    title: title,
+    dialogDoPopCheck: () => true,
+    builder: (context) {
+      return ManagedDialog(
+        popContext: context,
+        title: Text(title),
+        contentBuilder: (context, __) => builder != null ? builder(context) : Text(body!),
+        constraints: constraints ?? const BoxConstraints(maxWidth: 500, minWidth: 300),
+        actions: (popContext) => [],
+      );
+    },
+  );
+}
+
 void kEmptyVoidCallBack() {}
 
 class ManagedDialogButton extends StatelessWidget {

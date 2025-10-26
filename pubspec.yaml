@@ -2,7 +2,7 @@ name: miruryoiki
 description: "Flutter desktop application designed to track and manage local media files."
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 
-version: 1.0.21+0
+version: 1.0.22+0
 
 environment:
   sdk: '>=3.4.0 <4.0.0'
@@ -133,6 +133,7 @@ flutter:
     - assets/system/context/hide.ico
     - assets/system/context/list.png
     - assets/system/context/play.png
+    - assets/system/context/remove_link.png
     - assets/system/context/series.ico
     - assets/system/context/unhide.ico
     - assets/system/context/unwatch.ico

@@ -1,3 +1,6 @@
+import 'package:fluent_ui/fluent_ui.dart';
+
+import '../navigation/dialogs.dart';
 import '../navigation/modifier_key_utils.dart';
 import 'dart:io';
 
@@ -14,9 +17,38 @@ class MyWindowListener extends WindowListener {
 
   @override
   void onWindowClose() async {
+    if (Manager.isDatabaseSaving.value) {
+      logDebug('Window close requested while database is saving, waiting...');
+      await windowManager.setPreventClose(true);
+      if (Manager.context.mounted && Manager.navigation.currentView?.id == 'SavingDatabaseDialog') {
+        final title = 'Saving Database';
+        showManagedDialog(
+          context: Manager.context,
+          id: 'SavingDatabaseDialog',
+          title: title,
+          dialogDoPopCheck: () => false,
+          canUserPopDialog: false,
+          closeExistingDialogs: true,
+          builder: (context) {
+            return ManagedDialog(
+              popContext: context,
+              title: Text(title),
+              contentBuilder: (p0, p1) => Text('Please wait while the database is being saved...\nThe program will close automatically once the process is complete.'),
+              constraints: const BoxConstraints(maxWidth: 500, minWidth: 300),
+              actions: (popContext) => [],
+            );
+          },
+        );
+      }
+
+      while (Manager.isDatabaseSaving.value) await Future.delayed(const Duration(milliseconds: 50));
+    }
+    logDebug('Window close requested, saving window state and closing...');
     await WindowStateService.saveWindowState();
     windowManager.setPreventClose(false);
     windowManager.close();
+    await Manager.closeDB();
+    await windowManager.destroy();
     exit(0);
   }
 
