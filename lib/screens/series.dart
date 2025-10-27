@@ -241,54 +241,55 @@ class SeriesScreenState extends State<SeriesScreen> {
 
   // Color? dominantColor;
 
-  List<Widget> infos(Series series) => [
+  // Widget: whether to allocate a full row or divide it in 2 columns [true = full row, false = 2 columns]
+  Map<InfoLabel, bool> infos(Series series) => {
         InfoLabel(
           label: 'Seasons',
           labelStyle: Manager.bodyStrongStyle,
           child: Text('${series.numberOfSeasons}'),
-        ),
+        ) : false,
         InfoLabel(
           label: 'Episodes',
           labelStyle: Manager.bodyStrongStyle,
           child: Text('${series.totalEpisodes}'),
-        ),
+        ) : false,
         if (series.relatedMedia.isNotEmpty)
           InfoLabel(
             label: 'Related Media',
             labelStyle: Manager.bodyStrongStyle,
             child: Text('${series.relatedMedia.length}'),
-          ),
+          ) : false,
         if (series.effectiveStatus != null)
           InfoLabel(
             label: 'Status',
             labelStyle: Manager.bodyStrongStyle,
             child: Text(series.effectiveStatus!),
-          ),
+          ) : false,
         if (series.formats != null)
           InfoLabel(
             label: 'Formats',
             labelStyle: Manager.bodyStrongStyle,
             child: Text(series.formats!),
-          ),
+          ) : true,
         if (series.seasonAndSeasonYearRange != null)
           InfoLabel(
             label: 'Years',
             labelStyle: Manager.bodyStrongStyle,
             child: Text('${series.seasonAndSeasonYearRange}'),
-          ),
+          ) : true,
         if (series.highestUserScore != null && series.highestUserScore! > 0)
           InfoLabel(
             label: 'User Score',
             labelStyle: Manager.bodyStrongStyle,
             child: Text('${series.highestUserScore! / 10}/10'),
-          ),
+          ) : false,
         if (series.metadata?.duration != null && series.metadata!.duration.inSeconds > 0)
           InfoLabel(
             label: 'Duration',
             labelStyle: Manager.bodyStrongStyle,
             child: Text(series.metadata!.durationFormatted),
-          ),
-      ];
+          ) : true,
+      };
 
   //
 
@@ -1019,20 +1020,51 @@ class SeriesScreenState extends State<SeriesScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Series metadata
-          GridView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
-              maxCrossAxisExtent: 200,
-              mainAxisSpacing: 8,
-              crossAxisSpacing: 8,
-              childAspectRatio: constraints.maxWidth / 100,
-            ),
-            itemCount: infos_.length,
-            itemBuilder: (context, index) {
-              final info = infos_[index];
-              return info;
-            },
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: () {
+              final List<Widget> columnChildren = [];
+              final entries = infos_.entries.toList();
+              
+              for (int i = 0; i < entries.length; i++) {
+                final currentEntry = entries[i];
+                final InfoLabel currentInfo = currentEntry.key;
+                final bool isFullRow = currentEntry.value;
+                
+                if (isFullRow) {
+                  // Full width widget
+                  columnChildren.add(Padding(
+                    padding: const EdgeInsets.only(bottom: 8.0),
+                    child: currentInfo,
+                  ));
+                } else {
+                  // Check if next widget also wants to share space
+                  if (i + 1 < entries.length && !entries[i + 1].value) {
+                    // Both current and next are false, put them in a row
+                    final InfoLabel nextInfo = entries[i + 1].key;
+                    columnChildren.add(Padding(
+                      padding: const EdgeInsets.only(bottom: 8.0),
+                      child: Row(
+                        children: [
+                          Expanded(child: currentInfo),
+                          const SizedBox(width: 16.0),
+                          Expanded(child: nextInfo),
+                        ],
+                      ),
+                    ));
+                    i++; // Skip the next item since we've already processed it
+                  } else {
+                    // Current is false but next is true or doesn't exist, show as full width
+                    columnChildren.add(Padding(
+                      padding: const EdgeInsets.only(bottom: 8.0),
+                      child: currentInfo,
+                    ));
+                  }
+                }
+              }
+              
+              return columnChildren;
+            }(),
           ),
 
           // Genre tags
