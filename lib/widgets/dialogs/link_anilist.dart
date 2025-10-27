@@ -611,7 +611,10 @@ class AnilistLinkMultiContentState extends State<_AnilistLinkMultiContent> {
                             backgroundColor: ButtonState.all(Colors.orange),
                             foregroundColor: ButtonState.all(Colors.white),
                           )
-                        : null,
+                        : ButtonStyle(
+                            backgroundColor: ButtonState.all(SeriesScreenContainerState.mainDominantColor ?? Manager.accentColor),
+                            foregroundColor: ButtonState.all(getTextColor(SeriesScreenContainerState.mainDominantColor ?? Manager.accentColor)),
+                        ),
                 onPressed: (selectedLocalPath != null && selectedAnilistId != null && !_isExactDuplicate)
                     ? () {
                         if (_isExactDuplicate) {
@@ -689,7 +692,7 @@ class AnilistLinkMultiContentState extends State<_AnilistLinkMultiContent> {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text('Add Link'),
+                    Text('Add Link', style: Manager.bodyStyle),
                     if (_hasDuplicateWarning)
                       Padding(
                         padding: const EdgeInsets.only(left: 8.0),

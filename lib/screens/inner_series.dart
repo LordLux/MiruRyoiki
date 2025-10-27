@@ -381,39 +381,39 @@ class InnerSeriesScreenState extends State<InnerSeriesScreen> {
                     const Icon(FluentIcons.back),
                     'Back to Library',
                   ),
-                  Builder(
-                    builder: (context) {
-                      final library = context.watch<Library>();
-                      final isIndexing = library.isIndexing;
-                      final isWatched = widget.target.watchedPercentage == 1;
+                  // Builder(
+                  //   builder: (context) {
+                  //     final library = context.watch<Library>();
+                  //     final isIndexing = library.isIndexing;
+                  //     final isWatched = widget.target.watchedPercentage == 1;
 
-                      return _buildButton(
-                        (isWatched || isIndexing)
-                            ? null
-                            : () {
-                                // Check if the action should be disabled during indexing
-                                if (library.lockManager.shouldDisableAction(UserAction.markSeriesWatched)) {
-                                  snackBar(
-                                    library.lockManager.getDisabledReason(UserAction.markSeriesWatched),
-                                    severity: InfoBarSeverity.warning,
-                                  );
-                                  return;
-                                }
+                  //     return _buildButton(
+                  //       (isWatched || isIndexing)
+                  //           ? null
+                  //           : () {
+                  //               // Check if the action should be disabled during indexing
+                  //               if (library.lockManager.shouldDisableAction(UserAction.markSeriesWatched)) {
+                  //                 snackBar(
+                  //                   library.lockManager.getDisabledReason(UserAction.markSeriesWatched),
+                  //                   severity: InfoBarSeverity.warning,
+                  //                 );
+                  //                 return;
+                  //               }
 
-                                showSimpleManagedDialog(
-                                  context: context,
-                                  id: 'confirmWatchAll',
-                                  title: 'Confirm Watch All',
-                                  body: 'Are you sure you want to mark all episodes of "${widget.target.displayName}" as watched?',
-                                  positiveButtonText: 'Confirm',
-                                  onPositive: () => library.markTargetWatched(widget.target),
-                                );
-                              },
-                        const Icon(FluentIcons.check_mark),
-                        isIndexing ? 'Cannot mark while library is indexing, please wait.' : (isWatched ? 'You have already watched all episodes' : 'Mark All as Watched'),
-                      );
-                    },
-                  ),
+                  //               showSimpleManagedDialog(
+                  //                 context: context,
+                  //                 id: 'confirmWatchAll',
+                  //                 title: 'Confirm Watch All',
+                  //                 body: 'Are you sure you want to mark all episodes of "${widget.target.displayName}" as watched?',
+                  //                 positiveButtonText: 'Confirm',
+                  //                 onPositive: () => library.markTargetWatched(widget.target),
+                  //               );
+                  //             },
+                  //       const Icon(FluentIcons.check_mark),
+                  //       isIndexing ? 'Cannot mark while library is indexing, please wait.' : (isWatched ? 'You have already watched all episodes' : 'Mark All as Watched'),
+                  //     );
+                  //   },
+                  // ),
                 ],
               )
             ],
@@ -728,6 +728,12 @@ class InnerSeriesScreenState extends State<InnerSeriesScreen> {
           padding: const EdgeInsets.all(2.0),
           child: IconButton(
             style: ButtonStyle(
+              backgroundColor: ButtonState.resolveWith((states) {
+                if (onTap == null) return Colors.transparent;
+                if (states.contains(mat.MaterialState.pressed)) return Colors.white.withOpacity(0.125);
+                if (states.contains(mat.MaterialState.hovered)) return Colors.white.withOpacity(0.075);
+                return Colors.transparent;
+              }),
               foregroundColor: ButtonState.all(Colors.white.withOpacity(onTap != null ? 1 : 0)),
               elevation: ButtonState.all(0),
               shape: ButtonState.all(RoundedRectangleBorder(
