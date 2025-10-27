@@ -39,7 +39,6 @@ import '../widgets/mapping_card.dart';
 import '../widgets/shift_clickable_hover.dart';
 import '../widgets/shrinker.dart';
 import '../widgets/simple_html_parser.dart';
-import '../widgets/tooltip_wrapper.dart';
 import '../widgets/transparency_shadow_image.dart';
 import '../models/mapping_target.dart';
 import '../services/navigation/navigation.dart';

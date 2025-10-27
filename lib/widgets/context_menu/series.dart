@@ -21,6 +21,7 @@ import '../../utils/logging.dart';
 import '../../utils/shell.dart';
 import '../dialogs/image_select.dart';
 import '../../utils/icons.dart' as icons;
+import 'controller.dart';
 
 typedef LastListChange = ({Series series, String previousListName});
 
@@ -28,6 +29,7 @@ class SeriesContextMenu extends StatefulWidget {
   final Series series;
   final Widget child;
   final BuildContext context;
+  final DesktopContextMenuController controller;
 
   static int? lastSeriesId_watched; //
   static LastListChange? lastSeriesList_changeLists;
@@ -37,6 +39,7 @@ class SeriesContextMenu extends StatefulWidget {
     required this.series,
     required this.child,
     required this.context,
+    required this.controller,
   });
 
   @override
@@ -44,13 +47,37 @@ class SeriesContextMenu extends StatefulWidget {
 }
 
 class SeriesContextMenuState extends State<SeriesContextMenu> {
-  void openMenu() {
+  @override
+  void initState() {
+    super.initState();
+    widget.controller.attach(_openMenu, _openMenuAt, this);
+  }
+
+  @override
+  void didUpdateWidget(SeriesContextMenu oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.controller != widget.controller) {
+      oldWidget.controller.detach(this);
+      widget.controller.attach(_openMenu, _openMenuAt, this);
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.controller.detach(this);
+    super.dispose();
+  }
+
+  void _openMenu() => _openMenuAt(null, Placement.bottomRight);
+
+  void _openMenuAt(Offset? position, Placement placement) {
     popUpContextMenu(
       seriesMenu(
         context: widget.context,
         series: widget.series,
       ),
-      placement: Placement.bottomRight,
+      position: position,
+      placement: placement,
     );
   }
 
@@ -228,7 +255,7 @@ class SeriesContextMenuState extends State<SeriesContextMenu> {
 
   void _markAllAsWatched(BuildContext context) {
     final library = Provider.of<Library>(context, listen: false);
-    
+
     // Check if the action should be disabled
     if (library.lockManager.shouldDisableAction(UserAction.markSeriesWatched)) {
       snackBar(
@@ -237,7 +264,7 @@ class SeriesContextMenuState extends State<SeriesContextMenu> {
       );
       return;
     }
-    
+
     library.markSeriesWatched(widget.series, watched: true);
     snackBar('Marked all episodes as watched', severity: InfoBarSeverity.success);
   }
@@ -246,7 +273,7 @@ class SeriesContextMenuState extends State<SeriesContextMenu> {
 
   void _markAllAsUnwatched(BuildContext context) {
     final library = Provider.of<Library>(context, listen: false);
-    
+
     // Check if the action should be disabled
     if (library.lockManager.shouldDisableAction(UserAction.markSeriesWatched)) {
       snackBar(
@@ -255,7 +282,7 @@ class SeriesContextMenuState extends State<SeriesContextMenu> {
       );
       return;
     }
-    
+
     library.markSeriesWatched(widget.series, watched: false);
     snackBar('Marked all episodes as unwatched', severity: InfoBarSeverity.success);
   }

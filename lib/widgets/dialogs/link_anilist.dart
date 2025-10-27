@@ -2,12 +2,10 @@
 
 import 'dart:io';
 import 'package:fluent_ui/fluent_ui.dart';
-import 'package:flutter/material.dart' show Icons, InkWell;
-import 'package:miruryoiki/utils/icons.dart' as icons;
+import 'package:flutter/material.dart' show Icons;
 import 'package:miruryoiki/utils/time.dart';
 import 'package:miruryoiki/widgets/series_image.dart';
 import 'package:provider/provider.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../main.dart';
 import '../../manager.dart';

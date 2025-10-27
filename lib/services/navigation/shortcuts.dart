@@ -9,8 +9,6 @@ import 'package:provider/provider.dart';
 
 import '../../main.dart';
 import '../../manager.dart';
-import '../../screens/inner_series.dart';
-import '../../screens/series.dart';
 import '../../widgets/dialogs/notifications.dart';
 import '../library/library_provider.dart';
 import '../../utils/logging.dart';

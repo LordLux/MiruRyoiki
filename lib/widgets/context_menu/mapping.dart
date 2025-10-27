@@ -13,12 +13,14 @@ import '../../services/lock_manager.dart';
 import '../../services/navigation/show_info.dart';
 import '../../utils/shell.dart';
 import '../../utils/icons.dart' as icons;
+import 'controller.dart';
 
 class MappingContextMenu extends StatefulWidget {
   final MappingTarget target;
   final Series series;
   final Widget child;
   final BuildContext context;
+  final DesktopContextMenuController controller;
 
   const MappingContextMenu({
     super.key,
@@ -26,6 +28,7 @@ class MappingContextMenu extends StatefulWidget {
     required this.target,
     required this.series,
     required this.child,
+    required this.controller,
   });
 
   @override
@@ -33,13 +36,37 @@ class MappingContextMenu extends StatefulWidget {
 }
 
 class MappingContextMenuState extends State<MappingContextMenu> {
-  void openMenu() {
+  @override
+  void initState() {
+    super.initState();
+    widget.controller.attach(_openMenu, _openMenuAt, this);
+  }
+
+  @override
+  void didUpdateWidget(MappingContextMenu oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.controller != widget.controller) {
+      oldWidget.controller.detach(this);
+      widget.controller.attach(_openMenu, _openMenuAt, this);
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.controller.detach(this);
+    super.dispose();
+  }
+
+  void _openMenu() => _openMenuAt(null, Placement.bottomRight);
+
+  void _openMenuAt(Offset? position, Placement placement) {
     popUpContextMenu(
       episodeMenu(
         context: widget.context,
         target: widget.target,
       ),
-      placement: Placement.bottomRight,
+      position: position,
+      placement: placement,
     );
   }
 
@@ -53,7 +80,7 @@ class MappingContextMenuState extends State<MappingContextMenu> {
     return Menu(
       items: [
         MenuItem(
-          label: 'Play next episode',
+          label: target.watchedPercentage == 0 ? 'Play first Episode':'Play next Episode',
           icon: icons.play,
           shortcutKey: 'p',
           shortcutModifiers: ShortcutModifiers(control: Platform.isWindows, meta: Platform.isMacOS),
@@ -82,12 +109,7 @@ class MappingContextMenuState extends State<MappingContextMenu> {
           disabled: shouldDisable,
           onClick: (_) => _toggleWatched(context),
         ),
-        MenuItem(
-          label: 'Open Anilist Dialog',
-          icon: icons.anilist,
-          onClick: (_) => _openAnilistDialog(context),
-          disabled: shouldDisable
-        ),
+        MenuItem(label: 'Open Anilist Dialog', icon: icons.anilist, onClick: (_) => _openAnilistDialog(context), disabled: shouldDisable),
       ],
     );
   }
@@ -128,7 +150,7 @@ class MappingContextMenuState extends State<MappingContextMenu> {
     snackBar(newState ? 'Marked as watched' : 'Marked as unwatched', severity: InfoBarSeverity.success);
     Manager.setState();
   }
-  
+
   void _removeMapping(BuildContext context) {
     final library = Provider.of<Library>(context, listen: false);
 
@@ -145,7 +167,7 @@ class MappingContextMenuState extends State<MappingContextMenu> {
     snackBar('Mapping removed', severity: InfoBarSeverity.success);
     Manager.setState();
   }
-  
+
   void _openAnilistDialog(BuildContext context) {
     snackBar("Not yet implemented", severity: InfoBarSeverity.warning);
   }

@@ -8,6 +8,7 @@ import '../services/navigation/statusbar.dart';
 import '../utils/logging.dart';
 import '../utils/text.dart';
 import 'context_menu/series.dart';
+import 'context_menu/controller.dart';
 import 'series_card_indicators.dart';
 
 class SeriesListTile extends StatefulWidget {
@@ -29,12 +30,19 @@ class _SeriesListTileState extends State<SeriesListTile> {
   bool _loading = true;
   bool _hasError = false;
   ImageProvider? _posterImageProvider;
-  final GlobalKey<SeriesContextMenuState> _contextMenuKey = GlobalKey<SeriesContextMenuState>();
+  late final DesktopContextMenuController _menuController;
 
   @override
   void initState() {
     super.initState();
+    _menuController = DesktopContextMenuController();
     _loadImage();
+  }
+
+  @override
+  void dispose() {
+    _menuController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadImage() async {
@@ -151,7 +159,7 @@ class _SeriesListTileState extends State<SeriesListTile> {
       return KeyedSubtree(
         key: ValueKey('${widget.series.path}-${widget.series.localPosterColor?.value ?? 0}-list'),
         child: SeriesContextMenu(
-          key: _contextMenuKey,
+          controller: _menuController,
           series: widget.series,
           context: context,
           child: MouseRegion(
@@ -278,7 +286,7 @@ class _SeriesListTileState extends State<SeriesListTile> {
                         child: Material(
                           color: Colors.transparent,
                           child: GestureDetector(
-                            onSecondaryTapDown: (_) => _contextMenuKey.currentState?.openMenu(),
+                            onSecondaryTapDown: (_) => _menuController.open(),
                             child: InkWell(
                               onTap: widget.onTap,
                               splashColor: mainColor.withOpacity(0.1),

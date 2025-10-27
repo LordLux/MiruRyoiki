@@ -11,6 +11,7 @@ import '../utils/color.dart';
 import '../utils/logging.dart';
 import '../utils/time.dart';
 import 'context_menu/series.dart';
+import 'context_menu/controller.dart';
 import 'frosted_noise.dart';
 import 'series_card_indicators.dart';
 
@@ -36,11 +37,12 @@ class _UpcomingEpisodeCardState extends State<UpcomingEpisodeCard> {
   bool _hasError = false;
   ImageProvider? _posterImageProvider;
   ImageSource? _lastKnownDefaultSource;
-  final GlobalKey<SeriesContextMenuState> _contextMenuKey = GlobalKey<SeriesContextMenuState>();
+  late final DesktopContextMenuController _menuController;
 
   @override
   void initState() {
     super.initState();
+    _menuController = DesktopContextMenuController();
     _loadImage();
 
     nextFrame(() {
@@ -50,6 +52,12 @@ class _UpcomingEpisodeCardState extends State<UpcomingEpisodeCard> {
         _loadImage(); // Re-evaluate after initial build
       }
     });
+  }
+
+  @override
+  void dispose() {
+    _menuController.dispose();
+    super.dispose();
   }
 
   @override
@@ -157,145 +165,150 @@ class _UpcomingEpisodeCardState extends State<UpcomingEpisodeCard> {
     }
     return KeyedSubtree(
       key: ValueKey('${widget.series.path}-${widget.series.localPosterColor?.value ?? 0}'),
-      child: MouseRegion(
-        onEnter: (_) => setState(() => _isHovering = true),
-        onExit: (_) {
-          StatusBarManager().hide();
-          setState(() => _isHovering = false);
-        },
-        onHover: (_) => StatusBarManager().showDelayed("Episode ${widget.airingEpisode.episode ?? '?'} - ${widget.series.name}"),
-        cursor: SystemMouseCursors.click,
-        child: ClipRRect(
-          borderRadius: const BorderRadius.all(Radius.circular(8.02)),
-          child: AnimatedContainer(
-            duration: getDuration(const Duration(milliseconds: 150)),
-            decoration: BoxDecoration(
-              borderRadius: const BorderRadius.all(Radius.circular(8.02)),
-              color: Colors.transparent,
-              boxShadow: _isHovering
-                  ? [
-                      BoxShadow(
-                        color: mainColor.withOpacity(0.05),
-                        blurRadius: 8,
-                        spreadRadius: 1,
-                      )
-                    ]
-                  : null,
-            ),
-            child: Stack(
-              children: [
-                // Poster image
-                Positioned.fill(
-                  child: Container(
-                    child: _getSeriesImage(),
+      child: SeriesContextMenu(
+        controller: _menuController,
+        series: widget.series,
+        context: context,
+        child: MouseRegion(
+          onEnter: (_) => setState(() => _isHovering = true),
+          onExit: (_) {
+            StatusBarManager().hide();
+            setState(() => _isHovering = false);
+          },
+          onHover: (_) => StatusBarManager().showDelayed("Episode ${widget.airingEpisode.episode ?? '?'} - ${widget.series.name}"),
+          cursor: SystemMouseCursors.click,
+          child: ClipRRect(
+            borderRadius: const BorderRadius.all(Radius.circular(8.02)),
+            child: AnimatedContainer(
+              duration: getDuration(const Duration(milliseconds: 150)),
+              decoration: BoxDecoration(
+                borderRadius: const BorderRadius.all(Radius.circular(8.02)),
+                color: Colors.transparent,
+                boxShadow: _isHovering
+                    ? [
+                        BoxShadow(
+                          color: mainColor.withOpacity(0.05),
+                          blurRadius: 8,
+                          spreadRadius: 1,
+                        )
+                      ]
+                    : null,
+              ),
+              child: Stack(
+                children: [
+                  // Poster image
+                  Positioned.fill(
+                    child: Container(
+                      child: _getSeriesImage(),
+                    ),
                   ),
-                ),
-                // to fix visual glitch
-                // Positioned(
-                //   bottom: 0,
-                //   child: Container(
-                //     color: Colors.black,
-                //     height: 1,
-                //     width: 1000,
-                //   ),
-                // ),
-                Card(
-                  padding: EdgeInsets.zero,
-                  borderRadius: const BorderRadius.all(Radius.circular(8.0)),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Poster image
-                      Expanded(child: SizedBox.shrink()),
+                  // to fix visual glitch
+                  // Positioned(
+                  //   bottom: 0,
+                  //   child: Container(
+                  //     color: Colors.black,
+                  //     height: 1,
+                  //     width: 1000,
+                  //   ),
+                  // ),
+                  Card(
+                    padding: EdgeInsets.zero,
+                    borderRadius: const BorderRadius.all(Radius.circular(8.0)),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Poster image
+                        Expanded(child: SizedBox.shrink()),
 
-                      // Series info
-                      Builder(builder: (context) {
-                        final double value = widget.series.isAnilistPosterBeingUsed ? .76 : .9;
-                        final Color nicerColor = mainColor.lerpWith(Colors.grey, value);
+                        // Series info
+                        Builder(builder: (context) {
+                          final double value = widget.series.isAnilistPosterBeingUsed ? .76 : .9;
+                          final Color nicerColor = mainColor.lerpWith(Colors.grey, value);
 
-                        Widget child = Padding(
-                          padding: const EdgeInsets.all(12.0),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                widget.series.name,
-                                maxLines: 3,
-                                style: Manager.bodyStrongStyle.copyWith(fontWeight: FontWeight.w600),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              Row(
-                                // mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text(
-                                    _formatAiringTime(widget.airingEpisode.airingAt!),
-                                    style: FluentTheme.of(context).typography.caption?.copyWith(
-                                          color: widget.series.localPosterColor ?? FluentTheme.of(context).resources.textFillColorSecondary,
-                                        ),
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                  const Spacer(),
-                                  Text(
-                                    'Episode ${widget.airingEpisode.episode ?? '?'}',
-                                    style: FluentTheme.of(context).typography.caption?.copyWith(
-                                          fontWeight: FontWeight.w600,
-                                          color: lighten(widget.series.localPosterColor ?? FluentTheme.of(context).resources.textFillColorSecondary, .4),
-                                        ),
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        );
-                        if (widget.series.isAnilistPosterBeingUsed) {
-                          return Transform.scale(
-                            scale: 1.02,
-                            child: Transform.translate(
-                              offset: Offset(0, 1),
-                              child: Acrylic(
-                                blurAmount: 5,
-                                tint: nicerColor,
-                                elevation: 0.5,
-                                tintAlpha: 0.5,
-                                luminosityAlpha: 0.8,
-                                child: FrostedNoise(child: child),
-                              ),
+                          Widget child = Padding(
+                            padding: const EdgeInsets.all(12.0),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  widget.series.name,
+                                  maxLines: 3,
+                                  style: Manager.bodyStrongStyle.copyWith(fontWeight: FontWeight.w600),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                Row(
+                                  // mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      _formatAiringTime(widget.airingEpisode.airingAt!),
+                                      style: FluentTheme.of(context).typography.caption?.copyWith(
+                                            color: widget.series.localPosterColor ?? FluentTheme.of(context).resources.textFillColorSecondary,
+                                          ),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    const Spacer(),
+                                    Text(
+                                      'Episode ${widget.airingEpisode.episode ?? '?'}',
+                                      style: FluentTheme.of(context).typography.caption?.copyWith(
+                                            fontWeight: FontWeight.w600,
+                                            color: lighten(widget.series.localPosterColor ?? FluentTheme.of(context).resources.textFillColorSecondary, .4),
+                                          ),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ],
+                                ),
+                              ],
                             ),
                           );
-                        }
-                        return Container(color: nicerColor, child: child);
-                      }),
-                    ],
+                          if (widget.series.isAnilistPosterBeingUsed) {
+                            return Transform.scale(
+                              scale: 1.02,
+                              child: Transform.translate(
+                                offset: Offset(0, 1),
+                                child: Acrylic(
+                                  blurAmount: 5,
+                                  tint: nicerColor,
+                                  elevation: 0.5,
+                                  tintAlpha: 0.5,
+                                  luminosityAlpha: 0.8,
+                                  child: FrostedNoise(child: child),
+                                ),
+                              ),
+                            );
+                          }
+                          return Container(color: nicerColor, child: child);
+                        }),
+                      ],
+                    ),
                   ),
-                ),
 
-                // Hover overlay
-                Positioned.fill(
-                  child: Material(
-                    color: Colors.transparent,
-                    child: GestureDetector(
-                      onSecondaryTapDown: (_) => _contextMenuKey.currentState?.openMenu(),
-                      child: InkWell(
-                        onTap: null,
-                        splashColor: mainColor.withOpacity(0.1),
-                        highlightColor: mainColor.withOpacity(0.05),
-                        borderRadius: const BorderRadius.all(Radius.circular(8.0)),
-                        child: AnimatedContainer(
-                          duration: getDuration(const Duration(milliseconds: 150)),
-                          decoration: BoxDecoration(
-                            borderRadius: const BorderRadius.all(Radius.circular(8.0)),
-                            color: _isHovering ? mainColor.withOpacity(0.1) : Colors.transparent,
+                  // Hover overlay
+                  Positioned.fill(
+                    child: Material(
+                      color: Colors.transparent,
+                      child: GestureDetector(
+                        onSecondaryTapDown: (_) =>_menuController.open(),
+                        child: InkWell(
+                          onTap: null,
+                          splashColor: mainColor.withOpacity(0.1),
+                          highlightColor: mainColor.withOpacity(0.05),
+                          borderRadius: const BorderRadius.all(Radius.circular(8.0)),
+                          child: AnimatedContainer(
+                            duration: getDuration(const Duration(milliseconds: 150)),
+                            decoration: BoxDecoration(
+                              borderRadius: const BorderRadius.all(Radius.circular(8.0)),
+                              color: _isHovering ? mainColor.withOpacity(0.1) : Colors.transparent,
+                            ),
                           ),
                         ),
                       ),
                     ),
                   ),
-                ),
 
-                // Card indicators
-                CardIndicators(series: widget.series),
-              ],
+                  // Card indicators
+                  CardIndicators(series: widget.series),
+                ],
+              ),
             ),
           ),
         ),

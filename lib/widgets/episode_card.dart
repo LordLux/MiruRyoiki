@@ -15,6 +15,7 @@ import '../utils/path.dart';
 import '../utils/screen.dart';
 import '../utils/time.dart';
 import 'context_menu/episode.dart';
+import 'context_menu/controller.dart';
 import 'watched_badge.dart';
 
 class HoverableEpisodeTile extends StatefulWidget {
@@ -37,12 +38,24 @@ class HoverableEpisodeTile extends StatefulWidget {
 
 class _HoverableEpisodeTileState extends State<HoverableEpisodeTile> {
   bool _isHovering = false;
-  final GlobalKey<EpisodeContextMenuState> _contextMenuKey = GlobalKey<EpisodeContextMenuState>();
+  late final DesktopContextMenuController _menuController;
+
+  @override
+  void initState() {
+    super.initState();
+    _menuController = DesktopContextMenuController();
+  }
+
+  @override
+  void dispose() {
+    _menuController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return EpisodeContextMenu(
-      key: _contextMenuKey,
+      controller: _menuController,
       series: widget.series,
       episode: widget.episode,
       context: context,
@@ -213,7 +226,7 @@ class _HoverableEpisodeTileState extends State<HoverableEpisodeTile> {
                   child: Material(
                     color: Colors.transparent,
                     child: GestureDetector(
-                      onSecondaryTapDown: (_) => _contextMenuKey.currentState?.openMenu(),
+                      onSecondaryTapDown: (_) => _menuController.open(),
                       child: InkWell(
                         onTap: widget.onTap,
                         splashColor: widget.series.localPosterColor?.withOpacity(0.3),
@@ -273,16 +286,18 @@ class _HoverableEpisodeTileState extends State<HoverableEpisodeTile> {
       builder: (context, snapshot) {
         final PathString? thumbnailPath = snapshot.data;
         final bool isLoading = snapshot.connectionState == ConnectionState.waiting;
-        final bool hasThumbnail = thumbnailPath != null && 
-                                   thumbnailPath.pathMaybe != null && 
-                                   File(thumbnailPath.path).existsSync();
+        final bool hasThumbnail = thumbnailPath != null && thumbnailPath.pathMaybe != null && File(thumbnailPath.path).existsSync();
 
         return AnimatedSwitcher(
           duration: getDuration(const Duration(milliseconds: 300)),
           switchInCurve: Curves.easeIn,
           switchOutCurve: Curves.easeOut,
           child: Builder(
-            key: ValueKey(isLoading ? 'loading' : hasThumbnail ? 'thumbnail' : 'fallback'),
+            key: ValueKey(isLoading
+                ? 'loading'
+                : hasThumbnail
+                    ? 'thumbnail'
+                    : 'fallback'),
             builder: (context) {
               if (isLoading) {
                 // Loading: show spinner, no blur

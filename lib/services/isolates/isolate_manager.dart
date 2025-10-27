@@ -427,53 +427,6 @@ Future<void> calculateDominantColorsIsolate(CalculateDominantColorsParams params
   params.replyPort.send(results);
 }
 
-/// Helper function to calculate dominant color in isolate
-@Deprecated('Use _calculateMappingDominantColorInIsolate instead')
-Future<(Color?, (bool, String?))> _calculateDominantColorInIsolate(Series series, DominantColorSource sourceType) async {
-  PathString? imagePath;
-
-  // Determine image path based on source type and image source preferences
-  if (sourceType == DominantColorSource.poster) {
-    // Check for AniList poster first if it should be prioritized, then local
-    if (series.anilistPosterUrl != null) {
-      // Try to get the cached AniList image path
-      imagePath = await _getCachedAnilistImagePath(series.anilistPosterUrl!);
-    }
-
-    // Fall back to local poster if no AniList image or not cached
-    if (imagePath == null && series.localPosterPath != null) {
-      imagePath = series.localPosterPath;
-    }
-  } else {
-    // Banner source - same logic
-    if (series.anilistBannerUrl != null) {
-      // Try to get the cached AniList image path
-      imagePath = await _getCachedAnilistImagePath(series.anilistBannerUrl!);
-    }
-
-    // Fall back to local banner if no AniList image or not cached
-    if (imagePath == null && series.localBannerPath != null) {
-      imagePath = series.localBannerPath;
-    }
-  }
-
-  if (imagePath == null || imagePath.pathMaybe == null) return (null, (false, 'No image source available'));
-
-  // Extract color from the image file
-  try {
-    final imageFile = File(imagePath.path);
-    if (!await imageFile.exists()) return (null, (false, 'Cached image file does not exist'));
-
-    // Use the pure Dart image color extractor that works in isolates
-    // For banners, prefer background colors; for posters, prefer vibrant colors
-    final preferBackground = sourceType == DominantColorSource.banner;
-    final extractedColor = await ImageColorExtractor.extractDominantColor(imagePath.path, preferBackground: preferBackground);
-
-    return (extractedColor, (true, null));
-  } catch (e) {
-    return (null, (false, 'Error extracting color: $e'));
-  }
-}
 
 /// Helper function to calculate dominant color in isolate
 Future<((Color?, Color?)?, (bool, String?))> _calculateMappingDominantColorsInIsolate(AnilistMapping mapping) async {

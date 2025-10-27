@@ -323,6 +323,7 @@ class EpisodeTitleService {
 
   /// Force refresh episode titles for a series
   Future<bool> refreshEpisodeTitles(Series series) async {
+    // TODO fix single fetching using fetchAndUpdateEpisodeTitlesFromMapping
     // Clear cache for all mappings in this series
     for (final mapping in series.anilistMappings) {
       clearCache(mapping.anilistId);
@@ -333,6 +334,7 @@ class EpisodeTitleService {
 
   /// Force refresh episode titles for multiple series using batch fetching
   Future<Map<Series, bool>> refreshEpisodeTitlesBatch(List<Series> seriesList) async {
+    // TODO fix batch fetching using fetchAndUpdateEpisodeTitlesFromMapping
     // Clear cache for all mappings in these series
     for (final series in seriesList) {
       for (final mapping in series.anilistMappings) clearCache(mapping.anilistId);

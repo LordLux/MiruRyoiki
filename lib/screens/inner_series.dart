@@ -10,7 +10,6 @@ import 'package:recase/recase.dart';
 
 import '../main.dart';
 import '../models/anilist/anime.dart';
-import '../models/season.dart';
 import '../services/connectivity/connectivity_service.dart';
 import '../services/file_system/cache.dart';
 import '../services/library/library_provider.dart';
@@ -34,7 +33,6 @@ import '../utils/logging.dart';
 import '../utils/retry.dart';
 import '../utils/screen.dart';
 import '../utils/time.dart';
-import '../widgets/episode_card.dart';
 import '../widgets/episode_grid.dart';
 import '../widgets/page/header_widget.dart';
 import '../widgets/page/infobar.dart';

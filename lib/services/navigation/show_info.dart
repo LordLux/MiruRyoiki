@@ -96,6 +96,7 @@ class SnackBarManager {
       message,
       color: color,
       severity: severity,
+      // ignore: use_build_context_synchronously
       targetContext: targetContext,
       theme: theme,
       exception: exception,

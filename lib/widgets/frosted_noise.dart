@@ -2,9 +2,6 @@ import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:fluent_ui/fluent_ui.dart';
-import 'package:flutter/scheduler.dart';
-import 'package:flutter/rendering.dart';
-import 'package:glossy/glossy.dart';
 
 import '../utils/time.dart';
 

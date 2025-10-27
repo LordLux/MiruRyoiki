@@ -16,12 +16,14 @@ import '../../services/lock_manager.dart';
 import '../../services/navigation/show_info.dart';
 import '../../utils/shell.dart';
 import '../../utils/icons.dart' as icons;
+import 'controller.dart';
 
 class EpisodeContextMenu extends StatefulWidget {
   final Episode episode;
   final Series series;
   final Widget child;
   final BuildContext context;
+  final DesktopContextMenuController controller;
 
   const EpisodeContextMenu({
     super.key,
@@ -29,6 +31,7 @@ class EpisodeContextMenu extends StatefulWidget {
     required this.episode,
     required this.series,
     required this.child,
+    required this.controller,
   });
 
   @override
@@ -36,13 +39,37 @@ class EpisodeContextMenu extends StatefulWidget {
 }
 
 class EpisodeContextMenuState extends State<EpisodeContextMenu> {
-  void openMenu() {
+  @override
+  void initState() {
+    super.initState();
+    widget.controller.attach(_openMenu, _openMenuAt, this);
+  }
+
+  @override
+  void didUpdateWidget(EpisodeContextMenu oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.controller != widget.controller) {
+      oldWidget.controller.detach(this);
+      widget.controller.attach(_openMenu, _openMenuAt, this);
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.controller.detach(this);
+    super.dispose();
+  }
+
+  void _openMenu() => _openMenuAt(null, Placement.bottomRight);
+
+  void _openMenuAt(Offset? position, Placement placement) {
     popUpContextMenu(
       episodeMenu(
         context: widget.context,
         episode: widget.episode,
       ),
-      placement: Placement.bottomRight,
+      position: position,
+      placement: placement,
     );
   }
 

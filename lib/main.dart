@@ -9,7 +9,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_acrylic/flutter_acrylic.dart';
 import 'package:flutter_acrylic/window.dart' as flutter_acrylic;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:miruryoiki/enums.dart';
 import 'package:miruryoiki/widgets/frosted_noise.dart';
 import 'package:provider/provider.dart';
 import 'package:app_links/app_links.dart';
@@ -1193,7 +1192,6 @@ Future<void> _registerWindowsUrlScheme(String scheme) async {
   }
 }
 
-// TODO add context menu to MappingCard
 // TODO change color of save changes button in linking dialog to series dominant colors
 // TODO change 'Manage Anilist Links' tooltip when indexing
 // TODO change scanning: any folders [names] will remain as is and only loose files will be moved to 'Related Media'
@@ -1204,6 +1202,7 @@ Future<void> _registerWindowsUrlScheme(String scheme) async {
 // TODO change text 'wait while library is getting indexed' to 'scanning' when library scan is in progress
 // TODO add 'play episode' button on continue watching series card -> click on card simply opens series
 // TODO move hidden series switches to settings
+// TODO fix fast movement from library to mapping causes no inner mapping image to get loaded
 // TODO 'no episodes found for this season' should be 'no episodes found for this series' when there are no episodes in any season
 // TODO when view is linkedOnly, hideFromUserList series automatically get added to Watching -> add category for them
 // TODO released section in homepage to show release but not yet downloaded

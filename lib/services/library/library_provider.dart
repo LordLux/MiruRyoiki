@@ -13,7 +13,6 @@ import 'package:provider/provider.dart';
 import '../../models/mapping_target.dart';
 import '../../models/season.dart';
 import '../../utils/file.dart';
-import '../episode_navigation/episode_navigator.dart';
 import '../players/player_manager.dart';
 import '../players/factory.dart';
 import '../../models/players/mediastatus.dart';

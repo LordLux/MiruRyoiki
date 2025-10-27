@@ -18,6 +18,7 @@ import '../utils/logging.dart';
 import '../utils/screen.dart';
 import '../utils/time.dart';
 import 'context_menu/mapping.dart';
+import 'context_menu/controller.dart';
 
 class MappingCard extends StatefulWidget {
   final MappingTarget target;
@@ -44,13 +45,21 @@ class _MappingCardState extends State<MappingCard> {
   bool _loading = true;
   bool _hasError = false;
   ImageProvider? _posterImageProvider;
+  late final DesktopContextMenuController _menuController;
   Color? _dominantColor;
 
   @override
   void initState() {
     super.initState();
+    _menuController = DesktopContextMenuController();
     _loadImage();
     _loadDominantColor();
+  }
+
+  @override
+  void dispose() {
+    _menuController.dispose();
+    super.dispose();
   }
 
   @override
@@ -88,26 +97,26 @@ class _MappingCardState extends State<MappingCard> {
 
   Future<ImageProvider?> _getPosterImage() async {
     final posterUrl = widget.mapping.anilistData?.posterImage;
-    
+
     if (posterUrl != null) {
       // Try to get cached image
       final imageCache = ImageCacheService();
       final File? cachedFile = await imageCache.getCachedImageFile(posterUrl);
-      
+
       if (cachedFile != null && await cachedFile.exists()) {
         return FileImage(cachedFile);
       }
-      
+
       // Start caching in background
       imageCache.cacheImage(posterUrl);
-      
+
       // Return network image provider
       return CachedNetworkImageProvider(
         posterUrl,
         errorListener: (error) => logWarn('Failed to load poster from network: $error'),
       );
     }
-    
+
     return null;
   }
 
@@ -184,6 +193,7 @@ class _MappingCardState extends State<MappingCard> {
     return KeyedSubtree(
       key: ValueKey('${widget.mapping.localPath}-${_dominantColor ?? widget.mapping.effectivePrimaryColorSync()?.value ?? 0}'),
       child: MappingContextMenu(
+        controller: _menuController,
         series: widget.series,
         target: widget.target,
         context: context,
@@ -229,7 +239,7 @@ class _MappingCardState extends State<MappingCard> {
                       children: [
                         // Poster image space
                         Expanded(child: SizedBox.shrink()),
-        
+
                         // Progress bar
                         LayoutBuilder(builder: (context, constraints) {
                           return Transform.scale(
@@ -253,12 +263,12 @@ class _MappingCardState extends State<MappingCard> {
                             ),
                           );
                         }),
-        
+
                         // Mapping info
                         Builder(builder: (context) {
                           final double value = (_posterImageProvider != null) ? .76 : .9;
                           final Color nicerColor = mainColor.lerpWith(Colors.grey, value);
-        
+
                           Widget child = AnimatedContainer(
                             duration: getDuration(const Duration(milliseconds: 400)),
                             decoration: BoxDecoration(
@@ -307,7 +317,7 @@ class _MappingCardState extends State<MappingCard> {
                               ),
                             ),
                           );
-        
+
                           if (_posterImageProvider != null) {
                             return Transform.scale(
                               scale: 1.02,
@@ -335,21 +345,24 @@ class _MappingCardState extends State<MappingCard> {
                       ],
                     ),
                   ),
-        
+
                   // Hover overlay
                   Positioned.fill(
                     child: Material(
                       color: Colors.transparent,
-                      child: InkWell(
-                        onTap: widget.onTap,
-                        splashColor: mainColor.withOpacity(0.1),
-                        highlightColor: mainColor.withOpacity(0.05),
-                        borderRadius: widget.borderRadius,
-                        child: AnimatedContainer(
-                          duration: getDuration(const Duration(milliseconds: 150)),
-                          decoration: BoxDecoration(
-                            borderRadius: widget.borderRadius,
-                            color: _isHovering ? mainColor.withOpacity(0.1) : Colors.transparent,
+                      child: GestureDetector(
+                        onSecondaryTapDown: (_) => _menuController.open(),
+                        child: InkWell(
+                          onTap: widget.onTap,
+                          splashColor: mainColor.withOpacity(0.1),
+                          highlightColor: mainColor.withOpacity(0.05),
+                          borderRadius: widget.borderRadius,
+                          child: AnimatedContainer(
+                            duration: getDuration(const Duration(milliseconds: 150)),
+                            decoration: BoxDecoration(
+                              borderRadius: widget.borderRadius,
+                              color: _isHovering ? mainColor.withOpacity(0.1) : Colors.transparent,
+                            ),
                           ),
                         ),
                       ),

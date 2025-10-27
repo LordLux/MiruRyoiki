@@ -1,4 +1,4 @@
-// ignore_for_file: constant_identifier_names
+// ignore_for_file: constant_identifier_names, unnecessary_this
 
 import 'package:miruryoiki/enums.dart';
 import 'package:path/path.dart';

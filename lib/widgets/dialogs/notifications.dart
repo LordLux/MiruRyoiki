@@ -112,6 +112,7 @@ class NotificationsContentState extends State<_NotificationsContent> {
 
       // Filter out if the AniList ID is in the hidden cache
       if (anilistIdToCheck != null && library.hiddenSeriesService.shouldFilterAnilistId(anilistIdToCheck)) {
+        // ignore: avoid_print
         print('hiding: $anilistIdToCheck'); // TODO fix this not updating the ui
         return false;
       }
