@@ -317,7 +317,7 @@ class _ImageSelectionContentState extends State<_ImageSelectionContent> {
                     linkWithAnilist(
                       context,
                       widget.series,
-                      (id) => (getActiveSeriesScreenContainerState() as SeriesScreenState).loadAnilistData(id),
+                      (ids) => (getActiveSeriesScreenContainerState() as SeriesScreenState).loadAnilistData(ids),
                       (_) => getActiveSeriesScreenContainerState()?.setState(() {}),
                     );
                   },

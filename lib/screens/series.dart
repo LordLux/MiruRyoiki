@@ -382,7 +382,7 @@ class SeriesScreenState extends State<SeriesScreen> {
 
   List<int> get anilistIDs => _cachedSeries?.anilistMappings.map((e) => e.anilistId).whereType<int>().toSet().toList() ?? [];
 
-  Future<void> loadAnilistData(int id) async => await _loadAnilistData([id], force: true); // force reload for single ID
+  Future<void> loadAnilistData(List<int> ids) async => await _loadAnilistData(ids, force: true); // force reload for single ID
 
   /// Change the primary AniList ID for the current series
   ///
@@ -905,7 +905,7 @@ class SeriesScreenState extends State<SeriesScreen> {
                 //   return;
                 // }
 
-                linkWithAnilist(context, series, loadAnilistData, setState);
+                linkWithAnilist(context, series, _loadAnilistData, setState);
               },
               isButtonDisabled: anilistProvider.isOffline,
             );
@@ -1195,7 +1195,7 @@ class SeriesScreenState extends State<SeriesScreen> {
   }
 }
 
-void linkWithAnilist(BuildContext context, Series? series, Future<void> Function(int) loadData, void Function(VoidCallback) setState) async {
+void linkWithAnilist(BuildContext context, Series? series, Future<void> Function(List<int>) loadData, void Function(VoidCallback) setState) async {
   if (series == null) {
     snackBar('Series not found', severity: InfoBarSeverity.error);
     return;
@@ -1209,7 +1209,7 @@ void linkWithAnilist(BuildContext context, Series? series, Future<void> Function
     data: series.path,
     barrierColor: Manager.currentDominantColor?.withOpacity(0.5),
     canUserPopDialog: true,
-    closeExistingDialogs: true,
+    closeExistingDialogs: true, // Close existing dialogs, important
     dialogDoPopCheck: () => Manager.canPopDialog, // Allow popping only when in view mode
     builder: (context) => AnilistLinkMultiDialog(
       constraints: const BoxConstraints(
@@ -1247,23 +1247,20 @@ void linkWithAnilist(BuildContext context, Series? series, Future<void> Function
 
         // Calculate the number of new mappings
         final oldMappings = series.anilistMappings;
-        int newMappingsCount = 0;
+        List<int> anilistIdsToLoad = [];
 
         for (final mapping in mappings) {
           bool isNew = !oldMappings.any((m) => m.anilistId == mapping.anilistId && m.localPath == mapping.localPath);
-          if (isNew) newMappingsCount++;
+          if (isNew) anilistIdsToLoad.add(mapping.anilistId);
         }
-
-        // Update the series mappings
-        series.anilistMappings = mappings;
 
         // Ensure the library gets saved
         await library.updateSeriesMappings(series, mappings);
 
         // If links were added
-        if (newMappingsCount > 0) {
+        if (anilistIdsToLoad.isNotEmpty) {
           snackBar(
-            'Successfully linked $newMappingsCount ${newMappingsCount == 1 ? 'new item' : 'new items'} with Anilist',
+            'Successfully linked ${anilistIdsToLoad.length} ${anilistIdsToLoad.length == 1 ? 'new item' : 'new items'} with Anilist',
             severity: InfoBarSeverity.success,
           );
         } else if (mappings.length < oldMappings.length) {
@@ -1281,11 +1278,8 @@ void linkWithAnilist(BuildContext context, Series? series, Future<void> Function
           );
         }
 
-        // Load Anilist data for the primary mapping
-        if (mappings.isNotEmpty) {
-          final primaryId = series.primaryAnilistId ?? mappings.first.anilistId;
-          await loadData(primaryId);
-        }
+        // Load Anilist data
+        if (anilistIdsToLoad.isNotEmpty) await loadData(anilistIdsToLoad);
 
         // Update the series with the new mappings
         Manager.currentDominantColor = await series.effectivePrimaryColor();

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:miruryoiki/widgets/series_image.dart';
 import 'package:provider/provider.dart';
@@ -54,6 +56,7 @@ class _AnilistSearchPanelState extends State<AnilistSearchPanel> {
   String? _error;
   List<AnilistAnime> _searchResults = [];
   final TextEditingController _searchController = TextEditingController();
+  Timer? _debounceTimer;
 
   AnilistAnime? _selectedSeries;
 
@@ -68,6 +71,13 @@ class _AnilistSearchPanelState extends State<AnilistSearchPanel> {
         height: widget.constraints.maxHeight,
       );
     });
+  }
+
+  @override
+  void dispose() {
+    _debounceTimer?.cancel();
+    _searchController.dispose();
+    super.dispose();
   }
 
   Future<void> _searchSeries() async {
@@ -144,8 +154,8 @@ class _AnilistSearchPanelState extends State<AnilistSearchPanel> {
           ),
           enabled: widget.enabled,
           onChanged: (_) {
-            // TODO add race condition timer to avoid too many requests
-            search();
+            _debounceTimer?.cancel();
+            _debounceTimer = Timer(const Duration(seconds: 3), () => search());
           },
           onSubmitted: (_) => search(),
         ),
