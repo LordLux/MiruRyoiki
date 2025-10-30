@@ -48,6 +48,7 @@ class _CacheParameters {
   final bool showAnilistHiddenSeries;
   final List<String> customListOrder;
   final Set<String> hiddenLists;
+  final int dataVersion;
 
   _CacheParameters({
     required this.currentView,
@@ -59,6 +60,7 @@ class _CacheParameters {
     required this.showAnilistHiddenSeries,
     required this.customListOrder,
     required this.hiddenLists,
+    required this.dataVersion,
   });
 
   @override
@@ -74,7 +76,8 @@ class _CacheParameters {
           showHiddenSeries == other.showHiddenSeries &&
           showAnilistHiddenSeries == other.showAnilistHiddenSeries &&
           _listEquals(customListOrder, other.customListOrder) &&
-          _setEquals(hiddenLists, other.hiddenLists);
+          _setEquals(hiddenLists, other.hiddenLists) &&
+          dataVersion == other.dataVersion;
 
   @override
   int get hashCode =>
@@ -86,7 +89,8 @@ class _CacheParameters {
       showHiddenSeries.hashCode ^
       showAnilistHiddenSeries.hashCode ^
       customListOrder.hashCode ^
-      hiddenLists.hashCode;
+      hiddenLists.hashCode ^
+      dataVersion.hashCode;
 
   static bool _listEquals<T>(List<T>? a, List<T>? b) {
     if (a == null) return b == null;
@@ -194,7 +198,7 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
   }
 
   /// Check if the current cache is valid by comparing parameters
-  bool _isCacheValid() {
+  bool _isCacheValid(Library library) {
     if (_cacheParameters == null) return false;
 
     final currentParams = _CacheParameters(
@@ -207,6 +211,7 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
       showAnilistHiddenSeries: Manager.settings.showAnilistHiddenSeries,
       customListOrder: List.from(_customListOrder),
       hiddenLists: Set.from(_hiddenLists),
+      dataVersion: library.dataVersion,
     );
 
     return _cacheParameters == currentParams;
@@ -359,6 +364,7 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
       showAnilistHiddenSeries: Manager.settings.showAnilistHiddenSeries,
       customListOrder: List.from(_customListOrder),
       hiddenLists: Set.from(_hiddenLists),
+      dataVersion: library.dataVersion,
     );
   }
 
@@ -1386,7 +1392,7 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
     List<Series> seriesToDisplay;
     Map<String, List<Series>>? groupedData;
 
-    if (_isCacheValid() && _sortedSeriesCache != null) {
+    if (_isCacheValid(library) && _sortedSeriesCache != null) {
       // Use cached data
       seriesToDisplay = _sortedSeriesCache!;
       groupedData = _groupedDataCache;

@@ -44,6 +44,7 @@ class _HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMi
   Timer? _minuteRefreshTimer; // refresh relative times every minute
   Future<Map<int, AiringEpisode?>>? _cachedUpcomingEpisodesFuture;
   List<int>? _lastRequestedAnimeIds;
+  int? _lastLibraryDataVersion;
 
   @override
   bool get wantKeepAlive => true;
@@ -397,10 +398,19 @@ class _HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMi
     if (watchingSeries.isEmpty) return _buildEmptyState('No series in your watching list', 'Link your series with Anilist and add them to your watching list');
 
     // Use StreamBuilder approach with cached data for immediate display
-    return _buildUpcomingEpisodesWithCache(watchingSeries, anilistProvider);
+    return _buildUpcomingEpisodesAndBuildCache(watchingSeries, anilistProvider);
   }
 
-  Widget _buildUpcomingEpisodesWithCache(List<Series> watchingSeries, AnilistProvider anilistProvider) {
+  Widget _buildUpcomingEpisodesAndBuildCache(List<Series> watchingSeries, AnilistProvider anilistProvider) {
+    final library = Provider.of<Library>(context, listen: false);
+    
+    // Invalidate cache if library data version changed
+    if (_lastLibraryDataVersion != null && _lastLibraryDataVersion != library.dataVersion) {
+      _cachedUpcomingEpisodesFuture = null;
+      _lastRequestedAnimeIds = null;
+    }
+    _lastLibraryDataVersion = library.dataVersion;
+
     // Collect all unique anime IDs from the series
     final Set<int> animeIds = {};
     for (final series_ in watchingSeries) {

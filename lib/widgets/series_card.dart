@@ -154,6 +154,7 @@ class _SeriesCardState extends State<SeriesCard> {
   @override
   Widget build(BuildContext context) {
     final Color? cachedPrimaryColor = widget.series.effectivePrimaryColorSync();
+    
     final Color mainColor;
     switch (Manager.settings.libColView) {
       case LibraryColorView.alwaysDominant:

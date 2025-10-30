@@ -151,10 +151,14 @@ extension LibraryScanning on Library {
       if (newSeriesPaths.isNotEmpty) logDebug('3 | Added ${newSeriesPaths.length} new series.');
 
       // Update existing series
+      int newSeries = 0;
       for (final seriesPath in existingSeriesPathsToCheck) {
         final originalSeries = existingSeriesMap[seriesPath]!;
         final seriesIndex = updatedSeriesList.indexWhere((s) => s.path == seriesPath);
-        if (seriesIndex == -1) continue;
+        if (seriesIndex == -1) {
+          newSeries += 1;
+          continue;
+        }
 
         final newFilesForSeries = unresolvedFiles[seriesPath] ?? <PathString>{};
         final missingEpisodesForSeries = unresolvedEpisodes[seriesPath] ?? <Episode>{};
@@ -216,8 +220,12 @@ extension LibraryScanning on Library {
         }
       }
       logTrace('3 | Updated ${existingSeriesPathsToCheck.length} existing series.');
+      if (newSeries > 0) logTrace('  | New series processed: $newSeries');
 
       _series = updatedSeriesList; // Save the updated series list to memory
+
+      // Increment data version to invalidate caches in screens
+      _dataVersion++;
 
       await _saveLibrary(); // Save the updated library to database
 
@@ -679,6 +687,7 @@ extension LibraryScanning on Library {
 
       // Save and notify when done
       if (anyChanged || forceRecalculate) {
+        _dataVersion++; // Invalidate caches when dominant colors updated
         await _saveLibrary();
         notifyListeners();
         logTrace('Finished calculating dominant colors for $successCount series');

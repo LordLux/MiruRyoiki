@@ -57,12 +57,14 @@ extension LibrarySeriesManagement on Library {
 
   Future<void> addSeries(Series series) async {
     _series.add(series);
+    _dataVersion++;
     await _saveLibrary();
     notifyListeners();
   }
 
   Future<void> removeSeries(Series series) async {
     _series.removeWhere((s) => s.path == series.path);
+    _dataVersion++;
     await _saveLibrary();
     notifyListeners();
   }
@@ -96,6 +98,7 @@ extension LibrarySeriesManagement on Library {
 
     // Update the series
     _series[index] = series;
+    _dataVersion++; // Invalidate caches when series updated
 
     if (invalidateCache && homeKey.currentState != null) homeKey.currentState!.seriesWasModified = true;
 

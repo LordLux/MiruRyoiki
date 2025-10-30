@@ -247,48 +247,48 @@ class SeriesScreenState extends State<SeriesScreen> {
           label: 'Seasons',
           labelStyle: Manager.bodyStrongStyle,
           child: Text('${series.numberOfSeasons}'),
-        ) : false,
+        ): false,
         InfoLabel(
           label: 'Episodes',
           labelStyle: Manager.bodyStrongStyle,
           child: Text('${series.totalEpisodes}'),
-        ) : false,
+        ): false,
         if (series.relatedMedia.isNotEmpty)
           InfoLabel(
             label: 'Related Media',
             labelStyle: Manager.bodyStrongStyle,
             child: Text('${series.relatedMedia.length}'),
-          ) : false,
+          ): false,
         if (series.effectiveStatus != null)
           InfoLabel(
             label: 'Status',
             labelStyle: Manager.bodyStrongStyle,
             child: Text(series.effectiveStatus!),
-          ) : false,
+          ): false,
         if (series.formats != null)
           InfoLabel(
             label: 'Formats',
             labelStyle: Manager.bodyStrongStyle,
             child: Text(series.formats!),
-          ) : true,
+          ): true,
         if (series.seasonAndSeasonYearRange != null)
           InfoLabel(
             label: 'Years',
             labelStyle: Manager.bodyStrongStyle,
             child: Text('${series.seasonAndSeasonYearRange}'),
-          ) : true,
+          ): true,
         if (series.highestUserScore != null && series.highestUserScore! > 0)
           InfoLabel(
             label: 'User Score',
             labelStyle: Manager.bodyStrongStyle,
             child: Text('${series.highestUserScore! / 10}/10'),
-          ) : false,
+          ): false,
         if (series.metadata?.duration != null && series.metadata!.duration.inSeconds > 0)
           InfoLabel(
             label: 'Duration',
             labelStyle: Manager.bodyStrongStyle,
             child: Text(series.metadata!.durationFormatted),
-          ) : true,
+          ): true,
       };
 
   //
@@ -861,57 +861,7 @@ class SeriesScreenState extends State<SeriesScreen> {
           onPressed: () => ShellUtils.openFolder(series.path.path),
         ),
         SizedBox(height: 6.0),
-        Builder(
-          builder: (context) {
-            // Compute tooltip with switch-case outside of the widget
-            String tooltipKey;
-            if (!anilistProvider.isLoggedIn)
-              tooltipKey = 'notLoggedIn';
-            // else if (isIndexing)
-            //   tooltipKey = 'indexing';
-            else if (!series.isLinked)
-              tooltipKey = 'notLinked';
-            else
-              tooltipKey = 'linked';
-
-            String tooltipText = switch (tooltipKey) {
-              // 'indexing' => 'Cannot link while library is indexing, please wait.',
-              'notLinked' => 'Link with Anilist',
-              'linked' => 'Manage Anilist Links',
-              'notLoggedIn' => 'You must be logged in to Anilist to link series.',
-              _ => '',
-            };
-
-            return StandardButton(
-              expand: true,
-              tooltip: tooltipText,
-              label: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(series.isLinked ? FluentIcons.link : FluentIcons.add_link),
-                  HDiv(4),
-                  Text(
-                    !series.isLinked ? 'Link with Anilist' : 'Manage Anilist Links',
-                    style: getStyleBasedOnAccent(false),
-                  ),
-                ],
-              ),
-              onPressed: () {
-                // // Check if the action should be disabled during indexing
-                // if (library.lockManager.shouldDisableAction(UserAction.anilistOperations)) {
-                //   snackBar(
-                //     library.lockManager.getDisabledReason(UserAction.anilistOperations),
-                //     severity: InfoBarSeverity.warning,
-                //   );
-                //   return;
-                // }
-
-                linkWithAnilist(context, series, _loadAnilistData, setState);
-              },
-              isButtonDisabled: anilistProvider.isOffline,
-            );
-          },
-        ),
+        _buildManageLinksButton(anilistProvider, series),
       ],
       poster: ({required imageProvider, required width, required height, required squareness, required offset}) {
         return DeferPointer(
@@ -1012,6 +962,60 @@ class SeriesScreenState extends State<SeriesScreen> {
     );
   }
 
+  Builder _buildManageLinksButton(AnilistProvider anilistProvider, Series series) {
+    return Builder(
+      builder: (context) {
+        // Compute tooltip with switch-case outside of the widget
+        String tooltipKey;
+        if (!anilistProvider.isLoggedIn)
+          tooltipKey = 'notLoggedIn';
+        // else if (isIndexing)
+        //   tooltipKey = 'indexing';
+        else if (!series.isLinked)
+          tooltipKey = 'notLinked';
+        else
+          tooltipKey = 'linked';
+
+        String tooltipText = switch (tooltipKey) {
+          // 'indexing' => 'Cannot link while library is indexing, please wait.',
+          'notLinked' => 'Link with Anilist',
+          'linked' => 'Manage Anilist Links',
+          'notLoggedIn' => 'You must be logged in to Anilist to link series.',
+          _ => '',
+        };
+
+        return StandardButton(
+          expand: true,
+          tooltip: tooltipText,
+          label: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(series.isLinked ? FluentIcons.link : FluentIcons.add_link),
+              HDiv(4),
+              Text(
+                !series.isLinked ? 'Link with Anilist' : 'Manage Anilist Links',
+                style: getStyleBasedOnAccent(false),
+              ),
+            ],
+          ),
+          onPressed: () {
+            // // Check if the action should be disabled during indexing
+            // if (library.lockManager.shouldDisableAction(UserAction.anilistOperations)) {
+            //   snackBar(
+            //     library.lockManager.getDisabledReason(UserAction.anilistOperations),
+            //     severity: InfoBarSeverity.warning,
+            //   );
+            //   return;
+            // }
+
+            linkWithAnilist(context, series, _loadAnilistData, setState);
+          },
+          isButtonDisabled: anilistProvider.isOffline,
+        );
+      },
+    );
+  }
+
   Widget _buildInfoBarContent(Series series) {
     final infos_ = infos(series);
 
@@ -1025,12 +1029,12 @@ class SeriesScreenState extends State<SeriesScreen> {
             children: () {
               final List<Widget> columnChildren = [];
               final entries = infos_.entries.toList();
-              
+
               for (int i = 0; i < entries.length; i++) {
                 final currentEntry = entries[i];
                 final InfoLabel currentInfo = currentEntry.key;
                 final bool isFullRow = currentEntry.value;
-                
+
                 if (isFullRow) {
                   // Full width widget
                   columnChildren.add(Padding(
@@ -1062,7 +1066,7 @@ class SeriesScreenState extends State<SeriesScreen> {
                   }
                 }
               }
-              
+
               return columnChildren;
             }(),
           ),
@@ -1170,19 +1174,21 @@ class SeriesScreenState extends State<SeriesScreen> {
     if (validMappings.isEmpty) {
       return Center(
         child: Padding(
-          padding: const EdgeInsets.all(32.0),
+          padding: const EdgeInsets.all(16.0),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(FluentIcons.info, size: 48, color: series.effectivePrimaryColorSync() ?? Manager.accentColor),
+              Icon(mat.Icons.add_link, size: 48, color: Manager.accentColor),
               VDiv(16),
-              Text('No linked mappings found', style: Manager.subtitleStyle),
+              Text('No Links found', style: Manager.subtitleStyle),
               VDiv(8),
               Text(
                 'Link the correct path with an AniList entry to see seasons and episodes', // TODO add counter that tracks how many times the mappings manager was opened while the valid mappings have been empty
                 style: Manager.captionStyle,
                 textAlign: TextAlign.center,
               ),
+              VDiv(32),
+              SizedBox(width: 420, child: _buildManageLinksButton(Provider.of<AnilistProvider>(context, listen: false), series)),
             ],
           ),
         ),

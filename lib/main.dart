@@ -1192,6 +1192,8 @@ Future<void> _registerWindowsUrlScheme(String scheme) async {
   }
 }
 
+// TODO fix next up using primary insteaed of actual poster
+// TODO add NonMapping for series that are not to be linked with Anilist
 // TODO change scanning: any folders [names] will remain as is and only loose files will be moved to 'Related Media'
 // TODO create widget for Smooth scrolling scroll controllers
 // TODO create superclass for series type cards (continue watching, library series, search results, etc.) to share code between them and avoid duplication

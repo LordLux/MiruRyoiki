@@ -54,9 +54,12 @@ extension LibraryPersistence on Library {
       _series = loaded;
 
       logDebug('>> Loaded ${_series.length} series from DB');
-      
+
       // Initialize hidden series cache after loading
       _hiddenSeriesService.rebuildCache(_series);
+      
+      // Increment data version since series data was loaded
+      _dataVersion++;
     } catch (e, st) {
       logErr('Error loading library from DB', e, st);
       _series = [];
@@ -67,7 +70,7 @@ extension LibraryPersistence on Library {
   /// Perform the actual save operation
   Future<void> _saveLibrary() async {
     logDebug('>> Syncing library with database...');
-    
+
     // Show indeterminate progress bar
     LibraryScanProgressManager().showIndeterminate(text: 'Saving changes...');
 
@@ -87,6 +90,8 @@ extension LibraryPersistence on Library {
       // 2. Insert or Update all series from our current library state
       // The syncSeries function is transactional and handles all nested changes.
       await Future.wait(_series.map((s) => seriesDao.syncSeries(s)));
+
+      logTrace('   - Added ');
       logTrace('   - Synced ${_series.length} series.');
 
       logDebug('>> Library sync with DB complete.');
@@ -109,8 +114,8 @@ extension LibraryPersistence on Library {
     try {
       final content = await jsonFile.readAsString();
       if (content.isEmpty) {
-          await jsonFile.delete(); // Delete empty legacy file
-          return;
+        await jsonFile.delete(); // Delete empty legacy file
+        return;
       }
 
       final data = jsonDecode(content) as List<dynamic>;
@@ -129,7 +134,6 @@ extension LibraryPersistence on Library {
       // Rename the file to prevent re-migration
       final migratedFile = File('${dir.path}/${Library.miruryoikiLibrary}.migrated.json');
       await jsonFile.rename(migratedFile.path);
-
     } catch (e, st) {
       logErr('❌ Error during migration from JSON to DB', e, st);
     }

@@ -71,6 +71,10 @@ class Library with ChangeNotifier {
   /// (current, total)
   final ValueNotifier<(int, int)?> scanProgress = ValueNotifier(null);
 
+  /// Version counter that increments whenever series data changes
+  /// (Used to invalidate their caches when library data updates)
+  int _dataVersion = 0;
+
   //
   // Media player integration fields
   /// Manages media player connections
@@ -146,6 +150,9 @@ class Library with ChangeNotifier {
 
   /// Service for managing hidden series
   HiddenSeriesService get hiddenSeriesService => _hiddenSeriesService;
+
+  /// Current version of the series data. Increments whenever series list changes.
+  int get dataVersion => _dataVersion;
 
   //
   // Static constants
