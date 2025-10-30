@@ -78,6 +78,62 @@ extension AnilistProviderInitialization on AnilistProvider {
     logTrace('2 | AnilistProvider initialization complete.');
   }
 
+  /// Prefetch AniList data to memory without saving to disk
+  /// (Updates the UI with anilist data while the library scan is in progress)
+  /// (The data will NOT be saved to the database until the scan completes)
+  Future<void> prefetchOnlineData() async {
+    final isOnline = await _connectivityService.getConnectivityStatus();
+    if (!isOnline || !isLoggedIn) {
+      logInfo('Skipping prefetch: ${!isOnline ? "Offline" : "Not logged in"}');
+      return;
+    }
+
+    logDebug('\n_ | Prefetching AniList data...', splitLines: true);
+
+    try {
+      // Fetch user data
+      _prefetchedUser = await _anilistService.getCurrentUser();
+      
+      // Also load detailed user data
+      if (_prefetchedUser != null) {
+        final userData = await _anilistService.getCurrentUserData();
+        if (userData != null) {
+          _prefetchedUser = AnilistUser(
+            id: _prefetchedUser!.id,
+            name: _prefetchedUser!.name,
+            avatar: _prefetchedUser!.avatar,
+            bannerImage: _prefetchedUser!.bannerImage,
+            userData: userData,
+          );
+        }
+      }
+
+      // Fetch user lists
+      final newLists = await _anilistService.getUserAnimeLists(
+        userId: _prefetchedUser?.id, 
+        userName: _prefetchedUser?.name
+      );
+      
+      if (newLists.isNotEmpty) {
+        _prefetchedUserLists = newLists;
+        
+        // Update in-memory state to show fresh data immediately
+        _currentUser = _prefetchedUser;
+        _userLists = _prefetchedUserLists;
+        _hasPrefetchedData = true;
+        
+        notifyListeners();
+        Manager.setState();
+        
+        logDebug('_ | Prefetched AniList data successfully (${_prefetchedUserLists.length} lists)');
+      } else {
+        logWarn('_ | Prefetch returned empty lists');
+      }
+    } catch (e, st) {
+      logErr('Error prefetching AniList data', e, st);
+    }
+  }
+
   /// Completes initialization by fetching live data from Anilist API and starting sync services.
   Future<void> initializeOnlineFeatures() async {
     logDebug('\n_ | Initializing AnilistService (Online Features)...', splitLines: true);
@@ -87,7 +143,16 @@ extension AnilistProviderInitialization on AnilistProvider {
 
     final isOnline = await _connectivityService.getConnectivityStatus();
     if (isOnline && isLoggedIn) {
-      if (await _loadUserData()) await _saveListsToCache(); // only cache lists if no problems
+      // If we already prefetched data, just save it to cache
+      // Otherwise, fetch it now
+      if (_hasPrefetchedData) {
+        logDebug('_ | Using prefetched data, saving to cache...');
+        await _saveCurrentUserToCache();
+        await _saveListsToCache();
+      } else {
+        logDebug('_ | No prefetched data, fetching now...');
+        if (await _loadUserData()) await _saveListsToCache();
+      }
       startBackgroundSync();
     } else {
       logInfo('   _ | Skipping online features: ${!isOnline ? "Offline" : "Not logged in"}');

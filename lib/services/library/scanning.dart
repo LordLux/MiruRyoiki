@@ -325,7 +325,10 @@ extension LibraryScanning on Library {
 
               logTrace('  Series "$shortcutName" (via shortcut) has $fileCount video files');
             } else {
-              logWarn('Shortcut target directory does not exist: $targetPath');
+              if (File(targetPath).existsSync())
+                logWarn('Shortcut target is not a directory: $targetPath, the target is a file.');
+              else
+                logWarn('Shortcut target directory does not exist: $targetPath');
             }
           } else {
             logWarn('Could not resolve shortcut: $shortcutName.lnk');

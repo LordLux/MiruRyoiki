@@ -19,19 +19,25 @@ extension LibraryInitialization on Library {
   Future<void> startBackgroundLoading(BuildContext context) async {
     final anilistProvider = Provider.of<AnilistProvider>(context, listen: false);
 
-    // 4. Initialize Media Player Integration
+    // Start prefetching AniList data in parallel with library scan
+    final prefetchFuture = anilistProvider.prefetchOnlineData();
+
+    // Initialize Media Player Integration
     await initializeMediaPlayerIntegration();
 
-    // 1. Scan Local Library (this now reports progress and manages its own state)
+    // Scan Local Library (this now reports progress and manages its own state)
     await scanLocalLibrary();
 
-    // 2. Initialize Anilist online features (only runs after scan is complete)
+    // Wait for prefetch to complete if it hasn't already
+    await prefetchFuture;
+
+    // Initialize Anilist online features (saves prefetched data to disk)
     await anilistProvider.initializeOnlineFeatures();
 
-    // 3. Validate Cache
+    // Validate Cache
     await ensureCacheValidated();
 
-    // 5. Load posters for library
+    // Load posters for library
     await loadAnilistPostersForLibrary(
         anilistProvider: anilistProvider,
         onProgress: (loaded, total) {

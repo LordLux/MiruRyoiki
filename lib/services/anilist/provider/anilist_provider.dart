@@ -40,6 +40,11 @@ class AnilistProvider extends ChangeNotifier with WidgetsBindingObserver {
   bool _isReady = false;
   bool get isReady => _isReady;
 
+  // Prefetch data (fetched before scan completes, not saved to disk until scan finishes)
+  bool _hasPrefetchedData = false;
+  AnilistUser? _prefetchedUser;
+  Map<String, AnilistUserList> _prefetchedUserLists = {};
+
   // Background sync
   Timer? _syncTimer;
   Timer? _userDataRefreshTimer;
