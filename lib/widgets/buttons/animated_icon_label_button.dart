@@ -2,6 +2,7 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:miruryoiki/utils/text.dart';
 import 'package:miruryoiki/utils/time.dart';
 import 'package:miruryoiki/widgets/buttons/button.dart';
+import 'package:miruryoiki/widgets/tooltip_wrapper.dart';
 
 import '../../manager.dart';
 import '../animated_translate.dart';
@@ -38,10 +39,9 @@ class _AnimatedIconLabelButtonState extends State<AnimatedIconLabelButton> with 
       duration: shortDuration,
       width: _isHovered ? textWidth + 24 : 30,
       curve: Curves.easeInOutQuad,
-      child: Tooltip(
-        message: widget.tooltip ?? '',
-        style: TooltipThemeData(waitDuration: widget.tooltipWaitDuration),
-        child: MouseRegion(
+      child: TooltipWrapper(
+        tooltip: widget.tooltip ?? '',
+        child: (_) => MouseRegion(
           onEnter: (_) => setState(() => _isHovered = true),
           onExit: (_) => setState(() => _isHovered = false),
           child: ClipRRect(

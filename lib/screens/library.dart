@@ -944,7 +944,7 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
                 children: [
                   Expanded(
                     child: MouseButtonWrapper(
-                    tooltip: _sortOrder?.name_,
+                      tooltip: _sortOrder?.name_,
                       child: (_) => ComboBox<SortOrder>(
                         isExpanded: true,
                         value: _sortOrder,
@@ -995,10 +995,10 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
                         tooltip: _editListsEnabled ? 'Save Changes' : 'Edit List Order',
                         child: (_) => IconButton(
                           icon: Icon(_editListsEnabled ? FluentIcons.check_mark : FluentIcons.edit, size: 11 * Manager.fontSizeMultiplier, color: Manager.pastelAccentColor),
-                          onPressed:() {
-                                  setState(() => _editListsEnabled = !_editListsEnabled);
-                                  if (_editListsEnabled) _previousCustomListOrder = List.from(_customListOrder);
-                                },
+                          onPressed: () {
+                            setState(() => _editListsEnabled = !_editListsEnabled);
+                            if (_editListsEnabled) _previousCustomListOrder = List.from(_customListOrder);
+                          },
                         ),
                       ),
                     ),
@@ -1224,18 +1224,18 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
                                   color: isHidden ? Colors.red.withOpacity(.6) : Colors.white.withOpacity(.5),
                                 ),
                                 onPressed: () {
-                                        setState(() {
-                                          if (isHidden)
-                                            _hiddenLists.remove(listName);
-                                          else
-                                            _hiddenLists.add(listName);
-                                        });
-                  
-                                        _saveUserPreferences();
-                                        nextFrame(() {
-                                          invalidateSortCache();
-                                        });
-                                      },
+                                  setState(() {
+                                    if (isHidden)
+                                      _hiddenLists.remove(listName);
+                                    else
+                                      _hiddenLists.add(listName);
+                                  });
+
+                                  _saveUserPreferences();
+                                  nextFrame(() {
+                                    invalidateSortCache();
+                                  });
+                                },
                               ),
                             )
                           : null,

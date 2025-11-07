@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import 'package:window_manager/window_manager.dart';
 
 import '../services/navigation/shortcuts.dart';
+import 'tooltip_wrapper.dart';
 
 class WindowButtons extends StatelessWidget {
   final bool isSecondary;
@@ -111,9 +112,9 @@ class _WindowCaptionState extends State<WindowCaption> with WindowListener {
                     ),
                   ),
                   if (!widget.isSecondary)
-                    Tooltip(
-                      message: 'Minimize',
-                      child: WindowCaptionButton.minimize(
+                    TooltipWrapper(
+                      tooltip: 'Minimize',
+                      child: (_) => WindowCaptionButton.minimize(
                         brightness: widget.brightness,
                         onPressed: () async {
                           bool isMinimized = await windowManager.isMinimized();
@@ -134,9 +135,9 @@ class _WindowCaptionState extends State<WindowCaption> with WindowListener {
                           future: windowManager.isFullScreen(),
                           builder: (BuildContext context, AsyncSnapshot<bool> snapshot) {
                             if (snapshot.data == true) {
-                              return Tooltip(
-                                message: 'Exit Fullscreen',
-                                child: WindowCaptionButtonFullScreen(
+                              return TooltipWrapper(
+                                tooltip: 'Exit Fullscreen',
+                                child: (_) => WindowCaptionButtonFullScreen(
                                   brightness: widget.brightness,
                                   icon: (Color iconColor) => Icon(Symbols.close_fullscreen, color: iconColor, size: 16),
                                   onPressed: () {
@@ -145,9 +146,9 @@ class _WindowCaptionState extends State<WindowCaption> with WindowListener {
                                 ),
                               );
                             }
-                            return Tooltip(
-                              message: 'Enter Fullscreen',
-                              child: WindowCaptionButtonFullScreen(
+                            return TooltipWrapper(
+                              tooltip: 'Enter Fullscreen',
+                              child: (_) => WindowCaptionButtonFullScreen(
                                 brightness: widget.brightness,
                                 icon: (Color iconColor) => Icon(Symbols.open_in_full, color: iconColor, size: 16),
                                 onPressed: () {
@@ -162,9 +163,9 @@ class _WindowCaptionState extends State<WindowCaption> with WindowListener {
                         future: windowManager.isMaximized(),
                         builder: (BuildContext context, AsyncSnapshot<bool> snapshot) {
                           if (snapshot.data == true) {
-                            return Tooltip(
-                              message: 'Unmaximize',
-                              child: WindowCaptionButton.unmaximize(
+                            return TooltipWrapper(
+                              tooltip: 'Unmaximize',
+                              child: (_) => WindowCaptionButton.unmaximize(
                                 brightness: widget.brightness,
                                 onPressed: () {
                                   windowManager.unmaximize();
@@ -172,9 +173,9 @@ class _WindowCaptionState extends State<WindowCaption> with WindowListener {
                               ),
                             );
                           }
-                          return Tooltip(
-                            message: 'Maximize',
-                            child: WindowCaptionButton.maximize(
+                          return TooltipWrapper(
+                            tooltip: 'Maximize',
+                            child: (_) => WindowCaptionButton.maximize(
                               brightness: widget.brightness,
                               onPressed: () {
                                 windowManager.maximize();
@@ -185,9 +186,9 @@ class _WindowCaptionState extends State<WindowCaption> with WindowListener {
                       );
                     }),
                   ),
-                  Tooltip(
-                    message: 'Close',
-                    child: WindowCaptionButton.close(
+                  TooltipWrapper(
+                    tooltip: 'Close',
+                    child: (_) => WindowCaptionButton.close(
                       brightness: widget.brightness,
                       onPressed: () {
                         windowManager.close();

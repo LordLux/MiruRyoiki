@@ -2,6 +2,7 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/material.dart' as mat;
 import 'package:sticky_headers/sticky_headers.dart';
 import '../manager.dart';
+import '../models/anilist/mapping.dart';
 import '../models/episode.dart';
 import '../models/series.dart';
 import '../utils/time.dart';
@@ -13,27 +14,26 @@ class EpisodeGrid extends StatelessWidget {
   final Series series;
   final String? title;
   final Function(Episode) onTap;
+  final AnilistMapping? mapping;
   final bool collapsable;
   final bool initiallyExpanded;
-  final GlobalKey<ExpandingStickyHeaderBuilderState>? expanderKey;
   final bool isReloadingSeries;
 
   const EpisodeGrid({
     super.key,
     required this.episodes,
     required this.series,
+    required this.mapping,
     this.title,
     this.collapsable = true,
     this.initiallyExpanded = true,
     required this.onTap,
-    this.expanderKey,
     this.isReloadingSeries = false,
   });
 
   @override
   Widget build(BuildContext context) {
     return ExpandingStickyHeaderBuilder(
-      key: expanderKey,
       enabled: collapsable || title != null,
       initiallyExpanded: initiallyExpanded,
       contentBackgroundColor: Colors.transparent,
@@ -91,7 +91,7 @@ class EpisodeGrid extends StatelessWidget {
             itemCount: episodes.length,
             itemBuilder: (context, index) {
               final episode = episodes[index];
-              return _buildEpisodeTile(context, episode, series);
+              return _buildEpisodeTile(context, episode, series, mapping);
             },
           );
         }),
@@ -99,12 +99,13 @@ class EpisodeGrid extends StatelessWidget {
     );
   }
 
-  Widget _buildEpisodeTile(BuildContext context, Episode episode, Series series) {
+  Widget _buildEpisodeTile(BuildContext context, Episode episode, Series series, AnilistMapping? mapping) {
     return HoverableEpisodeTile(
       episode: episode,
       onTap: () => onTap(episode),
       series: series,
       isReloadingSeries: isReloadingSeries,
+      mapping: mapping,
     );
   }
 }

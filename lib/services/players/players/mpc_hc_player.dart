@@ -2,15 +2,22 @@ import 'dart:async';
 import 'package:flutter/widgets.dart';
 import 'package:http/http.dart' as http;
 import '../../../models/players/mediastatus.dart';
+import '../../../models/players/player_configuration.dart';
 import '../../../utils/logging.dart';
 import '../../../widgets/svg.dart' as icon show mpcHc;
 import '../player.dart';
+import '../player_manager.dart';
 
 class MPCHCPlayer extends MediaPlayer {
   @override
   Widget get iconWidget => icon.mpcHc;
+  
+  @override
+  PlayerConfiguration? get configuration => _configuration;
+  
   final String host;
   final int port;
+  final PlayerConfiguration? _configuration;
 
   Timer? _statusTimer;
   final StreamController<MediaStatus> _statusController = StreamController<MediaStatus>.broadcast();
@@ -19,12 +26,13 @@ class MPCHCPlayer extends MediaPlayer {
   MPCHCPlayer({
     this.host = 'localhost',
     this.port = 13579,
-  });
+    PlayerConfiguration? configuration,
+  }) : _configuration = configuration;
 
   @override
   Stream<MediaStatus> get statusStream => _statusController.stream;
 
-  String get _baseUrl => 'http://$host:$port';
+  String get _baseUrl => 'http://$host:$port'; // localhost:13579/
 
   @override
   Future<bool> connect() async {
@@ -59,7 +67,7 @@ class MPCHCPlayer extends MediaPlayer {
     _statusTimer = Timer.periodic(const Duration(seconds: 1), (_) => _fetchStatus());
   }
 
-  Future<void> _fetchStatus() async {
+  Future<bool> _fetchStatus() async {
     try {
       final response = await http.get(
         Uri.parse('$_baseUrl/variables.html'),
@@ -98,9 +106,12 @@ class MPCHCPlayer extends MediaPlayer {
 
         _lastStatus = status;
         _statusController.add(status);
+        return true;
       }
+      return false;
     } catch (e) {
       // Handle error silently for now
+      return false;
     }
   }
 
@@ -133,7 +144,7 @@ class MPCHCPlayer extends MediaPlayer {
 
   @override
   Future<void> setVolume(int level) async {
-    final currentVolume = await _getCurrentVolume();
+    final currentVolume = await _getCurrentVolume(); // TODO optimize by caching last known volume if last setVolume was less than 0.25s ago
     final difference = level - currentVolume;
 
     if (difference > 0) {
@@ -181,16 +192,14 @@ class MPCHCPlayer extends MediaPlayer {
   }
 
   @override
-  Future<void> pollStatus() async {
-    await _fetchStatus();
-  }
+  Future<bool> pollStatus() async => await _fetchStatus();
 
   Future<int> _getCurrentVolume() async {
     try {
       final response = await http.get(Uri.parse('$_baseUrl/variables.html'));
       if (response.statusCode == 200) {
         final variables = _parseVariables(response.body);
-        return int.tryParse(variables['volume'] ?? '0') ?? 0;
+        return int.tryParse(variables['volume'] ?? variables['volumelevel'] ?? '0') ?? 0;
       }
     } catch (e, st) {
       logErr('Error fetching current volume', e, st);
@@ -207,6 +216,13 @@ class MPCHCPlayer extends MediaPlayer {
       );
     } catch (e, st) {
       logErr('Error sending command $commandId', e, st);
+      // If error is "ClientException with SocketException: The remote computer refused the network connection." then disconnect
+      if (e.toString().contains('SocketException') && e.toString().contains('refused the network connection')) {
+        logInfo('MPC-HC player disconnected');
+        disconnect();
+        // remove player ui from screen
+        PlayerManager().disconnect();
+      }
     }
   }
 

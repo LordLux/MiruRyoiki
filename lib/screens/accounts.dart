@@ -43,6 +43,7 @@ import '../widgets/page/infobar.dart';
 import '../widgets/page/page.dart';
 import '../widgets/svg.dart';
 import '../main.dart';
+import '../widgets/tooltip_wrapper.dart';
 import 'settings.dart';
 
 class AccountsScreen extends StatefulWidget {
@@ -1015,9 +1016,9 @@ class AccountsScreenState extends State<AccountsScreen> with AutomaticKeepAliveC
                         child: Row(
                           children: topGenres.map((genre) {
                             return Expanded(
-                              child: Tooltip(
-                                message: '${genre.genre!.titleCase} (${(genre.count! / totalCount * 100).toStringAsFixed(1)}%)',
-                                child: Column(
+                              child: TooltipWrapper(
+                                tooltip: '${genre.genre!.titleCase} (${(genre.count! / totalCount * 100).toStringAsFixed(1)}%)',
+                                child: (_) => Column(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
                                     Container(
@@ -1059,9 +1060,9 @@ class AccountsScreenState extends State<AccountsScreen> with AutomaticKeepAliveC
                           genreWidgets.add(
                             Expanded(
                               flex: (genre.count ?? 1),
-                              child: Tooltip(
-                                message: '${genre.genre} (${(genre.count! / totalCount * 100).toStringAsFixed(1)}%)',
-                                child: Container(
+                              child: TooltipWrapper(
+                                tooltip: '${genre.genre} (${(genre.count! / totalCount * 100).toStringAsFixed(1)}%)',
+                                child: (_) => Container(
                                   decoration: BoxDecoration(
                                     color: colors[index % colors.length],
                                   ),

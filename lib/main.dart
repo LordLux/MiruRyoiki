@@ -23,7 +23,9 @@ import 'package:win32_registry/win32_registry.dart';
 
 import 'screens/home.dart';
 import 'screens/release_calendar.dart';
+import 'services/isolates/thumbnail_manager.dart';
 import 'widgets/dialogs/splash/progress.dart';
+import 'widgets/opener_detector.dart';
 import 'widgets/player.dart';
 import 'widgets/release_notification.dart';
 import 'widgets/svg.dart';
@@ -55,6 +57,7 @@ import 'utils/time.dart';
 import 'widgets/animated_indicator.dart';
 import 'widgets/cursors.dart';
 import 'widgets/dialogs/link_anilist.dart';
+import 'widgets/tooltip_wrapper.dart';
 import 'widgets/window_buttons.dart';
 
 final _appTheme = AppTheme();
@@ -135,6 +138,9 @@ void main(List<String> args) async {
   await imageCache.init();
 
   await initializeSVGs();
+  
+  // Pre-initialize the Thumbnail Manager isolate
+  ThumbnailManager();
 
   // Run the app
   runApp(
@@ -337,6 +343,7 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
   PathString? _selectedSeriesPath;
   PathString? lastSelectedSeriesPath;
   bool _isSeriesView = false;
+  bool _isCompactView = false;
   bool isStartedTransitioning = false;
 
   /// Whether the transition animation to the series screen has fully completed
@@ -432,14 +439,18 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
     }
   }
 
-  void openSettings() => _onChanged(settingsIndex);
+  set setCompactView(bool value) => setState(() => _isCompactView = value);
+  bool get isCompactView => _isCompactView;
 
-  void _onChanged(int index) {
+  void openSettings() => _onChangedPane(settingsIndex);
+
+  void _onChangedPane(int index) {
     setState(() {
       _selectedIndex = index;
       lastSelectedSeriesPath = _selectedSeriesPath;
       _selectedSeriesPath = null;
       _isSeriesView = false;
+      _isCompactView = false;
       Manager.currentDominantColor = null;
 
       // Reset scroll when directly navigating to library
@@ -559,8 +570,8 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
                               releaseCalendarScreenKey.currentState?.focusToday();
                             }
                           },
-                          onChanged: _onChanged,
-                          displayMode: _isSeriesView ? PaneDisplayMode.compact : PaneDisplayMode.auto,
+                          onChanged: _onChangedPane,
+                          displayMode: _isCompactView ? PaneDisplayMode.compact : PaneDisplayMode.auto,
                           indicator: AnimatedNavigationIndicator(
                             targetColor: Manager.currentDominantColor,
                             indicatorBuilder: (color) => StickyNavigationIndicator(color: color),
@@ -745,6 +756,12 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
                   },
                 ),
                 Player(),
+                OpenerDetector(
+                  onHover: () => setCompactView = false,
+                  onExit: () => setCompactView = true,
+                  isSeriesView: _isSeriesView,
+                  shouldExpand: !_isCompactView,
+                )
               ],
             ),
           ),
@@ -778,9 +795,9 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
         data: TooltipThemeData(
           waitDuration: const Duration(milliseconds: 100),
         ),
-        child: Tooltip(
-          message: msg,
-          child: icon,
+        child: TooltipWrapper(
+          tooltip: msg,
+          child: (_) => icon,
         ),
       );
     }
@@ -933,6 +950,7 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
         lastSelectedSeriesPath = _selectedSeriesPath;
         _selectedSeriesPath = null;
         _isSeriesView = false;
+        _isCompactView = false;
         Manager.currentDominantColor = null;
 
         // Reset scroll when directly navigating to library
@@ -964,6 +982,7 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
     setState(() {
       _selectedSeriesPath = seriesPath;
       _isSeriesView = true;
+      _isCompactView = true;
       _isFinishedTransitioningToLibrary = false;
     });
 
@@ -991,6 +1010,7 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
       Manager.currentDominantColor = null;
       lastSelectedSeriesPath = _selectedSeriesPath ?? lastSelectedSeriesPath;
       _isSeriesView = false;
+      _isCompactView = false;
       _isFinishedTransitioningToLibrary = false;
       _isFinishedTransitioningToSeries = false;
     });
@@ -1068,9 +1088,7 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
           // Switch to appropriate pane
           final index = _getPaneIndexFromId(currentItem.id);
           if (index != null && index != _selectedIndex) {
-            setState(() {
-              _selectedIndex = index;
-            });
+            setState(() =>_selectedIndex = index);
           }
         } else if (currentItem.level == NavigationLevel.page) {
           // Check if it's a series page
@@ -1192,7 +1210,9 @@ Future<void> _registerWindowsUrlScheme(String scheme) async {
   }
 }
 
+// TODO add 'read all' button in releases pane
 // TODO fix next up using primary insteaed of actual poster
+// TODO invalidate all screens cache after connection comes back
 // TODO add NonMapping for series that are not to be linked with Anilist
 // TODO change scanning: any folders [names] will remain as is and only loose files will be moved to 'Related Media'
 // TODO create widget for Smooth scrolling scroll controllers
@@ -1220,6 +1240,7 @@ Future<void> _registerWindowsUrlScheme(String scheme) async {
 
 // TODO add marquee to notification titles
 // TODO add torrents/downloads pane
+// TODO add 'state' and 'stateString' to MediaStatus
 // TODO add network settings for torrents
 // TODO remove hardcoded filtering for only the local series for scheduled releases notifications as we'll have the ability to download them
 // TODO add ctrl + tab navigation

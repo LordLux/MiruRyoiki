@@ -158,13 +158,11 @@ extension LibraryMediaPlayerIntegration on Library {
   Future<void> _attemptPlayerConnection() async {
     // Don't attempt new connections if already connected and connection is still active
     if (_currentConnectedPlayer != null && _playerManager?.isConnected == true) {
-      try {
-        await _playerManager?.pollStatus();
-        return; // Connection is good, no need to reconnect
-      } catch (e) {
-        // Connection is dead -> try to reconnect below
-        logWarn('Connection verification failed for $_currentConnectedPlayer: $e');
-      }
+      // Verify the connection is actually alive
+      if (await verifyPlayerConnection()) return;
+
+      // Connection verification failed -> try to reconnect below
+      logWarn('Connection verification failed for $_currentConnectedPlayer');
     }
 
     // Lost connection/not connected, try to reconnect
@@ -217,6 +215,27 @@ extension LibraryMediaPlayerIntegration on Library {
     logDebug('Video player process monitoring stopped');
   }
 
+  /// Verify if the player is actually still connected to the media player application
+  /// Attempts to poll the player to verify it's still running and responding
+  ///
+  /// Returns true if the player is connected and responding, false otherwise
+  /// Automatically cleans up stale connections if the player is not responding
+  Future<bool> verifyPlayerConnection() async {
+    if (_playerManager == null) return false;
+
+    final isActuallyConnected = await _playerManager!.verifyConnection();
+
+    if (!isActuallyConnected && _currentConnectedPlayer != null) {
+      // Player was thought to be connected but is actually dead
+      logWarn('Player connection verification failed, cleaning up stale connection to $_currentConnectedPlayer');
+      _currentConnectedPlayer = null;
+      _stopForcedSaveTimer();
+      notifyListeners();
+    }
+
+    return isActuallyConnected;
+  }
+
   /// Setup monitoring of player status for current playback information
   void _setupPlayerStatusMonitoring() {
     _playerStatusSubscription?.cancel();
@@ -243,15 +262,43 @@ extension LibraryMediaPlayerIntegration on Library {
   void _handlePlayerStatusUpdate(MediaStatus status) {
     final currentFile = status.filePath;
     final currentEpisode = currentFile.isNotEmpty ? findEpisodeByPath(currentFile) : null;
+    final lastFile = _lastFilePath ?? '';
+    final currentPlaying = status.isPlaying;
 
     // Always update episode progress
     bool progressUpdated = false;
     if (currentEpisode != null) progressUpdated = _updateEpisodeFromPlayerStatus(currentEpisode, status);
 
-    // Check for immediate save triggers
-    final shouldSaveImmediately = _shouldTriggerImmediateSave(status, currentEpisode) || progressUpdated;
+    // Determine the type of save trigger
+    final playerClosed = lastFile.isNotEmpty && currentFile.isEmpty;
+    final fileChanged = lastFile.isNotEmpty && currentFile.isNotEmpty && lastFile != currentFile;
+    final playerPaused = _lastPlayingState == true && !currentPlaying;
+    final episodeLost = _lastEpisode != null && currentEpisode == null;
+
+    // Check if we should save
+    final shouldSaveImmediately = playerClosed || fileChanged || playerPaused || episodeLost || progressUpdated;
+
+    // Log the reason for saving
+    if (shouldSaveImmediately) {
+      if (playerClosed)
+        logInfo('Player closed -> triggering immediate save');
+      else if (fileChanged)
+        logInfo('Video changed from "$lastFile" to "$currentFile" -> triggering immediate save');
+      else if (playerPaused)
+        logInfo('Player stopped/paused -> triggering immediate save');
+      else if (episodeLost)
+        logInfo('Episode tracking lost -> triggering immediate save');
+      else if (progressUpdated) logTrace('Episode progress updated -> triggering immediate save');
+    }
+
     // Save immediately if triggered by important status changes
-    if (shouldSaveImmediately) _saveImmediately();
+    if (shouldSaveImmediately) {
+      _saveImmediately(
+        currentStatus: status,
+        forceFileChange: fileChanged,
+        forcePlayerClosed: playerClosed,
+      );
+    }
 
     // Update state tracking for next comparison
     _updateStateTracking(status, currentEpisode);
@@ -318,39 +365,6 @@ extension LibraryMediaPlayerIntegration on Library {
     return null;
   }
 
-  /// Check if the current state change should trigger an immediate save
-  bool _shouldTriggerImmediateSave(MediaStatus status, Episode? currentEpisode) {
-    final currentFile = status.filePath;
-    final currentPlaying = status.isPlaying;
-    final lastFile = _lastFilePath ?? '';
-
-    // Player was closed (had a file, now doesn't)
-    if (lastFile.isNotEmpty && currentFile.isEmpty) {
-      logInfo('Player closed -> triggering immediate save');
-      return true;
-    }
-
-    // Video changed (different file being played)
-    if (lastFile.isNotEmpty && currentFile.isNotEmpty && lastFile != currentFile) {
-      logInfo('Video changed from "$lastFile" to "$currentFile" -> triggering immediate save');
-      return true;
-    }
-
-    // Player stopped playing (was playing, now not)
-    if (_lastPlayingState == true && !currentPlaying) {
-      logInfo('Player stopped/paused -> triggering immediate save');
-      return true;
-    }
-
-    // Episode became null (had episode, now doesn't)
-    if (_lastEpisode != null && currentEpisode == null) {
-      logInfo('Episode tracking lost -> triggering immediate save');
-      return true;
-    }
-
-    return false;
-  }
-
   /// Start the forced save timer for regular progress updates
   /// Just to avoid having large gaps between saves if user leaves player running
   void _startForcedSaveTimer() {
@@ -358,8 +372,9 @@ extension LibraryMediaPlayerIntegration on Library {
 
     // Check and save every 60 seconds if player status has changed
     _forcedSaveTimer = Timer.periodic(const Duration(seconds: 60), (timer) async {
-      if (_playerManager?.isConnected != true) {
-        logTrace('Player disconnected - stopping forced save timer');
+      // Verify the player is actually still connected
+      if (!await verifyPlayerConnection()) {
+        logTrace('Player connection verification failed - stopping forced save timer');
         _stopForcedSaveTimer();
         return;
       }
@@ -420,11 +435,36 @@ extension LibraryMediaPlayerIntegration on Library {
   }
 
   /// Immediately save the library and cancel any pending saves
-  Future<void> _saveImmediately() async {
+  Future<void> _saveImmediately({MediaStatus? currentStatus, bool forceFileChange = false, bool forcePlayerClosed = false}) async {
     // Don't save during library indexing to prevent conflicts
     if (_lockManager.shouldDisableAction(UserAction.markEpisodeWatched)) {
       logTrace('Skipping immediate save from player - library is indexing');
       return;
+    }
+
+    final currentPosition = currentStatus?.currentPosition;
+
+    // Throttling
+    if (_lastImmediateSaveTime != null) {
+      final timeSinceLastSave = now.difference(_lastImmediateSaveTime!);
+
+      // Always save if file changed or player closed
+      if (!forceFileChange && !forcePlayerClosed) {
+        // Don't save if less than 5 seconds have passed
+        if (timeSinceLastSave.inSeconds < 5) {
+          return;
+        }
+
+        // Check if more than 10 seconds of playback have occurred since last save
+        if (currentPosition != null && _lastSavedPosition != null) {
+          final positionDifference = (currentPosition.inSeconds - _lastSavedPosition!.inSeconds).abs();
+
+          // If less than 10 seconds of progress, skip save
+          if (positionDifference < 10) return;
+
+          logTrace('Significant playback progress detected since last immediate save ($positionDifference s) -> proceeding with immediate save');
+        }
+      }
     }
 
     _progressSaveTimer?.cancel();
@@ -434,6 +474,11 @@ extension LibraryMediaPlayerIntegration on Library {
     await _saveLibrary();
     notifyListeners();
     Manager.setState();
+
+    // Update throttling timestamps
+    _lastImmediateSaveTime = now;
+    _lastSavedPosition = currentPosition;
+
     logTrace('Immediately saved episode progress from media player monitoring');
   }
 
@@ -474,13 +519,35 @@ extension LibraryMediaPlayerIntegration on Library {
   }
 
   /// Control playback through connected player
-  Future<void> pauseCurrentPlayback() async => await _playerManager?.pauseWithPoll();
+  Future<void> pauseCurrentPlayback() async {
+    if (!await verifyPlayerConnection()) {
+      logWarn('Cannot pause playback - player not connected');
+      return;
+    }
+    await _playerManager?.pauseWithPoll();
+  }
 
-  Future<void> resumeCurrentPlayback() async => await _playerManager?.playWithPoll();
+  Future<void> resumeCurrentPlayback() async {
+    if (!await verifyPlayerConnection()) {
+      logWarn('Cannot resume playback - player not connected');
+      return;
+    }
+    await _playerManager?.playWithPoll();
+  }
 
-  Future<void> setPlaybackVolume(int volume) async => await _playerManager?.setVolumeWithPoll(volume);
+  Future<void> setPlaybackVolume(int volume) async {
+    if (!await verifyPlayerConnection()) {
+      logWarn('Cannot set volume - player not connected');
+      return;
+    }
+    await _playerManager?.setVolumeWithPoll(volume);
+  }
 
   Future<void> toggleMuteCurrentPlayback() async {
+    if (!await verifyPlayerConnection()) {
+      logWarn('Cannot toggle mute - player not connected');
+      return;
+    }
     final isMuted = _playerManager?.lastStatus?.isMuted ?? false;
     if (isMuted) {
       await _playerManager?.unmuteWithPoll();
@@ -490,15 +557,45 @@ extension LibraryMediaPlayerIntegration on Library {
   }
 
   /// Toggle play/pause with immediate status poll
-  Future<void> togglePlayPauseCurrentPlayback() async => await _playerManager?.togglePlayPauseWithPoll();
+  Future<void> togglePlayPauseCurrentPlayback() async {
+    if (!await verifyPlayerConnection()) {
+      logWarn('Cannot toggle play/pause - player not connected');
+      return;
+    }
+    await _playerManager?.togglePlayPauseWithPoll();
+  }
 
   /// Navigation controls with immediate status poll
-  Future<void> nextCurrentVideo() async => await _playerManager?.nextVideoWithPoll();
+  Future<void> nextCurrentVideo() async {
+    if (!await verifyPlayerConnection()) {
+      logWarn('Cannot go to next video - player not connected');
+      return;
+    }
+    await _playerManager?.nextVideoWithPoll();
+  }
 
-  Future<void> previousCurrentVideo() async => await _playerManager?.previousVideoWithPoll();
+  Future<void> previousCurrentVideo() async {
+    if (!await verifyPlayerConnection()) {
+      logWarn('Cannot go to previous video - player not connected');
+      return;
+    }
+    await _playerManager?.previousVideoWithPoll();
+  }
 
-  Future<void> gotoCurrentVideo(int seconds) async => await _playerManager?.seekWithPoll(seconds);
+  Future<void> gotoCurrentVideo(int seconds) async {
+    if (!await verifyPlayerConnection()) {
+      logWarn('Cannot seek video - player not connected');
+      return;
+    }
+    await _playerManager?.seekWithPoll(seconds);
+  }
 
   /// Force immediate status update
-  Future<void> pollCurrentPlayerStatus() async => await _playerManager?.pollStatus();
+  Future<void> pollCurrentPlayerStatus() async {
+    if (!await verifyPlayerConnection()) {
+      logWarn('Cannot poll player status - player not connected');
+      return;
+    }
+    await _playerManager?.pollStatus();
+  }
 }

@@ -18,6 +18,7 @@ import '../../utils/time.dart';
 import '../../widgets/buttons/wrapper.dart';
 import '../buttons/rotating_loading_button.dart';
 import '../notifications/notif.dart';
+import '../tooltip_wrapper.dart';
 
 final GlobalKey<NotificationsContentState> notificationsContentKey = GlobalKey<NotificationsContentState>();
 
@@ -315,9 +316,9 @@ class NotificationsContentState extends State<_NotificationsContent> {
               Row(
                 children: [
                   if (_unreadCount > 0)
-                    Tooltip(
-                      message: 'Mark all as read',
-                      child: IconButton(
+                    TooltipWrapper(
+                      tooltip: 'Mark all as read',
+                      child: (_) => IconButton(
                         icon: const Icon(FluentIcons.check_mark, size: 12),
                         onPressed: _markAllAsRead,
                       ),

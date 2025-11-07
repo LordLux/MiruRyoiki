@@ -11,7 +11,7 @@ class ScreenUtils {
   static const double kDefaultCardPadding = 14.0;
   static const double kDefaultCardWidth = 198.0;
   static const double kDefaultCardHeight = kDefaultCardWidth / kDefaultCardAspectRatio;
-  
+
   static const double kMinStatCardWidth = 130.0;
   static const double kMaxStatCardWidth = 200.0;
   static const double kMinDistrCardWidth = 430.0;
@@ -27,7 +27,9 @@ class ScreenUtils {
 
   static const double kMaxFontSize = 24.0;
   static const double kMinFontSize = 8.0;
-  
+
+  static const int paneExpandingWindowSizeThreshold = 1056;
+
   static const double kDefaultListViewItemHeight = 53.5;
 
   static const double kNavigationBarWidth = 300.0;
@@ -35,6 +37,8 @@ class ScreenUtils {
   static const double kMaxHeaderHeight = 290.0;
   static const double kMinHeaderHeight = 150.0;
   static const double kInfoBarWidth = 300.0;
+  static const double kPaneBarCollapsedWidth = 50.0;
+  static const double kPaneBarExpandedWidth = 321.0;
   static const double kMaxContentWidth = 1400.0;
   static const double kTitleBarHeight = 40.0;
   static const double kOfflineBarMaxHeight = 20.0;

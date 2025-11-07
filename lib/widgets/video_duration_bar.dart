@@ -1,4 +1,5 @@
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:miruryoiki/utils/time.dart';
 import '../manager.dart';
 import '../models/players/mediastatus.dart';
 import 'package:squiggly_slider/slider.dart';
@@ -31,13 +32,75 @@ class VideoDurationBar extends StatefulWidget {
   State<VideoDurationBar> createState() => _VideoDurationBarState();
 }
 
-class _VideoDurationBarState extends State<VideoDurationBar> {
+class _VideoDurationBarState extends State<VideoDurationBar> with SingleTickerProviderStateMixin {
   bool _isDragging = false;
   double _dragValue = 0.0;
   static const Color _whiteColor = Color.fromARGB(255, 208, 208, 208);
+  bool? _lastPlayingState;
+
+  late Color _progressColor;
+  late Color _backgroundColor;
+  late Color _thumbColor;
+  Color? _lastProgressColor;
+  Color? _lastBackgroundColor;
+  Color? _lastThumbColor;
+
+  late AnimationController _amplitudeController;
+  late Animation<double> _amplitudeAnimation;
+  static const double _baseAmplitude = 5.0;
+
+  @override
+  void initState() {
+    super.initState();
+    _amplitudeController = AnimationController(
+      duration: const Duration(milliseconds: 300),
+      vsync: this,
+    );
+    _amplitudeAnimation = Tween<double>(
+      begin: 0.0,
+      end: _baseAmplitude,
+    ).animate(CurvedAnimation(
+      parent: _amplitudeController,
+      curve: Curves.easeInOut,
+    ));
+    _progressColor = widget.progressColor;
+    _backgroundColor = widget.backgroundColor;
+    _thumbColor = widget.thumbColor;
+  }
+
+  @override
+  void dispose() {
+    _amplitudeController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
+    if (_lastProgressColor != null && (_lastProgressColor != widget.progressColor || _lastBackgroundColor != widget.backgroundColor || _lastThumbColor != widget.thumbColor)) {
+      // Schedule a single setState to ensure color transition completes
+      nextFrame(delay: 500, () {
+        if (mounted)
+          setState(() {
+            _progressColor = widget.progressColor;
+            _backgroundColor = widget.backgroundColor;
+            _thumbColor = widget.thumbColor;
+          });
+      });
+    }
+
+    // Update tracked colors
+    _lastProgressColor = widget.progressColor;
+    _lastBackgroundColor = widget.backgroundColor;
+    _lastThumbColor = widget.thumbColor;
+
+    // Animate amplitude only when playback state changes
+    final currentPlayingState = widget.status?.isPlaying == true;
+    if (_lastPlayingState != currentPlayingState) {
+      _lastPlayingState = currentPlayingState;
+      // Lower amplitude when paused
+      currentPlayingState ? _amplitudeController.forward() : _amplitudeController.reverse();
+    }
+
     if (widget.status == null || widget.status!.totalDuration.inSeconds == 0) {
       return Container(
         height: widget.height,
@@ -63,35 +126,43 @@ class _VideoDurationBarState extends State<VideoDurationBar> {
         Expanded(
           child: SizedBox(
             height: widget.height + 16, // Extra height for easier touch target
-            child: SquigglySlider(
-              value: progress,
-              onChanged: (value) {
-                setState(() => _dragValue = value);
-                _seekToProgress(value);
+            child: AnimatedBuilder(
+              animation: _amplitudeAnimation,
+              builder: (context, child) {
+                return SquigglySlider(
+                  padding: EdgeInsets.symmetric(horizontal: 14),
+                  value: progress,
+                  colorTransitionDuration: gradientChangeDuration,
+                  onChanged: (value) {
+                    setState(() => _dragValue = value);
+                    _seekToProgress(value);
+                  },
+                  thumbsSize: Size(4, 20),
+                  useLineThumb: true,
+                  onChangeStart: (value) {
+                    widget.onSeekDown?.call();
+                    setState(() {
+                      _isDragging = true;
+                      _dragValue = value;
+                    });
+                  },
+                  trackThickness: 1,
+                  onChangeEnd: (value) {
+                    _seekToProgress(value);
+                    widget.onSeekUp?.call();
+                    setState(() => _isDragging = false);
+                  },
+                  squiggleAmplitude: _amplitudeAnimation.value,
+                  squiggleWavelength: 4.0,
+                  squiggleSpeed: 0.1,
+                  activeColor: _progressColor, // TODO fix color transitions not working at all
+                  //                                   add parameter for thumb hover size
+                  inactiveColor: _backgroundColor,
+                  thumbColor: _thumbColor,
+                  min: 0.0,
+                  max: 1.0,
+                );
               },
-              thumbsSize: Size(4, 20),
-              useLineThumb: true,
-              onChangeStart: (value) {
-                widget.onSeekDown?.call();
-                setState(() {
-                  _isDragging = true;
-                  _dragValue = value;
-                });
-              },
-              trackThickness: 1,
-              onChangeEnd: (value) {
-                _seekToProgress(value);
-                widget.onSeekUp?.call();
-                setState(() => _isDragging = false);
-              },
-              squiggleAmplitude: 5.0,
-              squiggleWavelength: 4.0,
-              squiggleSpeed: 0.1,
-              activeColor: widget.progressColor,
-              inactiveColor: widget.backgroundColor,
-              thumbColor: widget.thumbColor,
-              min: 0.0,
-              max: 1.0,
             ),
           ),
         ),

@@ -9,6 +9,8 @@ import 'package:miruryoiki/services/navigation/navigation.dart';
 import 'package:provider/provider.dart';
 import 'package:args/args.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+// ignore: unused_import
+import 'package:flutter/scheduler.dart' as scheduler show timeDilation;
 
 import 'enums.dart';
 import 'services/anilist/episode_title_service.dart';

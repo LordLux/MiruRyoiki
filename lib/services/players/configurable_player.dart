@@ -31,6 +31,9 @@ class ConfigurablePlayer extends MediaPlayer {
     return Icon(Icons.play_arrow, size: 20);
   }
 
+  @override
+  PlayerConfiguration? get configuration => config;
+
   final PlayerConfiguration config;
 
   Timer? _statusTimer;
@@ -89,7 +92,7 @@ class ConfigurablePlayer extends MediaPlayer {
     _statusTimer = Timer.periodic(const Duration(seconds: 1), (_) => _fetchStatus());
   }
 
-  Future<void> _fetchStatus() async {
+  Future<bool> _fetchStatus() async {
     try {
       final statusEndpoint = config.endpoints['status'] as String;
       final response = await http.get(
@@ -110,9 +113,12 @@ class ConfigurablePlayer extends MediaPlayer {
         );
 
         _statusController.add(status);
+        return true;
       }
+      return false;
     } catch (e) {
       // Handle error silently for now
+      return false;
     }
   }
 
@@ -240,9 +246,7 @@ class ConfigurablePlayer extends MediaPlayer {
   }
 
   @override
-  Future<void> pollStatus() async {
-    await _fetchStatus();
-  }
+  Future<bool> pollStatus() async => await _fetchStatus();
 
   Future<dynamic> _getCurrentData() async {
     try {

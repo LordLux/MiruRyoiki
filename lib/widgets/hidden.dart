@@ -1,6 +1,7 @@
 import 'package:fluent_ui/fluent_ui.dart';
 
 import '../manager.dart';
+import 'tooltip_wrapper.dart';
 
 class LocalHidden extends StatelessWidget {
   const LocalHidden({
@@ -15,9 +16,9 @@ class LocalHidden extends StatelessWidget {
         color: Colors.black.withOpacity(0.7),
         borderRadius: BorderRadius.circular(4),
       ),
-      child: Tooltip(
-        message: 'Hidden inside this app',
-        child: Icon(
+      child: TooltipWrapper(
+        tooltip: 'Hidden inside this app',
+        child: (_) => Icon(
           FluentIcons.hide2, // or use FluentIcons.hide2 or FluentIcons.eye_hide
           size: 18 * Manager.fontSizeMultiplier,
           color: Colors.white,
@@ -40,9 +41,9 @@ class AnilistHidden extends StatelessWidget {
         color: Colors.blue.withOpacity(0.7),
         borderRadius: BorderRadius.circular(4),
       ),
-      child: Tooltip(
-        message: 'Hidden from Anilist status lists',
-        child: Icon(
+      child: TooltipWrapper(
+        tooltip: 'Hidden from Anilist status lists',
+        child: (_) => Icon(
           FluentIcons.hide, // or use FluentIcons.hide2 or FluentIcons.eye_hide
           size: 18 * Manager.fontSizeMultiplier,
           color: Colors.white,

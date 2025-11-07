@@ -109,6 +109,12 @@ class Library with ChangeNotifier {
   /// Last episode being played
   Episode? _lastEpisode;
 
+  /// Timestamp of the last immediate save, for throttling
+  DateTime? _lastImmediateSaveTime;
+
+  /// Timestamp of when the current playback position was at the last save
+  Duration? _lastSavedPosition;
+
   //
   // Services and utilities
   final SettingsManager _settings;

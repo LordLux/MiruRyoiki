@@ -168,7 +168,7 @@ class PlayerManager {
     if (_currentPlayer == null) return;
 
     _playerStatusSubscription = _currentPlayer!.statusStream.listen(
-      (status) {
+      (MediaStatus status) {
         _lastStatus = status; // Store the last status
         _statusController.add(status);
       },
@@ -201,6 +201,25 @@ class PlayerManager {
 
       // Try to reconnect following the same user priority order
       await autoConnect(priorityOrder);
+    }
+  }
+
+  /// Verify if the player is actually still connected by attempting to communicate with it
+  /// (Unlike `isConnected` which just checks if _currentPlayer is not null, this tries to poll the player to verify it's still responding)
+  /// 
+  /// Returns true if the player is connected and responding, false otherwise
+  /// If the connection is dead, it will automatically clean up the stale connection
+  Future<bool> verifyConnection() async {
+    if (_currentPlayer == null) return false;
+
+    try {
+      // Try to poll status to verify connection is still active
+      return await _currentPlayer!.pollStatus();
+    } catch (e) {
+      // Connection is dead, clean up the stale connection
+      _connectionController.add(PlayerConnectionStatus.error('Connection verification failed: player not responding'));
+      await disconnect();
+      return false;
     }
   }
 
@@ -240,7 +259,7 @@ class PlayerManager {
   Future<void> seek(int seconds) async => await _currentPlayer?.seek(seconds);
 
   /// Force immediate status update after command
-  Future<void> pollStatus() async => await _currentPlayer?.pollStatus();
+  Future<bool> pollStatus() async => await _currentPlayer?.pollStatus() ?? false;
 
   /// Enhanced command execution with immediate polling
   Future<void> _executeCommandWithPoll(Future<void> Function() command) async {

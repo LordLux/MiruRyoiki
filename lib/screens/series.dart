@@ -39,6 +39,7 @@ import '../widgets/mapping_card.dart';
 import '../widgets/shift_clickable_hover.dart';
 import '../widgets/shrinker.dart';
 import '../widgets/simple_html_parser.dart';
+import '../widgets/tooltip_wrapper.dart';
 import '../widgets/transparency_shadow_image.dart';
 import '../models/mapping_target.dart';
 import '../services/navigation/navigation.dart';
@@ -1129,17 +1130,9 @@ class SeriesScreenState extends State<SeriesScreen> {
 
   Widget _buildButton(void Function()? onTap, Widget child, String label) {
     return MouseButtonWrapper(
-      child: (_) => mat.Tooltip(
-        message: label,
-        textStyle: TextStyle(color: Colors.white),
-        decoration: FrostedNoiseDecoration(
-          intensity: .35,
-          backgroundColor: Color.lerp(Color.lerp(Colors.black, Colors.white, 0.2)!, SeriesScreenContainerState.mainDominantColor, 0.4)!.withOpacity(0.8),
-          borderRadius: BorderRadius.circular(5.0),
-        ),
-        preferBelow: true,
-        padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 5.0),
-        child: Padding(
+      child: (_) => TooltipWrapper(
+        tooltip: label,
+        child: (_) => Padding(
           padding: const EdgeInsets.all(2.0),
           child: IconButton(
             style: ButtonStyle(
@@ -1178,7 +1171,7 @@ class SeriesScreenState extends State<SeriesScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(mat.Icons.add_link, size: 48, color: Manager.accentColor),
+              Icon(mat.Icons.add_link, size: 48, color: Manager.accentColor.lighter),
               VDiv(16),
               Text('No Links found', style: Manager.subtitleStyle),
               VDiv(8),

@@ -1,5 +1,7 @@
 import 'package:fluent_ui/fluent_ui.dart';
 
+import '../tooltip_wrapper.dart';
+
 class MouseButtonWrapper extends StatefulWidget {
   final Widget Function(bool isHovering) child;
   final bool isButtonDisabled;
@@ -14,10 +16,10 @@ class MouseButtonWrapper extends StatefulWidget {
     required this.child,
     this.isButtonDisabled = false,
     this.isLoading = false,
+    this.cursor,
     this.tooltip,
     this.tooltipWidget,
-    this.tooltipWaitDuration = const Duration(milliseconds: 400),
-    this.cursor,
+    this.tooltipWaitDuration,
   });
 
   @override
@@ -29,37 +31,27 @@ class _MouseButtonWrapperState extends State<MouseButtonWrapper> {
 
   @override
   Widget build(BuildContext context) {
-    return TooltipTheme(
-      data: TooltipThemeData(waitDuration: widget.tooltipWaitDuration),
-      child: Builder(builder: (context) {
-        Widget button = MouseRegion(
-          onEnter: (_) => setState(() => _isHovering = true),
-          onExit: (_) => setState(() => _isHovering = false),
-          cursor: widget.cursor ??
-              (widget.isLoading //
-                  ? SystemMouseCursors.progress
-                  : widget.isButtonDisabled
-                      ? SystemMouseCursors.forbidden
-                      : SystemMouseCursors.click),
-          child: AbsorbPointer(
-            absorbing: widget.isButtonDisabled || widget.isLoading,
-            child: AnimatedOpacity(
-              opacity: widget.isButtonDisabled ? 0.75 : 1.0,
-              duration: const Duration(milliseconds: 200),
-              child: widget.child(_isHovering),
-            ),
+    return TooltipWrapper(
+      tooltip: widget.tooltipWidget ?? widget.tooltip,
+      waitDuration: widget.tooltipWaitDuration ?? const Duration(milliseconds: 500),
+      child: (_) => MouseRegion(
+        onEnter: (_) => setState(() => _isHovering = true),
+        onExit: (_) => setState(() => _isHovering = false),
+        cursor: widget.cursor ??
+            (widget.isLoading //
+                ? SystemMouseCursors.progress
+                : widget.isButtonDisabled
+                    ? SystemMouseCursors.forbidden
+                    : SystemMouseCursors.click),
+        child: AbsorbPointer(
+          absorbing: widget.isButtonDisabled || widget.isLoading,
+          child: AnimatedOpacity(
+            opacity: widget.isButtonDisabled ? 0.75 : 1.0,
+            duration: const Duration(milliseconds: 200),
+            child: widget.child(_isHovering),
           ),
-        );
-        
-        // no tooltip
-        if (widget.tooltip == null && widget.tooltipWidget == null) return button;
-
-        // only string tooltip
-        if (widget.tooltip == null && widget.tooltipWidget != null) return Tooltip(richMessage: WidgetSpan(child: widget.tooltipWidget!), child: button);
-
-        // only widget tooltip
-        return Tooltip(message: widget.tooltip, child: button);
-      }),
+        ),
+      ),
     );
   }
 }

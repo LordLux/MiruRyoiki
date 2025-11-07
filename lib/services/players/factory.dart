@@ -32,16 +32,29 @@ class PlayerFactory {
   static MediaPlayer createPlayer(PlayerType type, {Map<String, dynamic>? config}) {
     switch (type) {
       case PlayerType.vlc:
+        final executableNames = config?['executableNames'] != null ? List<String>.from(config!['executableNames']) : PlayerConfiguration.vlcConfig.executableNames;
         return VLCPlayer(
           host: config?['host'] ?? 'localhost',
           port: config?['port'] ?? 8080,
           password: config?['password'] ?? '',
+          configuration: PlayerConfiguration.vlcConfig.copyWith(
+            host: config?['host'] ?? 'localhost',
+            port: config?['port'] ?? 8080,
+            password: config?['password'] ?? '',
+            executableNames: executableNames,
+          ),
         );
 
       case PlayerType.mpc:
+        final executableNames = config?['executableNames'] != null ? List<String>.from(config!['executableNames']) : PlayerConfiguration.mpcHcConfig.executableNames;
         return MPCHCPlayer(
           host: config?['host'] ?? 'localhost',
           port: config?['port'] ?? 13579,
+          configuration: PlayerConfiguration.mpcHcConfig.copyWith(
+            host: config?['host'] ?? 'localhost',
+            port: config?['port'] ?? 13579,
+            executableNames: executableNames,
+          ),
         );
 
       case PlayerType.custom:

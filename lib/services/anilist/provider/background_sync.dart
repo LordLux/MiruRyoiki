@@ -151,7 +151,7 @@ extension AnilistProviderBackgroundSync on AnilistProvider {
   void handleAppLifecycleStateChange(AppLifecycleState state) {
     switch (state) {
       case AppLifecycleState.resumed:
-        logTrace('App resumed'); // refreshing data and switching to foreground refresh rate
+        // logTrace('App resumed'); // refreshing data and switching to foreground refresh rate
         // App came to foreground, switch to shorter refresh interval
         _startUserDataRefreshTimer(inForeground: true);
 
@@ -180,9 +180,7 @@ extension AnilistProviderBackgroundSync on AnilistProvider {
     if (!isLoggedIn || _isOffline) return;
 
     // Don't refresh too frequently
-    if (_lastNotificationRefresh != null && now.difference(_lastNotificationRefresh!).inMinutes < 10) {
-      return;
-    }
+    if (_lastNotificationRefresh != null && now.difference(_lastNotificationRefresh!).inMinutes < 10) return;
     _lastNotificationRefresh = now;
 
     try {

@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:math' show min;
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:miruryoiki/widgets/tooltip_wrapper.dart';
 import 'package:provider/provider.dart';
 
 import '../../enums.dart';
@@ -44,7 +45,7 @@ class ImageSelectionDialog extends ManagedDialog {
               Color? newLocalBannerColor;
               PathString? newFolderPosterPath;
               PathString? newFolderBannerPath;
-              
+
               if (!isBanner) {
                 // Poster
                 if (isLocalSource) {
@@ -72,7 +73,7 @@ class ImageSelectionDialog extends ManagedDialog {
                 newFolderPosterPath = series.localPosterPath;
                 newLocalPosterColor = series.localPosterColor;
               }
-              
+
               final Series updatedSeries = series.copyWith(
                 folderPosterPath: newFolderPosterPath,
                 folderBannerPath: newFolderBannerPath,
@@ -363,9 +364,9 @@ class _ImageSelectionContentState extends State<_ImageSelectionContent> {
               data: TooltipThemeData(
                 waitDuration: const Duration(milliseconds: 100),
               ),
-              child: Tooltip(
-                message: 'Reset to ${_getSourceDisplayName(Manager.defaultPosterSource)}\nThis setting can be changed in settings',
-                child: ManagedDialogButton(
+              child: TooltipWrapper(
+                tooltip: 'Reset to ${_getSourceDisplayName(Manager.defaultPosterSource)}\nThis setting can be changed in settings',
+                child: (_) => ManagedDialogButton(
                   popContext: context,
                   onPressed: () {
                     _deselectEverything();
@@ -394,9 +395,9 @@ class _ImageSelectionContentState extends State<_ImageSelectionContent> {
                   onPressed: () => widget.onCancel?.call(),
                 ),
                 SizedBox(width: 8),
-                Tooltip(
-                  message: _canSavePreference() ? 'Save the selected image preference' : 'Select an image first',
-                  child: ManagedDialogButton(
+                TooltipWrapper(
+                  tooltip: _canSavePreference() ? 'Save the selected image preference' : 'Select an image first',
+                  child: (_) => ManagedDialogButton(
                     popContext: context,
                     isPrimary: true,
                     text: 'Save Preference',
@@ -588,114 +589,114 @@ class _ImageSelectionContentState extends State<_ImageSelectionContent> {
                                     decoration: BoxDecoration(color: Colors.transparent),
                                     waitDuration: const Duration(milliseconds: 1500),
                                   ),
-                                  child: Tooltip(
-                                    enableFeedback: true,
-                                    richMessage: WidgetSpan(
-                                      child: LayoutBuilder(builder: (context, c) {
+                                  child: TooltipWrapper(
+                                    tooltip: LayoutBuilder(
+                                      builder: (context, c) {
                                         final maxWidth = ScreenUtils.width * 0.5;
                                         final maxHeight = ScreenUtils.height * 0.7;
                                         return FutureBuilder(
-                                            future: getImageDimensions(FileImage(file)),
-                                            builder: (context, data) {
-                                              if (!data.hasData) return SizedBox.shrink();
+                                          future: getImageDimensions(FileImage(file)),
+                                          builder: (context, data) {
+                                            if (!data.hasData) return SizedBox.shrink();
 
-                                              final imageAspectRatio = data.data!.aspectRatio;
-                                              double width, height;
+                                            final imageAspectRatio = data.data!.aspectRatio;
+                                            double width, height;
 
-                                              if (imageAspectRatio > 1) {
-                                                // Wider than tall
-                                                width = min(min(maxWidth, imageAspectRatio * maxHeight), data.data!.width);
-                                                height = width / imageAspectRatio;
-                                              } else {
-                                                // Taller than wide or square
-                                                height = min(min(maxHeight, maxWidth / imageAspectRatio), data.data!.height);
-                                                width = height * imageAspectRatio;
-                                              }
+                                            if (imageAspectRatio > 1) {
+                                              // Wider than tall
+                                              width = min(min(maxWidth, imageAspectRatio * maxHeight), data.data!.width);
+                                              height = width / imageAspectRatio;
+                                            } else {
+                                              // Taller than wide or square
+                                              height = min(min(maxHeight, maxWidth / imageAspectRatio), data.data!.height);
+                                              width = height * imageAspectRatio;
+                                            }
 
-                                              final String dimensions = "${width.toInt()}x${height.toInt()}";
+                                            final String dimensions = "${width.toInt()}x${height.toInt()}";
 
-                                              return SizedBox(
-                                                width: width,
-                                                height: height,
-                                                child: Stack(
-                                                  clipBehavior: Clip.none,
-                                                  children: [
-                                                    Positioned.fill(
-                                                      child: Transform.scale(
-                                                        scale: 18,
-                                                        child: Container(
-                                                          color: Colors.black.withOpacity(.5),
-                                                        ),
-                                                      ),
-                                                    ),
-                                                    Acrylic(
-                                                      blurAmount: 5,
-                                                      elevation: 0.5,
-                                                      tintAlpha: 0.5,
-                                                      luminosityAlpha: 0.4,
-                                                      child: ShadowedImage(imageProvider: FileImage(file)),
-                                                    ),
-                                                    Positioned(
-                                                      bottom: 0,
+                                            return SizedBox(
+                                              width: width,
+                                              height: height,
+                                              child: Stack(
+                                                clipBehavior: Clip.none,
+                                                children: [
+                                                  Positioned.fill(
+                                                    child: Transform.scale(
+                                                      scale: 18,
                                                       child: Container(
-                                                        height: 24,
-                                                        width: width,
-                                                        decoration: BoxDecoration(
-                                                          gradient: LinearGradient(
-                                                            colors: [
-                                                              Colors.black.withOpacity(0.5),
-                                                              Colors.transparent,
-                                                            ],
-                                                            begin: Alignment.bottomCenter,
-                                                            end: Alignment.topCenter,
-                                                          ),
+                                                        color: Colors.black.withOpacity(.5),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                  Acrylic(
+                                                    blurAmount: 5,
+                                                    elevation: 0.5,
+                                                    tintAlpha: 0.5,
+                                                    luminosityAlpha: 0.4,
+                                                    child: ShadowedImage(imageProvider: FileImage(file)),
+                                                  ),
+                                                  Positioned(
+                                                    bottom: 0,
+                                                    child: Container(
+                                                      height: 24,
+                                                      width: width,
+                                                      decoration: BoxDecoration(
+                                                        gradient: LinearGradient(
+                                                          colors: [
+                                                            Colors.black.withOpacity(0.5),
+                                                            Colors.transparent,
+                                                          ],
+                                                          begin: Alignment.bottomCenter,
+                                                          end: Alignment.topCenter,
                                                         ),
-                                                        child: Padding(
-                                                          padding: const EdgeInsets.only(left: 6.0),
-                                                          child: Text(
-                                                            fileName,
-                                                            style: Manager.bodyStyle,
-                                                            maxLines: 1,
-                                                            overflow: TextOverflow.ellipsis,
-                                                          ),
+                                                      ),
+                                                      child: Padding(
+                                                        padding: const EdgeInsets.only(left: 6.0),
+                                                        child: Text(
+                                                          fileName,
+                                                          style: Manager.bodyStyle,
+                                                          maxLines: 1,
+                                                          overflow: TextOverflow.ellipsis,
                                                         ),
                                                       ),
                                                     ),
-                                                    Positioned(
-                                                      top: 0,
-                                                      right: 0,
-                                                      child: Container(
-                                                        height: 40,
-                                                        width: width,
-                                                        decoration: BoxDecoration(
-                                                          gradient: LinearGradient(
-                                                            colors: [
-                                                              Colors.transparent,
-                                                              Colors.black.withOpacity(0.5),
-                                                            ],
-                                                            begin: Alignment.bottomCenter,
-                                                            end: Alignment.topCenter,
-                                                          ),
+                                                  ),
+                                                  Positioned(
+                                                    top: 0,
+                                                    right: 0,
+                                                    child: Container(
+                                                      height: 40,
+                                                      width: width,
+                                                      decoration: BoxDecoration(
+                                                        gradient: LinearGradient(
+                                                          colors: [
+                                                            Colors.transparent,
+                                                            Colors.black.withOpacity(0.5),
+                                                          ],
+                                                          begin: Alignment.bottomCenter,
+                                                          end: Alignment.topCenter,
                                                         ),
-                                                        child: Padding(
-                                                          padding: const EdgeInsets.only(right: 6.0),
-                                                          child: Text(
-                                                            dimensions,
-                                                            style: Manager.bodyStyle,
-                                                            maxLines: 1,
-                                                            textAlign: TextAlign.end,
-                                                            overflow: TextOverflow.ellipsis,
-                                                          ),
+                                                      ),
+                                                      child: Padding(
+                                                        padding: const EdgeInsets.only(right: 6.0),
+                                                        child: Text(
+                                                          dimensions,
+                                                          style: Manager.bodyStyle,
+                                                          maxLines: 1,
+                                                          textAlign: TextAlign.end,
+                                                          overflow: TextOverflow.ellipsis,
                                                         ),
                                                       ),
                                                     ),
-                                                  ],
-                                                ),
-                                              );
-                                            });
-                                      }),
+                                                  ),
+                                                ],
+                                              ),
+                                            );
+                                          },
+                                        );
+                                      },
                                     ),
-                                    child: SizedBox(
+                                    child: (_) => SizedBox(
                                       height: 100,
                                       width: 100,
                                       child: MouseRegion(

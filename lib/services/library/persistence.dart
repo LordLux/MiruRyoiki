@@ -85,7 +85,7 @@ extension LibraryPersistence on Library {
         final row = dbSeriesRows.firstWhere((r) => r.path.path == path);
         await seriesDao.deleteSeriesRow(row.id);
       }
-      logTrace('   - Deleted ${pathsToDelete.length} series from DB.');
+      if (pathsToDelete.isNotEmpty) logTrace('   - Deleted ${pathsToDelete.length} series from DB.');
 
       // 2. Insert or Update all series from our current library state
       // The syncSeries function is transactional and handles all nested changes.

@@ -34,7 +34,7 @@ class SnackBarManager {
   Future<void> _closeCurrentSnackBar() async {
     if (_currentOverlay == null || !_currentOverlay!.mounted || _isClosing) return;
 
-    logTrace('Closing current InfoBar');
+    // logTrace('Closing current InfoBar');
     _isClosing = true;
 
     // Trigger fade out animation
@@ -48,7 +48,7 @@ class SnackBarManager {
     // Remove overlay
     if (_currentOverlay != null && _currentOverlay!.mounted) {
       _currentOverlay!.remove();
-      logTrace('Removed InfoBar overlay');
+      // logTrace('Removed InfoBar overlay');
     }
 
     // Reset state

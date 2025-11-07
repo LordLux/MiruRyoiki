@@ -1,5 +1,6 @@
 import 'package:flutter/widgets.dart';
 import '../../models/players/mediastatus.dart';
+import '../../models/players/player_configuration.dart';
 import 'players/mpc_hc_player.dart';
 import 'players/vlc_player.dart';
 
@@ -26,10 +27,13 @@ abstract class MediaPlayer {
   void dispose();
 
   // Force immediate status update
-  Future<void> pollStatus();
+  Future<bool> pollStatus();
 
   /// Widget for displaying the player's icon
   Widget get iconWidget;
+
+  /// Player configuration
+  PlayerConfiguration? get configuration => null;
 }
 
 MediaPlayer? getPlayerFromId(String id) {

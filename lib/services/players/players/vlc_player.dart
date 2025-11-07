@@ -4,6 +4,7 @@ import 'package:flutter/widgets.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/http.dart';
 import '../../../models/players/mediastatus.dart';
+import '../../../models/players/player_configuration.dart';
 import '../../../utils/logging.dart';
 import '../../../widgets/svg.dart' as icon show vlc;
 import '../player.dart';
@@ -11,9 +12,14 @@ import '../player.dart';
 class VLCPlayer extends MediaPlayer {
   @override
   Widget get iconWidget => icon.vlc;
+  
+  @override
+  PlayerConfiguration? get configuration => _configuration;
+  
   final String host;
   final int port;
   final String password;
+  final PlayerConfiguration? _configuration;
 
   Timer? _statusTimer;
   final StreamController<MediaStatus> _statusController = StreamController<MediaStatus>.broadcast();
@@ -24,7 +30,8 @@ class VLCPlayer extends MediaPlayer {
     this.host = 'localhost',
     this.port = 8080,
     this.password = '',
-  });
+    PlayerConfiguration? configuration,
+  }) : _configuration = configuration;
 
   @override
   Stream<MediaStatus> get statusStream => _statusController.stream;
@@ -40,7 +47,7 @@ class VLCPlayer extends MediaPlayer {
   Future<bool> connect() async {
     // If already connected (polling timer is active), return true
     if (_statusTimer?.isActive == true) return true;
-    
+
     try {
       final response = await http
           .get(
@@ -72,7 +79,7 @@ class VLCPlayer extends MediaPlayer {
     _statusTimer = Timer.periodic(const Duration(seconds: 1), (_) => _fetchStatus());
   }
 
-  Future<void> _fetchStatus() async {
+  Future<bool> _fetchStatus() async {
     try {
       final response = await http.get(
         Uri.parse('$_baseUrl/requests/status.json'),
@@ -92,10 +99,13 @@ class VLCPlayer extends MediaPlayer {
         );
 
         _statusController.add(status);
+        return true;
       }
+      return false;
     } catch (e) {
-      if (e is ClientException || e is TimeoutException) return;
+      if (e is ClientException || e is TimeoutException) return false;
       logErr('VLCPlayer fetchStatus error', e);
+      return false;
     }
   }
 
@@ -136,9 +146,7 @@ class VLCPlayer extends MediaPlayer {
   }
 
   @override
-  Future<void> pollStatus() async {
-    await _fetchStatus();
-  }
+  Future<bool> pollStatus() async => await _fetchStatus();
 
   Future<void> _sendCommand(String command, [Map<String, String>? params]) async {
     try {

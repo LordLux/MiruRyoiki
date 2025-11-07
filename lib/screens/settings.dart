@@ -406,11 +406,9 @@ class SettingsScreenState extends State<SettingsScreen> with AutomaticKeepAliveC
                         WidgetSpan(
                           child: TooltipTheme(
                             data: TooltipThemeData(waitDuration: const Duration(milliseconds: 100), preferBelow: true),
-                            child: Tooltip(
-                              richMessage: WidgetSpan(
-                                child: standard(context),
-                              ),
-                              child: Transform.translate(
+                            child: TooltipWrapper(
+                              tooltip: standard(context),
+                              child: (_) => Transform.translate(
                                 offset: Offset(0, -2),
                                 child: Icon(FluentIcons.info, size: 13, color: FluentTheme.of(context).resources.textFillColorPrimary.withOpacity(.5)),
                               ),
@@ -919,30 +917,31 @@ class SettingsScreenState extends State<SettingsScreen> with AutomaticKeepAliveC
                       },
               ),
               if (library.libraryPath != null) const SizedBox(width: 6),
-              if (library.libraryPath != null) ValueListenableBuilder(
-                  valueListenable: KeyboardState.shiftPressedNotifier,
-                  builder: (context, isShiftPressed, _) {
-                    return LoadingButton(
-                      tooltip: isShiftPressed //
-                              ? 'Clear Cache and Scan Library'
-                              : 'Scan Library',
-                      isButtonDisabled:  library.isIndexing,
-                      label: isShiftPressed ? 'Clear Cache and Scan Library' : 'Scan Library',
-                      onPressed: () => isShiftPressed
-                          ? library.reloadLibrary(force: true, showSnackBar: false).then((_) {
-                              // Refetch AniList data after reload completes
-                              library.clearAnilistCaches(refetchAfterClear: true).then((_) {
-                                snackBar('Cleared caches, reloaded, and refetched AniList data!', severity: InfoBarSeverity.success);
-                              }).catchError((error, stacktrace) {
-                                snackBar('Error refetching AniList data after reload', severity: InfoBarSeverity.error, exception: error, stackTrace: stacktrace);
-                              });
-                            })
-                          : library.reloadLibrary(force: true),
-                      isLoading: library.isIndexing,
-                      isSmall: true,
-                      isBigEvenWithoutLoading: true,
-                    );
-                  }),
+              if (library.libraryPath != null)
+                ValueListenableBuilder(
+                    valueListenable: KeyboardState.shiftPressedNotifier,
+                    builder: (context, isShiftPressed, _) {
+                      return LoadingButton(
+                        tooltip: isShiftPressed //
+                            ? 'Clear Cache and Scan Library'
+                            : 'Scan Library',
+                        isButtonDisabled: library.isIndexing,
+                        label: isShiftPressed ? 'Clear Cache and Scan Library' : 'Scan Library',
+                        onPressed: () => isShiftPressed
+                            ? library.reloadLibrary(force: true, showSnackBar: false).then((_) {
+                                // Refetch AniList data after reload completes
+                                library.clearAnilistCaches(refetchAfterClear: true).then((_) {
+                                  snackBar('Cleared caches, reloaded, and refetched AniList data!', severity: InfoBarSeverity.success);
+                                }).catchError((error, stacktrace) {
+                                  snackBar('Error refetching AniList data after reload', severity: InfoBarSeverity.error, exception: error, stackTrace: stacktrace);
+                                });
+                              })
+                            : library.reloadLibrary(force: true),
+                        isLoading: library.isIndexing,
+                        isSmall: true,
+                        isBigEvenWithoutLoading: true,
+                      );
+                    }),
               const SizedBox(width: 6),
               NormalButton(
                 label: 'Browse',
@@ -1069,9 +1068,9 @@ class SettingsScreenState extends State<SettingsScreen> with AutomaticKeepAliveC
                 if (!Manager.isWin11)
                   TooltipTheme(
                     data: TooltipThemeData(waitDuration: const Duration(milliseconds: 100)),
-                    child: Tooltip(
-                      message: 'Mica Effect is unfortunately only available on Windows 11',
-                      child: Opacity(opacity: .5, child: Icon(FluentIcons.info)),
+                    child: TooltipWrapper(
+                      tooltip: 'Mica Effect is unfortunately only available on Windows 11',
+                      child: (_) => Opacity(opacity: .5, child: Icon(FluentIcons.info)),
                     ),
                   ),
               ],
@@ -2087,39 +2086,40 @@ class SettingsScreenState extends State<SettingsScreen> with AutomaticKeepAliveC
               readOnly: true,
               enabled: false,
             ),
-            if (!isDisabled) Padding(
-              padding: const EdgeInsets.all(3),
-              child: ValueListenableBuilder(
-                  valueListenable: KeyboardState.shiftPressedNotifier,
-                  builder: (context, isShiftPressed, _) {
-                    return MouseButtonWrapper(
-                      tooltip: isDisabled ? disabledTooltip : (isShiftPressed ? shiftTooltip : unshiftTooltip),
-                      isButtonDisabled: isDisabled,
-                      child: (_) => SizedBox(
-                        height: 28,
-                        child: MouseRegion(
-                          onEnter: (_) => setState(() => _isOpenFolderHovered = true),
-                          onExit: (_) => setState(() => _isOpenFolderHovered = false),
-                          child: IconButton(
-                            icon: Transform.translate(
-                              offset: isShiftPressed ? Offset(-.5, -.5) : Offset(0, -1),
-                              child: AnimatedRotation(
-                                turns: isShiftPressed ? -0.125 : 0,
-                                duration: getDuration(const Duration(milliseconds: 40)),
-                                child: Icon(
-                                  isShiftPressed ? Symbols.link : (_isOpenFolderHovered ? Symbols.folder_open : Symbols.folder),
-                                  size: 18,
-                                  color: FluentTheme.of(context).resources.textFillColorPrimary,
+            if (!isDisabled)
+              Padding(
+                padding: const EdgeInsets.all(3),
+                child: ValueListenableBuilder(
+                    valueListenable: KeyboardState.shiftPressedNotifier,
+                    builder: (context, isShiftPressed, _) {
+                      return MouseButtonWrapper(
+                        tooltip: isDisabled ? disabledTooltip : (isShiftPressed ? shiftTooltip : unshiftTooltip),
+                        isButtonDisabled: isDisabled,
+                        child: (_) => SizedBox(
+                          height: 28,
+                          child: MouseRegion(
+                            onEnter: (_) => setState(() => _isOpenFolderHovered = true),
+                            onExit: (_) => setState(() => _isOpenFolderHovered = false),
+                            child: IconButton(
+                              icon: Transform.translate(
+                                offset: isShiftPressed ? Offset(-.5, -.5) : Offset(0, -1),
+                                child: AnimatedRotation(
+                                  turns: isShiftPressed ? -0.125 : 0,
+                                  duration: getDuration(const Duration(milliseconds: 40)),
+                                  child: Icon(
+                                    isShiftPressed ? Symbols.link : (_isOpenFolderHovered ? Symbols.folder_open : Symbols.folder),
+                                    size: 18,
+                                    color: FluentTheme.of(context).resources.textFillColorPrimary,
+                                  ),
                                 ),
                               ),
+                              onPressed: () => onPressed?.call(isShiftPressed),
                             ),
-                            onPressed: () => onPressed?.call(isShiftPressed),
                           ),
                         ),
-                      ),
-                    );
-                  }),
-            ),
+                      );
+                    }),
+              ),
           ],
         ),
       ),

@@ -40,6 +40,7 @@ import '../widgets/page/page.dart';
 import '../widgets/shift_clickable_hover.dart';
 import '../widgets/shrinker.dart';
 import '../widgets/simple_html_parser.dart';
+import '../widgets/tooltip_wrapper.dart';
 import '../widgets/transparency_shadow_image.dart';
 import 'anilist_settings.dart';
 import 'series.dart';
@@ -48,7 +49,7 @@ class InnerSeriesScreen extends StatefulWidget {
   final VoidCallback onBack; // Callback to go back to the series screen
   final PathString seriesPath; // Parent Series
   final MappingTarget target; // Target episode or season
-  final AnilistMapping mapping; // The AnilistMapping for this target
+  final AnilistMapping? mapping; // The AnilistMapping for this target
 
   const InnerSeriesScreen({
     super.key,
@@ -477,7 +478,7 @@ class InnerSeriesScreenState extends State<InnerSeriesScreen> {
           ),
           expand: true,
           tooltip: 'Open the series folder in your file explorer',
-          onPressed: () => ShellUtils.openFolder(widget.mapping.localPath.path),
+          onPressed: () => ShellUtils.openFolder(widget.mapping?.localPath.path ?? widget.seriesPath.path),
         ),
       ],
       // footer: [
@@ -711,20 +712,15 @@ class InnerSeriesScreenState extends State<InnerSeriesScreen> {
 
   Widget _buildButton(void Function()? onTap, Widget child, String label) {
     return MouseButtonWrapper(
-      child: (_) => mat.Tooltip(
-        richMessage: WidgetSpan(
+      child: (_) => TooltipWrapper(
+        tooltip: WidgetSpan(
           child: Text(
             label,
             style: TextStyle(color: Colors.white),
           ),
         ),
-        decoration: BoxDecoration(
-          color: Color.lerp(Color.lerp(Colors.black, Colors.white, 0.2)!, dominantColor, 0.4)!.withOpacity(0.8),
-          borderRadius: BorderRadius.circular(5.0),
-        ),
         preferBelow: true,
-        padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 5.0),
-        child: Padding(
+        child: (_) => Padding(
           padding: const EdgeInsets.all(2.0),
           child: IconButton(
             style: ButtonStyle(
@@ -757,6 +753,7 @@ class InnerSeriesScreenState extends State<InnerSeriesScreen> {
       episodes: widget.target.episodes,
       onTap: (episode) => _playEpisode(episode),
       series: _cachedSeries,
+      mapping: widget.mapping,
     );
   }
 

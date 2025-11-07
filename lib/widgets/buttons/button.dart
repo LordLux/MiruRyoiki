@@ -23,6 +23,7 @@ class StandardButton extends StatefulWidget {
   final Color filledColor;
   final Color hoverFillColor;
   final double? forcedHeight;
+  final MouseCursor? cursor;
 
   StandardButton({
     super.key,
@@ -39,6 +40,7 @@ class StandardButton extends StatefulWidget {
     this.tooltipWaitDuration,
     this.padding,
     this.forcedHeight,
+    this.cursor,
     Color? filledColor,
     Color? hoverFillColor,
   })  : filledColor = filledColor ?? Manager.accentColor.lighter,
@@ -61,6 +63,7 @@ class StandardButton extends StatefulWidget {
     TextStyle? textStyle,
     Color? filledColor,
     Color? hoverFillColor,
+    MouseCursor? cursor,
   }) {
     return StandardButton(
       label: Row(
@@ -84,6 +87,7 @@ class StandardButton extends StatefulWidget {
       padding: padding,
       filledColor: filledColor,
       hoverFillColor: hoverFillColor,
+      cursor: cursor,
     );
 }
   
@@ -103,6 +107,7 @@ class StandardButton extends StatefulWidget {
     TextStyle? textStyle,
     Color? filledColor,
     Color? hoverFillColor,
+    MouseCursor? cursor,
   }) {
     return StandardButton(
       label: icon,
@@ -119,6 +124,7 @@ class StandardButton extends StatefulWidget {
       padding: padding ?? (isSmall ? EdgeInsets.symmetric(horizontal: 6, vertical: 4) : null),
       filledColor: filledColor,
       hoverFillColor: hoverFillColor,
+      cursor: cursor,
     );
   }
 
@@ -158,6 +164,7 @@ class _StandardButtonState extends State<StandardButton> {
     Widget buttonWidget = MouseButtonWrapper(
       isButtonDisabled: widget.isButtonDisabled,
       isLoading: widget.isLoading,
+      cursor: widget.cursor,
       tooltip: widget.tooltip,
       tooltipWaitDuration: widget.tooltipWaitDuration,
       tooltipWidget: widget.tooltipWidget,

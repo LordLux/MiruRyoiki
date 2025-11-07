@@ -7,6 +7,7 @@ import 'package:miruryoiki/services/navigation/statusbar.dart';
 import 'package:shimmer/shimmer.dart';
 
 import '../manager.dart';
+import '../models/anilist/mapping.dart';
 import '../models/episode.dart';
 import '../models/series.dart';
 import '../services/library/library_provider.dart';
@@ -23,12 +24,14 @@ class HoverableEpisodeTile extends StatefulWidget {
   final VoidCallback onTap;
   final Series series;
   final bool isReloadingSeries;
+  final AnilistMapping? mapping;
 
   const HoverableEpisodeTile({
     super.key,
     required this.episode,
     required this.onTap,
     required this.series,
+    required this.mapping,
     this.isReloadingSeries = false,
   });
 
@@ -293,18 +296,21 @@ class _HoverableEpisodeTileState extends State<HoverableEpisodeTile> {
           switchInCurve: Curves.easeIn,
           switchOutCurve: Curves.easeOut,
           child: Builder(
-            key: ValueKey(isLoading
-                ? 'loading'
-                : hasThumbnail
-                    ? 'thumbnail'
-                    : 'fallback'),
+            key: ValueKey(
+              (isLoading
+                      ? 'loading'
+                      : hasThumbnail
+                          ? 'thumbnail'
+                          : 'fallback') +
+                  episode.path.path,
+            ),
             builder: (context) {
               if (isLoading) {
                 // Loading: show spinner, no blur
                 return Center(
                   child: ProgressRing(
                     strokeWidth: 2,
-                    activeColor: Manager.accentColor,
+                    activeColor: widget.mapping?.effectivePrimaryColorSync() ?? Manager.accentColor,
                   ),
                 );
               }
