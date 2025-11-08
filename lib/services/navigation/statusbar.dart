@@ -242,7 +242,7 @@ class StatusBarWidget extends StatelessWidget {
           bottom: LibraryScanProgressManager().isShowing ? 28 : 8,
           child: AnimatedOpacity(
             opacity: isShowing ? 1.0 : 0.0,
-            duration: getDuration(const Duration(milliseconds: 200)),
+            duration: dimDuration,
             child: ValueListenableBuilder<StatusBarStyle>(
               valueListenable: statusBarManager.styleNotifier,
               builder: (context, style, _) {

@@ -2151,7 +2151,7 @@ class SettingsScreenState extends State<SettingsScreen> with AutomaticKeepAliveC
                                 offset: isShiftPressed ? Offset(-.5, -.5) : Offset(0, -1),
                                 child: AnimatedRotation(
                                   turns: isShiftPressed ? -0.125 : 0,
-                                  duration: getDuration(const Duration(milliseconds: 40)),
+                                  duration: getAnimationDuration(const Duration(milliseconds: 40)),
                                   child: Icon(
                                     isShiftPressed ? Symbols.link : (_isOpenFolderHovered ? Symbols.folder_open : Symbols.folder),
                                     size: 18,

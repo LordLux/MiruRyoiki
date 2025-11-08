@@ -521,8 +521,8 @@ class AccountsScreenState extends State<AccountsScreen> with AutomaticKeepAliveC
                   if (userData.about != null && userData.about!.isNotEmpty)
                     AnimatedCrossFade(
                       crossFadeState: _aboutExpanded ? CrossFadeState.showFirst : CrossFadeState.showSecond,
-                      duration: const Duration(milliseconds: 250),
-                      reverseDuration: const Duration(milliseconds: 150),
+                      duration: getAnimationDuration(const Duration(milliseconds: 250)),
+                      reverseDuration: getAnimationDuration(const Duration(milliseconds: 150)),
                       firstCurve: Curves.easeOut,
                       secondCurve: Curves.easeIn,
                       sizeCurve: Curves.easeInOut,
@@ -530,7 +530,7 @@ class AccountsScreenState extends State<AccountsScreen> with AutomaticKeepAliveC
                       firstChild: AnimatedOpacity(
                         opacity: _aboutExpanded ? 1.0 : 0.0,
                         curve: Curves.easeInQuint,
-                        duration: const Duration(milliseconds: 500),
+                        duration: getAnimationDuration(const Duration(milliseconds: 500)),
                         child: Card(
                           child: LayoutBuilder(builder: (context, constraints) {
                             return mat.Theme(

@@ -106,7 +106,7 @@ class _NotificationItemState2 extends State<ScheduledEpisodeCalendarEntryWidget>
           icon: (isHovered) => Icon(Symbols.notification_add, color: isHovered ? Colors.white : Manager.accentColor.light, weight: 400, grade: 0, opticalSize: 24, size: 18),
           label: 'Notify me',
           onPressed: () => widget.onNotificationButtonToggled.call(widget.episodeEntry.episodeInfo.series),
-          tooltipWaitDuration: const Duration(milliseconds: 700),
+          tooltipWaitDuration: longDuration,
           tooltip: 'Get notified when this episode airs',
         ),
       ),

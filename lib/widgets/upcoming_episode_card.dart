@@ -122,7 +122,7 @@ class _UpcomingEpisodeCardState extends State<UpcomingEpisodeCard> {
         image: _posterImageProvider!,
         fit: BoxFit.fitWidth,
         alignment: widget.posterAlignment,
-        fadeInDuration: getDuration(const Duration(milliseconds: 250)),
+        fadeInDuration: getAnimationDuration(const Duration(milliseconds: 250)),
         fadeInCurve: Curves.easeIn,
         imageErrorBuilder: (context, error, stackTrace) => noImageWidget,
       );
@@ -137,7 +137,7 @@ class _UpcomingEpisodeCardState extends State<UpcomingEpisodeCard> {
       image: _posterImageProvider!,
       fit: BoxFit.fitWidth,
       alignment: widget.posterAlignment,
-      fadeInDuration: getDuration(const Duration(milliseconds: 250)),
+      fadeInDuration: getAnimationDuration(const Duration(milliseconds: 250)),
       fadeInCurve: Curves.easeIn,
       imageErrorBuilder: (context, error, stackTrace) => noImageWidget,
     );

@@ -6,7 +6,7 @@ DateTime get now => DateTime.now();
 
 String get nowFormatted => '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}:${now.second.toString().padLeft(2, '0')}.${now.millisecond.toString().padLeft(3, '0')}';
 
-Duration getDuration(Duration duration) {
+Duration getAnimationDuration(Duration duration) {
   if (Manager.animationsEnabled) {
     // logTrace('Animation duration: ${duration.inMilliseconds} ms');
     return duration;
@@ -15,19 +15,19 @@ Duration getDuration(Duration duration) {
   return Duration(milliseconds: 1);
 }
 
-Duration get gradientChangeDuration => getDuration(const Duration(milliseconds: 1300));
+Duration get gradientChangeDuration => getAnimationDuration(const Duration(milliseconds: 1300));
 
-Duration get stickyHeaderDuration => getDuration(const Duration(milliseconds: 430));
+Duration get stickyHeaderDuration => getAnimationDuration(const Duration(milliseconds: 430));
 
 Duration get shortStickyHeaderDuration => Duration(milliseconds: stickyHeaderDuration.inMilliseconds ~/ 3);
 
-Duration get mediumDuration => getDuration(const Duration(milliseconds: 300));
+Duration get mediumDuration => getAnimationDuration(const Duration(milliseconds: 300));
 
-Duration get longDuration => getDuration(const Duration(milliseconds: 700));
+Duration get longDuration => getAnimationDuration(const Duration(milliseconds: 700));
 
-Duration get dimDuration => getDuration(const Duration(milliseconds: 200));
+Duration get dimDuration => getAnimationDuration(const Duration(milliseconds: 200));
 
-Duration get shortDuration => getDuration(const Duration(milliseconds: 150));
+Duration get shortDuration => getAnimationDuration(const Duration(milliseconds: 150));
 
 final Duration splashScreenFadeAnimationIn = const Duration(milliseconds: 400); // hardcoded
 final Duration splashScreenFadeAnimationOut = const Duration(milliseconds: 400); // hardcoded

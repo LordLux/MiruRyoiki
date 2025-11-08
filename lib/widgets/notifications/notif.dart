@@ -182,7 +182,7 @@ class _NotificationCalendarEntryWidgetState extends State<NotificationCalendarEn
                     label: 'Add to lists',
                     icon: (isHovered) => anim.AnimatedIcon(Icon(Symbols.add, color: isHovered ? Colors.white : Manager.accentColor.light, weight: 400, grade: 0, opticalSize: 24, size: 18)),
                     onPressed: () => widget.onAddedToList!((widget.notification as RelatedMediaAdditionNotification).mediaId),
-                    tooltipWaitDuration: const Duration(milliseconds: 700),
+                    tooltipWaitDuration: longDuration,
                     tooltip: 'Add this entry to Plan to Watch in your Library',
                   );
                 },
@@ -197,7 +197,7 @@ class _NotificationCalendarEntryWidgetState extends State<NotificationCalendarEn
                     label: 'Download',
                     icon: (isHovered) => anim.AnimatedIcon(Icon(Symbols.download, color: isHovered ? Colors.white : Manager.accentColor.light, weight: 400, grade: 0, opticalSize: 24, size: 18)),
                     onPressed: () async => widget.onDownloadButton!((widget.notification as AiringNotification).animeId, (widget.notification as AiringNotification).episode),
-                    tooltipWaitDuration: const Duration(milliseconds: 700),
+                    tooltipWaitDuration: longDuration,
                     tooltip: 'Download this episode',
                   );
                 },
@@ -205,14 +205,14 @@ class _NotificationCalendarEntryWidgetState extends State<NotificationCalendarEn
             ),
           if (widget.series != null)
             TooltipWrapper(
-              waitDuration: const Duration(milliseconds: 400),
+              waitDuration: splashScreenFadeAnimationIn,
               tooltip: 'View Series details',
               child: (_) => const Icon(FluentIcons.chevron_right),
             ) //
           else if (!widget.isDense) // Show chevron only if not in dense mode to save space
             isRelatedMediaAdditionNotification //
                 ? TooltipWrapper(
-                    waitDuration: const Duration(milliseconds: 400),
+                    waitDuration: splashScreenFadeAnimationIn,
                     tooltip: 'Open in browser',
                     child: (_) => Icon(Symbols.open_in_new, weight: 300, grade: 0, opticalSize: 48, size: 18),
                   )

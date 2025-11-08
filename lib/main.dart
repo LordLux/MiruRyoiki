@@ -138,7 +138,7 @@ void main(List<String> args) async {
   await imageCache.init();
 
   await initializeSVGs();
-  
+
   // Pre-initialize the Thumbnail Manager isolate
   ThumbnailManager();
 
@@ -273,7 +273,7 @@ class _AppContainerState extends State<AppContainer> {
   @override
   Widget build(BuildContext context) {
     return AnimatedSwitcher(
-      duration: const Duration(milliseconds: 500),
+      duration: getAnimationDuration(const Duration(milliseconds: 500)),
       // transitionBuilder: (_, Animation<double> animation) => FadeTransition(opacity: animation, child: _),
       child: _initialized ? _miruRyoikiRoot : _splashScreen,
     );
@@ -791,14 +791,9 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
 
     if (id == accountsIndex && anilistProvider.isOffline) {
       final msg = 'You are Offline';
-      icon = TooltipTheme(
-        data: TooltipThemeData(
-          waitDuration: const Duration(milliseconds: 100),
-        ),
-        child: TooltipWrapper(
-          tooltip: msg,
-          child: (_) => icon,
-        ),
+      icon = TooltipWrapper(
+        tooltip: msg,
+        child: (_) => icon,
       );
     }
 
@@ -1088,7 +1083,7 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
           // Switch to appropriate pane
           final index = _getPaneIndexFromId(currentItem.id);
           if (index != null && index != _selectedIndex) {
-            setState(() =>_selectedIndex = index);
+            setState(() => _selectedIndex = index);
           }
         } else if (currentItem.level == NavigationLevel.page) {
           // Check if it's a series page

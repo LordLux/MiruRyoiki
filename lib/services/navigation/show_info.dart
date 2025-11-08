@@ -4,6 +4,7 @@ import 'package:flutter/material.dart' as mat;
 
 import '../../main.dart';
 import '../../utils/logging.dart';
+import '../../utils/time.dart';
 
 /// Manager class for displaying and controlling InfoBar snackbars
 class SnackBarManager {
@@ -43,7 +44,7 @@ class SnackBarManager {
     }
 
     // Wait for fade animation
-    await Future.delayed(const Duration(milliseconds: 200));
+    await Future.delayed(dimDuration);
 
     // Remove overlay
     if (_currentOverlay != null && _currentOverlay!.mounted) {

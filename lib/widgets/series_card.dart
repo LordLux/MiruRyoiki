@@ -130,7 +130,7 @@ class _SeriesCardState extends State<SeriesCard> {
         image: _posterImageProvider!,
         fit: BoxFit.fitWidth,
         alignment: Alignment.topCenter,
-        fadeInDuration: getDuration(const Duration(milliseconds: 250)),
+        fadeInDuration: getAnimationDuration(const Duration(milliseconds: 250)),
         fadeInCurve: Curves.easeIn,
         imageErrorBuilder: (context, error, stackTrace) => noImageWidget,
       );
@@ -145,7 +145,7 @@ class _SeriesCardState extends State<SeriesCard> {
       image: _posterImageProvider!,
       fit: BoxFit.fitWidth,
       alignment: Alignment.topCenter,
-      fadeInDuration: getDuration(const Duration(milliseconds: 250)),
+      fadeInDuration: getAnimationDuration(const Duration(milliseconds: 250)),
       fadeInCurve: Curves.easeIn,
       imageErrorBuilder: (context, error, stackTrace) => noImageWidget,
     );

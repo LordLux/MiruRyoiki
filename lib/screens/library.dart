@@ -180,7 +180,7 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
         radius: const Radius.circular(4),
         backgroundColor: Colors.transparent,
         scrollbarPressingColor: Manager.accentColor.lightest.withOpacity(.7),
-        contractDelay: const Duration(milliseconds: 200),
+        contractDelay: dimDuration,
         scrollbarColor: Manager.accentColor.lightest.withOpacity(.4),
         trackBorderColor: Colors.transparent,
       ),
@@ -1269,7 +1269,7 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
             child: (_) => GestureDetector(
               onTap: () => _onViewTypeChanged(viewType),
               child: AnimatedContainer(
-                duration: const Duration(milliseconds: 150),
+                duration: shortDuration,
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
                 decoration: BoxDecoration(
                   color: isSelected ? Manager.accentColor.light : Colors.white.withOpacity(0.1),

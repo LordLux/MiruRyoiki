@@ -19,6 +19,7 @@ import '../utils/logging.dart';
 import '../utils/path.dart';
 import '../utils/screen.dart';
 import '../utils/time.dart';
+import '../widgets/buttons/button.dart';
 import '../widgets/notifications/notif.dart';
 import '../widgets/notifications/scheduled.dart';
 import '../widgets/page/header_widget.dart';
@@ -137,7 +138,7 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> with Autom
     }
   }
 
-  /// Mark all notifications as read in the calendar cache
+  /// Mark all notifications as read in the calendar cache (used by notification dialog to update this UI, actual db save is already done by the dialog)
   void markAllNotificationsAsRead() {
     if (mounted && !_isDisposed) {
       Manager.setState(() {
@@ -166,6 +167,35 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> with Autom
         duration: const Duration(milliseconds: 2900),
         curve: Curves.easeOutCubic,
       );
+    }
+  }
+
+  /// Count unread notifications currently present in the calendar cache
+  int _getUnreadCount() {
+    var count = 0;
+    for (final entries in _calendarCache.values) {
+      for (final e in entries) {
+        if (e is NotificationCalendarEntry && !e.notification.isRead) count++;
+      }
+    }
+    return count;
+  }
+
+  /// Mark all unread notifications as read (remote DB + local cache)
+  Future<void> _markAllAsRead() async {
+    final library = Provider.of<Library>(context, listen: false);
+    try {
+      final anilistService = AnilistService();
+      await anilistService.markAllAsRead(library.database);
+
+      // Update local cache/UI
+      markAllNotificationsAsRead();
+
+      // Provide user feedback
+      snackBar('Marked all notifications as read', severity: InfoBarSeverity.success);
+    } catch (e) {
+      logErr('Failed to mark all notifications as read', e);
+      snackBar('Failed to mark all notifications as read', severity: InfoBarSeverity.error);
     }
   }
 
@@ -519,7 +549,7 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> with Autom
   @override
   Widget build(BuildContext context) {
     super.build(context); // for AutomaticKeepAliveClientMixin
-    
+
     return MiruRyoikiTemplatePage(
       headerWidget: HeaderWidget(
         title: (_, __) => const PageHeader(title: Text('Release Calendar')),
@@ -545,9 +575,9 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> with Autom
         children: [
           // Left side - Calendar
           Expanded(
-            flex: 2,
+            flex: 16,
             child: Padding(
-              padding: const EdgeInsets.only(left: 16.0, right: 24.0),
+              padding: const EdgeInsets.only(left: 16.0, right: 22.0),
               child: _buildCalendar(),
             ),
           ),
@@ -560,7 +590,7 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> with Autom
 
           // Right side - Episode list
           Expanded(
-            flex: 3,
+            flex: 30,
             child: Padding(
               padding: const EdgeInsets.only(left: 24.0, right: 0.0),
               child: _buildEpisodeList(),
@@ -589,17 +619,20 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> with Autom
       final double t = (screenH - 620.0) / (720.0 - 600.0); // 0..1
       calendarWidth = minCalendarWidth + t * (maxCalendarHeight - minCalendarWidth);
     }
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        // Calendar header with navigation
-        _buildCalendarHeader(calendarWidth),
-        VDiv(16),
+    return Padding(
+      padding: EdgeInsets.only(top: 12.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          // Calendar header with navigation
+          _buildCalendarHeader(calendarWidth),
+          VDiv(16),
 
-        // Calendar grid
-        _buildCalendarGrid(calendarWidth),
-      ],
+          // Calendar grid
+          _buildCalendarGrid(calendarWidth),
+        ],
+      ),
     );
   }
 
@@ -611,8 +644,7 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> with Autom
         children: [
           Padding(
             padding: const EdgeInsets.only(left: 6.0),
-            child: Button(
-              style: ButtonStyle(padding: ButtonState.all(const EdgeInsets.all(8))),
+            child: StandardButton.icon(
               onPressed: () {
                 if (mounted && !_isDisposed) {
                   setState(() {
@@ -620,10 +652,14 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> with Autom
                   });
                 }
               },
-              child: const Icon(FluentIcons.chevron_left),
+              icon: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                child: const Icon(FluentIcons.chevron_left),
+              ),
             ),
           ),
           MouseButtonWrapper(
+            tooltipWaitDuration: const Duration(milliseconds: 300),
             tooltip: 'Click to go to current date',
             child: (_) => GestureDetector(
               onTap: () => focusToday(),
@@ -635,8 +671,7 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> with Autom
           ),
           Padding(
             padding: const EdgeInsets.only(right: 6.0),
-            child: Button(
-              style: ButtonStyle(padding: ButtonState.all(const EdgeInsets.all(8))),
+            child: StandardButton.icon(
               onPressed: () {
                 if (mounted && !_isDisposed) {
                   setState(() {
@@ -644,7 +679,10 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> with Autom
                   });
                 }
               },
-              child: const Icon(FluentIcons.chevron_right),
+              icon: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                child: const Icon(FluentIcons.chevron_right),
+              ),
             ),
           ),
         ],
@@ -966,20 +1004,13 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> with Autom
             padding: const EdgeInsets.only(left: 4.0, right: 8.0, bottom: 8.0, top: 8.0),
             child: Row(
               children: [
-                Button(
-                  style: ButtonStyle(
-                    padding: ButtonState.all(const EdgeInsets.symmetric(horizontal: 12, vertical: 6)),
-                  ),
+                StandardButton.iconLabel(
                   onPressed: () => toggleOlderNotifications(true),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(FluentIcons.history, size: 14),
-                      const SizedBox(width: 6),
-                      Text(isToday ? 'Show older notifications' : 'Show all notifications'),
-                    ],
-                  ),
+                  icon: const Icon(FluentIcons.history, size: 14),
+                  label: Text(isToday ? 'Show older notifications' : 'Show all notifications'),
                 ),
+                const Spacer(),
+                _buildMarkAllAsReadButton(),
               ],
             ),
           ),
@@ -1009,12 +1040,12 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> with Autom
         child: Column(
           children: [
             // Show older notifications button (when conditions are met)
-            if (shouldShowOlderButton) ...[
-              Padding(
-                padding: const EdgeInsets.only(left: 4.0, right: 8.0, bottom: 8.0, top: 8.0),
-                child: Row(
-                  children: [
-                    Button(
+            Row(
+              children: [
+                if (shouldShowOlderButton) ...[
+                  Padding(
+                    padding: const EdgeInsets.only(left: 4.0, right: 8.0, bottom: 8.0, top: 8.0),
+                    child: Button(
                       style: ButtonStyle(
                         padding: ButtonState.all(const EdgeInsets.symmetric(horizontal: 12, vertical: 6)),
                       ),
@@ -1028,10 +1059,12 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> with Autom
                         ],
                       ),
                     ),
-                  ],
-                ),
-              ),
-            ],
+                  ),
+                ],
+                const Spacer(),
+                Padding(padding: EdgeInsets.only(top: 8.0, right: 8.0), child: _buildMarkAllAsReadButton()),
+              ],
+            ),
             // Episode list
             Expanded(
               child: DynMouseScroll(
@@ -1112,6 +1145,22 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> with Autom
         ),
       );
     });
+  }
+
+  Padding _buildMarkAllAsReadButton() {
+    return Padding(
+      padding: const EdgeInsets.only(top: 8.0),
+      child: Builder(builder: (context) {
+        final unread = _getUnreadCount();
+        return StandardButton.iconLabel(
+          isButtonDisabled: unread == 0,
+          cursor: unread == 0 ? SystemMouseCursors.basic : SystemMouseCursors.click,
+          icon: const Icon(FluentIcons.check_mark, size: 14),
+          label: Text('Mark all as read'),
+          onPressed: _markAllAsRead,
+        );
+      }),
+    );
   }
 
   Widget _buildCalendarEntryItem(CalendarEntry entry) {

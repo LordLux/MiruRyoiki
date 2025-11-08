@@ -47,7 +47,7 @@ import 'anilist_settings.dart';
 import 'inner_series.dart';
 
 /// Duration for which AniList data is considered fresh and doesn't need refetching
-const Duration kAnilistCacheDuration = Duration(minutes: 30);
+const Duration kAnilistCacheDuration = Duration(days: 1);
 
 /// Wrapper that manages navigation between SeriesScreen (grid of mappings) and InnerSeriesScreen (single mapping)
 class SeriesScreenContainer extends StatefulWidget {
@@ -161,7 +161,7 @@ class SeriesScreenContainerState extends State<SeriesScreenContainer> {
         Offstage(
           offstage: showInnerScreen && _navigateToMappingFinish,
           child: AnimatedOpacity(
-            duration: getDuration(const Duration(milliseconds: 300)),
+            duration: mediumDuration,
             opacity: showInnerScreen && _mainSeriesScreenOpacityHideStart ? 0.0 : 1.0,
             child: IgnorePointer(
               ignoring: showInnerScreen,
@@ -184,11 +184,11 @@ class SeriesScreenContainerState extends State<SeriesScreenContainer> {
           child: IgnorePointer(
             ignoring: !showInnerScreen,
             child: AnimatedOpacity(
-              duration: getDuration(const Duration(milliseconds: 300)),
+              duration: mediumDuration,
               opacity: showInnerScreen ? 1.0 : 0.0,
               onEnd: () => onNavigateToMappingFinish(),
               child: AnimatedSwitcher(
-                duration: const Duration(milliseconds: 300),
+                duration: mediumDuration,
                 child: showInnerScreen
                     ? InnerSeriesScreen(
                         key: _innerSeriesScreenKey,

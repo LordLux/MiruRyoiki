@@ -103,7 +103,7 @@ class LibraryScanProgressIndicator extends StatelessWidget {
 
         return AnimatedOpacity(
           opacity: isShowing ? 1.0 : 0.0,
-          duration: getDuration(const Duration(milliseconds: 200)),
+          duration: dimDuration,
           child: SizedBox(
             height: ScreenUtils.kStatusBarHeight,
             child: Row(
