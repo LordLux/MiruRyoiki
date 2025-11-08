@@ -260,7 +260,7 @@ class _AppContainerState extends State<AppContainer> {
     _miruRyoikiRoot = MiruRyoikiRoot();
     _splashScreen = SplashScreen(
       key: ValueKey('splash'),
-      onInitComplete: () => Future.delayed(Duration(milliseconds: 400), () => setState(() => _initialized = true)),
+      onInitComplete: () => Future.delayed(splashScreenFadeAnimationIn, () => setState(() => _initialized = true)),
     );
   }
 
@@ -398,7 +398,7 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
 
   Widget get settingsIcon {
     return AnimatedRotation(
-      duration: getDuration(const Duration(milliseconds: 200)),
+      duration: dimDuration,
       turns: _selectedIndex == settingsIndex ? 0.5 : 0.0,
       child: const Icon(FluentIcons.settings, size: 18),
     );
@@ -433,7 +433,7 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
     final controller = _scrollController(index);
     if (controller.hasClients) {
       if (animate)
-        controller.animateTo(0.0, duration: const Duration(milliseconds: 200), curve: Curves.easeInOut);
+        controller.animateTo(0.0, duration: dimDuration, curve: Curves.easeInOut);
       else
         controller.jumpTo(0.0);
     }
@@ -595,7 +595,7 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
                                   Offstage(
                                     offstage: _isSeriesView && _selectedSeriesPath != null && _isFinishedTransitioningToSeries,
                                     child: AnimatedOpacity(
-                                      duration: getDuration(const Duration(milliseconds: 330)),
+                                      duration: mediumDuration,
                                       opacity: _isSeriesView ? 0.0 : 1.0,
                                       curve: Curves.ease,
                                       child: AbsorbPointer(
@@ -612,7 +612,7 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
                                     child: AbsorbPointer(
                                       absorbing: !_isSeriesView,
                                       child: AnimatedOpacity(
-                                        duration: getDuration(const Duration(milliseconds: 300)),
+                                        duration: mediumDuration,
                                         opacity: _isSeriesView ? 1.0 : 0.0,
                                         curve: Curves.ease,
                                         onEnd: onEndTransitionSeriesScreen,

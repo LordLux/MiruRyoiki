@@ -2,6 +2,7 @@
 
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:miruryoiki/utils/screen.dart';
+import 'package:miruryoiki/utils/time.dart';
 
 class OpenerDetector extends StatelessWidget {
   final VoidCallback onHover;
@@ -22,7 +23,7 @@ class OpenerDetector extends StatelessWidget {
     return Positioned(
       left: 0,
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
+        duration: dimDuration,
         curve: Curves.easeInOut,
         width: shouldExpand ? ScreenUtils.kPaneBarExpandedWidth : ScreenUtils.kPaneBarCollapsedWidth,
         height: ScreenUtils.height,

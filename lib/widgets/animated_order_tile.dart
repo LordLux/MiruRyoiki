@@ -97,7 +97,6 @@ class _AnimatedReorderableTileState extends State<AnimatedReorderableTile> with 
       child: ReorderableDragStartListener(
         index: widget.index,
         child: TooltipWrapper(
-          useMousePosition: true,
           tooltip: Text.rich(TextSpan(children: [
             TextSpan(text: widget.displayName),
             if (widget.isHidden) TextSpan(text: '\nThis item is hidden', style: Manager.miniBodyStyle.copyWith(fontStyle: FontStyle.italic)),

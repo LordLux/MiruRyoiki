@@ -87,7 +87,7 @@ class _HoverableEpisodeTileState extends State<HoverableEpisodeTile> {
         },
         cursor: SystemMouseCursors.click,
         child: AnimatedContainer(
-          duration: getDuration(const Duration(milliseconds: 150)),
+          duration: shortDuration,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(ScreenUtils.kEpisodeCardBorderRadius),
             boxShadow: _isHovering
@@ -236,7 +236,7 @@ class _HoverableEpisodeTileState extends State<HoverableEpisodeTile> {
                         highlightColor: Colors.white.withOpacity(0.05),
                         borderRadius: BorderRadius.circular(ScreenUtils.kEpisodeCardBorderRadius),
                         child: AnimatedContainer(
-                          duration: getDuration(const Duration(milliseconds: 150)),
+                          duration: shortDuration,
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(ScreenUtils.kEpisodeCardBorderRadius),
                             color: _isHovering ? Colors.white.withOpacity(0.03) : Colors.transparent,
@@ -292,7 +292,7 @@ class _HoverableEpisodeTileState extends State<HoverableEpisodeTile> {
         final bool hasThumbnail = thumbnailPath != null && thumbnailPath.pathMaybe != null && File(thumbnailPath.path).existsSync();
 
         return AnimatedSwitcher(
-          duration: getDuration(const Duration(milliseconds: 300)),
+          duration: mediumDuration,
           switchInCurve: Curves.easeIn,
           switchOutCurve: Curves.easeOut,
           child: Builder(

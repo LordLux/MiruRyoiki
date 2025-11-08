@@ -5,6 +5,7 @@ import 'package:flutter/material.dart' as mat;
 
 import '../manager.dart';
 import '../utils/screen.dart';
+import '../utils/time.dart';
 
 class SpoilerBox extends StatefulWidget {
   final Widget child;
@@ -47,7 +48,7 @@ class SpoilerBoxState extends State<SpoilerBox> {
           },
           borderRadius: BorderRadius.circular(ScreenUtils.kEpisodeCardBorderRadius),
           child: AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
+            duration: dimDuration,
             decoration: BoxDecoration(
               color: Manager.accentColor.darkest.withOpacity(_revealed ? 0.15 : 0.5),
               borderRadius: BorderRadius.circular(ScreenUtils.kEpisodeCardBorderRadius),

@@ -1384,6 +1384,52 @@ class SettingsScreenState extends State<SettingsScreen> with AutomaticKeepAliveC
               ],
             ),
           ],
+          VDiv(12),
+          // Squiggly Slider
+          ...[
+            Row(
+              children: [
+                Text(
+                  'Squiggly Video Progress Slider',
+                  style: Manager.bodyStyle,
+                ),
+                const SizedBox(width: 12),
+                NormalSwitch(
+                  ToggleSwitch(
+                    checked: settings.squigglySliderEnabled,
+                    content: Text(settings.squigglySliderEnabled ? 'Enabled' : 'Disabled', style: Manager.bodyStyle),
+                    onChanged: (value) {
+                      setState(() => settings.squigglySliderEnabled = value);
+                    },
+                  ),
+                  tooltip: 'When enabled, the video progress slider will have a squiggly animation effect when the video is playing.\nWhen disabled, the slider will appear like a normal line.',
+                ),
+              ],
+            ),
+          ],
+          VDiv(12),
+          // Acrylic Tooltips
+          ...[
+            Row(
+              children: [
+                Text(
+                  'Acrylic Tooltips',
+                  style: Manager.bodyStyle,
+                ),
+                const SizedBox(width: 12),
+                NormalSwitch(
+                  ToggleSwitch(
+                    checked: settings.useAcrylicTooltips,
+                    content: Text(settings.useAcrylicTooltips ? 'Enabled' : 'Disabled', style: Manager.bodyStyle),
+                    onChanged: (value) {
+                      setState(() => settings.useAcrylicTooltips = value);
+                    },
+                  ),
+                  tooltip: 'When enabled, acrylic tooltips will be used throughout the application.\nWhen disabled, standard tooltips will be used.',
+                ),
+              ],
+            ),
+          ],
           //
         ],
       // Behavior
@@ -1632,7 +1678,7 @@ class SettingsScreenState extends State<SettingsScreen> with AutomaticKeepAliveC
                           hoverFillColor: Manager.accentColor.lighter,
                           filledColor: Manager.accentColor.light,
                           tooltip: 'Refresh Players list and Player configs',
-                          tooltipWaitDuration: const Duration(milliseconds: 200),
+                          tooltipWaitDuration: dimDuration,
                           label: 'Reload Players',
                           isBigEvenWithoutLoading: true,
                         ),

@@ -1,5 +1,6 @@
 import 'package:fluent_ui/fluent_ui.dart';
 
+import '../../utils/time.dart';
 import '../tooltip_wrapper.dart';
 
 class MouseButtonWrapper extends StatefulWidget {
@@ -47,7 +48,7 @@ class _MouseButtonWrapperState extends State<MouseButtonWrapper> {
           absorbing: widget.isButtonDisabled || widget.isLoading,
           child: AnimatedOpacity(
             opacity: widget.isButtonDisabled ? 0.75 : 1.0,
-            duration: const Duration(milliseconds: 200),
+            duration: dimDuration,
             child: widget.child(_isHovering),
           ),
         ),

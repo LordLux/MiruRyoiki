@@ -28,7 +28,7 @@ class _AnimatedNavigationIndicatorState extends State<AnimatedNavigationIndicato
   void initState() {
     super.initState();
     _controller = AnimationController(
-      duration: getDuration(const Duration(milliseconds: 300)),
+      duration: mediumDuration,
       vsync: this,
     );
     

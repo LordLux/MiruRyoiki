@@ -7,6 +7,7 @@ import '../models/series.dart';
 import '../services/navigation/statusbar.dart';
 import '../utils/logging.dart';
 import '../utils/text.dart';
+import '../utils/time.dart';
 import 'context_menu/series.dart';
 import 'context_menu/controller.dart';
 import 'series_card_indicators.dart';
@@ -173,7 +174,7 @@ class _SeriesListTileState extends State<SeriesListTile> {
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 3.0),
               child: AnimatedContainer(
-                duration: const Duration(milliseconds: 150),
+                duration: shortDuration,
                 height: tileHeight,
                 decoration: BoxDecoration(
                   color: _isHovering ? mainColor.withOpacity(0.15) : mainColor.withOpacity(0.05),

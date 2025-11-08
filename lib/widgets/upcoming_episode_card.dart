@@ -180,7 +180,7 @@ class _UpcomingEpisodeCardState extends State<UpcomingEpisodeCard> {
           child: ClipRRect(
             borderRadius: const BorderRadius.all(Radius.circular(8.02)),
             child: AnimatedContainer(
-              duration: getDuration(const Duration(milliseconds: 150)),
+              duration: shortDuration,
               decoration: BoxDecoration(
                 borderRadius: const BorderRadius.all(Radius.circular(8.02)),
                 color: Colors.transparent,
@@ -294,7 +294,7 @@ class _UpcomingEpisodeCardState extends State<UpcomingEpisodeCard> {
                           highlightColor: mainColor.withOpacity(0.05),
                           borderRadius: const BorderRadius.all(Radius.circular(8.0)),
                           child: AnimatedContainer(
-                            duration: getDuration(const Duration(milliseconds: 150)),
+                            duration: shortDuration,
                             decoration: BoxDecoration(
                               borderRadius: const BorderRadius.all(Radius.circular(8.0)),
                               color: _isHovering ? mainColor.withOpacity(0.1) : Colors.transparent,

@@ -177,14 +177,14 @@ class _StandardButtonState extends State<StandardButton> {
             begin: _previousIsFilled != widget.isFilled ? (widget.isFilled ? Colors.transparent : _previousFilledColor) : _previousFilledColor,
             end: widget.filledColor,
           ),
-          duration: const Duration(milliseconds: 200),
+          duration: dimDuration,
           builder: (context, animatedFilledColor, _) {
             return TweenAnimationBuilder<Color?>(
               tween: ColorTween(
                 begin: _previousHoverFillColor,
                 end: widget.hoverFillColor,
               ),
-              duration: const Duration(milliseconds: 200),
+              duration: dimDuration,
               builder: (context, animatedHoverColor, _) {
                 return Button(
                   onPressed: widget.isButtonDisabled ? null : widget.onPressed,
@@ -201,7 +201,7 @@ class _StandardButtonState extends State<StandardButton> {
                       alignment: Alignment.center,
                       children: [
                         AnimatedContainer(
-                          duration: const Duration(milliseconds: 200),
+                          duration: dimDuration,
                           curve: Curves.easeInOut,
                           color: widget.isFilled ? (isHovered ? animatedHoverColor : animatedFilledColor) : Colors.transparent,
                           child: AnimatedSlide(
@@ -211,7 +211,7 @@ class _StandardButtonState extends State<StandardButton> {
                             child: Padding(
                               padding: widget.padding ?? EdgeInsets.symmetric(horizontal: widget.isWide ? 16 : 12),
                               child: AnimatedDefaultTextStyle(
-                                duration: const Duration(milliseconds: 200),
+                                duration: dimDuration,
                                 style: getStyleBasedOnAccent(widget.isFilled),
                                 child: widget.label,
                               ),

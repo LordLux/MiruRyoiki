@@ -44,6 +44,12 @@ class SettingsManager extends ChangeNotifier {
   bool get disableAnimations => _getBool('disableAnimations', defaultValue: false);
   set disableAnimations(bool value) => _setBool('disableAnimations', value);
 
+  bool get squigglySliderEnabled => _getBool('squigglySliderEnabled', defaultValue: true);
+  set squigglySliderEnabled(bool value) => _setBool('squigglySliderEnabled', value);
+
+  bool get useAcrylicTooltips => _getBool('useAcrylicTooltips', defaultValue: false);
+  set useAcrylicTooltips(bool value) => _setBool('useAcrylicTooltips', value);
+
   // Behavior
   bool get autoLoadAnilistPosters => _getBool('autoLoadAnilistPosters', defaultValue: true);
   set autoLoadAnilistPosters(bool value) => _setBool('autoLoadAnilistPosters', value);

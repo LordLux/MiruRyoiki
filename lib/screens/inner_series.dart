@@ -713,11 +713,9 @@ class InnerSeriesScreenState extends State<InnerSeriesScreen> {
   Widget _buildButton(void Function()? onTap, Widget child, String label) {
     return MouseButtonWrapper(
       child: (_) => TooltipWrapper(
-        tooltip: WidgetSpan(
-          child: Text(
-            label,
-            style: TextStyle(color: Colors.white),
-          ),
+        tooltip: Text(
+          label,
+          style: TextStyle(color: Colors.white),
         ),
         preferBelow: true,
         child: (_) => Padding(

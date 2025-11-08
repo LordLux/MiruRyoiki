@@ -16,6 +16,7 @@ import '../services/library/library_provider.dart';
 import '../services/navigation/dialogs.dart';
 import '../services/navigation/navigation.dart';
 import '../utils/screen.dart';
+import '../utils/time.dart';
 import 'animated_icon.dart' as anim_icon;
 import 'dialogs/notifications.dart';
 
@@ -116,7 +117,7 @@ class _ReleaseNotificationWidgetState extends State<ReleaseNotificationWidget> {
         _isDialogToggling = false;
         return;
       }
-      await Future.delayed(const Duration(milliseconds: 200));
+      await Future.delayed(dimDuration);
       _isDialogToggling = false;
     }
     _notificationsOpen = true;
@@ -135,7 +136,7 @@ class _ReleaseNotificationWidgetState extends State<ReleaseNotificationWidget> {
       transparentBarrier: true,
       onDismiss: () async {
         Manager.notificationsPopping = true;
-        await Future.delayed(const Duration(milliseconds: 200));
+        await Future.delayed(dimDuration);
         Manager.notificationsPopping = false;
       },
       builder: (ctx) => NotificationsDialog(
@@ -172,7 +173,7 @@ class _ReleaseNotificationWidgetState extends State<ReleaseNotificationWidget> {
         return TooltipWrapper(
           tooltip: isEnabled ? (hasNotifications ? '$_unreadCount unread notification${_unreadCount > 1 ? 's' : ''}' : 'No unread notifications') : 'Login to Anilist to see notifications',
           preferBelow: true,
-          waitDuration: const Duration(milliseconds: 200),
+          waitDuration: dimDuration,
           child: (_) => IconButton(
             icon: Stack(
               clipBehavior: Clip.none,
@@ -189,7 +190,7 @@ class _ReleaseNotificationWidgetState extends State<ReleaseNotificationWidget> {
                       grade: 0,
                       opticalSize: 40,
                     ),
-                    duration: const Duration(milliseconds: 300),
+                    duration: mediumDuration,
                   ),
                 ),
                 if (hasNotifications && isEnabled)

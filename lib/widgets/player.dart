@@ -325,7 +325,7 @@ class _PlayerState extends State<Player> with TickerProviderStateMixin {
                           bottom: 7,
                           left: 7,
                           child: AnimatedOpacity(
-                            duration: const Duration(milliseconds: 200),
+                            duration: dimDuration,
                             opacity: ((_series == null || _currentEpisode == null) && !_horizontallyExpanded) || _horizontallyExpanded ? 1.0 : 0.0,
                             child: _buildControlButton(_playerManager?.currentPlayer?.iconWidget ?? Icon(Icons.video_library, size: 18, color: _whiteColor), () {})),
                         ),
@@ -343,10 +343,10 @@ class _PlayerState extends State<Player> with TickerProviderStateMixin {
                           child: IgnorePointer(
                             ignoring: !_horizontallyExpanded,
                             child: AnimatedOpacity(
-                              duration: const Duration(milliseconds: 200),
+                              duration: dimDuration,
                               opacity: _horizontallyExpanded ? 1.0 : 0.0,
                               child: AnimatedContainer(
-                                duration: const Duration(milliseconds: 200),
+                                duration: dimDuration,
                                 height: _isHoveringVolume ? 100 : 25,
                                 child: MouseRegion(
                                   onEnter: (_) => !_hasCurrentMedia ? null : setState(() => _isHoveringVolume = true),
@@ -369,14 +369,14 @@ class _PlayerState extends State<Player> with TickerProviderStateMixin {
                                       children: [
                                         // Volume slider
                                         AnimatedPositioned(
-                                          duration: const Duration(milliseconds: 200),
+                                          duration: dimDuration,
                                           curve: Curves.easeOutCubic,
                                           bottom: !_hasCurrentMedia || _isHoveringVolume ? 28 : 15,
                                           right: 0,
                                           child: IgnorePointer(
                                             ignoring: !_hasCurrentMedia || !_isHoveringVolume,
                                             child: AnimatedOpacity(
-                                              duration: const Duration(milliseconds: 200),
+                                              duration: dimDuration,
                                               opacity: !_hasCurrentMedia || !_isHoveringVolume ? 0.0 : 1.0,
                                               child: SizedBox(
                                                 width: 25,
@@ -489,7 +489,7 @@ class _PlayerState extends State<Player> with TickerProviderStateMixin {
         if (snapshot.connectionState == ConnectionState.waiting && posterImage == null) {
           // Show a loading placeholder
           return AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
+            duration: dimDuration,
             width: w,
             height: h,
             decoration: BoxDecoration(
@@ -512,7 +512,7 @@ class _PlayerState extends State<Player> with TickerProviderStateMixin {
           borderRadius: BorderRadius.circular(4),
           child: posterImage != null
               ? AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
+                  duration: dimDuration,
                   width: w,
                   height: h,
                   decoration: BoxDecoration(
@@ -525,7 +525,7 @@ class _PlayerState extends State<Player> with TickerProviderStateMixin {
                 )
               : oldImage != null
                   ? AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
+                      duration: dimDuration,
                       width: w,
                       height: h,
                       decoration: BoxDecoration(
@@ -540,7 +540,7 @@ class _PlayerState extends State<Player> with TickerProviderStateMixin {
                       width: w,
                       height: h,
                       color: Colors.grey,
-                      duration: const Duration(milliseconds: 200),
+                      duration: dimDuration,
                       child: Icon(
                         Icons.image_not_supported,
                         color: Colors.white.withOpacity(0.5),

@@ -53,7 +53,7 @@ class _VideoDurationBarState extends State<VideoDurationBar> with SingleTickerPr
   void initState() {
     super.initState();
     _amplitudeController = AnimationController(
-      duration: const Duration(milliseconds: 300),
+      duration: mediumDuration,
       vsync: this,
     );
     _amplitudeAnimation = Tween<double>(
@@ -129,6 +129,8 @@ class _VideoDurationBarState extends State<VideoDurationBar> with SingleTickerPr
             child: AnimatedBuilder(
               animation: _amplitudeAnimation,
               builder: (context, child) {
+                final squiggly = Manager.settings.squigglySliderEnabled;
+                
                 return SquigglySlider(
                   padding: EdgeInsets.symmetric(horizontal: 14),
                   value: progress,
@@ -152,7 +154,7 @@ class _VideoDurationBarState extends State<VideoDurationBar> with SingleTickerPr
                     widget.onSeekUp?.call();
                     setState(() => _isDragging = false);
                   },
-                  squiggleAmplitude: _amplitudeAnimation.value,
+                  squiggleAmplitude: squiggly ? _baseAmplitude :_amplitudeAnimation.value,
                   squiggleWavelength: 4.0,
                   squiggleSpeed: 0.1,
                   activeColor: _progressColor, // TODO fix color transitions not working at all

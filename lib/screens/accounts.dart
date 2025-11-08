@@ -489,7 +489,7 @@ class AccountsScreenState extends State<AccountsScreen> with AutomaticKeepAliveC
                       focusColor: Manager.accentColor.lightest.withOpacity(0.5),
                       onTap: () => setState(() => _aboutExpanded = !_aboutExpanded),
                       child: AnimatedRotation(
-                        duration: const Duration(milliseconds: 200),
+                        duration: dimDuration,
                         turns: _aboutExpanded ? 0.5 : 0.0,
                         child: SizedBox.square(
                           dimension: 25,

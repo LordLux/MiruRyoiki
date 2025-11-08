@@ -190,7 +190,7 @@ class _SeriesCardState extends State<SeriesCard> {
           child: ClipRRect(
             borderRadius: widget.borderRadius,
             child: AnimatedContainer(
-              duration: getDuration(const Duration(milliseconds: 150)),
+              duration: shortDuration,
               decoration: BoxDecoration(
                 borderRadius: widget.borderRadius,
                 color: Colors.transparent,
@@ -237,14 +237,14 @@ class _SeriesCardState extends State<SeriesCard> {
                             child: Transform.translate(
                               offset: Offset(0, .5),
                               child: AnimatedContainer(
-                                duration: getDuration(const Duration(milliseconds: 400)),
+                                duration: splashScreenFadeAnimationIn,
                                 width: constraints.maxWidth,
                                 height: 4,
                                 color: Color.lerp(Colors.black.withOpacity(0.2), _dominantColor ?? cachedPrimaryColor, .4),
                                 child: Align(
                                   alignment: Alignment.topLeft,
                                   child: AnimatedContainer(
-                                    duration: getDuration(const Duration(milliseconds: 400)),
+                                    duration: splashScreenFadeAnimationIn,
                                     color: widget.series.watchedPercentage == 0 ? Colors.transparent : _dominantColor ?? cachedPrimaryColor,
                                     width: constraints.maxWidth * widget.series.watchedPercentage,
                                   ),
@@ -260,7 +260,7 @@ class _SeriesCardState extends State<SeriesCard> {
                           final Color nicerColor = mainColor.lerpWith(Colors.grey, value);
 
                           Widget child = AnimatedContainer(
-                            duration: getDuration(const Duration(milliseconds: 400)),
+                            duration: splashScreenFadeAnimationIn,
                             decoration: BoxDecoration(
                               gradient: LinearGradient(
                                 colors: [
@@ -276,7 +276,7 @@ class _SeriesCardState extends State<SeriesCard> {
                             child: Padding(
                               padding: EdgeInsets.all(12.0 * Manager.fontSizeMultiplier),
                               child: AnimatedContainer(
-                                duration: getDuration(const Duration(milliseconds: 400)),
+                                duration: splashScreenFadeAnimationIn,
                                 constraints: BoxConstraints(minHeight: 42 * min(Manager.fontSizeMultiplier, 1)),
                                 child: Column(
                                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -326,7 +326,7 @@ class _SeriesCardState extends State<SeriesCard> {
                             );
                           }
                           return AnimatedContainer(
-                            duration: getDuration(const Duration(milliseconds: 400)),
+                            duration: splashScreenFadeAnimationIn,
                             color: nicerColor,
                             child: child,
                           );
@@ -347,7 +347,7 @@ class _SeriesCardState extends State<SeriesCard> {
                           highlightColor: mainColor.withOpacity(0.05),
                           borderRadius: widget.borderRadius,
                           child: AnimatedContainer(
-                            duration: getDuration(const Duration(milliseconds: 150)),
+                            duration: shortDuration,
                             decoration: BoxDecoration(
                               borderRadius: widget.borderRadius,
                               color: _isHovering ? mainColor.withOpacity(0.1) : Colors.transparent,
