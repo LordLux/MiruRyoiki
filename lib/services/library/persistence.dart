@@ -57,11 +57,11 @@ extension LibraryPersistence on Library {
 
       // Initialize hidden series cache after loading
       _hiddenSeriesService.rebuildCache(_series);
-      
+
       // Increment data version since series data was loaded
       _dataVersion++;
     } catch (e, st) {
-      logErr('Error loading library from DB', e, st);
+      handleDatabaseError(e, st, 'loading library from DB');
       _series = [];
     }
     notifyListeners();
@@ -96,7 +96,7 @@ extension LibraryPersistence on Library {
 
       logDebug('>> Library sync with DB complete.');
     } catch (e, st) {
-      logErr('Error syncing library to DB', e, st);
+      handleDatabaseError(e, st, 'syncing library to DB');
     } finally {
       LibraryScanProgressManager().hide();
     }
@@ -135,7 +135,7 @@ extension LibraryPersistence on Library {
       final migratedFile = File('${dir.path}/${Library.miruryoikiLibrary}.migrated.json');
       await jsonFile.rename(migratedFile.path);
     } catch (e, st) {
-      logErr('❌ Error during migration from JSON to DB', e, st);
+      handleDatabaseError(e, st, 'migration from JSON to DB', customMessage: '❌ Error during migration from JSON to DB');
     }
   }
 }

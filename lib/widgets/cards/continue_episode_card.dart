@@ -1,41 +1,47 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/material.dart' show InkWell, Material;
-import 'package:miruryoiki/models/anilist/anime.dart';
+import 'package:miruryoiki/widgets/frosted_noise.dart';
 import 'package:transparent_image/transparent_image.dart';
-import '../enums.dart';
-import '../manager.dart';
+import '../../enums.dart';
+import '../../manager.dart';
 
-import '../models/series.dart';
-import '../services/navigation/statusbar.dart';
-import '../utils/color.dart';
-import '../utils/logging.dart';
-import '../utils/time.dart';
-import 'context_menu/series.dart';
-import 'context_menu/controller.dart';
-import 'frosted_noise.dart';
-import 'series_card_indicators.dart';
+import '../../models/episode.dart';
+import '../../models/series.dart';
+import '../../services/navigation/statusbar.dart';
+import '../../utils/color.dart';
+import '../../utils/logging.dart';
+import '../../utils/screen.dart';
+import '../../utils/time.dart';
+import '../context_menu/series.dart';
+import '../context_menu/controller.dart';
+import '../series_card_indicators.dart';
 
-class UpcomingEpisodeCard extends StatefulWidget {
+class ContinueEpisodeCard extends StatefulWidget {
   final Series series;
-  final AiringEpisode airingEpisode;
+  final Episode episode;
   final Alignment posterAlignment;
+  final VoidCallback? onTap;
+  final double? progress;
 
-  const UpcomingEpisodeCard({
+  const ContinueEpisodeCard({
     super.key,
     required this.series,
-    required this.airingEpisode,
+    required this.episode,
+    this.onTap,
+    this.progress,
     this.posterAlignment = Alignment.center,
   });
 
   @override
-  State<UpcomingEpisodeCard> createState() => _UpcomingEpisodeCardState();
+  State<ContinueEpisodeCard> createState() => _ContinueEpisodeCardState();
 }
 
-class _UpcomingEpisodeCardState extends State<UpcomingEpisodeCard> {
+class _ContinueEpisodeCardState extends State<ContinueEpisodeCard> {
   bool _isHovering = false;
   bool _loading = true;
   bool _hasError = false;
   ImageProvider? _posterImageProvider;
+  Color? _episodePosterColor;
   ImageSource? _lastKnownDefaultSource;
   late final DesktopContextMenuController _menuController;
 
@@ -43,13 +49,13 @@ class _UpcomingEpisodeCardState extends State<UpcomingEpisodeCard> {
   void initState() {
     super.initState();
     _menuController = DesktopContextMenuController();
-    _loadImage();
+    _loadImageAndColor();
 
     nextFrame(() {
       if (widget.series.effectivePosterPath != null && //
           widget.series.preferredPosterSource == ImageSource.autoAnilist &&
           widget.series.anilistPosterUrl != null) {
-        _loadImage(); // Re-evaluate after initial build
+        _loadImageAndColor(); // Re-evaluate after initial build
       }
     });
   }
@@ -61,9 +67,11 @@ class _UpcomingEpisodeCardState extends State<UpcomingEpisodeCard> {
   }
 
   @override
-  void didUpdateWidget(UpcomingEpisodeCard oldWidget) {
+  void didUpdateWidget(ContinueEpisodeCard oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.series != widget.series) _loadImage();
+    if (oldWidget.series != widget.series || oldWidget.episode != widget.episode) {
+      _loadImageAndColor();
+    }
   }
 
   @override
@@ -76,12 +84,12 @@ class _UpcomingEpisodeCardState extends State<UpcomingEpisodeCard> {
       _lastKnownDefaultSource = currentDefaultSource;
       if (widget.series.preferredPosterSource == null) {
         // If using default source and it changed, reload the image
-        _loadImage();
+        _loadImageAndColor();
       }
     }
   }
 
-  Future<void> _loadImage() async {
+  Future<void> _loadImageAndColor() async {
     if (!mounted) return;
 
     setState(() {
@@ -90,9 +98,10 @@ class _UpcomingEpisodeCardState extends State<UpcomingEpisodeCard> {
     });
 
     try {
-      _posterImageProvider = await widget.series.getPosterImage();
+      _posterImageProvider = await widget.series.getPosterImageForEpisode(widget.episode);
+      _episodePosterColor = widget.series.getEffectivePosterColorForEpisode(widget.episode);
     } catch (e, stackTrace) {
-      logErr('Failed to load series poster image', e, stackTrace);
+      logErr('Failed to load series poster image for episode', e, stackTrace);
       _posterImageProvider = null;
       _hasError = true;
     }
@@ -148,10 +157,10 @@ class _UpcomingEpisodeCardState extends State<UpcomingEpisodeCard> {
     final Color mainColor;
     switch (Manager.settings.libColView) {
       case LibraryColorView.alwaysDominant:
-        mainColor = widget.series.localPosterColor ?? Manager.genericGray;
+        mainColor = _episodePosterColor ?? Manager.genericGray;
         break;
       case LibraryColorView.hoverDominant:
-        mainColor = _isHovering ? (widget.series.localPosterColor ?? Manager.genericGray) : Manager.genericGray;
+        mainColor = _isHovering ? (_episodePosterColor ?? Manager.genericGray) : Manager.genericGray;
         break;
       case LibraryColorView.alwaysAccent:
         mainColor = Manager.accentColor;
@@ -164,7 +173,7 @@ class _UpcomingEpisodeCardState extends State<UpcomingEpisodeCard> {
         break;
     }
     return KeyedSubtree(
-      key: ValueKey('${widget.series.path}-${widget.series.localPosterColor?.value ?? 0}'),
+      key: ValueKey('${widget.series.path}-${_episodePosterColor?.value ?? 0}-${widget.episode.path}'),
       child: SeriesContextMenu(
         controller: _menuController,
         series: widget.series,
@@ -175,7 +184,10 @@ class _UpcomingEpisodeCardState extends State<UpcomingEpisodeCard> {
             StatusBarManager().hide();
             setState(() => _isHovering = false);
           },
-          onHover: (_) => StatusBarManager().showDelayed("Episode ${widget.airingEpisode.episode ?? '?'} - ${widget.series.name}"),
+          onHover: (_) {
+            // print('isDisplayTitleSimple: ${widget.episode.isDisplayTitleSimple}, isTitleParsable: ${widget.episode.isTitleParsable}, displayTitle: "${widget.episode.displayTitle}"');
+            StatusBarManager().showDelayed("Episode ${widget.episode.episodeNumber ?? '?'}${!widget.episode.isDisplayTitleSimple && widget.episode.isTitleParsable && widget.episode.displayTitle != null ? ' - ${widget.episode.displayTitle}' : ''}");
+          },
           cursor: SystemMouseCursors.click,
           child: ClipRRect(
             borderRadius: const BorderRadius.all(Radius.circular(8.02)),
@@ -232,31 +244,54 @@ class _UpcomingEpisodeCardState extends State<UpcomingEpisodeCard> {
                               children: [
                                 Text(
                                   widget.series.name,
-                                  maxLines: 3,
+                                  maxLines: 2,
                                   style: Manager.bodyStrongStyle.copyWith(fontWeight: FontWeight.w600),
                                   overflow: TextOverflow.ellipsis,
                                 ),
-                                Row(
-                                  // mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Text(
-                                      _formatAiringTime(widget.airingEpisode.airingAt!),
-                                      style: FluentTheme.of(context).typography.caption?.copyWith(
-                                            color: widget.series.localPosterColor ?? FluentTheme.of(context).resources.textFillColorSecondary,
-                                          ),
+                                // Show episode title only if it's not a generic "Episode X" title
+                                if (!widget.episode.isDisplayTitleSimple && widget.episode.isTitleParsable && widget.episode.displayTitle != null) ...[
+                                  SizedBox(height: 4),
+                                  Opacity(
+                                    opacity: 0.8,
+                                    child: Text(
+                                      widget.episode.displayTitle!,
+                                      maxLines: 3,
+                                      style: Manager.miniBodyStyle.copyWith(
+                                        fontWeight: FontWeight.w400,
+                                        fontStyle: FontStyle.italic,
+                                        fontSize: Manager.miniBodyStyle.fontSize! * 1.15,
+                                      ),
                                       overflow: TextOverflow.ellipsis,
                                     ),
+                                  ),
+                                ],
+                                SizedBox(height: 4),
+                                Row(
+                                  children: [
+                                    const SizedBox.shrink(),
                                     const Spacer(),
                                     Text(
-                                      'Episode ${widget.airingEpisode.episode ?? '?'}',
-                                      style: FluentTheme.of(context).typography.caption?.copyWith(
-                                            fontWeight: FontWeight.w600,
-                                            color: lighten(widget.series.localPosterColor ?? FluentTheme.of(context).resources.textFillColorSecondary, .4),
-                                          ),
+                                      'Episode ${widget.episode.episodeNumber ?? '?'}',
+                                      style: Manager.captionStyle.copyWith(
+                                        fontWeight: FontWeight.w600,
+                                        color: lighten(_episodePosterColor ?? FluentTheme.of(context).resources.textFillColorSecondary, .4),
+                                      ),
                                       overflow: TextOverflow.ellipsis,
                                     ),
                                   ],
                                 ),
+                                if (widget.progress != null && widget.progress != 0.0) ...[
+                                  VDiv(8),
+                                  SizedBox(
+                                    width: 200,
+                                    child: ProgressBar(
+                                      strokeWidth: 3.5,
+                                      value: widget.series.watchedPercentage * 100,
+                                      activeColor: widget.series.watchedPercentage == 0 ? Colors.transparent : _episodePosterColor,
+                                      backgroundColor: Color.lerp(Colors.black.withOpacity(0.2), _episodePosterColor, 0),
+                                    ),
+                                  ),
+                                ]
                               ],
                             ),
                           );
@@ -287,9 +322,9 @@ class _UpcomingEpisodeCardState extends State<UpcomingEpisodeCard> {
                     child: Material(
                       color: Colors.transparent,
                       child: GestureDetector(
-                        onSecondaryTapDown: (_) =>_menuController.open(),
+                        onSecondaryTapDown: (_) => _menuController.open(),
                         child: InkWell(
-                          onTap: null,
+                          onTap: () => widget.onTap?.call(),
                           splashColor: mainColor.withOpacity(0.1),
                           highlightColor: mainColor.withOpacity(0.05),
                           borderRadius: const BorderRadius.all(Radius.circular(8.0)),
@@ -314,22 +349,5 @@ class _UpcomingEpisodeCardState extends State<UpcomingEpisodeCard> {
         ),
       ),
     );
-  }
-
-  String _formatAiringTime(int airingAt) {
-    final airingDate = DateTime.fromMillisecondsSinceEpoch(airingAt * 1000);
-    final difference = airingDate.difference(now);
-
-    if (difference.isNegative) {
-      return 'Aired';
-    } else if (difference.inDays > 0) {
-      return 'Airs in ${difference.inDays}d${difference.inHours % 24 > 0 ? ' ${difference.inHours % 24}h' : ''}'.replaceAll(" 0d", "").replaceAll(" 0h", "");
-    } else if (difference.inHours > 0) {
-      return 'Airs in ${difference.inHours}h${difference.inMinutes % 60 > 0 ? ' ${difference.inMinutes % 60}m' : ''}'.replaceAll(" 0h", "");
-    } else if (difference.inMinutes > 0) {
-      return 'Airs in ${difference.inMinutes}m';
-    } else {
-      return 'Soon';
-    }
   }
 }

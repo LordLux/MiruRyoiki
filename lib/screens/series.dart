@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/material.dart' as mat;
-import 'package:miruryoiki/widgets/frosted_noise.dart';
 import 'package:provider/provider.dart';
 import 'package:defer_pointer/defer_pointer.dart';
 
@@ -35,7 +34,7 @@ import '../utils/time.dart';
 import '../widgets/page/header_widget.dart';
 import '../widgets/page/infobar.dart';
 import '../widgets/page/page.dart';
-import '../widgets/mapping_card.dart';
+import '../widgets/cards/mapping_card.dart';
 import '../widgets/shift_clickable_hover.dart';
 import '../widgets/shrinker.dart';
 import '../widgets/simple_html_parser.dart';

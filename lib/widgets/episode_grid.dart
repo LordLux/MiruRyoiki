@@ -7,7 +7,7 @@ import '../models/episode.dart';
 import '../models/series.dart';
 import '../utils/time.dart';
 import 'acrylic_header.dart';
-import 'episode_card.dart';
+import 'cards/episode_card.dart';
 
 class EpisodeGrid extends StatelessWidget {
   final List<Episode> episodes;

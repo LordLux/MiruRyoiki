@@ -1031,6 +1031,111 @@ class Series {
     return null;
   }
 
+  /// Get the effective poster path for a specific episode
+  String? getEffectivePosterPathForEpisode(Episode episode) {
+    final mapping = getMappingForEpisode(episode);
+    if (mapping == null) {
+      logWarn('No mapping found for episode ${episode.episodeNumber} in series $name');
+      return effectivePosterPath;
+    } // Fallback to primary mapping
+
+    final ImageSource effectiveSource = preferredPosterSource ?? Manager.defaultPosterSource;
+    final bool hasLocalPoster = localPosterPath != null;
+    final bool hasAnilistPoster = mapping.anilistData?.posterImage != null;
+
+    switch (effectiveSource) {
+      case ImageSource.autoLocal:
+      case ImageSource.local:
+        return hasLocalPoster ? localPosterPath?.pathMaybe : (hasAnilistPoster ? mapping.anilistData!.posterImage : null);
+
+      case ImageSource.autoAnilist:
+      case ImageSource.anilist:
+        return hasAnilistPoster ? mapping.anilistData!.posterImage : (hasLocalPoster ? localPosterPath?.pathMaybe : null);
+    }
+  }
+
+  /// Get the effective poster image for a specific episode
+  Future<ImageProvider?> getPosterImageForEpisode(Episode episode) async {
+    final path = getEffectivePosterPathForEpisode(episode);
+    if (path == null) return null;
+
+    // Check if it's a local path or URL
+    if (path.startsWith('http://') || path.startsWith('https://')) //
+      return await ImageCacheService().getImageProvider(path);
+    // Local file
+    return FileImage(File(path));
+  }
+
+  /// Get the effective poster color for a specific episode
+  /// Uses the episode's corresponding AniList mapping if available
+  Color? getEffectivePosterColorForEpisode(Episode episode) {
+    final mapping = getMappingForEpisode(episode);
+    if (mapping == null) return localPosterColor; // Fallback to primary mapping
+
+    final ImageSource effectiveSource = preferredPosterSource ?? Manager.defaultPosterSource;
+
+    switch (effectiveSource) {
+      case ImageSource.autoLocal:
+      case ImageSource.local:
+        return _localPosterDominantColor ?? mapping.posterColor ?? mapping.anilistData?.dominantColor?.fromHex();
+
+      case ImageSource.autoAnilist:
+      case ImageSource.anilist:
+        return mapping.posterColor ?? mapping.anilistData?.dominantColor?.fromHex() ?? _localPosterDominantColor;
+    }
+  }
+
+  /// Get the effective poster path for a specific AniList ID
+  String? getEffectivePosterPathForAnilistId(int anilistId) {
+    final mapping = anilistMappings.firstWhereOrNull((m) => m.anilistId == anilistId);
+    if (mapping == null) return effectivePosterPath; // Fallback to primary mapping
+
+    final ImageSource effectiveSource = preferredPosterSource ?? Manager.defaultPosterSource;
+    final bool hasLocalPoster = localPosterPath != null;
+    final bool hasAnilistPoster = mapping.anilistData?.posterImage != null;
+
+    switch (effectiveSource) {
+      case ImageSource.autoLocal:
+      case ImageSource.local:
+        return hasLocalPoster ? localPosterPath?.pathMaybe : (hasAnilistPoster ? mapping.anilistData!.posterImage : null);
+
+      case ImageSource.autoAnilist:
+      case ImageSource.anilist:
+        return hasAnilistPoster ? mapping.anilistData!.posterImage : (hasLocalPoster ? localPosterPath?.pathMaybe : null);
+    }
+  }
+
+  /// Get the effective poster image for a specific AniList ID
+  Future<ImageProvider?> getPosterImageForAnilistId(int anilistId) async {
+    final path = getEffectivePosterPathForAnilistId(anilistId);
+    if (path == null) return null;
+
+    // Check if it's a local path or URL
+    if (path.startsWith('http://') || path.startsWith('https://')) {
+      return await ImageCacheService().getImageProvider(path);
+    } else {
+      return FileImage(File(path));
+    }
+  }
+
+  /// Get the effective poster color for a specific AniList ID
+  Color? getEffectivePosterColorForAnilistId(int anilistId) {
+    final mapping = anilistMappings.firstWhereOrNull((m) => m.anilistId == anilistId);
+    if (mapping == null) return localPosterColor; // Fallback to primary mapping
+
+    final ImageSource effectiveSource = preferredPosterSource ?? Manager.defaultPosterSource;
+
+    switch (effectiveSource) {
+      case ImageSource.autoLocal:
+      case ImageSource.local:
+        return _localPosterDominantColor ?? mapping.posterColor ?? mapping.anilistData?.dominantColor?.fromHex();
+
+      case ImageSource.autoAnilist:
+      case ImageSource.anilist:
+        return mapping.posterColor ?? mapping.anilistData?.dominantColor?.fromHex() ?? _localPosterDominantColor;
+    }
+  }
+
   //
   //
   /// Getter to check if the banner is from Anilist or local file
@@ -1374,6 +1479,28 @@ class Series {
       }
     }
     logTrace('No target found for mapping with Anilist ID ${mapping.anilistId} and path ${mapping.localPath}');
+    return null;
+  }
+
+  /// Get the AnilistMapping for a given Episode
+  /// Returns null if no mapping is found for the episode
+  AnilistMapping? getMappingForEpisode(Episode episode) {
+    // First, check if the episode path directly matches a mapping
+    for (final mapping in anilistMappings) {
+      if (mapping.localPath == episode.path) return mapping;
+    }
+
+    // If not, check if the episode is within a season that has a mapping
+    for (final season in seasons) {
+      if (season.episodes.contains(episode)) {
+        // Found the season containing this episode, check if season path matches a mapping
+        for (final mapping in anilistMappings) {
+          if (mapping.localPath == season.path) return mapping;
+        }
+      }
+    }
+
+    // If still not found, return null (fallback to primary mapping)
     return null;
   }
 

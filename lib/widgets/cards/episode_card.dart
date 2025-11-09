@@ -6,18 +6,18 @@ import 'package:flutter/material.dart' show InkWell, Material;
 import 'package:miruryoiki/services/navigation/statusbar.dart';
 import 'package:shimmer/shimmer.dart';
 
-import '../manager.dart';
-import '../models/anilist/mapping.dart';
-import '../models/episode.dart';
-import '../models/series.dart';
-import '../services/library/library_provider.dart';
-import '../utils/logging.dart';
-import '../utils/path.dart';
-import '../utils/screen.dart';
-import '../utils/time.dart';
-import 'context_menu/episode.dart';
-import 'context_menu/controller.dart';
-import 'watched_badge.dart';
+import '../../manager.dart';
+import '../../models/anilist/mapping.dart';
+import '../../models/episode.dart';
+import '../../models/series.dart';
+import '../../services/library/library_provider.dart';
+import '../../utils/logging.dart';
+import '../../utils/path.dart';
+import '../../utils/screen.dart';
+import '../../utils/time.dart';
+import '../context_menu/episode.dart';
+import '../context_menu/controller.dart';
+import '../watched_badge.dart';
 
 class HoverableEpisodeTile extends StatefulWidget {
   final Episode episode;

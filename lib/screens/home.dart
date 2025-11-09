@@ -17,11 +17,11 @@ import '../utils/logging.dart';
 import '../utils/path.dart';
 import '../utils/screen.dart';
 import '../utils/time.dart';
-import '../widgets/continue_episode_card.dart';
+import '../widgets/cards/continue_episode_card.dart';
 import '../widgets/page/header_widget.dart';
 import '../widgets/page/page.dart';
 import '../manager.dart';
-import '../widgets/upcoming_episode_card.dart';
+import '../widgets/cards/upcoming_episode_card.dart';
 
 class HomeScreen extends StatefulWidget {
   final Function(PathString) onSeriesSelected;
@@ -526,12 +526,18 @@ class _HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMi
                 itemBuilder: (context, index) {
                   final currentSeries = onlyUpcomingEpisodes[index];
 
-                  // Get the upcoming episode info for this series
+                  // Get the upcoming episode info for this series and track which mapping it belongs to
                   AiringEpisode? nextEpisode;
+                  int? correspondingAnilistId;
+                  
                   for (final mapping in currentSeries.anilistMappings) {
                     final episode = upcomingEpisodesMap[mapping.anilistId];
                     if (episode?.airingAt != null) {
-                      nextEpisode = nextEpisode == null ? episode : (episode!.airingAt! < nextEpisode.airingAt! ? episode : nextEpisode);
+                      // Find the earliest airing episode among mappings
+                      if (nextEpisode == null || episode!.airingAt! < nextEpisode.airingAt!) {
+                        nextEpisode = episode;
+                        correspondingAnilistId = mapping.anilistId;
+                      }
                     }
                   }
 
@@ -539,7 +545,11 @@ class _HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMi
                     padding: index != onlyUpcomingEpisodes.length - 1 ? const EdgeInsets.only(right: 12) : EdgeInsets.zero,
                     child: AspectRatio(
                       aspectRatio: 1 / ScreenUtils.kDefaultUpcomingEpisodeCardAspectRatio,
-                      child: UpcomingEpisodeCard(series: currentSeries, airingEpisode: nextEpisode!),
+                      child: UpcomingEpisodeCard(
+                        series: currentSeries, 
+                        airingEpisode: nextEpisode!,
+                        anilistId: correspondingAnilistId,
+                      ),
                     ),
                   );
                 },

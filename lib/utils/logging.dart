@@ -3,8 +3,9 @@
 import 'dart:developer' as developer;
 import 'dart:io';
 
+import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' as mat show Colors;
 import 'package:graphql/client.dart' as graphql;
 import 'package:logger/logger.dart';
 import 'package:synchronized/synchronized.dart';
@@ -13,6 +14,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 
 import '../enums.dart';
 import '../manager.dart';
+import '../services/navigation/show_info.dart';
 import 'time.dart';
 import 'path.dart';
 
@@ -176,7 +178,15 @@ void _log(LogLevel level, String msg, {Object? error, StackTrace? stackTrace, Da
 /// The `msg` parameter is the message to be logged.
 /// The `color` parameter is the text color of the message (default is [Colors.purpleAccent] to make it more noticeable).
 /// The `bgColor` parameter is the background color of the message (default is [Colors.transparent]).
-void log(final dynamic msg, {final Color color = Colors.purpleAccent, final Color bgColor = Colors.transparent, Object? error, StackTrace? stackTrace, bool? splitLines = false, LogLevel level = LogLevel.none}) {
+void log(
+  final dynamic msg, {
+  final Color color = mat.Colors.purpleAccent,
+  final Color bgColor = Colors.transparent,
+  Object? error,
+  StackTrace? stackTrace,
+  bool? splitLines = false,
+  LogLevel level = LogLevel.none,
+}) {
   if (!LoggingConfig.doLogRelease && !kDebugMode) return;
   if (LoggingConfig.usePrintForLogging) {
     // Simple print logging without colors or timestamps
@@ -230,7 +240,7 @@ void log(final dynamic msg, {final Color color = Colors.purpleAccent, final Colo
 void _logWithLevel(
   LogLevel level,
   final dynamic msg, {
-  final Color color = Colors.purpleAccent,
+  final Color color = mat.Colors.purpleAccent,
   final Color bgColor = Colors.transparent,
   Object? error,
   StackTrace? stackTrace,
@@ -301,12 +311,12 @@ void _writeLogToSessionFile(LogLevel level, dynamic msg, Object? error, StackTra
 
 /// Logs a trace message with the specified [msg] and sets the text color to Teal.
 void logTrace(final dynamic msg, {bool? splitLines}) {
-  _logWithLevel(LogLevel.trace, msg, color: Colors.tealAccent, splitLines: splitLines);
+  _logWithLevel(LogLevel.trace, msg, color: mat.Colors.tealAccent, splitLines: splitLines);
 }
 
 /// Logs a debug message with the specified [msg]
 void logDebug(final dynamic msg, {bool? splitLines}) {
-  _logWithLevel(LogLevel.debug, msg, color: Colors.amber, bgColor: Colors.transparent, splitLines: splitLines);
+  _logWithLevel(LogLevel.debug, msg, color: mat.Colors.amber, bgColor: Colors.transparent, splitLines: splitLines);
 }
 
 /// Safely write to the session log file with error handling and synchronization
@@ -436,4 +446,25 @@ bool parseKnownAnilistErrors(Object? error) {
     }
   }
   return false;
+}
+
+const String databaseLockedMessage = 'The Database is currently locked. Please go to Settings > Database & Storage > Database Recovery Tool and follow the instructions to unlock it.';
+
+void handleDatabaseError(
+  Object e,
+  StackTrace st,
+  String action, {
+  String? customMessage,
+}) {
+  if (e.toString().contains('database is locked')) {
+    snackBar(
+      'DatabaseException encountered during $action!',
+      longMessage: databaseLockedMessage,
+      severity: InfoBarSeverity.error,
+      exception: e,
+      stackTrace: st,
+    );
+  } else {
+    logErr(customMessage ?? 'Error $action', e, st);
+  }
 }

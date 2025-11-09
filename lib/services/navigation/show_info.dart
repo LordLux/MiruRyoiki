@@ -41,10 +41,9 @@ class SnackBarManager {
     // Trigger fade out animation
     if (_setState != null) {
       _setState!(() => _isFading = true);
+      // Wait for fade animation before cleanup
+      await Future.delayed(dimDuration);
     }
-
-    // Wait for fade animation
-    await Future.delayed(dimDuration);
 
     // Remove overlay
     if (_currentOverlay != null && _currentOverlay!.mounted) {
@@ -62,6 +61,7 @@ class SnackBarManager {
   /// Shows a new snackbar with the specified parameters
   Future<void> show(
     String message, {
+    String? longMessage,
     fluent.Color color = const mat.Color(0xFF333333),
     fluent.InfoBarSeverity severity = fluent.InfoBarSeverity.info,
     BuildContext? context,
@@ -72,6 +72,7 @@ class SnackBarManager {
     bool autoHide = true,
   }) async {
     if (severity == fluent.InfoBarSeverity.error && exception != null) {
+      longMessage ??= exception.toString();
       logErr("Error: $message", exception, stackTrace);
     }
 
@@ -79,22 +80,20 @@ class SnackBarManager {
     final theme = fluent.FluentTheme.of(targetContext);
 
     // Determine duration based on severity if not explicitly provided
-    final effectiveDuration = duration ??
-        (severity == fluent.InfoBarSeverity.error
-            ? const Duration(seconds: 10)
-            : const Duration(seconds: 3));
+    final effectiveDuration = duration ?? (severity == fluent.InfoBarSeverity.error ? const Duration(seconds: 10) : const Duration(seconds: 3));
 
     // If there's an existing InfoBar, fade it out gracefully before showing the new one
     if (_currentOverlay != null && _currentOverlay!.mounted) {
       logTrace('Closing previous InfoBar before showing new one');
       await _closeCurrentSnackBar();
       // Extra delay to ensure clean transition
-      await Future.delayed(theme.mediumAnimationDuration);
+      // await Future.delayed(theme.mediumAnimationDuration);
     }
 
     // Show the new InfoBar
     _showNewInfoBar(
       message,
+      longMessage: longMessage,
       color: color,
       severity: severity,
       // ignore: use_build_context_synchronously
@@ -109,6 +108,7 @@ class SnackBarManager {
 
   void _showNewInfoBar(
     String message, {
+    String? longMessage,
     required fluent.Color color,
     required fluent.InfoBarSeverity severity,
     required BuildContext targetContext,
@@ -121,9 +121,7 @@ class SnackBarManager {
     _isFading = true;
     _isClosing = false;
     var alreadyInitialized = false;
-    final alignment = severity == fluent.InfoBarSeverity.error
-        ? fluent.Alignment.bottomRight
-        : fluent.Alignment.bottomCenter;
+    final alignment = severity == fluent.InfoBarSeverity.error ? fluent.Alignment.bottomRight : fluent.Alignment.bottomCenter;
 
     logTrace('Creating new InfoBar: "$message"');
 
@@ -148,7 +146,7 @@ class SnackBarManager {
                     alreadyInitialized = true;
                     () async {
                       // Fade in animation
-                      await Future.delayed(theme.mediumAnimationDuration);
+                      await Future.delayed(shortDuration / 20);
                       if (_currentOverlay == null || !_currentOverlay!.mounted || _isClosing) return;
 
                       setState(() => _isFading = false);
@@ -167,13 +165,11 @@ class SnackBarManager {
                     }();
                   }
 
-                  return AnimatedSwitcher(
-                    duration: theme.mediumAnimationDuration,
-                    switchInCurve: theme.animationCurve,
-                    switchOutCurve: theme.animationCurve,
-                    child: _isFading
-                        ? const SizedBox.shrink()
-                        : PhysicalModel(
+                  return AnimatedOpacity(
+                    duration: const Duration(milliseconds: 300),
+                    curve: theme.animationCurve,
+                    opacity: _isFading ? 0.0 : 1.0,
+                    child: PhysicalModel(
                             color: Colors.transparent,
                             elevation: 8.0,
                             child: mat.Container(
@@ -183,6 +179,7 @@ class SnackBarManager {
                               ),
                               child: fluent.InfoBar(
                                 title: fluent.Text(message),
+                                content: longMessage != null ? fluent.Text(longMessage) : null,
                                 severity: severity,
                                 isLong: exception != null,
                                 action: action,
@@ -234,6 +231,7 @@ final _snackBarManager = SnackBarManager();
 /// Global function to show a snackbar
 void snackBar(
   String message, {
+  String? longMessage,
   fluent.Color color = const mat.Color(0xFF333333),
   fluent.InfoBarSeverity severity = fluent.InfoBarSeverity.info,
   BuildContext? context,
@@ -246,6 +244,7 @@ void snackBar(
   _snackBarManager.show(
     message,
     color: color,
+    longMessage: longMessage,
     severity: severity,
     context: context,
     exception: exception,

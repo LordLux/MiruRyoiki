@@ -147,7 +147,7 @@ class Library with ChangeNotifier {
 
   /// Whether this is the first scan after selecting a library path
   bool get isInitialScan => _isInitialScan; // Also whether shimmer should be shown during scan
-  
+
   /// Database instance
   AppDatabase get database => _db;
 

@@ -1,4 +1,6 @@
 import 'dart:io';
+import 'package:fluent_ui/fluent_ui.dart';
+import 'package:miruryoiki/services/navigation/show_info.dart';
 import 'package:path/path.dart' as p;
 import '../database/database.dart';
 import '../utils/logging.dart';
@@ -15,8 +17,8 @@ class DatabaseRecovery {
       final dbDir = miruRyoikiSaveDirectory;
       final journalFile = File(p.join(dbDir.path, _journalFileName));
       return journalFile.existsSync();
-    } catch (e) {
-      logErr('Error checking database lock status', e);
+    } catch (e, st) {
+      handleDatabaseError(e, st, 'checking database lock status');
       return false;
     }
   }
@@ -56,7 +58,7 @@ class DatabaseRecovery {
 
       return DatabaseRecoveryResult.success('Database unlocked successfully. Journal backup created for safety.');
     } catch (e) {
-      logErr('Failed to perform automatic database recovery', e);
+      snackBar('Failed to perform automatic database recovery', exception: e, severity: InfoBarSeverity.error);
       return DatabaseRecoveryResult.failed('Automatic recovery failed: ${e.toString()}');
     }
   }
@@ -85,8 +87,8 @@ class DatabaseRecovery {
           .where((file) => file.path.contains('$dbFileName.bak') || file.path.endsWith('.db.bak'))
           .toList()
         ..sort((a, b) => b.statSync().modified.compareTo(a.statSync().modified));
-    } catch (e) {
-      logErr('Error listing database backups', e);
+    } catch (e, st) {
+      handleDatabaseError(e, st, 'listing database backups');
       return [];
     }
   }
@@ -113,8 +115,8 @@ class DatabaseRecovery {
       logInfo('Database restored from backup: ${backupFile.path}');
 
       return DatabaseRecoveryResult.success('Database restored successfully from backup created on ${backupFile.statSync().modified}');
-    } catch (e) {
-      logErr('Failed to restore database from backup', e);
+    } catch (e, st) {
+      handleDatabaseError(e, st, 'restoring database from backup', customMessage: 'Failed to restore database from backup');
       return DatabaseRecoveryResult.failed('Backup restoration failed: ${e.toString()}');
     }
   }

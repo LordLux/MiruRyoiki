@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:intl/intl.dart';
 import 'package:material_symbols_icons/material_symbols_icons.dart';
@@ -8,6 +9,7 @@ import '../../models/notification.dart';
 import '../../models/series.dart';
 import '../../utils/color.dart';
 import '../../utils/path.dart';
+import '../../utils/screen.dart';
 import '../../utils/time.dart';
 import '../animated_icon.dart' as anim;
 import '../animated_translate.dart';
@@ -268,27 +270,36 @@ Widget buildNotificationImage(String? imageUrl, Series? series) {
           return const NoImageWidget();
         } else {
           // Fallback to Anilist cover image while loading
-          return Image.network(
-            imageUrl,
+          return CachedNetworkImage(
+            imageUrl: imageUrl,
             fit: BoxFit.cover,
-            frameBuilder: (context, child, frame, wasSynchronouslyLoaded) => ClipRRect(
+            maxWidthDiskCache: 200,
+            maxHeightDiskCache: 200 ~/ ScreenUtils.kDefaultAspectRatio,
+            imageBuilder: (context, imageProvider) => ClipRRect(
               borderRadius: BorderRadius.circular(4),
-              child: child,
+              child: Image(
+                image: imageProvider,
+                fit: BoxFit.cover,
+                width: 50,
+                height: 64,
+              ),
             ),
-            errorBuilder: (context, error, stackTrace) => const NoImageWidget(),
+            errorWidget: (context, error, stackTrace) => const NoImageWidget(),
           );
         }
       },
     );
   } else if (imageUrl != null) {
-    return Image.network(
-      imageUrl,
+    return CachedNetworkImage(
+      imageUrl: imageUrl,
       fit: BoxFit.cover,
-      frameBuilder: (context, child, frame, wasSynchronouslyLoaded) => ClipRRect(
+      maxWidthDiskCache: 200,
+      maxHeightDiskCache: 200 ~/ ScreenUtils.kDefaultAspectRatio,
+      imageBuilder: (context, imageProvider) => ClipRRect(
         borderRadius: BorderRadius.circular(4),
-        child: child,
+        child: Image(image: imageProvider, fit: BoxFit.cover),
       ),
-      errorBuilder: (context, error, stackTrace) => const NoImageWidget(),
+      errorWidget: (context, error, stackTrace) => const NoImageWidget(),
     );
   } else {
     return const NoImageWidget();

@@ -1205,8 +1205,6 @@ Future<void> _registerWindowsUrlScheme(String scheme) async {
   }
 }
 
-// TODO add 'read all' button in releases pane
-// TODO fix next up using primary insteaed of actual poster
 // TODO invalidate all screens cache after connection comes back
 // TODO add NonMapping for series that are not to be linked with Anilist
 // TODO change scanning: any folders [names] will remain as is and only loose files will be moved to 'Related Media'

@@ -33,7 +33,7 @@ import '../widgets/dialogs/splash/progress.dart';
 import '../widgets/page/header_widget.dart';
 import '../widgets/page/infobar.dart';
 import '../widgets/page/page.dart';
-import '../widgets/series_card.dart';
+import '../widgets/cards/series_card.dart';
 import '../widgets/series_list_tile.dart';
 import '../widgets/tooltip_wrapper.dart';
 

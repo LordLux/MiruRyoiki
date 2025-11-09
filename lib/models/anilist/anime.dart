@@ -102,8 +102,8 @@ class AnilistAnime {
     return AnilistAnime(
       id: json['id'] as int,
       bannerImage: json['bannerImage'] as String?,
-      posterImage: json['coverImage'] != null ? json['coverImage']['extraLarge'] as String? : null,
-      dominantColor: json['coverImage'] != null ? json['coverImage']['color'] as String? : null, // from doc: coverImage{ extraLarge, color }
+      posterImage: _getPosterImage(json),
+      dominantColor: _getDominantColor(json), // from doc: coverImage{ extraLarge, color }
       title: AnilistTitle.fromJson(json['title']),
       description: json['description'] as String?,
       meanScore: json['meanScore'] as int?,
@@ -235,6 +235,18 @@ class AnilistAnime {
     else if (rawRankings is int) //
       return rawRankings;
 
+    return null;
+  }
+  
+  static String? _getPosterImage(Map<String, dynamic> json) {
+    if (json['posterImage'] != null) return json['posterImage'] as String?;
+    if (json['coverImage'] != null) return json['coverImage']['extraLarge'] as String?;
+    return null;
+  }
+  
+  static String? _getDominantColor(Map<String, dynamic> json) {
+    if (json['dominantColor'] != null) return json['dominantColor'] as String?;
+    if (json['coverImage'] != null) return json['coverImage']['color'] as String?;
     return null;
   }
 
