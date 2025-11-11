@@ -791,9 +791,10 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
 
     if (id == accountsIndex && anilistProvider.isOffline) {
       final msg = 'You are Offline';
-      icon = TooltipWrapper(
-        tooltip: msg,
-        child: (_) => icon,
+      icon = Tooltip(
+        style: TooltipThemeData(waitDuration: Duration(milliseconds: 200)),
+        message: msg,
+        child: icon,
       );
     }
 
@@ -1205,7 +1206,6 @@ Future<void> _registerWindowsUrlScheme(String scheme) async {
   }
 }
 
-// TODO invalidate all screens cache after connection comes back
 // TODO add NonMapping for series that are not to be linked with Anilist
 // TODO change scanning: any folders [names] will remain as is and only loose files will be moved to 'Related Media'
 // TODO create widget for Smooth scrolling scroll controllers

@@ -136,6 +136,12 @@ extension AnilistServiceNotifications on AnilistService {
       return _lastNotificationsCache!;
     }
 
+    // If offline, return empty list as sync will load from database instead
+    if (ConnectivityService().isOffline) {
+      logTrace('Offline: skipping notification fetch (will use database cache)');
+      return [];
+    }
+
     // Access the GraphQL client directly since we're an extension
     final client = _client;
     if (client == null) throw Exception('GraphQL client not initialized');
@@ -397,12 +403,27 @@ extension AnilistServiceNotifications on AnilistService {
     }
 
     // If last completed within 5s, just return cached (if any)
-    if (_lastNotificationsSyncAt != null && now.difference(_lastNotificationsSyncAt!).inSeconds < 5) //
+    if (_lastNotificationsSyncAt != null && now.difference(_lastNotificationsSyncAt!).inSeconds < 5) {
       if (_lastNotificationsCache != null) return _lastNotificationsCache!;
+    }
 
     _notificationsSyncCompleter = Completer<List<AnilistNotification>>();
 
     try {
+      // If offline, load from database immediately
+      if (ConnectivityService().isOffline) {
+        logTrace('Offline: loading notifications from database cache');
+        final cachedNotifications = await getCachedNotifications(
+          database: database,
+          limit: 256,
+        );
+        _lastNotificationsCache = cachedNotifications;
+        _lastNotificationsSyncAt = now;
+        _notificationsSyncCompleter!.complete(cachedNotifications);
+        _notificationsSyncCompleter = null;
+        return cachedNotifications;
+      }
+
       final allNotifications = <AnilistNotification>[];
       final notificationsDao = database.notificationsDao;
 
@@ -424,6 +445,20 @@ extension AnilistServiceNotifications on AnilistService {
       } catch (e) {
         // If we fail on a subsequent page, return what we have so far
         if (page > 1) break;
+        
+        // If we failed on the first page, try to load from database
+        if (page == 1) {
+          logWarn('Failed to fetch notifications from API, loading from database cache');
+          final cachedNotifications = await getCachedNotifications(
+            database: database,
+            limit: 256,
+          );
+          _lastNotificationsCache = cachedNotifications;
+          _lastNotificationsSyncAt = now;
+          _notificationsSyncCompleter!.complete(cachedNotifications);
+          _notificationsSyncCompleter = null;
+          return cachedNotifications;
+        }
         rethrow;
       }
     }

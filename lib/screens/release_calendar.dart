@@ -310,74 +310,81 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> with Autom
       final library = Provider.of<Library>(context, listen: false);
       final anilistProvider = Provider.of<AnilistProvider>(context, listen: false);
 
-      // Check if user is logged in before making requests
-      if (!anilistProvider.isLoggedIn || anilistProvider.isOffline) {
+      // Check if user is logged in
+      if (!anilistProvider.isLoggedIn) {
         if (mounted && !_isDisposed) setState(() => _isLoading = false);
         return;
       }
 
-      // Check cancellation before proceeding
       if (_isDisposed) return;
-
-      // Sync notifications to get the latest data before loading
-      try {
-        final anilistService = AnilistService();
-        await anilistService.syncNotifications(
-          database: library.database,
-          types: [NotificationType.AIRING, NotificationType.RELATED_MEDIA_ADDITION, NotificationType.MEDIA_DATA_CHANGE],
-          maxPages: 2,
-        );
-
-        // Check cancellation after async operation
-        if (_isDisposed) return;
-      } catch (e) {
-        // Log but don't fail - we can still show cached notifications
-        logErr('Failed to sync notifications for release calendar', e);
-        if (_isDisposed) return;
-      }
-
-      // Get date range (±2 weeks from today for wider view)
-      // final startDate = now.subtract(const Duration(days: 14));
-      // final endDate = now.add(const Duration(days: 14));
 
       final Map<DateTime, List<CalendarEntry>> calendarMap = {};
 
-      // Load episodes (future releases)
-      await _loadEpisodeData(library, anilistProvider, calendarMap, now, null); // we want all schedules
-
-      if (_isDisposed) return;
-
-      // Load notifications (past events)
+      // Load cached data
       await _loadNotificationData(library, calendarMap, null, now);
+      await _loadEpisodeData(library, anilistProvider, calendarMap, now, null);
 
-      if (_isDisposed) return;
-
-      // temporarily multiplicate all scheduled episodes items (only dates after today) for testing by random number
-      // calendarMap.forEach((date, entries) {
-      //   if (date.isAfter(DateTime(now.year, now.month, now.day))) {
-      //     final episodesToDuplicate = entries.whereType<EpisodeCalendarEntry>().toList();
-      //     final randomCount = 1 + (DateTime.now().millisecondsSinceEpoch % 12); // Random number between 7-12
-      //     final duplicatedEpisodes = <EpisodeCalendarEntry>[];
-      //     for (int i = 0; i < randomCount; i++) {
-      //       duplicatedEpisodes.addAll(episodesToDuplicate);
-      //     }
-      //     calendarMap[date] = [...entries, ...duplicatedEpisodes];
-      //   }
-      // });
-
-      // Sort entries by date within each day
-      for (final dayEntries in calendarMap.values) {
-        dayEntries.sort((a, b) => a.date.compareTo(b.date));
-      }
-
-      logTrace('  Found ${calendarMap.length} days with entries, total entries: ${calendarMap.values.expand((x) => x).length}');
-
-      if (mounted && !_isDisposed) {
+      // Display cached data immediately
+      if (mounted && !_isDisposed && calendarMap.isNotEmpty) {
         setState(() {
           _calendarCache = calendarMap;
-          _errorMessage = calendarMap.isEmpty ? 'No episodes or notifications found within the selected date range.' : null;
-          _isLoading = false;
+          _errorMessage = null;
         });
+      }
+
+      if (_isDisposed) return;
+
+      // If Online, sync notifications in background
+      if (!anilistProvider.isOffline) {
+        try {
+          final anilistService = AnilistService();
+          await anilistService.syncNotifications(
+            database: library.database,
+            types: [NotificationType.AIRING, NotificationType.RELATED_MEDIA_ADDITION, NotificationType.MEDIA_DATA_CHANGE],
+            maxPages: 2,
+          );
+
+          if (_isDisposed) return;
+
+          // Reload data after sync to get fresh notifications
+          final freshCalendarMap = <DateTime, List<CalendarEntry>>{};
+          await _loadNotificationData(library, freshCalendarMap, null, now);
+          await _loadEpisodeData(library, anilistProvider, freshCalendarMap, now, null);
+
+          if (_isDisposed) return;
+
+          // Sort entries by date within each day
+          for (final dayEntries in freshCalendarMap.values) {
+            dayEntries.sort((a, b) => a.date.compareTo(b.date));
+          }
+
+          logTrace('  Found ${freshCalendarMap.length} days with entries after sync, total entries: ${freshCalendarMap.values.expand((x) => x).length}');
+
+          if (mounted && !_isDisposed) {
+            setState(() {
+              _calendarCache = freshCalendarMap;
+              _errorMessage = freshCalendarMap.isEmpty ? 'No episodes or notifications found within the selected date range.' : null;
+              _isLoading = false;
+            });
+          }
+        } catch (e) {
+          logErr('Failed to sync notifications for release calendar', e);
+          if (mounted && !_isDisposed) 
+            setState(() => _isLoading = false);
+          
+        }
+      } else {
+        // If Offline, display cached data
+        for (final dayEntries in calendarMap.values) {
+          dayEntries.sort((a, b) => a.date.compareTo(b.date));
+        }
+
+        if (mounted && !_isDisposed) {
+          setState(() {
+            _errorMessage = calendarMap.isEmpty ? 'No episodes or notifications found within the selected date range.' : null;
+            _isLoading = false;
+          });
+        }
       }
     } catch (e) {
       if (mounted && !_isDisposed) {
@@ -492,12 +499,12 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> with Autom
       // Get notifications from the database
       final notifications = await anilistService.getCachedNotifications(
         database: library.database,
-        limit: 100, // Get more notifications for broader date range
+        limit: 256,
       );
 
       if (_isDisposed) return;
 
-      logTrace('  Loaded ${notifications.length} cached notifications');
+      logTrace('  Loaded ${notifications.length} cached notifications for calendar');
 
       // Filter notifications for our date range and add them to calendar
       for (final notification in notifications) {
@@ -552,7 +559,31 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> with Autom
 
     return MiruRyoikiTemplatePage(
       headerWidget: HeaderWidget(
-        title: (_, __) => const PageHeader(title: Text('Release Calendar')),
+        title: (_, __) => PageHeader(
+          title: Row(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              const Text('Release Calendar'),
+              const SizedBox(width: 12),
+              AnimatedOpacity(
+                opacity: _isLoading ? 1.0 : 0.0,
+                duration: const Duration(milliseconds: 200),
+                child: Padding(
+                  padding: const EdgeInsets.only(bottom: 6.0),
+                  child: const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: ProgressRing(
+                      backgroundColor: Colors.transparent,
+                      strokeWidth: 2.5,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
         titleLeftAligned: true,
         fixed: 100,
         children: [
@@ -882,8 +913,6 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> with Autom
   }
 
   Widget _buildEpisodeList() {
-    if (_isLoading) return Center(child: ProgressRing());
-
     if (_errorMessage != null) {
       return Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -1045,19 +1074,10 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> with Autom
                 if (shouldShowOlderButton) ...[
                   Padding(
                     padding: const EdgeInsets.only(left: 4.0, right: 8.0, bottom: 8.0, top: 8.0),
-                    child: Button(
-                      style: ButtonStyle(
-                        padding: ButtonState.all(const EdgeInsets.symmetric(horizontal: 12, vertical: 6)),
-                      ),
+                    child: StandardButton.iconLabel(
                       onPressed: () => toggleOlderNotifications(true),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(FluentIcons.history, size: 14),
-                          const SizedBox(width: 6),
-                          Text(isToday ? 'Show older notifications' : 'Show all notifications'),
-                        ],
-                      ),
+                      icon: const Icon(FluentIcons.history, size: 14),
+                      label: Text(isToday ? 'Show older notifications' : 'Show all notifications'),
                     ),
                   ),
                 ],

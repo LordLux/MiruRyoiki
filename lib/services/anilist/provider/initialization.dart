@@ -23,11 +23,26 @@ extension AnilistProviderInitialization on AnilistProvider {
     // Only notify if status changed
     if (wasOffline != _isOffline) {
       if (!_isOffline) {
-        logInfo('Connectivity restored - triggering data refresh');
-        // Connection restored - refresh data if logged in
+        logInfo('Connectivity restored - triggering data refresh in background');
+        // Connection restored
+        // Refresh data in background without clearing current cache
         if (isLoggedIn && isInitialized) {
-          refreshUserData();
-          _loadUserLists();
+          // Refresh user data in background
+          refreshUserData().then((_) {
+            logTrace('User data refreshed after connectivity restored');
+          }).catchError((e) {
+            logErr('Error refreshing user data after connectivity restored', e);
+          });
+          
+          // Refresh user lists in background
+          _loadUserLists().then((success) {
+            if (success) {
+              logTrace('User lists refreshed after connectivity restored');
+              _saveListsToCache();
+            }
+          }).catchError((e) {
+            logErr('Error refreshing user lists after connectivity restored', e);
+          });
         }
       } else {
         logInfo('Connectivity lost');

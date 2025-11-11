@@ -110,7 +110,6 @@ class _NotificationListTileState extends State<NotificationListTile> {
                                       TooltipWrapper(
                                         tooltip: widget.timestamp,
                                         preferBelow: true,
-                                        style: tp.TooltipThemeData(preferBelow: true),
                                         child: (message) => Text(
                                           message,
                                           style: Manager.miniBodyStyle.copyWith(color: Colors.white.withOpacity(.5)),

@@ -129,13 +129,13 @@ extension LibraryPersistence on Library {
       // Save all migrated series to the DB
       await Future.wait(legacySeries.map((s) => seriesDao.syncSeries(s)));
 
-      logDebug('👍 Migration complete: ${legacySeries.length} series imported into DB.');
+      logDebug('Migration complete: ${legacySeries.length} series imported into DB.');
 
       // Rename the file to prevent re-migration
       final migratedFile = File('${dir.path}/${Library.miruryoikiLibrary}.migrated.json');
       await jsonFile.rename(migratedFile.path);
     } catch (e, st) {
-      handleDatabaseError(e, st, 'migration from JSON to DB', customMessage: '❌ Error during migration from JSON to DB');
+      handleDatabaseError(e, st, 'migration from JSON to DB', customMessage: 'Error during migration from JSON to DB');
     }
   }
 }

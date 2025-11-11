@@ -44,14 +44,27 @@ extension AnilistProviderAnimeCache on AnilistProvider {
       final dir = miruRyoikiSaveDirectory;
       final file = File('${dir.path}/$anime_cache');
 
+      // Save upcoming episodes cache
+      final upcomingEpisodesData = _upcomingEpisodesCache.map((key, value) => MapEntry(
+        key.toString(),
+        value?.toJson(),
+      ));
+
       // Sort by MRU and limit to maxCachedAnimeCount
       final sortedCache = Map.fromEntries(_animeCache.entries.take(maxCachedAnimeCount).map((e) => MapEntry(e.key.toString(), {
             'data': e.value.toJson(),
             'timestamp': now.toIso8601String(),
           })));
 
-      await file.writeAsString(jsonEncode(sortedCache));
-      logDebug('Cached ${sortedCache.length} anime details to disk');
+      // Save both anime details and upcoming episodes in the same file
+      final cacheData = {
+        'anime': sortedCache,
+        'upcomingEpisodes': upcomingEpisodesData,
+        'upcomingEpisodesFetchTime': _lastUpcomingEpisodesFetch?.toIso8601String(),
+      };
+
+      await file.writeAsString(jsonEncode(cacheData));
+      logDebug('Cached ${sortedCache.length} anime details and ${upcomingEpisodesData.length} upcoming episodes to disk');
     } catch (e) {
       logErr('Error caching anime details', e);
     }
@@ -71,23 +84,55 @@ extension AnilistProviderAnimeCache on AnilistProvider {
       final cacheJson = await file.readAsString();
       final cache = jsonDecode(cacheJson) as Map<String, dynamic>;
 
-      for (final entry in cache.entries) {
-        try {
-          final animeId = int.parse(entry.key);
-          final data = entry.value as Map<String, dynamic>;
-          final animeData = data['data'] as Map<String, dynamic>;
-          final timestamp = DateTime.parse(data['timestamp'] as String);
+      // Load anime details
+      final animeCache = cache['anime'] as Map<String, dynamic>?;
+      if (animeCache != null) {
+        for (final entry in animeCache.entries) {
+          try {
+            final animeId = int.parse(entry.key);
+            final data = entry.value as Map<String, dynamic>;
+            final animeData = data['data'] as Map<String, dynamic>;
+            final timestamp = DateTime.parse(data['timestamp'] as String);
 
-          // Check if cache is still valid
-          if (now.difference(timestamp) <= animeCacheValidityPeriod) {
-            _animeCache[animeId] = AnilistAnime.fromJson(animeData);
+            // Check if cache is still valid
+            if (now.difference(timestamp) <= animeCacheValidityPeriod) {
+              _animeCache[animeId] = AnilistAnime.fromJson(animeData);
+            }
+          } catch (e) {
+            logErr('Error parsing cached anime: ${entry.key}', e);
           }
-        } catch (e) {
-          logErr('Error parsing cached anime: ${entry.key}', e);
         }
+        logDebug('Loaded ${_animeCache.length} anime from cache');
       }
 
-      logDebug('Loaded ${_animeCache.length} anime from cache');
+      // Load upcoming episodes cache
+      final upcomingEpisodesCache = cache['upcomingEpisodes'] as Map<String, dynamic>?;
+      if (upcomingEpisodesCache != null) {
+        for (final entry in upcomingEpisodesCache.entries) {
+          try {
+            final animeId = int.parse(entry.key);
+            final episodeData = entry.value;
+            if (episodeData != null) {
+              _upcomingEpisodesCache[animeId] = AiringEpisode.fromJson(episodeData as Map<String, dynamic>);
+            } else {
+              _upcomingEpisodesCache[animeId] = null;
+            }
+          } catch (e) {
+            logErr('Error parsing cached upcoming episode: ${entry.key}', e);
+          }
+        }
+        logDebug('Loaded ${_upcomingEpisodesCache.length} upcoming episodes from cache');
+      }
+
+      // Load last fetch time
+      final fetchTimeStr = cache['upcomingEpisodesFetchTime'] as String?;
+      if (fetchTimeStr != null) {
+        try {
+          _lastUpcomingEpisodesFetch = DateTime.parse(fetchTimeStr);
+        } catch (e) {
+          logErr('Error parsing upcoming episodes fetch time', e);
+        }
+      }
     } catch (e, st) {
       logErr('Error loading anime cache', e, st);
     }
@@ -141,6 +186,9 @@ extension AnilistProviderAnimeCache on AnilistProvider {
       // Clean old entries that weren't requested (keep cache size manageable)
       final requestedIds = animeIds.toSet();
       _upcomingEpisodesCache.removeWhere((id, _) => !requestedIds.contains(id));
+      
+      // Save cache to disk
+      saveAnimeCacheToStorage();
       
       return freshData;
     } catch (e) {
