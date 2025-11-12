@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:ui';
 import 'package:drift/drift.dart';
 import '../../models/season.dart';
+import '../../utils/time.dart';
 import '../database.dart';
 import '../tables.dart';
 import '../../models/series.dart';
@@ -273,7 +274,7 @@ class SeriesDao extends DatabaseAccessor<AppDatabase> with _$SeriesDaoMixin {
       isHidden: isHidden == null //
           ? const Value.absent()
           : Value(isHidden),
-      updatedAt: Value(DateTime.now()),
+      updatedAt: Value(now),
     );
     return (await (update(seriesTable)..where((t) => t.id.equals(seriesId))).write(comp)) > 0;
   }
@@ -295,7 +296,7 @@ class SeriesDao extends DatabaseAccessor<AppDatabase> with _$SeriesDaoMixin {
       anilistPosterUrl: Value(s.anilistPosterUrl),
       anilistBannerUrl: Value(s.anilistBannerUrl),
       watchedPercentage: Value(s.watchedPercentage),
-      updatedAt: Value(DateTime.now()),
+      updatedAt: Value(now),
     );
   }
 

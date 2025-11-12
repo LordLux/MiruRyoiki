@@ -285,7 +285,7 @@ class EpisodeTitleService {
     }
 
     final cacheTime = _cacheTimestamps[anilistId]!;
-    return DateTime.now().difference(cacheTime) < _cacheValidityPeriod;
+    return now.difference(cacheTime) < _cacheValidityPeriod;
   }
 
   /// Clear cache for a specific anime or all cache

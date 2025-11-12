@@ -1,6 +1,7 @@
 // notifications_dao.dart
 import 'dart:convert';
 import 'package:drift/drift.dart';
+import '../../utils/time.dart';
 import '../database.dart';
 import '../tables.dart';
 import '../../models/notification.dart';
@@ -126,7 +127,7 @@ class NotificationsDao extends DatabaseAccessor<AppDatabase> with _$Notification
           ..where((t) => t.id.equals(notificationId)))
         .write(NotificationsTableCompanion(
       isRead: const Value(true),
-      localUpdatedAt: Value(DateTime.now()),
+      localUpdatedAt: Value(now),
     ));
   }
 
@@ -135,7 +136,7 @@ class NotificationsDao extends DatabaseAccessor<AppDatabase> with _$Notification
     return (update(notificationsTable)..where((t) => t.isRead.equals(false)))
         .write(NotificationsTableCompanion(
       isRead: const Value(true),
-      localUpdatedAt: Value(DateTime.now()),
+      localUpdatedAt: Value(now),
     ));
   }
 

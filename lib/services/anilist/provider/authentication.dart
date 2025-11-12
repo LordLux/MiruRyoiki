@@ -149,41 +149,40 @@ extension AnilistProviderAuthentication on AnilistProvider {
     notifyListeners();
   }
 
-  /// Load current user from cache
+  /// Load current user from database
   Future<bool> _loadCurrentUserFromCache() async {
     try {
-      final dir = miruRyoikiSaveDirectory;
-      final file = File('${dir.path}/$user_cache.json');
+      // Get database instance from context
+      final library = Provider.of<Library>(rootNavigatorKey.currentContext!, listen: false);
+      final userCacheDao = library.database.userCacheDao;
 
-      if (!await file.exists()) {
-        logDebug('No Anilist user cache found');
-        return false;
+      _currentUser = await userCacheDao.getCachedUser();
+      
+      if (_currentUser != null) {
+        logDebug('Loaded Anilist user from database (${_currentUser?.name})');
+        return true;
       }
-
-      final userJson = await file.readAsString();
-      final userData = jsonDecode(userJson) as Map<String, dynamic>;
-
-      _currentUser = AnilistUser.fromJson(userData);
-      logDebug('Loaded Anilist user from cache (${_currentUser?.name})');
-      return true;
+      return false;
     } catch (e) {
-      logErr('Error loading Anilist user from cache', e);
+      logErr('Error loading Anilist user from database', e);
       return false;
     }
   }
 
-  /// Save current user to cache
+
+  /// Save current user to database cache
   Future<void> _saveCurrentUserToCache() async {
     if (!isLoggedIn || _currentUser == null) return;
 
     try {
-      final dir = miruRyoikiSaveDirectory;
-      final file = File('${dir.path}/$user_cache.json');
+      // Get database instance from context
+      final library = Provider.of<Library>(rootNavigatorKey.currentContext!, listen: false);
+      final userCacheDao = library.database.userCacheDao;
 
-      await file.writeAsString(jsonEncode(_currentUser!.toJson()));
-      logTrace('Anilist user cached successfully');
+      await userCacheDao.upsertUser(_currentUser!);
+      logTrace('Anilist user cached successfully to database');
     } catch (e) {
-      logErr('Error caching Anilist user', e);
+      logErr('Error caching Anilist user to database', e);
     }
   }
 }

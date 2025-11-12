@@ -13,6 +13,8 @@ import 'daos/series_dao.dart';
 import 'daos/episodes_dao.dart';
 import 'daos/watch_dao.dart';
 import 'daos/notifications_dao.dart';
+import 'daos/mutations_dao.dart';
+import 'daos/user_cache_dao.dart';
 
 part 'database.g.dart';
 
@@ -24,19 +26,23 @@ part 'database.g.dart';
     AnilistMappingsTable,
     WatchRecordsTable,
     NotificationsTable,
+    AnilistMutationsTable,
+    AnilistUserCacheTable,
   ],
   daos: [
     SeriesDao,
     EpisodesDao,
     WatchDao,
     NotificationsDao,
+    MutationsDao,
+    UserCacheDao,
   ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? db]) : super(db ?? _openConnection());
 
   @override
-  int get schemaVersion => 10;
+  int get schemaVersion => 11;
 
   @override
   Future<void> close() async {
@@ -146,6 +152,15 @@ class AppDatabase extends _$AppDatabase {
               // Column might already exist if migration was interrupted, ignore error
               if (!e.toString().contains('duplicate column name')) rethrow;
             }
+          }
+          if (from < 11) {
+            // Add Anilist mutations queue and user cache tables
+            await m.createTable(anilistMutationsTable);
+            await m.createTable(anilistUserCacheTable);
+            
+            // Create indexes for efficient querying
+            await m.issueCustomQuery('CREATE INDEX IF NOT EXISTS idx_mutations_media_id ON anilist_mutations(media_id);');
+            await m.issueCustomQuery('CREATE INDEX IF NOT EXISTS idx_mutations_created_at ON anilist_mutations(created_at ASC);');
           }
         },
         beforeOpen: (details) async {

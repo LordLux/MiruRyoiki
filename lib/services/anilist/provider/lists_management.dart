@@ -5,7 +5,7 @@ extension AnilistProviderListsManagement on AnilistProvider {
   Future<void> refreshUserLists({bool showSnackBar = true}) async {
     if (!isLoggedIn) return;
 
-    final startTime = DateTime.now().millisecondsSinceEpoch;
+    final startTime = now.millisecondsSinceEpoch;
 
     if (showSnackBar) snackBar(
       'Refreshing user lists...',
@@ -41,7 +41,7 @@ extension AnilistProviderListsManagement on AnilistProvider {
       return;
     }
     
-    final endTime = DateTime.now().millisecondsSinceEpoch;
+    final endTime = now.millisecondsSinceEpoch;
     if (endTime - startTime < 1000) await Future.delayed(Duration(milliseconds: 1000 - (endTime - startTime))); // Ensure at least 1 second delay
     
     if (showSnackBar) snackBar(

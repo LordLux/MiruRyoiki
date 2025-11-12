@@ -676,6 +676,7 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> with Autom
           Padding(
             padding: const EdgeInsets.only(left: 6.0),
             child: StandardButton.icon(
+              tooltip: 'Go to previous month',
               onPressed: () {
                 if (mounted && !_isDisposed) {
                   setState(() {
@@ -703,6 +704,7 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> with Autom
           Padding(
             padding: const EdgeInsets.only(right: 6.0),
             child: StandardButton.icon(
+              tooltip: 'Go to next month',
               onPressed: () {
                 if (mounted && !_isDisposed) {
                   setState(() {
@@ -1173,6 +1175,7 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> with Autom
       child: Builder(builder: (context) {
         final unread = _getUnreadCount();
         return StandardButton.iconLabel(
+          tooltip: unread == 0 ? 'All notifications are read' : 'Mark all notifications as read',
           isButtonDisabled: unread == 0,
           cursor: unread == 0 ? SystemMouseCursors.basic : SystemMouseCursors.click,
           icon: const Icon(FluentIcons.check_mark, size: 14),
@@ -1312,6 +1315,6 @@ class NotificationCalendarEntry extends CalendarEntry {
     required this.notification,
     super.series,
   }) : super(
-          date: notification.createdAt != 0 ? DateTime.fromMillisecondsSinceEpoch(notification.createdAt * 1000) : DateTime.now(),
+          date: notification.createdAt != 0 ? DateTime.fromMillisecondsSinceEpoch(notification.createdAt * 1000) : now,
         );
 }

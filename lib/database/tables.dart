@@ -146,3 +146,35 @@ class NotificationsTable extends Table {
   @override
   Set<Column> get primaryKey => {id};
 }
+
+// ------------------ ANILIST MUTATIONS QUEUE ------------------
+class AnilistMutationsTable extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  
+  TextColumn get type => text()(); // 'progress', 'status', 'score', etc.
+  IntColumn get mediaId => integer()();
+  TextColumn get changes => text().map(const JsonMapConverter())(); // JSON map of changes
+  
+  DateTimeColumn get createdAt => dateTime()();
+  DateTimeColumn get localCreatedAt => dateTime().withDefault(currentDateAndTime)();
+
+  @override
+  String get tableName => 'anilist_mutations';
+}
+
+// ------------------ ANILIST USER CACHE ------------------
+class AnilistUserCacheTable extends Table {
+  IntColumn get id => integer()(); // Anilist user ID
+  TextColumn get name => text()();
+  TextColumn get avatar => text().nullable()();
+  TextColumn get bannerImage => text().nullable()();
+  TextColumn get userData => text().map(const JsonMapConverter()).nullable()(); // JSON AnilistUserData
+  
+  DateTimeColumn get cachedAt => dateTime().withDefault(currentDateAndTime)();
+
+  @override
+  String get tableName => 'anilist_user_cache';
+  
+  @override
+  Set<Column> get primaryKey => {id};
+}

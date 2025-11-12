@@ -76,6 +76,9 @@ extension AnilistProviderBackgroundSync on AnilistProvider {
 
     syncStatusMessage.value = 'Syncing changes...';
 
+    final library = Provider.of<Library>(rootNavigatorKey.currentContext!, listen: false);
+    final mutationsDao = library.database.mutationsDao;
+
     for (final mutation in mutations) {
       try {
         bool success = false;
@@ -109,7 +112,12 @@ extension AnilistProviderBackgroundSync on AnilistProvider {
         }
 
         if (success) {
-          _pendingMutations.remove(mutation);
+          // Remove from database
+          await mutationsDao.deleteMutationByProperties(
+            type: mutation.type,
+            mediaId: mutation.mediaId,
+            createdAt: mutation.createdAt,
+          );
           successCount++;
         }
       } catch (e) {
@@ -118,9 +126,9 @@ extension AnilistProviderBackgroundSync on AnilistProvider {
       }
     }
 
-    // Save the updated queue
+    // Reload from database to sync in-memory list
     if (successCount > 0) {
-      await saveMutationsQueue();
+      _pendingMutations = await mutationsDao.getAllMutations();
 
       // Refresh lists to ensure consistency
       await _loadUserLists();

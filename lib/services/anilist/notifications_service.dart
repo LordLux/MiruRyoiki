@@ -199,7 +199,7 @@ extension AnilistServiceNotifications on AnilistService {
       }
 
       // Save cache & metadata
-      _lastNotificationsFetchAt = DateTime.now();
+      _lastNotificationsFetchAt = now;
       _lastNotificationsCache = notifications;
       _lastNotificationsPage = page;
       _lastNotificationsPerPage = perPage;

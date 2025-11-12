@@ -105,7 +105,7 @@ class DatabaseRecovery {
 
       // Create backup of current database
       if (dbFile.existsSync()) {
-        final currentBackup = File(p.join(dbDir.path, '$dbFileName.pre-restore.${DateTime.now().millisecondsSinceEpoch}.db.bak'));
+        final currentBackup = File(p.join(dbDir.path, '$dbFileName.pre-restore.${now.millisecondsSinceEpoch}.db.bak'));
         await dbFile.copy(currentBackup.path);
       }
 

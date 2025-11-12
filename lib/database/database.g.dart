@@ -3269,6 +3269,696 @@ class NotificationsTableCompanion
   }
 }
 
+class $AnilistMutationsTableTable extends AnilistMutationsTable
+    with TableInfo<$AnilistMutationsTableTable, AnilistMutationsTableData> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $AnilistMutationsTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+      'id', aliasedName, false,
+      hasAutoIncrement: true,
+      type: DriftSqlType.int,
+      requiredDuringInsert: false,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('PRIMARY KEY AUTOINCREMENT'));
+  static const VerificationMeta _typeMeta = const VerificationMeta('type');
+  @override
+  late final GeneratedColumn<String> type = GeneratedColumn<String>(
+      'type', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _mediaIdMeta =
+      const VerificationMeta('mediaId');
+  @override
+  late final GeneratedColumn<int> mediaId = GeneratedColumn<int>(
+      'media_id', aliasedName, false,
+      type: DriftSqlType.int, requiredDuringInsert: true);
+  @override
+  late final GeneratedColumnWithTypeConverter<Map<String, dynamic>?, String>
+      changes = GeneratedColumn<String>('changes', aliasedName, false,
+              type: DriftSqlType.string, requiredDuringInsert: true)
+          .withConverter<Map<String, dynamic>?>(
+              $AnilistMutationsTableTable.$converterchanges);
+  static const VerificationMeta _createdAtMeta =
+      const VerificationMeta('createdAt');
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+      'created_at', aliasedName, false,
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  static const VerificationMeta _localCreatedAtMeta =
+      const VerificationMeta('localCreatedAt');
+  @override
+  late final GeneratedColumn<DateTime> localCreatedAt =
+      GeneratedColumn<DateTime>('local_created_at', aliasedName, false,
+          type: DriftSqlType.dateTime,
+          requiredDuringInsert: false,
+          defaultValue: currentDateAndTime);
+  @override
+  List<GeneratedColumn> get $columns =>
+      [id, type, mediaId, changes, createdAt, localCreatedAt];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'anilist_mutations';
+  @override
+  VerificationContext validateIntegrity(
+      Insertable<AnilistMutationsTableData> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('type')) {
+      context.handle(
+          _typeMeta, type.isAcceptableOrUnknown(data['type']!, _typeMeta));
+    } else if (isInserting) {
+      context.missing(_typeMeta);
+    }
+    if (data.containsKey('media_id')) {
+      context.handle(_mediaIdMeta,
+          mediaId.isAcceptableOrUnknown(data['media_id']!, _mediaIdMeta));
+    } else if (isInserting) {
+      context.missing(_mediaIdMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(_createdAtMeta,
+          createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('local_created_at')) {
+      context.handle(
+          _localCreatedAtMeta,
+          localCreatedAt.isAcceptableOrUnknown(
+              data['local_created_at']!, _localCreatedAtMeta));
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  AnilistMutationsTableData map(Map<String, dynamic> data,
+      {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return AnilistMutationsTableData(
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}id'])!,
+      type: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}type'])!,
+      mediaId: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}media_id'])!,
+      changes: $AnilistMutationsTableTable.$converterchanges.fromSql(
+          attachedDatabase.typeMapping
+              .read(DriftSqlType.string, data['${effectivePrefix}changes'])!),
+      createdAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
+      localCreatedAt: attachedDatabase.typeMapping.read(
+          DriftSqlType.dateTime, data['${effectivePrefix}local_created_at'])!,
+    );
+  }
+
+  @override
+  $AnilistMutationsTableTable createAlias(String alias) {
+    return $AnilistMutationsTableTable(attachedDatabase, alias);
+  }
+
+  static TypeConverter<Map<String, dynamic>?, String?> $converterchanges =
+      const JsonMapConverter();
+}
+
+class AnilistMutationsTableData extends DataClass
+    implements Insertable<AnilistMutationsTableData> {
+  final int id;
+  final String type;
+  final int mediaId;
+  final Map<String, dynamic>? changes;
+  final DateTime createdAt;
+  final DateTime localCreatedAt;
+  const AnilistMutationsTableData(
+      {required this.id,
+      required this.type,
+      required this.mediaId,
+      this.changes,
+      required this.createdAt,
+      required this.localCreatedAt});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['type'] = Variable<String>(type);
+    map['media_id'] = Variable<int>(mediaId);
+    if (!nullToAbsent || changes != null) {
+      map['changes'] = Variable<String>(
+          $AnilistMutationsTableTable.$converterchanges.toSql(changes));
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['local_created_at'] = Variable<DateTime>(localCreatedAt);
+    return map;
+  }
+
+  AnilistMutationsTableCompanion toCompanion(bool nullToAbsent) {
+    return AnilistMutationsTableCompanion(
+      id: Value(id),
+      type: Value(type),
+      mediaId: Value(mediaId),
+      changes: changes == null && nullToAbsent
+          ? const Value.absent()
+          : Value(changes),
+      createdAt: Value(createdAt),
+      localCreatedAt: Value(localCreatedAt),
+    );
+  }
+
+  factory AnilistMutationsTableData.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return AnilistMutationsTableData(
+      id: serializer.fromJson<int>(json['id']),
+      type: serializer.fromJson<String>(json['type']),
+      mediaId: serializer.fromJson<int>(json['mediaId']),
+      changes: serializer.fromJson<Map<String, dynamic>?>(json['changes']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      localCreatedAt: serializer.fromJson<DateTime>(json['localCreatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'type': serializer.toJson<String>(type),
+      'mediaId': serializer.toJson<int>(mediaId),
+      'changes': serializer.toJson<Map<String, dynamic>?>(changes),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'localCreatedAt': serializer.toJson<DateTime>(localCreatedAt),
+    };
+  }
+
+  AnilistMutationsTableData copyWith(
+          {int? id,
+          String? type,
+          int? mediaId,
+          Value<Map<String, dynamic>?> changes = const Value.absent(),
+          DateTime? createdAt,
+          DateTime? localCreatedAt}) =>
+      AnilistMutationsTableData(
+        id: id ?? this.id,
+        type: type ?? this.type,
+        mediaId: mediaId ?? this.mediaId,
+        changes: changes.present ? changes.value : this.changes,
+        createdAt: createdAt ?? this.createdAt,
+        localCreatedAt: localCreatedAt ?? this.localCreatedAt,
+      );
+  AnilistMutationsTableData copyWithCompanion(
+      AnilistMutationsTableCompanion data) {
+    return AnilistMutationsTableData(
+      id: data.id.present ? data.id.value : this.id,
+      type: data.type.present ? data.type.value : this.type,
+      mediaId: data.mediaId.present ? data.mediaId.value : this.mediaId,
+      changes: data.changes.present ? data.changes.value : this.changes,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      localCreatedAt: data.localCreatedAt.present
+          ? data.localCreatedAt.value
+          : this.localCreatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AnilistMutationsTableData(')
+          ..write('id: $id, ')
+          ..write('type: $type, ')
+          ..write('mediaId: $mediaId, ')
+          ..write('changes: $changes, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('localCreatedAt: $localCreatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, type, mediaId, changes, createdAt, localCreatedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is AnilistMutationsTableData &&
+          other.id == this.id &&
+          other.type == this.type &&
+          other.mediaId == this.mediaId &&
+          other.changes == this.changes &&
+          other.createdAt == this.createdAt &&
+          other.localCreatedAt == this.localCreatedAt);
+}
+
+class AnilistMutationsTableCompanion
+    extends UpdateCompanion<AnilistMutationsTableData> {
+  final Value<int> id;
+  final Value<String> type;
+  final Value<int> mediaId;
+  final Value<Map<String, dynamic>?> changes;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> localCreatedAt;
+  const AnilistMutationsTableCompanion({
+    this.id = const Value.absent(),
+    this.type = const Value.absent(),
+    this.mediaId = const Value.absent(),
+    this.changes = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.localCreatedAt = const Value.absent(),
+  });
+  AnilistMutationsTableCompanion.insert({
+    this.id = const Value.absent(),
+    required String type,
+    required int mediaId,
+    required Map<String, dynamic>? changes,
+    required DateTime createdAt,
+    this.localCreatedAt = const Value.absent(),
+  })  : type = Value(type),
+        mediaId = Value(mediaId),
+        changes = Value(changes),
+        createdAt = Value(createdAt);
+  static Insertable<AnilistMutationsTableData> custom({
+    Expression<int>? id,
+    Expression<String>? type,
+    Expression<int>? mediaId,
+    Expression<String>? changes,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? localCreatedAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (type != null) 'type': type,
+      if (mediaId != null) 'media_id': mediaId,
+      if (changes != null) 'changes': changes,
+      if (createdAt != null) 'created_at': createdAt,
+      if (localCreatedAt != null) 'local_created_at': localCreatedAt,
+    });
+  }
+
+  AnilistMutationsTableCompanion copyWith(
+      {Value<int>? id,
+      Value<String>? type,
+      Value<int>? mediaId,
+      Value<Map<String, dynamic>?>? changes,
+      Value<DateTime>? createdAt,
+      Value<DateTime>? localCreatedAt}) {
+    return AnilistMutationsTableCompanion(
+      id: id ?? this.id,
+      type: type ?? this.type,
+      mediaId: mediaId ?? this.mediaId,
+      changes: changes ?? this.changes,
+      createdAt: createdAt ?? this.createdAt,
+      localCreatedAt: localCreatedAt ?? this.localCreatedAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (type.present) {
+      map['type'] = Variable<String>(type.value);
+    }
+    if (mediaId.present) {
+      map['media_id'] = Variable<int>(mediaId.value);
+    }
+    if (changes.present) {
+      map['changes'] = Variable<String>(
+          $AnilistMutationsTableTable.$converterchanges.toSql(changes.value));
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (localCreatedAt.present) {
+      map['local_created_at'] = Variable<DateTime>(localCreatedAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AnilistMutationsTableCompanion(')
+          ..write('id: $id, ')
+          ..write('type: $type, ')
+          ..write('mediaId: $mediaId, ')
+          ..write('changes: $changes, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('localCreatedAt: $localCreatedAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $AnilistUserCacheTableTable extends AnilistUserCacheTable
+    with TableInfo<$AnilistUserCacheTableTable, AnilistUserCacheTableData> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $AnilistUserCacheTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+      'id', aliasedName, false,
+      type: DriftSqlType.int, requiredDuringInsert: false);
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+      'name', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _avatarMeta = const VerificationMeta('avatar');
+  @override
+  late final GeneratedColumn<String> avatar = GeneratedColumn<String>(
+      'avatar', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _bannerImageMeta =
+      const VerificationMeta('bannerImage');
+  @override
+  late final GeneratedColumn<String> bannerImage = GeneratedColumn<String>(
+      'banner_image', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  @override
+  late final GeneratedColumnWithTypeConverter<Map<String, dynamic>?, String>
+      userData = GeneratedColumn<String>('user_data', aliasedName, true,
+              type: DriftSqlType.string, requiredDuringInsert: false)
+          .withConverter<Map<String, dynamic>?>(
+              $AnilistUserCacheTableTable.$converteruserData);
+  static const VerificationMeta _cachedAtMeta =
+      const VerificationMeta('cachedAt');
+  @override
+  late final GeneratedColumn<DateTime> cachedAt = GeneratedColumn<DateTime>(
+      'cached_at', aliasedName, false,
+      type: DriftSqlType.dateTime,
+      requiredDuringInsert: false,
+      defaultValue: currentDateAndTime);
+  @override
+  List<GeneratedColumn> get $columns =>
+      [id, name, avatar, bannerImage, userData, cachedAt];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'anilist_user_cache';
+  @override
+  VerificationContext validateIntegrity(
+      Insertable<AnilistUserCacheTableData> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+          _nameMeta, name.isAcceptableOrUnknown(data['name']!, _nameMeta));
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('avatar')) {
+      context.handle(_avatarMeta,
+          avatar.isAcceptableOrUnknown(data['avatar']!, _avatarMeta));
+    }
+    if (data.containsKey('banner_image')) {
+      context.handle(
+          _bannerImageMeta,
+          bannerImage.isAcceptableOrUnknown(
+              data['banner_image']!, _bannerImageMeta));
+    }
+    if (data.containsKey('cached_at')) {
+      context.handle(_cachedAtMeta,
+          cachedAt.isAcceptableOrUnknown(data['cached_at']!, _cachedAtMeta));
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  AnilistUserCacheTableData map(Map<String, dynamic> data,
+      {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return AnilistUserCacheTableData(
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}id'])!,
+      name: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}name'])!,
+      avatar: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}avatar']),
+      bannerImage: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}banner_image']),
+      userData: $AnilistUserCacheTableTable.$converteruserData.fromSql(
+          attachedDatabase.typeMapping
+              .read(DriftSqlType.string, data['${effectivePrefix}user_data'])),
+      cachedAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}cached_at'])!,
+    );
+  }
+
+  @override
+  $AnilistUserCacheTableTable createAlias(String alias) {
+    return $AnilistUserCacheTableTable(attachedDatabase, alias);
+  }
+
+  static TypeConverter<Map<String, dynamic>?, String?> $converteruserData =
+      const JsonMapConverter();
+}
+
+class AnilistUserCacheTableData extends DataClass
+    implements Insertable<AnilistUserCacheTableData> {
+  final int id;
+  final String name;
+  final String? avatar;
+  final String? bannerImage;
+  final Map<String, dynamic>? userData;
+  final DateTime cachedAt;
+  const AnilistUserCacheTableData(
+      {required this.id,
+      required this.name,
+      this.avatar,
+      this.bannerImage,
+      this.userData,
+      required this.cachedAt});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['name'] = Variable<String>(name);
+    if (!nullToAbsent || avatar != null) {
+      map['avatar'] = Variable<String>(avatar);
+    }
+    if (!nullToAbsent || bannerImage != null) {
+      map['banner_image'] = Variable<String>(bannerImage);
+    }
+    if (!nullToAbsent || userData != null) {
+      map['user_data'] = Variable<String>(
+          $AnilistUserCacheTableTable.$converteruserData.toSql(userData));
+    }
+    map['cached_at'] = Variable<DateTime>(cachedAt);
+    return map;
+  }
+
+  AnilistUserCacheTableCompanion toCompanion(bool nullToAbsent) {
+    return AnilistUserCacheTableCompanion(
+      id: Value(id),
+      name: Value(name),
+      avatar:
+          avatar == null && nullToAbsent ? const Value.absent() : Value(avatar),
+      bannerImage: bannerImage == null && nullToAbsent
+          ? const Value.absent()
+          : Value(bannerImage),
+      userData: userData == null && nullToAbsent
+          ? const Value.absent()
+          : Value(userData),
+      cachedAt: Value(cachedAt),
+    );
+  }
+
+  factory AnilistUserCacheTableData.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return AnilistUserCacheTableData(
+      id: serializer.fromJson<int>(json['id']),
+      name: serializer.fromJson<String>(json['name']),
+      avatar: serializer.fromJson<String?>(json['avatar']),
+      bannerImage: serializer.fromJson<String?>(json['bannerImage']),
+      userData: serializer.fromJson<Map<String, dynamic>?>(json['userData']),
+      cachedAt: serializer.fromJson<DateTime>(json['cachedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'name': serializer.toJson<String>(name),
+      'avatar': serializer.toJson<String?>(avatar),
+      'bannerImage': serializer.toJson<String?>(bannerImage),
+      'userData': serializer.toJson<Map<String, dynamic>?>(userData),
+      'cachedAt': serializer.toJson<DateTime>(cachedAt),
+    };
+  }
+
+  AnilistUserCacheTableData copyWith(
+          {int? id,
+          String? name,
+          Value<String?> avatar = const Value.absent(),
+          Value<String?> bannerImage = const Value.absent(),
+          Value<Map<String, dynamic>?> userData = const Value.absent(),
+          DateTime? cachedAt}) =>
+      AnilistUserCacheTableData(
+        id: id ?? this.id,
+        name: name ?? this.name,
+        avatar: avatar.present ? avatar.value : this.avatar,
+        bannerImage: bannerImage.present ? bannerImage.value : this.bannerImage,
+        userData: userData.present ? userData.value : this.userData,
+        cachedAt: cachedAt ?? this.cachedAt,
+      );
+  AnilistUserCacheTableData copyWithCompanion(
+      AnilistUserCacheTableCompanion data) {
+    return AnilistUserCacheTableData(
+      id: data.id.present ? data.id.value : this.id,
+      name: data.name.present ? data.name.value : this.name,
+      avatar: data.avatar.present ? data.avatar.value : this.avatar,
+      bannerImage:
+          data.bannerImage.present ? data.bannerImage.value : this.bannerImage,
+      userData: data.userData.present ? data.userData.value : this.userData,
+      cachedAt: data.cachedAt.present ? data.cachedAt.value : this.cachedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AnilistUserCacheTableData(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('avatar: $avatar, ')
+          ..write('bannerImage: $bannerImage, ')
+          ..write('userData: $userData, ')
+          ..write('cachedAt: $cachedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, name, avatar, bannerImage, userData, cachedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is AnilistUserCacheTableData &&
+          other.id == this.id &&
+          other.name == this.name &&
+          other.avatar == this.avatar &&
+          other.bannerImage == this.bannerImage &&
+          other.userData == this.userData &&
+          other.cachedAt == this.cachedAt);
+}
+
+class AnilistUserCacheTableCompanion
+    extends UpdateCompanion<AnilistUserCacheTableData> {
+  final Value<int> id;
+  final Value<String> name;
+  final Value<String?> avatar;
+  final Value<String?> bannerImage;
+  final Value<Map<String, dynamic>?> userData;
+  final Value<DateTime> cachedAt;
+  const AnilistUserCacheTableCompanion({
+    this.id = const Value.absent(),
+    this.name = const Value.absent(),
+    this.avatar = const Value.absent(),
+    this.bannerImage = const Value.absent(),
+    this.userData = const Value.absent(),
+    this.cachedAt = const Value.absent(),
+  });
+  AnilistUserCacheTableCompanion.insert({
+    this.id = const Value.absent(),
+    required String name,
+    this.avatar = const Value.absent(),
+    this.bannerImage = const Value.absent(),
+    this.userData = const Value.absent(),
+    this.cachedAt = const Value.absent(),
+  }) : name = Value(name);
+  static Insertable<AnilistUserCacheTableData> custom({
+    Expression<int>? id,
+    Expression<String>? name,
+    Expression<String>? avatar,
+    Expression<String>? bannerImage,
+    Expression<String>? userData,
+    Expression<DateTime>? cachedAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (name != null) 'name': name,
+      if (avatar != null) 'avatar': avatar,
+      if (bannerImage != null) 'banner_image': bannerImage,
+      if (userData != null) 'user_data': userData,
+      if (cachedAt != null) 'cached_at': cachedAt,
+    });
+  }
+
+  AnilistUserCacheTableCompanion copyWith(
+      {Value<int>? id,
+      Value<String>? name,
+      Value<String?>? avatar,
+      Value<String?>? bannerImage,
+      Value<Map<String, dynamic>?>? userData,
+      Value<DateTime>? cachedAt}) {
+    return AnilistUserCacheTableCompanion(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      avatar: avatar ?? this.avatar,
+      bannerImage: bannerImage ?? this.bannerImage,
+      userData: userData ?? this.userData,
+      cachedAt: cachedAt ?? this.cachedAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (avatar.present) {
+      map['avatar'] = Variable<String>(avatar.value);
+    }
+    if (bannerImage.present) {
+      map['banner_image'] = Variable<String>(bannerImage.value);
+    }
+    if (userData.present) {
+      map['user_data'] = Variable<String>(
+          $AnilistUserCacheTableTable.$converteruserData.toSql(userData.value));
+    }
+    if (cachedAt.present) {
+      map['cached_at'] = Variable<DateTime>(cachedAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AnilistUserCacheTableCompanion(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('avatar: $avatar, ')
+          ..write('bannerImage: $bannerImage, ')
+          ..write('userData: $userData, ')
+          ..write('cachedAt: $cachedAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -3281,11 +3971,17 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       $WatchRecordsTableTable(this);
   late final $NotificationsTableTable notificationsTable =
       $NotificationsTableTable(this);
+  late final $AnilistMutationsTableTable anilistMutationsTable =
+      $AnilistMutationsTableTable(this);
+  late final $AnilistUserCacheTableTable anilistUserCacheTable =
+      $AnilistUserCacheTableTable(this);
   late final SeriesDao seriesDao = SeriesDao(this as AppDatabase);
   late final EpisodesDao episodesDao = EpisodesDao(this as AppDatabase);
   late final WatchDao watchDao = WatchDao(this as AppDatabase);
   late final NotificationsDao notificationsDao =
       NotificationsDao(this as AppDatabase);
+  late final MutationsDao mutationsDao = MutationsDao(this as AppDatabase);
+  late final UserCacheDao userCacheDao = UserCacheDao(this as AppDatabase);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -3296,7 +3992,9 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         episodesTable,
         anilistMappingsTable,
         watchRecordsTable,
-        notificationsTable
+        notificationsTable,
+        anilistMutationsTable,
+        anilistUserCacheTable
       ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules(
@@ -5432,6 +6130,393 @@ typedef $$NotificationsTableTableProcessedTableManager = ProcessedTableManager<
     ),
     NotificationsTableData,
     PrefetchHooks Function()>;
+typedef $$AnilistMutationsTableTableCreateCompanionBuilder
+    = AnilistMutationsTableCompanion Function({
+  Value<int> id,
+  required String type,
+  required int mediaId,
+  required Map<String, dynamic>? changes,
+  required DateTime createdAt,
+  Value<DateTime> localCreatedAt,
+});
+typedef $$AnilistMutationsTableTableUpdateCompanionBuilder
+    = AnilistMutationsTableCompanion Function({
+  Value<int> id,
+  Value<String> type,
+  Value<int> mediaId,
+  Value<Map<String, dynamic>?> changes,
+  Value<DateTime> createdAt,
+  Value<DateTime> localCreatedAt,
+});
+
+class $$AnilistMutationsTableTableFilterComposer
+    extends Composer<_$AppDatabase, $AnilistMutationsTableTable> {
+  $$AnilistMutationsTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get type => $composableBuilder(
+      column: $table.type, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get mediaId => $composableBuilder(
+      column: $table.mediaId, builder: (column) => ColumnFilters(column));
+
+  ColumnWithTypeConverterFilters<Map<String, dynamic>?, Map<String, dynamic>,
+          String>
+      get changes => $composableBuilder(
+          column: $table.changes,
+          builder: (column) => ColumnWithTypeConverterFilters(column));
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get localCreatedAt => $composableBuilder(
+      column: $table.localCreatedAt,
+      builder: (column) => ColumnFilters(column));
+}
+
+class $$AnilistMutationsTableTableOrderingComposer
+    extends Composer<_$AppDatabase, $AnilistMutationsTableTable> {
+  $$AnilistMutationsTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get type => $composableBuilder(
+      column: $table.type, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get mediaId => $composableBuilder(
+      column: $table.mediaId, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get changes => $composableBuilder(
+      column: $table.changes, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get localCreatedAt => $composableBuilder(
+      column: $table.localCreatedAt,
+      builder: (column) => ColumnOrderings(column));
+}
+
+class $$AnilistMutationsTableTableAnnotationComposer
+    extends Composer<_$AppDatabase, $AnilistMutationsTableTable> {
+  $$AnilistMutationsTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get type =>
+      $composableBuilder(column: $table.type, builder: (column) => column);
+
+  GeneratedColumn<int> get mediaId =>
+      $composableBuilder(column: $table.mediaId, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<Map<String, dynamic>?, String> get changes =>
+      $composableBuilder(column: $table.changes, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get localCreatedAt => $composableBuilder(
+      column: $table.localCreatedAt, builder: (column) => column);
+}
+
+class $$AnilistMutationsTableTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $AnilistMutationsTableTable,
+    AnilistMutationsTableData,
+    $$AnilistMutationsTableTableFilterComposer,
+    $$AnilistMutationsTableTableOrderingComposer,
+    $$AnilistMutationsTableTableAnnotationComposer,
+    $$AnilistMutationsTableTableCreateCompanionBuilder,
+    $$AnilistMutationsTableTableUpdateCompanionBuilder,
+    (
+      AnilistMutationsTableData,
+      BaseReferences<_$AppDatabase, $AnilistMutationsTableTable,
+          AnilistMutationsTableData>
+    ),
+    AnilistMutationsTableData,
+    PrefetchHooks Function()> {
+  $$AnilistMutationsTableTableTableManager(
+      _$AppDatabase db, $AnilistMutationsTableTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$AnilistMutationsTableTableFilterComposer(
+                  $db: db, $table: table),
+          createOrderingComposer: () =>
+              $$AnilistMutationsTableTableOrderingComposer(
+                  $db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$AnilistMutationsTableTableAnnotationComposer(
+                  $db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<int> id = const Value.absent(),
+            Value<String> type = const Value.absent(),
+            Value<int> mediaId = const Value.absent(),
+            Value<Map<String, dynamic>?> changes = const Value.absent(),
+            Value<DateTime> createdAt = const Value.absent(),
+            Value<DateTime> localCreatedAt = const Value.absent(),
+          }) =>
+              AnilistMutationsTableCompanion(
+            id: id,
+            type: type,
+            mediaId: mediaId,
+            changes: changes,
+            createdAt: createdAt,
+            localCreatedAt: localCreatedAt,
+          ),
+          createCompanionCallback: ({
+            Value<int> id = const Value.absent(),
+            required String type,
+            required int mediaId,
+            required Map<String, dynamic>? changes,
+            required DateTime createdAt,
+            Value<DateTime> localCreatedAt = const Value.absent(),
+          }) =>
+              AnilistMutationsTableCompanion.insert(
+            id: id,
+            type: type,
+            mediaId: mediaId,
+            changes: changes,
+            createdAt: createdAt,
+            localCreatedAt: localCreatedAt,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ));
+}
+
+typedef $$AnilistMutationsTableTableProcessedTableManager
+    = ProcessedTableManager<
+        _$AppDatabase,
+        $AnilistMutationsTableTable,
+        AnilistMutationsTableData,
+        $$AnilistMutationsTableTableFilterComposer,
+        $$AnilistMutationsTableTableOrderingComposer,
+        $$AnilistMutationsTableTableAnnotationComposer,
+        $$AnilistMutationsTableTableCreateCompanionBuilder,
+        $$AnilistMutationsTableTableUpdateCompanionBuilder,
+        (
+          AnilistMutationsTableData,
+          BaseReferences<_$AppDatabase, $AnilistMutationsTableTable,
+              AnilistMutationsTableData>
+        ),
+        AnilistMutationsTableData,
+        PrefetchHooks Function()>;
+typedef $$AnilistUserCacheTableTableCreateCompanionBuilder
+    = AnilistUserCacheTableCompanion Function({
+  Value<int> id,
+  required String name,
+  Value<String?> avatar,
+  Value<String?> bannerImage,
+  Value<Map<String, dynamic>?> userData,
+  Value<DateTime> cachedAt,
+});
+typedef $$AnilistUserCacheTableTableUpdateCompanionBuilder
+    = AnilistUserCacheTableCompanion Function({
+  Value<int> id,
+  Value<String> name,
+  Value<String?> avatar,
+  Value<String?> bannerImage,
+  Value<Map<String, dynamic>?> userData,
+  Value<DateTime> cachedAt,
+});
+
+class $$AnilistUserCacheTableTableFilterComposer
+    extends Composer<_$AppDatabase, $AnilistUserCacheTableTable> {
+  $$AnilistUserCacheTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get name => $composableBuilder(
+      column: $table.name, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get avatar => $composableBuilder(
+      column: $table.avatar, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get bannerImage => $composableBuilder(
+      column: $table.bannerImage, builder: (column) => ColumnFilters(column));
+
+  ColumnWithTypeConverterFilters<Map<String, dynamic>?, Map<String, dynamic>,
+          String>
+      get userData => $composableBuilder(
+          column: $table.userData,
+          builder: (column) => ColumnWithTypeConverterFilters(column));
+
+  ColumnFilters<DateTime> get cachedAt => $composableBuilder(
+      column: $table.cachedAt, builder: (column) => ColumnFilters(column));
+}
+
+class $$AnilistUserCacheTableTableOrderingComposer
+    extends Composer<_$AppDatabase, $AnilistUserCacheTableTable> {
+  $$AnilistUserCacheTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get name => $composableBuilder(
+      column: $table.name, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get avatar => $composableBuilder(
+      column: $table.avatar, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get bannerImage => $composableBuilder(
+      column: $table.bannerImage, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get userData => $composableBuilder(
+      column: $table.userData, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get cachedAt => $composableBuilder(
+      column: $table.cachedAt, builder: (column) => ColumnOrderings(column));
+}
+
+class $$AnilistUserCacheTableTableAnnotationComposer
+    extends Composer<_$AppDatabase, $AnilistUserCacheTableTable> {
+  $$AnilistUserCacheTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<String> get avatar =>
+      $composableBuilder(column: $table.avatar, builder: (column) => column);
+
+  GeneratedColumn<String> get bannerImage => $composableBuilder(
+      column: $table.bannerImage, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<Map<String, dynamic>?, String>
+      get userData => $composableBuilder(
+          column: $table.userData, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get cachedAt =>
+      $composableBuilder(column: $table.cachedAt, builder: (column) => column);
+}
+
+class $$AnilistUserCacheTableTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $AnilistUserCacheTableTable,
+    AnilistUserCacheTableData,
+    $$AnilistUserCacheTableTableFilterComposer,
+    $$AnilistUserCacheTableTableOrderingComposer,
+    $$AnilistUserCacheTableTableAnnotationComposer,
+    $$AnilistUserCacheTableTableCreateCompanionBuilder,
+    $$AnilistUserCacheTableTableUpdateCompanionBuilder,
+    (
+      AnilistUserCacheTableData,
+      BaseReferences<_$AppDatabase, $AnilistUserCacheTableTable,
+          AnilistUserCacheTableData>
+    ),
+    AnilistUserCacheTableData,
+    PrefetchHooks Function()> {
+  $$AnilistUserCacheTableTableTableManager(
+      _$AppDatabase db, $AnilistUserCacheTableTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$AnilistUserCacheTableTableFilterComposer(
+                  $db: db, $table: table),
+          createOrderingComposer: () =>
+              $$AnilistUserCacheTableTableOrderingComposer(
+                  $db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$AnilistUserCacheTableTableAnnotationComposer(
+                  $db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<int> id = const Value.absent(),
+            Value<String> name = const Value.absent(),
+            Value<String?> avatar = const Value.absent(),
+            Value<String?> bannerImage = const Value.absent(),
+            Value<Map<String, dynamic>?> userData = const Value.absent(),
+            Value<DateTime> cachedAt = const Value.absent(),
+          }) =>
+              AnilistUserCacheTableCompanion(
+            id: id,
+            name: name,
+            avatar: avatar,
+            bannerImage: bannerImage,
+            userData: userData,
+            cachedAt: cachedAt,
+          ),
+          createCompanionCallback: ({
+            Value<int> id = const Value.absent(),
+            required String name,
+            Value<String?> avatar = const Value.absent(),
+            Value<String?> bannerImage = const Value.absent(),
+            Value<Map<String, dynamic>?> userData = const Value.absent(),
+            Value<DateTime> cachedAt = const Value.absent(),
+          }) =>
+              AnilistUserCacheTableCompanion.insert(
+            id: id,
+            name: name,
+            avatar: avatar,
+            bannerImage: bannerImage,
+            userData: userData,
+            cachedAt: cachedAt,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ));
+}
+
+typedef $$AnilistUserCacheTableTableProcessedTableManager
+    = ProcessedTableManager<
+        _$AppDatabase,
+        $AnilistUserCacheTableTable,
+        AnilistUserCacheTableData,
+        $$AnilistUserCacheTableTableFilterComposer,
+        $$AnilistUserCacheTableTableOrderingComposer,
+        $$AnilistUserCacheTableTableAnnotationComposer,
+        $$AnilistUserCacheTableTableCreateCompanionBuilder,
+        $$AnilistUserCacheTableTableUpdateCompanionBuilder,
+        (
+          AnilistUserCacheTableData,
+          BaseReferences<_$AppDatabase, $AnilistUserCacheTableTable,
+              AnilistUserCacheTableData>
+        ),
+        AnilistUserCacheTableData,
+        PrefetchHooks Function()>;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -5448,4 +6533,8 @@ class $AppDatabaseManager {
       $$WatchRecordsTableTableTableManager(_db, _db.watchRecordsTable);
   $$NotificationsTableTableTableManager get notificationsTable =>
       $$NotificationsTableTableTableManager(_db, _db.notificationsTable);
+  $$AnilistMutationsTableTableTableManager get anilistMutationsTable =>
+      $$AnilistMutationsTableTableTableManager(_db, _db.anilistMutationsTable);
+  $$AnilistUserCacheTableTableTableManager get anilistUserCacheTable =>
+      $$AnilistUserCacheTableTableTableManager(_db, _db.anilistUserCacheTable);
 }

@@ -1,57 +1,58 @@
 part of 'anilist_provider.dart';
 
 extension AnilistProviderMutations on AnilistProvider {
-  /// Save pending mutations to disk
-  Future<void> saveMutationsQueue() async {
-    try {
-      final dir = miruRyoikiSaveDirectory;
-      final file = File('${dir.path}/$mutations_queue');
-
-      final mutations = _pendingMutations.map((m) => m.toJson()).toList();
-      await file.writeAsString(jsonEncode(mutations));
-
-      logDebug('Saved ${mutations.length} pending mutations to disk');
-    } catch (e) {
-      logErr('Error saving mutations queue', e);
-    }
-  }
-
-  /// Load pending mutations from disk
+  /// Load pending mutations from database
   Future<void> loadMutationsQueue() async {
     try {
-      final dir = miruRyoikiSaveDirectory;
-      final file = File('${dir.path}/$mutations_queue');
+      // Get database instance from context
+      final library = Provider.of<Library>(rootNavigatorKey.currentContext!, listen: false);
+      final mutationsDao = library.database.mutationsDao;
 
-      if (!await file.exists()) {
-        logDebug('No mutations queue file found');
-        return;
-      }
+      // Load all mutations from database
+      _pendingMutations = await mutationsDao.getAllMutations();
 
-      final queueJson = await file.readAsString();
-      final queueData = jsonDecode(queueJson) as List;
-
-      _pendingMutations = queueData.map((item) => AnilistMutation.fromJson(item)).toList();
-
-      logDebug('Loaded ${_pendingMutations.length} pending mutations from disk');
+      logDebug('Loaded ${_pendingMutations.length} pending mutations from database');
     } catch (e) {
       logErr('Error loading mutations queue', e);
     }
   }
 
+
+  /// Reload mutations from database
+  Future<void> _reloadMutationsFromDatabase() async {
+    try {
+      final library = Provider.of<Library>(rootNavigatorKey.currentContext!, listen: false);
+      final mutationsDao = library.database.mutationsDao;
+      _pendingMutations = await mutationsDao.getAllMutations();
+    } catch (e) {
+      logErr('Error reloading mutations from database', e);
+    }
+  }
+
   /// Queue a mutation for later sync
   Future<void> queueMutation(String type, int mediaId, Map<String, dynamic> changes) async {
-    final mutation = AnilistMutation(
-      type: type,
-      mediaId: mediaId,
-      changes: changes,
-    );
+    try {
+      final mutation = AnilistMutation(
+        type: type,
+        mediaId: mediaId,
+        changes: changes,
+      );
 
-    _pendingMutations.add(mutation);
-    await saveMutationsQueue();
+      // Add to database first
+      final library = Provider.of<Library>(rootNavigatorKey.currentContext!, listen: false);
+      final mutationsDao = library.database.mutationsDao;
+      await mutationsDao.addMutation(mutation);
 
-    _applyMutationToLocalCache(mutation);
+      // Reload from database to keep in-memory list synchronized
+      await _reloadMutationsFromDatabase();
 
-    notifyListeners();
+      // Apply to local cache to update UI
+      _applyMutationToLocalCache(mutation);
+
+      notifyListeners();
+    } catch (e) {
+      logErr('Error queueing mutation', e);
+    }
   }
 
   /// Apply a mutation to the local cache

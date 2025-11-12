@@ -105,7 +105,7 @@ Future<void> _cleanupOldLogs(Directory logsDir) async {
       return;
     }
 
-    final cutoffDate = DateTime.now().subtract(Duration(days: retentionDays));
+    final cutoffDate = now.subtract(Duration(days: retentionDays));
 
     await for (final entity in logsDir.list()) {
       if (entity is File && entity.path.contains('log_') && entity.path.endsWith('.txt')) {

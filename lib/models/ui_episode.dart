@@ -1,5 +1,6 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import '../manager.dart';
+import '../utils/time.dart';
 import 'episode.dart';
 
 /// Represents the different states an episode can have
@@ -178,7 +179,6 @@ class UIEpisode {
   }
 
   String _formatDate(DateTime date) {
-    final now = DateTime.now();
     final difference = date.difference(now);
 
     if (difference.inDays > 7) {

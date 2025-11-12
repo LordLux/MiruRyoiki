@@ -6,7 +6,7 @@ import '../models/metadata.dart';
 import '../models/mkv_metadata.dart';
 import '../models/notification.dart';
 import '../utils/path.dart';
-import '../enums.dart'; // per ImageSource
+import '../enums.dart';
 
 /// -------- String <-> PathString --------
 class PathStringConverter extends TypeConverter<PathString, String> {
@@ -44,7 +44,7 @@ class ColorJsonConverter extends TypeConverter<Color?, String?> {
   Color? fromSql(String? fromDb) {
     if (fromDb == null) return null;
     final map = jsonDecode(fromDb) as Map<String, dynamic>;
-    // Se il JSON è malformato, jsonDecode lancerà FormatException
+    // If JSON is malformed, jsonDecode will throw FormatException
     return Color.fromARGB(map['a'], map['r'], map['g'], map['b']);
   }
 
@@ -68,7 +68,7 @@ class MetadataConverter extends TypeConverter<Metadata?, String?> {
   Metadata? fromSql(String? sqlValue) {
     if (sqlValue == null) return null;
     final map = json.decode(sqlValue) as Map<String, dynamic>;
-    // Se il JSON è malformato, json.decode lancerà FormatException
+    // If JSON is malformed, json.decode will throw FormatException
     return Metadata.fromJson(map);
   }
 
@@ -87,7 +87,7 @@ class MkvMetadataConverter extends TypeConverter<MkvMetadata?, String?> {
   MkvMetadata? fromSql(String? sqlValue) {
     if (sqlValue == null) return null;
     final map = json.decode(sqlValue) as Map<String, dynamic>;
-    // Se il JSON è malformato, json.decode lancerà FormatException
+    // If JSON is malformed, json.decode will throw FormatException
     return MkvMetadata.fromJson(map);
   }
 
@@ -105,7 +105,7 @@ class JsonMapConverter extends TypeConverter<Map<String, dynamic>?, String?> {
   @override
   Map<String, dynamic>? fromSql(String? fromDb) {
     if (fromDb == null) return null;
-    // Se il JSON è malformato, jsonDecode lancerà FormatException
+    // If JSON is malformed, jsonDecode will throw FormatException
     return jsonDecode(fromDb) as Map<String, dynamic>;
   }
 

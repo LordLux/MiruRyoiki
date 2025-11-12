@@ -307,7 +307,7 @@ extension LibraryAnilistIntegration on Library {
       severity: InfoBarSeverity.info,
       autoHide: false,
     );
-    final startTime = DateTime.now().millisecondsSinceEpoch;
+    final startTime = now.millisecondsSinceEpoch;
 
     final anilistService = AnilistService();
     final linkedSeries = _series.where((s) => s.primaryAnilistId != null).toList();
