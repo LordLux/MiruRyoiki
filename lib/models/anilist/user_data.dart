@@ -65,6 +65,19 @@ class AnilistUserData {
       'stats': stats?.toJson(),
     };
   }
+
+  /// Hash code for UI-affecting properties only
+  int get uiChangeHashCode {
+    return Object.hash(
+      options?.uiChangeHashCode,
+      mediaStatistics?.uiChangeHashCode,
+      favourites?.uiChangeHashCode,
+      statistics?.uiChangeHashCode,
+      donatorTier.hashCode,
+      donatorBadge.hashCode,
+      stats?.uiChangeHashCode,
+    );
+  }
 }
 
 class Options {
@@ -113,6 +126,15 @@ class Options {
       'staffNameLanguage': staffNameLanguage,
     };
   }
+
+  /// Hash code for UI-affecting properties only
+  int get uiChangeHashCode {
+    return Object.hash(
+      titleLanguage,
+      profileColor,
+      staffNameLanguage,
+    );
+  }
 }
 
 class AnimeStatistics {
@@ -157,6 +179,9 @@ class AnimeStatistics {
       'tags': tags?.map((x) => x.toJson()).toList(),
     };
   }
+
+  /// Hash code for UI-affecting properties only
+  int get uiChangeHashCode => hashCode; // All properties affect UI
 }
 
 class GenreStatistic {
@@ -265,6 +290,9 @@ class MediaStatistics {
       'anime': anime?.toJson(),
     };
   }
+
+  /// Hash code for UI-affecting properties only
+  int get uiChangeHashCode => anime?.uiChangeHashCode ?? 0;
 }
 
 class Favourites {
@@ -297,6 +325,16 @@ class Favourites {
       'studios': studios?.toJson(),
     };
   }
+
+  /// Hash code for UI-affecting properties only
+  int get uiChangeHashCode {
+    return Object.hash(
+      anime?.uiChangeHashCode,
+      characters?.uiChangeHashCode,
+      staff?.uiChangeHashCode,
+      studios?.uiChangeHashCode,
+    );
+  }
 }
 
 abstract class FavouriteCollection<T> {
@@ -319,6 +357,16 @@ class FavouriteAnime extends FavouriteCollection<AnilistAnime> {
       nodes: json['nodes'] != null ? List<AnilistAnime>.from(json['nodes'].map((x) => AnilistAnime.fromJson(x))) : null,
     );
   }
+
+  /// Hash code for UI-affecting properties only
+  int get uiChangeHashCode {
+    if (nodes == null) return 0;
+    int hash = 0;
+    for (final anime in nodes!) {
+      hash = Object.hash(hash, anime.uiChangeHashCode);
+    }
+    return hash;
+  }
 }
 
 class FavouriteCharacters extends FavouriteCollection<Character> {
@@ -328,6 +376,16 @@ class FavouriteCharacters extends FavouriteCollection<Character> {
     return FavouriteCharacters(
       nodes: json['nodes'] != null ? List<Character>.from(json['nodes'].map((x) => Character.fromJson(x))) : null,
     );
+  }
+
+  /// Hash code for UI-affecting properties only
+  int get uiChangeHashCode {
+    if (nodes == null) return 0;
+    int hash = 0;
+    for (final character in nodes!) {
+      hash = Object.hash(hash, character.id);
+    }
+    return hash;
   }
 }
 
@@ -415,6 +473,16 @@ class FavouriteStaff extends FavouriteCollection<Staff> {
       nodes: json['nodes'] != null ? List<Staff>.from(json['nodes'].map((x) => Staff.fromJson(x))) : null,
     );
   }
+
+  /// Hash code for UI-affecting properties only
+  int get uiChangeHashCode {
+    if (nodes == null) return 0;
+    int hash = 0;
+    for (final staff in nodes!) {
+      hash = Object.hash(hash, staff.id);
+    }
+    return hash;
+  }
 }
 
 class Staff {
@@ -456,6 +524,16 @@ class FavouriteStudios extends FavouriteCollection<Studio> {
     return FavouriteStudios(
       nodes: json['nodes'] != null ? List<Studio>.from(json['nodes'].map((x) => Studio.fromJson(x))) : null,
     );
+  }
+
+  /// Hash code for UI-affecting properties only
+  int get uiChangeHashCode {
+    if (nodes == null) return 0;
+    int hash = 0;
+    for (final studio in nodes!) {
+      hash = Object.hash(hash, studio.id);
+    }
+    return hash;
   }
 }
 
@@ -505,6 +583,9 @@ class Statistics {
       'anime': anime?.toJson(),
     };
   }
+
+  /// Hash code for UI-affecting properties only
+  int get uiChangeHashCode => anime?.uiChangeHashCode ?? 0;
 }
 
 class DetailedAnimeStatistics extends AnimeStatistics {
@@ -893,4 +974,7 @@ class AnilistStats {
       'activityHistory': activityHistory.map((item) => item.toJson()).toList(),
     };
   }
+  
+  /// Hash code for UI-affecting properties only
+  int get uiChangeHashCode => activityHistory.hashCode;
 }

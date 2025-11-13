@@ -226,6 +226,26 @@ class AnilistAnime {
     };
   }
 
+  /// Hash code for UI-affecting properties only
+  int get uiChangeHashCode {
+    return Object.hashAll([
+      title.hashCode,
+      posterImage,
+      bannerImage,
+      description,
+      meanScore,
+      popularity,
+      favourites,
+      status,
+      nextAiringEpisode?.hashCode,
+      averageScore,
+      updatedAt,
+      advancedScores?.hashCode,
+      nextAiringEpisode?.airingAt,
+      isFavourite,
+    ]);
+  }
+
   static int? getRankings(Map<String, dynamic> json) {
     final rawRankings = json['rankings'];
 

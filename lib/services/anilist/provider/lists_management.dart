@@ -7,14 +7,18 @@ extension AnilistProviderListsManagement on AnilistProvider {
 
     final startTime = now.millisecondsSinceEpoch;
 
-    if (showSnackBar) snackBar(
-      'Refreshing user lists...',
-      severity: InfoBarSeverity.info,
-      autoHide: false,
-    );
+    if (showSnackBar)
+      snackBar(
+        'Refreshing user lists...',
+        severity: InfoBarSeverity.info,
+        autoHide: false,
+      );
 
     _isLoading = true;
     notifyListeners();
+
+    // Store old data for comparison
+    final oldUserLists = Map<String, AnilistUserList>.from(_userLists);
 
     try {
       final isOnline = await _connectivityService.getConnectivityStatus();
@@ -24,6 +28,9 @@ extension AnilistProviderListsManagement on AnilistProvider {
         // Cache after refresh only if we successfully loaded data
         if (_userLists.isNotEmpty) {
           await _saveListsToCache();
+
+          // Check if data changed and notify library screen if needed
+          if (_hasListsChanged(oldUserLists, _userLists)) _notifyLibraryScreenOfDataChange();
         }
       } else {
         // Try loading from cache if offline
@@ -31,26 +38,62 @@ extension AnilistProviderListsManagement on AnilistProvider {
           logWarn('Failed to refresh lists: Offline and no cache available');
       }
     } catch (e) {
-      if (showSnackBar) snackBar(
-        'Failed to refresh user lists: ${e.toString()}',
-        severity: InfoBarSeverity.error,
-        exception: e,
-      );
+      if (showSnackBar)
+        snackBar(
+          'Failed to refresh user lists: ${e.toString()}',
+          severity: InfoBarSeverity.error,
+          exception: e,
+        );
       _isLoading = false;
       notifyListeners();
       return;
     }
-    
+
     final endTime = now.millisecondsSinceEpoch;
     if (endTime - startTime < 1000) await Future.delayed(Duration(milliseconds: 1000 - (endTime - startTime))); // Ensure at least 1 second delay
-    
-    if (showSnackBar) snackBar(
-      'User lists refreshed successfully',
-      severity: InfoBarSeverity.success,
-    );
+
+    if (showSnackBar)
+      snackBar(
+        'User lists refreshed successfully',
+        severity: InfoBarSeverity.success,
+      );
 
     _isLoading = false;
     notifyListeners();
+  }
+
+  /// Check if user lists have changed
+  bool _hasListsChanged(Map<String, AnilistUserList> oldLists, Map<String, AnilistUserList> newLists) {
+    // Check if number of lists changed
+    if (oldLists.length != newLists.length) return true;
+
+    // Check if any list keys changed
+    if (!oldLists.keys.toSet().containsAll(newLists.keys)) return true;
+
+    // Compare using uiChangeHashCode for each list
+    for (final key in oldLists.keys) {
+      final oldList = oldLists[key];
+      final newList = newLists[key];
+
+      if (oldList == null || newList == null) return true;
+      if (oldList.uiChangeHashCode != newList.uiChangeHashCode) return true;
+    }
+
+    return false;
+  }
+
+  /// Notify library screen of data changes
+  void _notifyLibraryScreenOfDataChange() {
+    try {
+      if (libraryScreenKey.currentState == null || !libraryScreenKey.currentState!.mounted) return;
+
+      logDebug('Anilist data changed, invalidating library screen cache');
+
+      // Invalidate the library screen cache and trigger rebuild
+      libraryScreenKey.currentState!.setState(() => libraryScreenKey.currentState!.invalidateSortCache());
+    } catch (e) {
+      logErr('Error notifying library screen of data change', e);
+    }
   }
 
   /// Save user lists to local cache

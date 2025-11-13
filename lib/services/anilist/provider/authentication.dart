@@ -100,6 +100,17 @@ extension AnilistProviderAuthentication on AnilistProvider {
     _isLoading = true;
     notifyListeners();
 
+    // Store old user data for comparison
+    final oldUser = _currentUser == null
+        ? null
+        : AnilistUser(
+            id: _currentUser!.id,
+            name: _currentUser!.name,
+            avatar: _currentUser!.avatar,
+            bannerImage: _currentUser!.bannerImage,
+            userData: _currentUser!.userData,
+          );
+
     final isOnline = await _checkConnectivity();
 
     if (isOnline) {
@@ -125,6 +136,9 @@ extension AnilistProviderAuthentication on AnilistProvider {
           }
 
           await _saveCurrentUserToCache();
+
+          // Check if user data changed and notify library screen
+          if (_hasUserDataChanged(oldUser, _currentUser)) _notifyLibraryScreenOfDataChange();
         } catch (e, stackTrace) {
           logErr('Error refreshing user data', e, stackTrace);
         }
@@ -136,6 +150,31 @@ extension AnilistProviderAuthentication on AnilistProvider {
 
     _isLoading = false;
     notifyListeners();
+  }
+
+  /// Check if user data has changed in a way that affects library display
+  bool _hasUserDataChanged(AnilistUser? oldUser, AnilistUser? newUser) {
+    // If either is null but not both, data changed
+    if (oldUser == null && newUser != null) return true;
+    if (oldUser != null && newUser == null) return true;
+    if (oldUser == null && newUser == null) return false;
+
+    // Compare using uiChangeHashCode
+    return oldUser!.uiChangeHashCode != newUser!.uiChangeHashCode;
+  }
+
+  /// Notify library screen that data has changed
+  void _notifyLibraryScreenOfDataChange() {
+    try {
+      if (libraryScreenKey.currentState == null || !libraryScreenKey.currentState!.mounted) return;
+
+      logDebug('User data changed, invalidating library screen cache');
+      
+      // Invalidate the library screen cache and trigger rebuild
+      libraryScreenKey.currentState!.setState(() => libraryScreenKey.currentState!.invalidateSortCache());
+    } catch (e) {
+      logErr('Error notifying library screen of user data change', e);
+    }
   }
 
   /// Logout from Anilist
@@ -157,7 +196,7 @@ extension AnilistProviderAuthentication on AnilistProvider {
       final userCacheDao = library.database.userCacheDao;
 
       _currentUser = await userCacheDao.getCachedUser();
-      
+
       if (_currentUser != null) {
         logDebug('Loaded Anilist user from database (${_currentUser?.name})');
         return true;
@@ -168,7 +207,6 @@ extension AnilistProviderAuthentication on AnilistProvider {
       return false;
     }
   }
-
 
   /// Save current user to database cache
   Future<void> _saveCurrentUserToCache() async {

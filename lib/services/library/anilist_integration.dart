@@ -204,7 +204,7 @@ extension LibraryAnilistIntegration on Library {
                 lastSynced: now,
                 anilistData: anime,
               );
-              
+
               // Calculate dominant colors for the mapping
               if (anime.posterImage != null) await series.anilistMappings[j].calculateDominantColors(forceRecalculate: false);
             }
@@ -312,6 +312,15 @@ extension LibraryAnilistIntegration on Library {
     final anilistService = AnilistService();
     final linkedSeries = _series.where((s) => s.primaryAnilistId != null).toList();
 
+    // Store old metadata for comparison - for ALL mappings, not just primary
+    final oldMetadataMap = <int, AnilistAnime?>{};
+    for (final series in linkedSeries) {
+      // Store metadata for all mappings in this series
+      for (final mapping in series.anilistMappings) {
+        oldMetadataMap[mapping.anilistId] = mapping.anilistData;
+      }
+    }
+
     final int perPage = 50;
     // Process in batches
     for (int i = 0; i < linkedSeries.length; i += perPage) {
@@ -341,6 +350,18 @@ extension LibraryAnilistIntegration on Library {
       }
     }
 
+    // Check if metadata changed (optimized: single pass, short-circuit on first change)
+    bool metadataChanged = false;
+    final allMappings = linkedSeries.expand((series) => series.anilistMappings).toList();
+    for (final mapping in allMappings) {
+      final oldMetadata = oldMetadataMap[mapping.anilistId];
+      final newMetadata = mapping.anilistData;
+      if (_hasAnimeMetadataChanged(oldMetadata, newMetadata)) {
+        metadataChanged = true;
+        break;
+      }
+    }
+
     // Acquire database save lock
     final saveLockHandle = await _lockManager.acquireLock(
       OperationType.databaseSave,
@@ -351,6 +372,9 @@ extension LibraryAnilistIntegration on Library {
     try {
       await _saveLibrary();
       notifyListeners();
+
+      // Notify library screen if metadata changed
+      if (metadataChanged) _notifyLibraryScreenOfDataChange();
     } finally {
       saveLockHandle?.dispose();
 
@@ -425,6 +449,31 @@ extension LibraryAnilistIntegration on Library {
       if (updated) logDebug('Successfully refetched episode titles for series: ${series.name}');
     } catch (e) {
       logErr('Failed to refetch episode titles for series: ${series.name}', e);
+    }
+  }
+
+  /// Check if anime metadata has changed in a way that affects library display
+  bool _hasAnimeMetadataChanged(AnilistAnime? oldAnime, AnilistAnime? newAnime) {
+    // If either is null but not both, data changed
+    if (oldAnime == null && newAnime != null) return true;
+    if (oldAnime != null && newAnime == null) return true;
+    if (oldAnime == null && newAnime == null) return false;
+
+    // Compare using uiChangeHashCode
+    return oldAnime!.uiChangeHashCode != newAnime!.uiChangeHashCode;
+  }
+
+  /// Notify library screen that data has changed
+  void _notifyLibraryScreenOfDataChange() {
+    try {
+      if (libraryScreenKey.currentState == null || !libraryScreenKey.currentState!.mounted) return;
+
+      logDebug('Anilist data changed, invalidating library screen cache');
+      
+      // Invalidate the library screen cache and trigger rebuild
+      libraryScreenKey.currentState!.setState(() => libraryScreenKey.currentState!.invalidateSortCache());
+    } catch (e) {
+      logErr('Error notifying library screen of data change', e);
     }
   }
 

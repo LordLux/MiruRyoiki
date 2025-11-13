@@ -139,6 +139,19 @@ class AnilistMediaListEntry {
       updatedAt: updatedAt ?? this.updatedAt,
     );
   }
+
+  /// Hash code for UI-affecting properties only
+  int get uiChangeHashCode {
+    return Object.hash(
+      mediaId,
+      status,
+      media.uiChangeHashCode,
+      progress,
+      score,
+      updatedAt,
+      completedAt,
+    );
+  }
 }
 
 class AnilistUserList {
@@ -175,8 +188,16 @@ class AnilistUserList {
   }
   
   @override
-  String toString() {
-    return 'AUL($name)';
+  String toString() => 'AUL($name)';
+
+  /// Hash code for UI-affecting properties only
+  int get uiChangeHashCode {
+    // Hash all entry properties that affect UI
+    int entriesHash = 0;
+    for (final entry in entries) {
+      entriesHash = Object.hash(entriesHash, entry.uiChangeHashCode);
+    }
+    return Object.hash(name, entriesHash);
   }
 }
 
@@ -209,6 +230,16 @@ class AnilistUser {
       avatar: avatar ?? this.avatar,
       bannerImage: bannerImage ?? this.bannerImage,
       userData: userData ?? this.userData,
+    );
+  }
+
+  /// Hash code for UI-affecting properties only
+  int get uiChangeHashCode {
+    return Object.hash(
+      name,
+      avatar,
+      bannerImage,
+      userData?.uiChangeHashCode,
     );
   }
 
