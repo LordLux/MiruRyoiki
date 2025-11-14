@@ -25,6 +25,7 @@ class NotificationCalendarEntryWidget extends StatefulWidget {
   final Function(PathString)? onSeriesSelected;
   final Function(int)? onNotificationRead;
   final Function(int)? onRelatedMediaAdditionNotificationTapped;
+  final Function(int)? onMediaDataChangeNotificationTapped;
   final Function(int)? onAddedToList;
   final Function(int, int)? onDownloadButton;
   final bool isDense;
@@ -37,12 +38,13 @@ class NotificationCalendarEntryWidget extends StatefulWidget {
     this.onSeriesSelected,
     this.onNotificationRead,
     this.onRelatedMediaAdditionNotificationTapped,
+    this.onMediaDataChangeNotificationTapped,
     this.onAddedToList,
     this.onDownloadButton,
     this.isDense = false,
     this.color,
   }) : // Ensure that if isDense is false then all callbacks are non-null
-        assert(isDense || (onSeriesSelected != null && onNotificationRead != null && onRelatedMediaAdditionNotificationTapped != null && onAddedToList != null && onDownloadButton != null), 'All callbacks must be provided when isDense is false');
+        assert(isDense || (onSeriesSelected != null && onNotificationRead != null && onRelatedMediaAdditionNotificationTapped != null && onMediaDataChangeNotificationTapped != null && onAddedToList != null && onDownloadButton != null), 'All callbacks must be provided when isDense is false');
 
   @override
   State<NotificationCalendarEntryWidget> createState() => _NotificationCalendarEntryWidgetState();
@@ -53,6 +55,7 @@ class _NotificationCalendarEntryWidgetState extends State<NotificationCalendarEn
   bool _isHovered = false;
   bool _isReadNotifHovered = false;
   bool get isRelatedMediaAdditionNotification => widget.notification is RelatedMediaAdditionNotification && (widget.notification as RelatedMediaAdditionNotification).media != null;
+  bool get isMediaDataChangeNotification => widget.notification is MediaDataChangeNotification && (widget.notification as MediaDataChangeNotification).media != null;
   bool get isNewEpisodeNotification => widget.notification is AiringNotification && (widget.notification as AiringNotification).media != null;
 
   @override
@@ -141,7 +144,7 @@ class _NotificationCalendarEntryWidgetState extends State<NotificationCalendarEn
           );
         return child;
       },
-      subtitle: formatTimeAgo(widget.notification, notificationDate, widget.isDense),
+      subtitle: formatTimeAgo(widget.notification, notificationDate, widget.isDense, customStr: isMediaDataChangeNotification ? 'Updated' : null),
       subtitleTooltip: widget.isDense ? notificationDate : null,
       timestamp: widget.isDense ? null : DateFormat.yMMMd().add_jm().format(notificationDate),
       isRead: widget.notification.isRead,
@@ -227,13 +230,15 @@ class _NotificationCalendarEntryWidgetState extends State<NotificationCalendarEn
               ? widget.onSeriesSelected!(widget.series!.path)
               : isRelatedMediaAdditionNotification
                   ? widget.onRelatedMediaAdditionNotificationTapped!((widget.notification as RelatedMediaAdditionNotification).mediaId)
-                  : null,
+                  : isMediaDataChangeNotification
+                      ? widget.onMediaDataChangeNotificationTapped!((widget.notification as MediaDataChangeNotification).mediaId)
+                      : null,
       isTileColored: !widget.notification.isRead, // Highlight unread notifications
     );
   }
 }
 
-String formatTimeAgo(AnilistNotification? notification, DateTime notificationDate, bool isDense) {
+String formatTimeAgo(AnilistNotification? notification, DateTime notificationDate, bool isDense, {String? customStr}) {
   String str = "";
   final compareNowDate = now;
   final compareTodayDate = DateTime(compareNowDate.year, compareNowDate.month, compareNowDate.day);
@@ -247,7 +252,7 @@ String formatTimeAgo(AnilistNotification? notification, DateTime notificationDat
   else
     str = '${duration.inMinutes} minute${duration.inMinutes > 1 ? 's' : ''} ago';
 
-  if (notification == null || notification is! RelatedMediaAdditionNotification) str = 'Aired $str';
+  if (notification == null || notification is! RelatedMediaAdditionNotification) str = '${customStr ?? "Aired"} $str';
   return str;
 }
 

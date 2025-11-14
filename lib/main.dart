@@ -1206,11 +1206,13 @@ Future<void> _registerWindowsUrlScheme(String scheme) async {
   }
 }
 
+// TODO add divider between notifications and scheduled episodes in release calendar
+// TODO add polimorphic method to Notifications to get their "aired"/"Updated"/"Deleted" etc string for time ago formatting
 // TODO add NonMapping for series that are not to be linked with Anilist
 // TODO change scanning: any folders [names] will remain as is and only loose files will be moved to 'Related Media'
 // TODO create widget for Smooth scrolling scroll controllers
+// TODO check that notifications are only for anime and not for manga
 // TODO create superclass for series type cards (continue watching, library series, search results, etc.) to share code between them and avoid duplication
-// TODO after new data from fetching userdata or series data, invalidate cache for library screen and reload
 // TODO add 'notify me' button to upcoming episodes on home screen
 // TODO change text 'wait while library is getting indexed' to 'scanning' when library scan is in progress
 // TODO add 'play episode' button on continue watching series card -> click on card simply opens series

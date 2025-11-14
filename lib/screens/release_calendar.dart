@@ -1207,6 +1207,11 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> with Autom
             logTrace('Opening related media addition notification URL: $url');
             launchUrl(Uri.parse(url));
           },
+          onMediaDataChangeNotificationTapped: (animeId) async {
+            final url = 'https://anilist.co/anime/$animeId';
+            logTrace('Opening media data change notification URL: $url');
+            launchUrl(Uri.parse(url));
+          },
           onNotificationRead: (notificationId) async {
             // check if the notification is already marked as read and if so, do nothing
             if (notificationEntry.notification.isRead) return;
