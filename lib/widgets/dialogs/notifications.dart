@@ -134,15 +134,15 @@ class NotificationsContentState extends State<_NotificationsContent> {
       );
       final unreadCount = await _anilistService!.getUnreadCount(library.database);
 
+      if (!mounted) return;
+
       // Filter out notifications for hidden series
       final filteredNotifications = _filterNotifications(notifications);
 
-      if (mounted) {
-        setState(() {
-          _notifications = filteredNotifications.take(5).toList();
-          _unreadCount = unreadCount;
-        });
-      }
+      setState(() {
+        _notifications = filteredNotifications.take(5).toList();
+        _unreadCount = unreadCount;
+      });
     } catch (e) {
       // Silently handle cache loading errors
       logErr("Error loading cached notifications", e);
@@ -174,6 +174,8 @@ class NotificationsContentState extends State<_NotificationsContent> {
       final result = await _fetchNotifications();
       notifications = result.$1;
       unreadCount = result.$2;
+      
+      if (!mounted) return;
 
       // Filter out notifications for hidden series
       final filteredNotifications = _filterNotifications(notifications);

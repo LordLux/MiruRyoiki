@@ -1206,11 +1206,15 @@ Future<void> _registerWindowsUrlScheme(String scheme) async {
   }
 }
 
+// TODO make `SeriesScreenContainerState.mainDominantColor` go null when exiting series view
+// TODO make it so that player expands in both directions at the same time
+// TODO move 'random entry' button to top right corner of 'next up' section in homescreen + add to library
 // TODO add divider between notifications and scheduled episodes in release calendar
 // TODO add polimorphic method to Notifications to get their "aired"/"Updated"/"Deleted" etc string for time ago formatting
 // TODO add NonMapping for series that are not to be linked with Anilist
 // TODO change scanning: any folders [names] will remain as is and only loose files will be moved to 'Related Media'
 // TODO create widget for Smooth scrolling scroll controllers
+// TODO reload inner series screen after reloading library if the series is open
 // TODO check that notifications are only for anime and not for manga
 // TODO create superclass for series type cards (continue watching, library series, search results, etc.) to share code between them and avoid duplication
 // TODO add 'notify me' button to upcoming episodes on home screen

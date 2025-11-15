@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart' as mat;
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:miruryoiki/manager.dart';
+import 'package:miruryoiki/utils/color.dart';
 import 'package:provider/provider.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:shimmer/shimmer.dart';
@@ -1291,7 +1292,7 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
                     Text(
                       _getViewTypeLabel(viewType),
                       style: Manager.captionStyle.copyWith(
-                        color: Colors.white,
+                        color: getTextColor(Manager.currentDominantColor ?? Manager.accentColor),
                         fontSize: 11 * Manager.fontSizeMultiplier,
                       ),
                     ),
