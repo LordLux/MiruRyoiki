@@ -3,7 +3,6 @@ import 'package:flutter/material.dart' show Material, MaterialState;
 import 'package:provider/provider.dart';
 import 'package:glossy/glossy.dart';
 
-import '../../screens/series.dart';
 import '../../utils/screen.dart';
 import '../../manager.dart';
 import '../../utils/logging.dart';
@@ -355,9 +354,9 @@ class ManagedDialogButton extends StatelessWidget {
           return FilledButton(
             style: FluentTheme.of(context).buttonTheme.filledButtonStyle?.copyWith(backgroundColor: WidgetStateColor.resolveWith(
               (states) {
-                if (states.contains(MaterialState.hovered)) return (SeriesScreenContainerState.mainDominantColor ?? Manager.currentDominantColor ?? Manager.accentColor).toAccentColor().light;
-                if (states.contains(MaterialState.pressed)) return (SeriesScreenContainerState.mainDominantColor ?? Manager.currentDominantColor ?? Manager.accentColor).toAccentColor().lighter;
-                return SeriesScreenContainerState.mainDominantColor ?? Manager.currentDominantColor ?? Manager.accentColor;
+                if (states.contains(MaterialState.hovered)) return (Manager.currentDominantColor ?? Manager.accentColor).toAccentColor().light;
+                if (states.contains(MaterialState.pressed)) return (Manager.currentDominantColor ?? Manager.accentColor).toAccentColor().lighter;
+                return Manager.currentDominantColor ?? Manager.accentColor;
               },
             )),
             onPressed: onPressed != null ? finalOnPressed : null,

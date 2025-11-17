@@ -57,7 +57,6 @@ import 'utils/time.dart';
 import 'widgets/animated_indicator.dart';
 import 'widgets/cursors.dart';
 import 'widgets/dialogs/link_anilist.dart';
-import 'widgets/tooltip_wrapper.dart';
 import 'widgets/window_buttons.dart';
 
 final _appTheme = AppTheme();
@@ -573,7 +572,7 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
                           onChanged: _onChangedPane,
                           displayMode: _isCompactView ? PaneDisplayMode.compact : PaneDisplayMode.auto,
                           indicator: AnimatedNavigationIndicator(
-                            targetColor: Manager.currentDominantColor,
+                            targetColor: Manager.currentDominantColor ?? Manager.accentColor,
                             indicatorBuilder: (color) => StickyNavigationIndicator(color: color),
                           ),
                           items: [
@@ -983,7 +982,7 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
     });
 
     Manager.currentDominantColor = await series?.effectivePrimaryColor();
-    if (Manager.currentDominantColor != null) SeriesScreenContainerState.mainDominantColor = Manager.currentDominantColor;
+    if (Manager.currentDominantColor != null) Manager.seriesDominantColor = Manager.currentDominantColor;
 
     Manager.setState();
   }
@@ -1004,6 +1003,7 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
 
     setState(() {
       Manager.currentDominantColor = null;
+      Manager.seriesDominantColor = null;
       lastSelectedSeriesPath = _selectedSeriesPath ?? lastSelectedSeriesPath;
       _isSeriesView = false;
       _isCompactView = false;
@@ -1040,64 +1040,78 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
   bool handleBackNavigation({bool isEsc = false}) {
     final navManager = Provider.of<NavigationManager>(context, listen: false);
 
-    if (navManager.hasDialog && !isEsc) {
-      logTrace('$nowFormatted | Back Mouse Button Pressed: Closing dialog');
-      // Find active dialogs and close them
-      // This assumes dialogs are managed through Flutter's dialog system
-      // and will be removed from stack using the showManagedDialog helper
-      // TODO
-      // closeDialog(rootNavigatorKey.currentContext!);
-      return true;
-    } else if (_isSeriesView) {
-      if (!navManager.hasDialog) {
-        if (navManager.currentView?.id.startsWith("mapping:") ?? false) {
-          // Coming back from mapping view
-          seriesScreenContainerKey.currentState?.exitMapping();
-          logTrace('Going back in navigation stack! Mapping -> Series');
-        } else if (navManager.currentView?.id.startsWith("series:") ?? false) {
-          // Coming back from series view
-          logTrace('Going back in navigation stack! Series -> Library');
-          exitSeriesView();
-        } else {
-          logWarn('Unknown navigation state while in series view: ${navManager.currentView?.id}');
-        }
-      } else {
-        if (!Manager.canPopDialog) {
-          if (navManager.currentView?.id.startsWith('linkAnilist') ?? false) {
-            logTrace('Link Anilist dialog is open, switching to view mode');
-            nextFrame(() => linkMultiDialogKey.currentState?.switchToViewMode());
-          }
-        } else {
-          logTrace('Closing dialog from back navigation in series view');
-          closeDialog(rootNavigatorKey.currentContext!);
-        }
+    // Handle dialog closure
+    if (navManager.hasDialog) {
+      if (!isEsc) {
+        logTrace('$nowFormatted | Back Mouse Button Pressed: Closing dialog');
+        // TODO: closeDialog(rootNavigatorKey.currentContext!);
+        return true;
       }
-      return true;
-    } else if (navManager.canGoBack) {
-      logDebug('Going back in navigation stack -> ${navManager.stack[navManager.stack.length - 2].title}');
-      // navManager.goBack();
 
-      // Navigate based on the new current item
+      if (!Manager.canPopDialog) {
+        if (navManager.currentView?.id.startsWith('linkAnilist') ?? false) {
+          logTrace('Link Anilist dialog is open, switching to view mode');
+          nextFrame(() => linkMultiDialogKey.currentState?.switchToViewMode());
+        }
+        return true;
+      }
+
+      logTrace('Closing dialog from back navigation in series view');
+      closeDialog(rootNavigatorKey.currentContext!);
+      return true;
+    }
+
+    // Handle series view navigation
+    if (_isSeriesView) {
+      final currentViewId = navManager.currentView?.id;
+
+      if (currentViewId?.startsWith("mapping:") ?? false) {
+        logTrace('Going back in navigation stack! Mapping -> Series');
+        seriesScreenContainerKey.currentState?.exitMapping();
+        return true;
+      }
+
+      if (currentViewId?.startsWith("series:") ?? false) {
+        logTrace('Going back in navigation stack! Series -> Library');
+        exitSeriesView();
+        return true;
+      }
+
+      logWarn('Unknown navigation state while in series view: $currentViewId');
+      return true;
+    }
+
+    // Handle general back navigation
+    if (navManager.canGoBack) {
+      logDebug('Going back in navigation stack -> ${navManager.stack[navManager.stack.length - 2].title}');
+
       final currentItem = navManager.currentView;
-      if (currentItem != null) {
-        if (currentItem.level == NavigationLevel.pane) {
-          // Switch to appropriate pane
+      if (currentItem == null) return false;
+
+      switch (currentItem.level) {
+        case NavigationLevel.pane:
           final index = _getPaneIndexFromId(currentItem.id);
-          if (index != null && index != _selectedIndex) {
-            setState(() => _selectedIndex = index);
-          }
-        } else if (currentItem.level == NavigationLevel.page) {
-          // Check if it's a series page
+          if (index != null && index != _selectedIndex) setState(() => _selectedIndex = index);
+          break;
+
+        case NavigationLevel.page:
           if (currentItem.id.startsWith('series:') && currentItem.data is String) {
             setState(() {
               _selectedSeriesPath = currentItem.data as PathString;
               _isSeriesView = true;
             });
           }
-        }
+          break;
+
+        case NavigationLevel.dialog:
+          // Should not reach here due to earlier dialog handling
+          logWarn('Unexpected dialog level in back navigation: ${currentItem.id}');
+          break;
       }
+
       return true;
     }
+    logTrace('Back navigation not possible');
 
     return false;
   }
@@ -1206,7 +1220,6 @@ Future<void> _registerWindowsUrlScheme(String scheme) async {
   }
 }
 
-// TODO make `SeriesScreenContainerState.mainDominantColor` go null when exiting series view
 // TODO make it so that player expands in both directions at the same time
 // TODO move 'random entry' button to top right corner of 'next up' section in homescreen + add to library
 // TODO add divider between notifications and scheduled episodes in release calendar

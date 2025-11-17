@@ -1273,10 +1273,10 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
                 duration: shortDuration,
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
                 decoration: BoxDecoration(
-                  color: isSelected ? Manager.accentColor.light : Colors.white.withOpacity(0.1),
+                  color: isSelected ? (Manager.currentDominantAccentColor ?? Manager.accentColor).light : Colors.white.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(6),
                   border: Border.all(
-                    color: isSelected ? Manager.accentColor.dark : Colors.white.withOpacity(0.2),
+                    color: isSelected ? (Manager.currentDominantAccentColor ?? Manager.accentColor).dark : Colors.white.withOpacity(0.2),
                     width: 1,
                   ),
                 ),
@@ -1286,13 +1286,13 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
                     Icon(
                       _getViewTypeIcon(viewType),
                       size: 14,
-                      color: Colors.white,
+                      color: _getViewTypeColor(isSelected),
                     ),
                     const SizedBox(width: 4),
                     Text(
                       _getViewTypeLabel(viewType),
                       style: Manager.captionStyle.copyWith(
-                        color: getTextColor(Manager.currentDominantColor ?? Manager.accentColor),
+                        color: _getViewTypeColor(isSelected),
                         fontSize: 11 * Manager.fontSizeMultiplier,
                       ),
                     ),
@@ -1307,9 +1307,7 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
   }
 
   void _onViewTypeChanged(ViewType viewType) {
-    setState(() {
-      _viewType = viewType;
-    });
+    setState(() => _viewType = viewType);
     _saveUserPreferences();
   }
 
@@ -1321,6 +1319,9 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
         return 'List';
     }
   }
+  
+  Color _getViewTypeColor(bool isSelected) =>//
+   isSelected ? getTextColor(Manager.currentDominantColor ?? Manager.accentColor) : Colors.white;
 
   IconData _getViewTypeIcon(ViewType viewType) {
     switch (viewType) {

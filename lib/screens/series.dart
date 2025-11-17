@@ -66,7 +66,6 @@ class SeriesScreenContainer extends StatefulWidget {
 class SeriesScreenContainerState extends State<SeriesScreenContainer> {
   AnilistMapping? _selectedMapping;
   MappingTarget? _selectedTarget;
-  static Color? mainDominantColor;
 
   final GlobalKey<SeriesScreenState> _seriesScreenKey = GlobalKey<SeriesScreenState>();
   final GlobalKey<InnerSeriesScreenState> _innerSeriesScreenKey = GlobalKey<InnerSeriesScreenState>();
@@ -119,7 +118,9 @@ class SeriesScreenContainerState extends State<SeriesScreenContainer> {
     setState(() {
       _selectedMapping = mapping;
       _selectedTarget = target;
-      SeriesScreenContainerState.mainDominantColor = mainDominantColor ?? Manager.accentColor;
+      // Save the series color if not already saved, then set the mapping color as current
+      Manager.seriesDominantColor ??= Manager.currentDominantColor ?? Manager.accentColor;
+      Manager.currentDominantColor = mapping.effectivePrimaryColorSync() ?? Manager.seriesDominantColor ?? Manager.accentColor;
     });
 
     nextFrame(delay: 15, () {
@@ -137,12 +138,12 @@ class SeriesScreenContainerState extends State<SeriesScreenContainer> {
       navManager.goBack();
     }
 
-    setState(() {
+    Manager.setState(() {
       _selectedMapping = null;
       _mainSeriesScreenOpacityHideStart = false;
       _selectedTarget = null;
-      SeriesScreenContainerState.mainDominantColor = mainDominantColor ?? Manager.accentColor;
-      Manager.currentDominantColor = mainDominantColor;
+      // Restore the series color from seriesDominantColor
+      Manager.currentDominantColor = Manager.seriesDominantColor ?? Manager.accentColor;
     });
   }
 
@@ -400,8 +401,9 @@ class SeriesScreenState extends State<SeriesScreen> {
     setState(() {
       series.primaryAnilistId = mapping.anilistId;
       series.anilistData = mapping.anilistData;
-      SeriesScreenContainerState.mainDominantColor = mapping.effectivePrimaryColorSync();
-      Manager.currentDominantColor = SeriesScreenContainerState.mainDominantColor;
+      final newColor = mapping.effectivePrimaryColorSync();
+      Manager.currentDominantColor = newColor;
+      Manager.seriesDominantColor = newColor;
     });
 
     // Save the updated series to the library
@@ -441,7 +443,8 @@ class SeriesScreenState extends State<SeriesScreen> {
     // Store the original dominant color to check if it changes after calculating the new one
     final Color? originalDominantColor = series.effectivePrimaryColorSync();
     if (originalDominantColor != null) {
-      SeriesScreenContainerState.mainDominantColor = originalDominantColor;
+      Manager.currentDominantColor = originalDominantColor;
+      Manager.seriesDominantColor = originalDominantColor;
     }
 
     for (final id in anilistIDs) {
@@ -511,7 +514,10 @@ class SeriesScreenState extends State<SeriesScreen> {
       // Update dominant color if any updates occurred
       if (anyUpdatesOccurred) {
         final dominantColor = await series.effectivePrimaryColor(forceRecalculate: true);
-        if (dominantColor != null) SeriesScreenContainerState.mainDominantColor = dominantColor;
+        if (dominantColor != null) {
+          Manager.currentDominantColor = dominantColor;
+          Manager.seriesDominantColor = dominantColor;
+        }
 
         if (!mounted || _cachedSeries == null) {
           // in case series was disposed during the async operation
@@ -613,7 +619,7 @@ class SeriesScreenState extends State<SeriesScreen> {
             headerWidget: _buildHeader(context, series),
             infobar: (_) => _buildInfoBar(context, series),
             content: _buildContentGrid(context, series),
-            backgroundColor: SeriesScreenContainerState.mainDominantColor,
+            backgroundColor: Manager.currentDominantColor,
             onHeaderCollapse: () => _descriptionController.collapse(),
             scrollableContent: false,
           ),
@@ -631,7 +637,7 @@ class SeriesScreenState extends State<SeriesScreen> {
             children: [
               // Banner
               ShiftClickableHover(
-                color: SeriesScreenContainerState.mainDominantColor,
+                color: Manager.currentDominantColor,
                 enabled: _isBannerHovering && !bannerChangeDisabled,
                 onTap: (context) => selectImage(context, isBanner: true),
                 onEnter: bannerChangeDisabled ? () {} : () => setState(() => _isBannerHovering = true),
@@ -656,11 +662,11 @@ class SeriesScreenState extends State<SeriesScreen> {
                               begin: Alignment.topCenter,
                               end: Alignment.bottomCenter,
                               colors: [
-                                (SeriesScreenContainerState.mainDominantColor ?? Manager.accentColor).withOpacity(0.27),
+                                (Manager.currentDominantColor ?? Manager.accentColor).withOpacity(0.27),
                                 Colors.transparent,
                               ],
                             ),
-                            color: enabled ? (SeriesScreenContainerState.mainDominantColor ?? Manager.accentColor).withOpacity(0.75) : Colors.transparent,
+                            color: enabled ? (Manager.currentDominantColor ?? Manager.accentColor).withOpacity(0.75) : Colors.transparent,
                             image: _getBannerDecoration(snapshot.data),
                           ),
                           padding: const EdgeInsets.only(bottom: 16.0),
@@ -812,7 +818,7 @@ class SeriesScreenState extends State<SeriesScreen> {
             maxHeight: 150,
             minHeight: 45,
             controller: _descriptionController,
-            child: parser.parse(series.description!, selectable: true, selectionColor: SeriesScreenContainerState.mainDominantColor),
+            child: parser.parse(series.description!, selectable: true, selectionColor: Manager.currentDominantColor),
           ),
         ],
       ],
@@ -871,7 +877,7 @@ class SeriesScreenState extends State<SeriesScreen> {
             height: height - offset,
             width: width,
             child: ShiftClickableHover(
-              color: SeriesScreenContainerState.mainDominantColor,
+              color: Manager.currentDominantColor,
               enabled: _isPosterHovering && !posterChangeDisabled,
               onTap: (context) => selectImage(context, isBanner: false),
               onEnter: posterChangeDisabled ? () {} : () => setState(() => _isPosterHovering = true),
@@ -934,7 +940,7 @@ class SeriesScreenState extends State<SeriesScreen> {
                             gradient: RadialGradient(
                               colors: [
                                 Colors.black.withOpacity(.95),
-                                (SeriesScreenContainerState.mainDominantColor ?? Manager.accentColor).withOpacity(.2),
+                                (Manager.currentDominantColor ?? Manager.accentColor).withOpacity(.2),
                               ],
                               radius: 0.5,
                               center: Alignment.center,
@@ -1086,7 +1092,7 @@ class SeriesScreenState extends State<SeriesScreen> {
           SizedBox(
             width: 300,
             child: AnimatedColor(
-                color: SeriesScreenContainerState.mainDominantColor,
+                color: Manager.currentDominantColor,
                 duration: gradientChangeDuration,
                 builder: (color) {
                   return ProgressBar(
@@ -1312,7 +1318,9 @@ void linkWithAnilist(BuildContext context, Series? series, Future<void> Function
         if (anilistIdsToLoad.isNotEmpty) await loadData(anilistIdsToLoad);
 
         // Update the series with the new mappings
-        Manager.currentDominantColor = await series.effectivePrimaryColor();
+        final newColor = await series.effectivePrimaryColor();
+        Manager.currentDominantColor = newColor;
+        Manager.seriesDominantColor = newColor;
         Manager.setState();
       },
     ),

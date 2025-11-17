@@ -11,7 +11,6 @@ import '../../main.dart';
 import '../../manager.dart';
 import '../../models/anilist/mapping.dart';
 import '../../models/series.dart';
-import '../../screens/series.dart';
 import '../../services/anilist/linking.dart';
 import '../../services/file_system/cache.dart';
 import '../../services/library/library_provider.dart';
@@ -320,7 +319,7 @@ class AnilistLinkMultiContentState extends State<_AnilistLinkMultiContent> {
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 8.0),
                   child: FluentTheme(
-                    data: FluentTheme.of(context).copyWith(accentColor: SeriesScreenContainerState.mainDominantColor?.toAccentColor() ?? Manager.accentColor),
+                    data: FluentTheme.of(context).copyWith(accentColor: Manager.currentDominantColor?.toAccentColor() ?? Manager.accentColor),
                     child: TooltipWrapper(
                       tooltip: library.isIndexing ? 'The Library is indexing. Please wait...' : 'Select primary Anilist source',
                       waitDuration: mediumDuration,
@@ -375,9 +374,9 @@ class AnilistLinkMultiContentState extends State<_AnilistLinkMultiContent> {
                     child: (_) => StandardButton(
                       onPressed: _switchToAddMode,
                       isFilled: !_mappingsChanged,
-                      filledColor: SeriesScreenContainerState.mainDominantColor,
-                      hoverFillColor: SeriesScreenContainerState.mainDominantColor?.toAccentColor().light,
-                      label: Text('Add New Link', style: Manager.bodyStyle.copyWith(color: getTextColor(!_mappingsChanged ? SeriesScreenContainerState.mainDominantColor ?? Manager.accentColor : Colors.black))),
+                      filledColor: Manager.currentDominantColor,
+                      hoverFillColor: Manager.currentDominantColor?.toAccentColor().light,
+                      label: Text('Add New Link', style: Manager.bodyStyle.copyWith(color: getTextColor(!_mappingsChanged ? Manager.currentDominantColor ?? Manager.accentColor : Colors.black))),
                     ),
                   ),
                 ),
@@ -413,7 +412,7 @@ class AnilistLinkMultiContentState extends State<_AnilistLinkMultiContent> {
     return Padding(
       padding: const EdgeInsets.only(bottom: 2.0),
       child: UnselectableTile(
-        color: isNewlyAddedMapping ? Colors.white.withOpacity(0.05) : SeriesScreenContainerState.mainDominantColor,
+        color: isNewlyAddedMapping ? Colors.white.withOpacity(0.05) : Manager.currentDominantColor,
         // use the series effective poster if available
         icon: isNewlyAddedMapping
             ? SizedBox(width: 30, child: Icon(FluentIcons.add_link, color: Colors.white))
@@ -436,13 +435,13 @@ class AnilistLinkMultiContentState extends State<_AnilistLinkMultiContent> {
           child: WrappedHyperlinkButton(
             tooltip: 'Open Anilist page for ${mapping.title ?? 'Anilist ID: ${mapping.anilistId}'}',
             url: "https://anilist.co/anime/${mapping.anilistId}",
-            hoverColor: isNewlyAddedMapping ? Colors.white : SeriesScreenContainerState.mainDominantColor,
+            hoverColor: isNewlyAddedMapping ? Colors.white : Manager.currentDominantColor,
             text: mapping.title ?? 'Anilist ID: ${mapping.anilistId}',
             style: Manager.bodyStyle,
-            iconColor: isNewlyAddedMapping ? Colors.white : SeriesScreenContainerState.mainDominantColor,
+            iconColor: isNewlyAddedMapping ? Colors.white : Manager.currentDominantColor,
             icon: Icon(
               Icons.open_in_new,
-              color: isNewlyAddedMapping ? Colors.white : SeriesScreenContainerState.mainDominantColor,
+              color: isNewlyAddedMapping ? Colors.white : Manager.currentDominantColor,
             ),
           ),
         ),
@@ -497,7 +496,7 @@ class AnilistLinkMultiContentState extends State<_AnilistLinkMultiContent> {
             icon: Icon(
               Icons.link_off_outlined,
               size: 18,
-              color: isNewlyAddedMapping ? Colors.white : SeriesScreenContainerState.mainDominantColor,
+              color: isNewlyAddedMapping ? Colors.white : Manager.currentDominantColor,
             ),
             onPressed: () => setState(() => mappings.remove(mapping)),
           ),
@@ -612,8 +611,8 @@ class AnilistLinkMultiContentState extends State<_AnilistLinkMultiContent> {
                             foregroundColor: ButtonState.all(Colors.white),
                           )
                         : ButtonStyle(
-                            backgroundColor: ButtonState.all(SeriesScreenContainerState.mainDominantColor ?? Manager.accentColor),
-                            foregroundColor: ButtonState.all(getTextColor(SeriesScreenContainerState.mainDominantColor ?? Manager.accentColor)),
+                            backgroundColor: ButtonState.all(Manager.currentDominantColor ?? Manager.accentColor),
+                            foregroundColor: ButtonState.all(getTextColor(Manager.currentDominantColor ?? Manager.accentColor)),
                         ),
                 onPressed: (selectedLocalPath != null && selectedAnilistId != null && !_isExactDuplicate)
                     ? () {

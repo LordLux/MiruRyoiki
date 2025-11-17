@@ -43,7 +43,6 @@ import '../widgets/simple_html_parser.dart';
 import '../widgets/tooltip_wrapper.dart';
 import '../widgets/transparency_shadow_image.dart';
 import 'anilist_settings.dart';
-import 'series.dart';
 
 class InnerSeriesScreen extends StatefulWidget {
   final VoidCallback onBack; // Callback to go back to the series screen
@@ -149,7 +148,8 @@ class InnerSeriesScreenState extends State<InnerSeriesScreen> {
 
     deferredPointerLink = DeferredPointerHandlerLink();
     parser = SimpleHtmlParser(context);
-    dominantColor = SeriesScreenContainerState.mainDominantColor;
+    // Use the current mapping's color
+    dominantColor = Manager.currentDominantColor;
 
     // Initialize dominant color and fetch episode titles
     nextFrame(() => _initializeMappingData());

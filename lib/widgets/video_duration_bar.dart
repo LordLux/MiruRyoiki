@@ -26,7 +26,7 @@ class VideoDurationBar extends StatefulWidget {
     Color? thumbColor,
   })  : backgroundColor = backgroundColor ?? const Color(0xFF595959).lerpWith(Manager.currentDominantColor ?? Manager.accentColor, 0.5).withOpacity(0.5),
         progressColor = progressColor ?? Manager.currentDominantColor ?? Manager.accentColor,
-        thumbColor = thumbColor ?? (Manager.currentDominantColor ?? Manager.accentColor).toAccentColor().light;
+        thumbColor = thumbColor ?? (Manager.currentDominantAccentColor ?? Manager.accentColor).light;
 
   @override
   State<VideoDurationBar> createState() => _VideoDurationBarState();

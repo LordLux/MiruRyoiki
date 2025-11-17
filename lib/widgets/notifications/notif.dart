@@ -108,7 +108,7 @@ class _NotificationCalendarEntryWidgetState extends State<NotificationCalendarEn
                     child: (message) => Text(
                       message,
                       style: Manager.bodyStyle.copyWith(
-                        color: lighten((Manager.currentDominantColor?.toAccentColor() ?? Manager.accentColor).lightest),
+                        color: lighten((Manager.currentDominantAccentColor ?? Manager.accentColor).lightest),
                         fontWeight: FontWeight.w900,
                       ),
                       textAlign: TextAlign.center,
@@ -164,7 +164,7 @@ class _NotificationCalendarEntryWidgetState extends State<NotificationCalendarEn
                         padding: const EdgeInsets.all(12.0),
                         child: Icon(
                           FluentIcons.circle_fill,
-                          color: (Manager.currentDominantColor?.toAccentColor() ?? Manager.accentColor).light,
+                          color: (Manager.currentDominantAccentColor ?? Manager.accentColor).light,
                           size: 8,
                         ),
                       );

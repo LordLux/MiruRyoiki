@@ -3,7 +3,6 @@ import 'package:flutter/material.dart' as mat;
 import 'package:miruryoiki/enums.dart';
 
 import '../manager.dart';
-import 'tooltip.dart' as tp;
 import 'tooltip_wrapper.dart';
 
 Widget _defaultContentBuilder(BuildContext context, Widget child) => child;
@@ -41,7 +40,7 @@ class NotificationListTile extends StatefulWidget {
 }
 
 class _NotificationListTileState extends State<NotificationListTile> {
-  final color = (Manager.currentDominantColor?.toAccentColor() ?? Manager.accentColor);
+  final color = (Manager.currentDominantAccentColor ?? Manager.accentColor);
   @override
   Widget build(BuildContext context) {
     return SizedBox(

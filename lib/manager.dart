@@ -43,6 +43,9 @@ class Manager {
   static bool canPopDialog = true;
   static bool notificationsPopping = false;
   static Color? currentDominantColor;
+  static Color? seriesDominantColor;
+  
+  static AccentColor? get currentDominantAccentColor => currentDominantColor?.toAccentColor();
 
   static List<String> accounts = [];
 
