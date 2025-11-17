@@ -110,13 +110,26 @@ class _PlayerState extends State<Player> with TickerProviderStateMixin {
 
   void _updateExpandedState() {
     // Only expand if there's actually current media loaded, not old cached data
-    if (_verticallyExpanded != _hasCurrentMedia) _verticallyExpanded = _hasCurrentMedia && _horizontallyExpanded;
+    final shouldBeVerticallyExpanded = _hasCurrentMedia && _horizontallyExpanded;
+    if (_verticallyExpanded != shouldBeVerticallyExpanded) {
+      setState(() {
+        _verticallyExpanded = shouldBeVerticallyExpanded;
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    _horizontallyExpanded = !(homeKey.currentState?.isCompactView ?? false);
-    if (!_horizontallyExpanded) _verticallyExpanded = false;
+    final newHorizontallyExpanded = !(homeKey.currentState?.isCompactView ?? false);
+    if (_horizontallyExpanded != newHorizontallyExpanded) {
+      _horizontallyExpanded = newHorizontallyExpanded;
+      // Update vertical expansion immediately when horizontal expansion changes
+      if (_horizontallyExpanded && _hasCurrentMedia) {
+        _verticallyExpanded = true;
+      } else if (!_horizontallyExpanded) {
+        _verticallyExpanded = false;
+      }
+    }
     return AnimatedPositioned(
       duration: shortDuration,
       curve: Curves.easeInOutBack,

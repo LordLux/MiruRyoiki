@@ -463,7 +463,7 @@ class SeriesScreenState extends State<SeriesScreen> {
 
     // If no IDs need fetching, return early
     if (idsToFetch.isEmpty) {
-      logTrace('All AniList data is up to date, skipping fetch');
+      // logTrace('All AniList data is up to date, skipping fetch');
       return;
     }
 
@@ -1314,6 +1314,8 @@ void linkWithAnilist(BuildContext context, Series? series, Future<void> Function
           );
         }
 
+        closeDialog(context);
+        
         // Load Anilist data
         if (anilistIdsToLoad.isNotEmpty) await loadData(anilistIdsToLoad);
 

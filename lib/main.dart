@@ -1220,7 +1220,6 @@ Future<void> _registerWindowsUrlScheme(String scheme) async {
   }
 }
 
-// TODO make it so that player expands in both directions at the same time
 // TODO move 'random entry' button to top right corner of 'next up' section in homescreen + add to library
 // TODO add divider between notifications and scheduled episodes in release calendar
 // TODO add polimorphic method to Notifications to get their "aired"/"Updated"/"Deleted" etc string for time ago formatting

@@ -347,6 +347,7 @@ class _CustomKeyboardListenerState extends State<CustomKeyboardListener> {
 
     if (homeState != null && homeState.mounted) {
       if (homeState.handleBackNavigation(isEsc: isEsc)) {
+        logTrace('Back navigation via ${isEsc ? "ESC":"mouse button 4"}');
         // Handled by AppRoot
         return;
       }
@@ -354,6 +355,7 @@ class _CustomKeyboardListenerState extends State<CustomKeyboardListener> {
   }
 
   void _handleForwardNavigation() {
+    logTrace('Forward navigation via mouse button 5');
     // Implementation for forward navigation would go here
     // You'd need to track forward history separately
   }
