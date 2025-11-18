@@ -18,6 +18,7 @@ import '../../utils/time.dart';
 import '../../widgets/buttons/wrapper.dart';
 import '../buttons/rotating_loading_button.dart';
 import '../notifications/notif.dart';
+import '../number_pill.dart';
 import '../tooltip_wrapper.dart';
 
 final GlobalKey<NotificationsContentState> notificationsContentKey = GlobalKey<NotificationsContentState>();
@@ -174,7 +175,7 @@ class NotificationsContentState extends State<_NotificationsContent> {
       final result = await _fetchNotifications();
       notifications = result.$1;
       unreadCount = result.$2;
-      
+
       if (!mounted) return;
 
       // Filter out notifications for hidden series
@@ -293,26 +294,13 @@ class NotificationsContentState extends State<_NotificationsContent> {
                       child: Text('Notifications', style: Manager.titleStyle),
                     ),
                   ),
-                  if (_unreadCount > 0)
+                  if (_unreadCount > 0) ...[
+                    const SizedBox(width: 6),
                     Transform.translate(
                       offset: Offset(0, 4 * Manager.fontSizeMultiplier),
-                      child: Container(
-                        margin: const EdgeInsets.only(left: 8),
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: Manager.currentDominantColor ?? Manager.accentColor,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          '$_unreadCount',
-                          style: TextStyle(
-                            color: getTextColor(Manager.currentDominantColor ?? Manager.accentColor, darkColor: lighten(Colors.black, 0.2)),
-                            fontSize: 11 * Manager.fontSizeMultiplier,
-                            fontWeight: FontWeight.w900,
-                          ),
-                        ),
-                      ),
+                      child: NumberPill(number: _unreadCount),
                     ),
+                  ]
                 ],
               ),
               Row(

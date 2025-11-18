@@ -1,4 +1,5 @@
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:flutter/material.dart' show Icons;
 import 'dart:async';
 import 'package:miruryoiki/models/anilist/user_list.dart';
 import 'package:miruryoiki/widgets/buttons/button.dart';
@@ -95,7 +96,7 @@ class _HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMi
   @override
   Widget build(BuildContext context) {
     super.build(context); // for AutomaticKeepAliveClientMixin
-    
+
     final library = Provider.of<Library>(context);
 
     final settings = Provider.of<SettingsManager>(context);
@@ -160,44 +161,47 @@ class _HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMi
 
         final releasedEpisodes = _getReleasedEpisodes();
 
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Continue Watching section
-            if (showContinueWatching)
-              _buildSection(
-                title: 'Continue Watching',
-                child: _buildContinueWatchingList(continueWatchingSeries, anilistProvider, onlyStarted: true),
-              ),
+        return Padding(
+          padding: EdgeInsets.only(right: 8.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Continue Watching section
+              if (showContinueWatching)
+                _buildSection(
+                  title: 'Continue Watching',
+                  child: _buildContinueWatchingList(continueWatchingSeries, anilistProvider, onlyStarted: true),
+                ),
 
-            // Next Up section
-            if (showNextUp)
-              _buildSection(
-                title: 'Next Up',
-                child: _buildContinueWatchingList(nextUpSeries, anilistProvider, onlyStarted: false),
-              ),
+              // Next Up section
+              if (showNextUp)
+                _buildSection(
+                  title: 'Next Up',
+                  child: _buildContinueWatchingList(nextUpSeries, anilistProvider, onlyStarted: false),
+                ),
 
-            // Empty state when both sections are empty
-            if (showEmptyState)
-              _buildSection(
-                title: 'Continue Watching',
-                child: _buildEmptyState('No series to continue', 'Start watching some series from your library'),
-              ),
+              // Empty state when both sections are empty
+              if (showEmptyState)
+                _buildSection(
+                  title: 'Continue Watching',
+                  child: _buildEmptyState('No series to continue', 'Start watching some series from your library'),
+                ),
 
-            if (releasedEpisodes.isNotEmpty) ...[
+              if (releasedEpisodes.isNotEmpty) ...[
+                VDiv(8), // Reduced spacing between sections
+                _buildSection(
+                  title: 'Release Episodes to Download',
+                  child: _buildReleasedEpisodesSection(releasedEpisodes),
+                ),
+              ],
+
               VDiv(8), // Reduced spacing between sections
               _buildSection(
-                title: 'Release Episodes to Download',
-                child: _buildReleasedEpisodesSection(releasedEpisodes),
+                title: 'Upcoming Episodes',
+                child: _buildUpcomingEpisodesSection(),
               ),
             ],
-
-            VDiv(8), // Reduced spacing between sections
-            _buildSection(
-              title: 'Upcoming Episodes',
-              child: _buildUpcomingEpisodesSection(),
-            ),
-          ],
+          ),
         );
       },
     );
@@ -290,8 +294,9 @@ class _HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMi
             aspectRatio: 0.21,
             child: RotatedBox(
               quarterTurns: -1,
-              child: StandardButton(
+              child: StandardButton.iconLabel(
                 label: const Text('Random Entry'),
+                icon: const Icon(FluentIcons.switch_widget),
                 onPressed: () => _selectRandomEntry(series),
               ),
             ),
@@ -403,7 +408,7 @@ class _HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMi
 
   Widget _buildUpcomingEpisodesAndBuildCache(List<Series> watchingSeries, AnilistProvider anilistProvider) {
     final library = Provider.of<Library>(context, listen: false);
-    
+
     // Invalidate cache if library data version changed
     if (_lastLibraryDataVersion != null && _lastLibraryDataVersion != library.dataVersion) {
       _cachedUpcomingEpisodesFuture = null;
@@ -529,7 +534,7 @@ class _HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMi
                   // Get the upcoming episode info for this series and track which mapping it belongs to
                   AiringEpisode? nextEpisode;
                   int? correspondingAnilistId;
-                  
+
                   for (final mapping in currentSeries.anilistMappings) {
                     final episode = upcomingEpisodesMap[mapping.anilistId];
                     if (episode?.airingAt != null) {
@@ -546,7 +551,7 @@ class _HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMi
                     child: AspectRatio(
                       aspectRatio: 1 / ScreenUtils.kDefaultUpcomingEpisodeCardAspectRatio,
                       child: UpcomingEpisodeCard(
-                        series: currentSeries, 
+                        series: currentSeries,
                         airingEpisode: nextEpisode!,
                         anilistId: correspondingAnilistId,
                       ),

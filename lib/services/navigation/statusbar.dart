@@ -5,6 +5,7 @@ import 'package:miruryoiki/utils/time.dart';
 import 'package:miruryoiki/widgets/dialogs/splash/progress.dart';
 
 import '../../manager.dart';
+import '../../widgets/frosted_noise.dart';
 
 /// Defines the visual style of the status bar
 class StatusBarStyle {
@@ -240,45 +241,49 @@ class StatusBarWidget extends StatelessWidget {
         return Positioned(
           right: 8,
           bottom: LibraryScanProgressManager().isShowing ? 28 : 8,
-          child: AnimatedOpacity(
-            opacity: isShowing ? 1.0 : 0.0,
+          child: AnimatedSwitcher(
             duration: dimDuration,
-            child: ValueListenableBuilder<StatusBarStyle>(
-              valueListenable: statusBarManager.styleNotifier,
-              builder: (context, style, _) {
-                return AnimatedContainer(
-                  decoration: style.container,
-                  duration: style.animationDuration,
-                  child: ValueListenableBuilder(
-                    valueListenable: statusBarManager.messageNotifier,
-                    builder: (context, message, _) {
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            if (style.icon != null) ...[
-                              Icon(
-                                style.icon,
-                                size: 14,
-                                color: style.iconColor ?? style.textStyle?.color,
+            switchInCurve: Curves.easeOut,
+            switchOutCurve: Curves.easeIn,
+            transitionBuilder: (child, animation) => FadeTransition(opacity: animation, child: child),
+            child: isShowing
+                ? ValueListenableBuilder<StatusBarStyle>(
+                    valueListenable: statusBarManager.styleNotifier,
+                    builder: (context, style, _) {
+                      return AnimatedContainer(
+                        decoration: style.container,
+                        duration: style.animationDuration,
+                        child: ValueListenableBuilder(
+                          valueListenable: statusBarManager.messageNotifier,
+                          builder: (context, message, _) {
+                            return Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  if (style.icon != null) ...[
+                                    Icon(
+                                      style.icon,
+                                      size: 14,
+                                      color: style.iconColor ?? style.textStyle?.color,
+                                    ),
+                                    const SizedBox(width: 6),
+                                  ],
+                                  message is String
+                                      ? Text(
+                                          message,
+                                          style: style.textStyle,
+                                        )
+                                      : message
+                                ],
                               ),
-                              const SizedBox(width: 6),
-                            ],
-                            message is String
-                                ? Text(
-                                    message,
-                                    style: style.textStyle,
-                                  )
-                                : message
-                          ],
+                            );
+                          },
                         ),
                       );
                     },
-                  ),
-                );
-              },
-            ),
+                  )
+                : const SizedBox.shrink(),
           ),
         );
       },

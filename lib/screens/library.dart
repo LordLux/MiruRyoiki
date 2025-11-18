@@ -36,6 +36,7 @@ import '../widgets/page/infobar.dart';
 import '../widgets/page/page.dart';
 import '../widgets/cards/series_card.dart';
 import '../widgets/series_list_tile.dart';
+import '../widgets/styled_scrollbar.dart';
 import '../widgets/tooltip_wrapper.dart';
 
 // Cache parameters to track when cache needs invalidation
@@ -168,34 +169,6 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
         ScreenUtils.libraryCardSize = Size(box.size.width, box.size.width / ScreenUtils.kDefaultAspectRatio);
       }
     });
-  }
-
-  /// Create a styled scrollbar with consistent theming and right padding
-  Widget _buildStyledScrollbar(Widget child) {
-    return Scrollbar(
-      controller: _controller,
-      thumbVisibility: true,
-      style: ScrollbarThemeData(
-        thickness: 3,
-        hoveringThickness: 4.5,
-        radius: const Radius.circular(4),
-        backgroundColor: Colors.transparent,
-        scrollbarPressingColor: Manager.accentColor.lightest.withOpacity(.7),
-        contractDelay: dimDuration,
-        scrollbarColor: Manager.accentColor.lightest.withOpacity(.4),
-        trackBorderColor: Colors.transparent,
-      ),
-      child: Padding(
-        padding: const EdgeInsets.only(right: 12.0),
-        child: ScrollConfiguration(
-          behavior: ScrollBehavior().copyWith(overscroll: false, scrollbars: false, physics: const ClampingScrollPhysics()),
-          child: ClipRRect(
-            borderRadius: const BorderRadius.all(Radius.circular(ScreenUtils.kStatCardBorderRadius)),
-            child: child,
-          ),
-        ),
-      ),
-    );
   }
 
   /// Check if the current cache is valid by comparing parameters
@@ -1343,15 +1316,21 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
 
   HeaderWidget _buildHeader(Library library) {
     return HeaderWidget(
-      title: (_, __) => ValueListenableBuilder(
-        valueListenable: KeyboardState.zoomReleaseNotifier,
-        builder: (context, _, __) => Text(
-          'Your Media Library',
-          style: Manager.titleLargeStyle.copyWith(
-            fontSize: 32 * Manager.fontSizeMultiplier,
-            fontWeight: FontWeight.bold,
+      title: (_, __) => Row(
+        mainAxisAlignment: mat.MainAxisAlignment.spaceBetween,
+        children: [
+          ValueListenableBuilder(
+            valueListenable: KeyboardState.zoomReleaseNotifier,
+            builder: (context, _, __) => Text(
+              'Your Media Library',
+              style: Manager.titleLargeStyle.copyWith(
+                fontSize: 32 * Manager.fontSizeMultiplier,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
           ),
-        ),
+        
+        ],
       ),
       titleLeftAligned: true,
       children: <Widget>[
@@ -1597,7 +1576,7 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
     // Add Scrollbar for non-shimmer content
     if (shimmer) return scrollContent;
 
-    return _buildStyledScrollbar(scrollContent);
+    return buildStyledScrollbar(scrollContent, _controller);
   }
 
   Widget _buildListView(List<Series> series, double maxWidth, {Map<String, List<Series>>? groupedData, bool shimmer = false}) {
@@ -1785,7 +1764,7 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
     // Add Scrollbar for non-shimmer content
     if (shimmer) return scrollContent;
 
-    return _buildStyledScrollbar(scrollContent);
+    return buildStyledScrollbar(scrollContent, _controller);
   }
 
   Widget _buildShimmerList() {
@@ -1927,7 +1906,7 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
       },
     );
 
-    return _buildStyledScrollbar(scrollContent);
+    return buildStyledScrollbar(scrollContent, _controller);
   }
 
   String _getSortText(SortOrder? order) {

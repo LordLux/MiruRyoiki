@@ -897,6 +897,8 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
                                       onMorePressed: (ctx) async {
                                         // Navigate to calendar screen
                                         closeDialog(ctx);
+                                        if (_selectedIndex == calendarIndex) return;
+                                        
                                         await Future.delayed(const Duration(milliseconds: 100));
                                         setState(() {
                                           if (_isSeriesView && _selectedSeriesPath != null) exitSeriesView();
@@ -1227,6 +1229,7 @@ Future<void> _registerWindowsUrlScheme(String scheme) async {
 // TODO change scanning: any folders [names] will remain as is and only loose files will be moved to 'Related Media'
 // TODO create widget for Smooth scrolling scroll controllers
 // TODO reload inner series screen after reloading library if the series is open
+// TODO fix homescreen 'next episode' returns S1 episode number + 1 instead of S2 episode 1 when moving to next season
 // TODO check that notifications are only for anime and not for manga
 // TODO create superclass for series type cards (continue watching, library series, search results, etc.) to share code between them and avoid duplication
 // TODO add 'notify me' button to upcoming episodes on home screen
@@ -1242,6 +1245,7 @@ Future<void> _registerWindowsUrlScheme(String scheme) async {
 // TODO fix image cache not working (es when changing primary id)
 // TODO cache Anilist lists to be able to work offline
 // TODO fix library scanning that keeps finding the same files every time even though they were already there
+// TODO add dialog after clicking random entry to choose between confirm or pick another random entry
 
 // beta
 // TODO after linking anilist, fetch episode titles for neolinked series

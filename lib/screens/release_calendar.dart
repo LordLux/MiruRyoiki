@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:flutter/material.dart' show FloatingActionButton, Icons, InkWell;
 import 'package:miruryoiki/widgets/buttons/wrapper.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
@@ -20,11 +21,14 @@ import '../utils/path.dart';
 import '../utils/screen.dart';
 import '../utils/time.dart';
 import '../widgets/buttons/button.dart';
+import '../widgets/frosted_noise.dart';
 import '../widgets/notifications/notif.dart';
 import '../widgets/notifications/scheduled.dart';
+import '../widgets/number_pill.dart';
 import '../widgets/page/header_widget.dart';
 import '../widgets/page/page.dart';
 import '../manager.dart';
+import '../widgets/styled_scrollbar.dart';
 import '../widgets/tooltip_wrapper.dart';
 import '../enums.dart';
 import '../settings.dart';
@@ -58,6 +62,9 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> with Autom
   bool _isDisposed = false;
   bool _isTempHidingResults = false;
 
+  /// Indicates if the scroll is currently at the bottom of the list
+  bool _isAtBottom = true;
+
   @override
   bool get wantKeepAlive => true;
 
@@ -66,6 +73,16 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> with Autom
     super.initState();
     // Initial load
     nextFrame(() => loadReleaseData());
+
+    widget.scrollController.addListener(() {
+      if (widget.scrollController.hasClients && mounted && !_isDisposed) {
+        if (widget.scrollController.offset >= widget.scrollController.position.maxScrollExtent - 20) {
+          if (!_isAtBottom) setState(() => _isAtBottom = true);
+        } else {
+          if (_isAtBottom) setState(() => _isAtBottom = false);
+        }
+      }
+    });
 
     // Periodic refresh for relative times
     _minuteRefreshTimer = Timer.periodic(const Duration(minutes: 1), (_) {
@@ -160,13 +177,17 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> with Autom
     }
   }
 
-  void scrollTo(double offset) {
+  void scrollTo(double offset, [int durationMs = 2900]) {
     if (widget.scrollController.hasClients) {
-      widget.scrollController.animateTo(
+      widget.scrollController
+          .animateTo(
         offset,
-        duration: const Duration(milliseconds: 2900),
+        duration: Duration(milliseconds: durationMs),
         curve: Curves.easeOutCubic,
-      );
+      )
+          .then((_) {
+        if (mounted) setState(() => _isAtBottom);
+      });
     }
   }
 
@@ -369,9 +390,7 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> with Autom
           }
         } catch (e) {
           logErr('Failed to sync notifications for release calendar', e);
-          if (mounted && !_isDisposed) 
-            setState(() => _isLoading = false);
-          
+          if (mounted && !_isDisposed) setState(() => _isLoading = false);
         }
       } else {
         // If Offline, display cached data
@@ -592,6 +611,44 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> with Autom
       ),
       headerMaxHeight: 100,
       headerMinHeight: 100,
+      floatingButton: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 300),
+        transitionBuilder: (child, animation) {
+          return ScaleTransition(scale: animation, child: child);
+        },
+        child: _isAtBottom
+            ? null
+            : SizedBox(
+                width: 36,
+                height: 36,
+                child: MouseButtonWrapper(
+                  child: (isHovered) => TooltipWrapper(
+                    tooltip: 'Scroll to bottom',
+                    child: (_) => AnimatedScale(
+                      duration: const Duration(milliseconds: 200),
+                      curve: Curves.easeInOutBack,
+                      scale: isHovered ? 1 : 0.666,
+                      child: FrostedNoise(
+                        child: InkWell(
+                          onTap: () {
+                            scrollTo(widget.scrollController.position.maxScrollExtent, 300);
+                            setState(() => _isAtBottom = true);
+                          },
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 200),
+                            decoration: BoxDecoration(
+                              color: isHovered ? (Manager.currentDominantAccentColor ?? Manager.accentColor).darker.withOpacity(0.5) : Colors.white.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(isHovered ? 5.0 : 10.0),
+                            ),
+                            child: const Icon(Icons.arrow_downward),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+      ),
       content: _buildContent(),
       scrollableContent: false,
       hideInfoBar: true,
@@ -623,7 +680,7 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> with Autom
           Expanded(
             flex: 30,
             child: Padding(
-              padding: const EdgeInsets.only(left: 24.0, right: 0.0),
+              padding: const EdgeInsets.only(left: 24.0),
               child: _buildEpisodeList(),
             ),
           ),
@@ -1063,110 +1120,95 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> with Autom
       );
     }
 
-    return LayoutBuilder(builder: (context, constraints) {
-      return AnimatedOpacity(
-        duration: shortDuration,
-        opacity: _isTempHidingResults ? 0.0 : 1.0,
-        curve: Curves.decelerate,
-        child: Column(
-          children: [
-            // Show older notifications button (when conditions are met)
-            Row(
-              children: [
-                if (shouldShowOlderButton) ...[
-                  Padding(
-                    padding: const EdgeInsets.only(left: 4.0, right: 8.0, bottom: 8.0, top: 8.0),
-                    child: StandardButton.iconLabel(
-                      onPressed: () => toggleOlderNotifications(true),
-                      icon: const Icon(FluentIcons.history, size: 14),
-                      label: Text(isToday ? 'Show older notifications' : 'Show all notifications'),
-                    ),
+    return AnimatedOpacity(
+      duration: shortDuration,
+      opacity: _isTempHidingResults ? 0.0 : 1.0,
+      curve: Curves.decelerate,
+      child: Column(
+        children: [
+          // Show older notifications button (when conditions are met)
+          Row(
+            children: [
+              if (shouldShowOlderButton) ...[
+                Padding(
+                  padding: const EdgeInsets.only(left: 4.0, right: 8.0, bottom: 8.0, top: 8.0),
+                  child: StandardButton.iconLabel(
+                    onPressed: () => toggleOlderNotifications(true),
+                    icon: const Icon(FluentIcons.history, size: 14),
+                    label: Text(isToday ? 'Show older notifications' : 'Show all notifications'),
                   ),
-                ],
-                const Spacer(),
-                Padding(padding: EdgeInsets.only(top: 8.0, right: 8.0), child: _buildMarkAllAsReadButton()),
+                ),
               ],
-            ),
-            // Episode list
-            Expanded(
-              child: DynMouseScroll(
-                  controller: widget.scrollController,
-                  stopScroll: KeyboardState.ctrlPressedNotifier,
-                  scrollSpeed: 1.0,
-                  enableSmoothScroll: Manager.animationsEnabled,
-                  durationMS: 350,
-                  animationCurve: Curves.easeOutQuint,
-                  builder: (context, controller, physics) {
-                    return ValueListenableBuilder(
-                        valueListenable: KeyboardState.ctrlPressedNotifier,
-                        builder: (context, isCtrlPressed, _) {
-                          return ListView.builder(
-                            physics: isCtrlPressed ? const NeverScrollableScrollPhysics() : null,
-                            controller: controller,
-                            cacheExtent: 999999,
-                            padding: const EdgeInsets.only(right: 8.0),
-                            itemCount: flattenedList.length,
-                            itemBuilder: (context, index) {
-                              final item = flattenedList[index];
+              const Spacer(),
+              Padding(padding: EdgeInsets.only(top: 8.0, right: 8.0), child: _buildMarkAllAsReadButton()),
+            ],
+          ),
+          // Episode list
+          Expanded(
+            child: buildStyledScrollbar(
+              DynMouseScroll(
+                controller: widget.scrollController,
+                stopScroll: KeyboardState.ctrlPressedNotifier,
+                scrollSpeed: 1.0,
+                enableSmoothScroll: Manager.animationsEnabled,
+                durationMS: 350,
+                animationCurve: Curves.easeOutQuint,
+                builder: (context, controller, physics) {
+                  return ValueListenableBuilder(
+                    valueListenable: KeyboardState.ctrlPressedNotifier,
+                    builder: (context, isCtrlPressed, _) {
+                      return ListView.builder(
+                        physics: isCtrlPressed ? const NeverScrollableScrollPhysics() : null,
+                        controller: controller,
+                        cacheExtent: 999999,
+                        itemCount: flattenedList.length,
+                        itemBuilder: (context, index) {
+                          final item = flattenedList[index];
 
-                              // Date header
-                              if (item is DateTime) {
-                                final date = item;
-                                return Padding(
-                                  padding: const EdgeInsets.only(bottom: 12.0, top: 16.0, left: 4.0),
-                                  child: Row(
-                                    crossAxisAlignment: CrossAxisAlignment.center,
-                                    children: [
-                                      TooltipWrapper(
-                                        waitDuration: const Duration(milliseconds: 400),
-                                        tooltip: '${DateFormat.EEEE().format(date)} ${DateFormat('d MMM${now.year == date.year ? '' : ' y'}').format(date)} (${entriesByDate[date]!.length} entries)',
-                                        child: (_) => Text(
-                                          _getRelativeDateLabel(date),
-                                          style: Manager.bodyLargeStyle.copyWith(fontWeight: FontWeight.w600, color: lighten(Manager.accentColor.lightest)),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                        decoration: BoxDecoration(
-                                          color: Manager.accentColor.light.withOpacity(0.25),
-                                          borderRadius: BorderRadius.circular(20),
-                                          border: Border.all(color: Manager.accentColor.light.withOpacity(0.4), width: 1),
-                                        ),
-                                        child: Transform.translate(
-                                          offset: const Offset(0, -0.66),
-                                          child: Text(
-                                            '${entriesByDate[date]!.length}',
-                                            style: Manager.captionStyle.copyWith(
-                                              fontWeight: FontWeight.w600,
-                                              color: lighten(Manager.accentColor.lightest),
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ],
+                          // Date header
+                          if (item is DateTime) {
+                            final date = item;
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 12.0, top: 16.0, left: 4.0),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.center,
+                                children: [
+                                  TooltipWrapper(
+                                    waitDuration: const Duration(milliseconds: 400),
+                                    tooltip: '${DateFormat.EEEE().format(date)} ${DateFormat('d MMM${now.year == date.year ? '' : ' y'}').format(date)} (${entriesByDate[date]!.length} entries)',
+                                    child: (_) => Text(
+                                      _getRelativeDateLabel(date),
+                                      style: Manager.bodyLargeStyle.copyWith(fontWeight: FontWeight.w600, color: lighten(Manager.accentColor.lightest)),
+                                    ),
                                   ),
-                                );
-                              }
+                                  const SizedBox(width: 8),
+                                  NumberPill(number: entriesByDate[date]!.length),
+                                ],
+                              ),
+                            );
+                          }
 
-                              if (item is CalendarEntry) {
-                                final entry = item;
-                                return Padding(
-                                  padding: const EdgeInsets.only(bottom: 3.0),
-                                  child: _buildCalendarEntryItem(entry),
-                                );
-                              }
+                          if (item is CalendarEntry) {
+                            final entry = item;
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 3.0),
+                              child: _buildCalendarEntryItem(entry),
+                            );
+                          }
 
-                              return const SizedBox.shrink();
-                            },
-                          );
-                        });
-                  }),
+                          return const SizedBox.shrink();
+                        },
+                      );
+                    },
+                  );
+                },
+              ),
+              widget.scrollController,
             ),
-          ],
-        ),
-      );
-    });
+          ),
+        ],
+      ),
+    );
   }
 
   Padding _buildMarkAllAsReadButton() {
