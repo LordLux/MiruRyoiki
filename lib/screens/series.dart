@@ -820,6 +820,7 @@ class SeriesScreenState extends State<SeriesScreen> {
             controller: _descriptionController,
             child: parser.parse(series.description!, selectable: true, selectionColor: Manager.currentDominantColor),
           ),
+          VDiv(8),
         ],
       ],
     );

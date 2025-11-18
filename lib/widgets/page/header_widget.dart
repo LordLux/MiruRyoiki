@@ -108,7 +108,6 @@ class _HeaderWidgetState extends State<HeaderWidget> {
                     constraints,
                   ),
                   ...widget.children,
-                  if (widget.children.isNotEmpty) VDiv(8),
                 ],
               ),
             ),

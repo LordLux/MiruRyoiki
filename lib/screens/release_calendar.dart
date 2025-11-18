@@ -606,7 +606,7 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> with Autom
         titleLeftAligned: true,
         fixed: 100,
         children: [
-          VDiv(0),
+          VDiv(8),
         ],
       ),
       headerMaxHeight: 100,

@@ -19,6 +19,7 @@ import '../models/anilist/user_data.dart';
 import '../models/anilist/user_list.dart';
 import '../services/anilist/queries/anilist_service.dart';
 import '../services/library/library_provider.dart';
+import '../services/library/search_service.dart';
 import '../models/series.dart';
 import '../services/anilist/provider/anilist_provider.dart';
 import '../services/navigation/shortcuts.dart';
@@ -131,6 +132,9 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
   ViewType _viewType = ViewType.grid;
   SortOrder? _sortOrder;
   GroupBy _groupBy = GroupBy.anilistLists;
+
+  String _searchQuery = '';
+  final TextEditingController _searchController = TextEditingController();
 
   @override
   bool get wantKeepAlive => true;
@@ -1292,9 +1296,9 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
         return 'List';
     }
   }
-  
-  Color _getViewTypeColor(bool isSelected) =>//
-   isSelected ? getTextColor(Manager.currentDominantColor ?? Manager.accentColor) : Colors.white;
+
+  Color _getViewTypeColor(bool isSelected) => //
+      isSelected ? getTextColor(Manager.currentDominantColor ?? Manager.accentColor) : Colors.white;
 
   IconData _getViewTypeIcon(ViewType viewType) {
     switch (viewType) {
@@ -1316,32 +1320,80 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
 
   HeaderWidget _buildHeader(Library library) {
     return HeaderWidget(
-      title: (_, __) => Row(
-        mainAxisAlignment: mat.MainAxisAlignment.spaceBetween,
-        children: [
-          ValueListenableBuilder(
-            valueListenable: KeyboardState.zoomReleaseNotifier,
-            builder: (context, _, __) => Text(
-              'Your Media Library',
-              style: Manager.titleLargeStyle.copyWith(
-                fontSize: 32 * Manager.fontSizeMultiplier,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
+      title: (_, __) => ValueListenableBuilder(
+        valueListenable: KeyboardState.zoomReleaseNotifier,
+        builder: (context, _, __) => Text(
+          'Your Media Library',
+          style: Manager.titleLargeStyle.copyWith(
+            fontSize: 32 * Manager.fontSizeMultiplier,
+            fontWeight: FontWeight.bold,
           ),
-        
-        ],
+        ),
       ),
       titleLeftAligned: true,
       children: <Widget>[
-        ValueListenableBuilder(
-          valueListenable: KeyboardState.zoomReleaseNotifier,
-          builder: (context, _, __) => Text('Path: ${library.libraryPath}',
-              style: Manager.bodyStyle.copyWith(
-                fontSize: 14 * Manager.fontSizeMultiplier,
-                color: Colors.white.withOpacity(.5),
-              )),
-        )
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            ValueListenableBuilder(
+              valueListenable: KeyboardState.zoomReleaseNotifier,
+              builder: (context, _, __) => Text(
+                'Path: ${library.libraryPath}',
+                style: Manager.bodyStyle.copyWith(
+                  fontSize: 14 * Manager.fontSizeMultiplier,
+                  color: Colors.white.withOpacity(.5),
+                ),
+              ),
+            ),
+            Padding(
+              padding: EdgeInsets.only(right: 4.0),
+              child: SizedBox(
+                width: 300,
+                child: TextBox(
+                  controller: _searchController,
+                  cursorOpacityAnimates: true,
+                  placeholder: 'Search in your library...',
+                  prefix: Padding(
+                    padding: EdgeInsets.all(9),
+                    child: Icon(mat.Icons.search, size: 16),
+                  ),
+                  suffix: _searchQuery.isNotEmpty
+                      ? Padding(
+                        padding: EdgeInsets.all(3),
+                        child: MouseButtonWrapper(
+                            tooltip: 'Clear search',
+                            child: (_) => SizedBox(
+                              height: 30,
+                              child: StandardButton.icon(
+                                icon: Icon(mat.Icons.clear, size: 16),
+                                onPressed: () {
+                                  setState(() {
+                                    _searchQuery = '';
+                                    _searchController.clear();
+                                  });
+                                },
+                              ),
+                            ),
+                          ),
+                      )
+                      : null,
+                  decoration: ButtonState.all(
+                    BoxDecoration(
+                      color: Colors.white.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: Colors.white.withOpacity(0.2)),
+                    ),
+                  ),
+                  onChanged: (value) {
+                    setState(() {
+                      _searchQuery = value;
+                    });
+                  },
+                ),
+              ),
+            ),
+          ],
+        ),
       ],
     );
   }
@@ -1384,9 +1436,53 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
       groupedData = _groupedDataCache;
     }
 
+    // Apply search filter if there's a query
+    if (_searchQuery.isNotEmpty) {
+      seriesToDisplay = LibrarySearchService.search(_searchQuery, seriesToDisplay);
+      
+      // If grouped, rebuild groups with filtered series
+      if (_showGrouped && _groupBy != GroupBy.none) {
+        groupedData = _buildGroupedData(seriesToDisplay);
+      } else {
+        groupedData = null;
+      }
+    }
+
     displayedSeries = seriesToDisplay;
 
-    if (displayedSeries.isEmpty)
+    if (displayedSeries.isEmpty) {
+      // Different messages for search vs. no series
+      if (_searchQuery.isNotEmpty) {
+        return Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                mat.Icons.search_off,
+                size: 48,
+                color: Manager.accentColor,
+              ),
+              VDiv(16),
+              Text('No series found matching "$_searchQuery"', style: Manager.bodyStyle),
+              VDiv(8),
+              Text('Try adjusting your search terms', style: Manager.bodyStyle.copyWith(color: Colors.white.withOpacity(0.6))),
+              VDiv(16),
+              MouseButtonWrapper(
+                child: (_) => Button(
+                  onPressed: () {
+                    setState(() {
+                      _searchQuery = '';
+                      _searchController.clear();
+                    });
+                  },
+                  child: const Text('Clear Search'),
+                ),
+              ),
+            ],
+          ),
+        );
+      }
+      
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -1409,6 +1505,7 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
           ],
         ),
       );
+    }
 
     return LayoutBuilder(builder: (context, constraints) {
       // Only hide library content if it's an initial scan (first time or new path)

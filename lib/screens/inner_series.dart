@@ -434,6 +434,7 @@ class InnerSeriesScreenState extends State<InnerSeriesScreen> {
             controller: _descriptionController,
             child: parser.parse(_cachedMapping!.anilistData!.description!, selectable: true, selectionColor: dominantColor),
           ),
+          VDiv(8),
         ],
       ],
     );

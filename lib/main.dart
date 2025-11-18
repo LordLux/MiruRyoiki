@@ -1222,7 +1222,9 @@ Future<void> _registerWindowsUrlScheme(String scheme) async {
   }
 }
 
-// TODO move 'random entry' button to top right corner of 'next up' section in homescreen + add to library
+// TODO add 'random entry' button to top right corner of library
+// TODO move 'display' icons next to search
+// TODO seachbar right padding dynamic based on available space bc small size
 // TODO add divider between notifications and scheduled episodes in release calendar
 // TODO add polimorphic method to Notifications to get their "aired"/"Updated"/"Deleted" etc string for time ago formatting
 // TODO add NonMapping for series that are not to be linked with Anilist
