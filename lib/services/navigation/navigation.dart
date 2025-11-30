@@ -95,7 +95,7 @@ class NavigationManager extends ChangeNotifier {
 
   void _push(NavigationItem item) {
     _stack.add(item);
-    nextFrame(delay:70, () => stackNotifier.value = !stackNotifier.value); // Notify listeners that the stack has changed
+    nextFrame(delay: 70, () => stackNotifier.value = !stackNotifier.value); // Notify listeners that the stack has changed
     notifyListeners();
     _logCurrentStack();
   }
@@ -154,5 +154,15 @@ class NavigationManager extends ChangeNotifier {
     if (!hasDialog) return false;
 
     return goBack();
+  }
+
+  bool get darkenTitleBar {
+    if (!hasDialog) return false;
+
+    final dataAsMap = currentView?.data;
+    if (dataAsMap is Map<String, dynamic> && dataAsMap.containsKey('darkenTitleBar')) //
+      return (dataAsMap['darkenTitleBar'] as bool); // if the dialog is a popup dialog don't darken the titlebar
+
+    return true; // if a normal dialog is open then darken the titlebar
   }
 }

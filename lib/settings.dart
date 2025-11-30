@@ -110,6 +110,10 @@ class SettingsManager extends ChangeNotifier {
   bool get enableAnilistEpisodeTitles => _getBool('enableAnilistEpisodeTitles', defaultValue: false);
   set enableAnilistEpisodeTitles(bool value) => _setBool('enableAnilistEpisodeTitles', value);
 
+  // Genres
+  List<String> get genres => _getStringList('genres', defaultValue: []);
+  set genres(List<String> value) => _setStringList('genres', value);
+
   // // Generic getters with type safety
   bool _getBool(String key, {required bool defaultValue}) {
     if (!_settings.containsKey(key)) {

@@ -68,6 +68,9 @@ extension AnilistProviderInitialization on AnilistProvider {
 
     final hasCredentials = await _anilistService.initialize();
     if (hasCredentials) {
+      // Fetch genres in background
+      _anilistService.getGenres().then((_) => logTrace('Genres fetched')).catchError((e) => logErr('Failed to fetch genres', e));
+
       await _loadCurrentUserFromCache();
       int retryCount = 0;
       const maxRetries = 3;

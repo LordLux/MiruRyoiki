@@ -553,6 +553,10 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
                             ],
                           );
                         },
+                        transitionBuilder: (child, animation) => EntrancePageTransition(
+                          animation: animation,
+                          child: child,
+                        ),
                         pane: NavigationPane(
                           menuButton: const SizedBox.shrink(), //_appTitle(),
                           selected: _selectedIndex,
@@ -827,7 +831,7 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
         builder: (context, _, __) {
           return AnimatedContainer(
             duration: dimDuration,
-            color: Manager.navigation.hasDialog && Manager.navigation.currentView?.id != "notifications" ? getBarrierColor(Manager.currentDominantColor).withOpacity(.25) : Colors.transparent,
+            color: Manager.navigation.darkenTitleBar ? getBarrierColor(Manager.currentDominantColor).withOpacity(.25) : Colors.transparent,
             child: Stack(
               children: [
                 Positioned.fill(
@@ -1225,6 +1229,7 @@ Future<void> _registerWindowsUrlScheme(String scheme) async {
 // TODO add 'random entry' button to top right corner of library
 // TODO move 'display' icons next to search
 // TODO seachbar right padding dynamic based on available space bc small size
+// TODO throttle db save events after 5s
 // TODO add divider between notifications and scheduled episodes in release calendar
 // TODO add polimorphic method to Notifications to get their "aired"/"Updated"/"Deleted" etc string for time ago formatting
 // TODO add NonMapping for series that are not to be linked with Anilist
@@ -1238,6 +1243,8 @@ Future<void> _registerWindowsUrlScheme(String scheme) async {
 // TODO change text 'wait while library is getting indexed' to 'scanning' when library scan is in progress
 // TODO add 'play episode' button on continue watching series card -> click on card simply opens series
 // TODO move hidden series switches to settings
+// TODO check that saved window position is within screen bounds
+// TODO fix seriescards use dominant color for text regardless of setting
 // TODO fix fast movement from library to mapping causes no inner mapping image to get loaded
 // TODO 'no episodes found for this season' should be 'no episodes found for this series' when there are no episodes in any season
 // TODO when view is linkedOnly, hideFromUserList series automatically get added to Watching -> add category for them
@@ -1248,6 +1255,7 @@ Future<void> _registerWindowsUrlScheme(String scheme) async {
 // TODO cache Anilist lists to be able to work offline
 // TODO fix library scanning that keeps finding the same files every time even though they were already there
 // TODO add dialog after clicking random entry to choose between confirm or pick another random entry
+// TODO cache images smaller to be displayed without using too much memory
 
 // beta
 // TODO after linking anilist, fetch episode titles for neolinked series

@@ -11,6 +11,8 @@ class ScreenUtils {
   static const double kDefaultCardPadding = 14.0;
   static const double kDefaultCardWidth = 198.0;
   static const double kDefaultCardHeight = kDefaultCardWidth / kDefaultCardAspectRatio;
+  
+  static double kDefaultButtonSize = 34.0;
 
   static const double kMinStatCardWidth = 130.0;
   static const double kMaxStatCardWidth = 200.0;
@@ -51,6 +53,7 @@ class ScreenUtils {
 
   static double libraryContentWidthWithoutPadding = 0.0;
   static Size libraryCardSize = Size(kDefaultCardWidth, kDefaultCardHeight);
+
 
   static MediaQueryData get _mediaQuery => MediaQueryData.fromWindow(WidgetsBinding.instance.window);
   static Size get screenSize => _mediaQuery.size;

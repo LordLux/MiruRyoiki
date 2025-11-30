@@ -47,6 +47,7 @@ class StandardButton extends StatefulWidget {
         hoverFillColor = hoverFillColor ?? Manager.accentColor.lightest;
 
   factory StandardButton.iconLabel({
+    GlobalKey? key,
     required Widget icon,
     required Widget label,
     required VoidCallback? onPressed,
@@ -66,6 +67,7 @@ class StandardButton extends StatefulWidget {
     MouseCursor? cursor,
   }) {
     return StandardButton(
+      key: key,
       label: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -92,6 +94,7 @@ class StandardButton extends StatefulWidget {
 }
   
   factory StandardButton.icon({
+    GlobalKey? key,
     required Widget icon,
     required VoidCallback? onPressed,
     bool isButtonDisabled = false,
@@ -110,6 +113,7 @@ class StandardButton extends StatefulWidget {
     MouseCursor? cursor,
   }) {
     return StandardButton(
+      key: key,
       label: icon,
       onPressed: onPressed,
       isButtonDisabled: isButtonDisabled,

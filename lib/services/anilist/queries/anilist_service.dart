@@ -25,6 +25,7 @@ part 'auth.dart';
 part 'search.dart';
 part 'user.dart';
 part 'anime_details.dart';
+part 'genres.dart';
 part 'mutations.dart';
 part '../notifications_service.dart';
 

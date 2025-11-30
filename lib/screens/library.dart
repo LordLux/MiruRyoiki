@@ -4,6 +4,7 @@ import 'dart:math' as math;
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart' as mat;
+import 'package:flutter/rendering.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:miruryoiki/manager.dart';
 import 'package:miruryoiki/utils/color.dart';
@@ -22,6 +23,7 @@ import '../services/library/library_provider.dart';
 import '../services/library/search_service.dart';
 import '../models/series.dart';
 import '../services/anilist/provider/anilist_provider.dart';
+import '../services/navigation/dialogs.dart';
 import '../services/navigation/shortcuts.dart';
 import '../utils/logging.dart';
 import '../utils/path.dart';
@@ -31,11 +33,13 @@ import '../widgets/acrylic_header.dart';
 import '../widgets/animated_order_tile.dart';
 import '../widgets/buttons/button.dart';
 import '../widgets/buttons/wrapper.dart';
+import '../widgets/dialogs/genres_filter.dart';
 import '../widgets/dialogs/splash/progress.dart';
 import '../widgets/page/header_widget.dart';
 import '../widgets/page/infobar.dart';
 import '../widgets/page/page.dart';
 import '../widgets/cards/series_card.dart';
+import '../widgets/pill.dart';
 import '../widgets/series_list_tile.dart';
 import '../widgets/styled_scrollbar.dart';
 import '../widgets/tooltip_wrapper.dart';
@@ -51,6 +55,7 @@ class _CacheParameters {
   final bool showAnilistHiddenSeries;
   final List<String> customListOrder;
   final Set<String> hiddenLists;
+  final List<String> selectedGenres;
   final int dataVersion;
 
   _CacheParameters({
@@ -63,6 +68,7 @@ class _CacheParameters {
     required this.showAnilistHiddenSeries,
     required this.customListOrder,
     required this.hiddenLists,
+    required this.selectedGenres,
     required this.dataVersion,
   });
 
@@ -80,6 +86,7 @@ class _CacheParameters {
           showAnilistHiddenSeries == other.showAnilistHiddenSeries &&
           _listEquals(customListOrder, other.customListOrder) &&
           _setEquals(hiddenLists, other.hiddenLists) &&
+          _listEquals(selectedGenres, other.selectedGenres) &&
           dataVersion == other.dataVersion;
 
   @override
@@ -93,6 +100,7 @@ class _CacheParameters {
       showAnilistHiddenSeries.hashCode ^
       customListOrder.hashCode ^
       hiddenLists.hashCode ^
+      selectedGenres.hashCode ^
       dataVersion.hashCode;
 
   static bool _listEquals<T>(List<T>? a, List<T>? b) {
@@ -135,6 +143,7 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
 
   String _searchQuery = '';
   final TextEditingController _searchController = TextEditingController();
+  final FocusNode _searchFocusNode = FocusNode();
 
   @override
   bool get wantKeepAlive => true;
@@ -146,6 +155,7 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
   List<String> _previousCustomListOrder = [];
 
   final GlobalKey firstCardKey = GlobalKey();
+  final GlobalKey _filterButtonKey = GlobalKey();
   bool _isSelectingFolder = false;
   bool _isReordering = false;
 
@@ -154,12 +164,58 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
 
   List<String> _customListOrder = [];
   Set<String> _hiddenLists = {}; // API names of hidden lists
+  List<String> _selectedGenres = [];
   List<Series> displayedSeries = [];
 
   // Cache system
   List<Series>? _sortedSeriesCache;
   Map<String, List<Series>>? _groupedDataCache;
   _CacheParameters? _cacheParameters;
+
+  bool _isDialogToggling = false;
+  bool _filtersOpen = false;
+
+  LibraryView get currentView => _currentView;
+  bool get showGrouped => _showGrouped;
+
+  bool get _isGettingFiltered =>
+      // _filtersOpen || //
+      _searchQuery.isNotEmpty || //
+      _selectedGenres.isNotEmpty ||
+      Manager.settings.showHiddenSeries == false ||
+      Manager.settings.showAnilistHiddenSeries == false;
+
+  SortOrder get sortOrder => _sortOrder ?? SortOrder.alphabetical;
+
+  bool get sortDescending => _sortDescending;
+  List<String> get selectedGenres => _selectedGenres;
+
+  void addGenre(String genre) {
+    if (!_selectedGenres.contains(genre)) {
+      setState(() {
+        _selectedGenres.add(genre);
+        _sortedSeriesCache = null; // Invalidate cache
+      });
+    }
+  }
+
+  void removeGenre(String genre) {
+    if (_selectedGenres.contains(genre)) {
+      setState(() {
+        _selectedGenres.remove(genre);
+        _sortedSeriesCache = null; // Invalidate cache
+      });
+    }
+  }
+
+  void clearGenres() {
+    if (_selectedGenres.isNotEmpty) {
+      setState(() {
+        _selectedGenres.clear();
+        _sortedSeriesCache = null; // Invalidate cache
+      });
+    }
+  }
 
   final ScrollController _controller = ScrollController(
     debugLabel: 'LibraryScreen Scroll Controller',
@@ -189,6 +245,7 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
       showAnilistHiddenSeries: Manager.settings.showAnilistHiddenSeries,
       customListOrder: List.from(_customListOrder),
       hiddenLists: Set.from(_hiddenLists),
+      selectedGenres: List.from(_selectedGenres),
       dataVersion: library.dataVersion,
     );
 
@@ -342,6 +399,7 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
       showAnilistHiddenSeries: Manager.settings.showAnilistHiddenSeries,
       customListOrder: List.from(_customListOrder),
       hiddenLists: Set.from(_hiddenLists),
+      selectedGenres: List.from(_selectedGenres),
       dataVersion: library.dataVersion,
     );
   }
@@ -487,6 +545,16 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
       if (!showHidden && s.isForcedHidden) return false;
       if (!showAnilistHidden && s.isAnilistHidden) return false;
       if (onlyLinked && !s.isLinked) return false;
+
+      // Filter by genres
+      if (_selectedGenres.isNotEmpty) {
+        final seriesGenres = s.currentAnilistData?.genres ?? [];
+        // Check if series has ALL selected genres
+        for (final genre in _selectedGenres) {
+          if (!seriesGenres.contains(genre)) return false;
+        }
+      }
+
       return true;
     }).toList();
 
@@ -598,7 +666,7 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
     });
   }
 
-  void _onViewChanged(LibraryView? value) {
+  void onViewChanged(LibraryView? value) {
     if (value != null && value != _currentView) {
       invalidateSortCache(); // Invalidate cache when view changes
       setState(() => _currentView = value);
@@ -606,7 +674,16 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
     }
   }
 
-  void _onSortOrderChanged(SortOrder? value) {
+  void onShowGroupedChanged(bool value) {
+    setState(() {
+      _showGrouped = value;
+      _groupBy = value ? GroupBy.anilistLists : GroupBy.none;
+      _saveUserPreferences();
+      invalidateSortCache(); // Invalidate cache when grouping changes
+    });
+  }
+
+  void onSortOrderChanged(SortOrder? value) {
     if (value != null && value != _sortOrder) {
       invalidateSortCache(); // Invalidate cache when sort order changes
       setState(() => _sortOrder = value);
@@ -614,7 +691,7 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
     }
   }
 
-  void _onSortDirectionChanged() {
+  void onSortDirectionChanged() {
     invalidateSortCache(); // Invalidate cache when sort direction changes
     setState(() => _sortDescending = !_sortDescending);
     _saveUserPreferences();
@@ -869,93 +946,126 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
           mainAxisSize: MainAxisSize.min,
           children: [
             // Library View Switch
-            InfoLabel(
-              label: 'View',
-              labelStyle: Manager.smallSubtitleStyle.copyWith(color: Manager.pastelDominantColor),
-              child: MouseButtonWrapper(
-                tooltip: _currentView == LibraryView.all ? 'Show all series' : 'Show only series linked to AniList',
-                child: (_) => ComboBox<LibraryView>(
-                  isExpanded: true,
-                  value: _currentView,
-                  items: [
-                    ComboBoxItem(value: LibraryView.all, child: Text('All Series')),
-                    ComboBoxItem(value: LibraryView.linked, child: Text('Linked Series Only')),
-                  ],
-                  onChanged: _onViewChanged,
-                ),
-              ),
-            ),
-            VDiv(16),
+            // InfoLabel(
+            //   label: 'View',
+            //   labelStyle: Manager.smallSubtitleStyle.copyWith(color: Manager.pastelDominantColor),
+            //   child: MouseButtonWrapper(
+            //     tooltip: _currentView == LibraryView.all ? 'Show all series' : 'Show only series linked to AniList',
+            //     child: (_) => ComboBox<LibraryView>(
+            //       isExpanded: true,
+            //       value: _currentView,
+            //       items: [
+            //         ComboBoxItem(value: LibraryView.all, child: Text('All Series')),
+            //         ComboBoxItem(value: LibraryView.linked, child: Text('Linked Series Only')),
+            //       ],
+            //       onChanged: _onViewChanged,
+            //     ),
+            //   ),
+            // ),
+            // VDiv(16),
 
-            // Grouping Toggle
-            MouseButtonWrapper(
-              tooltip: _showGrouped ? 'Display series grouped by AniList lists' : 'Display series in a flat list',
-              child: (_) => ToggleSwitch(
-                checked: _showGrouped,
-                content: Expanded(child: Text('Group by AniList Lists', style: Manager.bodyStyle, maxLines: 2, overflow: TextOverflow.ellipsis)),
-                onChanged: (value) {
-                  setState(() {
-                    _showGrouped = value;
-                    _groupBy = value ? GroupBy.anilistLists : GroupBy.none;
-                    _saveUserPreferences();
-                    invalidateSortCache(); // Invalidate cache when grouping changes
-                  });
-                },
-              ),
-            ),
-            VDiv(24),
+            // // Grouping Toggle
+            // MouseButtonWrapper(
+            //   tooltip: _showGrouped ? 'Display series grouped by AniList lists' : 'Display series in a flat list',
+            //   child: (_) => ToggleSwitch(
+            //     checked: _showGrouped,
+            //     content: Expanded(child: Text('Group by AniList Lists', style: Manager.bodyStyle, maxLines: 2, overflow: TextOverflow.ellipsis)),
+            //     onChanged: (value) {
+            //       setState(() {
+            //         _showGrouped = value;
+            //         _groupBy = value ? GroupBy.anilistLists : GroupBy.none;
+            //         _saveUserPreferences();
+            //         invalidateSortCache(); // Invalidate cache when grouping changes
+            //       });
+            //     },
+            //   ),
+            // ),
+            // VDiv(24),
 
             // View Type Selector
-            InfoLabel(
-              label: 'Display',
-              labelStyle: Manager.smallSubtitleStyle.copyWith(color: Manager.pastelAccentColor),
-              child: _buildViewTypePills(),
-            ),
+            // InfoLabel(
+            //   label: 'Display',
+            //   labelStyle: Manager.smallSubtitleStyle.copyWith(color: Manager.pastelAccentColor),
+            //   child: _buildViewTypePills(),
+            // ),
 
-            VDiv(24),
+            // VDiv(24),
 
-            // Sort Order
-            InfoLabel(
-              label: 'Sort by',
-              labelStyle: Manager.smallSubtitleStyle.copyWith(color: Manager.pastelAccentColor),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: MouseButtonWrapper(
-                      tooltip: _sortOrder?.name_,
-                      child: (_) => ComboBox<SortOrder>(
-                        isExpanded: true,
-                        value: _sortOrder,
-                        placeholder: const Text('Sort By'),
-                        items: SortOrder.values.map((order) => ComboBoxItem(value: order, child: Text(_getSortText(order)))).toList(),
-                        onChanged: _onSortOrderChanged,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  SizedBox(
-                      height: 34,
-                      width: 34,
-                      child: StandardButton(
-                        tooltip: 'Sort results in ${!_sortDescending ? "Ascending" : "Descending"} order',
-                        tooltipWaitDuration: Duration(milliseconds: 150),
-                        padding: EdgeInsets.zero,
-                        label: Center(
-                          child: AnimatedRotation(
-                            duration: shortStickyHeaderDuration,
-                            turns: _sortDescending ? 0 : 1,
-                            child: Icon(_sortDescending ? FluentIcons.sort_lines : FluentIcons.sort_lines_ascending, color: Manager.pastelAccentColor),
-                          ),
-                        ),
-                        onPressed: _onSortDirectionChanged,
-                      )),
-                ],
-              ),
-            ),
+            // // Sort Order
+            // InfoLabel(
+            //   label: 'Sort by',
+            //   labelStyle: Manager.smallSubtitleStyle.copyWith(color: Manager.pastelAccentColor),
+            //   child: Row(
+            //     children: [
+            //       Expanded(
+            //         child: MouseButtonWrapper(
+            //           tooltip: _sortOrder?.name_,
+            //           child: (_) => ComboBox<SortOrder>(
+            //             isExpanded: true,
+            //             value: _sortOrder,
+            //             placeholder: const Text('Sort By'),
+            //             items: SortOrder.values.map((order) => ComboBoxItem(value: order, child: Text(getSortText(order)))).toList(),
+            //             onChanged: onSortOrderChanged,
+            //           ),
+            //         ),
+            //       ),
+            //       const SizedBox(width: 8),
+            //       SizedBox(
+            //         height: 34,
+            //         width: 34,
+            //         child: StandardButton(
+            //           tooltip: 'Sort results in ${!_sortDescending ? "Ascending" : "Descending"} order',
+            //           tooltipWaitDuration: Duration(milliseconds: 150),
+            //           padding: EdgeInsets.zero,
+            //           label: Center(
+            //             child: AnimatedRotation(
+            //               duration: shortStickyHeaderDuration,
+            //               turns: _sortDescending ? 0 : 1,
+            //               child: Icon(_sortDescending ? FluentIcons.sort_lines : FluentIcons.sort_lines_ascending, color: Manager.pastelAccentColor),
+            //             ),
+            //           ),
+            //           onPressed: onSortDirectionChanged,
+            //         ),
+            //       ),
+            //     ],
+            //   ),
+            // ),
+
+            // VDiv(24),
+
+            // // Genre Filter
+            // InfoLabel(
+            //   label: 'Filter by Genre',
+            //   labelStyle: Manager.smallSubtitleStyle.copyWith(color: Manager.pastelAccentColor),
+            //   child: Row(
+            //     children: [
+            //       Expanded(
+            //         child: StandardButton(
+            //           tooltip: 'Filter series by genre',
+            //           tooltipWaitDuration: Duration(milliseconds: 150),
+            //           padding: EdgeInsets.zero,
+            //           label: Align(
+            //             alignment: Alignment.centerLeft,
+            //             child: Padding(
+            //               padding: const EdgeInsets.only(left: 12.0),
+            //               child: Text(
+            //                 'Faggot',
+            //                 style: Manager.bodyStyle,
+            //                 overflow: TextOverflow.ellipsis,
+            //                 textAlign: TextAlign.left,
+            //               ),
+            //             ),
+            //           ),
+            //           onPressed: null,
+            //         ),
+            //       ),
+            //     ],
+            //   ),
+            // ),
 
             // Only show list order UI when grouping is enabled
             if (_showGrouped) ...[
-              VDiv(24),
+              // VDiv(24),
               Row(
                 children: [
                   Text(
@@ -1238,45 +1348,13 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
         final isSelected = _viewType == viewType;
 
         return Padding(
-          padding: EdgeInsets.only(
-            right: viewType == ViewType.values.last ? 0 : 6,
-          ),
-          child: MouseButtonWrapper(
-            tooltip: _getViewTypeTooltip(viewType),
-            tooltipWaitDuration: const Duration(milliseconds: 350),
-            child: (_) => GestureDetector(
-              onTap: () => _onViewTypeChanged(viewType),
-              child: AnimatedContainer(
-                duration: shortDuration,
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                decoration: BoxDecoration(
-                  color: isSelected ? (Manager.currentDominantAccentColor ?? Manager.accentColor).light : Colors.white.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(6),
-                  border: Border.all(
-                    color: isSelected ? (Manager.currentDominantAccentColor ?? Manager.accentColor).dark : Colors.white.withOpacity(0.2),
-                    width: 1,
-                  ),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      _getViewTypeIcon(viewType),
-                      size: 14,
-                      color: _getViewTypeColor(isSelected),
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      _getViewTypeLabel(viewType),
-                      style: Manager.captionStyle.copyWith(
-                        color: _getViewTypeColor(isSelected),
-                        fontSize: 11 * Manager.fontSizeMultiplier,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
+          padding: EdgeInsets.only(right: 3),
+          child: Pill(
+            text: _getViewTypeLabel(viewType),
+            icon: _getViewTypeIcon(viewType),
+            color: _getViewTypeColor,
+            isSelected: isSelected,
+            onTap: () => _onViewTypeChanged(viewType),
           ),
         );
       }).toList(),
@@ -1345,52 +1423,99 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
                 ),
               ),
             ),
-            Padding(
-              padding: EdgeInsets.only(right: 4.0),
-              child: SizedBox(
-                width: 300,
-                child: TextBox(
-                  controller: _searchController,
-                  cursorOpacityAnimates: true,
-                  placeholder: 'Search in your library...',
-                  prefix: Padding(
-                    padding: EdgeInsets.all(9),
-                    child: Icon(mat.Icons.search, size: 16),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                SizedBox(
+                  width: ScreenUtils.kDefaultButtonSize * 3.4 + 1.150,
+                  height: ScreenUtils.kDefaultButtonSize + 1,
+                  child: StandardButton.icon(
+                    padding: EdgeInsets.all(2),
+                    cursor: SystemMouseCursors.basic,
+                    icon: Transform.translate(
+                      offset: Offset(1, 0.275),
+                      child: _buildViewTypePills(),
+                    ),
+                    onPressed: () {}, // Disabled as selection is done via pills
                   ),
-                  suffix: _searchQuery.isNotEmpty
-                      ? Padding(
-                        padding: EdgeInsets.all(3),
+                ),
+                HDiv(4),
+                SizedBox(
+                  width: ScreenUtils.kDefaultButtonSize + 1,
+                  height: ScreenUtils.kDefaultButtonSize + 1,
+                  child: StandardButton.icon(
+                    isFilled: _isGettingFiltered,
+                    filledColor: _isGettingFiltered ? (Manager.currentDominantAccentColor ?? Manager.accentColor).light : Colors.white.withOpacity(0.1),
+                    key: _filterButtonKey,
+                    icon: Icon(_filtersOpen ? mat.Icons.filter_alt : mat.Icons.filter_alt_outlined, size: 16, color: _getViewTypeColor(_isGettingFiltered)),
+                    onPressed: _showFilterDialog,
+                  ),
+                ),
+                HDiv(4),
+                SizedBox(
+                  width: 300,
+                  height: ScreenUtils.kDefaultButtonSize + 1,
+                  child: mat.Theme(
+                    data: mat.Theme.of(context).copyWith(
+                      textSelectionTheme: TextSelectionThemeData(
+                        selectionColor: (Manager.currentDominantColor ?? Manager.accentColor).withOpacity(0.3),
+                        selectionHandleColor: Manager.currentDominantColor ?? Manager.accentColor,
+                      ),
+                    ),
+                    child: TextBox(
+                      controller: _searchController,
+                      cursorOpacityAnimates: true,
+                      cursorColor: Manager.pastelAccentColor,
+                      padding: EdgeInsetsDirectional.fromSTEB(10, 0, 6, 0),
+                      style: Manager.bodyStyle.copyWith(height: 0),
+                      placeholder: 'Search in your library...',
+                      focusNode: _searchFocusNode,
+                      enableInteractiveSelection: true,
+                      prefix: Padding(
+                        padding: EdgeInsets.only(left: 9, top: 9, bottom: 9),
                         child: MouseButtonWrapper(
-                            tooltip: 'Clear search',
-                            child: (_) => SizedBox(
-                              height: 30,
-                              child: StandardButton.icon(
-                                icon: Icon(mat.Icons.clear, size: 16),
-                                onPressed: () {
-                                  setState(() {
-                                    _searchQuery = '';
-                                    _searchController.clear();
-                                  });
-                                },
+                          child: (_) => Transform.translate(offset: Offset(0, 1), child: Icon(mat.Icons.search, size: 16)),
+                        ),
+                      ),
+                      suffix: _searchQuery.isNotEmpty
+                          ? Padding(
+                              padding: EdgeInsets.all(3).copyWith(right: 2.3),
+                              child: MouseButtonWrapper(
+                                tooltip: 'Clear search',
+                                child: (_) => SizedBox(
+                                  height: 30,
+                                  child: StandardButton.icon(
+                                    icon: Icon(mat.Icons.clear, size: 16),
+                                    onPressed: () {
+                                      setState(() {
+                                        _searchQuery = '';
+                                        _searchController.clear();
+                                      });
+                                    },
+                                  ),
+                                ),
                               ),
-                            ),
+                            )
+                          : null,
+                      decoration: ButtonState.all(
+                        BoxDecoration(
+                          color: Colors.white.withOpacity(0.05),
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(
+                            color: _searchController.text.isNotEmpty //
+                                ? (Manager.currentDominantAccentColor ?? Manager.accentColor).light
+                                : Colors.white.withOpacity(0.1),
+                            width: _searchController.text.isNotEmpty ? 1.5 : 1,
                           ),
-                      )
-                      : null,
-                  decoration: ButtonState.all(
-                    BoxDecoration(
-                      color: Colors.white.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(6),
-                      border: Border.all(color: Colors.white.withOpacity(0.2)),
+                        ),
+                      ),
+                      highlightColor: Colors.transparent,
+                      unfocusedColor: Colors.transparent,
+                      onChanged: (value) => setState(() => _searchQuery = value),
                     ),
                   ),
-                  onChanged: (value) {
-                    setState(() {
-                      _searchQuery = value;
-                    });
-                  },
                 ),
-              ),
+              ],
             ),
           ],
         ),
@@ -1439,7 +1564,7 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
     // Apply search filter if there's a query
     if (_searchQuery.isNotEmpty) {
       seriesToDisplay = LibrarySearchService.search(_searchQuery, seriesToDisplay);
-      
+
       // If grouped, rebuild groups with filtered series
       if (_showGrouped && _groupBy != GroupBy.none) {
         groupedData = _buildGroupedData(seriesToDisplay);
@@ -1474,6 +1599,7 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
                       _searchQuery = '';
                       _searchController.clear();
                     });
+                    _searchFocusNode.requestFocus();
                   },
                   child: const Text('Clear Search'),
                 ),
@@ -1482,7 +1608,7 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
           ),
         );
       }
-      
+
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -2006,7 +2132,7 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
     return buildStyledScrollbar(scrollContent, _controller);
   }
 
-  String _getSortText(SortOrder? order) {
+  String getSortText(SortOrder? order) {
     switch (order) {
       case null:
         return 'Sort by';
@@ -2037,5 +2163,80 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
     if (customListOrder.length != previousCustomListOrder.length) return false;
     for (int i = 0; i < customListOrder.length; i++) if (customListOrder[i] != previousCustomListOrder[i]) return false;
     return true;
+  }
+
+  void _showFilterDialog() async {
+    // Prevent multiple clicks during toggle
+    if (_isDialogToggling) return;
+
+    final navManager = Manager.navigation;
+
+    if (navManager.hasDialog) {
+      _isDialogToggling = true;
+      final currentDialog = navManager.currentView;
+
+      //get current top dialog id
+      closeDialog(rootNavigatorKey.currentContext!);
+      if (currentDialog?.id == "library:filters") {
+        log('Filters dialog closed');
+        await Future.delayed(dimDuration);
+        if (mounted) setState(() => _isDialogToggling = false);
+        return;
+      }
+      await Future.delayed(dimDuration);
+      _isDialogToggling = false;
+    }
+    if (mounted) setState(() => _filtersOpen = true);
+
+    if (!context.mounted) return;
+
+    Alignment alignment = Alignment.center;
+    if (_filterButtonKey.currentContext != null) {
+      final RenderBox renderBox = _filterButtonKey.currentContext!.findRenderObject() as RenderBox;
+      final Offset offset = renderBox.localToGlobal(Offset.zero);
+      final Size size = renderBox.size;
+
+      // Calculate center of the button
+      final double buttonCenterX = offset.dx + size.width / 2;
+      final double buttonCenterY = offset.dy + size.height / 2;
+
+      // Convert to Alignment coordinates (-1.0 to 1.0)
+      final double alignmentX = (buttonCenterX / ScreenUtils.width) * 2 - 1;
+      final double alignmentY = (buttonCenterY / ScreenUtils.height) * 2 - 1;
+
+      alignment = Alignment(alignmentX, alignmentY);
+    }
+
+    await showManagedDialog(
+      context: context,
+      id: 'library:filters',
+      title: 'Filters',
+      canUserPopDialog: true,
+      dialogDoPopCheck: () => Manager.canPopDialog,
+      barrierColor: Colors.red,
+      data: {"darkenTitleBar": false},
+      overrideColor: true,
+      closeExistingDialogs: true,
+      transparentBarrier: true,
+      onDismiss: () async {
+        _isDialogToggling = true;
+        await Future.delayed(dimDuration);
+        if (mounted) setState(() => _isDialogToggling = false);
+      },
+      builder: (ctx) => GenresFilterDialog(popContext: ctx),
+      transitionBuilder: (context, animation, secondaryAnimation, child) {
+        return ScaleTransition(
+          alignment: alignment,
+          scale: CurvedAnimation(
+            parent: Tween<double>(
+              begin: 0,
+              end: 1,
+            ).animate(animation),
+            curve: Curves.easeOut,
+          ),
+          child: child,
+        );
+      },
+    ).then((_) => _filtersOpen = false);
   }
 }

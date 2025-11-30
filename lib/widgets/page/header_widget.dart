@@ -92,7 +92,7 @@ class _HeaderWidgetState extends State<HeaderWidget> {
               return result;
             }(),
             child: SizedBox(
-              width: math.min(ScreenUtils.kMaxContentWidth, constraints.maxWidth - 16 /*right padding*/) - (widget.titleLeftAligned ? 0 : ScreenUtils.kInfoBarWidth) - 32,
+              width: math.min(ScreenUtils.kMaxContentWidth, constraints.maxWidth) - (widget.titleLeftAligned ? 0 : ScreenUtils.kInfoBarWidth) - 36, /* 32 + 4 of right padding */
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,

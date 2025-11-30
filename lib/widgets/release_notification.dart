@@ -131,6 +131,7 @@ class _ReleaseNotificationWidgetState extends State<ReleaseNotificationWidget> {
       canUserPopDialog: true,
       dialogDoPopCheck: () => Manager.canPopDialog,
       barrierColor: Colors.transparent,
+      data: {"darkenTitleBar" : false},
       overrideColor: true,
       closeExistingDialogs: false,
       transparentBarrier: true,

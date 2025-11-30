@@ -1,4 +1,5 @@
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:flutter/material.dart' show InkWell;
 import 'package:miruryoiki/utils/color.dart';
 import 'package:miruryoiki/utils/time.dart';
 import 'package:provider/provider.dart';
@@ -211,23 +212,27 @@ Widget Chip({
   required Widget Function(Color primaryColor) text,
   Widget? trailing,
   Color? backgroundColor,
+  VoidCallback? onClicked,
 }) {
-  return AnimatedContainer(
-    duration: gradientChangeDuration,
-    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-    decoration: BoxDecoration(
-      color: backgroundColor ?? Manager.currentDominantColor,
-      borderRadius: BorderRadius.circular(16),
-    ),
-    child: Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        text(getTextColor(Manager.currentDominantColor ?? Colors.black)),
-        if (trailing != null) ...[
-          const SizedBox(width: 8),
-          trailing,
+  return InkWell(
+    onTap: onClicked,
+    child: AnimatedContainer(
+      duration: gradientChangeDuration,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: backgroundColor ?? Manager.currentDominantColor,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          text(getTextColor(Manager.currentDominantColor ?? Colors.black)),
+          if (trailing != null) ...[
+            const SizedBox(width: 8),
+            trailing,
+          ],
         ],
-      ],
+      ),
     ),
   );
 }
