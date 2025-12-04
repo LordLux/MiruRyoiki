@@ -99,7 +99,10 @@ class MyWindowListener extends WindowListener {
 
   @override
   void onWindowResize() {
-    // update();
+    final currentDialogId = Manager.navigation.currentView?.id;
+    if (currentDialogId == 'library:filters' || currentDialogId == 'library:lists') {
+      closeDialog(Manager.context);
+    }
     super.onWindowResize();
   }
 

@@ -28,6 +28,9 @@ import '../tooltip_wrapper.dart';
 final GlobalKey<ListsContentState> listsContentKey = GlobalKey<ListsContentState>();
 
 class ListsDialog extends ManagedDialog {
+  final Offset? anchorPosition;
+  final Size? anchorSize;
+
   ListsDialog({
     super.key,
     required super.popContext,
@@ -40,6 +43,8 @@ class ListsDialog extends ManagedDialog {
     required VoidCallback onSaveUserPreferences,
     required Function(Set<String>) onHiddenListsChanged,
     required Function(List<String>) onCustomListOrderChanged,
+    this.anchorPosition,
+    this.anchorSize,
   }) : super(
           title: null, // Remove the static title
           constraints: BoxConstraints(
@@ -497,12 +502,24 @@ class ListsManagedDialogState extends State<ManagedDialog> {
 
   @override
   Widget build(BuildContext context) {
+    double? top;
+    double? left;
+
+    if (widget is ListsDialog) {
+      final dialog = widget as ListsDialog;
+      if (dialog.anchorPosition != null && dialog.anchorSize != null) {
+        top = dialog.anchorPosition!.dy + dialog.anchorSize!.height - 50;
+        left = dialog.anchorPosition!.dx + (dialog.anchorSize!.width / 2) - (_currentConstraints.maxWidth / 2);
+      }
+    }
+
     return Stack(
       alignment: alignment,
       children: [
         Positioned(
-          top: 142,
-          right: 450,
+          top: top ?? 142,
+          left: left,
+          right: left == null ? 450 : null,
           child: Padding(
             padding: const EdgeInsets.only(top: ScreenUtils.kTitleBarHeight + 16, right: 16, bottom: 16),
             child: GlossyContainer(

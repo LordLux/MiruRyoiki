@@ -1783,15 +1783,20 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
 
     if (!context.mounted) return;
 
-    Alignment alignment = Alignment.center;
+    Offset? anchorPosition;
+    Size? anchorSize;
+
     if (_filterButtonKey.currentContext != null) {
       final RenderBox renderBox = _filterButtonKey.currentContext!.findRenderObject() as RenderBox;
-      final Offset offset = renderBox.localToGlobal(Offset.zero);
-      final Size size = renderBox.size;
+      anchorPosition = renderBox.localToGlobal(Offset.zero);
+      anchorSize = renderBox.size;
+    }
 
+    Alignment alignment = Alignment.center;
+    if (anchorPosition != null && anchorSize != null) {
       // Calculate center of the button
-      final double buttonCenterX = offset.dx + size.width / 2;
-      final double buttonCenterY = offset.dy + size.height / 2;
+      final double buttonCenterX = anchorPosition.dx + anchorSize.width / 2;
+      final double buttonCenterY = anchorPosition.dy + anchorSize.height / 2;
 
       // Convert to Alignment coordinates (-1.0 to 1.0)
       final double alignmentX = (buttonCenterX / ScreenUtils.width) * 2 - 1;
@@ -1816,7 +1821,11 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
         await Future.delayed(dimDuration);
         if (mounted) setState(() => _isDialogToggling = false);
       },
-      builder: (ctx) => GenresFilterDialog(popContext: ctx),
+      builder: (ctx) => GenresFilterDialog(
+        popContext: ctx,
+        anchorPosition: anchorPosition,
+        anchorSize: anchorSize,
+      ),
       transitionBuilder: (context, animation, secondaryAnimation, child) {
         return ScaleTransition(
           alignment: alignment,
@@ -1858,15 +1867,20 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
 
     if (!context.mounted) return;
 
-    Alignment alignment = Alignment.center;
+    Offset? anchorPosition;
+    Size? anchorSize;
+
     if (_listButtonKey.currentContext != null) {
       final RenderBox renderBox = _listButtonKey.currentContext!.findRenderObject() as RenderBox;
-      final Offset offset = renderBox.localToGlobal(Offset.zero);
-      final Size size = renderBox.size;
+      anchorPosition = renderBox.localToGlobal(Offset.zero);
+      anchorSize = renderBox.size;
+    }
 
+    Alignment alignment = Alignment.center;
+    if (anchorPosition != null && anchorSize != null) {
       // Calculate center of the button
-      final double buttonCenterX = offset.dx + size.width / 2;
-      final double buttonCenterY = offset.dy + size.height / 2;
+      final double buttonCenterX = anchorPosition.dx + anchorSize.width / 2;
+      final double buttonCenterY = anchorPosition.dy + anchorSize.height / 2;
 
       // Convert to Alignment coordinates (-1.0 to 1.0)
       final double alignmentX = (buttonCenterX / ScreenUtils.width) * 2 - 1;
@@ -1911,6 +1925,8 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
             customListOrder = newOrder;
           });
         },
+        anchorPosition: anchorPosition,
+        anchorSize: anchorSize,
       ),
       transitionBuilder: (context, animation, secondaryAnimation, child) {
         return ScaleTransition(

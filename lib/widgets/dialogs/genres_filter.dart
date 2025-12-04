@@ -21,9 +21,14 @@ import '../pill.dart';
 final GlobalKey<GenresFilterContentState> genresFilterContentKey = GlobalKey<GenresFilterContentState>();
 
 class GenresFilterDialog extends ManagedDialog {
+  final Offset? anchorPosition;
+  final Size? anchorSize;
+
   GenresFilterDialog({
     super.key,
     required super.popContext,
+    this.anchorPosition,
+    this.anchorSize,
   }) : super(
           title: null, // Remove the static title
           constraints: BoxConstraints(
@@ -298,12 +303,24 @@ class GenresFilterManagedDialogState extends State<ManagedDialog> {
 
   @override
   Widget build(BuildContext context) {
+    double? top;
+    double? left;
+
+    if (widget is GenresFilterDialog) {
+      final dialog = widget as GenresFilterDialog;
+      if (dialog.anchorPosition != null && dialog.anchorSize != null) {
+        top = dialog.anchorPosition!.dy + dialog.anchorSize!.height - 50;
+        left = dialog.anchorPosition!.dx + (dialog.anchorSize!.width / 2) - (_currentConstraints.maxWidth / 2);
+      }
+    }
+
     return Stack(
       alignment: alignment,
       children: [
         Positioned(
-          top: 142,
-          right: 450,
+          top: top ?? 142,
+          left: left,
+          right: left == null ? 450 : null,
           child: Padding(
             padding: const EdgeInsets.only(top: ScreenUtils.kTitleBarHeight + 16, right: 16, bottom: 16),
             child: GlossyContainer(
