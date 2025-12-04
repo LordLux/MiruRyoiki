@@ -5,7 +5,6 @@ import 'package:miruryoiki/utils/time.dart';
 import 'package:miruryoiki/widgets/dialogs/splash/progress.dart';
 
 import '../../manager.dart';
-import '../../widgets/frosted_noise.dart';
 
 /// Defines the visual style of the status bar
 class StatusBarStyle {

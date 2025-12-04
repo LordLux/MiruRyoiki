@@ -54,6 +54,7 @@ class StandardButton extends StatefulWidget {
     bool isButtonDisabled = false,
     bool isSmall = true,
     bool isWide = true,
+    bool switchIconWithLabel = false,
     bool isFilled = false,
     bool isLoading = false,
     String? tooltip,
@@ -66,15 +67,23 @@ class StandardButton extends StatefulWidget {
     Color? hoverFillColor,
     MouseCursor? cursor,
   }) {
+    final leftPad = const EdgeInsets.only(left: 4);
+    final rightPad = const EdgeInsets.only(right: 4);
+    var list = [
+      icon,
+      const SizedBox(width: 8),
+      Transform.translate(
+        offset: const Offset(0, -.75),
+        child: Padding(padding: switchIconWithLabel ? leftPad : rightPad, child: label),
+      ),
+    ];
+    if (switchIconWithLabel) list = list.reversed.toList();
+
     return StandardButton(
       key: key,
       label: Row(
         mainAxisSize: MainAxisSize.min,
-        children: [
-          icon,
-          const SizedBox(width: 8),
-          label,
-        ],
+        children: list,
       ),
       onPressed: onPressed,
       isButtonDisabled: isButtonDisabled,
@@ -91,8 +100,8 @@ class StandardButton extends StatefulWidget {
       hoverFillColor: hoverFillColor,
       cursor: cursor,
     );
-}
-  
+  }
+
   factory StandardButton.icon({
     GlobalKey? key,
     required Widget icon,

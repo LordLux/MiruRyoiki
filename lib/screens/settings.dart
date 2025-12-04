@@ -155,6 +155,15 @@ class SettingsScreenState extends State<SettingsScreen> with AutomaticKeepAliveC
         },
       ];
 
+  static Future<void> setLibraryPath(BuildContext context) async {
+    final library = Provider.of<Library>(context, listen: false);
+    final result = await FilePicker.platform.getDirectoryPath(
+      dialogTitle: 'Select Library Folder',
+    );
+
+    if (result != null) library.setLibraryPath(result);
+  }
+
   Widget standard(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -952,13 +961,9 @@ class SettingsScreenState extends State<SettingsScreen> with AutomaticKeepAliveC
                 onPressed: () async {
                   setState(() => _isSelectingFolder = true);
 
-                  final result = await FilePicker.platform.getDirectoryPath(
-                    dialogTitle: 'Select Library Folder',
-                  );
+                  await setLibraryPath(context);
 
                   setState(() => _isSelectingFolder = false);
-
-                  if (result != null) library.setLibraryPath(result);
                 },
               ),
               const SizedBox(width: 6),

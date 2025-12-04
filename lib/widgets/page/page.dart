@@ -22,7 +22,8 @@ class MiruRyoikiTemplatePage extends StatefulWidget {
   final double? headerMaxHeight;
   final double? headerMinHeight;
   final bool scrollableContent;
-  final bool contentExtraHeaderPadding;
+  final bool enableContentExtraHeaderPadding;
+  final double contentExtraHeaderPadding;
   final VoidCallback? onHeaderCollapse;
   final VoidCallback? onHeaderExpand;
   final double? infobarHeight;
@@ -42,7 +43,8 @@ class MiruRyoikiTemplatePage extends StatefulWidget {
     this.headerMaxHeight = ScreenUtils.kMaxHeaderHeight,
     this.headerMinHeight = ScreenUtils.kMinHeaderHeight,
     this.scrollableContent = true,
-    this.contentExtraHeaderPadding = false,
+    this.enableContentExtraHeaderPadding = false,
+    this.contentExtraHeaderPadding = 16.0,
     this.onHeaderCollapse,
     this.onHeaderExpand,
     this.infobarHeight,
@@ -153,7 +155,7 @@ class _MiruRyoikiTemplatePageState extends State<MiruRyoikiTemplatePage> {
                                   child: Align(
                                     alignment: Alignment.topCenter,
                                     child: Padding(
-                                      padding: EdgeInsets.only(left: 16.0 * Manager.fontSizeMultiplier, top: widget.noHeaderBanner && !widget.contentExtraHeaderPadding ? 0.0 : 16.0, right: 4.0),
+                                      padding: EdgeInsets.only(left: 16.0 * Manager.fontSizeMultiplier, top: widget.noHeaderBanner && !widget.enableContentExtraHeaderPadding ? 0.0 : widget.contentExtraHeaderPadding, right: 4.0),
                                       child: ClipRRect(
                                         borderRadius: BorderRadius.circular(ScreenUtils.kStatCardBorderRadius),
                                         child: SizedBox(

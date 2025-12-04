@@ -1,5 +1,4 @@
 import 'package:fluent_ui/fluent_ui.dart';
-import 'package:flutter/material.dart' show Icons;
 import 'dart:async';
 import 'package:miruryoiki/models/anilist/user_list.dart';
 import 'package:miruryoiki/widgets/buttons/button.dart';

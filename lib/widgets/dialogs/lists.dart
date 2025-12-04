@@ -7,7 +7,6 @@ import 'package:material_symbols_icons/symbols.dart';
 import 'package:provider/provider.dart';
 
 import '../../enums.dart';
-import '../../main.dart';
 import '../../manager.dart';
 import '../../models/anilist/user_data.dart';
 import '../../models/series.dart';
@@ -15,14 +14,11 @@ import '../../services/anilist/provider/anilist_provider.dart';
 import '../../services/anilist/queries/anilist_service.dart';
 import '../../services/navigation/dialogs.dart';
 import '../../services/navigation/shortcuts.dart';
-import '../../utils/color.dart';
 import '../../utils/screen.dart';
 import '../../utils/time.dart';
 import '../animated_order_tile.dart';
-import '../buttons/button.dart';
 import '../buttons/wrapper.dart';
 import '../frosted_noise.dart';
-import '../pill.dart';
 import '../tooltip_wrapper.dart';
 
 final GlobalKey<ListsContentState> listsContentKey = GlobalKey<ListsContentState>();

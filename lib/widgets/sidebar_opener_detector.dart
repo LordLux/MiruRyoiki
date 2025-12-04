@@ -4,13 +4,13 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:miruryoiki/utils/screen.dart';
 import 'package:miruryoiki/utils/time.dart';
 
-class OpenerDetector extends StatelessWidget {
+class SidebarOpenerDetector extends StatelessWidget {
   final VoidCallback onHover;
   final VoidCallback onExit;
   final bool isSeriesView;
   final bool shouldExpand;
 
-  const OpenerDetector({
+  const SidebarOpenerDetector({
     super.key,
     required this.onHover,
     required this.onExit,

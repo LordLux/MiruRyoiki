@@ -1,15 +1,15 @@
+// ignore_for_file: use_build_context_synchronously
+
 import 'dart:convert';
 import 'dart:math' as math;
 
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart' as mat;
-import 'package:flutter/rendering.dart';
-import 'package:material_symbols_icons/symbols.dart';
 import 'package:miruryoiki/manager.dart';
+import 'package:miruryoiki/screens/settings.dart';
 import 'package:miruryoiki/utils/color.dart';
 import 'package:provider/provider.dart';
-import 'package:file_picker/file_picker.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:sticky_headers/sticky_headers.dart';
 import 'package:smooth_scroll_multiplatform/smooth_scroll_multiplatform.dart';
@@ -24,25 +24,23 @@ import '../services/library/search_service.dart';
 import '../models/series.dart';
 import '../services/anilist/provider/anilist_provider.dart';
 import '../services/navigation/dialogs.dart';
+import '../services/navigation/navigation.dart';
 import '../services/navigation/shortcuts.dart';
 import '../utils/logging.dart';
 import '../utils/path.dart';
 import '../utils/screen.dart';
 import '../utils/time.dart';
 import '../widgets/acrylic_header.dart';
-import '../widgets/animated_order_tile.dart';
 import '../widgets/buttons/button.dart';
 import '../widgets/buttons/wrapper.dart';
 import '../widgets/dialogs/genres_filter.dart';
 import '../widgets/dialogs/splash/progress.dart';
 import '../widgets/page/header_widget.dart';
-import '../widgets/page/infobar.dart';
 import '../widgets/page/page.dart';
 import '../widgets/cards/series_card.dart';
 import '../widgets/pill.dart';
 import '../widgets/series_list_tile.dart';
 import '../widgets/styled_scrollbar.dart';
-import '../widgets/tooltip_wrapper.dart';
 import '../widgets/dialogs/lists.dart';
 
 // Cache parameters to track when cache needs invalidation
@@ -180,9 +178,10 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
   bool get _isGettingFiltered =>
       // _filtersOpen || //
       _searchQuery.isNotEmpty || //
-      selectedGenres.isNotEmpty ||
-      Manager.settings.showHiddenSeries == false ||
-      Manager.settings.showAnilistHiddenSeries == false;
+      selectedGenres.isNotEmpty // TODO ||
+      // Manager.settings.showHiddenSeries == false ||
+      // Manager.settings.showAnilistHiddenSeries == false
+      ;
 
   SortOrder get sortOrder => _sortOrder ?? SortOrder.alphabetical;
 
@@ -558,7 +557,7 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
 
     return filteredSeries;
   }
-  
+
   @override
   void initState() {
     super.initState();
@@ -568,17 +567,12 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
   void _selectLibraryFolder() async {
     setState(() => _isSelectingFolder = true);
 
-    final String? selectedDirectory = await FilePicker.platform.getDirectoryPath(
-      dialogTitle: 'Select Media Library Folder',
-    );
+    final pane = NavigationManager.getPane(NavigationManager.SettingsIndex)!;
+    Manager.navigation.pushPane(pane['id'], pane['title']);
+
+    await SettingsScreenState.setLibraryPath(context);
 
     setState(() => _isSelectingFolder = false);
-
-    if (selectedDirectory != null) {
-      // ignore: use_build_context_synchronously
-      final library = context.read<Library>();
-      await library.setLibraryPath(selectedDirectory);
-    }
   }
 
   void _navigateToSeries(Series series) {
@@ -925,7 +919,8 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
       headerMinHeight: ScreenUtils.kMinHeaderHeight,
       noHeaderBanner: true,
       scrollableContent: false,
-      contentExtraHeaderPadding: true,
+      enableContentExtraHeaderPadding: true,
+      contentExtraHeaderPadding: 8.0,
       hideInfoBar: true,
     );
   }
@@ -941,6 +936,7 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
           child: Pill(
             text: _getViewTypeLabel(viewType),
             icon: _getViewTypeIcon(viewType),
+            tooltip: _getViewTypeTooltip(viewType),
             color: _getViewTypeColor,
             isSelected: isSelected,
             onTap: () => _onViewTypeChanged(viewType),
@@ -989,134 +985,159 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
     return HeaderWidget(
       title: (_, __) => ValueListenableBuilder(
         valueListenable: KeyboardState.zoomReleaseNotifier,
-        builder: (context, _, __) => Text(
-          'Your Media Library',
-          style: Manager.titleLargeStyle.copyWith(
-            fontSize: 32 * Manager.fontSizeMultiplier,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ),
-      titleLeftAligned: true,
-      children: <Widget>[
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        builder: (context, _, __) => Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            ValueListenableBuilder(
-              valueListenable: KeyboardState.zoomReleaseNotifier,
-              builder: (context, _, __) => Text(
-                'Path: ${library.libraryPath}',
-                style: Manager.bodyStyle.copyWith(
-                  fontSize: 14 * Manager.fontSizeMultiplier,
-                  color: Colors.white.withOpacity(.5),
+            Text(
+              'Your Media Library',
+              style: Manager.titleLargeStyle.copyWith(
+                fontSize: 32 * Manager.fontSizeMultiplier,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            SelectableRegion(
+              selectionControls: mat.DesktopTextSelectionControls(),
+              child: MouseButtonWrapper(
+                cursor: SystemMouseCursors.click,
+                child: (_) => GestureDetector(
+                  onTap: () => print('Library path tapped'),
+                  child: Text(
+                    'Path: ${library.libraryPath}',
+                    style: Manager.bodyStyle.copyWith(
+                      fontSize: 14 * Manager.fontSizeMultiplier,
+                      color: Colors.white.withOpacity(.5),
+                    ),
+                  ),
                 ),
               ),
             ),
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                SizedBox(
-                  width: ScreenUtils.kDefaultButtonSize * 3.4 + 1.150,
-                  height: ScreenUtils.kDefaultButtonSize + 1,
-                  child: StandardButton.icon(
-                    padding: EdgeInsets.all(2),
-                    cursor: SystemMouseCursors.basic,
-                    icon: Transform.translate(
-                      offset: Offset(1, 0.275),
-                      child: _buildViewTypePills(),
-                    ),
-                    onPressed: () {}, // Disabled as selection is done via pills
-                  ),
-                ),
-                HDiv(4),
-                SizedBox(
-                  width: ScreenUtils.kDefaultButtonSize + 1,
-                  height: ScreenUtils.kDefaultButtonSize + 1,
-                  child: StandardButton.icon(
-                    isFilled: _isGettingFiltered,
-                    filledColor: _isGettingFiltered ? (Manager.currentDominantAccentColor ?? Manager.accentColor).light : Colors.white.withOpacity(0.1),
-                    key: _filterButtonKey,
-                    icon: Icon(_filtersOpen ? mat.Icons.filter_alt : mat.Icons.filter_alt_outlined, size: 16, color: _getViewTypeColor(_isGettingFiltered)),
-                    onPressed: _showFilterDialog,
-                  ),
-                ),
-                HDiv(4),
-                SizedBox(
-                  width: ScreenUtils.kDefaultButtonSize + 1,
-                  height: ScreenUtils.kDefaultButtonSize + 1,
-                  child: StandardButton.icon(
-                    key: _listButtonKey,
-                    icon: Icon(_listsOpen ? mat.Icons.list : mat.Icons.view_list, size: 16, color: _getViewTypeColor(false)),
-                    onPressed: _showListDialog,
-                  ),
-                ),
-                HDiv(4),
-                SizedBox(
-                  width: 300,
-                  height: ScreenUtils.kDefaultButtonSize + 1,
-                  child: mat.Theme(
-                    data: mat.Theme.of(context).copyWith(
-                      textSelectionTheme: TextSelectionThemeData(
-                        selectionColor: (Manager.currentDominantColor ?? Manager.accentColor).withOpacity(0.3),
-                        selectionHandleColor: Manager.currentDominantColor ?? Manager.accentColor,
-                      ),
-                    ),
-                    child: TextBox(
-                      controller: _searchController,
-                      cursorOpacityAnimates: true,
-                      cursorColor: Manager.pastelAccentColor,
-                      padding: EdgeInsetsDirectional.fromSTEB(10, 0, 6, 0),
-                      style: Manager.bodyStyle.copyWith(height: 0),
-                      placeholder: 'Search in your library...',
-                      focusNode: _searchFocusNode,
-                      enableInteractiveSelection: true,
-                      prefix: Padding(
-                        padding: EdgeInsets.only(left: 9, top: 9, bottom: 9),
-                        child: MouseButtonWrapper(
-                          child: (_) => Transform.translate(offset: Offset(0, 1), child: Icon(mat.Icons.search, size: 16)),
+          ],
+        ),
+      ),
+      titleLeftAligned: true,
+      headerPadding: EdgeInsets.zero,
+      children: <Widget>[
+        Padding(
+          padding: EdgeInsets.only(top: 16),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Transform.translate(
+                    offset: const Offset(-3.5, 0),
+                    child: SizedBox(
+                      height: ScreenUtils.kDefaultButtonSize + 1,
+                      child: StandardButton.iconLabel(
+                        tooltip: 'Change View Type',
+                        switchIconWithLabel: true,
+                        label: Padding(
+                          padding: EdgeInsets.only(left: 3),
+                          child: Text("View", style: Manager.subtitleStyle.copyWith(fontSize: 12)),
                         ),
+                        padding: EdgeInsets.all(2),
+                        cursor: SystemMouseCursors.basic,
+                        icon: Transform.translate(
+                          offset: const Offset(3, 0),
+                          child: _buildViewTypePills(),
+                        ),
+                        onPressed: () {}, // Disabled as selection is done via pills
                       ),
-                      suffix: _searchQuery.isNotEmpty
-                          ? Padding(
-                              padding: EdgeInsets.all(3).copyWith(right: 2.3),
-                              child: MouseButtonWrapper(
-                                tooltip: 'Clear search',
-                                child: (_) => SizedBox(
-                                  height: 30,
-                                  child: StandardButton.icon(
-                                    icon: Icon(mat.Icons.clear, size: 16),
-                                    onPressed: () {
-                                      setState(() {
-                                        _searchQuery = '';
-                                        _searchController.clear();
-                                      });
-                                    },
-                                  ),
+                    ),
+                  ),
+                  HDiv(3.5),
+                  SizedBox(
+                    //TODO close dialog before opening a new one
+                    height: ScreenUtils.kDefaultButtonSize + 1,
+                    child: StandardButton.iconLabel(
+                      tooltip: 'Filter and Sort Options',
+                      label: Text("Filter", style: Manager.subtitleStyle.copyWith(fontSize: 12)),
+                      isFilled: _isGettingFiltered,
+                      filledColor: _isGettingFiltered ? (Manager.currentDominantAccentColor ?? Manager.accentColor).light : Colors.white.withOpacity(0.1),
+                      key: _filterButtonKey,
+                      icon: Icon(_filtersOpen ? mat.Icons.filter_alt : mat.Icons.filter_alt_outlined, size: 16, color: _getViewTypeColor(_isGettingFiltered)),
+                      onPressed: _showFilterDialog,
+                    ),
+                  ),
+                  HDiv(8),
+                  SizedBox(
+                    height: ScreenUtils.kDefaultButtonSize + 1,
+                    child: StandardButton.iconLabel(
+                      tooltip: 'Manage Lists',
+                      label: Text("Lists", style: Manager.subtitleStyle.copyWith(fontSize: 12)),
+                      key: _listButtonKey,
+                      icon: Icon(mat.Icons.list, size: 16, color: _getViewTypeColor(_listsOpen)),
+                      onPressed: _showListDialog,
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(
+                width: 300,
+                height: ScreenUtils.kDefaultButtonSize + 1,
+                child: mat.Theme(
+                  data: mat.Theme.of(context).copyWith(
+                    textSelectionTheme: TextSelectionThemeData(
+                      selectionColor: (Manager.currentDominantColor ?? Manager.accentColor).withOpacity(0.3),
+                      selectionHandleColor: Manager.currentDominantColor ?? Manager.accentColor,
+                    ),
+                  ),
+                  child: TextBox(
+                    controller: _searchController,
+                    cursorOpacityAnimates: true,
+                    cursorColor: Manager.pastelAccentColor,
+                    padding: EdgeInsetsDirectional.fromSTEB(10, 0, 6, 0),
+                    style: Manager.bodyStyle.copyWith(height: 0),
+                    placeholder: 'Search in your library...',
+                    focusNode: _searchFocusNode,
+                    enableInteractiveSelection: true,
+                    prefix: Padding(
+                      padding: EdgeInsets.only(left: 9, top: 9, bottom: 9),
+                      child: MouseButtonWrapper(
+                        child: (_) => Transform.translate(offset: Offset(0, 1), child: Icon(mat.Icons.search, size: 16)),
+                      ),
+                    ),
+                    suffix: _searchQuery.isNotEmpty
+                        ? Padding(
+                            padding: EdgeInsets.all(3).copyWith(right: 2.3),
+                            child: MouseButtonWrapper(
+                              tooltip: 'Clear search',
+                              child: (_) => SizedBox(
+                                height: 30,
+                                child: StandardButton.icon(
+                                  icon: Icon(mat.Icons.clear, size: 16),
+                                  onPressed: () {
+                                    setState(() {
+                                      _searchQuery = '';
+                                      _searchController.clear();
+                                    });
+                                  },
                                 ),
                               ),
-                            )
-                          : null,
-                      decoration: ButtonState.all(
-                        BoxDecoration(
-                          color: Colors.white.withOpacity(0.05),
-                          borderRadius: BorderRadius.circular(4),
-                          border: Border.all(
-                            color: _searchController.text.isNotEmpty //
-                                ? (Manager.currentDominantAccentColor ?? Manager.accentColor).light
-                                : Colors.white.withOpacity(0.1),
-                            width: _searchController.text.isNotEmpty ? 1.5 : 1,
-                          ),
+                            ),
+                          )
+                        : null,
+                    decoration: ButtonState.all(
+                      BoxDecoration(
+                        color: Colors.white.withOpacity(0.05),
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(
+                          color: _searchController.text.isNotEmpty //
+                              ? (Manager.currentDominantAccentColor ?? Manager.accentColor).light
+                              : Colors.white.withOpacity(0.1),
+                          width: _searchController.text.isNotEmpty ? 1.5 : 1,
                         ),
                       ),
-                      highlightColor: Colors.transparent,
-                      unfocusedColor: Colors.transparent,
-                      onChanged: (value) => setState(() => _searchQuery = value),
                     ),
+                    highlightColor: Colors.transparent,
+                    unfocusedColor: Colors.transparent,
+                    onChanged: (value) => setState(() => _searchQuery = value),
                   ),
                 ),
-              ],
-            ),
-          ],
+              ),
+            ],
+          ),
         ),
       ],
     );
@@ -1759,26 +1780,24 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
   }
 
   void _showFilterDialog() async {
-    // Prevent multiple clicks during toggle
-    if (_isDialogToggling) return;
-
-    final navManager = Manager.navigation;
-
+    final navManager = Provider.of<NavigationManager>(context, listen: false);
+    
     if (navManager.hasDialog) {
-      _isDialogToggling = true;
       final currentDialog = navManager.currentView;
-
-      //get current top dialog id
-      closeDialog(rootNavigatorKey.currentContext!);
+      
+      // If the filter dialog is already open, close it and return
       if (currentDialog?.id == "library:filters") {
-        log('Filters dialog closed');
-        await Future.delayed(dimDuration);
-        if (mounted) setState(() => _isDialogToggling = false);
+        closeDialog(rootNavigatorKey.currentContext!);
         return;
       }
-      await Future.delayed(dimDuration);
-      _isDialogToggling = false;
+      
+      // If the lists dialog is open, close it before opening filters
+      if (currentDialog?.id == "library:lists") {
+        closeDialog(rootNavigatorKey.currentContext!);
+        await Future.delayed(const Duration(milliseconds: 50));
+      }
     }
+
     if (mounted) setState(() => _filtersOpen = true);
 
     if (!context.mounted) return;
@@ -1804,7 +1823,7 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
 
       alignment = Alignment(alignmentX, alignmentY);
     }
-
+    
     await showManagedDialog(
       context: context,
       id: 'library:filters',
@@ -1817,9 +1836,7 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
       closeExistingDialogs: true,
       transparentBarrier: true,
       onDismiss: () async {
-        _isDialogToggling = true;
-        await Future.delayed(dimDuration);
-        if (mounted) setState(() => _isDialogToggling = false);
+        if (mounted) setState(() => _filtersOpen = false);
       },
       builder: (ctx) => GenresFilterDialog(
         popContext: ctx,
@@ -1839,30 +1856,30 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
           child: child,
         );
       },
-    ).then((_) => setState(() => _filtersOpen = false));
+    ).then((_) {
+      if (mounted) setState(() => _filtersOpen = false);
+    });
   }
 
   void _showListDialog() async {
-    // Prevent multiple clicks during toggle
-    if (_isDialogToggling) return;
-
-    final navManager = Manager.navigation;
-
+    final navManager = Provider.of<NavigationManager>(context, listen: false);
+    
     if (navManager.hasDialog) {
-      _isDialogToggling = true;
       final currentDialog = navManager.currentView;
 
-      //get current top dialog id
-      closeDialog(rootNavigatorKey.currentContext!);
+      // If the lists dialog is already open, close it and return
       if (currentDialog?.id == "library:lists") {
-        log('Lists dialog closed');
-        await Future.delayed(dimDuration);
-        if (mounted) setState(() => _isDialogToggling = false);
+        closeDialog(rootNavigatorKey.currentContext!);
         return;
       }
-      await Future.delayed(dimDuration);
-      _isDialogToggling = false;
+      
+      // If the filters dialog is open, close it before opening lists
+      if (currentDialog?.id == "library:filters") {
+        closeDialog(rootNavigatorKey.currentContext!);
+        await Future.delayed(const Duration(milliseconds: 50));
+      }
     }
+
     if (mounted) setState(() => _listsOpen = true);
 
     if (!context.mounted) return;
@@ -1901,10 +1918,7 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
       closeExistingDialogs: true,
       transparentBarrier: true,
       onDismiss: () async {
-        _isDialogToggling = true;
-        await Future.delayed(dimDuration);
-        if (mounted) setState(() => _isDialogToggling = false);
-        setState(() => _listsOpen = false);
+        if (mounted) setState(() => _listsOpen = false);
       },
       builder: (ctx) => ListsDialog(
         popContext: ctx,
@@ -1941,6 +1955,8 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
           child: child,
         );
       },
-    ).then((_) => setState(() => _listsOpen = false));
+    ).then((_) {
+      if (mounted) setState(() => _listsOpen = false);
+    });
   }
 }

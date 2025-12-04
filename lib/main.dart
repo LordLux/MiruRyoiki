@@ -25,7 +25,7 @@ import 'screens/home.dart';
 import 'screens/release_calendar.dart';
 import 'services/isolates/thumbnail_manager.dart';
 import 'widgets/dialogs/splash/progress.dart';
-import 'widgets/opener_detector.dart';
+import 'widgets/sidebar_opener_detector.dart';
 import 'widgets/player.dart';
 import 'widgets/release_notification.dart';
 import 'widgets/svg.dart';
@@ -398,38 +398,17 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
   Widget get settingsIcon {
     return AnimatedRotation(
       duration: dimDuration,
-      turns: _selectedIndex == settingsIndex ? 0.5 : 0.0,
+      turns: _selectedIndex == NavigationManager.SettingsIndex ? 0.5 : 0.0,
       child: const Icon(FluentIcons.settings, size: 18),
     );
   }
 
   // Controllers will be added in initState
   // Define static consts for navigation indices to avoid duplication
-  static const int homeIndex = 0;
-  static const int libraryIndex = 1;
-  static const int calendarIndex = 2;
-  static const int accountsIndex = 3;
-  static const int settingsIndex = 4;
-
-  final Map<int, Map<String, dynamic>> _navigationMap = {
-    homeIndex: {'id': 'home', 'title': 'Home', 'controller': null},
-    libraryIndex: {'id': 'library', 'title': 'Library', 'controller': null},
-    calendarIndex: {'id': 'calendar', 'title': 'Releases', 'controller': null},
-    accountsIndex: {'id': 'accounts', 'title': 'Account', 'controller': null},
-    settingsIndex: {'id': 'settings', 'title': 'Settings', 'controller': null},
-  };
-
-  Map<String, dynamic> get _homeMap => _navigationMap[homeIndex]!;
-  Map<String, dynamic> get _libraryMap => _navigationMap[libraryIndex]!;
-  Map<String, dynamic> get _calendarMap => _navigationMap[calendarIndex]!;
-  Map<String, dynamic> get _accountsMap => _navigationMap[accountsIndex]!;
-  Map<String, dynamic> get _settingsMap => _navigationMap[settingsIndex]!;
-
-  ScrollController _scrollController(int index) => _navigationMap[index]?['controller'] as ScrollController;
 
   // Reset scroll position to top
   void _resetScrollPosition(int index, {bool animate = false}) {
-    final controller = _scrollController(index);
+    final controller = NavigationManager.getScrollController(index);
     if (controller.hasClients) {
       if (animate)
         controller.animateTo(0.0, duration: dimDuration, curve: Curves.easeInOut);
@@ -441,7 +420,7 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
   set setCompactView(bool value) => setState(() => _isCompactView = value);
   bool get isCompactView => _isCompactView;
 
-  void openSettings() => _onChangedPane(settingsIndex);
+  void openSettings() => _onChangedPane(NavigationManager.SettingsIndex);
 
   void _onChangedPane(int index) {
     setState(() {
@@ -455,17 +434,14 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
       // Reset scroll when directly navigating to library
       _resetScrollPosition(index);
 
-      // Register in navigation stack - add this code
-      final navManager = Provider.of<NavigationManager>(context, listen: false);
-
       // Clear everything before adding a new pane
-      navManager.clearStack();
+      Manager.navigation.clearStack();
 
       // Register the selected pane
-      final item = _navigationMap[index]!;
-      navManager.pushPane(item['id'], item['title']);
+      final item = NavigationManager.getPane(index)!;
+      Manager.navigation.pushPane(item['id'], item['title']);
 
-      if (index == calendarIndex) {
+      if (index == NavigationManager.CalendarIndex) {
         nextFrame(() {
           // releaseCalendarScreenKey.currentState?.scrollToToday(animated: false);
           // Refresh notifications and release data when navigating to calendar
@@ -478,22 +454,20 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
   @override
   void initState() {
     super.initState();
-    _homeMap['controller'] = homeController;
-    _libraryMap['controller'] = libraryController;
-    _calendarMap['controller'] = calendarController;
-    _accountsMap['controller'] = accountsController;
-    _settingsMap['controller'] = settingsController;
-
+    NavigationManager.setScrollController(NavigationManager.HomeIndex, homeController);
+    NavigationManager.setScrollController(NavigationManager.LibraryIndex, libraryController);
+    NavigationManager.setScrollController(NavigationManager.CalendarIndex, calendarController);
+    NavigationManager.setScrollController(NavigationManager.AccountsIndex, accountsController);
+    NavigationManager.setScrollController(NavigationManager.SettingsIndex, settingsController);
     _libraryScreen = LibraryScreen(
       key: libraryScreenKey,
       onSeriesSelected: navigateToSeries,
-      scrollController: _libraryMap['controller'] as ScrollController,
+      scrollController: NavigationManager.getScrollController(NavigationManager.LibraryIndex),
     );
 
     nextFrame(() async {
-      final navManager = Provider.of<NavigationManager>(context, listen: false);
-      final pane = _navigationMap[homeIndex]!;
-      navManager.pushPane(pane['id'], pane['title']);
+      final pane = NavigationManager.getPane(NavigationManager.HomeIndex)!;
+      Manager.navigation.pushPane(pane['id'], pane['title']);
     });
   }
 
@@ -581,16 +555,16 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
                           ),
                           items: [
                             buildPaneItem(
-                              homeIndex,
+                              NavigationManager.HomeIndex,
                               icon: movedPaneItemIcon(const Icon(FluentIcons.home)),
                               body: HomeScreen(
                                 onSeriesSelected: navigateToSeries,
-                                scrollController: _homeMap['controller'] as ScrollController,
+                                scrollController: NavigationManager.getScrollController(NavigationManager.HomeIndex),
                               ),
                             ),
                             buildPaneItem(
-                              libraryIndex,
-                              mouseCursorClick: _selectedIndex != libraryIndex || _isSeriesView,
+                              NavigationManager.LibraryIndex,
+                              mouseCursorClick: _selectedIndex != NavigationManager.LibraryIndex || _isSeriesView,
                               icon: movedPaneItemIcon(const Icon(Symbols.newsstand)),
                               body: Stack(
                                 children: [
@@ -633,23 +607,23 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
                               ),
                             ),
                             buildPaneItem(
-                              calendarIndex,
+                              NavigationManager.CalendarIndex,
                               icon: movedPaneItemIcon(const Icon(FluentIcons.calendar)),
                               body: ReleaseCalendarScreen(
                                 key: releaseCalendarScreenKey,
                                 onSeriesSelected: navigateToSeries,
-                                scrollController: _calendarMap['controller'] as ScrollController,
+                                scrollController: NavigationManager.getScrollController(NavigationManager.CalendarIndex),
                               ),
                             ),
                           ],
                           footerItems: [
                             PaneItemSeparator(),
                             buildPaneItem(
-                              accountsIndex,
+                              NavigationManager.AccountsIndex,
                               icon: anilistIcon(anilistProvider.isOffline),
                               body: AccountsScreen(
                                 key: accountsKey,
-                                scrollController: _accountsMap['controller'] as ScrollController,
+                                scrollController: NavigationManager.getScrollController(NavigationManager.AccountsIndex),
                               ),
                               extra: (isHovered) {
                                 final anilistProvider = Provider.of<AnilistProvider>(context, listen: false);
@@ -686,10 +660,10 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
                               },
                             ),
                             buildPaneItem(
-                              settingsIndex,
+                              NavigationManager.SettingsIndex,
                               icon: movedPaneItemIcon(const Icon(FluentIcons.settings)),
                               body: SettingsScreen(
-                                scrollController: _settingsMap['controller'] as ScrollController,
+                                scrollController: NavigationManager.getScrollController(NavigationManager.SettingsIndex),
                               ),
                             ),
                           ],
@@ -759,7 +733,7 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
                   },
                 ),
                 Player(),
-                OpenerDetector(
+                SidebarOpenerDetector(
                   onHover: () => setCompactView = false,
                   onExit: () => setCompactView = true,
                   isSeriesView: _isSeriesView,
@@ -788,11 +762,11 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
     Widget? Function(bool isHovered)? extra,
   }) {
     final anilistProvider = Provider.of<AnilistProvider>(context, listen: false);
-    final item = _navigationMap[id]!;
+    final item = NavigationManager.getPane(id)!;
     final title = item['title'];
     mouseCursorClick ??= _selectedIndex != id;
 
-    if (id == accountsIndex && anilistProvider.isOffline) {
+    if (id == NavigationManager.AccountsIndex && anilistProvider.isOffline) {
       final msg = 'You are Offline';
       icon = Tooltip(
         style: TooltipThemeData(waitDuration: Duration(milliseconds: 200)),
@@ -801,7 +775,7 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
       );
     }
 
-    final bool isEnabled = !(id == calendarIndex && !anilistProvider.isLoggedIn);
+    final bool isEnabled = !(id == NavigationManager.CalendarIndex && !anilistProvider.isLoggedIn);
 
     return PaneItem(
       enabled: isEnabled,
@@ -809,7 +783,7 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
       mouseCursor: mouseCursorClick && isEnabled ? SystemMouseCursors.click : MouseCursor.defer,
       title: Text(title, style: Manager.bodyStyle.copyWith(color: Colors.white.withOpacity(isEnabled ? 1 : .5))),
       icon: icon,
-      infoBadge: !anilistProvider.isLoggedIn && id == accountsIndex
+      infoBadge: !anilistProvider.isLoggedIn && id == NavigationManager.AccountsIndex
           ? InfoBadge(
               // source: Icon(Icons.priority_high, size: 20),
               foregroundColor: Colors.white,
@@ -901,18 +875,18 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
                                       onMorePressed: (ctx) async {
                                         // Navigate to calendar screen
                                         closeDialog(ctx);
-                                        if (_selectedIndex == calendarIndex) return;
-                                        
+                                        if (_selectedIndex == NavigationManager.CalendarIndex) return;
+
                                         await Future.delayed(const Duration(milliseconds: 100));
                                         setState(() {
                                           if (_isSeriesView && _selectedSeriesPath != null) exitSeriesView();
 
-                                          _selectedIndex = calendarIndex;
-                                          _resetScrollPosition(calendarIndex);
+                                          _selectedIndex = NavigationManager.CalendarIndex;
+                                          _resetScrollPosition(NavigationManager.CalendarIndex);
 
                                           final navManager = Manager.navigation;
 
-                                          final item = _navigationMap[calendarIndex]!;
+                                          final item = NavigationManager.getPane(NavigationManager.CalendarIndex)!;
                                           navManager.pushPane(item['id'], item['title']);
                                         });
 
@@ -944,10 +918,10 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
   void navigateToSeries(PathString seriesPath) async {
     _previousIndex = _selectedIndex;
     // First, ensure we're on the library pane if not already
-    if (_selectedIndex != libraryIndex || _isSeriesView) {
+    if (_selectedIndex != NavigationManager.LibraryIndex || _isSeriesView) {
       logTrace('Navigating to library pane before opening series view');
       setState(() {
-        _selectedIndex = libraryIndex;
+        _selectedIndex = NavigationManager.LibraryIndex;
         lastSelectedSeriesPath = _selectedSeriesPath;
         _selectedSeriesPath = null;
         _isSeriesView = false;
@@ -955,14 +929,14 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
         Manager.currentDominantColor = null;
 
         // Reset scroll when directly navigating to library
-        _resetScrollPosition(libraryIndex);
+        _resetScrollPosition(NavigationManager.LibraryIndex);
 
         // Register in navigation stack
         final navManager = Provider.of<NavigationManager>(context, listen: false);
         navManager.clearStack();
 
         // Register the library pane
-        final item = _navigationMap[libraryIndex]!;
+        final item = NavigationManager.getPane(NavigationManager.LibraryIndex)!;
         navManager.pushPane(item['id'], item['title']);
       });
 
@@ -1003,7 +977,7 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
       navManager.goBack();
 
     if (!Manager.settings.returnToLibraryAfterSeriesScreen) {
-      navManager.navigateToPane(_navigationMap[_previousIndex]!['id']);
+      navManager.navigateToPane(NavigationManager.getPane(_previousIndex)!['id']);
       _selectedIndex = _previousIndex;
     }
 
@@ -1123,13 +1097,7 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
   }
 
   // Helper method to determine pane index from ID
-  int? _getPaneIndexFromId(String id) {
-    // check dynamically inside the _navigationMap
-    for (final entry in _navigationMap.entries) {
-      if (entry.value['id'] == id) return entry.key;
-    }
-    return null; // Not found
-  }
+  int? _getPaneIndexFromId(String id) => NavigationManager.getPaneById(id)?['index'] as int?;
 }
 
 Future<void> _initializeSplashScreenWindow() async {
@@ -1227,8 +1195,6 @@ Future<void> _registerWindowsUrlScheme(String scheme) async {
 }
 
 // TODO add 'random entry' button to top right corner of library
-// TODO move 'display' icons next to search
-// TODO seachbar right padding dynamic based on available space bc small size
 // TODO throttle db save events after 5s
 // TODO add divider between notifications and scheduled episodes in release calendar
 // TODO add polimorphic method to Notifications to get their "aired"/"Updated"/"Deleted" etc string for time ago formatting

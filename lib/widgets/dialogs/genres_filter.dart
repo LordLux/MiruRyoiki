@@ -10,7 +10,6 @@ import '../../manager.dart';
 import '../../services/anilist/queries/anilist_service.dart';
 import '../../services/navigation/dialogs.dart';
 import '../../utils/color.dart';
-import '../../utils/logging.dart';
 import '../../utils/screen.dart';
 import '../../utils/time.dart';
 import '../buttons/button.dart';
@@ -89,8 +88,7 @@ class GenresFilterContentState extends State<_GenresFilterContent> {
       final renderBox = _columnKey.currentContext?.findRenderObject() as RenderBox?;
       if (renderBox != null) {
         final height = renderBox.size.height;
-        log('Genres Filter Dialog Height: $height');
-        context.findAncestorStateOfType<GenresFilterManagedDialogState>()?.resizeDialog(height: height + 40); // +40 padding
+        context.findAncestorStateOfType<GenresFilterManagedDialogState>()?.resizeDialog(height: height + 24); // +32 padding
       }
     });
   }

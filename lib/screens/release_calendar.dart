@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'package:fluent_ui/fluent_ui.dart';
-import 'package:flutter/material.dart' show FloatingActionButton, Icons, InkWell;
+import 'package:flutter/material.dart' show Icons, InkWell;
 import 'package:miruryoiki/widgets/buttons/wrapper.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
