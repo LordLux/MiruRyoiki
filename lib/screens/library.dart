@@ -43,6 +43,7 @@ import '../widgets/pill.dart';
 import '../widgets/series_list_tile.dart';
 import '../widgets/styled_scrollbar.dart';
 import '../widgets/tooltip_wrapper.dart';
+import '../widgets/dialogs/lists.dart';
 
 // Cache parameters to track when cache needs invalidation
 class _CacheParameters {
@@ -151,20 +152,17 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
   bool _sortDescending = false;
   bool _showGrouped = false;
 
-  bool _editListsEnabled = false;
-  List<String> _previousCustomListOrder = [];
-
   final GlobalKey firstCardKey = GlobalKey();
   final GlobalKey _filterButtonKey = GlobalKey();
+  final GlobalKey _listButtonKey = GlobalKey();
   bool _isSelectingFolder = false;
-  bool _isReordering = false;
 
   // Global keys for each group to enable scrolling
   final Map<String, GlobalKey> _groupKeys = {};
 
-  List<String> _customListOrder = [];
-  Set<String> _hiddenLists = {}; // API names of hidden lists
-  List<String> _selectedGenres = [];
+  List<String> customListOrder = [];
+  Set<String> hiddenLists = {}; // API names of hidden lists
+  List<String> selectedGenres = [];
   List<Series> displayedSeries = [];
 
   // Cache system
@@ -174,6 +172,7 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
 
   bool _isDialogToggling = false;
   bool _filtersOpen = false;
+  bool _listsOpen = false;
 
   LibraryView get currentView => _currentView;
   bool get showGrouped => _showGrouped;
@@ -181,37 +180,36 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
   bool get _isGettingFiltered =>
       // _filtersOpen || //
       _searchQuery.isNotEmpty || //
-      _selectedGenres.isNotEmpty ||
+      selectedGenres.isNotEmpty ||
       Manager.settings.showHiddenSeries == false ||
       Manager.settings.showAnilistHiddenSeries == false;
 
   SortOrder get sortOrder => _sortOrder ?? SortOrder.alphabetical;
 
   bool get sortDescending => _sortDescending;
-  List<String> get selectedGenres => _selectedGenres;
 
   void addGenre(String genre) {
-    if (!_selectedGenres.contains(genre)) {
+    if (!selectedGenres.contains(genre)) {
       setState(() {
-        _selectedGenres.add(genre);
+        selectedGenres.add(genre);
         _sortedSeriesCache = null; // Invalidate cache
       });
     }
   }
 
   void removeGenre(String genre) {
-    if (_selectedGenres.contains(genre)) {
+    if (selectedGenres.contains(genre)) {
       setState(() {
-        _selectedGenres.remove(genre);
+        selectedGenres.remove(genre);
         _sortedSeriesCache = null; // Invalidate cache
       });
     }
   }
 
   void clearGenres() {
-    if (_selectedGenres.isNotEmpty) {
+    if (selectedGenres.isNotEmpty) {
       setState(() {
-        _selectedGenres.clear();
+        selectedGenres.clear();
         _sortedSeriesCache = null; // Invalidate cache
       });
     }
@@ -243,9 +241,9 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
       showGrouped: _showGrouped,
       showHiddenSeries: Manager.settings.showHiddenSeries,
       showAnilistHiddenSeries: Manager.settings.showAnilistHiddenSeries,
-      customListOrder: List.from(_customListOrder),
-      hiddenLists: Set.from(_hiddenLists),
-      selectedGenres: List.from(_selectedGenres),
+      customListOrder: List.from(customListOrder),
+      hiddenLists: Set.from(hiddenLists),
+      selectedGenres: List.from(selectedGenres),
       dataVersion: library.dataVersion,
     );
 
@@ -397,9 +395,9 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
       showGrouped: _showGrouped,
       showHiddenSeries: Manager.settings.showHiddenSeries,
       showAnilistHiddenSeries: Manager.settings.showAnilistHiddenSeries,
-      customListOrder: List.from(_customListOrder),
-      hiddenLists: Set.from(_hiddenLists),
-      selectedGenres: List.from(_selectedGenres),
+      customListOrder: List.from(customListOrder),
+      hiddenLists: Set.from(hiddenLists),
+      selectedGenres: List.from(selectedGenres),
       dataVersion: library.dataVersion,
     );
   }
@@ -410,9 +408,9 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
     final groups = <String, List<Series>>{};
 
     // Initialize groups based on custom list order (excluding hidden lists)
-    for (final listName in _customListOrder) {
-      if (!_hiddenLists.contains(listName)) {
-        groups[_getDisplayName(listName)] = [];
+    for (final listName in customListOrder) {
+      if (!hiddenLists.contains(listName)) {
+        groups[StatusStatistic.getDisplayName(listName)] = [];
       }
     }
 
@@ -516,7 +514,7 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
         // Unlinked series - use custom list name if specified and exists, otherwise use 'Unlinked'
         final availableListNames = anilistProvider.userLists.keys.toList()..add(AnilistService.statusListNameUnlinked);
         final effectiveListName = series.getEffectiveListName(availableListNames);
-        final targetListName = _getDisplayName(effectiveListName);
+        final targetListName = StatusStatistic.getDisplayName(effectiveListName);
 
         // Ensure the target group exists
         if (!groups.containsKey(targetListName)) //
@@ -547,10 +545,10 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
       if (onlyLinked && !s.isLinked) return false;
 
       // Filter by genres
-      if (_selectedGenres.isNotEmpty) {
+      if (selectedGenres.isNotEmpty) {
         final seriesGenres = s.currentAnilistData?.genres ?? [];
         // Check if series has ALL selected genres
-        for (final genre in _selectedGenres) {
+        for (final genre in selectedGenres) {
           if (!seriesGenres.contains(genre)) return false;
         }
       }
@@ -560,10 +558,7 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
 
     return filteredSeries;
   }
-
-  String _getDisplayName(String listName) => listName == '__unlinked' ? 'Unlinked' : StatusStatistic.statusNameToPretty(listName);
-  String _getApiName(String listName) => listName == 'Unlinked' ? '__unlinked' : StatusStatistic.statusNameToApi(listName);
-
+  
   @override
   void initState() {
     super.initState();
@@ -599,8 +594,8 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
     settings.set('library_sort_descending', _sortDescending);
     settings.set('library_group_by', _groupBy.toString());
     settings.set('library_show_grouped', _showGrouped);
-    settings.set('library_list_order', json.encode(_customListOrder));
-    settings.set('library_hidden_lists', json.encode(_hiddenLists.toList()));
+    settings.set('library_list_order', json.encode(customListOrder));
+    settings.set('library_hidden_lists', json.encode(hiddenLists.toList()));
   }
 
   /// Load preferences
@@ -649,9 +644,9 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
 
       try {
         final decoded = json.decode(listOrderString);
-        if (decoded is List) _customListOrder = List<String>.from(decoded);
+        if (decoded is List) customListOrder = List<String>.from(decoded);
       } catch (_) {
-        _customListOrder = [];
+        customListOrder = [];
       }
 
       // Load hidden lists
@@ -659,9 +654,9 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
 
       try {
         final decoded = json.decode(hiddenListsString);
-        if (decoded is List) _hiddenLists = Set<String>.from(decoded);
+        if (decoded is List) hiddenLists = Set<String>.from(decoded);
       } catch (_) {
-        _hiddenLists = {};
+        hiddenLists = {};
       }
     });
   }
@@ -720,8 +715,8 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
     // Find the index of the target list in the sorted display order
     final displayOrder = _groupedDataCache!.keys.toList();
     displayOrder.sort((a, b) {
-      final aIndex = _customListOrder.indexOf(_getApiName(a));
-      final bIndex = _customListOrder.indexOf(_getApiName(b));
+      final aIndex = customListOrder.indexOf(StatusStatistic.getApiName(a));
+      final bIndex = customListOrder.indexOf(StatusStatistic.getApiName(b));
       if (aIndex == -1) return 1;
       if (bIndex == -1) return -1;
       return aIndex.compareTo(bIndex);
@@ -926,418 +921,12 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
     return MiruRyoikiTemplatePage(
       headerWidget: _buildHeader(library),
       content: _buildLibraryView(library),
-      infobar: (_) => _buildFiltersSidebar(),
       headerMaxHeight: ScreenUtils.kMinHeaderHeight,
       headerMinHeight: ScreenUtils.kMinHeaderHeight,
       noHeaderBanner: true,
       scrollableContent: false,
       contentExtraHeaderPadding: true,
-    );
-  }
-
-  MiruRyoikiInfobar _buildFiltersSidebar() {
-    final bool isResetDisabled = _listEquals(_customListOrder, _previousCustomListOrder);
-
-    return MiruRyoikiInfobar(
-      content: ValueListenableBuilder(
-        valueListenable: KeyboardState.zoomReleaseNotifier,
-        builder: (context, _, __) => Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Library View Switch
-            // InfoLabel(
-            //   label: 'View',
-            //   labelStyle: Manager.smallSubtitleStyle.copyWith(color: Manager.pastelDominantColor),
-            //   child: MouseButtonWrapper(
-            //     tooltip: _currentView == LibraryView.all ? 'Show all series' : 'Show only series linked to AniList',
-            //     child: (_) => ComboBox<LibraryView>(
-            //       isExpanded: true,
-            //       value: _currentView,
-            //       items: [
-            //         ComboBoxItem(value: LibraryView.all, child: Text('All Series')),
-            //         ComboBoxItem(value: LibraryView.linked, child: Text('Linked Series Only')),
-            //       ],
-            //       onChanged: _onViewChanged,
-            //     ),
-            //   ),
-            // ),
-            // VDiv(16),
-
-            // // Grouping Toggle
-            // MouseButtonWrapper(
-            //   tooltip: _showGrouped ? 'Display series grouped by AniList lists' : 'Display series in a flat list',
-            //   child: (_) => ToggleSwitch(
-            //     checked: _showGrouped,
-            //     content: Expanded(child: Text('Group by AniList Lists', style: Manager.bodyStyle, maxLines: 2, overflow: TextOverflow.ellipsis)),
-            //     onChanged: (value) {
-            //       setState(() {
-            //         _showGrouped = value;
-            //         _groupBy = value ? GroupBy.anilistLists : GroupBy.none;
-            //         _saveUserPreferences();
-            //         invalidateSortCache(); // Invalidate cache when grouping changes
-            //       });
-            //     },
-            //   ),
-            // ),
-            // VDiv(24),
-
-            // View Type Selector
-            // InfoLabel(
-            //   label: 'Display',
-            //   labelStyle: Manager.smallSubtitleStyle.copyWith(color: Manager.pastelAccentColor),
-            //   child: _buildViewTypePills(),
-            // ),
-
-            // VDiv(24),
-
-            // // Sort Order
-            // InfoLabel(
-            //   label: 'Sort by',
-            //   labelStyle: Manager.smallSubtitleStyle.copyWith(color: Manager.pastelAccentColor),
-            //   child: Row(
-            //     children: [
-            //       Expanded(
-            //         child: MouseButtonWrapper(
-            //           tooltip: _sortOrder?.name_,
-            //           child: (_) => ComboBox<SortOrder>(
-            //             isExpanded: true,
-            //             value: _sortOrder,
-            //             placeholder: const Text('Sort By'),
-            //             items: SortOrder.values.map((order) => ComboBoxItem(value: order, child: Text(getSortText(order)))).toList(),
-            //             onChanged: onSortOrderChanged,
-            //           ),
-            //         ),
-            //       ),
-            //       const SizedBox(width: 8),
-            //       SizedBox(
-            //         height: 34,
-            //         width: 34,
-            //         child: StandardButton(
-            //           tooltip: 'Sort results in ${!_sortDescending ? "Ascending" : "Descending"} order',
-            //           tooltipWaitDuration: Duration(milliseconds: 150),
-            //           padding: EdgeInsets.zero,
-            //           label: Center(
-            //             child: AnimatedRotation(
-            //               duration: shortStickyHeaderDuration,
-            //               turns: _sortDescending ? 0 : 1,
-            //               child: Icon(_sortDescending ? FluentIcons.sort_lines : FluentIcons.sort_lines_ascending, color: Manager.pastelAccentColor),
-            //             ),
-            //           ),
-            //           onPressed: onSortDirectionChanged,
-            //         ),
-            //       ),
-            //     ],
-            //   ),
-            // ),
-
-            // VDiv(24),
-
-            // // Genre Filter
-            // InfoLabel(
-            //   label: 'Filter by Genre',
-            //   labelStyle: Manager.smallSubtitleStyle.copyWith(color: Manager.pastelAccentColor),
-            //   child: Row(
-            //     children: [
-            //       Expanded(
-            //         child: StandardButton(
-            //           tooltip: 'Filter series by genre',
-            //           tooltipWaitDuration: Duration(milliseconds: 150),
-            //           padding: EdgeInsets.zero,
-            //           label: Align(
-            //             alignment: Alignment.centerLeft,
-            //             child: Padding(
-            //               padding: const EdgeInsets.only(left: 12.0),
-            //               child: Text(
-            //                 'Faggot',
-            //                 style: Manager.bodyStyle,
-            //                 overflow: TextOverflow.ellipsis,
-            //                 textAlign: TextAlign.left,
-            //               ),
-            //             ),
-            //           ),
-            //           onPressed: null,
-            //         ),
-            //       ),
-            //     ],
-            //   ),
-            // ),
-
-            // Only show list order UI when grouping is enabled
-            if (_showGrouped) ...[
-              // VDiv(24),
-              Row(
-                children: [
-                  Text(
-                    'Lists',
-                    style: Manager.smallSubtitleStyle.copyWith(color: Manager.pastelAccentColor),
-                  ),
-                  const SizedBox(width: 4),
-                  Transform.translate(
-                    offset: const Offset(0, 1.5),
-                    child: SizedBox(
-                      height: 22,
-                      width: 22,
-                      child: MouseButtonWrapper(
-                        tooltipWaitDuration: const Duration(milliseconds: 250),
-                        tooltip: _editListsEnabled ? 'Save Changes' : 'Edit List Order',
-                        child: (_) => IconButton(
-                          icon: Icon(_editListsEnabled ? FluentIcons.check_mark : FluentIcons.edit, size: 11 * Manager.fontSizeMultiplier, color: Manager.pastelAccentColor),
-                          onPressed: () {
-                            setState(() => _editListsEnabled = !_editListsEnabled);
-                            if (_editListsEnabled) _previousCustomListOrder = List.from(_customListOrder);
-                          },
-                        ),
-                      ),
-                    ),
-                  ),
-                  if (_editListsEnabled && !isResetDisabled) ...[
-                    const SizedBox(width: 4),
-                    Transform.translate(
-                      offset: const Offset(0, 1.5),
-                      child: SizedBox(
-                        height: 22,
-                        width: 22,
-                        child: MouseButtonWrapper(
-                          isButtonDisabled: isResetDisabled,
-                          tooltipWaitDuration: const Duration(milliseconds: 250),
-                          tooltip: 'Cancel Changes',
-                          child: (_) => IconButton(
-                            icon: Icon(Symbols.rotate_left, size: 11, color: Manager.pastelAccentColor),
-                            onPressed: isResetDisabled
-                                ? null
-                                : () {
-                                    setState(() {
-                                      _customListOrder = List.from(_previousCustomListOrder);
-                                      // _editListsEnabled = false;
-                                    });
-                                  },
-                          ),
-                        ),
-                      ),
-                    ),
-                  ]
-                ],
-              ),
-              VDiv(3),
-              _buildListOrderUI(),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildListOrderUI() {
-    final anilistProvider = Provider.of<AnilistProvider>(context, listen: false);
-
-    // Get all list names including standard and custom lists
-    final allLists = <String>[];
-
-    // Add standard lists in default order
-    for (final listName in AnilistService.statusListNamesApi) {
-      if (anilistProvider.userLists.containsKey(listName)) {
-        allLists.add(listName);
-      }
-    }
-
-    // Add custom lists
-    for (final entry in anilistProvider.userLists.entries) {
-      if (!allLists.contains(entry.key) && entry.key.startsWith('custom_')) {
-        allLists.add(entry.key);
-      }
-    }
-
-    // Add "Unlinked" pseudo-list
-    if (_currentView == LibraryView.all) allLists.add('__unlinked');
-
-    // If _customListOrder is empty, initialize with default order
-    if (_customListOrder.isEmpty) {
-      _customListOrder = List.from(allLists);
-    } else {
-      // Ensure all current lists are present in _customListOrder
-      // Add missing lists at their position from allLists (not at the end)
-      for (int i = 0; i < allLists.length; i++) {
-        final listName = allLists[i];
-        if (!_customListOrder.contains(listName)) {
-          // Find the best insertion position
-          // Look for adjacent lists that exist in _customListOrder
-          int insertIndex = _customListOrder.length; // default to end
-
-          // Look backwards in allLists to find a list that exists in _customListOrder
-          for (int j = i - 1; j >= 0; j--) {
-            final prevListName = allLists[j];
-            final prevIndex = _customListOrder.indexOf(prevListName);
-            if (prevIndex != -1) {
-              // Insert after this list
-              insertIndex = prevIndex + 1;
-              break;
-            }
-          }
-
-          _customListOrder.insert(insertIndex, listName);
-        }
-      }
-      // Remove any lists that no longer exist
-      _customListOrder.removeWhere((listName) => !allLists.contains(listName));
-    }
-
-    // Filter out hidden lists when not in edit mode for display purposes
-    final displayListOrder = _editListsEnabled ? _customListOrder : _customListOrder.where((listName) => !_hiddenLists.contains(listName)).toList();
-
-    final double childHeight = 40;
-
-    return SizedBox(
-      height: displayListOrder.length * childHeight,
-      child: ValueListenableBuilder(
-        valueListenable: KeyboardState.ctrlPressedNotifier,
-        builder: (context, isCtrlPressed, _) {
-          // Non-reorderable view when editing is disabled
-          if (!_editListsEnabled) {
-            return ListView.builder(
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: displayListOrder.length,
-              prototypeItem: SizedBox(height: childHeight),
-              itemBuilder: (context, index) {
-                final listName = displayListOrder[index];
-                final displayName = _getDisplayName(listName);
-
-                // Check if list is empty by checking grouped data cache
-                final isEmpty = _groupedDataCache != null && (_groupedDataCache![displayName]?.isEmpty ?? true);
-
-                return AnimatedReorderableTile(
-                  key: ValueKey(listName),
-                  listName: listName,
-                  displayName: displayName,
-                  onPressed: (i) => _scrollToList(displayName),
-                  index: index,
-                  selected: false,
-                  isReordering: false,
-                  reorderable: false,
-                  isEmpty: isEmpty,
-                );
-              },
-            );
-          }
-
-          // Reorderable view when editing is enabled
-          return ReorderableListView.builder(
-            physics: isCtrlPressed ? const NeverScrollableScrollPhysics() : null,
-            itemCount: displayListOrder.length,
-            buildDefaultDragHandles: false,
-            clipBehavior: Clip.none,
-            proxyDecorator: (child, index, animation) {
-              final listName = displayListOrder[index];
-              final displayName = _getDisplayName(listName);
-              final isHidden = _hiddenLists.contains(listName);
-              final isEmpty = _groupedDataCache != null && (_groupedDataCache![displayName]?.isEmpty ?? true);
-
-              return AnimatedReorderableTile(
-                key: ValueKey('${listName}_dragging'),
-                listName: listName,
-                displayName: displayName,
-                index: index,
-                selected: true,
-                initialAnimation: true,
-                isHidden: isHidden,
-                isEmpty: isEmpty,
-                isReordering: true,
-                reorderable: true,
-              );
-            },
-            onReorderStart: (_) => setState(() => _isReordering = true),
-            onReorderEnd: (_) => setState(() => _isReordering = false),
-            onReorder: (oldIndex, newIndex) {
-              setState(() {
-                if (oldIndex < newIndex) newIndex -= 1;
-
-                // Get the items being reordered
-                final item = displayListOrder[oldIndex];
-
-                // Find their positions in the full _customListOrder
-                final actualOldIndex = _customListOrder.indexOf(item);
-
-                // Calculate actual new index in _customListOrder
-                int actualNewIndex;
-                if (newIndex >= displayListOrder.length - 1) {
-                  // Moving to the end: find the last visible item's position and place after it
-                  final lastVisibleItem = displayListOrder.last;
-                  actualNewIndex = _customListOrder.indexOf(lastVisibleItem);
-                  if (actualOldIndex < actualNewIndex) {
-                    actualNewIndex--; // Adjust for removal
-                  }
-                } else {
-                  // Moving to a specific position: find the target item in _customListOrder
-                  final targetItem = displayListOrder[newIndex];
-                  actualNewIndex = _customListOrder.indexOf(targetItem);
-                  if (actualOldIndex < actualNewIndex) {
-                    actualNewIndex--; // Adjust for removal
-                  }
-                }
-
-                _customListOrder.removeAt(actualOldIndex);
-                _customListOrder.insert(actualNewIndex, item);
-                invalidateSortCache();
-                _saveUserPreferences();
-              });
-            },
-            prototypeItem: SizedBox(height: childHeight),
-            itemBuilder: (context, index) {
-              final listName = displayListOrder[index];
-              final displayName = _getDisplayName(listName);
-              final isHidden = _hiddenLists.contains(listName);
-              final isEmpty = _groupedDataCache != null && (_groupedDataCache![displayName]?.isEmpty ?? true);
-
-              return AnimatedReorderableTile(
-                key: ValueKey(listName),
-                listName: listName,
-                displayName: displayName,
-                isHidden: isHidden,
-                isEmpty: isEmpty,
-                trailing: (isHovering) {
-                  return MouseRegion(
-                    cursor: SystemMouseCursors.click,
-                    child: AnimatedSwitcher(
-                      duration: shortDuration / 2,
-                      child: isHovering || isHidden
-                          ? TooltipWrapper(
-                              tooltip: isHidden ? 'Unhide List' : 'Hide List',
-                              child: (_) => IconButton(
-                                style: ButtonStyle(
-                                  padding: ButtonState.all(EdgeInsets.zero),
-                                ),
-                                icon: Icon(
-                                  isHidden ? mat.Icons.visibility_off : mat.Icons.visibility,
-                                  size: 16,
-                                  color: isHidden ? Colors.red.withOpacity(.6) : Colors.white.withOpacity(.5),
-                                ),
-                                onPressed: () {
-                                  setState(() {
-                                    if (isHidden)
-                                      _hiddenLists.remove(listName);
-                                    else
-                                      _hiddenLists.add(listName);
-                                  });
-
-                                  _saveUserPreferences();
-                                  nextFrame(() {
-                                    invalidateSortCache();
-                                  });
-                                },
-                              ),
-                            )
-                          : null,
-                    ),
-                  );
-                },
-                index: index,
-                selected: false,
-                isReordering: _isReordering,
-              );
-            },
-          );
-        },
-      ),
+      hideInfoBar: true,
     );
   }
 
@@ -1449,6 +1038,16 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
                     key: _filterButtonKey,
                     icon: Icon(_filtersOpen ? mat.Icons.filter_alt : mat.Icons.filter_alt_outlined, size: 16, color: _getViewTypeColor(_isGettingFiltered)),
                     onPressed: _showFilterDialog,
+                  ),
+                ),
+                HDiv(4),
+                SizedBox(
+                  width: ScreenUtils.kDefaultButtonSize + 1,
+                  height: ScreenUtils.kDefaultButtonSize + 1,
+                  child: StandardButton.icon(
+                    key: _listButtonKey,
+                    icon: Icon(_listsOpen ? mat.Icons.list : mat.Icons.view_list, size: 16, color: _getViewTypeColor(false)),
+                    onPressed: _showListDialog,
                   ),
                 ),
                 HDiv(4),
@@ -1891,8 +1490,8 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
               final displayOrder = groupedData.keys.toList();
               displayOrder.sort((a, b) {
                 // Get the original position in _customListOrder
-                final aIndex = _customListOrder.indexOf(_getApiName(a));
-                final bIndex = _customListOrder.indexOf(_getApiName(b));
+                final aIndex = customListOrder.indexOf(StatusStatistic.getApiName(a));
+                final bIndex = customListOrder.indexOf(StatusStatistic.getApiName(b));
 
                 // If one is not found, put it at the end
                 if (aIndex == -1) return 1;
@@ -2048,8 +1647,8 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
     final displayOrder = groupedData.keys.toList();
     displayOrder.sort((a, b) {
       // Get the original position in _customListOrder
-      final aIndex = _customListOrder.indexOf(_getApiName(a));
-      final bIndex = _customListOrder.indexOf(_getApiName(b));
+      final aIndex = customListOrder.indexOf(StatusStatistic.getApiName(a));
+      final bIndex = customListOrder.indexOf(StatusStatistic.getApiName(b));
 
       // If one is not found, put it at the end
       if (aIndex == -1) return 1;
@@ -2159,12 +1758,6 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
     }
   }
 
-  bool _listEquals(List<String> customListOrder, List<String> previousCustomListOrder) {
-    if (customListOrder.length != previousCustomListOrder.length) return false;
-    for (int i = 0; i < customListOrder.length; i++) if (customListOrder[i] != previousCustomListOrder[i]) return false;
-    return true;
-  }
-
   void _showFilterDialog() async {
     // Prevent multiple clicks during toggle
     if (_isDialogToggling) return;
@@ -2237,6 +1830,101 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
           child: child,
         );
       },
-    ).then((_) => _filtersOpen = false);
+    ).then((_) => setState(() => _filtersOpen = false));
+  }
+
+  void _showListDialog() async {
+    // Prevent multiple clicks during toggle
+    if (_isDialogToggling) return;
+
+    final navManager = Manager.navigation;
+
+    if (navManager.hasDialog) {
+      _isDialogToggling = true;
+      final currentDialog = navManager.currentView;
+
+      //get current top dialog id
+      closeDialog(rootNavigatorKey.currentContext!);
+      if (currentDialog?.id == "library:lists") {
+        log('Lists dialog closed');
+        await Future.delayed(dimDuration);
+        if (mounted) setState(() => _isDialogToggling = false);
+        return;
+      }
+      await Future.delayed(dimDuration);
+      _isDialogToggling = false;
+    }
+    if (mounted) setState(() => _listsOpen = true);
+
+    if (!context.mounted) return;
+
+    Alignment alignment = Alignment.center;
+    if (_listButtonKey.currentContext != null) {
+      final RenderBox renderBox = _listButtonKey.currentContext!.findRenderObject() as RenderBox;
+      final Offset offset = renderBox.localToGlobal(Offset.zero);
+      final Size size = renderBox.size;
+
+      // Calculate center of the button
+      final double buttonCenterX = offset.dx + size.width / 2;
+      final double buttonCenterY = offset.dy + size.height / 2;
+
+      // Convert to Alignment coordinates (-1.0 to 1.0)
+      final double alignmentX = (buttonCenterX / ScreenUtils.width) * 2 - 1;
+      final double alignmentY = (buttonCenterY / ScreenUtils.height) * 2 - 1;
+
+      alignment = Alignment(alignmentX, alignmentY);
+    }
+
+    await showManagedDialog(
+      context: context,
+      id: 'library:lists',
+      title: 'Lists',
+      canUserPopDialog: true,
+      dialogDoPopCheck: () => Manager.canPopDialog,
+      barrierColor: Colors.red,
+      data: {"darkenTitleBar": false},
+      overrideColor: true,
+      closeExistingDialogs: true,
+      transparentBarrier: true,
+      onDismiss: () async {
+        _isDialogToggling = true;
+        await Future.delayed(dimDuration);
+        if (mounted) setState(() => _isDialogToggling = false);
+        setState(() => _listsOpen = false);
+      },
+      builder: (ctx) => ListsDialog(
+        popContext: ctx,
+        currentView: _currentView,
+        customListOrder: customListOrder,
+        hiddenLists: hiddenLists,
+        groupedDataCache: _groupedDataCache,
+        onScrollToList: _scrollToList,
+        onInvalidateSortCache: invalidateSortCache,
+        onSaveUserPreferences: _saveUserPreferences,
+        onHiddenListsChanged: (newHiddenLists) {
+          setState(() {
+            hiddenLists = newHiddenLists;
+          });
+        },
+        onCustomListOrderChanged: (newOrder) {
+          setState(() {
+            customListOrder = newOrder;
+          });
+        },
+      ),
+      transitionBuilder: (context, animation, secondaryAnimation, child) {
+        return ScaleTransition(
+          alignment: alignment,
+          scale: CurvedAnimation(
+            parent: Tween<double>(
+              begin: 0,
+              end: 1,
+            ).animate(animation),
+            curve: Curves.easeOut,
+          ),
+          child: child,
+        );
+      },
+    ).then((_) => setState(() => _listsOpen = false));
   }
 }

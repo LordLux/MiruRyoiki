@@ -114,6 +114,13 @@ class SettingsManager extends ChangeNotifier {
   List<String> get genres => _getStringList('genres', defaultValue: []);
   set genres(List<String> value) => _setStringList('genres', value);
 
+  // Dialog Heights
+  double get genresFilterHeight => _getDouble('genresFilterHeight', defaultValue: 329.0);
+  set genresFilterHeight(double value) => _setDouble('genresFilterHeight', value);
+
+  double get listsDialogHeight => _getDouble('listsDialogHeight', defaultValue: 346.0);
+  set listsDialogHeight(double value) => _setDouble('listsDialogHeight', value);
+
   // // Generic getters with type safety
   bool _getBool(String key, {required bool defaultValue}) {
     if (!_settings.containsKey(key)) {

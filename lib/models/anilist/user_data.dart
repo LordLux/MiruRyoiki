@@ -760,6 +760,9 @@ class StatusStatistic {
       'timeWatched': timeWatched,
     };
   }
+
+  static String getDisplayName(String listName) => listName == '__unlinked' ? 'Unlinked' : StatusStatistic.statusNameToPretty(listName);
+  static String getApiName(String listName) => listName == 'Unlinked' ? '__unlinked' : StatusStatistic.statusNameToApi(listName);
 }
 
 class YearStatistic {

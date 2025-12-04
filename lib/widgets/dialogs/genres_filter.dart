@@ -10,6 +10,7 @@ import '../../manager.dart';
 import '../../services/anilist/queries/anilist_service.dart';
 import '../../services/navigation/dialogs.dart';
 import '../../utils/color.dart';
+import '../../utils/logging.dart';
 import '../../utils/screen.dart';
 import '../../utils/time.dart';
 import '../buttons/button.dart';
@@ -25,7 +26,10 @@ class GenresFilterDialog extends ManagedDialog {
     required super.popContext,
   }) : super(
           title: null, // Remove the static title
-          constraints: const BoxConstraints(maxWidth: 250, maxHeight: 400),
+          constraints: BoxConstraints(
+            maxWidth: 250,
+            maxHeight: Manager.settings.genresFilterHeight,
+          ),
           contentBuilder: (context, constraints) => _GenresFilterContent(
             key: genresFilterContentKey,
             constraints: constraints,
@@ -56,6 +60,7 @@ class _GenresFilterContent extends StatefulWidget {
 
 class GenresFilterContentState extends State<_GenresFilterContent> {
   final GlobalKey<AutoSuggestBoxState<String>> asgbKey = GlobalKey<AutoSuggestBoxState<String>>();
+  final GlobalKey _columnKey = GlobalKey();
   List<String> genres = [];
   List<String> selectedGenres = [];
   final TextEditingController genres_controller = TextEditingController();
@@ -70,17 +75,34 @@ class GenresFilterContentState extends State<_GenresFilterContent> {
     genre_focus_node.addListener(() {
       if (genre_focus_node.hasFocus) asgbKey.currentState?.showOverlay();
     });
+    _updateHeight();
+  }
+
+  void _updateHeight() {
+    nextFrame(delay: 2, () {
+      if (!mounted) return;
+      final renderBox = _columnKey.currentContext?.findRenderObject() as RenderBox?;
+      if (renderBox != null) {
+        final height = renderBox.size.height;
+        log('Genres Filter Dialog Height: $height');
+        context.findAncestorStateOfType<GenresFilterManagedDialogState>()?.resizeDialog(height: height + 40); // +40 padding
+      }
+    });
   }
 
   Future<void> _fetchGenres() async {
     final fetchedGenres = await AnilistService().getGenres();
-    if (mounted) setState(() => genres = fetchedGenres);
+    if (mounted) {
+      setState(() => genres = fetchedGenres);
+      _updateHeight();
+    }
   }
 
   void _addGenre(String genre) {
     if (!selectedGenres.contains(genre)) {
       setState(() => selectedGenres.add(genre));
       libraryScreenKey.currentState?.addGenre(genre);
+      _updateHeight();
     }
   }
 
@@ -88,6 +110,7 @@ class GenresFilterContentState extends State<_GenresFilterContent> {
     if (selectedGenres.contains(genre)) {
       setState(() => selectedGenres.remove(genre));
       libraryScreenKey.currentState?.removeGenre(genre);
+      _updateHeight();
     }
   }
 
@@ -95,11 +118,16 @@ class GenresFilterContentState extends State<_GenresFilterContent> {
   Widget build(BuildContext context) {
     return Align(
       alignment: Alignment.topCenter,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.start,
-        children: [
+      child: OverflowBox(
+        minHeight: 0,
+        maxHeight: double.infinity,
+        alignment: Alignment.topCenter,
+        child: Column(
+          key: _columnKey,
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.start,
+          children: [
           InfoLabel(
             label: 'Sort by',
             labelStyle: Manager.smallSubtitleStyle.copyWith(color: Manager.pastelAccentColor),
@@ -232,27 +260,19 @@ class GenresFilterContentState extends State<_GenresFilterContent> {
           VDiv(24),
         ],
       ),
-    );
+    ));
   }
 }
 
 class GenresFilterManagedDialogState extends State<ManagedDialog> {
   late BoxConstraints _currentConstraints;
   late Alignment alignment;
-  bool lowerOpacity = false;
-  bool _exitScheduled = false;
 
   @override
   void initState() {
     super.initState();
     _currentConstraints = widget.constraints;
     alignment = widget.alignment;
-  }
-
-  @override
-  void dispose() {
-    _exitScheduled = false;
-    super.dispose();
   }
 
   // Method to resize the dialog
@@ -269,6 +289,8 @@ class GenresFilterManagedDialogState extends State<ManagedDialog> {
         );
       }
     });
+
+    if (height != null) Manager.settings.genresFilterHeight = height;
   }
 
   /// Position the dialog on screen
@@ -282,61 +304,37 @@ class GenresFilterManagedDialogState extends State<ManagedDialog> {
         Positioned(
           top: 142,
           right: 450,
-          child: AnimatedOpacity(
-            duration: dimDuration,
-            opacity: lowerOpacity ? 0.5 : 1,
-            child: Padding(
-              padding: const EdgeInsets.only(top: ScreenUtils.kTitleBarHeight + 16, right: 16, bottom: 16),
-              child: GlossyContainer(
-                width: _currentConstraints.maxWidth,
-                height: _currentConstraints.maxHeight,
-                color: Colors.black,
-                opacity: 0.1,
-                strengthX: 20,
-                strengthY: 20,
-                blendMode: BlendMode.src,
-                borderRadius: BorderRadius.circular(12),
-                child: MouseRegion(
-                  onEnter: (event) {
-                    // Cancel any scheduled opacity lowering and restore full opacity immediately
-                    if (_exitScheduled) _exitScheduled = false;
-                    if (lowerOpacity) setState(() => lowerOpacity = false);
-                  },
-                  onExit: (_) {
-                    // Start a 1s timer to lower opacity; if onEnter occurs before it completes, cancel it.
-                    if (!lowerOpacity && !_exitScheduled) {
-                      _exitScheduled = true;
-                      Future.delayed(const Duration(milliseconds: 500), () {
-                        if (!mounted) return;
-                        if (_exitScheduled) {
-                          setState(() => lowerOpacity = true);
-                        }
-                        _exitScheduled = false;
-                      });
-                    }
-                  },
-                  child: Stack(
-                    children: [
-                      FrostedNoise(
-                        intensity: 0.7,
-                        child: ContentDialog(
-                          style: ContentDialogThemeData(decoration: BoxDecoration(color: Colors.transparent)),
-                          title: widget.title,
-                          content: mat.Material(
-                            color: Colors.transparent,
-                            child: Container(
-                              constraints: _currentConstraints,
-                              child: widget.contentBuilder != null ? widget.contentBuilder!(context, _currentConstraints) : null,
-                            ),
-                          ),
-                          // ignore: prefer_null_aware_operators
-                          actions: widget.actions != null ? widget.actions!.call(widget.popContext) : null,
+          child: Padding(
+            padding: const EdgeInsets.only(top: ScreenUtils.kTitleBarHeight + 16, right: 16, bottom: 16),
+            child: GlossyContainer(
+              width: _currentConstraints.maxWidth,
+              height: _currentConstraints.maxHeight,
+              color: Colors.black,
+              opacity: 0.1,
+              strengthX: 20,
+              strengthY: 20,
+              blendMode: BlendMode.src,
+              borderRadius: BorderRadius.circular(12),
+              child: Stack(
+                children: [
+                  FrostedNoise(
+                    intensity: 0.7,
+                    child: ContentDialog(
+                      style: ContentDialogThemeData(decoration: BoxDecoration(color: Colors.transparent)),
+                      title: widget.title,
+                      content: mat.Material(
+                        color: Colors.transparent,
+                        child: Container(
                           constraints: _currentConstraints,
+                          child: widget.contentBuilder != null ? widget.contentBuilder!(context, _currentConstraints) : null,
                         ),
                       ),
-                    ],
+                      // ignore: prefer_null_aware_operators
+                      actions: widget.actions != null ? widget.actions!.call(widget.popContext) : null,
+                      constraints: _currentConstraints,
+                    ),
                   ),
-                ),
+                ],
               ),
             ),
           ),
