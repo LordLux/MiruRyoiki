@@ -21,6 +21,8 @@ import 'package:material_symbols_icons/material_symbols_icons.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:win32_registry/win32_registry.dart';
 
+import 'screens/downloads_screen.dart';
+import 'services/downloads/torrent_manager.dart';
 import 'screens/home.dart';
 import 'screens/release_calendar.dart';
 import 'services/isolates/thumbnail_manager.dart';
@@ -69,6 +71,8 @@ final GlobalKey<_MiruRyoikiState> homeKey = GlobalKey<_MiruRyoikiState>();
 final GlobalKey<SeriesScreenContainerState> seriesScreenContainerKey = GlobalKey<SeriesScreenContainerState>();
 final GlobalKey<LibraryScreenState> libraryScreenKey = GlobalKey<LibraryScreenState>();
 final GlobalKey<ReleaseCalendarScreenState> releaseCalendarScreenKey = GlobalKey<ReleaseCalendarScreenState>();
+final GlobalKey<DownloadsScreenState> torrentScreenKey = GlobalKey<DownloadsScreenState>();
+// final GlobalKey<ReleaseCalendarScreenState> searchScreenKey = GlobalKey<ReleaseCalendarScreenState>();
 final GlobalKey<AccountsScreenState> accountsKey = GlobalKey<AccountsScreenState>();
 
 final GlobalKey<State<StatefulWidget>> paletteOverlayKey = GlobalKey<State<StatefulWidget>>();
@@ -131,6 +135,8 @@ void main(List<String> args) async {
 
   // Initialize Window Manager
   _initializeSplashScreenWindow();
+
+  TorrentManager.initialize();
 
   // Initialize image cache
   final imageCache = ImageCacheService();
@@ -358,6 +364,8 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
   final ScrollController libraryController = ScrollController();
   final ScrollController homeController = ScrollController();
   final ScrollController calendarController = ScrollController();
+  final ScrollController searchController = ScrollController();
+  final ScrollController torrentController = ScrollController();
   final ScrollController accountsController = ScrollController();
   final ScrollController settingsController = ScrollController();
 
@@ -457,6 +465,8 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
     NavigationManager.setScrollController(NavigationManager.HomeIndex, homeController);
     NavigationManager.setScrollController(NavigationManager.LibraryIndex, libraryController);
     NavigationManager.setScrollController(NavigationManager.CalendarIndex, calendarController);
+    NavigationManager.setScrollController(NavigationManager.SearchIndex, searchController);
+    NavigationManager.setScrollController(NavigationManager.TorrentIndex, torrentController);
     NavigationManager.setScrollController(NavigationManager.AccountsIndex, accountsController);
     NavigationManager.setScrollController(NavigationManager.SettingsIndex, settingsController);
     _libraryScreen = LibraryScreen(
@@ -613,6 +623,29 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
                                 key: releaseCalendarScreenKey,
                                 onSeriesSelected: navigateToSeries,
                                 scrollController: NavigationManager.getScrollController(NavigationManager.CalendarIndex),
+                              ),
+                            ),
+                            buildPaneItem(
+                              NavigationManager.SearchIndex,
+                              icon: movedPaneItemIcon(const Icon(FluentIcons.search)),
+                              body: Container(
+                                color: getDimmableBlack(context),
+                                child: Center(
+                                  child: Text(
+                                    'Search Screen Coming Soon!',
+                                    style: FluentTheme.of(context).typography.titleLarge,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            buildPaneItem(
+                              NavigationManager.TorrentIndex,
+                              icon: movedPaneItemIcon(const Icon(FluentIcons.download)),
+                              body: DownloadsScreen(
+                                key: torrentScreenKey,
+                                controller: TorrentManager.downloadController!,
+                                sonarrRepo: TorrentManager.sonarrRepository!,
+                                scrollController: NavigationManager.getScrollController(NavigationManager.TorrentIndex),
                               ),
                             ),
                           ],
@@ -775,7 +808,7 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
       );
     }
 
-    final bool isEnabled = !(id == NavigationManager.CalendarIndex && !anilistProvider.isLoggedIn);
+    final bool isEnabled = !((id == NavigationManager.CalendarIndex || id == NavigationManager.SearchIndex || id == NavigationManager.TorrentIndex) && !anilistProvider.isLoggedIn);
 
     return PaneItem(
       enabled: isEnabled,

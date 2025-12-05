@@ -124,7 +124,7 @@ class SnackBarManager {
     var alreadyInitialized = false;
     final alignment = severity == fluent.InfoBarSeverity.error ? fluent.Alignment.bottomRight : fluent.Alignment.bottomCenter;
 
-    logTrace('Creating new InfoBar: "$message"');
+    // logTrace('Creating new InfoBar: "$message"');
 
     _currentOverlay = OverlayEntry(
       builder: (context) {

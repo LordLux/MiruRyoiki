@@ -49,6 +49,8 @@ class NavigationManager extends ChangeNotifier {
     HomeIndex: {'id': 'home', 'title': 'Home', 'controller': null},
     LibraryIndex: {'id': 'library', 'title': 'Library', 'controller': null},
     CalendarIndex: {'id': 'calendar', 'title': 'Releases', 'controller': null},
+    SearchIndex: {'id': 'search', 'title': 'Search', 'controller': null},
+    TorrentIndex: {'id': 'torrent', 'title': 'Torrent', 'controller': null},
     AccountsIndex: {'id': 'accounts', 'title': 'Account', 'controller': null},
     SettingsIndex: {'id': 'settings', 'title': 'Settings', 'controller': null},
   };
@@ -56,24 +58,32 @@ class NavigationManager extends ChangeNotifier {
   static Map<String, dynamic> get HomeMap => _navigationMap[HomeIndex]!;
   static Map<String, dynamic> get LibraryMap => _navigationMap[LibraryIndex]!;
   static Map<String, dynamic> get CalendarMap => _navigationMap[CalendarIndex]!;
+  static Map<String, dynamic> get SearchMap => _navigationMap[SearchIndex]!;
+  static Map<String, dynamic> get TorrentMap => _navigationMap[TorrentIndex]!;
   static Map<String, dynamic> get AccountsMap => _navigationMap[AccountsIndex]!;
   static Map<String, dynamic> get SettingsMap => _navigationMap[SettingsIndex]!;
 
   static const int HomeIndex = 0;
   static const int LibraryIndex = 1;
   static const int CalendarIndex = 2;
-  static const int AccountsIndex = 3;
-  static const int SettingsIndex = 4;
-
+  static const int SearchIndex = 3;
+  static const int TorrentIndex = 4;
+  static const int AccountsIndex = 5;
+  static const int SettingsIndex = 6;
+  
   static String get HomeId => HomeMap['id'] as String;
   static String get LibraryId => LibraryMap['id'] as String;
   static String get CalendarId => CalendarMap['id'] as String;
+  static String get SearchId => SearchMap['id'] as String;
+  static String get TorrentId => TorrentMap['id'] as String;
   static String get AccountsId => AccountsMap['id'] as String;
   static String get SettingsId => SettingsMap['id'] as String;
 
   static String get HomeTitle => HomeMap['title'] as String;
   static String get LibraryTitle => LibraryMap['title'] as String;
   static String get CalendarTitle => CalendarMap['title'] as String;
+  static String get SearchTitle => SearchMap['title'] as String;
+  static String get TorrentTitle => TorrentMap['title'] as String;
   static String get AccountsTitle => AccountsMap['title'] as String;
   static String get SettingsTitle => SettingsMap['title'] as String;
 

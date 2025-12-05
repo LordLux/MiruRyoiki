@@ -36,6 +36,14 @@ class PathUtils {
     if (path == null || path.isEmpty) return null;
     return p.extension(path);
   }
+  
+  static String? removeDriveLetter(String? path) {
+    if (path == null || path.isEmpty) return null;
+    if (Platform.isWindows && path.length > 2 && path[1] == ':') {
+      return path.substring(2);
+    }
+    return path;
+  }
 }
 
 class PathString {
@@ -109,6 +117,9 @@ class PathString {
 
   Map<String, dynamic> toMap() => toJson();
   factory PathString.fromMap(Map<String, dynamic> map) => fromJson(map)!;
+
+  String get linux => path.replaceAll('\\', '/');
+  String get windows => path.replaceAll('/', '\\');
 }
 
 String get assets => "${(Platform.resolvedExecutable.split(ps)..removeLast()).join(ps)}${ps}data${ps}flutter_assets${ps}assets";
