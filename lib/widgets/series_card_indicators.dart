@@ -28,46 +28,49 @@ class CardIndicators extends StatelessWidget {
     final indicatorsList = indicators(series);
     if (indicatorsList.isEmpty) return SizedBox.shrink();
 
-    return Padding(
-      padding: isListView ? EdgeInsets.all(12.0 * Manager.fontSizeMultiplier) : EdgeInsets.all(16.0 * Manager.fontSizeMultiplier),
-      child: LayoutBuilder(builder: (context, constraints) {
-        final indicatorSize = (isListView ? 28.0 : 25.0) * Manager.fontSizeMultiplier;
-        final padding = 6.0;
-
-        return Directionality(
-          textDirection: TextDirection.rtl,
-          child: isListView
-              ? SizedBox(
-                  height: indicatorSize,
-                  width: indicatorsList.length * (indicatorSize + padding) - padding,
-                  child: ListView.builder(
-                    scrollDirection: Axis.horizontal,
-                    itemCount: indicatorsList.length,
-                    itemBuilder: (context, index) => Padding(
-                      padding: EdgeInsets.only(left: indicatorsList.length - 1 == index ? 0 : padding),
-                      child: SizedBox(
-                        width: indicatorSize,
-                        child: indicatorsList[index],
+    return IgnorePointer(
+      ignoring: true,
+      child: Padding(
+        padding: isListView ? EdgeInsets.all(12.0 * Manager.fontSizeMultiplier) : EdgeInsets.all(16.0 * Manager.fontSizeMultiplier),
+        child: LayoutBuilder(builder: (context, constraints) {
+          final indicatorSize = (isListView ? 28.0 : 25.0) * Manager.fontSizeMultiplier;
+          final padding = 6.0;
+      
+          return Directionality(
+            textDirection: TextDirection.rtl,
+            child: isListView
+                ? SizedBox(
+                    height: indicatorSize,
+                    width: indicatorsList.length * (indicatorSize + padding) - padding,
+                    child: ListView.builder(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: indicatorsList.length,
+                      itemBuilder: (context, index) => Padding(
+                        padding: EdgeInsets.only(left: indicatorsList.length - 1 == index ? 0 : padding),
+                        child: SizedBox(
+                          width: indicatorSize,
+                          child: indicatorsList[index],
+                        ),
                       ),
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
                     ),
+                  )
+                : GridView.builder(
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: (constraints.maxWidth.isInfinite || constraints.maxWidth.isNaN ? ScreenUtils.width - ScreenUtils.kInfoBarWidth - 32 : constraints.maxWidth / (indicatorSize + 8)).floor(),
+                      mainAxisSpacing: 8,
+                      crossAxisSpacing: 8,
+                      childAspectRatio: 1,
+                    ),
+                    itemCount: indicatorsList.length,
+                    itemBuilder: (context, index) => indicatorsList[index],
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
                   ),
-                )
-              : GridView.builder(
-                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: (constraints.maxWidth.isInfinite || constraints.maxWidth.isNaN ? ScreenUtils.width - ScreenUtils.kInfoBarWidth - 32 : constraints.maxWidth / (indicatorSize + 8)).floor(),
-                    mainAxisSpacing: 8,
-                    crossAxisSpacing: 8,
-                    childAspectRatio: 1,
-                  ),
-                  itemCount: indicatorsList.length,
-                  itemBuilder: (context, index) => indicatorsList[index],
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                ),
-        );
-      }),
+          );
+        }),
+      ),
     );
   }
 }
