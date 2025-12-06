@@ -40,7 +40,7 @@ import '../widgets/buttons/hyperlink.dart';
 import '../widgets/buttons/loading_button.dart';
 import '../widgets/page/header_widget.dart';
 import '../widgets/page/infobar.dart';
-import '../widgets/page/page.dart';
+import '../widgets/page/page_template.dart';
 import '../widgets/svg.dart';
 import '../main.dart';
 import '../widgets/tooltip_wrapper.dart';

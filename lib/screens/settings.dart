@@ -46,7 +46,7 @@ import '../widgets/buttons/wrapper.dart';
 import '../widgets/dialogs/database_recovery.dart';
 import '../widgets/enum_toggle.dart';
 import '../widgets/page/header_widget.dart';
-import '../widgets/page/page.dart';
+import '../widgets/page/page_template.dart';
 import '../widgets/series_image.dart';
 import '../widgets/tooltip_wrapper.dart';
 

@@ -26,7 +26,7 @@ import '../widgets/notifications/notif.dart';
 import '../widgets/notifications/scheduled.dart';
 import '../widgets/number_pill.dart';
 import '../widgets/page/header_widget.dart';
-import '../widgets/page/page.dart';
+import '../widgets/page/page_template.dart';
 import '../manager.dart';
 import '../widgets/styled_scrollbar.dart';
 import '../widgets/tooltip_wrapper.dart';

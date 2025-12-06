@@ -36,7 +36,7 @@ import '../utils/time.dart';
 import '../widgets/episode_grid.dart';
 import '../widgets/page/header_widget.dart';
 import '../widgets/page/infobar.dart';
-import '../widgets/page/page.dart';
+import '../widgets/page/page_template.dart';
 import '../widgets/shift_clickable_hover.dart';
 import '../widgets/shrinker.dart';
 import '../widgets/simple_html_parser.dart';

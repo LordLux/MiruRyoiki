@@ -33,7 +33,7 @@ import '../utils/screen.dart';
 import '../utils/time.dart';
 import '../widgets/page/header_widget.dart';
 import '../widgets/page/infobar.dart';
-import '../widgets/page/page.dart';
+import '../widgets/page/page_template.dart';
 import '../widgets/cards/mapping_card.dart';
 import '../widgets/shift_clickable_hover.dart';
 import '../widgets/shrinker.dart';

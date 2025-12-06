@@ -36,7 +36,7 @@ import '../widgets/buttons/wrapper.dart';
 import '../widgets/dialogs/genres_filter.dart';
 import '../widgets/dialogs/splash/progress.dart';
 import '../widgets/page/header_widget.dart';
-import '../widgets/page/page.dart';
+import '../widgets/page/page_template.dart';
 import '../widgets/cards/series_card.dart';
 import '../widgets/pill.dart';
 import '../widgets/series_list_tile.dart';

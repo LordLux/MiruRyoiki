@@ -22,6 +22,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:win32_registry/win32_registry.dart';
 
 import 'screens/downloads_screen.dart';
+import 'screens/search.dart';
 import 'services/downloads/torrent_manager.dart';
 import 'screens/home.dart';
 import 'screens/release_calendar.dart';
@@ -72,7 +73,7 @@ final GlobalKey<SeriesScreenContainerState> seriesScreenContainerKey = GlobalKey
 final GlobalKey<LibraryScreenState> libraryScreenKey = GlobalKey<LibraryScreenState>();
 final GlobalKey<ReleaseCalendarScreenState> releaseCalendarScreenKey = GlobalKey<ReleaseCalendarScreenState>();
 final GlobalKey<DownloadsScreenState> torrentScreenKey = GlobalKey<DownloadsScreenState>();
-// final GlobalKey<ReleaseCalendarScreenState> searchScreenKey = GlobalKey<ReleaseCalendarScreenState>();
+final GlobalKey<SearchScreenState> searchScreenKey = GlobalKey<SearchScreenState>();
 final GlobalKey<AccountsScreenState> accountsKey = GlobalKey<AccountsScreenState>();
 
 final GlobalKey<State<StatefulWidget>> paletteOverlayKey = GlobalKey<State<StatefulWidget>>();
@@ -628,14 +629,9 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
                             buildPaneItem(
                               NavigationManager.SearchIndex,
                               icon: movedPaneItemIcon(const Icon(FluentIcons.search)),
-                              body: Container(
-                                color: getDimmableBlack(context),
-                                child: Center(
-                                  child: Text(
-                                    'Search Screen Coming Soon!',
-                                    style: FluentTheme.of(context).typography.titleLarge,
-                                  ),
-                                ),
+                              body: SearchScreen(
+                                key: searchScreenKey,
+                                scrollController: NavigationManager.getScrollController(NavigationManager.SearchIndex),
                               ),
                             ),
                             buildPaneItem(

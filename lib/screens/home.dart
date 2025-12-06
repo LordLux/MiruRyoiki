@@ -19,7 +19,7 @@ import '../utils/screen.dart';
 import '../utils/time.dart';
 import '../widgets/cards/continue_episode_card.dart';
 import '../widgets/page/header_widget.dart';
-import '../widgets/page/page.dart';
+import '../widgets/page/page_template.dart';
 import '../manager.dart';
 import '../widgets/cards/upcoming_episode_card.dart';
 
@@ -657,7 +657,7 @@ class WelcomeWidget extends StatelessWidget {
     return Consumer<AnilistProvider>(builder: (context, anilistProvider, _) {
       final userName = anilistProvider.currentUser?.name;
       return Transform.translate(
-        offset: const Offset(-28, 0),
+        offset: const Offset(-28, -5),
         child: Row(
           children: [
             Text(
