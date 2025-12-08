@@ -33,70 +33,23 @@ class EpisodeGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ExpandingStickyHeaderBuilder(
-      enabled: collapsable || title != null,
-      initiallyExpanded: initiallyExpanded,
-      contentBackgroundColor: Colors.transparent,
-      contentShape: (open) => RoundedRectangleBorder(),
-      useInkWell: false,
-      builder: (BuildContext context, {double stuckAmount = 0.0, bool isHovering = false, bool isExpanded = false}) => AcrylicHeader(
-        child: Builder(builder: (context) {
-          if (episodes.isEmpty) {
-            return title != null
-                ? Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(title!, style: Manager.subtitleStyle),
-                      Text('No Episodes Found', style: Manager.bodyStyle),
-                    ],
-                  )
-                : Text('No Episodes Found for this Season', style: Manager.subtitleStyle);
-          }
-          if (title != null) {
-            return Padding(
-              padding: const EdgeInsets.fromLTRB(0, 0, 0, 0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(title!, style: Manager.subtitleStyle),
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Transform.translate(offset: const Offset(0, -1.5), child: Text('${episodes.length} Episodes', style: Manager.captionStyle)),
-                      const SizedBox(width: 8),
-                      AnimatedRotation(turns: isExpanded ? 0 : .5, duration: shortDuration, child: const Icon(mat.Icons.expand_more)),
-                    ],
-                  )
-                ],
-              ),
-            );
-          }
-          return const SizedBox.shrink();
-        }),
-      ),
-      headerBackgroundColor: Colors.transparent,
-      contentPadding: EdgeInsets.zero,
-      content: Padding(
-        padding: const EdgeInsets.only(top: 8.0, bottom: 16.0),
-        child: LayoutBuilder(builder: (context, constraints) {
-          return GridView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: (constraints.maxWidth ~/ 200).clamp(1, 10),
-              childAspectRatio: 1.78, // 16:9 aspect ratio
-              crossAxisSpacing: 12,
-              mainAxisSpacing: 12,
-            ),
-            itemCount: episodes.length,
-            itemBuilder: (context, index) {
-              final episode = episodes[index];
-              return _buildEpisodeTile(context, episode, series, mapping);
-            },
-          );
-        }),
-      ),
-    );
+    return LayoutBuilder(builder: (context, constraints) {
+      return GridView.builder(
+        shrinkWrap: true,
+        // physics: const NeverScrollableScrollPhysics(),
+        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: (constraints.maxWidth ~/ 200).clamp(1, 10),
+          childAspectRatio: 1.78, // 16:9 aspect ratio
+          crossAxisSpacing: 12,
+          mainAxisSpacing: 12,
+        ),
+        itemCount: episodes.length,
+        itemBuilder: (context, index) {
+          final episode = episodes[index];
+          return _buildEpisodeTile(context, episode, series, mapping);
+        },
+      );
+    });
   }
 
   Widget _buildEpisodeTile(BuildContext context, Episode episode, Series series, AnilistMapping? mapping) {

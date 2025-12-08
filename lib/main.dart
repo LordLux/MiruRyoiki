@@ -84,11 +84,9 @@ dynamic getActiveSeriesScreenContainerState() {
   final currentView = _navigationManager.currentView;
   if (currentView == null) return null;
 
-  // If we're on a mapping page (inner series screen within the container)
-  if (currentView.id.startsWith('mapping:')) return seriesScreenContainerKey.currentState!.innerSeriesScreenKey!.currentState;
-
-  // If we're on a series page (main series screen showing grid)
-  if (currentView.id.startsWith('series:')) return seriesScreenContainerKey.currentState!.seriesScreenKey!.currentState;
+  // If we're on a mapping page or series page, return the SeriesScreenState
+  if (currentView.id.startsWith('mapping:') || currentView.id.startsWith('series:')) //
+    return seriesScreenContainerKey.currentState?.seriesScreenKey?.currentState;
 
   return null;
 }
@@ -1224,6 +1222,7 @@ Future<void> _registerWindowsUrlScheme(String scheme) async {
 }
 
 // TODO add 'random entry' button to top right corner of library
+// TODO calculate all getTextColor() calls in initState and store the result to avoid color change during tran
 // TODO throttle db save events after 5s
 // TODO add divider between notifications and scheduled episodes in release calendar
 // TODO add polimorphic method to Notifications to get their "aired"/"Updated"/"Deleted" etc string for time ago formatting

@@ -36,8 +36,9 @@ class MiruRyoikiInfobar extends StatefulWidget {
     EdgeInsets Function(double posterExtraVertical)? contentPadding,
     this.setStateCallback,
     this.footer,
-    this.footerPadding = const EdgeInsets.all(32.0),
-  }) : contentPadding = contentPadding ?? _defaultContentPadding;
+    EdgeInsets? footerPadding = const EdgeInsets.all(32.0),
+  })  : footerPadding = footerPadding ?? const EdgeInsets.all(32.0),
+        contentPadding = contentPadding ?? _defaultContentPadding;
 
   static EdgeInsets _defaultContentPadding(double _) => const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0);
 
