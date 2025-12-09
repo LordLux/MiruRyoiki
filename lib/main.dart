@@ -755,7 +755,7 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
                       duration: mediumDuration,
                       bottom: 0,
                       right: 8,
-                      child: const LibraryScanProgressIndicator(), // Bottom right library scan progress indicator
+                      child: LibraryScanProgressIndicator(), // Bottom right library scan progress indicator
                     );
                   },
                 ),
@@ -1022,8 +1022,8 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
       // Use the key to access the library screen state
       libraryScreenKey.currentState?.invalidateSortCache();
       seriesWasModified = false;
-      Manager.setState();
     }
+    Manager.setState();
   }
 
   /// Called when the transition to the library view ends

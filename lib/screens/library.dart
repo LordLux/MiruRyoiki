@@ -42,6 +42,7 @@ import '../widgets/pill.dart';
 import '../widgets/series_list_tile.dart';
 import '../widgets/styled_scrollbar.dart';
 import '../widgets/dialogs/lists.dart';
+import '../widgets/viewtype_switcher.dart';
 
 // Cache parameters to track when cache needs invalidation
 class _CacheParameters {
@@ -186,6 +187,16 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
   SortOrder get sortOrder => _sortOrder ?? SortOrder.alphabetical;
 
   bool get sortDescending => _sortDescending;
+
+  late Color _textColor;
+  late Color _selectedTextColor;
+
+  void _loadColors() {
+    _textColor = Colors.white;
+    _selectedTextColor = getTextColor(Manager.currentDominantColor ?? Manager.accentColor);
+  }
+  
+  Color getViewTypeColor(bool isSelected) => isSelected ? _selectedTextColor : _textColor;
 
   void addGenre(String genre) {
     if (!selectedGenres.contains(genre)) {
@@ -562,6 +573,7 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
   void initState() {
     super.initState();
     _loadUserPreferences();
+    _loadColors();
   }
 
   void _selectLibraryFolder() async {
@@ -925,60 +937,9 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
     );
   }
 
-  Widget _buildViewTypePills() {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: ViewType.values.map((viewType) {
-        final isSelected = _viewType == viewType;
-
-        return Padding(
-          padding: EdgeInsets.only(right: 3),
-          child: Pill(
-            text: _getViewTypeLabel(viewType),
-            icon: _getViewTypeIcon(viewType),
-            tooltip: _getViewTypeTooltip(viewType),
-            color: _getViewTypeColor,
-            isSelected: isSelected,
-            onTap: () => _onViewTypeChanged(viewType),
-          ),
-        );
-      }).toList(),
-    );
-  }
-
   void _onViewTypeChanged(ViewType viewType) {
     setState(() => _viewType = viewType);
     _saveUserPreferences();
-  }
-
-  String _getViewTypeLabel(ViewType viewType) {
-    switch (viewType) {
-      case ViewType.grid:
-        return 'Grid';
-      case ViewType.detailedList:
-        return 'List';
-    }
-  }
-
-  Color _getViewTypeColor(bool isSelected) => //
-      isSelected ? getTextColor(Manager.currentDominantColor ?? Manager.accentColor) : Colors.white;
-
-  IconData _getViewTypeIcon(ViewType viewType) {
-    switch (viewType) {
-      case ViewType.grid:
-        return FluentIcons.grid_view_medium;
-      case ViewType.detailedList:
-        return FluentIcons.list;
-    }
-  }
-
-  String _getViewTypeTooltip(ViewType viewType) {
-    switch (viewType) {
-      case ViewType.grid:
-        return 'Display series as cards in a grid';
-      case ViewType.detailedList:
-        return 'Display series in a list';
-    }
   }
 
   HeaderWidget _buildHeader(Library library) {
@@ -1025,26 +986,11 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Transform.translate(
-                    offset: const Offset(-3.5, 0),
-                    child: SizedBox(
-                      height: ScreenUtils.kDefaultButtonSize + 1,
-                      child: StandardButton.iconLabel(
-                        tooltip: 'Change View Type',
-                        switchIconWithLabel: true,
-                        label: Padding(
-                          padding: EdgeInsets.only(left: 3),
-                          child: Text("View", style: Manager.subtitleStyle.copyWith(fontSize: 12)),
-                        ),
-                        padding: EdgeInsets.all(2),
-                        cursor: SystemMouseCursors.basic,
-                        icon: Transform.translate(
-                          offset: const Offset(3, 0),
-                          child: _buildViewTypePills(),
-                        ),
-                        onPressed: () {}, // Disabled as selection is done via pills
-                      ),
-                    ),
+                  ViewTypeSwitcher(
+                    currentViewType: _viewType,
+                    textColor: _textColor,
+                    selectedTextColor: _selectedTextColor,
+                    onViewTypeChanged: _onViewTypeChanged,
                   ),
                   HDiv(3.5),
                   SizedBox(
@@ -1056,7 +1002,7 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
                       isFilled: _isGettingFiltered,
                       filledColor: _isGettingFiltered ? (Manager.currentDominantAccentColor ?? Manager.accentColor).light : Colors.white.withOpacity(0.1),
                       key: _filterButtonKey,
-                      icon: Icon(_filtersOpen ? mat.Icons.filter_alt : mat.Icons.filter_alt_outlined, size: 16, color: _getViewTypeColor(_isGettingFiltered)),
+                      icon: Icon(_filtersOpen ? mat.Icons.filter_alt : mat.Icons.filter_alt_outlined, size: 16, color: getViewTypeColor(_isGettingFiltered)),
                       onPressed: _showFilterDialog,
                     ),
                   ),
@@ -1067,7 +1013,7 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
                       tooltip: 'Manage Lists',
                       label: Text("Lists", style: Manager.subtitleStyle.copyWith(fontSize: 12)),
                       key: _listButtonKey,
-                      icon: Icon(mat.Icons.list, size: 16, color: _getViewTypeColor(_listsOpen)),
+                      icon: Icon(mat.Icons.list, size: 16, color: getViewTypeColor(_listsOpen)),
                       onPressed: _showListDialog,
                     ),
                   ),
@@ -1781,16 +1727,16 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
 
   void _showFilterDialog() async {
     final navManager = Provider.of<NavigationManager>(context, listen: false);
-    
+
     if (navManager.hasDialog) {
       final currentDialog = navManager.currentView;
-      
+
       // If the filter dialog is already open, close it and return
       if (currentDialog?.id == "library:filters") {
         closeDialog(rootNavigatorKey.currentContext!);
         return;
       }
-      
+
       // If the lists dialog is open, close it before opening filters
       if (currentDialog?.id == "library:lists") {
         closeDialog(rootNavigatorKey.currentContext!);
@@ -1823,7 +1769,7 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
 
       alignment = Alignment(alignmentX, alignmentY);
     }
-    
+
     await showManagedDialog(
       context: context,
       id: 'library:filters',
@@ -1863,7 +1809,7 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
 
   void _showListDialog() async {
     final navManager = Provider.of<NavigationManager>(context, listen: false);
-    
+
     if (navManager.hasDialog) {
       final currentDialog = navManager.currentView;
 
@@ -1872,7 +1818,7 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
         closeDialog(rootNavigatorKey.currentContext!);
         return;
       }
-      
+
       // If the filters dialog is open, close it before opening lists
       if (currentDialog?.id == "library:filters") {
         closeDialog(rootNavigatorKey.currentContext!);

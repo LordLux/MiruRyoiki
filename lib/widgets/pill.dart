@@ -13,7 +13,8 @@ class Pill extends StatelessWidget {
   final IconData icon;
   final double iconSize;
   final double spacing;
-  final Color Function(bool isSelected) color;
+  final Color color;
+  final Color selectedColor;
 
   const Pill({
     super.key,
@@ -22,6 +23,7 @@ class Pill extends StatelessWidget {
     required this.color,
     String? tooltip,
     this.onTap,
+    this.selectedColor = Colors.white,
     this.spacing = 2,
     this.iconSize = 14,
     this.isSelected = false,
@@ -52,13 +54,13 @@ class Pill extends StatelessWidget {
               Icon(
                 icon,
                 size: iconSize,
-                color: color(isSelected),
+                color: isSelected ? selectedColor : color,
               ),
               SizedBox(width: spacing),
               Text(
                 text,
                 style: Manager.captionStyle.copyWith(
-                  color: color(isSelected),
+                  color: isSelected ? selectedColor : color,
                   fontSize: 11 * Manager.fontSizeMultiplier,
                 ),
               ),

@@ -301,6 +301,43 @@ enum LibraryView { all, linked } // TODO add anilist/remote (not caring about lo
 
 enum ViewType { grid, detailedList }
 
+extension ViewTypeX on ViewType {
+  String get name_ => enumToString(this);
+
+  String get label {
+    switch (this) {
+      case ViewType.grid:
+        return 'Grid';
+      case ViewType.detailedList:
+        return 'List';
+    }
+  }
+
+  String get tooltip {
+    switch (this) {
+      case ViewType.grid:
+        return 'Display items in a grid';
+      case ViewType.detailedList:
+        return 'Display items in a list';
+    }
+  }
+
+  IconData get icon {
+    switch (this) {
+      case ViewType.grid:
+        return FluentIcons.grid_view_medium;
+      case ViewType.detailedList:
+        return FluentIcons.list;
+    }
+  }
+
+  static ViewType fromString(String value, {ViewType? defaultValue}) => fromStringX<ViewType>(
+        value,
+        ViewType.values,
+        defaultValue,
+      );
+}
+
 enum SortOrder {
   alphabetical,
   score,

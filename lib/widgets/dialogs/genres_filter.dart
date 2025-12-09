@@ -218,7 +218,8 @@ class GenresFilterContentState extends State<_GenresFilterContent> {
                       return MouseButtonWrapper(
                         child: (isHovered) => Pill(
                           text: genre,
-                          color: (isSelected) => isSelected ? getTextColor(Manager.currentDominantColor ?? Manager.accentColor) : Colors.white,
+                          color: Colors.white,
+                          selectedColor: getTextColor(Manager.currentDominantColor ?? Manager.accentColor),
                           icon: FluentIcons.clear,
                           iconSize: 10,
                           spacing: 4,

@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/material.dart' as mat;
+import 'package:miruryoiki/widgets/acrylic_header.dart';
 import 'package:provider/provider.dart';
 import 'package:defer_pointer/defer_pointer.dart';
 
@@ -11,6 +12,7 @@ import '../services/library/library_provider.dart';
 import '../services/lock_manager.dart';
 import '../services/navigation/show_info.dart';
 import '../services/navigation/statusbar.dart';
+import '../utils/color.dart';
 import '../utils/path.dart';
 import '../utils/shell.dart';
 import '../utils/text.dart';
@@ -45,6 +47,7 @@ import '../services/navigation/navigation.dart';
 import 'package:recase/recase.dart';
 import 'dart:io';
 import '../services/file_system/cache.dart';
+import '../widgets/viewtype_switcher.dart';
 import 'anilist_settings.dart';
 import '../models/episode.dart';
 import '../widgets/episode_grid.dart';
@@ -175,6 +178,11 @@ class SeriesScreenState extends State<SeriesScreen> {
   Series? _cachedSeries;
   AnilistMapping? _cachedMapping;
 
+  ViewType _currentViewType = ViewType.grid;
+
+  late Color _textColor;
+  late Color _selectedTextColor;
+
   bool get isMappingMode => widget.target != null;
 
   // Color? dominantColor;
@@ -298,6 +306,11 @@ class SeriesScreenState extends State<SeriesScreen> {
 
   //
 
+  void _loadColors() {
+    _textColor = Colors.white;
+    _selectedTextColor = getTextColor(Manager.currentDominantColor ?? Manager.accentColor);
+  }
+
   @override
   void initState() {
     super.initState();
@@ -329,6 +342,11 @@ class SeriesScreenState extends State<SeriesScreen> {
       _cachedMapping = widget.mapping;
       if (isMappingMode) nextFrame(() => _initializeMappingData());
     }
+  }
+  
+  void _onViewTypeChanged(ViewType newViewType) {
+    setState(() => _currentViewType = newViewType);
+    // TODO : Save to database or user preferences
   }
 
   @override
@@ -439,6 +457,7 @@ class SeriesScreenState extends State<SeriesScreen> {
       // Clear any Anilist data references to ensure UI updates
       series.anilistData = null;
       if (homeKey.currentContext?.mounted ?? false) setState(() {});
+      _loadColors();
       return;
     }
 
@@ -593,7 +612,8 @@ class SeriesScreenState extends State<SeriesScreen> {
 
         // Check if dominant color changed
         dominantColorChanged = originalDominantColor?.value != series.effectivePrimaryColorSync()?.value;
-
+        
+        _loadColors();
         Manager.setState();
       }
 
@@ -1174,13 +1194,41 @@ class SeriesScreenState extends State<SeriesScreen> {
 
   Widget _buildContentGrid(BuildContext context, Series series) {
     if (isMappingMode && widget.target != null) {
-      print('Building EpisodeGrid for mapping mode with target: ${widget.target!.displayName}');
-      return EpisodeGrid(
-        collapsable: false,
-        episodes: widget.target!.episodes,
-        onTap: (episode) => _playEpisode(episode),
-        series: series,
-        mapping: widget.mapping,
+      final headerHeight = 40.0;
+      final topPadding = headerHeight + 16.0;
+
+      return Stack(
+        alignment: Alignment.topCenter,
+        children: [
+          Positioned.fill(
+            child: EpisodeGrid(
+              collapsable: false,
+              episodes: widget.target!.episodes,
+              onTap: (episode) => _playEpisode(episode),
+              series: series,
+              mapping: widget.mapping,
+              crossAxisCount: 5,
+              topPadding: topPadding,
+            ),
+          ),
+          Positioned(
+            child: SizedBox(
+              height: headerHeight,
+              child: AcrylicHeader(
+                // useAcrylic: false,
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  ViewTypeSwitcher(
+                    currentViewType: _currentViewType,
+                    textColor: _textColor,
+                    selectedTextColor: _selectedTextColor,
+                    onViewTypeChanged: _onViewTypeChanged,
+                  ),
+                  HDiv(3.5),
+                ]),
+              ),
+            ),
+          ),
+        ],
       );
     }
 
