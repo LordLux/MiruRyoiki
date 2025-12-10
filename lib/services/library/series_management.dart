@@ -69,6 +69,30 @@ extension LibrarySeriesManagement on Library {
     notifyListeners();
   }
 
+  /// Update the view type for a specific mapping
+  Future<void> updateMappingViewType(int anilistId, ViewType viewType) async {
+    final seriesIndex = _series.indexWhere((s) => s.anilistMappings.any((m) => m.anilistId == anilistId));
+    if (seriesIndex == -1) return;
+
+    final series = _series[seriesIndex];
+
+    final mappingIndex = series.anilistMappings.indexWhere((m) => m.anilistId == anilistId);
+    if (mappingIndex == -1) return;
+
+    final updatedMapping = series.anilistMappings[mappingIndex].copyWith(viewType: viewType);
+
+    final updatedMappings = List<AnilistMapping>.from(series.anilistMappings);
+    updatedMappings[mappingIndex] = updatedMapping;
+
+    final updatedSeries = series.copyWith(anilistMappings: updatedMappings);
+
+    _series[seriesIndex] = updatedSeries;
+    _dataVersion++;
+
+    await seriesDao.updateMappingViewType(anilistId, viewType);
+    notifyListeners();
+  }
+
   /// Save a single series with updated properties
   Future<void> updateSeries(Series series, {bool invalidateCache = true}) async {
     final index = _series.indexWhere((s) => s.path == series.path);

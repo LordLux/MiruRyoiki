@@ -9,7 +9,7 @@ import '../../services/navigation/shortcuts.dart';
 import '../../utils/screen.dart';
 import '../../utils/time.dart';
 import '../frosted_noise.dart';
-import '../gradient_mask.dart';
+import '../fading_edge_scrollview.dart';
 import 'header_widget.dart';
 
 class SearchTemplatePage extends StatefulWidget {

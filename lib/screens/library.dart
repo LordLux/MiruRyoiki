@@ -932,6 +932,7 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
       noHeaderBanner: true,
       scrollableContent: false,
       enableContentExtraHeaderPadding: true,
+      contentRightPadding: 4.0,
       contentExtraHeaderPadding: 8.0,
       hideInfoBar: true,
     );
@@ -992,7 +993,7 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
                     selectedTextColor: _selectedTextColor,
                     onViewTypeChanged: _onViewTypeChanged,
                   ),
-                  HDiv(3.5),
+                  HDiv(8),
                   SizedBox(
                     //TODO close dialog before opening a new one
                     height: ScreenUtils.kDefaultButtonSize + 1,

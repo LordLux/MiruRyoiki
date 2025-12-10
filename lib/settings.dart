@@ -2,8 +2,9 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter_acrylic/window_effect.dart';
 import 'package:miruryoiki/main.dart';
 import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
+import 'database/database.dart';
+import 'database/daos/settings_dao.dart';
 import 'enums.dart';
 import 'manager.dart';
 import 'theme.dart';
@@ -18,7 +19,7 @@ class SettingsManager extends ChangeNotifier {
   // Underlying storage
   // ignore: prefer_final_fields
   Map<String, dynamic> _settings = {};
-  SharedPreferences? _prefs;
+  SettingsDao? _settingsDao;
   bool _initialized = false;
 
   // // Typed getters/setters for settings
@@ -99,6 +100,34 @@ class SettingsManager extends ChangeNotifier {
   bool get showAnilistHiddenSeries => _getBool('showAnilistHiddenSeries', defaultValue: false);
   set showAnilistHiddenSeries(bool value) => _setBool('showAnilistHiddenSeries', value);
 
+  // Window State
+  double? get windowX => _getDoubleOrNull('window_x');
+  set windowX(double? value) {
+    if (value == null) return;
+    _setDouble('window_x', value);
+  }
+
+  double? get windowY => _getDoubleOrNull('window_y');
+  set windowY(double? value) {
+    if (value == null) return;
+    _setDouble('window_y', value);
+  }
+
+  double? get windowWidth => _getDoubleOrNull('window_width');
+  set windowWidth(double? value) {
+    if (value == null) return;
+    _setDouble('window_width', value);
+  }
+
+  double? get windowHeight => _getDoubleOrNull('window_height');
+  set windowHeight(double? value) {
+    if (value == null) return;
+    _setDouble('window_height', value);
+  }
+
+  bool get windowMaximized => _getBool('window_maximized', defaultValue: false);
+  set windowMaximized(bool value) => _setBool('window_maximized', value);
+
   // Media Player Settings
   List<String> get mediaPlayerPriority => _getStringList('mediaPlayerPriority', defaultValue: ['vlc', 'mpc-hc']);
   set mediaPlayerPriority(List<String> value) => _setStringList('mediaPlayerPriority', value);
@@ -133,7 +162,15 @@ class SettingsManager extends ChangeNotifier {
     return defaultValue;
   }
 
-  // ignore: unused_element
+  double? _getDoubleOrNull(String key) {
+    if (!_settings.containsKey(key)) return null;
+    final value = _settings[key];
+    if (value is double) return value;
+    if (value is int) return value.toDouble();
+    if (value is String) return double.tryParse(value);
+    return null;
+  }
+
   double _getDouble(String key, {required double defaultValue}) {
     if (!_settings.containsKey(key)) {
       // logTrace('Key $key not found in settings, returning default value: $defaultValue');
@@ -170,28 +207,28 @@ class SettingsManager extends ChangeNotifier {
   void _setBool(String key, bool value) {
     if (_settings[key] == value) return; // No change
     _settings[key] = value;
-    _saveToPrefs(key, value.toString());
+    _saveToDb(key, value.toString());
     notifyListeners();
   }
 
   void _setDouble(String key, double value) {
     if (_settings[key] == value) return; // No change
     _settings[key] = value;
-    _saveToPrefs(key, value.toString());
+    _saveToDb(key, value.toString());
     notifyListeners();
   }
 
   void _setInt(String key, int value) {
     if (_settings[key] == value) return; // No change
     _settings[key] = value;
-    _saveToPrefs(key, value.toString());
+    _saveToDb(key, value.toString());
     notifyListeners();
   }
 
   void _setString(String key, String value) {
     if (_settings[key] == value) return; // No change
     _settings[key] = value;
-    _saveToPrefs(key, value);
+    _saveToDb(key, value);
     notifyListeners();
   }
 
@@ -208,7 +245,7 @@ class SettingsManager extends ChangeNotifier {
     final currentValue = _getStringList(key, defaultValue: []);
     if (currentValue.length == value.length && currentValue.every((element) => value.contains(element))) return; // No change
     _settings[key] = value;
-    _saveToPrefs(key, value.join(','));
+    _saveToDb(key, value.join(','));
     notifyListeners();
   }
 
@@ -219,76 +256,59 @@ class SettingsManager extends ChangeNotifier {
     if (_settings[key] == value) return;
 
     _settings[key] = value;
-    _saveToPrefs(key, value.toString());
+    _saveToDb(key, value.toString());
     notifyListeners();
   }
 
-  Future<void> init() async {
+  Future<void> init(AppDatabase db) async {
     if (_initialized) return;
 
-    _prefs = await SharedPreferences.getInstance();
+    _settingsDao = SettingsDao(db);
     await loadSettings();
     _initialized = true;
   }
 
   // Load current settings as a map
   Future<void> loadSettings() async {
-    _prefs ??= await SharedPreferences.getInstance();
-    final List<String> settingsList = _prefs!.getStringList('settings') ?? [];
-
-    for (String setting in settingsList) {
-      final List<String> parts = setting.split(':');
-      if (parts.length >= 2) {
-        // Handle values with colons
-        final String key = parts[0];
-        final String value = parts.sublist(1).join(':');
-        _settings[key] = value;
-      }
-    }
-
+    if (_settingsDao == null) return;
+    final settingsMap = await _settingsDao!.getAll();
+    _settings.addAll(settingsMap);
     notifyListeners();
   }
 
-  // Save a single setting to SharedPreferences
-  Future<void> _saveToPrefs(String key, String value) async {
-    _prefs ??= await SharedPreferences.getInstance();
-    final Map<String, String> currentSettings = {};
-
-    final List<String> settingsList = _prefs!.getStringList('settings') ?? [];
-    for (String setting in settingsList) {
-      final List<String> parts = setting.split(':');
-      if (parts.length >= 2) {
-        final String key = parts[0];
-        final String val = parts.sublist(1).join(':');
-        currentSettings[key] = val;
-      }
+  // Save a single setting to DB
+  Future<void> _saveToDb(String key, String value) async {
+    if (_settingsDao == null) {
+      logErr('Attempted to save setting $key before SettingsDao was initialized.');
+      return;
     }
-
-    currentSettings[key] = value;
-    final updatedSettingsList = currentSettings.entries.map((e) => '${e.key}:${e.value}').toList();
-    await _prefs!.setStringList('settings', updatedSettingsList);
+    await _settingsDao!.set(key, value);
   }
 
-  // Save all settings to SharedPreferences
+  // Save all settings to DB
   Future<void> saveAllSettings() async {
-    _prefs ??= await SharedPreferences.getInstance();
-    final List<String> settingsList = _settings.entries.map((e) => '${e.key}:${e.value}').toList();
-    await _prefs!.setStringList('settings', settingsList);
+    if (_settingsDao == null) {
+      logErr('Attempted to save all settings before SettingsDao was initialized.');
+      return;
+    }
+    
+    for (var entry in _settings.entries) {
+      await _settingsDao!.set(entry.key, entry.value.toString());
+    }
   }
 
   // Reset a single setting
   Future<void> resetSetting(String setting) async {
     if (_settings.containsKey(setting)) {
       _settings.remove(setting);
-      await saveAllSettings();
+      // TODO: Implement delete in DAO if needed
       notifyListeners();
     }
   }
 
   Future<void> clearSettings() async {
-    _prefs ??= await SharedPreferences.getInstance();
-    await _prefs!.setStringList('settings', []);
     _settings.clear();
+    // TODO: Implement clear in DAO if needed
     notifyListeners();
   }
 

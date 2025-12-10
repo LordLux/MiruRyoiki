@@ -123,7 +123,7 @@ class _MiruRyoikiInfobarState extends State<MiruRyoikiInfobar> {
                     children: [
                       Expanded(
                         child: Padding(
-                          padding: EdgeInsets.only(top: widget.noHeaderBanner ? 0.0 : 16.0, left: 14.0),
+                          padding: EdgeInsets.only(top: widget.noHeaderBanner ? 0.0 : 16.0, left: 16.0),
                           child: Container(
                             decoration: BoxDecoration(
                               color: Colors.white.withOpacity(0.05),
@@ -165,7 +165,7 @@ class _MiruRyoikiInfobarState extends State<MiruRyoikiInfobar> {
                       if (widget.footer != null && widget.footer!.isNotEmpty) VDiv(8),
                       if (widget.footer != null && widget.footer!.isNotEmpty)
                         Padding(
-                          padding: const EdgeInsets.only(top: 8.0, left: 14.0),
+                          padding: const EdgeInsets.only(top: 8.0, left: 16.0),
                           child: Container(
                             decoration: BoxDecoration(
                               color: Colors.white.withOpacity(0.05),

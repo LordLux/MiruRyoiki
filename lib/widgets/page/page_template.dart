@@ -31,6 +31,7 @@ class MiruRyoikiTemplatePage extends StatefulWidget {
   final bool wrapContentWithCard;
   final EdgeInsets? cardPadding;
   final Widget? floatingButton;
+  final double? contentRightPadding;
 
   const MiruRyoikiTemplatePage({
     super.key,
@@ -50,6 +51,7 @@ class MiruRyoikiTemplatePage extends StatefulWidget {
     this.infobarHeight,
     this.contentHeight,
     this.wrapContentWithCard = false,
+    this.contentRightPadding,
     this.cardPadding,
     this.floatingButton,
   });
@@ -155,7 +157,7 @@ class _MiruRyoikiTemplatePageState extends State<MiruRyoikiTemplatePage> {
                                   child: Align(
                                     alignment: Alignment.topCenter,
                                     child: Padding(
-                                      padding: EdgeInsets.only(left: 16.0 * Manager.fontSizeMultiplier, top: widget.noHeaderBanner && !widget.enableContentExtraHeaderPadding ? 0.0 : widget.contentExtraHeaderPadding, right: 4.0),
+                                      padding: EdgeInsets.only(left: 16.0 * Manager.fontSizeMultiplier, top: widget.noHeaderBanner && !widget.enableContentExtraHeaderPadding ? 0.0 : widget.contentExtraHeaderPadding, right: widget.contentRightPadding ?? 16.0),
                                       child: ClipRRect(
                                         borderRadius: BorderRadius.circular(ScreenUtils.kStatCardBorderRadius),
                                         child: SizedBox(

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:fluent_ui/fluent_ui.dart' as fluent;
 import 'package:miruryoiki/utils/color.dart';
-import 'package:miruryoiki/widgets/gradient_mask.dart';
+import 'package:miruryoiki/widgets/fading_edge_scrollview.dart';
 
 import '../manager.dart';
 import '../utils/time.dart';
@@ -151,7 +151,7 @@ class _ShrinkerState extends State<Shrinker> with SingleTickerProviderStateMixin
     return Align(
       alignment: Alignment.bottomRight,
       child: Padding(
-        padding: const EdgeInsets.only(top: 8.0, right: 12.0),
+        padding: const EdgeInsets.only(top: 8.0),
         child: SizedBox(
           height: 25 * Manager.fontSizeMultiplier,
           width: 85 * Manager.fontSizeMultiplier,

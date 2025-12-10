@@ -106,7 +106,7 @@ class SeriesDao extends DatabaseAccessor<AppDatabase> with _$SeriesDaoMixin {
       await _syncEpisodes(seasonId, modelSeason.episodes);
     }
 
-    // Handle related media (as a special season with a known ID or name, e.g., ID -1)
+    // TODO Handle related media (as a special season with a known ID or name, e.g., ID -1)
     // For simplicity, let's assume related media doesn't have a season. We could adapt this if needed.
   }
 
@@ -117,28 +117,34 @@ class SeriesDao extends DatabaseAccessor<AppDatabase> with _$SeriesDaoMixin {
     final modelEpisodesMap = {for (var e in modelEpisodes) e.path.path: e};
     final dbEpisodesMap = {for (var e in dbEpisodes) e.path.path: e};
 
-    // Delete episodes in DB but not in model
-    for (final dbEpisodePath in dbEpisodesMap.keys) {
-      if (!modelEpisodesMap.containsKey(dbEpisodePath)) {
-        await (delete(episodesTable)..where((t) => t.id.equals(dbEpisodesMap[dbEpisodePath]!.id))).go();
-      }
-    }
-
-    // Insert or Update episodes
-    for (final modelEpisode in modelEpisodes) {
-      final episodeCompanion = _episodeToCompanion(modelEpisode, seasonId);
-      final existingEpisode = dbEpisodesMap[modelEpisode.path.path];
-
-      if (existingEpisode == null) {
-        await into(episodesTable).insert(episodeCompanion);
-      } else {
-        // Only write to DB if data has actually changed
-        final oldCompanion = _episodeToCompanion(_tableToEpisode(existingEpisode), seasonId);
-        if (episodeCompanion != oldCompanion) {
-          await (update(episodesTable)..where((t) => t.id.equals(existingEpisode.id))).write(episodeCompanion);
+    await batch((batch) {
+      // Delete episodes in DB but not in model
+      for (final dbEpisodePath in dbEpisodesMap.keys) {
+        if (!modelEpisodesMap.containsKey(dbEpisodePath)) {
+          batch.delete(episodesTable, dbEpisodesMap[dbEpisodePath]!);
         }
       }
-    }
+
+      // Insert or Update episodes
+      for (final modelEpisode in modelEpisodes) {
+        final episodeCompanion = _episodeToCompanion(modelEpisode, seasonId);
+        final existingEpisode = dbEpisodesMap[modelEpisode.path.path];
+
+        if (existingEpisode == null) {
+          batch.insert(episodesTable, episodeCompanion);
+        } else {
+          // Only write to DB if data has actually changed
+          final oldCompanion = _episodeToCompanion(_tableToEpisode(existingEpisode), seasonId);
+          if (episodeCompanion != oldCompanion) {
+            batch.update(
+              episodesTable,
+              episodeCompanion,
+              where: (t) => t.id.equals(existingEpisode.id),
+            );
+          }
+        }
+      }
+    });
   }
 
   Future<void> _syncMappings(int seriesId, List<AnilistMapping> modelMappings) async {
@@ -146,25 +152,31 @@ class SeriesDao extends DatabaseAccessor<AppDatabase> with _$SeriesDaoMixin {
     final modelMappingsMap = {for (var m in modelMappings) m.anilistId: m};
     final dbMappingsMap = {for (var m in dbMappings) m.anilistId: m};
 
-    // Delete
-    for (final dbAnilistId in dbMappingsMap.keys) {
-      if (!modelMappingsMap.containsKey(dbAnilistId)) {
-        await (delete(anilistMappingsTable)..where((t) => t.id.equals(dbMappingsMap[dbAnilistId]!.id))).go();
-      }
-    }
-
-    // Insert/Update
-    for (final modelMapping in modelMappings) {
-      final companion = _mappingToCompanion(modelMapping, seriesId);
-      final existingMapping = dbMappingsMap[modelMapping.anilistId];
-      if (existingMapping == null) {
-        await into(anilistMappingsTable).insert(companion);
-      } else {
-        if (companion != _mappingToCompanion(_tableToMapping(existingMapping), seriesId)) {
-          await (update(anilistMappingsTable)..where((t) => t.id.equals(existingMapping.id))).write(companion);
+    await batch((batch) {
+      // Delete
+      for (final dbAnilistId in dbMappingsMap.keys) {
+        if (!modelMappingsMap.containsKey(dbAnilistId)) {
+          batch.delete(anilistMappingsTable, dbMappingsMap[dbAnilistId]!);
         }
       }
-    }
+
+      // Insert or Update
+      for (final modelMapping in modelMappings) {
+        final mappingCompanion = _mappingToCompanion(modelMapping, seriesId);
+        final existingMapping = dbMappingsMap[modelMapping.anilistId];
+
+        if (existingMapping == null) {
+          batch.insert(anilistMappingsTable, mappingCompanion);
+        } else {
+          // Check for changes if needed, or just update
+          batch.update(
+            anilistMappingsTable,
+            mappingCompanion,
+            where: (t) => t.id.equals(existingMapping.id),
+          );
+        }
+      }
+    });
   }
 
   /// Load a full Series object by id (Series + Seasons + Episodes + Mappings).
@@ -195,6 +207,11 @@ class SeriesDao extends DatabaseAccessor<AppDatabase> with _$SeriesDaoMixin {
     return _rowToSeries(row, seasons, mappings);
   }
 
+  Future<void> updateMappingViewType(int anilistId, ViewType viewType) {
+    return (update(anilistMappingsTable)..where((t) => t.anilistId.equals(anilistId))) //
+        .write(AnilistMappingsTableCompanion(viewType: Value(viewType.name_)));
+  }
+
   // ---------- HELPERS ----------
   AnilistMappingsTableCompanion _mappingToCompanion(AnilistMapping m, int seriesId) {
     return AnilistMappingsTableCompanion(
@@ -206,9 +223,9 @@ class SeriesDao extends DatabaseAccessor<AppDatabase> with _$SeriesDaoMixin {
       posterColor: Value(const ColorJsonConverter().toSql(m.posterColor)),
       bannerColor: Value(const ColorJsonConverter().toSql(m.bannerColor)),
       anilistData: Value(m.anilistData != null ? jsonEncode(m.anilistData!.toJson()) : null),
+      viewType: Value(m.viewType?.name_),
     );
   }
-
 
   // ---------- UPDATE HELPERS ----------
   Future<bool> updateSingleEpisode(Episode episode, int seasonId) async {
@@ -336,6 +353,7 @@ class SeriesDao extends DatabaseAccessor<AppDatabase> with _$SeriesDaoMixin {
         posterColor: const ColorJsonConverter().fromSql(d.posterColor),
         bannerColor: const ColorJsonConverter().fromSql(d.bannerColor),
         anilistData: d.anilistData == null ? null : AnilistAnime.fromJson(jsonDecode(d.anilistData!)),
+        viewType: d.viewType != null ? ViewTypeX.fromString(d.viewType!) : null,
       );
 
   Series _rowToSeries(SeriesTableData row, List<Season> seasons, List<AnilistMapping> mappings) {
@@ -345,9 +363,7 @@ class SeriesDao extends DatabaseAccessor<AppDatabase> with _$SeriesDaoMixin {
       path: row.path,
       localPosterPath: row.folderPosterPath, // TODO rename
       localBannerPath: row.folderBannerPath,
-      seasons: seasons.map((season) => season.copyWith(
-      seriesId: row.id,
-    )).toList(),
+      seasons: seasons.map((season) => season.copyWith(seriesId: row.id)).toList(),
       relatedMedia: const [],
       anilistMappings: mappings,
       posterColor: const ColorJsonConverter().fromSql(row.localPosterColor),

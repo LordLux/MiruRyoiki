@@ -19,6 +19,7 @@ class AnilistMapping {
   AnilistAnime? anilistData;
   Color? _posterColor;
   Color? _bannerColor;
+  ViewType? viewType;
 
   AnilistMapping({
     required this.localPath,
@@ -28,6 +29,7 @@ class AnilistMapping {
     this.anilistData,
     Color? posterColor,
     Color? bannerColor,
+    this.viewType,
   })  : _posterColor = posterColor,
         _bannerColor = bannerColor;
 
@@ -61,6 +63,7 @@ class AnilistMapping {
         'lastSynced': lastSynced?.toIso8601String(),
         'posterColor': _posterColor?.toHex(),
         'bannerColor': _bannerColor?.toHex(),
+        'viewType': viewType?.name_,
         // We don't save anilistData in JSON, it will be fetched on demand
       };
 
@@ -72,6 +75,7 @@ class AnilistMapping {
         lastSynced: json['lastSynced'] != null ? DateTime.parse(json['lastSynced']) : null,
         posterColor: json['posterColor'] != null ? (json['posterColor'] as String).fromHex() : null,
         bannerColor: json['bannerColor'] != null ? (json['bannerColor'] as String).fromHex() : null,
+        viewType: json['viewType'] != null ? ViewTypeX.fromString(json['viewType']) : null,
       );
 
   @override
@@ -89,7 +93,8 @@ class AnilistMapping {
         other.title == title &&
         other.lastSynced == lastSynced &&
         other._posterColor == _posterColor &&
-        other._bannerColor == _bannerColor;
+        other._bannerColor == _bannerColor &&
+        other.viewType == viewType;
   }
 
   @override
@@ -99,7 +104,8 @@ class AnilistMapping {
       title.hashCode ^
       lastSynced.hashCode ^
       _posterColor.hashCode ^
-      _bannerColor.hashCode;
+      _bannerColor.hashCode ^
+      viewType.hashCode;
 
   /// Get all episode file paths linked to this mapping
   /// 
@@ -147,6 +153,7 @@ class AnilistMapping {
     AnilistAnime? anilistData,
     Color? posterColor,
     Color? bannerColor,
+    ViewType? viewType,
   }) {
     return AnilistMapping(
       localPath: localPath ?? this.localPath,
@@ -156,6 +163,7 @@ class AnilistMapping {
       anilistData: anilistData ?? this.anilistData,
       posterColor: posterColor ?? _posterColor,
       bannerColor: bannerColor ?? _bannerColor,
+      viewType: viewType ?? this.viewType,
     );
   }
 

@@ -290,70 +290,79 @@ class _HoverableEpisodeTileState extends State<HoverableEpisodeTile> {
         final PathString? thumbnailPath = snapshot.data;
         final bool isLoading = snapshot.connectionState == ConnectionState.waiting;
         final bool hasThumbnail = thumbnailPath != null && thumbnailPath.pathMaybe != null && File(thumbnailPath.path).existsSync();
+        Widget builder(BuildContext context) {
+          if (isLoading) {
+            // Loading: show spinner, no blur
+            return Center(
+              child: ProgressRing(
+                strokeWidth: 2,
+                activeColor: widget.mapping?.effectivePrimaryColorSync() ?? Manager.accentColor,
+              ),
+            );
+          }
 
-        return AnimatedSwitcher(
-          duration: mediumDuration,
-          switchInCurve: Curves.easeIn,
-          switchOutCurve: Curves.easeOut,
-          child: Builder(
-            key: ValueKey(
-              (isLoading
-                      ? 'loading'
-                      : hasThumbnail
-                          ? 'thumbnail'
-                          : 'fallback') +
-                  episode.path.path,
-            ),
-            builder: (context) {
-              if (isLoading) {
-                // Loading: show spinner, no blur
-                return Center(
-                  child: ProgressRing(
-                    strokeWidth: 2,
-                    activeColor: widget.mapping?.effectivePrimaryColorSync() ?? Manager.accentColor,
-                  ),
-                );
-              }
+          if (!hasThumbnail) {
+            // No thumbnail: show fallback icon, no blur
+            return Icon(
+              FluentIcons.video,
+              size: 32,
+              color: FluentTheme.of(context).resources.textFillColorSecondary,
+            );
+          }
 
-              if (!hasThumbnail) {
-                // No thumbnail: show fallback icon, no blur
-                return Icon(
-                  FluentIcons.video,
-                  size: 32,
-                  color: FluentTheme.of(context).resources.textFillColorSecondary,
-                );
-              }
+          try {
+            // Thumbnail loaded: always blur
+            final thumbnailWidget = Container(
+              decoration: BoxDecoration(
+                image: DecorationImage(
+                  image: FileImage(File(thumbnailPath.path)),
+                  fit: BoxFit.cover,
+                ),
+              ),
+              child: child,
+            );
+            return ImageFiltered(
+              imageFilter: ImageFilter.blur(
+                sigmaX: widget.episode.watched ? 0 : 15,
+                sigmaY: widget.episode.watched ? 0 : 15,
+                tileMode: TileMode.mirror,
+              ),
+              child: thumbnailWidget,
+            );
+          } catch (e, stackTrace) {
+            logErr('Error displaying episode thumbnail', e, stackTrace);
+            return Icon(
+              FluentIcons.error,
+              size: 32,
+              color: FluentTheme.of(context).resources.textFillColorSecondary,
+            );
+          }
+        }
 
-              try {
-                // Thumbnail loaded: always blur
-                final thumbnailWidget = Container(
-                  decoration: BoxDecoration(
-                    image: DecorationImage(
-                      image: FileImage(File(thumbnailPath.path)),
-                      fit: BoxFit.cover,
-                    ),
-                  ),
-                  child: child,
-                );
-                return ImageFiltered(
-                  imageFilter: ImageFilter.blur(
-                    sigmaX: widget.episode.watched ? 0 : 15,
-                    sigmaY: widget.episode.watched ? 0 : 15,
-                    tileMode: TileMode.mirror,
-                  ),
-                  child: thumbnailWidget,
-                );
-              } catch (e, stackTrace) {
-                logErr('Error displaying episode thumbnail', e, stackTrace);
-                return Icon(
-                  FluentIcons.error,
-                  size: 32,
-                  color: FluentTheme.of(context).resources.textFillColorSecondary,
-                );
-              }
+        try {
+          final key = hasThumbnail ? 'thumbnail' : isLoading ? 'loading' : 'fallback';
+          return AnimatedSwitcher(
+            duration: mediumDuration,
+            switchInCurve: Curves.easeIn,
+            switchOutCurve: Curves.easeOut,
+            layoutBuilder: (currentChild, previousChildren) {
+              return Stack(
+                alignment: Alignment.center,
+                children: <Widget>[
+                  ...previousChildren.where((element) => element.key != currentChild?.key),
+                  if (currentChild != null) currentChild,
+                ],
+              );
             },
-          ),
-        );
+            child: Builder(
+              key: ValueKey(key + episode.path.path),
+              builder: builder,
+            ),
+          );
+        } catch (_) {
+          log('Error building episode thumbnail switcher, falling back to direct build');
+          return builder(context);
+        }
       },
     );
   }

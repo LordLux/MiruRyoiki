@@ -2,6 +2,7 @@
 
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:miruryoiki/manager.dart';
+import 'package:miruryoiki/widgets/tooltip_wrapper.dart';
 
 import '../enums.dart';
 import '../utils/screen.dart';
@@ -13,6 +14,7 @@ class ViewTypeSwitcher extends StatelessWidget {
   final Color textColor;
   final Color selectedTextColor;
   final void Function(ViewType p1) onViewTypeChanged;
+  final bool useBorder;
 
   const ViewTypeSwitcher({
     super.key,
@@ -20,13 +22,22 @@ class ViewTypeSwitcher extends StatelessWidget {
     required this.textColor,
     required this.selectedTextColor,
     required this.onViewTypeChanged,
+    this.useBorder = true,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Transform.translate(
-      offset: const Offset(-3.5, 0),
-      child: SizedBox(
+    final pills = Transform.translate(
+      offset: const Offset(3, 0),
+      child: buildViewTypePills(
+        currentViewType,
+        textColor,
+        selectedTextColor,
+        onViewTypeChanged,
+      ),
+    );
+    if (useBorder)
+      return SizedBox(
         height: ScreenUtils.kDefaultButtonSize + 1,
         child: StandardButton.iconLabel(
           tooltip: 'Change View Type',
@@ -37,16 +48,26 @@ class ViewTypeSwitcher extends StatelessWidget {
           ),
           padding: EdgeInsets.all(2),
           cursor: SystemMouseCursors.basic,
-          icon: Transform.translate(
-            offset: const Offset(3, 0),
-            child: buildViewTypePills(
-              currentViewType,
-              textColor,
-              selectedTextColor,
-              onViewTypeChanged,
-            ),
-          ),
+          icon: pills,
           onPressed: () {}, // Disabled as selection is done via pills
+        ),
+      );
+    return Padding(
+      padding: const EdgeInsets.only(left: 8),
+      child: Transform.translate(
+        offset: const Offset(-3, 0),
+        child: TooltipWrapper(
+          tooltip: 'Change View Type',
+          child: (text) => Row(
+            children: [
+              Padding(
+                padding: EdgeInsets.only(left: 3),
+                child: Text("View", style: Manager.subtitleStyle.copyWith(fontSize: 12)),
+              ),
+              SizedBox(width: 6),
+              pills,
+            ],
+          ),
         ),
       ),
     );

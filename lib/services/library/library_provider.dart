@@ -118,8 +118,8 @@ class Library with ChangeNotifier {
   //
   // Services and utilities
   final SettingsManager _settings;
-  late final AppDatabase _db = AppDatabase();
-  late final SeriesDao seriesDao = SeriesDao(_db);
+  final AppDatabase _db;
+  late final SeriesDao seriesDao;
   late final LockManager _lockManager = LockManager();
   late final HiddenSeriesService _hiddenSeriesService = HiddenSeriesService();
 
@@ -178,7 +178,9 @@ class Library with ChangeNotifier {
 
   //
   /// Constructor
-  Library(this._settings);
+  Library(this._settings, this._db) {
+    seriesDao = SeriesDao(_db);
+  }
 
   @override
   void dispose() {

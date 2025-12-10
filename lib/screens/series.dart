@@ -33,6 +33,8 @@ import '../utils/logging.dart';
 import '../utils/retry.dart';
 import '../utils/screen.dart';
 import '../utils/time.dart';
+import '../widgets/fading_edge_scrollview.dart';
+import '../widgets/inverted_border_radius_clipper.dart';
 import '../widgets/page/header_widget.dart';
 import '../widgets/page/infobar.dart';
 import '../widgets/page/page_template.dart';
@@ -48,10 +50,13 @@ import 'package:recase/recase.dart';
 import 'dart:io';
 import '../services/file_system/cache.dart';
 import '../widgets/viewtype_switcher.dart';
+import '../widgets/widget_alpha_mask.dart';
 import 'anilist_settings.dart';
 import '../models/episode.dart';
 import '../widgets/episode_grid.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+
+import 'settings.dart';
 
 /// Duration for which AniList data is considered fresh and doesn't need refetching
 const Duration kAnilistCacheDuration = Duration(days: 1);
@@ -293,7 +298,7 @@ class SeriesScreenState extends State<SeriesScreen> {
         InfoLabel(
           label: 'User Score',
           labelStyle: Manager.bodyStrongStyle,
-          child: Text('${series.highestUserScore! / 10}/10'),
+          child: Text('${series.highestUserScore!.toStringAsFixed(1)}/10'),
         ): false,
       if (series.metadata?.duration != null && series.metadata!.duration.inSeconds > 0)
         InfoLabel(
@@ -314,6 +319,7 @@ class SeriesScreenState extends State<SeriesScreen> {
   @override
   void initState() {
     super.initState();
+    _loadColors();
     if (widget.seriesPath != null) {
       deferredPointerLink = DeferredPointerHandlerLink();
       nextFrame(() => _loadAnilistDataForCurrentSeries());
@@ -321,6 +327,8 @@ class SeriesScreenState extends State<SeriesScreen> {
 
     // Initialize the cached mapping from the widget
     _cachedMapping = widget.mapping;
+    if (_cachedMapping?.viewType != null) _currentViewType = _cachedMapping!.viewType!;
+
     if (isMappingMode) nextFrame(() => _initializeMappingData());
 
     parser = SimpleHtmlParser(context);
@@ -340,13 +348,19 @@ class SeriesScreenState extends State<SeriesScreen> {
     // Mapping or target changed
     if (widget.target != oldWidget.target || widget.mapping != oldWidget.mapping) {
       _cachedMapping = widget.mapping;
+      if (_cachedMapping?.viewType != null) _currentViewType = _cachedMapping!.viewType!;
+
       if (isMappingMode) nextFrame(() => _initializeMappingData());
     }
   }
-  
+
   void _onViewTypeChanged(ViewType newViewType) {
     setState(() => _currentViewType = newViewType);
-    // TODO : Save to database or user preferences
+
+    if (_cachedMapping != null) {
+      final library = Provider.of<Library>(context, listen: false);
+      library.updateMappingViewType(_cachedMapping!.anilistId, newViewType);
+    }
   }
 
   @override
@@ -612,7 +626,7 @@ class SeriesScreenState extends State<SeriesScreen> {
 
         // Check if dominant color changed
         dominantColorChanged = originalDominantColor?.value != series.effectivePrimaryColorSync()?.value;
-        
+
         _loadColors();
         Manager.setState();
       }
@@ -1194,37 +1208,65 @@ class SeriesScreenState extends State<SeriesScreen> {
 
   Widget _buildContentGrid(BuildContext context, Series series) {
     if (isMappingMode && widget.target != null) {
-      final headerHeight = 40.0;
-      final topPadding = headerHeight + 16.0;
+      final headerHeight = 45.0;
+      final borderRadius = ScreenUtils.kEpisodeCardBorderRadius;
 
-      return Stack(
-        alignment: Alignment.topCenter,
-        children: [
-          Positioned.fill(
-            child: EpisodeGrid(
-              collapsable: false,
-              episodes: widget.target!.episodes,
-              onTap: (episode) => _playEpisode(episode),
-              series: series,
-              mapping: widget.mapping,
-              crossAxisCount: 5,
-              topPadding: topPadding,
-            ),
+      final visibleHeader = Container(
+        height: headerHeight,
+        margin: EdgeInsets.all(.5),
+        constraints: BoxConstraints(maxHeight: headerHeight),
+        child: AcrylicHeader(
+          borderRadius: BorderRadius.only(
+            topRight: Radius.circular(borderRadius),
+            topLeft: Radius.circular(borderRadius),
           ),
-          Positioned(
-            child: SizedBox(
-              height: headerHeight,
-              child: AcrylicHeader(
-                // useAcrylic: false,
-                child: Row(mainAxisSize: MainAxisSize.min, children: [
-                  ViewTypeSwitcher(
-                    currentViewType: _currentViewType,
-                    textColor: _textColor,
-                    selectedTextColor: _selectedTextColor,
-                    onViewTypeChanged: _onViewTypeChanged,
+          useFrostedNoise: false,
+          useAcrylic: false,
+          padding: EdgeInsets.all(3),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              HDiv(6),
+              ViewTypeSwitcher(
+                useBorder: false,
+                currentViewType: _currentViewType,
+                textColor: _textColor,
+                selectedTextColor: _selectedTextColor,
+                onViewTypeChanged: _onViewTypeChanged,
+              ),
+              HDiv(3.5),
+            ],
+          ),
+        ),
+      );
+
+      return Column(
+        children: [
+          visibleHeader,
+          SizedBox(height: 4),
+          Expanded(
+            child: Card(
+              borderRadius: BorderRadius.only(
+                bottomLeft: Radius.circular(borderRadius),
+                bottomRight: Radius.circular(borderRadius),
+              ),
+              padding: EdgeInsets.only(top: 16, left: 16, bottom: 16),
+              child: ClipRRect(
+                borderRadius: BorderRadius.only(
+                  bottomLeft: Radius.circular(borderRadius),
+                  bottomRight: Radius.circular(borderRadius),
+                ),
+                child: Padding(
+                  padding: EdgeInsets.only(right: 2),
+                  child: EpisodeGrid(
+                    collapsable: false,
+                    episodes: widget.target!.episodes,
+                    onTap: (episode) => _playEpisode(episode),
+                    series: series,
+                    mapping: widget.mapping,
+                    padding: EdgeInsets.only(right: 14),
                   ),
-                  HDiv(3.5),
-                ]),
+                ),
               ),
             ),
           ),

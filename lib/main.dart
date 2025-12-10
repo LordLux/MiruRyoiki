@@ -21,6 +21,7 @@ import 'package:material_symbols_icons/material_symbols_icons.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:win32_registry/win32_registry.dart';
 
+import 'database/database.dart';
 import 'screens/downloads_screen.dart';
 import 'screens/search.dart';
 import 'services/downloads/torrent_manager.dart';
@@ -107,8 +108,11 @@ void main(List<String> args) async {
   // Initializes the MiruRyoiki save directory
   await initializeMiruRyoikiSaveDirectory();
 
+  // Initialize database
+  final db = AppDatabase();
+
   // Initialize settings
-  await _settings.init();
+  await _settings.init(db);
 
   // Initialize session-based error logging
   await initializeLoggingSession();
@@ -150,7 +154,7 @@ void main(List<String> args) async {
   runApp(
     MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => Library(_settings), lazy: false),
+        ChangeNotifierProvider(create: (_) => Library(_settings, db), lazy: false),
         ChangeNotifierProvider(create: (_) => ConnectivityService(), lazy: false),
         ChangeNotifierProvider(create: (_) => AnilistProvider()),
         ChangeNotifierProvider.value(value: _appTheme),

@@ -1,14 +1,10 @@
 import 'package:fluent_ui/fluent_ui.dart';
-import 'package:flutter/material.dart' as mat;
 import 'package:smooth_scroll_multiplatform/smooth_scroll_multiplatform.dart';
-import 'package:sticky_headers/sticky_headers.dart';
 import '../manager.dart';
 import '../models/anilist/mapping.dart';
 import '../models/episode.dart';
 import '../models/series.dart';
 import '../services/navigation/shortcuts.dart';
-import '../utils/time.dart';
-import 'acrylic_header.dart';
 import 'cards/episode_card.dart';
 
 class EpisodeGrid extends StatelessWidget {
@@ -21,7 +17,7 @@ class EpisodeGrid extends StatelessWidget {
   final bool initiallyExpanded;
   final bool isReloadingSeries;
   final int? crossAxisCount;
-  final double topPadding;
+  final EdgeInsets padding;
 
   const EpisodeGrid({
     super.key,
@@ -34,8 +30,8 @@ class EpisodeGrid extends StatelessWidget {
     required this.onTap,
     this.isReloadingSeries = false,
     this.crossAxisCount,
-    double? topPadding,
-  }) : topPadding = topPadding ?? 66.0;
+    EdgeInsets? padding,
+  }) : padding = padding ?? const EdgeInsets.only(top: 66.0);
 
   @override
   Widget build(BuildContext context) {
@@ -54,7 +50,7 @@ class EpisodeGrid extends StatelessWidget {
                 return GridView.builder(
                   shrinkWrap: true,
                   physics: physics,
-                  padding: EdgeInsets.only(top: topPadding),
+                  padding: padding,
                   controller: controller,
                   gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: (crossAxisCount ?? (constraints.maxWidth ~/ 200)).clamp(1, 10),

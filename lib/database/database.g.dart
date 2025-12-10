@@ -1779,6 +1779,12 @@ class $AnilistMappingsTableTable extends AnilistMappingsTable
   late final GeneratedColumn<String> anilistData = GeneratedColumn<String>(
       'anilist_data', aliasedName, true,
       type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _viewTypeMeta =
+      const VerificationMeta('viewType');
+  @override
+  late final GeneratedColumn<String> viewType = GeneratedColumn<String>(
+      'view_type', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
   @override
   List<GeneratedColumn> get $columns => [
         id,
@@ -1789,7 +1795,8 @@ class $AnilistMappingsTableTable extends AnilistMappingsTable
         lastSynced,
         posterColor,
         bannerColor,
-        anilistData
+        anilistData,
+        viewType
       ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -1845,6 +1852,10 @@ class $AnilistMappingsTableTable extends AnilistMappingsTable
           anilistData.isAcceptableOrUnknown(
               data['anilist_data']!, _anilistDataMeta));
     }
+    if (data.containsKey('view_type')) {
+      context.handle(_viewTypeMeta,
+          viewType.isAcceptableOrUnknown(data['view_type']!, _viewTypeMeta));
+    }
     return context;
   }
 
@@ -1874,6 +1885,8 @@ class $AnilistMappingsTableTable extends AnilistMappingsTable
           .read(DriftSqlType.string, data['${effectivePrefix}banner_color']),
       anilistData: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}anilist_data']),
+      viewType: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}view_type']),
     );
   }
 
@@ -1897,6 +1910,7 @@ class AnilistMappingsTableData extends DataClass
   final String? posterColor;
   final String? bannerColor;
   final String? anilistData;
+  final String? viewType;
   const AnilistMappingsTableData(
       {required this.id,
       required this.seriesId,
@@ -1906,7 +1920,8 @@ class AnilistMappingsTableData extends DataClass
       this.lastSynced,
       this.posterColor,
       this.bannerColor,
-      this.anilistData});
+      this.anilistData,
+      this.viewType});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -1932,6 +1947,9 @@ class AnilistMappingsTableData extends DataClass
     if (!nullToAbsent || anilistData != null) {
       map['anilist_data'] = Variable<String>(anilistData);
     }
+    if (!nullToAbsent || viewType != null) {
+      map['view_type'] = Variable<String>(viewType);
+    }
     return map;
   }
 
@@ -1955,6 +1973,9 @@ class AnilistMappingsTableData extends DataClass
       anilistData: anilistData == null && nullToAbsent
           ? const Value.absent()
           : Value(anilistData),
+      viewType: viewType == null && nullToAbsent
+          ? const Value.absent()
+          : Value(viewType),
     );
   }
 
@@ -1971,6 +1992,7 @@ class AnilistMappingsTableData extends DataClass
       posterColor: serializer.fromJson<String?>(json['posterColor']),
       bannerColor: serializer.fromJson<String?>(json['bannerColor']),
       anilistData: serializer.fromJson<String?>(json['anilistData']),
+      viewType: serializer.fromJson<String?>(json['viewType']),
     );
   }
   @override
@@ -1986,6 +2008,7 @@ class AnilistMappingsTableData extends DataClass
       'posterColor': serializer.toJson<String?>(posterColor),
       'bannerColor': serializer.toJson<String?>(bannerColor),
       'anilistData': serializer.toJson<String?>(anilistData),
+      'viewType': serializer.toJson<String?>(viewType),
     };
   }
 
@@ -1998,7 +2021,8 @@ class AnilistMappingsTableData extends DataClass
           Value<DateTime?> lastSynced = const Value.absent(),
           Value<String?> posterColor = const Value.absent(),
           Value<String?> bannerColor = const Value.absent(),
-          Value<String?> anilistData = const Value.absent()}) =>
+          Value<String?> anilistData = const Value.absent(),
+          Value<String?> viewType = const Value.absent()}) =>
       AnilistMappingsTableData(
         id: id ?? this.id,
         seriesId: seriesId ?? this.seriesId,
@@ -2009,6 +2033,7 @@ class AnilistMappingsTableData extends DataClass
         posterColor: posterColor.present ? posterColor.value : this.posterColor,
         bannerColor: bannerColor.present ? bannerColor.value : this.bannerColor,
         anilistData: anilistData.present ? anilistData.value : this.anilistData,
+        viewType: viewType.present ? viewType.value : this.viewType,
       );
   AnilistMappingsTableData copyWithCompanion(
       AnilistMappingsTableCompanion data) {
@@ -2026,6 +2051,7 @@ class AnilistMappingsTableData extends DataClass
           data.bannerColor.present ? data.bannerColor.value : this.bannerColor,
       anilistData:
           data.anilistData.present ? data.anilistData.value : this.anilistData,
+      viewType: data.viewType.present ? data.viewType.value : this.viewType,
     );
   }
 
@@ -2040,14 +2066,15 @@ class AnilistMappingsTableData extends DataClass
           ..write('lastSynced: $lastSynced, ')
           ..write('posterColor: $posterColor, ')
           ..write('bannerColor: $bannerColor, ')
-          ..write('anilistData: $anilistData')
+          ..write('anilistData: $anilistData, ')
+          ..write('viewType: $viewType')
           ..write(')'))
         .toString();
   }
 
   @override
   int get hashCode => Object.hash(id, seriesId, localPath, anilistId, title,
-      lastSynced, posterColor, bannerColor, anilistData);
+      lastSynced, posterColor, bannerColor, anilistData, viewType);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -2060,7 +2087,8 @@ class AnilistMappingsTableData extends DataClass
           other.lastSynced == this.lastSynced &&
           other.posterColor == this.posterColor &&
           other.bannerColor == this.bannerColor &&
-          other.anilistData == this.anilistData);
+          other.anilistData == this.anilistData &&
+          other.viewType == this.viewType);
 }
 
 class AnilistMappingsTableCompanion
@@ -2074,6 +2102,7 @@ class AnilistMappingsTableCompanion
   final Value<String?> posterColor;
   final Value<String?> bannerColor;
   final Value<String?> anilistData;
+  final Value<String?> viewType;
   const AnilistMappingsTableCompanion({
     this.id = const Value.absent(),
     this.seriesId = const Value.absent(),
@@ -2084,6 +2113,7 @@ class AnilistMappingsTableCompanion
     this.posterColor = const Value.absent(),
     this.bannerColor = const Value.absent(),
     this.anilistData = const Value.absent(),
+    this.viewType = const Value.absent(),
   });
   AnilistMappingsTableCompanion.insert({
     this.id = const Value.absent(),
@@ -2095,6 +2125,7 @@ class AnilistMappingsTableCompanion
     this.posterColor = const Value.absent(),
     this.bannerColor = const Value.absent(),
     this.anilistData = const Value.absent(),
+    this.viewType = const Value.absent(),
   })  : seriesId = Value(seriesId),
         localPath = Value(localPath),
         anilistId = Value(anilistId);
@@ -2108,6 +2139,7 @@ class AnilistMappingsTableCompanion
     Expression<String>? posterColor,
     Expression<String>? bannerColor,
     Expression<String>? anilistData,
+    Expression<String>? viewType,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -2119,6 +2151,7 @@ class AnilistMappingsTableCompanion
       if (posterColor != null) 'poster_color': posterColor,
       if (bannerColor != null) 'banner_color': bannerColor,
       if (anilistData != null) 'anilist_data': anilistData,
+      if (viewType != null) 'view_type': viewType,
     });
   }
 
@@ -2131,7 +2164,8 @@ class AnilistMappingsTableCompanion
       Value<DateTime?>? lastSynced,
       Value<String?>? posterColor,
       Value<String?>? bannerColor,
-      Value<String?>? anilistData}) {
+      Value<String?>? anilistData,
+      Value<String?>? viewType}) {
     return AnilistMappingsTableCompanion(
       id: id ?? this.id,
       seriesId: seriesId ?? this.seriesId,
@@ -2142,6 +2176,7 @@ class AnilistMappingsTableCompanion
       posterColor: posterColor ?? this.posterColor,
       bannerColor: bannerColor ?? this.bannerColor,
       anilistData: anilistData ?? this.anilistData,
+      viewType: viewType ?? this.viewType,
     );
   }
 
@@ -2177,6 +2212,9 @@ class AnilistMappingsTableCompanion
     if (anilistData.present) {
       map['anilist_data'] = Variable<String>(anilistData.value);
     }
+    if (viewType.present) {
+      map['view_type'] = Variable<String>(viewType.value);
+    }
     return map;
   }
 
@@ -2191,7 +2229,8 @@ class AnilistMappingsTableCompanion
           ..write('lastSynced: $lastSynced, ')
           ..write('posterColor: $posterColor, ')
           ..write('bannerColor: $bannerColor, ')
-          ..write('anilistData: $anilistData')
+          ..write('anilistData: $anilistData, ')
+          ..write('viewType: $viewType')
           ..write(')'))
         .toString();
   }
@@ -3296,10 +3335,10 @@ class $AnilistMutationsTableTable extends AnilistMutationsTable
       'media_id', aliasedName, false,
       type: DriftSqlType.int, requiredDuringInsert: true);
   @override
-  late final GeneratedColumnWithTypeConverter<Map<String, dynamic>?, String>
+  late final GeneratedColumnWithTypeConverter<Map<String, dynamic>, String>
       changes = GeneratedColumn<String>('changes', aliasedName, false,
               type: DriftSqlType.string, requiredDuringInsert: true)
-          .withConverter<Map<String, dynamic>?>(
+          .withConverter<Map<String, dynamic>>(
               $AnilistMutationsTableTable.$converterchanges);
   static const VerificationMeta _createdAtMeta =
       const VerificationMeta('createdAt');
@@ -3387,8 +3426,8 @@ class $AnilistMutationsTableTable extends AnilistMutationsTable
     return $AnilistMutationsTableTable(attachedDatabase, alias);
   }
 
-  static TypeConverter<Map<String, dynamic>?, String?> $converterchanges =
-      const JsonMapConverter();
+  static TypeConverter<Map<String, dynamic>, String> $converterchanges =
+      const NonNullableJsonMapConverter();
 }
 
 class AnilistMutationsTableData extends DataClass
@@ -3396,14 +3435,14 @@ class AnilistMutationsTableData extends DataClass
   final int id;
   final String type;
   final int mediaId;
-  final Map<String, dynamic>? changes;
+  final Map<String, dynamic> changes;
   final DateTime createdAt;
   final DateTime localCreatedAt;
   const AnilistMutationsTableData(
       {required this.id,
       required this.type,
       required this.mediaId,
-      this.changes,
+      required this.changes,
       required this.createdAt,
       required this.localCreatedAt});
   @override
@@ -3412,7 +3451,7 @@ class AnilistMutationsTableData extends DataClass
     map['id'] = Variable<int>(id);
     map['type'] = Variable<String>(type);
     map['media_id'] = Variable<int>(mediaId);
-    if (!nullToAbsent || changes != null) {
+    {
       map['changes'] = Variable<String>(
           $AnilistMutationsTableTable.$converterchanges.toSql(changes));
     }
@@ -3426,9 +3465,7 @@ class AnilistMutationsTableData extends DataClass
       id: Value(id),
       type: Value(type),
       mediaId: Value(mediaId),
-      changes: changes == null && nullToAbsent
-          ? const Value.absent()
-          : Value(changes),
+      changes: Value(changes),
       createdAt: Value(createdAt),
       localCreatedAt: Value(localCreatedAt),
     );
@@ -3441,7 +3478,7 @@ class AnilistMutationsTableData extends DataClass
       id: serializer.fromJson<int>(json['id']),
       type: serializer.fromJson<String>(json['type']),
       mediaId: serializer.fromJson<int>(json['mediaId']),
-      changes: serializer.fromJson<Map<String, dynamic>?>(json['changes']),
+      changes: serializer.fromJson<Map<String, dynamic>>(json['changes']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       localCreatedAt: serializer.fromJson<DateTime>(json['localCreatedAt']),
     );
@@ -3453,7 +3490,7 @@ class AnilistMutationsTableData extends DataClass
       'id': serializer.toJson<int>(id),
       'type': serializer.toJson<String>(type),
       'mediaId': serializer.toJson<int>(mediaId),
-      'changes': serializer.toJson<Map<String, dynamic>?>(changes),
+      'changes': serializer.toJson<Map<String, dynamic>>(changes),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'localCreatedAt': serializer.toJson<DateTime>(localCreatedAt),
     };
@@ -3463,14 +3500,14 @@ class AnilistMutationsTableData extends DataClass
           {int? id,
           String? type,
           int? mediaId,
-          Value<Map<String, dynamic>?> changes = const Value.absent(),
+          Map<String, dynamic>? changes,
           DateTime? createdAt,
           DateTime? localCreatedAt}) =>
       AnilistMutationsTableData(
         id: id ?? this.id,
         type: type ?? this.type,
         mediaId: mediaId ?? this.mediaId,
-        changes: changes.present ? changes.value : this.changes,
+        changes: changes ?? this.changes,
         createdAt: createdAt ?? this.createdAt,
         localCreatedAt: localCreatedAt ?? this.localCreatedAt,
       );
@@ -3521,7 +3558,7 @@ class AnilistMutationsTableCompanion
   final Value<int> id;
   final Value<String> type;
   final Value<int> mediaId;
-  final Value<Map<String, dynamic>?> changes;
+  final Value<Map<String, dynamic>> changes;
   final Value<DateTime> createdAt;
   final Value<DateTime> localCreatedAt;
   const AnilistMutationsTableCompanion({
@@ -3536,7 +3573,7 @@ class AnilistMutationsTableCompanion
     this.id = const Value.absent(),
     required String type,
     required int mediaId,
-    required Map<String, dynamic>? changes,
+    required Map<String, dynamic> changes,
     required DateTime createdAt,
     this.localCreatedAt = const Value.absent(),
   })  : type = Value(type),
@@ -3565,7 +3602,7 @@ class AnilistMutationsTableCompanion
       {Value<int>? id,
       Value<String>? type,
       Value<int>? mediaId,
-      Value<Map<String, dynamic>?>? changes,
+      Value<Map<String, dynamic>>? changes,
       Value<DateTime>? createdAt,
       Value<DateTime>? localCreatedAt}) {
     return AnilistMutationsTableCompanion(
@@ -3959,6 +3996,197 @@ class AnilistUserCacheTableCompanion
   }
 }
 
+class $SettingsTableTable extends SettingsTable
+    with TableInfo<$SettingsTableTable, SettingsTableData> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $SettingsTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _keyMeta = const VerificationMeta('key');
+  @override
+  late final GeneratedColumn<String> key = GeneratedColumn<String>(
+      'key', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _valueMeta = const VerificationMeta('value');
+  @override
+  late final GeneratedColumn<String> value = GeneratedColumn<String>(
+      'value', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  @override
+  List<GeneratedColumn> get $columns => [key, value];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'settings_table';
+  @override
+  VerificationContext validateIntegrity(Insertable<SettingsTableData> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('key')) {
+      context.handle(
+          _keyMeta, key.isAcceptableOrUnknown(data['key']!, _keyMeta));
+    } else if (isInserting) {
+      context.missing(_keyMeta);
+    }
+    if (data.containsKey('value')) {
+      context.handle(
+          _valueMeta, value.isAcceptableOrUnknown(data['value']!, _valueMeta));
+    } else if (isInserting) {
+      context.missing(_valueMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {key};
+  @override
+  SettingsTableData map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return SettingsTableData(
+      key: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}key'])!,
+      value: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}value'])!,
+    );
+  }
+
+  @override
+  $SettingsTableTable createAlias(String alias) {
+    return $SettingsTableTable(attachedDatabase, alias);
+  }
+}
+
+class SettingsTableData extends DataClass
+    implements Insertable<SettingsTableData> {
+  final String key;
+  final String value;
+  const SettingsTableData({required this.key, required this.value});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['key'] = Variable<String>(key);
+    map['value'] = Variable<String>(value);
+    return map;
+  }
+
+  SettingsTableCompanion toCompanion(bool nullToAbsent) {
+    return SettingsTableCompanion(
+      key: Value(key),
+      value: Value(value),
+    );
+  }
+
+  factory SettingsTableData.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return SettingsTableData(
+      key: serializer.fromJson<String>(json['key']),
+      value: serializer.fromJson<String>(json['value']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'key': serializer.toJson<String>(key),
+      'value': serializer.toJson<String>(value),
+    };
+  }
+
+  SettingsTableData copyWith({String? key, String? value}) => SettingsTableData(
+        key: key ?? this.key,
+        value: value ?? this.value,
+      );
+  SettingsTableData copyWithCompanion(SettingsTableCompanion data) {
+    return SettingsTableData(
+      key: data.key.present ? data.key.value : this.key,
+      value: data.value.present ? data.value.value : this.value,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SettingsTableData(')
+          ..write('key: $key, ')
+          ..write('value: $value')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(key, value);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is SettingsTableData &&
+          other.key == this.key &&
+          other.value == this.value);
+}
+
+class SettingsTableCompanion extends UpdateCompanion<SettingsTableData> {
+  final Value<String> key;
+  final Value<String> value;
+  final Value<int> rowid;
+  const SettingsTableCompanion({
+    this.key = const Value.absent(),
+    this.value = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  SettingsTableCompanion.insert({
+    required String key,
+    required String value,
+    this.rowid = const Value.absent(),
+  })  : key = Value(key),
+        value = Value(value);
+  static Insertable<SettingsTableData> custom({
+    Expression<String>? key,
+    Expression<String>? value,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (key != null) 'key': key,
+      if (value != null) 'value': value,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  SettingsTableCompanion copyWith(
+      {Value<String>? key, Value<String>? value, Value<int>? rowid}) {
+    return SettingsTableCompanion(
+      key: key ?? this.key,
+      value: value ?? this.value,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (key.present) {
+      map['key'] = Variable<String>(key.value);
+    }
+    if (value.present) {
+      map['value'] = Variable<String>(value.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SettingsTableCompanion(')
+          ..write('key: $key, ')
+          ..write('value: $value, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -3975,6 +4203,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       $AnilistMutationsTableTable(this);
   late final $AnilistUserCacheTableTable anilistUserCacheTable =
       $AnilistUserCacheTableTable(this);
+  late final $SettingsTableTable settingsTable = $SettingsTableTable(this);
   late final SeriesDao seriesDao = SeriesDao(this as AppDatabase);
   late final EpisodesDao episodesDao = EpisodesDao(this as AppDatabase);
   late final WatchDao watchDao = WatchDao(this as AppDatabase);
@@ -3982,6 +4211,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       NotificationsDao(this as AppDatabase);
   late final MutationsDao mutationsDao = MutationsDao(this as AppDatabase);
   late final UserCacheDao userCacheDao = UserCacheDao(this as AppDatabase);
+  late final SettingsDao settingsDao = SettingsDao(this as AppDatabase);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -3994,7 +4224,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         watchRecordsTable,
         notificationsTable,
         anilistMutationsTable,
-        anilistUserCacheTable
+        anilistUserCacheTable,
+        settingsTable
       ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules(
@@ -5281,6 +5512,7 @@ typedef $$AnilistMappingsTableTableCreateCompanionBuilder
   Value<String?> posterColor,
   Value<String?> bannerColor,
   Value<String?> anilistData,
+  Value<String?> viewType,
 });
 typedef $$AnilistMappingsTableTableUpdateCompanionBuilder
     = AnilistMappingsTableCompanion Function({
@@ -5293,6 +5525,7 @@ typedef $$AnilistMappingsTableTableUpdateCompanionBuilder
   Value<String?> posterColor,
   Value<String?> bannerColor,
   Value<String?> anilistData,
+  Value<String?> viewType,
 });
 
 final class $$AnilistMappingsTableTableReferences extends BaseReferences<
@@ -5351,6 +5584,9 @@ class $$AnilistMappingsTableTableFilterComposer
   ColumnFilters<String> get anilistData => $composableBuilder(
       column: $table.anilistData, builder: (column) => ColumnFilters(column));
 
+  ColumnFilters<String> get viewType => $composableBuilder(
+      column: $table.viewType, builder: (column) => ColumnFilters(column));
+
   $$SeriesTableTableFilterComposer get seriesId {
     final $$SeriesTableTableFilterComposer composer = $composerBuilder(
         composer: this,
@@ -5405,6 +5641,9 @@ class $$AnilistMappingsTableTableOrderingComposer
   ColumnOrderings<String> get anilistData => $composableBuilder(
       column: $table.anilistData, builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<String> get viewType => $composableBuilder(
+      column: $table.viewType, builder: (column) => ColumnOrderings(column));
+
   $$SeriesTableTableOrderingComposer get seriesId {
     final $$SeriesTableTableOrderingComposer composer = $composerBuilder(
         composer: this,
@@ -5458,6 +5697,9 @@ class $$AnilistMappingsTableTableAnnotationComposer
 
   GeneratedColumn<String> get anilistData => $composableBuilder(
       column: $table.anilistData, builder: (column) => column);
+
+  GeneratedColumn<String> get viewType =>
+      $composableBuilder(column: $table.viewType, builder: (column) => column);
 
   $$SeriesTableTableAnnotationComposer get seriesId {
     final $$SeriesTableTableAnnotationComposer composer = $composerBuilder(
@@ -5515,6 +5757,7 @@ class $$AnilistMappingsTableTableTableManager extends RootTableManager<
             Value<String?> posterColor = const Value.absent(),
             Value<String?> bannerColor = const Value.absent(),
             Value<String?> anilistData = const Value.absent(),
+            Value<String?> viewType = const Value.absent(),
           }) =>
               AnilistMappingsTableCompanion(
             id: id,
@@ -5526,6 +5769,7 @@ class $$AnilistMappingsTableTableTableManager extends RootTableManager<
             posterColor: posterColor,
             bannerColor: bannerColor,
             anilistData: anilistData,
+            viewType: viewType,
           ),
           createCompanionCallback: ({
             Value<int> id = const Value.absent(),
@@ -5537,6 +5781,7 @@ class $$AnilistMappingsTableTableTableManager extends RootTableManager<
             Value<String?> posterColor = const Value.absent(),
             Value<String?> bannerColor = const Value.absent(),
             Value<String?> anilistData = const Value.absent(),
+            Value<String?> viewType = const Value.absent(),
           }) =>
               AnilistMappingsTableCompanion.insert(
             id: id,
@@ -5548,6 +5793,7 @@ class $$AnilistMappingsTableTableTableManager extends RootTableManager<
             posterColor: posterColor,
             bannerColor: bannerColor,
             anilistData: anilistData,
+            viewType: viewType,
           ),
           withReferenceMapper: (p0) => p0
               .map((e) => (
@@ -6135,7 +6381,7 @@ typedef $$AnilistMutationsTableTableCreateCompanionBuilder
   Value<int> id,
   required String type,
   required int mediaId,
-  required Map<String, dynamic>? changes,
+  required Map<String, dynamic> changes,
   required DateTime createdAt,
   Value<DateTime> localCreatedAt,
 });
@@ -6144,7 +6390,7 @@ typedef $$AnilistMutationsTableTableUpdateCompanionBuilder
   Value<int> id,
   Value<String> type,
   Value<int> mediaId,
-  Value<Map<String, dynamic>?> changes,
+  Value<Map<String, dynamic>> changes,
   Value<DateTime> createdAt,
   Value<DateTime> localCreatedAt,
 });
@@ -6167,7 +6413,7 @@ class $$AnilistMutationsTableTableFilterComposer
   ColumnFilters<int> get mediaId => $composableBuilder(
       column: $table.mediaId, builder: (column) => ColumnFilters(column));
 
-  ColumnWithTypeConverterFilters<Map<String, dynamic>?, Map<String, dynamic>,
+  ColumnWithTypeConverterFilters<Map<String, dynamic>, Map<String, dynamic>,
           String>
       get changes => $composableBuilder(
           column: $table.changes,
@@ -6228,7 +6474,7 @@ class $$AnilistMutationsTableTableAnnotationComposer
   GeneratedColumn<int> get mediaId =>
       $composableBuilder(column: $table.mediaId, builder: (column) => column);
 
-  GeneratedColumnWithTypeConverter<Map<String, dynamic>?, String> get changes =>
+  GeneratedColumnWithTypeConverter<Map<String, dynamic>, String> get changes =>
       $composableBuilder(column: $table.changes, builder: (column) => column);
 
   GeneratedColumn<DateTime> get createdAt =>
@@ -6272,7 +6518,7 @@ class $$AnilistMutationsTableTableTableManager extends RootTableManager<
             Value<int> id = const Value.absent(),
             Value<String> type = const Value.absent(),
             Value<int> mediaId = const Value.absent(),
-            Value<Map<String, dynamic>?> changes = const Value.absent(),
+            Value<Map<String, dynamic>> changes = const Value.absent(),
             Value<DateTime> createdAt = const Value.absent(),
             Value<DateTime> localCreatedAt = const Value.absent(),
           }) =>
@@ -6288,7 +6534,7 @@ class $$AnilistMutationsTableTableTableManager extends RootTableManager<
             Value<int> id = const Value.absent(),
             required String type,
             required int mediaId,
-            required Map<String, dynamic>? changes,
+            required Map<String, dynamic> changes,
             required DateTime createdAt,
             Value<DateTime> localCreatedAt = const Value.absent(),
           }) =>
@@ -6517,6 +6763,134 @@ typedef $$AnilistUserCacheTableTableProcessedTableManager
         ),
         AnilistUserCacheTableData,
         PrefetchHooks Function()>;
+typedef $$SettingsTableTableCreateCompanionBuilder = SettingsTableCompanion
+    Function({
+  required String key,
+  required String value,
+  Value<int> rowid,
+});
+typedef $$SettingsTableTableUpdateCompanionBuilder = SettingsTableCompanion
+    Function({
+  Value<String> key,
+  Value<String> value,
+  Value<int> rowid,
+});
+
+class $$SettingsTableTableFilterComposer
+    extends Composer<_$AppDatabase, $SettingsTableTable> {
+  $$SettingsTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get key => $composableBuilder(
+      column: $table.key, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get value => $composableBuilder(
+      column: $table.value, builder: (column) => ColumnFilters(column));
+}
+
+class $$SettingsTableTableOrderingComposer
+    extends Composer<_$AppDatabase, $SettingsTableTable> {
+  $$SettingsTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get key => $composableBuilder(
+      column: $table.key, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get value => $composableBuilder(
+      column: $table.value, builder: (column) => ColumnOrderings(column));
+}
+
+class $$SettingsTableTableAnnotationComposer
+    extends Composer<_$AppDatabase, $SettingsTableTable> {
+  $$SettingsTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get key =>
+      $composableBuilder(column: $table.key, builder: (column) => column);
+
+  GeneratedColumn<String> get value =>
+      $composableBuilder(column: $table.value, builder: (column) => column);
+}
+
+class $$SettingsTableTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $SettingsTableTable,
+    SettingsTableData,
+    $$SettingsTableTableFilterComposer,
+    $$SettingsTableTableOrderingComposer,
+    $$SettingsTableTableAnnotationComposer,
+    $$SettingsTableTableCreateCompanionBuilder,
+    $$SettingsTableTableUpdateCompanionBuilder,
+    (
+      SettingsTableData,
+      BaseReferences<_$AppDatabase, $SettingsTableTable, SettingsTableData>
+    ),
+    SettingsTableData,
+    PrefetchHooks Function()> {
+  $$SettingsTableTableTableManager(_$AppDatabase db, $SettingsTableTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$SettingsTableTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$SettingsTableTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$SettingsTableTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<String> key = const Value.absent(),
+            Value<String> value = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              SettingsTableCompanion(
+            key: key,
+            value: value,
+            rowid: rowid,
+          ),
+          createCompanionCallback: ({
+            required String key,
+            required String value,
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              SettingsTableCompanion.insert(
+            key: key,
+            value: value,
+            rowid: rowid,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ));
+}
+
+typedef $$SettingsTableTableProcessedTableManager = ProcessedTableManager<
+    _$AppDatabase,
+    $SettingsTableTable,
+    SettingsTableData,
+    $$SettingsTableTableFilterComposer,
+    $$SettingsTableTableOrderingComposer,
+    $$SettingsTableTableAnnotationComposer,
+    $$SettingsTableTableCreateCompanionBuilder,
+    $$SettingsTableTableUpdateCompanionBuilder,
+    (
+      SettingsTableData,
+      BaseReferences<_$AppDatabase, $SettingsTableTable, SettingsTableData>
+    ),
+    SettingsTableData,
+    PrefetchHooks Function()>;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -6537,4 +6911,6 @@ class $AppDatabaseManager {
       $$AnilistMutationsTableTableTableManager(_db, _db.anilistMutationsTable);
   $$AnilistUserCacheTableTableTableManager get anilistUserCacheTable =>
       $$AnilistUserCacheTableTableTableManager(_db, _db.anilistUserCacheTable);
+  $$SettingsTableTableTableManager get settingsTable =>
+      $$SettingsTableTableTableManager(_db, _db.settingsTable);
 }

@@ -120,8 +120,8 @@ class HeaderCenterInPageWidget extends StatelessWidget {
       left: () {
         final double shrinkedI = ScreenUtils.kInfoBarWidth - (6 * 2) + 42;
         final double maximisedI = (constraints.maxWidth - ScreenUtils.kMaxContentWidth) / 2 + 310 + 20;
-        final double shrinked = (constraints.maxWidth - ScreenUtils.kMaxContentWidth) / 2 + 20;
-        final double maximised = 20;
+        final double shrinked = (constraints.maxWidth - ScreenUtils.kMaxContentWidth) / 2 + 20 + 4;
+        final double maximised = 20 + 4;
 
         // Calculate value safely and prevent Infinity
         double result = titleLeftAligned ? math.max(maximised, shrinked) : math.max(maximisedI, shrinkedI) - 16;
@@ -132,8 +132,7 @@ class HeaderCenterInPageWidget extends StatelessWidget {
         return result;
       }(),
       child: SizedBox(
-        width: math.min(ScreenUtils.kMaxContentWidth, constraints.maxWidth) - (titleLeftAligned ? 0 : ScreenUtils.kInfoBarWidth) - 36,
-        /* 32 + 4 of right padding */
+        width: math.min(ScreenUtils.kMaxContentWidth, constraints.maxWidth) - (titleLeftAligned ? 0 : ScreenUtils.kInfoBarWidth) - 32, // 32 of right padding
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,

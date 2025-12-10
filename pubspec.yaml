@@ -2,7 +2,7 @@ name: miruryoiki
 description: "Flutter desktop application designed to track and manage local media files."
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 
-version: 1.0.50+0
+version: 1.0.51+0
 
 environment:
   sdk: '>=3.4.0 <4.0.0'
@@ -31,7 +31,6 @@ dependencies:
   system_theme: ^3.1.2
   window_manager: ^0.5.1
   open_file: ^3.5.10
-  shared_preferences: ^2.5.3
   recase: ^4.1.0
   palette_generator: ^0.3.3+3
   google_fonts: ^6.2.1
@@ -73,7 +72,7 @@ dependencies:
   drift: ^2.14.0
   sqlite3_flutter_libs: ^0.5.18
   md5_file_checksum: ^1.1.0
-  json_annotation: ^4.8.1
+  json_annotation: ^4.9.0
   scrollable_positioned_list: ^0.3.8
   flutter_single_instance: ^1.6.0 # TODO https://pub.dev/packages/flutter_single_instance#macos
   shimmer: ^3.0.0

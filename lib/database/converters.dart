@@ -114,6 +114,19 @@ class JsonMapConverter extends TypeConverter<Map<String, dynamic>?, String?> {
       value == null ? null : jsonEncode(value);
 }
 
+// Non-nullable JSON string converter
+class NonNullableJsonMapConverter extends TypeConverter<Map<String, dynamic>, String> {
+  const NonNullableJsonMapConverter();
+
+  @override
+  Map<String, dynamic> fromSql(String fromDb) {
+    return jsonDecode(fromDb) as Map<String, dynamic>;
+  }
+
+  @override
+  String toSql(Map<String, dynamic> value) => jsonEncode(value);
+}
+
 /// -------- NotificationType <-> INTEGER --------
 class NotificationTypeConverter extends TypeConverter<NotificationType, int> {
   const NotificationTypeConverter();

@@ -31,7 +31,7 @@ class AcrylicHeader extends StatelessWidget {
     Widget content = Container(
       width: double.infinity,
       constraints: boxConstraints,
-      decoration: BoxDecoration(color: Colors.white.withOpacity(opacity)),
+      decoration: BoxDecoration(color: Colors.white.withOpacity(opacity), borderRadius: borderRadius),
       padding: padding,
       child: child,
     );

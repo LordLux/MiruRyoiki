@@ -97,6 +97,8 @@ class AnilistMappingsTable extends Table {
   // JSON cached data
   TextColumn get anilistData => text().nullable()();
 
+  TextColumn get viewType => text().nullable()();
+
   @override
   List<String> get customConstraints => ['UNIQUE (series_id, anilist_id)'];
 }
@@ -153,7 +155,7 @@ class AnilistMutationsTable extends Table {
   
   TextColumn get type => text()(); // 'progress', 'status', 'score', etc.
   IntColumn get mediaId => integer()();
-  TextColumn get changes => text().map(const JsonMapConverter())(); // JSON map of changes
+  TextColumn get changes => text().map(const NonNullableJsonMapConverter())(); // JSON map of changes
   
   DateTimeColumn get createdAt => dateTime()();
   DateTimeColumn get localCreatedAt => dateTime().withDefault(currentDateAndTime)();
@@ -177,4 +179,13 @@ class AnilistUserCacheTable extends Table {
   
   @override
   Set<Column> get primaryKey => {id};
+}
+
+// ------------------ SETTINGS ------------------
+class SettingsTable extends Table {
+  TextColumn get key => text()();
+  TextColumn get value => text()();
+
+  @override
+  Set<Column> get primaryKey => {key};
 }

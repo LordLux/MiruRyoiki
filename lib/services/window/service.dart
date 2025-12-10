@@ -1,37 +1,34 @@
 import 'package:fluent_ui/fluent_ui.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:window_manager/window_manager.dart';
 
+import '../../settings.dart';
+
 class WindowStateService {
-  static const _keyX = 'window_x';
-  static const _keyY = 'window_y';
-  static const _keyWidth = 'window_width';
-  static const _keyHeight = 'window_height';
-  static const _keyMaximized = 'window_maximized';
   static final ValueNotifier<bool> isFullscreenNotifier = ValueNotifier<bool>(false);
 
   static Future<void> saveWindowState() async {
-    final prefs = await SharedPreferences.getInstance();
+    final settings = SettingsManager();
     final isMaximized = await windowManager.isMaximized();
     final size = await windowManager.getSize();
     final position = await windowManager.getPosition();
 
-    await prefs.setBool(_keyMaximized, isMaximized);
-    await prefs.setDouble(_keyWidth, size.width);
-    await prefs.setDouble(_keyHeight, size.height);
-    await prefs.setDouble(_keyX, position.dx);
-    await prefs.setDouble(_keyY, position.dy);
+    settings.windowMaximized = isMaximized;
+    settings.windowWidth = size.width;
+    settings.windowHeight = size.height;
+    settings.windowX = position.dx;
+    settings.windowY = position.dy;
   }
 
   static Future<Map<String, dynamic>?> loadWindowState() async {
-    final prefs = await SharedPreferences.getInstance();
-    if (!prefs.containsKey(_keyWidth) || !prefs.containsKey(_keyHeight)) return null;
+    final settings = SettingsManager();
+    if (settings.windowWidth == null || settings.windowHeight == null) return null;
+    
     return {
-      'x': prefs.getDouble(_keyX),
-      'y': prefs.getDouble(_keyY),
-      'width': prefs.getDouble(_keyWidth),
-      'height': prefs.getDouble(_keyHeight),
-      'maximized': prefs.getBool(_keyMaximized) ?? false,
+      'x': settings.windowX,
+      'y': settings.windowY,
+      'width': settings.windowWidth,
+      'height': settings.windowHeight,
+      'maximized': settings.windowMaximized, // TODO remember size and position even when restored from maximized
     };
   }
 
