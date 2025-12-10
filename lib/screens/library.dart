@@ -945,6 +945,7 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
 
   HeaderWidget _buildHeader(Library library) {
     return HeaderWidget(
+      contentRightPadding: -4,
       title: (_, __) => ValueListenableBuilder(
         valueListenable: KeyboardState.zoomReleaseNotifier,
         builder: (context, _, __) => Column(

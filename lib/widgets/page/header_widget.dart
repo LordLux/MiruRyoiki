@@ -15,6 +15,7 @@ class HeaderWidget extends StatefulWidget {
   final List<Widget> children;
   final bool titleLeftAligned;
   final EdgeInsets headerPadding;
+  final double? contentRightPadding;
   final double? fixed;
 
   const HeaderWidget({
@@ -26,6 +27,7 @@ class HeaderWidget extends StatefulWidget {
     this.titleLeftAligned = false,
     this.image_widget,
     this.headerPadding = EdgeInsets.zero,
+    this.contentRightPadding,
     this.fixed,
   }) : assert(
           !(image != null && image_widget != null),
@@ -80,6 +82,7 @@ class _HeaderWidgetState extends State<HeaderWidget> {
             titleLeftAligned: widget.titleLeftAligned,
             title: widget.title,
             constraints: constraints,
+            contentRightPadding: widget.contentRightPadding,
             children: widget.children,
           )
         ],
@@ -97,7 +100,8 @@ class HeaderCenterInPageWidget extends StatelessWidget {
     required this.constraints,
     this.top,
     this.bottom,
-  });
+    double? contentRightPadding,
+  }) : contentRightPadding = contentRightPadding ?? 4.0;
 
   final bool titleLeftAligned;
   final Widget Function(TextStyle titleStyle, BoxConstraints constraints) title;
@@ -105,6 +109,7 @@ class HeaderCenterInPageWidget extends StatelessWidget {
   final BoxConstraints constraints;
   final double? top;
   final double? bottom;
+  final double contentRightPadding;
 
   @override
   Widget build(BuildContext context) {
@@ -120,8 +125,8 @@ class HeaderCenterInPageWidget extends StatelessWidget {
       left: () {
         final double shrinkedI = ScreenUtils.kInfoBarWidth - (6 * 2) + 42;
         final double maximisedI = (constraints.maxWidth - ScreenUtils.kMaxContentWidth) / 2 + 310 + 20;
-        final double shrinked = (constraints.maxWidth - ScreenUtils.kMaxContentWidth) / 2 + 20 + 4;
-        final double maximised = 20 + 4;
+        final double shrinked = (constraints.maxWidth - ScreenUtils.kMaxContentWidth) / 2 + 20 + contentRightPadding;
+        final double maximised = 20 + contentRightPadding;
 
         // Calculate value safely and prevent Infinity
         double result = titleLeftAligned ? math.max(maximised, shrinked) : math.max(maximisedI, shrinkedI) - 16;
