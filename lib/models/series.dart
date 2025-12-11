@@ -482,7 +482,7 @@ class Series {
     return anilistMappings.firstWhereOrNull((m) => m.anilistId == (_primaryAnilistId))?.anilistData;
   }
 
-  /// Set the Anilist data for the series
+  /// Set the primary Anilist id's data for the series
   set anilistData(AnilistAnime? value) {
     final mapping = anilistMappings.firstWhereOrNull((m) => m.anilistId == _primaryAnilistId);
     if (mapping != null) mapping.anilistData = value;

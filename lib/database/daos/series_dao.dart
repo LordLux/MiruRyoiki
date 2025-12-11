@@ -207,6 +207,21 @@ class SeriesDao extends DatabaseAccessor<AppDatabase> with _$SeriesDaoMixin {
     return _rowToSeries(row, seasons, mappings);
   }
 
+  Future<void> updateMappingLastSynced(int seriesId, int anilistId, DateTime lastSynced) {
+    return (update(anilistMappingsTable) //
+          ..where((t) => t.seriesId.equals(seriesId) & t.anilistId.equals(anilistId)))
+        .write(AnilistMappingsTableCompanion(lastSynced: Value(lastSynced)));
+  }
+
+  Future<void> updateMappingAnilistData(int seriesId, int anilistId, AnilistAnime anilistData, DateTime lastSynced) {
+    return (update(anilistMappingsTable) //
+          ..where((t) => t.seriesId.equals(seriesId) & t.anilistId.equals(anilistId)))
+        .write(AnilistMappingsTableCompanion(
+      anilistData: Value(jsonEncode(anilistData.toJson())),
+      lastSynced: Value(lastSynced),
+    ));
+  }
+
   Future<void> updateMappingViewType(int anilistId, ViewType viewType) {
     return (update(anilistMappingsTable)..where((t) => t.anilistId.equals(anilistId))) //
         .write(AnilistMappingsTableCompanion(viewType: Value(viewType.name_)));

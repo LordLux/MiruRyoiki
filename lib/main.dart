@@ -1226,12 +1226,12 @@ Future<void> _registerWindowsUrlScheme(String scheme) async {
 }
 
 // TODO add 'random entry' button to top right corner of library
-// TODO calculate all getTextColor() calls in initState and store the result to avoid color change during tran
 // TODO throttle db save events after 5s
+// TODO add 'play episode' button on continue watching series card -> click on card simply opens series
+// TODO cache images smaller to be displayed without using too much memory
 // TODO add divider between notifications and scheduled episodes in release calendar
 // TODO add polimorphic method to Notifications to get their "aired"/"Updated"/"Deleted" etc string for time ago formatting
 // TODO add NonMapping for series that are not to be linked with Anilist
-// TODO change scanning: any folders [names] will remain as is and only loose files will be moved to 'Related Media'
 // TODO create widget for Smooth scrolling scroll controllers
 // TODO reload inner series screen after reloading library if the series is open
 // TODO fix homescreen 'next episode' returns S1 episode number + 1 instead of S2 episode 1 when moving to next season
@@ -1239,21 +1239,22 @@ Future<void> _registerWindowsUrlScheme(String scheme) async {
 // TODO create superclass for series type cards (continue watching, library series, search results, etc.) to share code between them and avoid duplication
 // TODO add 'notify me' button to upcoming episodes on home screen
 // TODO change text 'wait while library is getting indexed' to 'scanning' when library scan is in progress
-// TODO add 'play episode' button on continue watching series card -> click on card simply opens series
 // TODO move hidden series switches to settings
 // TODO check that saved window position is within screen bounds
 // TODO fix seriescards use dominant color for text regardless of setting
-// TODO fix fast movement from library to mapping causes no inner mapping image to get loaded
 // TODO 'no episodes found for this season' should be 'no episodes found for this series' when there are no episodes in any season
 // TODO when view is linkedOnly, hideFromUserList series automatically get added to Watching -> add category for them
 // TODO released section in homepage to show release but not yet downloaded
 // TODO view settings to choose what to show on homepage
 // TODO fix settings players order not actually changing + add cursor to reordering handles
+// TODO add dialog after clicking random entry to choose between confirm or pick another random entry
+
 // TODO fix image cache not working (es when changing primary id)
 // TODO cache Anilist lists to be able to work offline
+
 // TODO fix library scanning that keeps finding the same files every time even though they were already there
-// TODO add dialog after clicking random entry to choose between confirm or pick another random entry
-// TODO cache images smaller to be displayed without using too much memory
+// TODO change scanning: any folders [names] will remain as is and only loose files will be moved to 'Related Media'
+
 
 // beta
 // TODO after linking anilist, fetch episode titles for neolinked series
@@ -1262,14 +1263,11 @@ Future<void> _registerWindowsUrlScheme(String scheme) async {
 // TODO sometimes anilist episode numbering for seasons > 1 continue from previous season, need to handle that
 
 // TODO add marquee to notification titles
-// TODO add torrents/downloads pane
 // TODO add 'state' and 'stateString' to MediaStatus
-// TODO add network settings for torrents
 // TODO remove hardcoded filtering for only the local series for scheduled releases notifications as we'll have the ability to download them
 // TODO add ctrl + tab navigation
 // TODO Local 'Unlinked' auto connect to Anilist 'About to Watch' (allow custom name to search for)
 // TODO fix back mouse button navigation
-// TODO understand what makes 'scan library' button smooth on rescale
 // TODO add group traversal policies to app
 // TODO detect custom players
 // TODO create autolinker

@@ -18,13 +18,12 @@ class RetryUtils {
 
   /// Retry a function with exponential backoff
   ///
-  /// [operation] - The async function to retry. If [isOfflineAware] is true,
-  ///               the function receives a boolean indicating if the device is offline
-  /// [maxRetries] - Maximum number of retry attempts (default: 3)
-  /// [baseDelay] - Base delay in milliseconds (default: 1000)
-  /// [maxDelay] - Maximum delay in milliseconds (default: 10000)
-  /// [retryIf] - Optional function to determine if an error should trigger a retry
-  /// [isOfflineAware] - If true, the operation receives offline status as parameter
+  /// - [operation] - The async function to retry. If [isOfflineAware] is true, the function receives a boolean indicating if the device is offline
+  /// - [maxRetries] - Maximum number of retry attempts (default: 3)
+  /// - [baseDelay] - Base delay in milliseconds (default: 1000)
+  /// - [maxDelay] - Maximum delay in milliseconds (default: 10000)
+  /// - [retryIf] - Optional function to determine if an error should trigger a retry
+  /// - [isOfflineAware] - If true, the operation receives offline status as parameter
   static Future<T?> retry<T>(
     dynamic operation, {
     int maxRetries = 3,

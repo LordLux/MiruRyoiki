@@ -44,6 +44,7 @@ import '../widgets/tooltip_wrapper.dart';
 import '../widgets/transparency_shadow_image.dart';
 import 'anilist_settings.dart';
 
+@Deprecated('Use SeriesScreen instead')
 class InnerSeriesScreen extends StatefulWidget {
   final VoidCallback onBack; // Callback to go back to the series screen
   final PathString seriesPath; // Parent Series
@@ -62,6 +63,7 @@ class InnerSeriesScreen extends StatefulWidget {
   InnerSeriesScreenState createState() => InnerSeriesScreenState();
 }
 
+@Deprecated('Use SeriesScreenState instead')
 class InnerSeriesScreenState extends State<InnerSeriesScreen> {
   late final SimpleHtmlParser parser;
   final ShrinkerController _descriptionController = ShrinkerController();

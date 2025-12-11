@@ -69,6 +69,34 @@ extension LibrarySeriesManagement on Library {
     notifyListeners();
   }
 
+  Future<void> updateMappingLastSynced(Series series, int anilistId, DateTime lastSynced) async {
+    final mappingIndex = series.anilistMappings.indexWhere((m) => m.anilistId == anilistId);
+    if (mappingIndex == -1) return;
+
+    // Update in memory
+    series.anilistMappings[mappingIndex].lastSynced = lastSynced;
+
+    // Update DB
+    if (series.id != null) await seriesDao.updateMappingLastSynced(series.id!, anilistId, lastSynced);
+
+    // notifyListeners() not needed
+  }
+
+  Future<void> updateMappingAnilistData(Series series, int anilistId, AnilistAnime anilistData, DateTime lastSynced) async {
+    final mappingIndex = series.anilistMappings.indexWhere((m) => m.anilistId == anilistId);
+    if (mappingIndex == -1) return;
+
+    // Update in memory
+    series.anilistMappings[mappingIndex].anilistData = anilistData;
+    series.anilistMappings[mappingIndex].lastSynced = lastSynced;
+
+    // Update DB
+    if (series.id != null) await seriesDao.updateMappingAnilistData(series.id!, anilistId, anilistData, lastSynced);
+
+    _dataVersion++;
+    notifyListeners();
+  }
+
   /// Update the view type for a specific mapping
   Future<void> updateMappingViewType(int anilistId, ViewType viewType) async {
     final seriesIndex = _series.indexWhere((s) => s.anilistMappings.any((m) => m.anilistId == anilistId));

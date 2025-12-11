@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:collection/collection.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/material.dart' as mat;
 import 'package:miruryoiki/widgets/acrylic_header.dart';
@@ -33,8 +34,6 @@ import '../utils/logging.dart';
 import '../utils/retry.dart';
 import '../utils/screen.dart';
 import '../utils/time.dart';
-import '../widgets/fading_edge_scrollview.dart';
-import '../widgets/inverted_border_radius_clipper.dart';
 import '../widgets/page/header_widget.dart';
 import '../widgets/page/infobar.dart';
 import '../widgets/page/page_template.dart';
@@ -50,13 +49,10 @@ import 'package:recase/recase.dart';
 import 'dart:io';
 import '../services/file_system/cache.dart';
 import '../widgets/viewtype_switcher.dart';
-import '../widgets/widget_alpha_mask.dart';
 import 'anilist_settings.dart';
 import '../models/episode.dart';
 import '../widgets/episode_grid.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-
-import 'settings.dart';
 
 /// Duration for which AniList data is considered fresh and doesn't need refetching
 const Duration kAnilistCacheDuration = Duration(days: 1);
@@ -533,138 +529,120 @@ class SeriesScreenState extends State<SeriesScreen> {
     final series = _cachedSeries;
     if (series == null) return;
 
-    // Filter out IDs that were recently synced (within cache duration)
+    // Identify IDs that need fetching
     final currentTime = now;
-    final List<int> idsToFetch = [];
+    final idsToFetch = anilistIDs.where((id) {
+      final mapping = series.anilistMappings.firstWhereOrNull((m) => m.anilistId == id);
+      if (mapping == null) return false;
 
-    // Store the original dominant color to check if it changes after calculating the new one
-    final Color? originalDominantColor = series.effectivePrimaryColorSync();
-    if (originalDominantColor != null) {
-      Manager.currentDominantColor = originalDominantColor;
-      Manager.seriesDominantColor = originalDominantColor;
-    }
+      return force || //
+          mapping.lastSynced == null ||
+          currentTime.difference(mapping.lastSynced!) > kAnilistCacheDuration ||
+          mapping.anilistData?.posterImage == null ||
+          mapping.anilistData?.bannerImage == null;
+    }).toList();
 
-    for (final id in anilistIDs) {
-      final mapping = series.anilistMappings.firstWhere(
-        (m) => m.anilistId == id,
-        orElse: () => series.anilistMappings.first, // fallback, shouldn't happen
-      );
-
-      // Check if this mapping needs to be refreshed
-      if (force || mapping.lastSynced == null || currentTime.difference(mapping.lastSynced!) > kAnilistCacheDuration || mapping.anilistData?.posterImage == null || mapping.anilistData?.bannerImage == null) {
-        idsToFetch.add(id);
-      } else {
-        logTrace('Skipping AniList fetch for ID $id - synced ${currentTime.difference(mapping.lastSynced!).inMinutes} minutes ago');
-      }
-    }
-
-    // If no IDs need fetching, return early
-    if (idsToFetch.isEmpty) {
-      // logTrace('All AniList data is up to date, skipping fetch');
-      return;
-    }
+    if (idsToFetch.isEmpty) return;
 
     logTrace('Fetching AniList data for ${idsToFetch.length} IDs: ${idsToFetch.join(', ')}');
 
     try {
-      final Map<int, AnilistAnime?> anime = await SeriesLinkService().fetchMultipleAnimeDetails(idsToFetch);
+      final Map<int, AnilistAnime?> fetchedData = await SeriesLinkService().fetchMultipleAnimeDetails(idsToFetch);
+      if (!mounted) return;
 
-      bool anyUpdatesOccurred = false;
+      final library = Provider.of<Library>(context, listen: false);
+
+      bool needsFullSave = false;
       bool dominantColorChanged = false;
+      final List<Future<void> Function()> pendingPartialUpdates = [];
 
-      if (mounted) {
-        setState(() {
-          // Process each anime in the map
-          for (final entry in anime.entries) {
-            final anilistId = entry.key;
-            final anilistAnime = entry.value;
+      for (final entry in fetchedData.entries) {
+        final anilistId = entry.key;
+        final anilistAnime = entry.value;
 
-            if (anilistAnime != null) {
-              // Find the mapping with this ID
-              for (var i = 0; i < series.anilistMappings.length; i++) {
-                if (series.anilistMappings[i].anilistId == anilistId) {
-                  final oldMapping = series.anilistMappings[i];
-                  series.anilistMappings[i] = series.anilistMappings[i].copyWith(
-                    anilistId: anilistId,
-                    lastSynced: now,
-                    anilistData: anilistAnime,
-                  );
+        if (anilistAnime == null) {
+          if (ConnectivityService().isOffline) logWarn('Failed to fetch AniList details for ID $anilistId: device is offline');
+          else logErr('Failed to load Anilist data for ID: $anilistId');
+          
+          continue;
+        }
 
-                  // Also update the series.anilistData if this is the primary
-                  if (series.primaryAnilistId == anilistId || series.primaryAnilistId == null) {
-                    series.anilistData = anilistAnime;
-                  }
+        final mapping = series.anilistMappings.firstWhereOrNull((m) => m.anilistId == anilistId);
+        if (mapping == null) continue;
 
-                  anyUpdatesOccurred = oldMapping.anilistData != anilistAnime;
-                  break; // Break after updating the mapping
-                }
-              }
-            } else if (ConnectivityService().isOffline) {
-              logWarn('Failed to fetch AniList details for ID: $anilistId - device is offline');
+        final oldData = mapping.anilistData;
+        final bool isPrimary = series.primaryAnilistId == anilistId || series.primaryAnilistId == null;
+
+        // Update in memory
+        mapping.anilistData = anilistAnime;
+        mapping.lastSynced = currentTime;
+
+        // Check for image changes | non primary mappings use updateMappingAnilistData whose update includes the new images
+        if (isPrimary && (oldData?.posterImage != anilistAnime.posterImage || oldData?.bannerImage != anilistAnime.bannerImage)) //
+          needsFullSave = true;
+
+        // Check for dominant color changes
+        if (isPrimary) {
+          final oldColor = Manager.currentDominantColor;
+          // Force recalculate because mapping data changed
+          final newColor = await series.effectivePrimaryColor(forceRecalculate: true);
+
+          if (oldColor?.value != newColor?.value) {
+            dominantColorChanged = true;
+            needsFullSave = true;
+
+            if (!isMappingMode) {
+              // In series mode, update both current and series dominant colors
+              Manager.currentDominantColor = newColor;
+              Manager.seriesDominantColor = newColor;
             } else {
-              logErr('Failed to load Anilist data for ID: $anilistId');
+              // In mapping mode, only update seriesDominantColor
+              Manager.seriesDominantColor = newColor;
             }
           }
-        });
+        }
+
+        // Queue partial update if 
+        if (!needsFullSave) {
+          if (oldData != anilistAnime)
+            pendingPartialUpdates.add(() => library.updateMappingAnilistData(series, anilistId, anilistAnime, currentTime));
+          else
+            pendingPartialUpdates.add(() => library.updateMappingLastSynced(series, anilistId, currentTime));
+        }
       }
 
-      // Update dominant color if any updates occurred
-      if (anyUpdatesOccurred) {
-        final dominantColor = await series.effectivePrimaryColor(forceRecalculate: true);
-        if (dominantColor != null) {
-          Manager.seriesDominantColor = dominantColor;
-          if (!isMappingMode) Manager.currentDominantColor = dominantColor;
+      if (needsFullSave) {
+        Series seriesToSave = series;
+        final primaryMapping = series.anilistMappings.firstWhereOrNull((m) => m.anilistId == series.primaryAnilistId);
+
+        if (primaryMapping?.anilistData != null) {
+          seriesToSave = series.copyWith(
+            anilistPoster: primaryMapping!.anilistData!.posterImage,
+            anilistBanner: primaryMapping.anilistData!.bannerImage,
+          );
         }
 
-        if (!mounted || _cachedSeries == null) {
-          // in case series was disposed during the async operation
-          logTrace('Series disposed before updating dominant color');
-          return;
-        }
+        await library.updateSeriesMappings(seriesToSave, seriesToSave.anilistMappings);
+        await library.updateSeries(seriesToSave, invalidateCache: false);
+        logTrace('Performed full series update due to image/color changes.');
+      } else {
+        // Execute partial updates
+        await Future.wait(pendingPartialUpdates.map((update) => update()));
+        if (pendingPartialUpdates.isNotEmpty) logTrace('Performed ${pendingPartialUpdates.length} partial updates.');
+      }
 
-        if (!isMappingMode) Manager.setState(() => Manager.currentDominantColor = dominantColor);
-
-        // Check if dominant color changed
-        dominantColorChanged = originalDominantColor?.value != series.effectivePrimaryColorSync()?.value;
-
+      // Finalize UI
+      if (dominantColorChanged) {
         _loadColors();
         Manager.setState();
       }
 
-      // Save if any updates occurred (mappings or dominant color changed)
-      if (anyUpdatesOccurred || dominantColorChanged) {
-        // Save the updated series to the library
-        final BuildContext? ctx;
-        if (mounted)
-          ctx = context;
-        else
-          ctx = rootNavigatorKey.currentContext;
+      if (libraryScreenKey.currentState != null) libraryScreenKey.currentState!.updateSeriesInSortCache(series);
+      
 
-        if (ctx != null && ctx.mounted) {
-          try {
-            final library = Provider.of<Library>(ctx, listen: false);
-
-            // Update the series mappings with the new AnilistData
-            await library.updateSeriesMappings(series, series.anilistMappings);
-
-            // Also update the series
-            await library.updateSeries(series, invalidateCache: false);
-
-            if (libraryScreenKey.currentState != null) libraryScreenKey.currentState!.updateSeriesInSortCache(series);
-
-            logTrace('Updated ${anyUpdatesOccurred ? 'mappings' : ''}${anyUpdatesOccurred && dominantColorChanged ? ' and ' : ''}${dominantColorChanged ? 'dominant color' : ''}, saved to library');
-          } catch (e) {
-            logErr('Error updating series: $e');
-          }
-        }
-      }
+      if (mounted) setState(() {});
     } catch (e) {
-      // Check if it's an expected offline error
-      if (!RetryUtils.isExpectedOfflineError(e)) {
-        logErr('Failed to load Anilist data for multiple IDs: ${anilistIDs.join(', ')}', e);
-      } else {
-        logDebug('Skipping Anilist data fetch - device is offline');
-      }
+      if (!RetryUtils.isExpectedOfflineError(e)) logErr('Failed to load Anilist data', e);
     }
   }
 
