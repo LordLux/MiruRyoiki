@@ -50,7 +50,7 @@ class NavigationManager extends ChangeNotifier {
     HomeIndex: {'id': 'home', 'title': 'Home', 'controller': null},
     LibraryIndex: {'id': 'library', 'title': 'Library', 'controller': null},
     CalendarIndex: {'id': 'calendar', 'title': 'Releases', 'controller': null},
-    SearchIndex: {'id': 'search', 'title': 'Search', 'controller': null},
+    BrowseIndex: {'id': 'search', 'title': 'Search', 'controller': null},
     TorrentIndex: {'id': 'torrent', 'title': 'Torrent', 'controller': null},
     AccountsIndex: {'id': 'accounts', 'title': 'Account', 'controller': null},
     SettingsIndex: {'id': 'settings', 'title': 'Settings', 'controller': null},
@@ -59,7 +59,7 @@ class NavigationManager extends ChangeNotifier {
   static Map<String, dynamic> get HomeMap => _navigationMap[HomeIndex]!;
   static Map<String, dynamic> get LibraryMap => _navigationMap[LibraryIndex]!;
   static Map<String, dynamic> get CalendarMap => _navigationMap[CalendarIndex]!;
-  static Map<String, dynamic> get SearchMap => _navigationMap[SearchIndex]!;
+  static Map<String, dynamic> get SearchMap => _navigationMap[BrowseIndex]!;
   static Map<String, dynamic> get TorrentMap => _navigationMap[TorrentIndex]!;
   static Map<String, dynamic> get AccountsMap => _navigationMap[AccountsIndex]!;
   static Map<String, dynamic> get SettingsMap => _navigationMap[SettingsIndex]!;
@@ -67,7 +67,7 @@ class NavigationManager extends ChangeNotifier {
   static const int HomeIndex = 0;
   static const int LibraryIndex = 1;
   static const int CalendarIndex = 2;
-  static const int SearchIndex = 3;
+  static const int BrowseIndex = 3;
   static const int TorrentIndex = 4;
   static const int AccountsIndex = 5;
   static const int SettingsIndex = 6;

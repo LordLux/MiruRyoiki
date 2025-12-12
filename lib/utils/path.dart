@@ -123,9 +123,17 @@ class PathString {
 }
 
 String get assets => "${(Platform.resolvedExecutable.split(ps)..removeLast()).join(ps)}${ps}data${ps}flutter_assets${ps}assets";
-String get iconPath => '$assets${ps}system${ps}icon.ico';
-String get iconPng => '$assets${ps}system${ps}icon.png';
 String get ps => Platform.pathSeparator;
+
+String iconPathSize(String size) => '$assets${ps}system${ps}icon$size.ico';
+String get iconPath => iconPathSize('');
+String get iconPath32 => iconPathSize('32');
+String get iconPath48 => iconPathSize('48');
+String get iconPath64 => iconPathSize('64');
+String get iconPath156 => iconPathSize('156');
+
+String iconPngSize(String size) => '$assets${ps}system${ps}icon$size.png';
+String get iconPng => iconPngSize('');
 
 String? _miruRyoiokiSaveDirectoryPath;
 

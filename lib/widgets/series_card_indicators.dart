@@ -3,6 +3,7 @@ import 'package:miruryoiki/utils/screen.dart';
 import 'package:miruryoiki/utils/time.dart';
 
 import '../manager.dart';
+import '../models/anilist/anime.dart';
 import '../models/series.dart';
 import 'hidden.dart';
 
@@ -35,7 +36,7 @@ class CardIndicators extends StatelessWidget {
         child: LayoutBuilder(builder: (context, constraints) {
           final indicatorSize = (isListView ? 28.0 : 25.0) * Manager.fontSizeMultiplier;
           final padding = 6.0;
-      
+
           return Directionality(
             textDirection: TextDirection.rtl,
             child: isListView
@@ -76,7 +77,7 @@ class CardIndicators extends StatelessWidget {
 }
 
 class AiringIndicator extends StatefulWidget {
-  final Series series;
+  final dynamic series;
   final bool isHovered;
 
   const AiringIndicator({
@@ -92,9 +93,23 @@ class AiringIndicator extends StatefulWidget {
 class _AiringIndicatorState extends State<AiringIndicator> {
   @override
   Widget build(BuildContext context) {
-    final bool isAiring = widget.series.anilistMappings.any((mapping) => mapping.anilistData?.status == 'RELEASING');
-    final bool isUpcoming = widget.series.anilistMappings.any((mapping) => mapping.anilistData?.status == 'NOT_YET_RELEASED');
-    final bool isLocal = !widget.series.isLinked;
+    assert(widget.series is Series || widget.series is AnilistAnime);
+
+    final bool isAiring;
+    final bool isUpcoming;
+    final bool isLocal;
+
+    if (widget.series is Series) {
+      isAiring = widget.series.anilistMappings.any((mapping) => mapping.anilistData?.status == 'RELEASING');
+      isUpcoming = widget.series.anilistMappings.any((mapping) => mapping.anilistData?.status == 'NOT_YET_RELEASED');
+      isLocal = !widget.series.isLinked;
+    } else {
+      widget.series as AnilistAnime;
+      isAiring = widget.series.status == 'RELEASING';
+      isUpcoming = widget.series.status == 'NOT_YET_RELEASED';
+      isLocal = false;
+    }
+
     final double size = 12 * Manager.fontSizeMultiplier;
     double expanded = 0;
     Color color = Colors.transparent;

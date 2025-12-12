@@ -6,6 +6,7 @@ import 'package:http/http.dart';
 import 'package:provider/provider.dart';
 import '../../../../models/anilist/anime.dart';
 import '../../../../models/anilist/user_list.dart';
+import '../../../../models/anilist/page_info.dart';
 import '../../../main.dart';
 import '../../../manager.dart';
 import '../../../models/anilist/user_data.dart';
@@ -27,6 +28,7 @@ part 'user.dart';
 part 'anime_details.dart';
 part 'genres.dart';
 part 'mutations.dart';
+part 'browse.dart';
 part '../notifications_service.dart';
 
 class AnilistService {

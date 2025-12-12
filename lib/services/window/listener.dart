@@ -45,7 +45,7 @@ class MyWindowListener extends WindowListener with TrayListener {
   void update() => nextFrame(() => Manager.setState());
 
   Future<void> initSystemTray() async {
-    await trayManager.setIcon(Platform.isWindows ? iconPath : iconPng);
+    await trayManager.setIcon(Platform.isWindows ? iconPath32 : iconPng);
     await trayManager.setToolTip('MiruRyoiki');
 
     Menu menu = Menu(
@@ -134,7 +134,7 @@ class MyWindowListener extends WindowListener with TrayListener {
       case NavigateReleasesMenuKey:
         navigateToMenuKey(NavigationManager.CalendarIndex);
       case NavigateBrowseMenuKey:
-        navigateToMenuKey(NavigationManager.SearchIndex);
+        navigateToMenuKey(NavigationManager.BrowseIndex);
       case NavigateTorrentMenuKey:
         navigateToMenuKey(NavigationManager.TorrentIndex);
       case NavigateAccountMenuKey:

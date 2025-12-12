@@ -30,6 +30,7 @@ import 'screens/home.dart';
 import 'screens/release_calendar.dart';
 import 'services/isolates/thumbnail_manager.dart';
 import 'widgets/dialogs/splash/progress.dart';
+import 'widgets/reassemble_widget.dart';
 import 'widgets/sidebar_opener_detector.dart';
 import 'widgets/player.dart';
 import 'widgets/release_notification.dart';
@@ -75,7 +76,6 @@ final GlobalKey<SeriesScreenContainerState> seriesScreenContainerKey = GlobalKey
 final GlobalKey<LibraryScreenState> libraryScreenKey = GlobalKey<LibraryScreenState>();
 final GlobalKey<ReleaseCalendarScreenState> releaseCalendarScreenKey = GlobalKey<ReleaseCalendarScreenState>();
 final GlobalKey<DownloadsScreenState> torrentScreenKey = GlobalKey<DownloadsScreenState>();
-final GlobalKey<SearchScreenState> searchScreenKey = GlobalKey<SearchScreenState>();
 final GlobalKey<AccountsScreenState> accountsKey = GlobalKey<AccountsScreenState>();
 
 final GlobalKey<State<StatefulWidget>> paletteOverlayKey = GlobalKey<State<StatefulWidget>>();
@@ -153,16 +153,21 @@ void main(List<String> args) async {
 
   // Run the app
   runApp(
-    MultiProvider(
-      providers: [
-        ChangeNotifierProvider(create: (_) => Library(_settings, db), lazy: false),
-        ChangeNotifierProvider(create: (_) => ConnectivityService(), lazy: false),
-        ChangeNotifierProvider(create: (_) => AnilistProvider()),
-        ChangeNotifierProvider.value(value: _appTheme),
-        ChangeNotifierProvider.value(value: _settings),
-        ChangeNotifierProvider.value(value: _navigationManager),
-      ],
-      child: const MyApp(),
+    ReassembleListener(
+      onReassemble: () {
+        logInfo('Hot restart detected - reinitializing settings and themes.');
+      },
+      child: MultiProvider(
+        providers: [
+          ChangeNotifierProvider(create: (_) => Library(_settings, db), lazy: false),
+          ChangeNotifierProvider(create: (_) => ConnectivityService(), lazy: false),
+          ChangeNotifierProvider(create: (_) => AnilistProvider()),
+          ChangeNotifierProvider.value(value: _appTheme),
+          ChangeNotifierProvider.value(value: _settings),
+          ChangeNotifierProvider.value(value: _navigationManager),
+        ],
+        child: const MyApp(),
+      ),
     ),
   );
 }
@@ -456,7 +461,7 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
     NavigationManager.setScrollController(NavigationManager.HomeIndex, homeController);
     NavigationManager.setScrollController(NavigationManager.LibraryIndex, libraryController);
     NavigationManager.setScrollController(NavigationManager.CalendarIndex, calendarController);
-    NavigationManager.setScrollController(NavigationManager.SearchIndex, searchController);
+    NavigationManager.setScrollController(NavigationManager.BrowseIndex, searchController);
     NavigationManager.setScrollController(NavigationManager.TorrentIndex, torrentController);
     NavigationManager.setScrollController(NavigationManager.AccountsIndex, accountsController);
     NavigationManager.setScrollController(NavigationManager.SettingsIndex, settingsController);
@@ -614,11 +619,11 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
                               ),
                             ),
                             buildPaneItem(
-                              NavigationManager.SearchIndex,
+                              NavigationManager.BrowseIndex,
                               icon: movedPaneItemIcon(const Icon(FluentIcons.search)),
-                              body: SearchScreen(
-                                key: searchScreenKey,
-                                scrollController: NavigationManager.getScrollController(NavigationManager.SearchIndex),
+                              body: BrowseScreen(
+                                key: browseScreenKey,
+                                scrollController: NavigationManager.getScrollController(NavigationManager.BrowseIndex),
                               ),
                             ),
                             buildPaneItem(
@@ -791,7 +796,7 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
       );
     }
 
-    final bool isEnabled = !((id == NavigationManager.CalendarIndex || id == NavigationManager.SearchIndex || id == NavigationManager.TorrentIndex) && !anilistProvider.isLoggedIn);
+    final bool isEnabled = !((id == NavigationManager.CalendarIndex || id == NavigationManager.BrowseIndex || id == NavigationManager.TorrentIndex) && !anilistProvider.isLoggedIn);
 
     return PaneItem(
       enabled: isEnabled,
@@ -837,7 +842,7 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
                               child: Transform.translate(
                                 offset: const Offset(2.5, 2),
                                 child: Image.file(
-                                  File(iconPath),
+                                  File(iconPath32),
                                   width: 19,
                                   height: 19,
                                   errorBuilder: (_, __, ___) => Icon(Symbols.animated_images, size: 19),
@@ -1164,13 +1169,7 @@ Future<void> _initializeSplashScreenWindow() async {
   });
 }
 
-void setIcon() async {
-  if (await File(iconPath).exists()) {
-    await windowManager.setIcon(iconPath);
-  } else {
-    logDebug('Icon file does not exist: $iconPath');
-  }
-}
+void setIcon() async => await windowManager.setIcon(iconPath);
 
 void _ensureSingleInstance() async {
   if (!(await FlutterSingleInstance().isFirstInstance())) {

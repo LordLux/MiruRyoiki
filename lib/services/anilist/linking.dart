@@ -12,7 +12,7 @@ class SeriesLinkService {
   Future<List<AnilistAnime>> findMatchesByName(Series series) async {
     // Clean up the series name to improve matching
     final searchQuery = _cleanSeriesName(series.name);
-    return await _anilistService.searchAnime(searchQuery);
+    return await _anilistService.searchAnimeMatch(searchQuery);
   }
 
   Future<AnilistAnime?> fetchAnimeDetails(int anilistId) async {

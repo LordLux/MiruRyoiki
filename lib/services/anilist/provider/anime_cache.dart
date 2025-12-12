@@ -28,7 +28,7 @@ extension AnilistProviderAnimeCache on AnilistProvider {
 
   /// Search for anime by title
   Future<List<AnilistAnime>> searchAnime(String query) async {
-    final results = await _anilistService.searchAnime(query);
+    final results = await _anilistService.searchAnimeMatch(query);
 
     // Cache results
     for (final anime in results) {

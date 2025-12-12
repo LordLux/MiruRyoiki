@@ -197,7 +197,7 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
       content: AnimatedBuilder(
         animation: Listenable.merge([_splashOpacityController, _backdropFadeController]),
         builder: (context, child) {
-          final double size = 160;
+          final double size = 156;
           return Stack(
             alignment: Alignment.center,
             children: [
@@ -215,7 +215,7 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
                       width: size,
                       height: size,
                       child: Image.file(
-                        File(iconPath),
+                        File(iconPath156),
                         fit: BoxFit.cover,
                         width: size,
                         height: size,

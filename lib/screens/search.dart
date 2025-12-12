@@ -1,27 +1,152 @@
 import 'dart:math' show min;
 import 'dart:ui';
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:defer_pointer/defer_pointer.dart';
 import 'package:fluent_ui/fluent_ui.dart' hide Colors;
 import 'package:flutter/material.dart' hide TextBox;
 import 'package:miruryoiki/utils/text.dart';
 import 'package:provider/provider.dart';
 
+import '../services/anilist/queries/anilist_service.dart';
+import '../models/anilist/anime.dart';
+import '../models/anilist/page_info.dart';
 import '../services/library/library_provider.dart';
 import '../services/anilist/provider/anilist_provider.dart';
+import '../services/navigation/navigation.dart';
 import '../settings.dart';
 import '../manager.dart';
 import '../utils/screen.dart';
 import '../utils/time.dart';
 import '../widgets/buttons/button.dart';
 import '../widgets/page/search_template.dart';
+import 'search_results.dart';
+
+final GlobalKey<_BrowseScreenState> browseScreenKey = GlobalKey<_BrowseScreenState>();
+
+class BrowseScreen extends StatefulWidget {
+  final ScrollController scrollController;
+
+  const BrowseScreen({super.key, required this.scrollController});
+
+  @override
+  State<BrowseScreen> createState() => _BrowseScreenState();
+}
+
+class _BrowseScreenState extends State<BrowseScreen> {
+  // Navigation state
+  bool _isSearchResultsVisible = false;
+  bool _isFinishedTransitioningToResults = false;
+  bool _isFinishedTransitioningToBrowse = true;
+  
+  // Search Results state
+  String _searchQueryType = '';
+  String _searchTitle = '';
+  String? _searchQuery;
+  Map<String, dynamic>? _searchFilters;
+
+  void _showSearchResults({
+    required String queryType,
+    required String title,
+    String? searchQuery,
+    Map<String, dynamic>? filters,
+  }) {
+    final navigator = Provider.of<NavigationManager>(context, listen: false);
+    navigator.pushPage("search_results:$queryType", title);
+    
+    setState(() {
+      _searchQueryType = queryType;
+      _searchTitle = title;
+      _searchQuery = searchQuery;
+      _searchFilters = filters;
+      _isSearchResultsVisible = true;
+      _isFinishedTransitioningToBrowse = false;
+    });
+  }
+
+  void _hideSearchResults() {
+    final navigator = Provider.of<NavigationManager>(context, listen: false);
+    navigator.goBack();
+    
+    setState(() {
+      _isSearchResultsVisible = false;
+      _isFinishedTransitioningToResults = false;
+    });
+  }
+
+  void _onEndTransition() {
+    setState(() {
+      if (_isSearchResultsVisible) {
+        _isFinishedTransitioningToResults = true;
+      } else {
+        _isFinishedTransitioningToBrowse = true;
+        _isFinishedTransitioningToResults = false;
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        // Main Dashboard
+        Offstage(
+          offstage: _isSearchResultsVisible && _isFinishedTransitioningToResults,
+          child: AnimatedOpacity(
+            duration: mediumDuration,
+            opacity: _isSearchResultsVisible ? 0.0 : 1.0,
+            curve: Curves.ease,
+            child: AbsorbPointer(
+              absorbing: _isSearchResultsVisible,
+              child: SearchScreen(
+                scrollController: widget.scrollController,
+                onShowSearchResults: _showSearchResults,
+              ),
+            ),
+          ),
+        ),
+
+        // Search Results
+        IgnorePointer(
+          ignoring: !_isSearchResultsVisible,
+          child: AbsorbPointer(
+            absorbing: !_isSearchResultsVisible,
+            child: AnimatedOpacity(
+              duration: mediumDuration,
+              opacity: _isSearchResultsVisible ? 1.0 : 0.0,
+              curve: Curves.ease,
+              onEnd: _onEndTransition,
+              child: _isFinishedTransitioningToBrowse
+                  ? const SizedBox.shrink()
+                  : SearchResultsScreen(
+                      queryType: _searchQueryType,
+                      title: _searchTitle,
+                      searchQuery: _searchQuery,
+                      filters: _searchFilters,
+                      onBack: _hideSearchResults,
+                      onSeriesOpen: (_) {}, //TODO
+                    ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
 
 class SearchScreen extends StatefulWidget {
   final ScrollController scrollController;
+  final Function({
+    required String queryType,
+    required String title,
+    String? searchQuery,
+    Map<String, dynamic>? filters,
+  }) onShowSearchResults;
 
   const SearchScreen({
     super.key,
     required this.scrollController,
+    required this.onShowSearchResults,
   });
 
   @override
@@ -64,7 +189,6 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
     super.build(context); // for AutomaticKeepAliveClientMixin
 
     final library = Provider.of<Library>(context);
-
     final settings = Provider.of<SettingsManager>(context);
 
     // detect when user scrolls upwards (print up) or downwards (print down)
@@ -107,6 +231,15 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
                     ),
                   ),
                   placeholder: 'Search...',
+                  onSubmitted: (value) {
+                    if (value.isNotEmpty) {
+                      widget.onShowSearchResults(
+                        queryType: 'search',
+                        title: 'Search Results: $value',
+                        searchQuery: value,
+                      );
+                    }
+                  },
                   onChanged: (value) {
                     // Handle search input changes
                   },
@@ -137,7 +270,7 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
   Widget _buildContent(Library library, SettingsManager settings) {
     return Consumer<AnilistProvider>(
       builder: (context, anilistProvider, _) {
-        return AnimeContentDashboard();
+        return AnimeContentDashboard(onShowSearchResults: widget.onShowSearchResults);
       },
     );
   }
@@ -255,30 +388,38 @@ class _AnimeFilterHeaderState extends State<AnimeFilterHeader> {
 }
 
 class AnimeContentDashboard extends StatefulWidget {
-  const AnimeContentDashboard({super.key});
+  final Function({
+    required String queryType,
+    required String title,
+    String? searchQuery,
+    Map<String, dynamic>? filters,
+  }) onShowSearchResults;
+
+  const AnimeContentDashboard({super.key, required this.onShowSearchResults});
 
   @override
   State<AnimeContentDashboard> createState() => _AnimeContentDashboardState();
 }
 
 class _AnimeContentDashboardState extends State<AnimeContentDashboard> {
-  // Mock Data
-  final List<Map<String, dynamic>> _trendingAnime = [
-    {'title': 'My Gift Lvl 9999', 'color': Colors.blueAccent},
-    {'title': 'May I Ask for One Final Thing?', 'color': Colors.redAccent},
-    {'title': 'SANDA', 'color': Colors.teal},
-    {'title': 'TOUGEN ANKI', 'color': Colors.orangeAccent},
-    {'title': 'Gachiakuta', 'color': Colors.purpleAccent},
-    {'title': 'ONE PIECE', 'color': Colors.amber},
-  ];
+  late Future<AnilistSearchPage<AnilistAnime>?> _trendingFuture;
+  late Future<AnilistSearchPage<AnilistAnime>?> _popularFuture;
+  late Future<AnilistSearchPage<AnilistAnime>?> _upcomingFuture;
+  late Future<AnilistSearchPage<AnilistAnime>?> _top100Future;
 
-  final List<Map<String, dynamic>> _popularAnime = [
-    {'title': 'One-Punch Man', 'color': Colors.yellow},
-    {'title': 'SPY x FAMILY', 'color': Colors.pinkAccent},
-    {'title': 'My Hero Academia', 'color': Colors.greenAccent},
-    {'title': 'Assassin Status', 'color': Colors.indigoAccent},
-    {'title': 'To Your Eternity', 'color': Colors.brown},
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _fetchData();
+  }
+
+  void _fetchData() {
+    final service = AnilistService();
+    _trendingFuture = service.getTrendingNow();
+    _popularFuture = service.getPopularThisSeason();
+    _upcomingFuture = service.getUpcomingNextSeason();
+    _top100Future = service.getTop100Anime();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -289,24 +430,13 @@ class _AnimeContentDashboardState extends State<AnimeContentDashboard> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildSectionHeader("TRENDING NOW"),
-            _buildHorizontalList(_trendingAnime),
-
+            _buildSection("TRENDING NOW", _trendingFuture, 'trending'),
             const SizedBox(height: 30),
-
-            _buildSectionHeader("POPULAR THIS SEASON"),
-            _buildHorizontalList(_popularAnime),
-
+            _buildSection("POPULAR THIS SEASON", _popularFuture, 'popular'),
             const SizedBox(height: 30),
-
-            _buildSectionHeader("UPCOMING NEXT SEASON"),
-            _buildHorizontalList(_trendingAnime.reversed.toList()), // Reusing list for mock
-
+            _buildSection("UPCOMING NEXT SEASON", _upcomingFuture, 'upcoming'),
             const SizedBox(height: 30),
-
-            _buildSectionHeader("FEDE MEGA GAY"),
-            _buildHorizontalList(_popularAnime.reversed.toList()), // Reusing list for mock
-
+            _buildSection("TOP 100 ANIME", _top100Future, 'top100'),
             const SizedBox(height: 50), // Bottom padding
           ],
         ),
@@ -314,7 +444,66 @@ class _AnimeContentDashboardState extends State<AnimeContentDashboard> {
     );
   }
 
-  Widget _buildSectionHeader(String title) {
+  Widget _buildSection(String title, Future<AnilistSearchPage<AnilistAnime>?> future, String type) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSectionHeader(title, type),
+        SizedBox(
+          height: 240,
+          child: FutureBuilder<AnilistSearchPage<AnilistAnime>?>(
+            future: future,
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) 
+                return const Center(child: ProgressRing());
+              
+
+              String? error;
+              if (snapshot.hasError) {
+                error = 'Error: ${snapshot.error}';
+              } else if (snapshot.connectionState == ConnectionState.done && snapshot.data == null) {
+                error = 'Failed to load data';
+              }
+
+              if (error != null) {
+                return Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(error, style: const TextStyle(color: Colors.red)),
+                      const SizedBox(height: 8),
+                      Button(
+                        onPressed: () => setState(() => _fetchData()),
+                        child: const Text('Retry'),
+                      ),
+                    ],
+                  ),
+                );
+              }
+
+              final mediaList = snapshot.data?.results ?? [];
+
+              if (mediaList.isEmpty) {
+                return const Center(child: Text('No anime found'));
+              }
+
+              return ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: mediaList.length,
+                separatorBuilder: (_, __) => const SizedBox(width: 16),
+                itemBuilder: (context, index) {
+                  final item = mediaList[index];
+                  return _buildAnimeCard(item);
+                },
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSectionHeader(String title, String type) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16.0),
       child: Row(
@@ -329,12 +518,20 @@ class _AnimeContentDashboardState extends State<AnimeContentDashboard> {
               letterSpacing: 0.5,
             ),
           ),
-          const Text(
-            "View All",
-            style: TextStyle(
-              color: Colors.grey,
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
+          GestureDetector(
+            onTap: () {
+              widget.onShowSearchResults(
+                queryType: type,
+                title: title,
+              );
+            },
+            child: const Text(
+              "View All",
+              style: TextStyle(
+                color: Colors.grey,
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+              ),
             ),
           ),
         ],
@@ -342,22 +539,12 @@ class _AnimeContentDashboardState extends State<AnimeContentDashboard> {
     );
   }
 
-  Widget _buildHorizontalList(List<Map<String, dynamic>> data) {
-    return SizedBox(
-      height: 240, // Height for Image + Text
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        itemCount: data.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 16),
-        itemBuilder: (context, index) {
-          final item = data[index];
-          return _buildAnimeCard(item['title'], item['color']);
-        },
-      ),
-    );
-  }
+  Widget _buildAnimeCard(AnilistAnime anime) {
+    final title = anime.title.userPreferred ?? 'Unknown Title';
+    final coverImage = anime.posterImage ?? '';
+    final colorHex = anime.dominantColor;
+    final color = colorHex != null ? (Color(int.parse(colorHex.substring(1), radix: 16) + 0xFF000000)) : Colors.blue;
 
-  Widget _buildAnimeCard(String title, Color mockColor) {
     return SizedBox(
       width: 140,
       child: Column(
@@ -368,30 +555,37 @@ class _AnimeContentDashboardState extends State<AnimeContentDashboard> {
             child: Container(
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(6),
-                // Using a gradient to mock an image
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [mockColor.withOpacity(0.6), mockColor],
-                ),
+                color: const Color(0xFF1B222C),
               ),
+              clipBehavior: Clip.antiAlias,
               child: Stack(
+                fit: StackFit.expand,
                 children: [
-                  // Mock content inside image
-                  Center(
-                    child: Icon(Icons.image, color: Colors.white.withOpacity(0.5), size: 40),
-                  ),
-                  // Mock "Tag" (like the blue dot in the screenshot)
-                  if (title.length % 2 == 0)
+                  if (coverImage.isNotEmpty)
+                    CachedNetworkImage(
+                      imageUrl: coverImage,
+                      fit: BoxFit.cover,
+                      placeholder: (context, url) => Container(color: const Color(0xFF1B222C)),
+                      errorWidget: (context, url, error) => const Icon(Icons.error),
+                    ),
+                  // "Tag" (like the blue dot in the screenshot) - maybe use status or something?
+                  if (anime.status == 'RELEASING')
                     Positioned(
                       top: 8,
                       left: 8,
                       child: Container(
                         width: 8,
                         height: 8,
-                        decoration: const BoxDecoration(
-                          color: Colors.lightBlueAccent,
+                        decoration: BoxDecoration(
+                          color: color,
                           shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: color.withOpacity(0.5),
+                              blurRadius: 4,
+                              spreadRadius: 1,
+                            ),
+                          ],
                         ),
                       ),
                     ),
