@@ -16,6 +16,7 @@ import 'package:system_theme/system_theme.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:bitsdojo_window/bitsdojo_window.dart';
 import 'package:window_manager/window_manager.dart';
+import 'package:tray_manager/tray_manager.dart';
 import 'package:flutter_single_instance/flutter_single_instance.dart';
 import 'package:material_symbols_icons/material_symbols_icons.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -431,9 +432,9 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
   set setCompactView(bool value) => setState(() => _isCompactView = value);
   bool get isCompactView => _isCompactView;
 
-  void openSettings() => _onChangedPane(NavigationManager.SettingsIndex);
+  void openSettings() => onChangedPane(NavigationManager.SettingsIndex);
 
-  void _onChangedPane(int index) {
+  void onChangedPane(int index) {
     setState(() {
       _selectedIndex = index;
       lastSelectedSeriesPath = _selectedSeriesPath;
@@ -445,20 +446,7 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
       // Reset scroll when directly navigating to library
       _resetScrollPosition(index);
 
-      // Clear everything before adding a new pane
-      Manager.navigation.clearStack();
-
-      // Register the selected pane
-      final item = NavigationManager.getPane(index)!;
-      Manager.navigation.pushPane(item['id'], item['title']);
-
-      if (index == NavigationManager.CalendarIndex) {
-        nextFrame(() {
-          // releaseCalendarScreenKey.currentState?.scrollToToday(animated: false);
-          // Refresh notifications and release data when navigating to calendar
-          releaseCalendarScreenKey.currentState?.loadReleaseData();
-        });
-      }
+      Manager.navigation.pushPaneIndex(index);
     });
   }
 
@@ -478,10 +466,7 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
       scrollController: NavigationManager.getScrollController(NavigationManager.LibraryIndex),
     );
 
-    nextFrame(() async {
-      final pane = NavigationManager.getPane(NavigationManager.HomeIndex)!;
-      Manager.navigation.pushPane(pane['id'], pane['title']);
-    });
+    nextFrame(() async => Manager.navigation.pushPaneIndex(NavigationManager.HomeIndex));
   }
 
   @override
@@ -560,7 +545,7 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
                               releaseCalendarScreenKey.currentState?.focusToday();
                             }
                           },
-                          onChanged: _onChangedPane,
+                          onChanged: onChangedPane,
                           displayMode: _isCompactView ? PaneDisplayMode.compact : PaneDisplayMode.auto,
                           indicator: AnimatedNavigationIndicator(
                             targetColor: Manager.currentDominantColor ?? Manager.accentColor,
@@ -917,8 +902,7 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
 
                                           final navManager = Manager.navigation;
 
-                                          final item = NavigationManager.getPane(NavigationManager.CalendarIndex)!;
-                                          navManager.pushPane(item['id'], item['title']);
+                                          navManager.pushPaneIndex(NavigationManager.CalendarIndex);
                                         });
 
                                         // Refresh the release calendar after navigation
@@ -966,9 +950,7 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
         final navManager = Provider.of<NavigationManager>(context, listen: false);
         navManager.clearStack();
 
-        // Register the library pane
-        final item = NavigationManager.getPane(NavigationManager.LibraryIndex)!;
-        navManager.pushPane(item['id'], item['title']);
+        navManager.pushPaneIndex(NavigationManager.LibraryIndex);
       });
 
       // Small delay to allow UI to update to library pane first
@@ -1162,7 +1144,10 @@ Future<void> _initializeSplashScreenWindow() async {
   );
 
   windowManager.waitUntilReadyToShow(windowOptions, () async {
-    windowManager.addListener(MyWindowListener());
+    final listener = MyWindowListener();
+    windowManager.addListener(listener);
+    trayManager.addListener(listener);
+    await listener.initSystemTray();
     await windowManager.setPreventClose(true);
     await windowManager.setSkipTaskbar(false);
     await windowManager.setTitleBarStyle(TitleBarStyle.hidden, windowButtonVisibility: false);
@@ -1254,7 +1239,6 @@ Future<void> _registerWindowsUrlScheme(String scheme) async {
 
 // TODO fix library scanning that keeps finding the same files every time even though they were already there
 // TODO change scanning: any folders [names] will remain as is and only loose files will be moved to 'Related Media'
-
 
 // beta
 // TODO after linking anilist, fetch episode titles for neolinked series

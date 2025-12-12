@@ -56,8 +56,8 @@ class _WindowCaptionState extends State<WindowCaption> with WindowListener {
 
   @override
   void initState() {
-    windowManager.addListener(this);
     super.initState();
+    windowManager.addListener(this);
   }
 
   @override
@@ -203,18 +203,10 @@ class _WindowCaptionState extends State<WindowCaption> with WindowListener {
   }
 
   @override
-  void onWindowMaximize() {
-    WindowStateService.saveWindowState();
-    WindowStateService.toggleFullScreen(false);
-    setState(() {});
-  }
+  void onWindowMaximize() => setState(() {});
 
   @override
-  void onWindowUnmaximize() {
-    WindowStateService.saveWindowState();
-    WindowStateService.toggleFullScreen(false);
-    setState(() {});
-  }
+  void onWindowUnmaximize() => setState(() {});
 }
 
 class WindowCaptionButtonFullScreen extends StatefulWidget {

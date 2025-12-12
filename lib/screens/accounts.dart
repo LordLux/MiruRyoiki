@@ -112,7 +112,7 @@ class AccountsScreenState extends State<AccountsScreen> with AutomaticKeepAliveC
                     severity: InfoBarSeverity.info,
                   );
                 },
-                text: anilistProvider.currentUser?.name.titleCase,
+                text: anilistProvider.currentUser?.name,
                 style: style,
                 iconColor: Manager.accentColor.darkest.lerpWith(Colors.white, 0.8),
                 icon: Row(

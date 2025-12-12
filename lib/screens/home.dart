@@ -677,7 +677,7 @@ class WelcomeWidget extends StatelessWidget {
                   ).createShader(bounds);
                 },
                 child: Text(
-                  userName.titleCase,
+                  userName,
                   style: FluentTheme.of(context).typography.title,
                 ),
               ),

@@ -174,7 +174,7 @@ Future<T?> showSimpleTickboxManagedDialog<T>({
   Function(bool tickboxValue)? onPositive,
 
   /// Callback for the negative button, automatically closes the dialog
-  Function()? onNegative,
+  Function(bool tickboxValue)? onNegative,
 }) async {
   assert(
     body.isNotEmpty || builder != null,
@@ -223,7 +223,7 @@ Future<T?> showSimpleTickboxManagedDialog<T>({
           ManagedDialogButton(
             popContext: popContext,
             text: negativeButtonText,
-            onPressed: () => onNegative?.call(),
+            onPressed: () => onNegative?.call(localTickboxValue),
           ),
           ManagedDialogButton(
             isPrimary: isPositiveButtonPrimary,

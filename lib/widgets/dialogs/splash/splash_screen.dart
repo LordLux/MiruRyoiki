@@ -268,8 +268,8 @@ Future<void> setToSavedWindowStateWithoutAnimation() async {
       // For maximized windows, don't animate - just maximize
       await windowManager.maximize();
     } else {
-      await windowManager.setSize(Size(savedState['width'] ?? 800.0, savedState['height'] ?? 600.0));
-      await windowManager.setPosition(Offset(savedState['x'] ?? 100.0, savedState['y'] ?? 100.0));
+      await windowManager.setSize(Size(savedState['width'] ?? 800.0, savedState['height'] ?? 600.0), animate: true);
+      await windowManager.setPosition(Offset(savedState['x'] ?? 100.0, savedState['y'] ?? 100.0), animate: true);
     }
   }
 }

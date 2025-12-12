@@ -1533,6 +1533,20 @@ class SettingsScreenState extends State<SettingsScreen> with AutomaticKeepAliveC
               ),
             ],
           ),
+          VDiv(24),
+          Text(
+            'Suppress Close Warning',
+            style: Manager.bodyStyle,
+          ),
+          VDiv(12),
+          NormalSwitch(
+            ToggleSwitch(
+              checked: settings.suppressCloseWarning,
+              content: Text(settings.suppressCloseWarning ? 'Warning Suppressed' : 'Warning Enabled', style: Manager.bodyStyle),
+              onChanged: (value) => setState(() => settings.suppressCloseWarning = value),
+            ),
+            tooltip: 'When enabled, the application will not warn you when you try to close it multiple times in quick succession.',
+          ),
         ],
       // Media Players
       3 => [

@@ -4,6 +4,7 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/foundation.dart';
 import 'package:miruryoiki/utils/time.dart';
 
+import '../../main.dart';
 import '../../utils/logging.dart';
 
 enum NavigationLevel {
@@ -70,7 +71,7 @@ class NavigationManager extends ChangeNotifier {
   static const int TorrentIndex = 4;
   static const int AccountsIndex = 5;
   static const int SettingsIndex = 6;
-  
+
   static String get HomeId => HomeMap['id'] as String;
   static String get LibraryId => LibraryMap['id'] as String;
   static String get CalendarId => CalendarMap['id'] as String;
@@ -107,6 +108,19 @@ class NavigationManager extends ChangeNotifier {
   bool get hasPage => _stack.isNotEmpty && _stack.last.level == NavigationLevel.page;
   bool get hasDialog => _stack.length > 1 && _stack.last.level == NavigationLevel.dialog;
   bool get canGoBack => _stack.length > 1;
+
+  void pushPaneIndex(int index, {Object? data}) {
+    final item = getPane(index)!;
+    pushPane(item['id'], item['title'], data: data);
+
+    if (index == CalendarIndex) {
+      nextFrame(() {
+        // releaseCalendarScreenKey.currentState?.scrollToToday(animated: false);
+        // Refresh notifications and release data when navigating to calendar
+        releaseCalendarScreenKey.currentState?.loadReleaseData();
+      });
+    }
+  }
 
   // Navigation methods
   void pushPane(String id, String title, {Object? data, GlobalKey<NavigatorState>? navigatorKey}) {
@@ -186,6 +200,11 @@ class NavigationManager extends ChangeNotifier {
   void clearAndPushPane(String id, String title, {Object? data}) {
     _stack.clear();
     pushPane(id, title, data: data);
+  }
+  
+  void clearAndPushPaneIndex(int index, {Object? data}) {
+    final item = getPane(index)!;
+    clearAndPushPane(item['id'], item['title'], data: data);
   }
 
   void _logCurrentStack() {

@@ -100,6 +100,9 @@ class SettingsManager extends ChangeNotifier {
   bool get showAnilistHiddenSeries => _getBool('showAnilistHiddenSeries', defaultValue: false);
   set showAnilistHiddenSeries(bool value) => _setBool('showAnilistHiddenSeries', value);
 
+  bool get suppressCloseWarning => _getBool('suppressCloseWarning', defaultValue: false);
+  set suppressCloseWarning(bool value) => _setBool('suppressCloseWarning', value);
+
   // Window State
   double? get windowX => _getDoubleOrNull('window_x');
   set windowX(double? value) {
