@@ -6,7 +6,10 @@ import 'package:defer_pointer/defer_pointer.dart';
 import 'package:fluent_ui/fluent_ui.dart' hide Colors;
 import 'package:flutter/material.dart' hide TextBox;
 import 'package:miruryoiki/utils/text.dart';
+import 'package:miruryoiki/widgets/animated_translate.dart';
+import 'package:miruryoiki/widgets/widget_alpha_mask.dart';
 import 'package:provider/provider.dart';
+import 'package:marquee/marquee.dart';
 
 import '../services/anilist/queries/anilist_service.dart';
 import '../models/anilist/anime.dart';
@@ -19,6 +22,8 @@ import '../manager.dart';
 import '../utils/screen.dart';
 import '../utils/time.dart';
 import '../widgets/buttons/button.dart';
+import '../widgets/cards/sarch_series_card.dart';
+import '../widgets/fading_edge_scrollview.dart';
 import '../widgets/page/search_template.dart';
 import 'search_results.dart';
 
@@ -38,7 +43,7 @@ class _BrowseScreenState extends State<BrowseScreen> {
   bool _isSearchResultsVisible = false;
   bool _isFinishedTransitioningToResults = false;
   bool _isFinishedTransitioningToBrowse = true;
-  
+
   // Search Results state
   String _searchQueryType = '';
   String _searchTitle = '';
@@ -53,7 +58,7 @@ class _BrowseScreenState extends State<BrowseScreen> {
   }) {
     final navigator = Provider.of<NavigationManager>(context, listen: false);
     navigator.pushPage("search_results:$queryType", title);
-    
+
     setState(() {
       _searchQueryType = queryType;
       _searchTitle = title;
@@ -67,7 +72,7 @@ class _BrowseScreenState extends State<BrowseScreen> {
   void _hideSearchResults() {
     final navigator = Provider.of<NavigationManager>(context, listen: false);
     navigator.goBack();
-    
+
     setState(() {
       _isSearchResultsVisible = false;
       _isFinishedTransitioningToResults = false;
@@ -83,6 +88,11 @@ class _BrowseScreenState extends State<BrowseScreen> {
         _isFinishedTransitioningToResults = false;
       }
     });
+  }
+
+  void _onSeriesOpen(AnilistAnime anime) {
+    final navigator = Provider.of<NavigationManager>(context, listen: false);
+    navigator.pushPage("search:series:${anime.id}", anime.title.userPreferred ?? 'Anime Details');
   }
 
   @override
@@ -101,6 +111,7 @@ class _BrowseScreenState extends State<BrowseScreen> {
               child: SearchScreen(
                 scrollController: widget.scrollController,
                 onShowSearchResults: _showSearchResults,
+                onSeriesOpen: _onSeriesOpen,
               ),
             ),
           ),
@@ -124,7 +135,7 @@ class _BrowseScreenState extends State<BrowseScreen> {
                       searchQuery: _searchQuery,
                       filters: _searchFilters,
                       onBack: _hideSearchResults,
-                      onSeriesOpen: (_) {}, //TODO
+                      onSeriesOpen: _onSeriesOpen,
                     ),
             ),
           ),
@@ -142,11 +153,13 @@ class SearchScreen extends StatefulWidget {
     String? searchQuery,
     Map<String, dynamic>? filters,
   }) onShowSearchResults;
+  final Function(AnilistAnime anime) onSeriesOpen;
 
   const SearchScreen({
     super.key,
     required this.scrollController,
     required this.onShowSearchResults,
+    required this.onSeriesOpen,
   });
 
   @override
@@ -157,6 +170,8 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
   final TextStyle _searchTextStyle = Manager.smallSubtitleStyle.copyWith(fontWeight: FontWeight.w400);
+
+  DeferredPointerHandlerLink? deferredPointerLink;
 
   bool _isSearchFocused = false;
   double _textSearchWidth = 0.0;
@@ -181,8 +196,22 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
   void dispose() {
     _searchController.dispose();
     _searchFocusNode.dispose();
+    deferredPointerLink?.dispose();
     super.dispose();
   }
+
+  final List<String> _demoImages = [
+    "https://cdn.akamai.steamstatic.com/steam/apps/400/header.jpg", // Portal
+    "https://cdn.akamai.steamstatic.com/steam/apps/730/header.jpg", // CS:GO
+    "https://cdn.akamai.steamstatic.com/steam/apps/570/header.jpg", // Dota 2
+    "https://cdn.akamai.steamstatic.com/steam/apps/271590/header.jpg", // GTA V
+    "https://cdn.akamai.steamstatic.com/steam/apps/1172470/header.jpg", // Apex
+    "https://cdn.akamai.steamstatic.com/steam/apps/1091500/header.jpg", // Cyberpunk
+    "https://cdn.akamai.steamstatic.com/steam/apps/1245620/header.jpg", // Elden Ring
+    "https://cdn.akamai.steamstatic.com/steam/apps/440/header.jpg", // TF2
+  ];
+
+  double _animationValue = 0.0;
 
   @override
   Widget build(BuildContext context) {
@@ -193,76 +222,121 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
 
     // detect when user scrolls upwards (print up) or downwards (print down)
     return DeferredPointerHandler(
-      child: SearchTemplatePage(
-        header: Text('Browse', style: Manager.titleStyle),
-        content: _buildContent(library, settings),
-        searchBarCollapsedWidth: _textSearchWidth + 27,
-        searchBarMaxCollapsedWidth: (maxConstrainedWidth) => min(maxConstrainedWidth, ScreenUtils.kMaxContentWidth) - 150,
-        searchBar: (width, height, animationValue) {
-          final bool isExpanded = animationValue < 0.2;
-          final borderRadius = lerpDouble(8, 12, 1 - animationValue)!;
-          final horizontalPadding = lerpDouble(12, 20, 1 - animationValue)!;
-          return Stack(
-            alignment: Alignment.topCenter,
-            children: [
-              SizedBox(
-                width: width,
-                height: height == null ? null : height + 3,
-                child: TextBox(
-                  controller: _searchController,
-                  focusNode: _searchFocusNode,
-                  cursorOpacityAnimates: true,
-                  cursorColor: Manager.pastelAccentColor,
-                  style: _searchTextStyle,
-                  padding: EdgeInsetsDirectional.fromSTEB(horizontalPadding, 0, horizontalPadding, 0),
-                  highlightColor: Colors.transparent,
-                  unfocusedColor: Colors.transparent,
-                  enableInteractiveSelection: true,
-                  decoration: ButtonState.all(
-                    BoxDecoration(
-                      color: Colors.white.withOpacity(0.05),
-                      borderRadius: BorderRadius.circular(borderRadius),
-                      border: Border.all(
-                        color: _isSearchFocused //
-                            ? (Manager.currentDominantAccentColor ?? Manager.accentColor).light
-                            : Colors.white.withOpacity(0.1),
-                        width: _searchController.text.isNotEmpty ? 1.5 : 1,
+      key: ValueKey('BrowseScreenDeferredPointerHandler'),
+      link: deferredPointerLink,
+      child: Stack(
+        children: [
+          IgnorePointer(
+            ignoring: true,
+            child: FadingEdgeScrollView(
+              axis: Axis.horizontal,
+              // fadeEdges: const EdgeInsets.only(top: 300, bottom: 300),
+              gradientStops: [0.0, 0.05, 0.15, 0.85, 0.95, 1.0],
+              gradientColors: [
+                Colors.black.withOpacity(0),
+                Colors.black.withOpacity(0.75),
+                Colors.black,
+                Colors.black,
+                Colors.black.withOpacity(0.75),
+                Colors.black.withOpacity(0),
+              ],
+              child: FadingEdgeScrollView(
+                // fadeEdges: const EdgeInsets.only(top: 100, bottom: 300),
+                gradientStops: [0.0, 0.1, 0.13, 0.7, 0.75, 1.0],
+                gradientColors: [
+                  Colors.black.withOpacity(0),
+                  Colors.black.withOpacity(0.25),
+                  Colors.black,
+                  Colors.black,
+                  Colors.black.withOpacity(0.25),
+                  Colors.black.withOpacity(0),
+                ],
+                child: Opacity(
+                  opacity: (1.0 - _animationValue).clamp(0.0, 0.5),
+                  child: SearchLibraryShelfDisplay(
+                    imageUrls: _demoImages, // Using dummy images
+                    verticalOffset: -50 * _animationValue,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          SearchTemplatePage(
+            header: Text('Browse', style: Manager.titleStyle),
+            behindSearchBar: (animationValue) {
+              if (_animationValue != animationValue) nextFrame(() => setState(() => _animationValue = animationValue));
+              return SizedBox.shrink();
+            },
+            content: _buildContent(library, settings),
+            searchBarCollapsedWidth: _textSearchWidth + 27,
+            searchBarMaxCollapsedWidth: (maxConstrainedWidth) => min(maxConstrainedWidth, ScreenUtils.kMaxContentWidth) - 150,
+            searchBar: (width, height, animationValue) {
+              final bool isExpanded = animationValue < 0.2;
+              final borderRadius = lerpDouble(8, 12, 1 - animationValue)!;
+              final horizontalPadding = lerpDouble(12, 20, 1 - animationValue)!;
+              return Stack(
+                alignment: Alignment.topCenter,
+                children: [
+                  SizedBox(
+                    width: width,
+                    height: height == null ? null : height + 3,
+                    child: TextBox(
+                      controller: _searchController,
+                      focusNode: _searchFocusNode,
+                      cursorOpacityAnimates: true,
+                      cursorColor: Manager.pastelAccentColor,
+                      style: _searchTextStyle,
+                      padding: EdgeInsetsDirectional.fromSTEB(horizontalPadding, 0, horizontalPadding, 0),
+                      highlightColor: Colors.transparent,
+                      unfocusedColor: Colors.transparent,
+                      enableInteractiveSelection: true,
+                      decoration: ButtonState.all(
+                        BoxDecoration(
+                          color: Colors.white.withOpacity(0.25),
+                          borderRadius: BorderRadius.circular(borderRadius),
+                          border: Border.all(
+                            color: _isSearchFocused //
+                                ? (Manager.currentDominantAccentColor ?? Manager.accentColor).light
+                                : Colors.white.withOpacity(0.1),
+                            width: _searchController.text.isNotEmpty ? 1.5 : 1,
+                          ),
+                        ),
                       ),
+                      placeholder: 'Search...',
+                      onSubmitted: (value) {
+                        if (value.isNotEmpty) {
+                          widget.onShowSearchResults(
+                            queryType: 'search',
+                            title: 'Search Results: $value',
+                            searchQuery: value,
+                          );
+                        }
+                      },
+                      onChanged: (value) {
+                        // Handle search input changes
+                      },
                     ),
                   ),
-                  placeholder: 'Search...',
-                  onSubmitted: (value) {
-                    if (value.isNotEmpty) {
-                      widget.onShowSearchResults(
-                        queryType: 'search',
-                        title: 'Search Results: $value',
-                        searchQuery: value,
-                      );
-                    }
-                  },
-                  onChanged: (value) {
-                    // Handle search input changes
-                  },
-                ),
-              ),
-              AnimatedSwitcher(
-                duration: dimDuration / 2,
-                reverseDuration: dimDuration / 4,
-                transitionBuilder: (child, animation) => SlideTransition(
-                  position: Tween<Offset>(
-                    begin: const Offset(0, 0.5),
-                    end: const Offset(0, 1.25),
-                  ).animate(animation),
-                  child: FadeTransition(
-                    opacity: animation,
-                    child: child,
+                  AnimatedSwitcher(
+                    duration: dimDuration / 2,
+                    reverseDuration: dimDuration / 4,
+                    transitionBuilder: (child, animation) => SlideTransition(
+                      position: Tween<Offset>(
+                        begin: const Offset(0, 0.5),
+                        end: const Offset(0, 1.25),
+                      ).animate(animation),
+                      child: FadeTransition(
+                        opacity: animation,
+                        child: child,
+                      ),
+                    ),
+                    child: isExpanded ? DeferPointer(child: const AnimeFilterHeader()) : const SizedBox.shrink(),
                   ),
-                ),
-                child: isExpanded ? DeferPointer(child: const AnimeFilterHeader()) : const SizedBox.shrink(),
-              ),
-            ],
-          );
-        },
+                ],
+              );
+            },
+          ),
+        ],
       ),
     );
   }
@@ -270,7 +344,7 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
   Widget _buildContent(Library library, SettingsManager settings) {
     return Consumer<AnilistProvider>(
       builder: (context, anilistProvider, _) {
-        return AnimeContentDashboard(onShowSearchResults: widget.onShowSearchResults);
+        return AnimeContentDashboard(onShowSearchResults: widget.onShowSearchResults, onSeriesOpen: widget.onSeriesOpen);
       },
     );
   }
@@ -394,8 +468,13 @@ class AnimeContentDashboard extends StatefulWidget {
     String? searchQuery,
     Map<String, dynamic>? filters,
   }) onShowSearchResults;
+  final Function(AnilistAnime anime) onSeriesOpen;
 
-  const AnimeContentDashboard({super.key, required this.onShowSearchResults});
+  const AnimeContentDashboard({
+    super.key,
+    required this.onShowSearchResults,
+    required this.onSeriesOpen,
+  });
 
   @override
   State<AnimeContentDashboard> createState() => _AnimeContentDashboardState();
@@ -449,56 +528,70 @@ class _AnimeContentDashboardState extends State<AnimeContentDashboard> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildSectionHeader(title, type),
-        SizedBox(
-          height: 240,
-          child: FutureBuilder<AnilistSearchPage<AnilistAnime>?>(
-            future: future,
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) 
-                return const Center(child: ProgressRing());
-              
+        LayoutBuilder(builder: (context, constraints) {
+          final int count = ScreenUtils.crossAxisCount(constraints.maxWidth);
+          final double cardHeight = ScreenUtils.maxCardHeight;
+          final double sectionHeight = cardHeight + 60;
 
-              String? error;
-              if (snapshot.hasError) {
-                error = 'Error: ${snapshot.error}';
-              } else if (snapshot.connectionState == ConnectionState.done && snapshot.data == null) {
-                error = 'Failed to load data';
-              }
+          return SizedBox(
+            height: sectionHeight,
+            child: FutureBuilder<AnilistSearchPage<AnilistAnime>?>(
+              future: future,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: ProgressRing());
 
-              if (error != null) {
-                return Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(error, style: const TextStyle(color: Colors.red)),
-                      const SizedBox(height: 8),
-                      Button(
-                        onPressed: () => setState(() => _fetchData()),
-                        child: const Text('Retry'),
-                      ),
-                    ],
+                String? error;
+                if (snapshot.hasError) {
+                  error = 'Error: ${snapshot.error}';
+                } else if (snapshot.connectionState == ConnectionState.done && snapshot.data == null) {
+                  error = 'Failed to load data';
+                }
+
+                if (error != null) {
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(error, style: const TextStyle(color: Colors.red)),
+                        const SizedBox(height: 8),
+                        Button(
+                          onPressed: () => setState(() => _fetchData()),
+                          child: const Text('Retry'),
+                        ),
+                      ],
+                    ),
+                  );
+                }
+
+                final mediaList = snapshot.data?.results ?? [];
+                if (mediaList.isEmpty) return const Center(child: Text('No anime found'));
+
+                final displayList = mediaList.take(count).toList();
+
+                return Row(
+                  mainAxisAlignment: MainAxisAlignment.start,
+                  children: List.generate(
+                    (displayList.length * 2) - 1,
+                    (index) {
+                      if (index % 2 == 1) return SizedBox(width: ScreenUtils.cardPadding);
+
+                      final item = displayList[index ~/ 2];
+                      return Expanded(
+                        child: AspectRatio(
+                          aspectRatio: ScreenUtils.kDefaultAspectRatio,
+                          child: SearchSeriesCard(
+                            series: item,
+                            onTap: () => widget.onSeriesOpen(item),
+                          ),
+                        ),
+                      );
+                    },
                   ),
                 );
-              }
-
-              final mediaList = snapshot.data?.results ?? [];
-
-              if (mediaList.isEmpty) {
-                return const Center(child: Text('No anime found'));
-              }
-
-              return ListView.separated(
-                scrollDirection: Axis.horizontal,
-                itemCount: mediaList.length,
-                separatorBuilder: (_, __) => const SizedBox(width: 16),
-                itemBuilder: (context, index) {
-                  final item = mediaList[index];
-                  return _buildAnimeCard(item);
-                },
-              );
-            },
-          ),
-        ),
+              },
+            ),
+          );
+        }),
       ],
     );
   }
@@ -538,75 +631,137 @@ class _AnimeContentDashboardState extends State<AnimeContentDashboard> {
       ),
     );
   }
+}
 
-  Widget _buildAnimeCard(AnilistAnime anime) {
-    final title = anime.title.userPreferred ?? 'Unknown Title';
-    final coverImage = anime.posterImage ?? '';
-    final colorHex = anime.dominantColor;
-    final color = colorHex != null ? (Color(int.parse(colorHex.substring(1), radix: 16) + 0xFF000000)) : Colors.blue;
+class SearchLibraryShelfDisplay extends StatelessWidget {
+  final List<String> imageUrls;
+  final bool reverseAnimation;
+  final double verticalOffset;
+  final double sigma = 2.0;
 
-    return SizedBox(
-      width: 140,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // POSTER IMAGE
-          Expanded(
-            child: Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(6),
-                color: const Color(0xFF1B222C),
-              ),
-              clipBehavior: Clip.antiAlias,
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  if (coverImage.isNotEmpty)
-                    CachedNetworkImage(
-                      imageUrl: coverImage,
-                      fit: BoxFit.cover,
-                      placeholder: (context, url) => Container(color: const Color(0xFF1B222C)),
-                      errorWidget: (context, url, error) => const Icon(Icons.error),
-                    ),
-                  // "Tag" (like the blue dot in the screenshot) - maybe use status or something?
-                  if (anime.status == 'RELEASING')
-                    Positioned(
-                      top: 8,
-                      left: 8,
-                      child: Container(
-                        width: 8,
-                        height: 8,
-                        decoration: BoxDecoration(
-                          color: color,
-                          shape: BoxShape.circle,
-                          boxShadow: [
-                            BoxShadow(
-                              color: color.withOpacity(0.5),
-                              blurRadius: 4,
-                              spreadRadius: 1,
+  const SearchLibraryShelfDisplay({
+    super.key,
+    required this.imageUrls,
+    this.reverseAnimation = false,
+    this.verticalOffset = 0.0,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(builder: (context, constraints) {
+      final rows = ((constraints.maxHeight + 480) / 195).ceil(); //~ 4 rows at 300 height and 8 rows at 1080 height
+      return ImageFiltered(
+        imageFilter: ImageFilter.blur(sigmaX: sigma, sigmaY: sigma),
+        child: SizedBox(
+          height: constraints.maxHeight + 100,
+          width: constraints.maxWidth,
+          child: Slanted3DGrid(
+            images: imageUrls,
+            rows: rows, // How many rows of images to show
+            speed: reverseAnimation ? -15.0 : 20.0, // Different speeds/directions
+            angle: -0.2, // The slant angle
+            verticalOffset: verticalOffset,
+          ),
+        ),
+      );
+    });
+  }
+}
+
+class Slanted3DGrid extends StatelessWidget {
+  final List<String> images;
+  final int rows;
+  final double speed;
+  final double angle;
+  final double verticalOffset;
+
+  const Slanted3DGrid({
+    super.key,
+    required this.images,
+    this.rows = 4,
+    this.speed = 20.0, // Pixels per second
+    this.angle = -0.1, // Rotation Z
+    this.verticalOffset = 0.0,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    const double imageWidth = 80.0;
+    const double imageHeight = imageWidth * 1.71;
+    const double gap = 8.0;
+
+    return LayoutBuilder(builder: (context, constraints) {
+      final double width = constraints.maxWidth * 1.5;
+      final double height = constraints.maxHeight * 1.5;
+
+      return OverflowBox(
+        maxWidth: double.infinity,
+        maxHeight: double.infinity,
+        child: Transform(
+          alignment: Alignment.center,
+          filterQuality: FilterQuality.medium,
+          transform: Matrix4.identity()
+            ..setEntry(3, 2, 0.001)
+            ..translate(0.0, verticalOffset, 0.0)
+            ..rotateX(-0.4)
+            ..rotateY(0.1)
+            ..rotateZ(angle)
+            ..scale(1.6)
+            ..translate(0.0, -200.0, 0.0),
+          child: SizedBox(
+            width: width,
+            height: height,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: List.generate(rows, (rowIndex) {
+                // Alternate speeds for parallax effect
+                final double rowSpeed = (rowIndex % 2 == 0) ? speed : speed * 0.5;
+                final bool isReverse = rowIndex % 2 != 0;
+
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: gap / 2),
+                  child: SizedBox(
+                    height: imageHeight,
+                    child: Marquee(
+                      startPadding: rowIndex * (imageWidth + gap) / 2,
+                      velocity: rowSpeed,
+                      containerExtent: (imageWidth + gap) * images.length,
+                      blankSpace: 0,
+                      child: Row(
+                        children: images.map((imgUrl) {
+                          return Container(
+                            width: imageWidth,
+                            height: imageHeight,
+                            margin: EdgeInsets.only(right: gap),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(4),
+                              image: DecorationImage(
+                                image: CachedNetworkImageProvider(
+                                  imgUrl,
+                                  maxHeight: (imageHeight * ScreenUtils.pixelResolution * 5).toInt(),
+                                  maxWidth: (imageWidth * ScreenUtils.pixelResolution * 5).toInt(),
+                                ),
+                                fit: BoxFit.cover,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.5),
+                                  blurRadius: 4,
+                                  offset: const Offset(2, 2),
+                                )
+                              ],
                             ),
-                          ],
-                        ),
+                          );
+                        }).toList(),
                       ),
                     ),
-                ],
-              ),
+                  ),
+                );
+              }),
             ),
           ),
-          const SizedBox(height: 8),
-          // TITLE
-          Text(
-            title,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: Color(0xFFE1E1E1),
-              fontSize: 13,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ],
-      ),
-    );
+        ),
+      );
+    });
   }
 }

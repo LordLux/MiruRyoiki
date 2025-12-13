@@ -393,6 +393,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.0.7"
+  fading_edge_scrollview:
+    dependency: transitive
+    description:
+      name: fading_edge_scrollview
+      sha256: "1f84fe3ea8e251d00d5735e27502a6a250e4aa3d3b330d3fdcb475af741464ef"
+      url: "https://pub.dev"
+    source: hosted
+    version: "4.1.1"
   fake_async:
     dependency: transitive
     description:
@@ -955,6 +963,13 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.8.4"
+  marquee:
+    dependency: "direct main"
+    description:
+      path: "M:\\Projects\\marquee"
+      relative: false
+    source: path
+    version: "2.3.0"
   matcher:
     dependency: transitive
     description:

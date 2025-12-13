@@ -50,17 +50,20 @@ class _SearchSeriesCardState extends State<SearchSeriesCard> {
 
   Widget _getSeriesImage() {
     return LayoutBuilder(builder: (context, constraints) {
-      return AspectRatio(
-        aspectRatio: ScreenUtils.kDefaultAspectRatio,
-        child: CachedNetworkImage(
-          memCacheHeight: constraints.maxHeight.toInt(),
-          memCacheWidth: constraints.minHeight.toInt(),
-          imageUrl: widget.series.posterImage ?? '',
-          fit: BoxFit.cover,
-          placeholder: (context, url) => Container(color: const Color(0xFF1B222C)),
-          errorWidget: (context, url, error) => const Icon(Icons.error),
+      return Image(
+          image: ResizeImage.resizeIfNeeded(
+        constraints.minWidth.toInt(),
+        constraints.maxHeight.toInt(),
+        CachedNetworkImageProvider(
+          widget.series.posterImage ?? '',
+          // memCacheHeight: (211 * pixelResolution).toInt(),
+          // memCacheWidth: (211 * ScreenUtils.kDefaultAspectRatio * pixelResolution).toInt(),
+          // imageUrl: widget.series.posterImage ?? '',
+          // fit: BoxFit.cover,
+          // placeholder: (context, url) => Container(color: const Color(0xFF1B222C)),
+          // errorWidget: (context, url, error) => const Icon(Icons.error),
         ),
-      );
+      ));
     });
   }
 

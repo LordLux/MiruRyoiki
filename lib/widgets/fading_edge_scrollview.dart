@@ -1,11 +1,33 @@
 import 'package:flutter/material.dart';
+/// A widget that applies a fading gradient mask to the edges of a scrollable child.
+///
+/// This widget is useful for indicating that there is more content to be scrolled
+/// by fading out the content at the start and end of the scroll axis. It supports
+/// both vertical and horizontal scrolling axes.
+///
+/// The fading effect is achieved using a [ShaderMask] with a [LinearGradient].
+/// You can customize the size of the fade, the colors used in the gradient, and
+/// the specific stops for the gradient.
+///
+/// Example usage:
+/// ```dart
+/// FadingEdgeScrollView(
+///   axis: Axis.vertical,
+///   fadeEdges: const EdgeInsets.symmetric(vertical: 40.0),
+///   child: ListView.builder(
+///     itemCount: 50,
+///     itemBuilder: (context, index) => ListTile(title: Text('Item $index')),
+///   ),
+/// )
+/// ```
 
 class FadingEdgeScrollView extends StatefulWidget {
   /// The scrollable child (ListView, SingleChildScrollView, etc.)
   final Widget child;
 
-  /// The size of fade regions at each edge (top, right, bottom, left)
-  /// Only top and bottom values are used.
+  /// The size of fade regions at each edge (top, bottom)
+  /// Only top and bottom values are used, even when axis is horizontal. (top - left, bottom - right)
+  /// Unused if gradientStops are provided.
   final EdgeInsets fadeEdges;
 
   /// The colors of the gradient mask. Usually black with various alpha levels.
@@ -22,6 +44,9 @@ class FadingEdgeScrollView extends StatefulWidget {
   /// Duration for animations when gradientColors or gradientStops change
   final Duration animationDuration;
 
+  /// The axis along which the fading effect is applied.
+  final Axis axis;
+
   const FadingEdgeScrollView({
     super.key,
     required this.child,
@@ -29,6 +54,7 @@ class FadingEdgeScrollView extends StatefulWidget {
     this.gradientColors,
     this.gradientStops,
     this.debug = false,
+    this.axis = Axis.vertical,
     this.animationDuration = const Duration(milliseconds: 200),
   });
 
@@ -84,11 +110,9 @@ class _FadingEdgeScrollViewState extends State<FadingEdgeScrollView> {
     return LayoutBuilder(
       builder: (context, constraints) {
         final Rect bounds = Offset.zero & constraints.biggest;
-        
+
         // Get current values
-        final List<Color> targetColors = widget.debug 
-            ? _getDefaultColors(true) 
-            : (widget.gradientColors ?? _getDefaultColors(false));
+        final List<Color> targetColors = widget.debug ? _getDefaultColors(true) : (widget.gradientColors ?? _getDefaultColors(false));
         final List<double> targetStops = widget.gradientStops ?? _getDefaultStops(bounds);
 
         // Initialize if needed
@@ -113,9 +137,16 @@ class _FadingEdgeScrollViewState extends State<FadingEdgeScrollView> {
           builder: (context, value, child) {
             return ShaderMask(
               shaderCallback: (Rect bounds) {
+                final begin = widget.axis == Axis.vertical //
+                    ? Alignment.topCenter
+                    : Alignment.centerLeft;
+                final end = widget.axis == Axis.vertical //
+                    ? Alignment.bottomCenter
+                    : Alignment.centerRight;
+
                 return LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
+                  begin: begin,
+                  end: end,
                   colors: value.colors,
                   stops: value.stops,
                 ).createShader(bounds);
@@ -140,15 +171,14 @@ class _GradientProps {
 
 /// Custom Tween to animate between gradient properties
 class _GradientPropsTween extends Tween<_GradientProps> {
-  _GradientPropsTween({required _GradientProps begin, required _GradientProps end})
-      : super(begin: begin, end: end);
+  _GradientPropsTween({required _GradientProps begin, required _GradientProps end}) : super(begin: begin, end: end);
 
   @override
   _GradientProps lerp(double t) {
     // If the color or stop lists have different lengths, we'll need to handle that
     final int colorCount = begin!.colors.length;
     final int endColorCount = end!.colors.length;
-    
+
     final int stopCount = begin!.stops.length;
     final int endStopCount = end!.stops.length;
 
@@ -161,9 +191,7 @@ class _GradientPropsTween extends Tween<_GradientProps> {
       });
     } else {
       // Complex case: crossfade by opacity
-      lerpedColors = t < 0.5 
-          ? begin!.colors.map((c) => c.withOpacity((0.5 - t) * 2 * c.opacity)).toList()
-          : end!.colors.map((c) => c.withOpacity((t - 0.5) * 2 * c.opacity)).toList();
+      lerpedColors = t < 0.5 ? begin!.colors.map((c) => c.withOpacity((0.5 - t) * 2 * c.opacity)).toList() : end!.colors.map((c) => c.withOpacity((t - 0.5) * 2 * c.opacity)).toList();
     }
 
     List<double> lerpedStops;

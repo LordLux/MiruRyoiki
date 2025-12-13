@@ -56,6 +56,7 @@ class ScreenUtils {
 
 
   static MediaQueryData get _mediaQuery => MediaQueryData.fromWindow(WidgetsBinding.instance.window);
+  static double get pixelResolution => _mediaQuery.devicePixelRatio;
   static Size get screenSize => _mediaQuery.size;
   static double get width => _mediaQuery.size.width;
   static double get height => _mediaQuery.size.height;

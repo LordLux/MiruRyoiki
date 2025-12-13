@@ -22,6 +22,7 @@ class SearchTemplatePage extends StatefulWidget {
   final double contentExtraHeaderPadding;
   final Widget? floatingButton;
   final ScrollController? scrollController;
+  final Widget Function(double animationValue)? behindSearchBar;
   final Widget Function(double? width, double? height, double animationValue) searchBar;
 
   const SearchTemplatePage({
@@ -36,6 +37,7 @@ class SearchTemplatePage extends StatefulWidget {
     this.contentExtraHeaderPadding = 16.0,
     this.floatingButton,
     this.scrollController,
+    this.behindSearchBar,
   });
 
   @override
@@ -46,7 +48,7 @@ class _SearchTemplatePageState extends State<SearchTemplatePage> with SingleTick
   late AnimationController _controller;
   late Animation<double> _yAxisCurve;
   late Animation<double> _xAxisCurve;
-  
+
   /// Indicates whether the page is currently scrolled down (not at top)
   bool _isScrolled = false;
 
@@ -124,7 +126,7 @@ class _SearchTemplatePageState extends State<SearchTemplatePage> with SingleTick
                       // Positions
                       final double startWidth = screenWidth * 0.85;
                       final double endWidth = collapsedWidth;
-                      final double startTop = (screenHeight / 1.5) - expandedHeight; // height searchbar - centered
+                      final double startTop = (screenHeight / 2) - expandedHeight; // height searchbar - centered
                       final double endTop = topPadding + 36; // height searchbar - top right
                       final double startRight = (screenWidth - startWidth) / 2;
                       final double endRight = 16.0;
@@ -139,6 +141,19 @@ class _SearchTemplatePageState extends State<SearchTemplatePage> with SingleTick
 
                       return Stack(
                         children: [
+                          if (widget.behindSearchBar != null)
+                            AnimatedBuilder(
+                              animation: _controller,
+                              builder: (context, child) {
+                                final extraTop = -600;
+                                final currentTop = lerpDouble(startTop + extraTop, (endTop + extraTop) / 2, _yAxisCurve.value);
+
+                                return Positioned.fill(
+                                  top: currentTop,
+                                  child: widget.behindSearchBar!(_controller.value),
+                                );
+                              },
+                            ),
                           SizedBox(
                             width: ScreenUtils.kMaxContentWidth,
                             child: NotificationListener<ScrollNotification>(

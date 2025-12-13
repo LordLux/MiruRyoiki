@@ -155,7 +155,7 @@ void main(List<String> args) async {
   runApp(
     ReassembleListener(
       onReassemble: () {
-        logInfo('Hot restart detected - reinitializing settings and themes.');
+        logInfo('Hot restart detected');
       },
       child: MultiProvider(
         providers: [
@@ -664,11 +664,15 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
                                           if (user.avatar == null) return CircleAvatar(backgroundColor: Manager.accentColor.withOpacity(0.25));
 
                                           return CircleAvatar(
-                                            backgroundImage: CachedNetworkImageProvider(
-                                              user.avatar!,
-                                              errorListener: (error) {
-                                                logWarn('Failed to load Anilist avatar image: $error');
-                                              },
+                                            backgroundImage: ResizeImage.resizeIfNeeded(
+                                              50,
+                                              50,
+                                              CachedNetworkImageProvider(
+                                                user.avatar!,
+                                                errorListener: (error) {
+                                                  logWarn('Failed to load Anilist avatar image: $error');
+                                                },
+                                              ),
                                             ),
                                             backgroundColor: Manager.accentColor.withOpacity(0.25),
                                             radius: 17,

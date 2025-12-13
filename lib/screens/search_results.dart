@@ -114,7 +114,7 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
 
       if (result == null) {
         final bool isValidQuery = ['trending', 'popular', 'upcoming', 'top100', 'search'].contains(widget.queryType);
-        
+
         if (mounted) {
           setState(() {
             _isLoading = false;
@@ -130,7 +130,6 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
 
       final pageInfo = result.pageInfo;
       final media = result.results;
-      
 
       if (mounted) {
         setState(() {
@@ -193,65 +192,67 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
     }
 
     if (_animeList.isEmpty && _isLoading) return const Center(child: ProgressRing());
-    
 
     if (_animeList.isEmpty) return const Center(child: Text('No results found.'));
-    
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        return DynMouseScroll(
-          controller: _scrollController,
-          stopScroll: KeyboardState.ctrlPressedNotifier,
-          scrollSpeed: 1.0,
-          enableSmoothScroll: Manager.animationsEnabled,
-          durationMS: 350,
-          animationCurve: Curves.easeOutQuint,
-          builder: (context, controller, physics) {
-            return ValueListenableBuilder(
-              valueListenable: KeyboardState.ctrlPressedNotifier,
-              builder: (context, isCtrlPressed, _) {
-                return ValueListenableBuilder(
-                  valueListenable: previousGridColumnCount,
-                  builder: (context, columns, __) {
-                    return GridView.builder(
-                      controller: controller,
-                      physics: physics,
-                      padding: const EdgeInsets.only(bottom: 8),
-                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: columns ?? ScreenUtils.crossAxisCount(constraints.maxWidth),
-                        childAspectRatio: ScreenUtils.kDefaultAspectRatio,
-                        crossAxisSpacing: ScreenUtils.cardPadding,
-                        mainAxisSpacing: ScreenUtils.cardPadding,
-                      ),
-                      itemCount: _animeList.length + (_hasNextPage ? 1 : 0),
-                      itemBuilder: (context, index) {
-                        if (index == _animeList.length) { // Loading indicator or error message
-                          if (_errorMessage != null) {
-                            return Center(
-                              child: Button(
-                                onPressed: _fetchData,
-                                child: const Text('Retry'),
-                              ),
-                            );
-                          }
-                          return const Center(child: ProgressRing());
+    return LayoutBuilder(builder: (context, constraints) {
+      return DynMouseScroll(
+        controller: _scrollController,
+        stopScroll: KeyboardState.ctrlPressedNotifier,
+        scrollSpeed: 1.0,
+        enableSmoothScroll: Manager.animationsEnabled,
+        durationMS: 350,
+        animationCurve: Curves.easeOutQuint,
+        builder: (context, controller, physics) {
+          return ValueListenableBuilder(
+            valueListenable: KeyboardState.ctrlPressedNotifier,
+            builder: (context, isCtrlPressed, _) {
+              return ValueListenableBuilder(
+                valueListenable: previousGridColumnCount,
+                builder: (context, columns, __) {
+                  return GridView.builder(
+                    controller: controller,
+                    physics: physics,
+                    padding: const EdgeInsets.only(bottom: 8),
+                    addAutomaticKeepAlives: true,
+                    addRepaintBoundaries: true,
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: columns ?? ScreenUtils.crossAxisCount(constraints.maxWidth),
+                      childAspectRatio: ScreenUtils.kDefaultAspectRatio,
+                      crossAxisSpacing: ScreenUtils.cardPadding,
+                      mainAxisSpacing: ScreenUtils.cardPadding,
+                    ),
+                    itemCount: _animeList.length + (_hasNextPage ? 1 : 0),
+                    itemBuilder: (context, index) {
+                      if (index == _animeList.length) {
+                        // Loading indicator or error message
+                        if (_errorMessage != null) {
+                          return Center(
+                            child: Button(
+                              onPressed: _fetchData,
+                              child: const Text('Retry'),
+                            ),
+                          );
                         }
-        
-                        final anime = _animeList[index];
-                        return SearchSeriesCard(
+                        return const Center(child: ProgressRing());
+                      }
+
+                      final anime = _animeList[index];
+                      return AspectRatio(
+                        aspectRatio: ScreenUtils.kDefaultAspectRatio,
+                        child: SearchSeriesCard(
                           series: anime,
                           onTap: () => widget.onSeriesOpen(anime),
-                        );
-                      },
-                    );
-                  },
-                );
-              },
-            );
-          },
-        );
-      }
-    );
+                        ),
+                      );
+                    },
+                  );
+                },
+              );
+            },
+          );
+        },
+      );
+    });
   }
 }
