@@ -25,9 +25,14 @@ class FrostedNoise extends StatefulWidget {
   /// `BlendMode.overlay` which will both darken and lighten subtly.
   final BlendMode blendMode;
 
+  /// Child widget to apply the frosted noise effect over.
   final Widget? child;
 
+  /// Optional color to tint the noise effect.
   final Color? color;
+
+  /// Scale factor for the noise texture.
+  final double scale;
 
   const FrostedNoise({
     super.key,
@@ -36,6 +41,7 @@ class FrostedNoise extends StatefulWidget {
     this.blendMode = _defaultBlendMode,
     this.child,
     this.color,
+    this.scale = 1.0,
   });
 
   @override
@@ -101,6 +107,7 @@ class _FrostedNoiseState extends State<FrostedNoise> {
         intensity: (widget.intensity / 10).clamp(0.0, 1.0),
         blendMode: widget.blendMode,
         color: widget.color,
+        scale: widget.scale,
       ),
       size: Size.infinite,
       child: widget.child,
@@ -113,12 +120,14 @@ class _FrostedNoisePainter extends CustomPainter {
   final double intensity;
   final BlendMode blendMode;
   final Color color;
+  final double scale;
 
   _FrostedNoisePainter({
     required this.image,
     required this.intensity,
     required this.blendMode,
     Color? color,
+    this.scale = 1.0,
   }) : color = color ?? Colors.white;
 
   @override
@@ -131,6 +140,7 @@ class _FrostedNoisePainter extends CustomPainter {
       intensity: intensity,
       blendMode: blendMode,
       color: color,
+      scale: scale,
     );
   }
 
@@ -138,7 +148,8 @@ class _FrostedNoisePainter extends CustomPainter {
   bool shouldRepaint(covariant _FrostedNoisePainter oldDelegate) {
     return oldDelegate.image != image || //
         oldDelegate.intensity != intensity ||
-        oldDelegate.blendMode != blendMode;
+        oldDelegate.blendMode != blendMode ||
+        oldDelegate.scale != scale;
   }
 
   /// Creates an image shader that repeats the noise texture and overlays it onto whatever is beneath using the selected blend mode and intensity.
@@ -149,6 +160,7 @@ class _FrostedNoisePainter extends CustomPainter {
     required double intensity,
     required BlendMode blendMode,
     required Color color,
+    double scale = 1.0,
   }) {
     // Create an image shader that repeats the noise texture.
     final shader = ImageShader(
@@ -156,8 +168,8 @@ class _FrostedNoisePainter extends CustomPainter {
       TileMode.repeated,
       TileMode.repeated,
       Float64List.fromList([
-        1, 0, 0, 0, //
-        0, 1, 0, 0, //
+        scale, 0, 0, 0, //
+        0, scale, 0, 0, //
         0, 0, 1, 0, //
         0, 0, 0, 1
       ]),
@@ -184,6 +196,7 @@ class FrostedNoiseDecoration extends Decoration {
   final String assetPath;
   final double intensity;
   final BlendMode blendMode;
+  final double scale;
 
   const FrostedNoiseDecoration({
     required this.backgroundColor,
@@ -191,6 +204,7 @@ class FrostedNoiseDecoration extends Decoration {
     this.assetPath = _defaultNoiseAssetPath,
     this.intensity = _defaultIntensity,
     this.blendMode = _defaultBlendMode,
+    this.scale = 1.0,
   });
 
   @override
@@ -254,6 +268,7 @@ class _FrostedNoiseBoxPainter extends BoxPainter {
       intensity: (decoration.intensity / 10).clamp(0.0, 1.0),
       blendMode: decoration.blendMode,
       color: Colors.white,
+      scale: decoration.scale,
     );
   }
 

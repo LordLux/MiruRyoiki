@@ -12,13 +12,18 @@ import '../frosted_noise.dart';
 import '../fading_edge_scrollview.dart';
 import 'header_widget.dart';
 
+double kDefaultSearchBarMinCollapsedWidth(double _) => 200.0;
+double kDefaultSearchBarMaxCollapsedWidth(double maxWidthConstraint) => maxWidthConstraint;
+
 class SearchTemplatePage extends StatefulWidget {
   final Widget header;
   final Widget content;
   final Color? backgroundColor;
-  final double searchBarCollapsedWidth;
-  final double searchBarMinCollapsedWidth;
-  final double? Function(double maxWidthConstraint)? searchBarMaxCollapsedWidth;
+  final double Function(double maxWidthConstraint) searchBarCollapsedWidth;
+  final double Function(double maxWidthConstraint) searchBarMinCollapsedWidth;
+  final double Function(double maxWidthConstraint) searchBarMaxCollapsedWidth;
+  final double Function(double maxWidthConstraint)? searchBarMinExpandedWidth;
+  final double Function(double maxWidthConstraint)? searchBarMaxExpandedWidth;
   final double contentExtraHeaderPadding;
   final Widget? floatingButton;
   final ScrollController? scrollController;
@@ -30,9 +35,11 @@ class SearchTemplatePage extends StatefulWidget {
     required this.header,
     required this.content,
     required this.searchBar,
-    this.searchBarCollapsedWidth = 200,
-    this.searchBarMinCollapsedWidth = 200,
-    this.searchBarMaxCollapsedWidth,
+    this.searchBarCollapsedWidth = kDefaultSearchBarMinCollapsedWidth,
+    this.searchBarMinCollapsedWidth = kDefaultSearchBarMinCollapsedWidth,
+    this.searchBarMaxCollapsedWidth = kDefaultSearchBarMaxCollapsedWidth,
+    this.searchBarMinExpandedWidth,
+    this.searchBarMaxExpandedWidth,
     this.backgroundColor,
     this.contentExtraHeaderPadding = 16.0,
     this.floatingButton,
@@ -113,19 +120,32 @@ class _SearchTemplatePageState extends State<SearchTemplatePage> with SingleTick
                 alignment: Alignment.topCenter,
                 children: [
                   SizedBox(
-                    width: ScreenUtils.kMaxContentWidth,
+                    width: min(ScreenUtils.kMaxContentWidth, outerConstraints.maxWidth),
                     child: LayoutBuilder(builder: (context, constraints) {
                       final screenHeight = constraints.maxHeight;
                       final screenWidth = constraints.maxWidth;
                       final topPadding = 0;
 
-                      final double collapsedWidth = max(widget.searchBarCollapsedWidth, widget.searchBarMinCollapsedWidth);
+                      // Expanded Width Logic
+                      final double minExpanded = widget.searchBarMinExpandedWidth?.call(screenWidth) ?? 0.0;
+                      final double maxExpanded = widget.searchBarMaxExpandedWidth?.call(screenWidth) ?? double.infinity;
+                      final double maxAllowedExpanded = screenWidth * 0.85;
+
+                      double startWidth = (screenWidth * 0.85).clamp(minExpanded, maxExpanded);
+                      if (startWidth > maxAllowedExpanded) startWidth = maxAllowedExpanded;
+
+                      // Collapsed Width Logic
+                      final double minCollapsed = widget.searchBarMinCollapsedWidth(screenWidth);
+                      final double maxCollapsed = widget.searchBarMaxCollapsedWidth(screenWidth);
+                      final double maxAllowedCollapsed = screenWidth * 0.5;
+
+                      double endWidth = widget.searchBarCollapsedWidth(screenWidth).clamp(minCollapsed, maxCollapsed);
+                      if (endWidth > maxAllowedCollapsed) endWidth = maxAllowedCollapsed;
+
                       const double expandedHeight = 60.0;
                       const double collapsedHeight = 40.0;
 
                       // Positions
-                      final double startWidth = screenWidth * 0.85;
-                      final double endWidth = collapsedWidth;
                       final double startTop = (screenHeight / 2) - expandedHeight; // height searchbar - centered
                       final double endTop = topPadding + 36; // height searchbar - top right
                       final double startRight = (screenWidth - startWidth) / 2;
@@ -155,7 +175,7 @@ class _SearchTemplatePageState extends State<SearchTemplatePage> with SingleTick
                               },
                             ),
                           SizedBox(
-                            width: ScreenUtils.kMaxContentWidth,
+                            width: constraints.maxWidth,
                             child: NotificationListener<ScrollNotification>(
                               onNotification: (notification) {
                                 // We only care about updates that change scroll position
@@ -264,12 +284,13 @@ class _SearchTemplatePageState extends State<SearchTemplatePage> with SingleTick
                             builder: (context, child) {
                               final currentTop = lerpDouble(startTop, endTop, _yAxisCurve.value);
                               final currentRight = lerpDouble(startRight, endRight, _xAxisCurve.value);
-                              final currentWidth = min(lerpDouble(startWidth, endWidth, _controller.value)!, widget.searchBarMaxCollapsedWidth?.call(constraints.maxWidth) ?? double.infinity);
+                              final currentWidth = lerpDouble(startWidth, endWidth, _controller.value)!;
                               final currentHeight = lerpDouble(expandedHeight, collapsedHeight, _controller.value);
 
                               return Positioned(
                                 top: currentTop,
                                 right: currentRight,
+                                width: currentWidth,
                                 child: widget.searchBar(currentWidth, currentHeight, _controller.value),
                               );
                             },

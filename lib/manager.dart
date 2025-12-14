@@ -105,7 +105,7 @@ class Manager {
     return _cachedAppTheme ?? (_cachedAppTheme = AppTheme());
   }
 
-  static AccentColor get accentColor => false //
+  static AccentColor get accentColor => kDebugMode //
       ? Colors.green
       : settings.accentColor.toAccentColor();
   static Color get genericGray => FluentTheme.of(context).acrylicBackgroundColor.lerpWith(const Color.fromARGB(255, 35, 35, 35), 0.5);
