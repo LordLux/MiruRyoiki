@@ -1213,6 +1213,7 @@ Future<void> _registerWindowsUrlScheme(String scheme) async {
   }
 }
 
+// TODO scanning library progress indicator in status bar in Browse page is bugged visually with background cards
 // TODO add 'random entry' button to top right corner of library
 // TODO throttle db save events after 5s
 // TODO add 'play episode' button on continue watching series card -> click on card simply opens series

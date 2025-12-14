@@ -18,6 +18,7 @@ import '../utils/path.dart';
 import '../utils/shell.dart';
 import '../utils/text.dart';
 import '../widgets/animated_color_wrapper.dart';
+import '../widgets/buttons/back_button.dart';
 import '../widgets/buttons/button.dart';
 import '../services/anilist/provider/anilist_provider.dart';
 import '../widgets/buttons/wrapper.dart';
@@ -808,11 +809,7 @@ class SeriesScreenState extends State<SeriesScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  _buildButton(
-                    widget.onBack,
-                    const Icon(FluentIcons.back),
-                    'Back to Library',
-                  ),
+                  BackButton(onTap: widget.onBack, label: 'Back to Library', child: const Icon(FluentIcons.back)),
                   // ... other buttons
                 ],
               )
@@ -1153,35 +1150,6 @@ class SeriesScreenState extends State<SeriesScreen> {
         ],
       );
     });
-  }
-
-  Widget _buildButton(void Function()? onTap, Widget child, String label) {
-    return MouseButtonWrapper(
-      child: (_) => TooltipWrapper(
-        tooltip: label,
-        child: (_) => Padding(
-          padding: const EdgeInsets.all(2.0),
-          child: IconButton(
-            style: ButtonStyle(
-              backgroundColor: ButtonState.resolveWith((states) {
-                if (onTap == null) return Colors.transparent;
-                if (states.contains(mat.MaterialState.pressed)) return Colors.white.withOpacity(0.125);
-                if (states.contains(mat.MaterialState.hovered)) return Colors.white.withOpacity(0.075);
-                return Colors.transparent;
-              }),
-              foregroundColor: ButtonState.all(Colors.white.withOpacity(onTap != null ? 1 : 0)),
-              elevation: ButtonState.all(0),
-              shape: ButtonState.all(RoundedRectangleBorder(borderRadius: BorderRadius.circular(5.0))),
-            ),
-            icon: Padding(
-              padding: const EdgeInsets.all(6.0),
-              child: child,
-            ),
-            onPressed: onTap,
-          ),
-        ),
-      ),
-    );
   }
 
   Widget _buildContentGrid(BuildContext context, Series series) {

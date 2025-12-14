@@ -15,6 +15,8 @@ import 'header_widget.dart';
 double kDefaultSearchBarMinCollapsedWidth(double _) => 200.0;
 double kDefaultSearchBarMaxCollapsedWidth(double maxWidthConstraint) => maxWidthConstraint;
 
+enum SearchBarStatus { automatic, collapsed, expanded }
+
 class SearchTemplatePage extends StatefulWidget {
   final Widget header;
   final Widget content;
@@ -28,7 +30,8 @@ class SearchTemplatePage extends StatefulWidget {
   final Widget? floatingButton;
   final ScrollController? scrollController;
   final Widget Function(double animationValue)? behindSearchBar;
-  final Widget Function(double? width, double? height, double animationValue) searchBar;
+  final Widget Function(double? width, double? height, double animationValue, FocusNode focusNode) searchBar;
+  final SearchBarStatus searchBarStatus;
 
   const SearchTemplatePage({
     super.key,
@@ -41,10 +44,11 @@ class SearchTemplatePage extends StatefulWidget {
     this.searchBarMinExpandedWidth,
     this.searchBarMaxExpandedWidth,
     this.backgroundColor,
-    this.contentExtraHeaderPadding = 16.0,
+    this.contentExtraHeaderPadding = 0.0,
     this.floatingButton,
     this.scrollController,
     this.behindSearchBar,
+    this.searchBarStatus = SearchBarStatus.automatic,
   });
 
   @override
@@ -55,6 +59,7 @@ class _SearchTemplatePageState extends State<SearchTemplatePage> with SingleTick
   late AnimationController _controller;
   late Animation<double> _yAxisCurve;
   late Animation<double> _xAxisCurve;
+  final FocusNode _searchBarFocusNode = FocusNode();
 
   /// Indicates whether the page is currently scrolled down (not at top)
   bool _isScrolled = false;
@@ -81,6 +86,23 @@ class _SearchTemplatePageState extends State<SearchTemplatePage> with SingleTick
       curve: Curves.easeInCubic,
       reverseCurve: Curves.easeOutCubic,
     );
+
+    if (widget.searchBarStatus == SearchBarStatus.collapsed) {
+      _isScrolled = true;
+      _controller.value = 1.0;
+    }
+  }
+
+  @override
+  void didUpdateWidget(SearchTemplatePage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.searchBarStatus != oldWidget.searchBarStatus) {
+      if (widget.searchBarStatus == SearchBarStatus.collapsed) {
+        _handleScroll(true);
+      } else if (widget.searchBarStatus == SearchBarStatus.expanded) {
+        _handleScroll(false);
+      }
+    }
   }
 
   @override
@@ -116,155 +138,182 @@ class _SearchTemplatePageState extends State<SearchTemplatePage> with SingleTick
             intensity: 0.25,
             child: Padding(
               padding: const EdgeInsets.only(bottom: 16.0),
-              child: Stack(
-                alignment: Alignment.topCenter,
-                children: [
-                  SizedBox(
-                    width: min(ScreenUtils.kMaxContentWidth, outerConstraints.maxWidth),
-                    child: LayoutBuilder(builder: (context, constraints) {
-                      final screenHeight = constraints.maxHeight;
-                      final screenWidth = constraints.maxWidth;
-                      final topPadding = 0;
+              child: Builder(builder: (context) {
+                Widget searchbarBuilder({required Widget Function(double currentWidth, double currentHeight, double animationValue) child, required double startTop, required double endTop, required double startRight, required double endRight, required double startWidth, required double endWidth, required double expandedHeight, required double collapsedHeight}) {
+                  return AnimatedBuilder(
+                    animation: _controller,
+                    builder: (context, _) {
+                      final currentTop = lerpDouble(startTop, endTop, _yAxisCurve.value)!;
+                      final currentRight = lerpDouble(startRight, endRight, _xAxisCurve.value)!;
+                      final currentWidth = lerpDouble(startWidth, endWidth, _controller.value)!;
+                      final currentHeight = lerpDouble(expandedHeight, collapsedHeight, _controller.value)!;
 
-                      // Expanded Width Logic
-                      final double minExpanded = widget.searchBarMinExpandedWidth?.call(screenWidth) ?? 0.0;
-                      final double maxExpanded = widget.searchBarMaxExpandedWidth?.call(screenWidth) ?? double.infinity;
-                      final double maxAllowedExpanded = screenWidth * 0.85;
+                      return Positioned(
+                        top: currentTop,
+                        right: currentRight,
+                        width: currentWidth,
+                        child: child.call(currentWidth, currentHeight, _controller.value),
+                      );
+                    },
+                  );
+                }
 
-                      double startWidth = (screenWidth * 0.85).clamp(minExpanded, maxExpanded);
-                      if (startWidth > maxAllowedExpanded) startWidth = maxAllowedExpanded;
+                return Stack(
+                  alignment: Alignment.topCenter,
+                  children: [
+                    SizedBox(
+                      width: min(ScreenUtils.kMaxContentWidth, outerConstraints.maxWidth),
+                      child: LayoutBuilder(builder: (context, constraints) {
+                        final screenHeight = constraints.maxHeight;
+                        final screenWidth = constraints.maxWidth;
+                        final topPadding = 0;
 
-                      // Collapsed Width Logic
-                      final double minCollapsed = widget.searchBarMinCollapsedWidth(screenWidth);
-                      final double maxCollapsed = widget.searchBarMaxCollapsedWidth(screenWidth);
-                      final double maxAllowedCollapsed = screenWidth * 0.5;
+                        // Expanded Width Logic
+                        final double minExpanded = widget.searchBarMinExpandedWidth?.call(screenWidth) ?? 0.0;
+                        final double maxExpanded = widget.searchBarMaxExpandedWidth?.call(screenWidth) ?? double.infinity;
+                        final double maxAllowedExpanded = screenWidth * 0.85;
 
-                      double endWidth = widget.searchBarCollapsedWidth(screenWidth).clamp(minCollapsed, maxCollapsed);
-                      if (endWidth > maxAllowedCollapsed) endWidth = maxAllowedCollapsed;
+                        double startWidth = (screenWidth * 0.85).clamp(minExpanded, maxExpanded);
+                        if (startWidth > maxAllowedExpanded) startWidth = maxAllowedExpanded;
 
-                      const double expandedHeight = 60.0;
-                      const double collapsedHeight = 40.0;
+                        // Collapsed Width Logic
+                        final double minCollapsed = widget.searchBarMinCollapsedWidth(screenWidth);
+                        final double maxCollapsed = widget.searchBarMaxCollapsedWidth(screenWidth);
+                        final double maxAllowedCollapsed = screenWidth * 0.5;
 
-                      // Positions
-                      final double startTop = (screenHeight / 2) - expandedHeight; // height searchbar - centered
-                      final double endTop = topPadding + 36; // height searchbar - top right
-                      final double startRight = (screenWidth - startWidth) / 2;
-                      final double endRight = 16.0;
+                        double endWidth = widget.searchBarCollapsedWidth(screenWidth).clamp(minCollapsed, maxCollapsed);
+                        if (endWidth > maxAllowedCollapsed) endWidth = maxAllowedCollapsed;
 
-                      final double contentPaddingStartTop = (screenHeight / 2) + 280; // content top padding - centered
-                      final double contentPaddingEndTop = 56 + topPadding + 100; // content top padding - top right
-                      final double contentPaddingTop = _isScrolled ? contentPaddingEndTop : contentPaddingStartTop; // content top padding
+                        const double expandedHeight = 60.0;
+                        const double collapsedHeight = 40.0;
 
-                      // THRESHOLD CONFIGURATION
-                      // How many pixels "early" do you want to trigger the expansion when scrolling up?
-                      const double expansionThreshold = 100.0;
+                        // Positions
+                        final double startTop = (screenHeight / 3) - expandedHeight; // height searchbar - centered
+                        final double endTop = topPadding + 36; // height searchbar - top right
+                        final double startRight = (screenWidth - startWidth) / 2;
+                        final double endRight = 16.0;
 
-                      return Stack(
-                        children: [
-                          if (widget.behindSearchBar != null)
-                            AnimatedBuilder(
-                              animation: _controller,
-                              builder: (context, child) {
-                                final extraTop = -600;
-                                final currentTop = lerpDouble(startTop + extraTop, (endTop + extraTop) / 2, _yAxisCurve.value);
+                        final double contentPaddingStartTop = (screenHeight / 2) + 0; // content top padding - centered
+                        final double contentPaddingEndTop = 56 + topPadding + 126; // content top padding - top right
+                        final double contentPaddingEndTopAlt = 56 + topPadding + 40; // content top padding - top right
+                        final double contentPaddingTop = _isScrolled ? (widget.searchBarStatus == SearchBarStatus.collapsed ? contentPaddingEndTopAlt : contentPaddingEndTop) : contentPaddingStartTop; // content top padding
 
-                                return Positioned.fill(
-                                  top: currentTop,
-                                  child: widget.behindSearchBar!(_controller.value),
-                                );
-                              },
-                            ),
-                          SizedBox(
-                            width: constraints.maxWidth,
-                            child: NotificationListener<ScrollNotification>(
-                              onNotification: (notification) {
-                                // We only care about updates that change scroll position
-                                if (notification is ScrollUpdateNotification) {
-                                  final currentPixels = notification.metrics.pixels;
+                        // THRESHOLD CONFIGURATION
+                        // How many pixels "early" do you want to trigger the expansion when scrolling up?
+                        const double expansionThreshold = 100.0;
 
-                                  // 1. Determine Direction
-                                  final isScrollingDown = currentPixels > _lastPixels;
-                                  final isScrollingUp = currentPixels < _lastPixels;
+                        return Stack(
+                          children: [
+                            // Background behind search bar
+                            if (widget.behindSearchBar != null)
+                              AnimatedBuilder(
+                                animation: _controller,
+                                builder: (context, child) {
+                                  final extraTop = -600;
+                                  final currentTop = lerpDouble(startTop + extraTop, (endTop + extraTop) / 2, _yAxisCurve.value);
 
-                                  // Update tracker for next frame
-                                  _lastPixels = currentPixels;
+                                  return Positioned.fill(
+                                    top: currentTop,
+                                    child: widget.behindSearchBar!(_controller.value),
+                                  );
+                                },
+                              ),
 
-                                  // 2. LOGIC
+                            // Content with scroll listener
+                            SizedBox(
+                              width: constraints.maxWidth,
+                              child: NotificationListener<ScrollNotification>(
+                                onNotification: (notification) {
+                                  if (widget.searchBarStatus != SearchBarStatus.automatic) return false;
 
-                                  // SCENARIO A: Scrolling DOWN (Leaving top)
-                                  // Trigger: Immediate collapse as soon as we leave 0
-                                  if (isScrollingDown && currentPixels > 0 && !_isScrolled) {
-                                    _handleScroll(true);
+                                  // We only care about updates that change scroll position
+                                  if (notification is ScrollUpdateNotification) {
+                                    final currentPixels = notification.metrics.pixels;
+
+                                    // 1. Determine Direction
+                                    final isScrollingDown = currentPixels > _lastPixels;
+                                    final isScrollingUp = currentPixels < _lastPixels;
+
+                                    // Update tracker for next frame
+                                    _lastPixels = currentPixels;
+
+                                    // 2. LOGIC
+
+                                    // SCENARIO A: Scrolling DOWN (Leaving top)
+                                    // Trigger: Immediate collapse as soon as we leave 0
+                                    if (isScrollingDown && currentPixels > 0 && !_isScrolled) {
+                                      _handleScroll(true);
+                                    }
+
+                                    // SCENARIO B: Scrolling UP (Returning to top)
+                                    // Trigger: Early expansion if we are within the threshold
+                                    else if (isScrollingUp && currentPixels < expansionThreshold && _isScrolled) {
+                                      _handleScroll(false);
+                                    }
+
+                                    // SCENARIO C: Bounce safety
+                                    // If we hit 0 or negative (iOS bounce), strictly ensure we are expanded
+                                    else if (currentPixels <= 0 && _isScrolled) {
+                                      _handleScroll(false);
+                                    }
                                   }
-
-                                  // SCENARIO B: Scrolling UP (Returning to top)
-                                  // Trigger: Early expansion if we are within the threshold
-                                  else if (isScrollingUp && currentPixels < expansionThreshold && _isScrolled) {
-                                    _handleScroll(false);
-                                  }
-
-                                  // SCENARIO C: Bounce safety
-                                  // If we hit 0 or negative (iOS bounce), strictly ensure we are expanded
-                                  else if (currentPixels <= 0 && _isScrolled) {
-                                    _handleScroll(false);
-                                  }
-                                }
-                                return false;
-                              },
-                              child: FadingEdgeScrollView(
-                                fadeEdges: const EdgeInsets.symmetric(vertical: 132.0),
-                                gradientColors: [
-                                  Colors.black.withOpacity(0),
-                                  Colors.black.withOpacity(0.1),
-                                  Colors.black,
-                                  Colors.black,
-                                  Colors.black,
-                                  Colors.black,
-                                ],
-                                gradientStops: [
-                                  0.08,
-                                  0.09,
-                                  0.11,
-                                  0.80,
-                                  0.885,
-                                  0.9,
-                                ],
-                                child: SizedBox(
-                                  width: ScreenUtils.kMaxContentWidth,
-                                  child: Padding(
-                                    padding: EdgeInsets.only(left: 16.0 * Manager.fontSizeMultiplier, top: widget.contentExtraHeaderPadding, right: 4.0),
-                                    child: ClipRRect(
-                                      borderRadius: BorderRadius.circular(ScreenUtils.kStatCardBorderRadius),
-                                      child: ScrollConfiguration(
-                                        behavior: ScrollConfiguration.of(context).copyWith(overscroll: true, platform: TargetPlatform.windows, scrollbars: false),
-                                        child: DynMouseScroll(
-                                          controller: widget.scrollController,
-                                          stopScroll: KeyboardState.ctrlPressedNotifier,
-                                          scrollSpeed: 1.0,
-                                          enableSmoothScroll: Manager.animationsEnabled,
-                                          durationMS: 350,
-                                          animationCurve: Curves.easeOutQuint,
-                                          builder: (context, controller, physics) {
-                                            return ValueListenableBuilder(
-                                              valueListenable: KeyboardState.ctrlPressedNotifier,
-                                              builder: (context, isCtrlPressed, _) {
-                                                return CustomScrollView(
-                                                  controller: controller,
-                                                  physics: physics,
-                                                  slivers: [
-                                                    SliverToBoxAdapter(
-                                                      child: AnimatedContainer(
-                                                        duration: !_isScrolled ? _controller.reverseDuration! : _controller.duration!,
-                                                        curve: Curves.easeInOutCubic,
-                                                        height: contentPaddingTop,
+                                  return false;
+                                },
+                                child: FadingEdgeScrollView(
+                                  fadeEdges: const EdgeInsets.symmetric(vertical: 132.0),
+                                  gradientColors: [
+                                    Colors.black.withOpacity(0),
+                                    Colors.black.withOpacity(0.1),
+                                    Colors.black,
+                                    Colors.black,
+                                    Colors.black,
+                                    Colors.black,
+                                  ],
+                                  gradientStops: [
+                                    0.08,
+                                    0.09,
+                                    0.11,
+                                    0.80,
+                                    0.885,
+                                    0.9,
+                                  ],
+                                  child: SizedBox(
+                                    width: ScreenUtils.kMaxContentWidth,
+                                    child: Padding(
+                                      padding: EdgeInsets.only(left: 16.0 * Manager.fontSizeMultiplier, top: widget.contentExtraHeaderPadding, right: 4.0),
+                                      child: ClipRRect(
+                                        borderRadius: BorderRadius.circular(ScreenUtils.kStatCardBorderRadius),
+                                        child: ScrollConfiguration(
+                                          behavior: ScrollConfiguration.of(context).copyWith(overscroll: true, platform: TargetPlatform.windows, scrollbars: false),
+                                          child: DynMouseScroll(
+                                            controller: widget.scrollController,
+                                            stopScroll: KeyboardState.ctrlPressedNotifier,
+                                            scrollSpeed: 1.0,
+                                            enableSmoothScroll: Manager.animationsEnabled,
+                                            durationMS: 350,
+                                            animationCurve: Curves.easeOutQuint,
+                                            builder: (context, controller, physics) {
+                                              return ValueListenableBuilder(
+                                                valueListenable: KeyboardState.ctrlPressedNotifier,
+                                                builder: (context, isCtrlPressed, _) {
+                                                  return CustomScrollView(
+                                                    controller: controller,
+                                                    physics: physics,
+                                                    slivers: [
+                                                      SliverToBoxAdapter(
+                                                        child: AnimatedContainer(
+                                                          duration: !_isScrolled ? _controller.reverseDuration! : _controller.duration!,
+                                                          curve: Curves.easeInOutCubic,
+                                                          height: contentPaddingTop,
+                                                        ),
                                                       ),
-                                                    ),
-                                                    SliverToBoxAdapter(child: widget.content),
-                                                  ],
-                                                );
-                                              },
-                                            );
-                                          },
+                                                      SliverToBoxAdapter(child: widget.content),
+                                                    ],
+                                                  );
+                                                },
+                                              );
+                                            },
+                                          ),
                                         ),
                                       ),
                                     ),
@@ -272,47 +321,45 @@ class _SearchTemplatePageState extends State<SearchTemplatePage> with SingleTick
                                 ),
                               ),
                             ),
-                          ),
-                          HeaderCenterInPageWidget(
-                            top: topPadding + 36,
-                            title: (titleStyle, _) => widget.header,
-                            constraints: constraints,
-                            titleLeftAligned: true,
-                          ),
-                          AnimatedBuilder(
-                            animation: _controller,
-                            builder: (context, child) {
-                              final currentTop = lerpDouble(startTop, endTop, _yAxisCurve.value);
-                              final currentRight = lerpDouble(startRight, endRight, _xAxisCurve.value);
-                              final currentWidth = lerpDouble(startWidth, endWidth, _controller.value)!;
-                              final currentHeight = lerpDouble(expandedHeight, collapsedHeight, _controller.value);
 
-                              return Positioned(
-                                top: currentTop,
-                                right: currentRight,
-                                width: currentWidth,
-                                child: widget.searchBar(currentWidth, currentHeight, _controller.value),
-                              );
-                            },
+                            // Search Bar
+                            searchbarBuilder(
+                              child: (currentWidth, currentHeight, animationValue) => widget.searchBar(currentWidth, currentHeight, animationValue, _searchBarFocusNode),
+                              startTop: startTop,
+                              endTop: endTop,
+                              startRight: startRight,
+                              endRight: endRight,
+                              startWidth: startWidth,
+                              endWidth: endWidth,
+                              expandedHeight: expandedHeight,
+                              collapsedHeight: collapsedHeight,
+                            ),
+                            // Header
+                            HeaderCenterInPageWidget(
+                              top: topPadding + 36,
+                              title: (titleStyle, _) => widget.header,
+                              constraints: constraints,
+                              titleLeftAligned: true,
+                            ),
+                          ],
+                        );
+                      }),
+                    ),
+                    if (widget.floatingButton != null)
+                      Positioned(
+                        bottom: 0,
+                        child: Container(
+                          width: min(ScreenUtils.kMaxContentWidth + 100, outerConstraints.maxWidth),
+                          alignment: Alignment.bottomRight,
+                          child: Padding(
+                            padding: const EdgeInsets.only(right: 16.0), // to always keep some space from the right edge when the screen is smaller than max content width
+                            child: widget.floatingButton!,
                           ),
-                        ],
-                      );
-                    }),
-                  ),
-                  if (widget.floatingButton != null)
-                    Positioned(
-                      bottom: 0,
-                      child: Container(
-                        width: min(ScreenUtils.kMaxContentWidth + 100, outerConstraints.maxWidth),
-                        alignment: Alignment.bottomRight,
-                        child: Padding(
-                          padding: const EdgeInsets.only(right: 16.0), // to always keep some space from the right edge when the screen is smaller than max content width
-                          child: widget.floatingButton!,
                         ),
                       ),
-                    ),
-                ],
-              ),
+                  ],
+                );
+              }),
             ),
           ),
         ));

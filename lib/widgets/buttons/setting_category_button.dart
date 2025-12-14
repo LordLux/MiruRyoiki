@@ -29,7 +29,7 @@ class _SettingCategoryButtonState extends State<SettingCategoryButton> {
     final Icon icon = thisButton["icon"];
     final Color col = icon.color!;
     return Padding(
-      padding: SettingsScreenState.settingsList.length -1 != widget.index ? EdgeInsets.only(bottom: 8.0) : EdgeInsets.zero,
+      padding: SettingsScreenState.settingsList.length - 1 != widget.index ? EdgeInsets.only(bottom: 8.0) : EdgeInsets.zero,
       child: StandardButton(
         isFilled: widget.isSelected,
         filledColor: col.withOpacity(.15),
@@ -37,6 +37,7 @@ class _SettingCategoryButtonState extends State<SettingCategoryButton> {
         label: Row(
           mainAxisAlignment: MainAxisAlignment.start,
           children: [
+            const SizedBox(width: 1.5),
             widget.isSelected
                 ? Container(
                     width: 35,
@@ -69,4 +70,3 @@ class _SettingCategoryButtonState extends State<SettingCategoryButton> {
     );
   }
 }
-

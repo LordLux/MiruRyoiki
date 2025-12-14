@@ -18,6 +18,7 @@ class StandardButton extends StatefulWidget {
   final String? tooltip;
   final Widget? tooltipWidget;
   final bool expand;
+  final bool expandY;
   final Duration? tooltipWaitDuration;
   final EdgeInsets? padding;
   final Color filledColor;
@@ -37,6 +38,7 @@ class StandardButton extends StatefulWidget {
     this.tooltip,
     this.tooltipWidget,
     this.expand = false,
+    this.expandY = false,
     this.tooltipWaitDuration,
     this.padding,
     this.forcedHeight,
@@ -60,6 +62,7 @@ class StandardButton extends StatefulWidget {
     String? tooltip,
     Widget? tooltipWidget,
     bool expand = false,
+    bool expandY = false,
     Duration? tooltipWaitDuration,
     EdgeInsets? padding,
     TextStyle? textStyle,
@@ -94,6 +97,7 @@ class StandardButton extends StatefulWidget {
       tooltip: tooltip,
       tooltipWidget: tooltipWidget,
       expand: expand,
+      expandY: expandY,
       tooltipWaitDuration: tooltipWaitDuration,
       padding: padding,
       filledColor: filledColor,
@@ -114,6 +118,7 @@ class StandardButton extends StatefulWidget {
     String? tooltip,
     Widget? tooltipWidget,
     bool expand = false,
+    bool expandY = false,
     Duration? tooltipWaitDuration,
     EdgeInsets? padding,
     TextStyle? textStyle,
@@ -133,6 +138,7 @@ class StandardButton extends StatefulWidget {
       tooltip: tooltip,
       tooltipWidget: tooltipWidget,
       expand: expand,
+      expandY: expandY,
       tooltipWaitDuration: tooltipWaitDuration,
       padding: padding ?? (isSmall ? EdgeInsets.symmetric(horizontal: 6, vertical: 4) : null),
       filledColor: filledColor,
@@ -242,9 +248,10 @@ class _StandardButtonState extends State<StandardButton> {
       },
     );
 
-    if (widget.expand) {
+    if (widget.expand || widget.expandY) {
       return SizedBox(
-        width: double.infinity,
+        width: widget.expand ? double.infinity : null,
+        height: widget.expandY ? double.infinity : null,
         child: buttonWidget,
       );
     }

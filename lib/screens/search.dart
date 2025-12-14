@@ -3,13 +3,11 @@ import 'dart:ui';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:defer_pointer/defer_pointer.dart';
-import 'package:fluent_ui/fluent_ui.dart' hide Colors;
-import 'package:flutter/material.dart' hide TextBox, Slider;
+import 'package:fluent_ui/fluent_ui.dart' hide Colors, IconButton;
+import 'package:flutter/material.dart' hide TextBox, Slider, BackButton;
 import 'package:glossy/glossy.dart';
 import 'package:miruryoiki/utils/text.dart';
-import 'package:miruryoiki/widgets/animated_translate.dart';
 import 'package:miruryoiki/widgets/frosted_noise.dart';
-import 'package:miruryoiki/widgets/widget_alpha_mask.dart';
 import 'package:provider/provider.dart';
 import 'package:marquee/marquee.dart';
 
@@ -23,11 +21,11 @@ import '../settings.dart';
 import '../manager.dart';
 import '../utils/screen.dart';
 import '../utils/time.dart';
+import '../widgets/buttons/back_button.dart';
 import '../widgets/buttons/button.dart';
 import '../widgets/cards/sarch_series_card.dart';
 import '../widgets/fading_edge_scrollview.dart';
 import '../widgets/page/search_template.dart';
-import 'search_results.dart';
 
 final GlobalKey<_BrowseScreenState> browseScreenKey = GlobalKey<_BrowseScreenState>();
 
@@ -41,127 +39,20 @@ class BrowseScreen extends StatefulWidget {
 }
 
 class _BrowseScreenState extends State<BrowseScreen> {
-  // Navigation state
-  bool _isSearchResultsVisible = false;
-  bool _isFinishedTransitioningToResults = false;
-  bool _isFinishedTransitioningToBrowse = true;
-
-  // Search Results state
-  String _searchQueryType = '';
-  String _searchTitle = '';
-  String? _searchQuery;
-  Map<String, dynamic>? _searchFilters;
-
-  void _showSearchResults({
-    required String queryType,
-    required String title,
-    String? searchQuery,
-    Map<String, dynamic>? filters,
-  }) {
-    final navigator = Provider.of<NavigationManager>(context, listen: false);
-    navigator.pushPage("search_results:$queryType", title);
-
-    setState(() {
-      _searchQueryType = queryType;
-      _searchTitle = title;
-      _searchQuery = searchQuery;
-      _searchFilters = filters;
-      _isSearchResultsVisible = true;
-      _isFinishedTransitioningToBrowse = false;
-    });
-  }
-
-  void _hideSearchResults() {
-    final navigator = Provider.of<NavigationManager>(context, listen: false);
-    navigator.goBack();
-
-    setState(() {
-      _isSearchResultsVisible = false;
-      _isFinishedTransitioningToResults = false;
-    });
-  }
-
-  void _onEndTransition() {
-    setState(() {
-      if (_isSearchResultsVisible) {
-        _isFinishedTransitioningToResults = true;
-      } else {
-        _isFinishedTransitioningToBrowse = true;
-        _isFinishedTransitioningToResults = false;
-      }
-    });
-  }
-
-  void _onSeriesOpen(AnilistAnime anime) {
-    final navigator = Provider.of<NavigationManager>(context, listen: false);
-    navigator.pushPage("search:series:${anime.id}", anime.title.userPreferred ?? 'Anime Details');
-  }
-
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      children: [
-        // Main Dashboard
-        Offstage(
-          offstage: _isSearchResultsVisible && _isFinishedTransitioningToResults,
-          child: AnimatedOpacity(
-            duration: mediumDuration,
-            opacity: _isSearchResultsVisible ? 0.0 : 1.0,
-            curve: Curves.ease,
-            child: AbsorbPointer(
-              absorbing: _isSearchResultsVisible,
-              child: SearchScreen(
-                scrollController: widget.scrollController,
-                onShowSearchResults: _showSearchResults,
-                onSeriesOpen: _onSeriesOpen,
-              ),
-            ),
-          ),
-        ),
-
-        // Search Results
-        IgnorePointer(
-          ignoring: !_isSearchResultsVisible,
-          child: AbsorbPointer(
-            absorbing: !_isSearchResultsVisible,
-            child: AnimatedOpacity(
-              duration: mediumDuration,
-              opacity: _isSearchResultsVisible ? 1.0 : 0.0,
-              curve: Curves.ease,
-              onEnd: _onEndTransition,
-              child: _isFinishedTransitioningToBrowse
-                  ? const SizedBox.shrink()
-                  : SearchResultsScreen(
-                      queryType: _searchQueryType,
-                      title: _searchTitle,
-                      searchQuery: _searchQuery,
-                      filters: _searchFilters,
-                      onBack: _hideSearchResults,
-                      onSeriesOpen: _onSeriesOpen,
-                    ),
-            ),
-          ),
-        ),
-      ],
+    return SearchScreen(
+      scrollController: widget.scrollController,
     );
   }
 }
 
 class SearchScreen extends StatefulWidget {
   final ScrollController scrollController;
-  final Function({
-    required String queryType,
-    required String title,
-    String? searchQuery,
-    Map<String, dynamic>? filters,
-  }) onShowSearchResults;
-  final Function(AnilistAnime anime) onSeriesOpen;
 
   const SearchScreen({
     super.key,
     required this.scrollController,
-    required this.onShowSearchResults,
-    required this.onSeriesOpen,
   });
 
   @override
@@ -170,7 +61,7 @@ class SearchScreen extends StatefulWidget {
 
 class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClientMixin {
   final TextEditingController _searchController = TextEditingController();
-  final FocusNode _searchFocusNode = FocusNode();
+  FocusNode? _searchFocusNode;
   final TextStyle _searchTextStyle = Manager.smallSubtitleStyle.copyWith(fontWeight: FontWeight.w400);
 
   DeferredPointerHandlerLink? deferredPointerLink;
@@ -185,17 +76,33 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
   late Future<AnilistSearchPage<AnilistAnime>?> _top100Future;
   Future<List<String>>? _imagesFuture;
 
+  // Results State
+  bool _isShowingResults = false;
+  String _resultsQueryType = '';
+  String _resultsTitle = '';
+  String? _resultsQuery;
+  Map<String, dynamic>? _resultsFilters;
+
+  final List<AnilistAnime> _resultsList = [];
+  bool _resultsIsLoading = false;
+  bool _resultsHasNextPage = true;
+  bool _showFilters = false;
+  int _resultsCurrentPage = 1;
+  String? _resultsErrorMessage;
+  double _filterButtonSize = 40;
+
   @override
   bool get wantKeepAlive => true;
 
   @override
   void initState() {
     super.initState();
-    _searchFocusNode.addListener(_onSearchFocusChange);
     _searchController.addListener(_onSearchTextChanged);
+    widget.scrollController.addListener(_onScroll);
     _fetchData();
   }
 
+  /// Initial data fetch for dashboard sections.
   void _fetchData() {
     final service = AnilistService();
     _trendingFuture = service.getTrendingNow();
@@ -204,6 +111,136 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
     _top100Future = service.getTop100Anime();
 
     _imagesFuture = _aggregateImages();
+  }
+
+  /// Handles infinite scrolling for search results.
+  void _onScroll() {
+    if (_isShowingResults && //
+        widget.scrollController.hasClients &&
+        widget.scrollController.position.pixels >= widget.scrollController.position.maxScrollExtent - 200 &&
+        !_resultsIsLoading &&
+        _resultsHasNextPage) {
+      _fetchResults();
+    }
+  }
+
+  /// Fetches search results based on the current query type, page, and filters.
+  Future<void> _fetchResults() async {
+    if (_resultsIsLoading) return;
+    setState(() {
+      _resultsIsLoading = true;
+      _resultsErrorMessage = null;
+    });
+
+    try {
+      final service = AnilistService();
+      final perPage = 20;
+
+      AnilistSearchPage<AnilistAnime>? result = await switch (_resultsQueryType) {
+        'trending' => service.getTrendingNow(page: _resultsCurrentPage, perPage: perPage),
+        'popular' => service.getPopularThisSeason(page: _resultsCurrentPage, perPage: perPage),
+        'upcoming' => service.getUpcomingNextSeason(page: _resultsCurrentPage, perPage: perPage),
+        'top100' => service.getTop100Anime(page: _resultsCurrentPage, perPage: perPage),
+        'search' => service.searchAnime(
+            page: _resultsCurrentPage,
+            perPage: perPage,
+            search: _resultsQuery,
+            genres: _resultsFilters?['genres'],
+            seasonYear: _resultsFilters?['year'],
+            season: _resultsFilters?['season'],
+            format: _resultsFilters?['format'],
+            countryOfOrigin: _resultsFilters?['countryOfOrigin'],
+            durationGreater: _resultsFilters?['durationGreater'],
+            durationLesser: _resultsFilters?['durationLesser'],
+            episodeGreater: _resultsFilters?['episodeGreater'],
+            episodeLesser: _resultsFilters?['episodeLesser'],
+            excludedGenres: _resultsFilters?['excludedGenres'],
+            excludedTags: _resultsFilters?['excludedTags'],
+            isAdult: _resultsFilters?['isAdult'],
+            isLicensed: _resultsFilters?['isLicensed'],
+            sort: _resultsFilters?['sort'] ?? const ['POPULARITY_DESC'],
+            licensedBy: _resultsFilters?['licensedBy'],
+            minimumTagRank: _resultsFilters?['minimumTagRank'],
+            onList: _resultsFilters?['onList'],
+            source: _resultsFilters?['source'],
+            status: _resultsFilters?['status'],
+            tags: _resultsFilters?['tags'],
+            yearGreater: _resultsFilters?['yearGreater'],
+            yearLesser: _resultsFilters?['yearLesser'],
+          ),
+        _ => null,
+      };
+
+      if (result == null) {
+        if (mounted) {
+          setState(() {
+            _resultsIsLoading = false;
+            _resultsErrorMessage = 'Failed to load data.';
+          });
+        }
+        return;
+      }
+
+      final pageInfo = result.pageInfo;
+      final media = result.results;
+
+      if (mounted) {
+        setState(() {
+          _resultsList.addAll(media);
+          _resultsHasNextPage = pageInfo.hasNextPage;
+          _resultsCurrentPage++;
+          _resultsIsLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _resultsIsLoading = false;
+          _resultsErrorMessage = 'An error occurred: $e';
+        });
+      }
+    }
+  }
+
+  void _showSearchResults({
+    required String queryType,
+    required String title,
+    String? searchQuery,
+    Map<String, dynamic>? filters,
+  }) {
+    setState(() {
+      _isShowingResults = true;
+      _resultsQueryType = queryType;
+      _resultsTitle = title;
+      _resultsQuery = searchQuery;
+      _resultsFilters = filters;
+      _resultsList.clear();
+      _resultsCurrentPage = 1;
+      _resultsHasNextPage = true;
+      _resultsIsLoading = false;
+      _resultsErrorMessage = null;
+    });
+
+    _fetchResults();
+  }
+
+  void _hideSearchResults() {
+    setState(() {
+      _isShowingResults = false;
+      _searchController.clear();
+    });
+    if (widget.scrollController.hasClients) {
+      widget.scrollController.animateTo(
+        0,
+        duration: mediumDuration,
+        curve: Curves.easeInOut,
+      );
+    }
+  }
+
+  void _onSeriesOpen(AnilistAnime anime) {
+    final navigator = Provider.of<NavigationManager>(context, listen: false);
+    navigator.pushPage("search:series:${anime.id}", anime.title.userPreferred ?? 'Anime Details');
   }
 
   Future<List<String>> _aggregateImages() async {
@@ -227,7 +264,7 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
     return images.toList()..shuffle();
   }
 
-  void _onSearchFocusChange() => setState(() => _isSearchFocused = _searchFocusNode.hasFocus);
+  void _onSearchFocusChange() => setState(() => _isSearchFocused = _searchFocusNode?.hasFocus ?? false);
 
   void _onSearchTextChanged() => setState(() => _textSearchWidth = measureTextWidth(_searchController.text, style: _searchTextStyle) + (20 - _animationValue * 8) + 10 + 16);
 
@@ -236,8 +273,9 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
   @override
   void dispose() {
     _searchController.dispose();
-    _searchFocusNode.dispose();
+    _searchFocusNode?.dispose();
     deferredPointerLink?.dispose();
+    widget.scrollController.removeListener(_onScroll);
     super.dispose();
   }
 
@@ -271,9 +309,9 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
                     return AnimatedOpacity(
                       duration: const Duration(milliseconds: 800),
                       curve: Curves.easeOut,
-                      opacity: hasData ? 1.0 : 0.0,
+                      opacity: hasData && !_isShowingResults ? 1.0 : 0.0,
                       child: Opacity(
-                        opacity: (1.0 - _animationValue).clamp(0.0, 0.5),
+                        opacity: (1.0 - _animationValue).clamp(0.1, 0.5),
                         child: SearchLibraryShelfDisplay(
                           imageUrls: hasData ? images : [],
                           verticalOffset: -50 * _animationValue,
@@ -286,71 +324,147 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
             ),
           ),
           SearchTemplatePage(
+            searchBarStatus: _isShowingResults ? SearchBarStatus.collapsed : SearchBarStatus.automatic,
             header: Text('Browse', style: Manager.titleStyle),
             behindSearchBar: (animationValue) {
-              if (_animationValue != animationValue) nextFrame(() => setState(() => _animationValue = animationValue));
+              if (_animationValue != animationValue) nextFrame(() => setState(() => _animationValue = animationValue)); // setstate not needed here because the ui is building right now
               return SizedBox.shrink();
             },
-            content: _buildContent(library, settings),
-            searchBarCollapsedWidth: (maxConstrainedWidth) => min(maxConstrainedWidth, _textSearchWidth + 27),
+            content: _buildBody(library, settings),
+            searchBarCollapsedWidth: (maxConstrainedWidth) => min(maxConstrainedWidth, _textSearchWidth + 27 + _filterButtonSize),
             searchBarMaxCollapsedWidth: (maxConstrainedWidth) => min(maxConstrainedWidth, ScreenUtils.kMaxContentWidth - 150),
-            searchBar: (width, height, animationValue) {
+            searchBarMinCollapsedWidth: (_) => 350,
+            searchBar: (width, height, animationValue, focusNode) {
+              if (_searchFocusNode == null) {
+                _searchFocusNode = focusNode;
+                _searchFocusNode!.addListener(_onSearchFocusChange);
+              }
+
               final bool isExpanded = animationValue < 0.2;
               final borderRadius = lerpDouble(8, 12, 1 - animationValue)!;
               final horizontalPadding = lerpDouble(12, 20, 1 - animationValue)!;
+              final filterButtonSize = lerpDouble(43, ((height == null ? null : height + 3) ?? 40), 1 - animationValue)!;
+              _filterButtonSize = filterButtonSize;
+
               Color color(double a) => _isSearchFocused ? (Manager.currentDominantAccentColor ?? Manager.accentColor) : Colors.white.withOpacity(a);
+              Color filterColorBg = _showFilters ? (Manager.currentDominantAccentColor ?? Manager.accentColor) : Colors.transparent;
+              final val = 6.0;
+
               return Stack(
                 alignment: Alignment.topCenter,
                 children: [
-                  GlossyContainer(
-                    color: color(1).withOpacity(.015),
-                    opacity: 0.1,
-                    strengthX: 20,
-                    strengthY: 20,
-                    blendMode: BlendMode.src,
-                    borderRadius: BorderRadius.circular(12),
-                    width: width ?? ScreenUtils.kMaxContentWidth - 150,
-                    height: (height == null ? null : height + 3) ?? 40,
-                    child: FrostedNoise(
-                      intensity: .7,
-                      child: TextBox(
-                        controller: _searchController,
-                        focusNode: _searchFocusNode,
-                        cursorOpacityAnimates: true,
-                        style: _searchTextStyle,
-                        padding: EdgeInsetsDirectional.fromSTEB(horizontalPadding, 0, horizontalPadding, 0),
-                        highlightColor: Colors.transparent,
-                        unfocusedColor: Colors.transparent,
-                        enableInteractiveSelection: true,
-                        prefix: Padding(padding: EdgeInsets.only(left: 20.0 - _animationValue * 8), child: Icon(Icons.search, color: color(.6), size: 23)),
-                        decoration: ButtonState.all(
-                          BoxDecoration(
-                            color: color(1).withOpacity(.015),
-                            borderRadius: BorderRadius.circular(borderRadius),
-                            border: Border.all(
-                              color: _isSearchFocused //
-                                  ? (Manager.currentDominantAccentColor ?? Manager.accentColor).light
-                                  : Colors.white.withOpacity(0.1),
-                              width: _searchController.text.isNotEmpty ? 1.5 : 1,
+                  Row(
+                    children: [
+                      GlossyContainer(
+                        color: color(1).withOpacity(.015),
+                        opacity: 0.1,
+                        strengthX: 20,
+                        strengthY: 20,
+                        blendMode: BlendMode.src,
+                        borderRadius: BorderRadius.only(
+                          topLeft: Radius.circular(borderRadius),
+                          bottomLeft: Radius.circular(borderRadius),
+                          topRight: Radius.circular(borderRadius / 3),
+                          bottomRight: Radius.circular(borderRadius / 3),
+                        ),
+                        width: (width ?? ScreenUtils.kMaxContentWidth - 150) - (filterButtonSize + val),
+                        height: (height == null ? null : height + 3) ?? 40,
+                        child: FrostedNoise(
+                          intensity: .5,
+                          child: Theme(
+                            data: Theme.of(context).copyWith(
+                              textSelectionTheme: TextSelectionThemeData(
+                                selectionColor: color(1).withOpacity(0.3),
+                                selectionHandleColor: color(1),
+                              ),
+                            ),
+                            child: TextBox(
+                              controller: _searchController,
+                              focusNode: _searchFocusNode,
+                              cursorOpacityAnimates: true,
+                              style: _searchTextStyle,
+                              padding: EdgeInsetsDirectional.fromSTEB(horizontalPadding, 0, horizontalPadding, 0),
+                              highlightColor: Colors.transparent,
+                              unfocusedColor: Colors.transparent,
+                              enableInteractiveSelection: true,
+                              suffix: _searchController.text.isNotEmpty
+                                  ? Padding(
+                                      padding: EdgeInsets.only(right: 20.0 - _animationValue * 8),
+                                      child: IconButton(
+                                        icon: Icon(FluentIcons.chrome_close, color: color(.6), size: 16),
+                                        onPressed: clearSearch,
+                                      ),
+                                    )
+                                  : null,
+                              prefix: Padding(padding: EdgeInsets.only(left: 20.0 - _animationValue * 8), child: Icon(Icons.search, color: color(.6), size: 23)),
+                              decoration: ButtonState.all(
+                                BoxDecoration(
+                                  color: color(1).withOpacity(.015),
+                                  borderRadius: BorderRadius.only(
+                                    topLeft: Radius.circular(borderRadius),
+                                    bottomLeft: Radius.circular(borderRadius),
+                                    topRight: Radius.circular(borderRadius / 3),
+                                    bottomRight: Radius.circular(borderRadius / 3),
+                                  ),
+                                  border: Border.all(
+                                    color: _isSearchFocused //
+                                        ? (Manager.currentDominantAccentColor ?? Manager.accentColor).light
+                                        : Colors.white.withOpacity(0.1),
+                                    width: _searchController.text.isNotEmpty ? 1.5 : 1,
+                                  ),
+                                ),
+                              ),
+                              placeholder: 'Search...',
+                              onSubmitted: (value) {
+                                if (value.isNotEmpty) {
+                                  _showSearchResults(
+                                    queryType: 'search',
+                                    title: 'Search Results: $value',
+                                    searchQuery: value,
+                                  );
+                                }
+                              },
+                              onChanged: (value) {
+                                if (value.isEmpty && _isShowingResults) _hideSearchResults();
+                              },
                             ),
                           ),
                         ),
-                        placeholder: 'Search...',
-                        onSubmitted: (value) {
-                          if (value.isNotEmpty) {
-                            widget.onShowSearchResults(
-                              queryType: 'search',
-                              title: 'Search Results: $value',
-                              searchQuery: value,
-                            );
-                          }
-                        },
-                        onChanged: (value) {
-                          // Handle search input changes
-                        },
                       ),
-                    ),
+                      SizedBox(width: val),
+                      GlossyContainer(
+                        color: filterColorBg,
+                        opacity: 0.1,
+                        strengthX: 20,
+                        strengthY: 20,
+                        blendMode: BlendMode.src,
+                        border: Border.all(
+                          color: _showFilters ? (Manager.currentDominantAccentColor ?? Manager.accentColor) : Colors.white.withOpacity(0.1),
+                          width: 1.5,
+                        ),
+                        borderRadius: BorderRadius.only(
+                          topLeft: Radius.circular(borderRadius / 3),
+                          bottomLeft: Radius.circular(borderRadius / 3),
+                          topRight: Radius.circular(borderRadius),
+                          bottomRight: Radius.circular(borderRadius),
+                        ),
+                        width: filterButtonSize,
+                        height: filterButtonSize,
+                        child: FrostedNoise(
+                          intensity: .5,
+                          color: filterColorBg,
+                          child: StandardButton.icon(
+                            expandY: true,
+                            padding: EdgeInsets.zero,
+                            expand: true,
+                            icon: Icon(FluentIcons.filter, color: _showFilters ? Manager.accentColor : Colors.grey, size: 20),
+                            onPressed: () => setState(() => _showFilters = !_showFilters),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
+                  // Filters Header
                   AnimatedSwitcher(
                     duration: dimDuration / 2,
                     reverseDuration: dimDuration / 4,
@@ -364,31 +478,142 @@ class SearchScreenState extends State<SearchScreen> with AutomaticKeepAliveClien
                         child: child,
                       ),
                     ),
-                    child: isExpanded ? DeferPointer(child: const AnimeFilterHeader()) : const SizedBox.shrink(),
+                    child: _showFilters && isExpanded ? DeferPointer(child: const AnimeFilterHeader()) : const SizedBox.shrink(),
                   ),
                 ],
               );
             },
+          ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              AnimatedSwitcher(
+                duration: dimDuration,
+                child: _isShowingResults
+                    ? BackButton(
+                        onTap: _hideSearchResults,
+                        label: 'Back to Browse',
+                        child: const Icon(FluentIcons.back),
+                      )
+                    : SizedBox.shrink(),
+              ),
+              // ... other buttons
+            ],
           ),
         ],
       ),
     );
   }
 
-  Widget _buildContent(Library library, SettingsManager settings) {
-    return Consumer<AnilistProvider>(
-      builder: (context, anilistProvider, _) {
-        return AnimeContentDashboard(
-          onShowSearchResults: widget.onShowSearchResults,
-          onSeriesOpen: widget.onSeriesOpen,
-          onRetry: () => setState(() => _fetchData()),
-          trendingFuture: _trendingFuture,
-          popularFuture: _popularFuture,
-          upcomingFuture: _upcomingFuture,
-          top100Future: _top100Future,
-        );
-      },
+  Widget _buildBody(Library library, SettingsManager settings) {
+    return FadingEdgeScrollView(
+      fadeEdges: const EdgeInsets.only(bottom: 40),
+      child: SingleChildScrollView(
+        controller: widget.scrollController,
+        child: AnimatedSwitcher(
+          duration: mediumDuration,
+          switchInCurve: Curves.easeOut,
+          switchOutCurve: Curves.easeIn,
+          transitionBuilder: (child, animation) {
+            return FadeTransition(
+              opacity: animation,
+              child: SlideTransition(
+                position: Tween<Offset>(
+                  begin: const Offset(0, 0.05),
+                  end: Offset.zero,
+                ).animate(animation),
+                child: child,
+              ),
+            );
+          },
+          child: _isShowingResults
+              ? KeyedSubtree(
+                  key: const ValueKey('SearchResults'),
+                  child: _buildResultsView(),
+                )
+              : KeyedSubtree(
+                  key: const ValueKey('Dashboard'),
+                  child: Consumer<AnilistProvider>(
+                    builder: (context, anilistProvider, _) {
+                      return AnimeContentDashboard(
+                        onShowSearchResults: _showSearchResults,
+                        onSeriesOpen: _onSeriesOpen,
+                        onRetry: () => setState(() => _fetchData()),
+                        trendingFuture: _trendingFuture,
+                        popularFuture: _popularFuture,
+                        upcomingFuture: _upcomingFuture,
+                        top100Future: _top100Future,
+                      );
+                    },
+                  ),
+                ),
+        ),
+      ),
     );
+  }
+
+  Widget _buildResultsView() {
+    if (_resultsErrorMessage != null && _resultsList.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(_resultsErrorMessage!, style: const TextStyle(color: Colors.red)),
+            const SizedBox(height: 16),
+            Button(
+              onPressed: _fetchResults,
+              child: const Text('Retry'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (_resultsList.isEmpty && _resultsIsLoading) {
+      return const SizedBox(
+        height: 200,
+        child: Center(child: ProgressRing()),
+      );
+    }
+
+    if (_resultsList.isEmpty) {
+      return const SizedBox(
+        height: 200,
+        child: Center(child: Text('No results found.')),
+      );
+    }
+
+    return LayoutBuilder(builder: (context, constraints) {
+      final int count = ScreenUtils.crossAxisCount(constraints.maxWidth);
+      return Column(
+        children: [
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: count,
+              childAspectRatio: ScreenUtils.kDefaultAspectRatio,
+              crossAxisSpacing: ScreenUtils.cardPadding,
+              mainAxisSpacing: ScreenUtils.cardPadding,
+            ),
+            padding: EdgeInsets.only(top: 16),
+            itemCount: _resultsList.length,
+            itemBuilder: (context, index) {
+              final item = _resultsList[index];
+              return SearchSeriesCard(
+                series: item,
+                onTap: () => _onSeriesOpen(item),
+              );
+            },
+          ),
+          if (_resultsIsLoading)
+            const Padding(
+              padding: EdgeInsets.all(16.0),
+              child: Center(child: ProgressRing()),
+            ),
+        ],
+      );
+    });
   }
 }
 
@@ -407,77 +632,110 @@ class _AnimeFilterHeaderState extends State<AnimeFilterHeader> {
   String _selectedFormat = 'Any';
   String _selectedStatus = 'Any';
 
+  bool _showAdvFilters = false;
+
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Using Wrap or ScrollView to handle responsiveness if screen is narrow
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: Row(
-            children: [
-              // 2. Dropdowns
-              _buildDropdown("Genres", _selectedGenre, ['Any', 'Action', 'Drama'], (v) => setState(() => _selectedGenre = v!)),
-              const SizedBox(width: 16),
-              _buildDropdown("Year", _selectedYear, ['Any', '2024', '2023'], (v) => setState(() => _selectedYear = v!)),
-              const SizedBox(width: 16),
-              _buildDropdown("Season", _selectedSeason, ['Any', 'Winter', 'Spring'], (v) => setState(() => _selectedSeason = v!)),
-              const SizedBox(width: 16),
-              _buildDropdown("Format", _selectedFormat, ['Any', 'TV Show', 'Movie'], (v) => setState(() => _selectedFormat = v!)),
-              const SizedBox(width: 16),
-              _buildDropdown("Airing Status", _selectedStatus, ['Any', 'Airing', 'Finished'], (v) => setState(() => _selectedStatus = v!)),
+    return Padding(
+      padding: const EdgeInsets.only(top: 16.0),
+      child: LayoutBuilder(builder: (context, constraints) {
+        final sizePerFilter = (constraints.maxWidth - (16 * 4) - 24 - 40) / 5;
+        Color filterColorBg = _showAdvFilters ? (Manager.currentDominantAccentColor ?? Manager.accentColor) : Colors.transparent;
+        final borderRadius = 8.0;
+        return Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // 2. Dropdowns
+            _buildDropdown("Genres", _selectedGenre, ['Any', 'Action', 'Drama'], (v) => setState(() => _selectedGenre = v!), sizePerFilter),
+            const SizedBox(width: 16),
+            _buildDropdown("Year", _selectedYear, ['Any', '2024', '2023'], (v) => setState(() => _selectedYear = v!), sizePerFilter),
+            const SizedBox(width: 16),
+            _buildDropdown("Season", _selectedSeason, ['Any', 'Winter', 'Spring'], (v) => setState(() => _selectedSeason = v!), sizePerFilter),
+            const SizedBox(width: 16),
+            _buildDropdown("Format", _selectedFormat, ['Any', 'TV Show', 'Movie'], (v) => setState(() => _selectedFormat = v!), sizePerFilter),
+            const SizedBox(width: 16),
+            _buildDropdown("Airing Status", _selectedStatus, ['Any', 'Airing', 'Finished'], (v) => setState(() => _selectedStatus = v!), sizePerFilter),
 
-              const SizedBox(width: 24),
+            const SizedBox(width: 16),
 
-              // 3. Filter/List View Toggle Button (Far right in image)
-              Padding(
-                padding: const EdgeInsets.only(top: 24.0), // Align with inputs
-                child: Container(
-                  height: 40,
-                  width: 40,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF1B222C),
-                    borderRadius: BorderRadius.circular(8),
+            // 3. Filter/List View Toggle Button (Far right in image)
+            GlossyContainer(
+              color: filterColorBg,
+              opacity: 0.1,
+              strengthX: 20,
+              strengthY: 20,
+              blendMode: BlendMode.src,
+              border: Border.all(
+                color: _showAdvFilters ? (Manager.currentDominantAccentColor ?? Manager.accentColor) : Colors.white.withOpacity(0.1),
+                width: 1.5,
+              ),
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(borderRadius),
+                bottomLeft: Radius.circular(borderRadius),
+                topRight: Radius.circular(borderRadius),
+                bottomRight: Radius.circular(borderRadius),
+              ),
+              width: 140,
+              height: 40,
+              child: FrostedNoise(
+                intensity: .5,
+                color: filterColorBg,
+                child: StandardButton.iconLabel(
+                  expandY: true,
+                  padding: EdgeInsets.zero,
+                  expand: true,
+                  label: Transform.translate(
+                    offset: const Offset(0, 1),
+                    child: Text('Advanced', style: Manager.bodyStyle.copyWith(color: Colors.grey)),
                   ),
-                  child: StandardButton.icon(
-                    icon: const Icon(Icons.tune, color: Colors.grey, size: 20),
-                    onPressed: () {},
-                  ),
+                  icon: Icon(Icons.tune, color: _showAdvFilters ? Manager.accentColor : Colors.grey, size: 20),
+                  onPressed: () => setState(() => _showAdvFilters = !_showAdvFilters),
                 ),
               ),
-            ],
-          ),
-        ),
-      ],
+            ),
+          ],
+        );
+      }),
     );
   }
 
   // Helper to build stylized Dropdowns
-  Widget _buildDropdown(String label, String currentValue, List<String> items, ValueChanged<String?> onChanged) {
-    return Container(
-      width: 140,
-      height: 40,
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1B222C),
+  Widget _buildDropdown(String label, String currentValue, List<String> items, ValueChanged<String?> onChanged, double width) {
+    return Expanded(
+      child: GlossyContainer(
+        opacity: 0.1,
+        strengthX: 20,
+        strengthY: 20,
+        blendMode: BlendMode.src,
+        border: Border.all(
+          color: Colors.white.withOpacity(0.1),
+          width: 1.5,
+        ),
         borderRadius: BorderRadius.circular(8),
-      ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<String>(
-          value: currentValue,
-          hint: Text(label, style: const TextStyle(color: Colors.grey, fontSize: 13)),
-          dropdownColor: const Color(0xFF1B222C),
-          icon: const Icon(Icons.keyboard_arrow_down, color: Colors.grey),
-          style: const TextStyle(color: Colors.grey, fontSize: 13),
-          isExpanded: true,
-          onChanged: onChanged,
-          items: items.map<DropdownMenuItem<String>>((String value) {
-            return DropdownMenuItem<String>(
-              value: value,
-              child: Text(value),
-            );
-          }).toList(),
+        width: width,
+        height: 40,
+        child: FrostedNoise(
+          intensity: 0.4,
+          child: Padding(
+            padding: EdgeInsets.only(left: 24.0, right: 12.0),
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<String>(
+                value: currentValue,
+                hint: Text(label, style: const TextStyle(color: Colors.grey, fontSize: 13)),
+                dropdownColor: const Color(0xFF1B222C),
+                icon: const Icon(Icons.keyboard_arrow_down, color: Colors.grey),
+                style: const TextStyle(color: Colors.grey, fontSize: 13),
+                isExpanded: true,
+                onChanged: onChanged,
+                items: items.map<DropdownMenuItem<String>>((String value) {
+                  return DropdownMenuItem<String>(
+                    value: value,
+                    child: Text(value),
+                  );
+                }).toList(),
+              ),
+            ),
+          ),
         ),
       ),
     );
@@ -546,7 +804,7 @@ class _AnimeContentDashboardState extends State<AnimeContentDashboard> {
         LayoutBuilder(builder: (context, constraints) {
           final int count = ScreenUtils.crossAxisCount(constraints.maxWidth);
           final double cardHeight = ScreenUtils.maxCardHeight;
-          final double sectionHeight = cardHeight + 60;
+          final double sectionHeight = cardHeight + 30;
 
           return SizedBox(
             height: sectionHeight,
