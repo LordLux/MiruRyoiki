@@ -234,7 +234,8 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
 }
 
 Future<void> initializeAndMorphWindow() async {
-  await windowManager.setFullScreen(false);
+  // await windowManager.setFullScreen(false);
+  await windowManager.maximize();
   await Future.delayed(Duration(milliseconds: 20));
   await windowManager.unmaximize();
   await Future.delayed(Duration(milliseconds: 20));
@@ -251,7 +252,7 @@ Future<void> initializeAndMorphWindow() async {
   // await morphToSavedWindowState();
   setToSavedWindowStateWithoutAnimation();
 
-  // Finally, ensure window is visible and focused
+  //  ensure window is visible and focused
   await windowManager.show();
   await windowManager.focus();
 
@@ -265,7 +266,7 @@ Future<void> setToSavedWindowStateWithoutAnimation() async {
   await Future.delayed(Duration(milliseconds: 500));
   if (savedState != null) {
     if (savedState['maximized'] == true) {
-      // For maximized windows, don't animate - just maximize
+      // For maximized windows, just maximize
       await windowManager.maximize();
     } else {
       await windowManager.setSize(Size(savedState['width'] ?? 800.0, savedState['height'] ?? 600.0), animate: true);
@@ -284,7 +285,7 @@ Future<void> morphToSavedWindowState() async {
     final currentRect = Rect.fromLTWH(currentPosition.dx, currentPosition.dy, currentSize.width, currentSize.height);
 
     if (savedState['maximized'] == true) {
-      // For maximized windows, don't animate - just maximize
+      // For maximized windows, just maximize
       await windowManager.maximize();
     } else {
       final width = savedState['width'] ?? 800.0;
@@ -292,10 +293,10 @@ Future<void> morphToSavedWindowState() async {
       final x = savedState['x'] ?? 100.0;
       final y = savedState['y'] ?? 100.0;
 
-      // Fix 2: Use different from/to and await the animation
+      // Use different from/to and await the animation
       await animateWindowToState(
-        currentRect, // Start from current state
-        Rect.fromLTWH(x, y, width, height), // End at saved state
+        currentRect,
+        Rect.fromLTWH(x, y, width, height),
         Duration(milliseconds: 150),
       );
     }

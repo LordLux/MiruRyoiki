@@ -952,7 +952,7 @@ class SettingsScreenState extends State<SettingsScreen> with AutomaticKeepAliveC
                       );
                     }),
               const SizedBox(width: 6),
-              NormalButton(
+              StandardButton.label(
                 label: 'Browse',
                 isFilled: true,
                 isSmall: true,
@@ -967,7 +967,7 @@ class SettingsScreenState extends State<SettingsScreen> with AutomaticKeepAliveC
                 },
               ),
               const SizedBox(width: 6),
-              NormalButton(
+              StandardButton.label(
                 label: 'Clear Thumbnails',
                 tooltip: 'Clear all thumbnail cache to regenerate episode thumbnails',
                 isSmall: true,
@@ -1006,7 +1006,7 @@ class SettingsScreenState extends State<SettingsScreen> with AutomaticKeepAliveC
             style: Manager.bodyStyle,
           ),
           VDiv(16),
-          NormalButton(
+          StandardButton.label(
             label: 'Format Series',
             isLoading: _isFormatting,
             isFilled: true,
@@ -1546,6 +1546,20 @@ class SettingsScreenState extends State<SettingsScreen> with AutomaticKeepAliveC
               onChanged: (value) => setState(() => settings.suppressCloseWarning = value),
             ),
             tooltip: 'When enabled, the application will not warn you when you try to close it multiple times in quick succession.',
+          ),
+          VDiv(24),
+          Text(
+            'Search Infinite Scroll',
+            style: Manager.bodyStyle,
+          ),
+          VDiv(12),
+          NormalSwitch(
+            ToggleSwitch(
+              checked: settings.useInfiniteScroll,
+              content: Text(settings.useInfiniteScroll ? 'Infinite Scroll Enabled' : 'Infinite Scroll Disabled', style: Manager.bodyStyle),
+              onChanged: (value) => setState(() => settings.useInfiniteScroll = value),
+            ),
+            tooltip: 'When enabled, search results will automatically load as you scroll down.\nWhen disabled, a "Load More" button will appear at the bottom of search results',
           ),
         ],
       // Media Players

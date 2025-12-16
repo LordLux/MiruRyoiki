@@ -24,7 +24,7 @@ class DownloadController {
       tvdbId: mapping.tvdbId,
       title: anime.title.romaji ?? "Unknown",
       rootFolderPath: library.libraryDockerPath!,
-      qualityProfileId: 0, 
+      qualityProfileId: 1, // TODO get from /api/v3/qualityprofile
     );
     
     if (sonarrSeriesId == null) throw Exception("Failed to sync series");

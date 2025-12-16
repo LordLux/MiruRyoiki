@@ -100,6 +100,9 @@ class SettingsManager extends ChangeNotifier {
   bool get showAnilistHiddenSeries => _getBool('showAnilistHiddenSeries', defaultValue: false);
   set showAnilistHiddenSeries(bool value) => _setBool('showAnilistHiddenSeries', value);
 
+  bool get useInfiniteScroll => _getBool('useInfiniteScroll', defaultValue: true);
+  set useInfiniteScroll(bool value) => _setBool('useInfiniteScroll', value);
+
   bool get suppressCloseWarning => _getBool('suppressCloseWarning', defaultValue: false);
   set suppressCloseWarning(bool value) => _setBool('suppressCloseWarning', value);
 

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 /// A widget that applies a fading gradient mask to the edges of a scrollable child.
 ///
 /// This widget is useful for indicating that there is more content to be scrolled
@@ -95,13 +96,14 @@ class _FadingEdgeScrollViewState extends State<FadingEdgeScrollView> {
   }
 
   List<double> _getDefaultStops(Rect bounds) {
+    if (!bounds.height.isFinite || bounds.height == 0) return [0.0, 0.0, 0.0, 1.0, 1.0, 1.0];
     return [
-      0.01,
+      0.001,
       (widget.fadeEdges.top / bounds.height) - 0.02,
       widget.fadeEdges.top / bounds.height,
       1 - (widget.fadeEdges.bottom / bounds.height),
       1 - (widget.fadeEdges.bottom / bounds.height) + 0.02,
-      0.99,
+      0.999,
     ];
   }
 

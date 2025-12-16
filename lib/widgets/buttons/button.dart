@@ -24,7 +24,7 @@ class StandardButton extends StatefulWidget {
   final Color filledColor;
   final Color hoverFillColor;
   final double? forcedHeight;
-  final MouseCursor? cursor;
+  final MouseCursor cursor;
 
   StandardButton({
     super.key,
@@ -42,10 +42,11 @@ class StandardButton extends StatefulWidget {
     this.tooltipWaitDuration,
     this.padding,
     this.forcedHeight,
-    this.cursor,
+    MouseCursor? cursor,
     Color? filledColor,
     Color? hoverFillColor,
   })  : filledColor = filledColor ?? Manager.accentColor.lighter,
+        cursor = cursor ?? SystemMouseCursors.click,
         hoverFillColor = hoverFillColor ?? Manager.accentColor.lightest;
 
   factory StandardButton.iconLabel({
@@ -141,6 +142,46 @@ class StandardButton extends StatefulWidget {
       expandY: expandY,
       tooltipWaitDuration: tooltipWaitDuration,
       padding: padding ?? (isSmall ? EdgeInsets.symmetric(horizontal: 6, vertical: 4) : null),
+      filledColor: filledColor,
+      hoverFillColor: hoverFillColor,
+      cursor: cursor,
+    );
+  }
+  factory StandardButton.label({
+    GlobalKey? key,
+    required String label,
+    required VoidCallback? onPressed,
+    bool isButtonDisabled = false,
+    bool isSmall = true,
+    bool isWide = true,
+    bool isFilled = false,
+    bool isLoading = false,
+    String? tooltip,
+    Widget? tooltipWidget,
+    bool expand = false,
+    bool expandY = false,
+    Duration? tooltipWaitDuration,
+    EdgeInsets? padding,
+    TextStyle? textStyle,
+    Color? filledColor,
+    Color? hoverFillColor,
+    MouseCursor? cursor,
+  }) {
+    return StandardButton(
+      key: key,
+      label: Text(label, style: getStyleBasedOnAccent(isFilled)),
+      onPressed: onPressed,
+      isButtonDisabled: isButtonDisabled,
+      isSmall: isSmall,
+      isWide: isWide,
+      isFilled: isFilled,
+      expand: expand,
+      expandY: expandY,
+      tooltip: tooltip,
+      tooltipWidget: tooltipWidget,
+      isLoading: isLoading,
+      tooltipWaitDuration: tooltipWaitDuration,
+      padding: padding,
       filledColor: filledColor,
       hoverFillColor: hoverFillColor,
       cursor: cursor,
@@ -256,60 +297,5 @@ class _StandardButtonState extends State<StandardButton> {
       );
     }
     return buttonWidget;
-  }
-}
-
-class NormalButton extends StatelessWidget {
-  final String label;
-  final VoidCallback onPressed;
-  final bool isButtonDisabled;
-  final bool isSmall;
-  final bool isWide;
-  final bool isFilled;
-  final bool expand;
-  final bool isLoading;
-  final String? tooltip;
-  final Widget? tooltipWidget;
-  final Duration? tooltipWaitDuration;
-  final EdgeInsets? padding;
-  final Color? filledColor;
-  final Color? hoverFillColor;
-
-  const NormalButton({
-    super.key,
-    required this.label,
-    required this.onPressed,
-    this.isButtonDisabled = false,
-    this.isSmall = true,
-    this.isWide = true,
-    this.isFilled = false,
-    this.expand = false,
-    this.tooltip,
-    this.tooltipWidget,
-    this.isLoading = false,
-    this.tooltipWaitDuration,
-    this.padding,
-    this.filledColor,
-    this.hoverFillColor,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return StandardButton(
-      label: Text(label, style: getStyleBasedOnAccent(isFilled)),
-      onPressed: onPressed,
-      isButtonDisabled: isButtonDisabled,
-      isSmall: isSmall,
-      isWide: isWide,
-      isFilled: isFilled,
-      expand: expand,
-      tooltip: tooltip,
-      tooltipWidget: tooltipWidget,
-      isLoading: isLoading,
-      tooltipWaitDuration: tooltipWaitDuration,
-      padding: padding,
-      filledColor: filledColor,
-      hoverFillColor: hoverFillColor,
-    );
   }
 }

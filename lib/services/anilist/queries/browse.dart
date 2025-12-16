@@ -63,7 +63,7 @@ extension AnilistBrowseSearch on AnilistService {
     }
   }
 
-  Future<AnilistSearchPage<AnilistAnime>?> getTrendingNow({int page = 1, int perPage = 8}) async {
+  Future<AnilistSearchPage<AnilistAnime>?> getTrendingNow({int page = 1, int perPage = 6}) async {
     // Trending doesn't need season info, just the sort
     final data = await _executeBrowseQuery(
       query: homeSectionQuery,
@@ -77,7 +77,7 @@ extension AnilistBrowseSearch on AnilistService {
     return _parseSearchPage(data);
   }
 
-  Future<AnilistSearchPage<AnilistAnime>?> getPopularThisSeason({int page = 1, int perPage = 8}) async {
+  Future<AnilistSearchPage<AnilistAnime>?> getPopularThisSeason({int page = 1, int perPage = 6}) async {
     final seasonData = _getSeasonData(now);
     final data = await _executeBrowseQuery(
       query: homeSectionQuery,
@@ -93,7 +93,7 @@ extension AnilistBrowseSearch on AnilistService {
     return _parseSearchPage(data);
   }
 
-  Future<AnilistSearchPage<AnilistAnime>?> getUpcomingNextSeason({int page = 1, int perPage = 8}) async {
+  Future<AnilistSearchPage<AnilistAnime>?> getUpcomingNextSeason({int page = 1, int perPage = 6}) async {
     final seasonData = _getNextSeasonData();
     final data = await _executeBrowseQuery(
       query: homeSectionQuery,
@@ -109,7 +109,7 @@ extension AnilistBrowseSearch on AnilistService {
     return _parseSearchPage(data);
   }
 
-  Future<AnilistSearchPage<AnilistAnime>?> getAllTimePopular({int page = 1, int perPage = 8}) async {
+  Future<AnilistSearchPage<AnilistAnime>?> getAllTimePopular({int page = 1, int perPage = 6}) async {
     final data = await _executeBrowseQuery(
       query: homeSectionQuery,
       variables: {

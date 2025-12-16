@@ -84,7 +84,7 @@ class AnilistAccountScreen extends StatelessWidget {
                     },
                   ),
                   VDiv(16),
-                  NormalButton(
+                  StandardButton.label(
                     tooltip: 'Refresh all Anilist metadata',
                     label: 'Refresh All Metadata',
                     onPressed: () {
@@ -117,7 +117,7 @@ class AnilistAccountScreen extends StatelessWidget {
                     ],
                   ),
                   VDiv(16),
-                  NormalButton(
+                  StandardButton.label(
                     tooltip: 'Refresh your Anilist lists',
                     label: 'Refresh Lists',
                     onPressed: () => anilistProvider.refreshUserLists(),

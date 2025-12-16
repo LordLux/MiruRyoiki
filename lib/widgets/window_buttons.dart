@@ -141,7 +141,7 @@ class _WindowCaptionState extends State<WindowCaption> with WindowListener {
                                   brightness: widget.brightness,
                                   icon: (Color iconColor) => Icon(Symbols.close_fullscreen, color: iconColor, size: 16),
                                   onPressed: () {
-                                    WindowStateService.toggleFullScreen();
+                                    WindowStateService.toggleFullScreen(!snapshot.data!);
                                   },
                                 ),
                               );
@@ -152,7 +152,7 @@ class _WindowCaptionState extends State<WindowCaption> with WindowListener {
                                 brightness: widget.brightness,
                                 icon: (Color iconColor) => Icon(Symbols.open_in_full, color: iconColor, size: 16),
                                 onPressed: () {
-                                  WindowStateService.toggleFullScreen();
+                                  WindowStateService.toggleFullScreen(!snapshot.data!);
                                   widget.onFullScreenOpen?.call();
                                 },
                               ),

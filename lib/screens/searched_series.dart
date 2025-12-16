@@ -571,7 +571,7 @@ class SearchedSeriesScreenState extends State<SearchedSeriesScreen> {
           children: [
             Text('No series selected', style: Manager.subtitleStyle),
             VDiv(16),
-            NormalButton(
+            StandardButton.label(
               onPressed: widget.onBack,
               tooltip: 'Go back to the library',
               label: 'Back to Library',
@@ -593,7 +593,7 @@ class SearchedSeriesScreenState extends State<SearchedSeriesScreen> {
           children: [
             Text('Series not found', style: Manager.subtitleStyle),
             VDiv(16),
-            NormalButton(
+            StandardButton.label(
               onPressed: widget.onBack,
               tooltip: 'Go back to the library',
               label: 'Back to Library',

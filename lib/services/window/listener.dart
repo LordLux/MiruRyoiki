@@ -100,23 +100,27 @@ class MyWindowListener extends WindowListener with TrayListener {
   void onTrayIconMouseDown() async {
     // Hide if already open, show and focus if hidden
     if (lastFocusTime != null && now.difference(lastFocusTime!).inMilliseconds < 170) {
+      WindowStateService.toggleFullScreen(false);
       windowManager.hide();
     } else {
       windowManager.show();
       windowManager.focus();
+      WindowStateService.toggleFullScreen(false);
     }
   }
 
   @override
   void onTrayIconRightMouseDown() => trayManager.popUpContextMenu(bringAppToFront: true);
 
-  void _showAndFocus() {
-    windowManager.show();
-    windowManager.focus();
+  Future<void> _showAndFocus() async {
+    WindowStateService.toggleFullScreen(true);
+    await windowManager.show();
+    await windowManager.focus();
+    await WindowStateService.toggleFullScreen(false);
   }
 
-  void navigateToMenuKey(int index) {
-    _showAndFocus();
+  Future<void> navigateToMenuKey(int index) async {
+    await _showAndFocus();
     homeKey.currentState?.onChangedPane(index);
   }
 
@@ -209,7 +213,7 @@ class MyWindowListener extends WindowListener with TrayListener {
           onNegative: (tickboxValue) {
             if (tickboxValue) Manager.settings.suppressCloseWarning = true;
             print('suppressCloseWarning set to $tickboxValue');
-            
+
             return windowManager.hide();
           },
         );
