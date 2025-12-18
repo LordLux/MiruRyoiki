@@ -424,7 +424,7 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> with Autom
     for (final series in library.series) {
       if (series.anilistMappings.isNotEmpty) {
         for (final mapping in series.anilistMappings) {
-          if (mapping.anilistData?.status == 'RELEASING') animeIds.add(mapping.anilistId); // only consider RELEASING series
+          if (mapping.anilistData?.status?.toAnimeStatus() == AnilistAnimeStatus.RELEASING) animeIds.add(mapping.anilistId); // only consider RELEASING series
         }
       }
     }

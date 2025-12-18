@@ -118,7 +118,7 @@ class SearchedSeriesScreenState extends State<SearchedSeriesScreen> {
           InfoLabel(
             label: 'Status',
             labelStyle: Manager.bodyStrongStyle,
-            child: Text(_cachedMapping!.anilistData!.status!.replaceAll('_', ' ').titleCase),
+            child: Text(_cachedMapping!.anilistData!.status!.toAnimeStatus()?.name_ ?? _cachedMapping!.anilistData!.status!),
           ): false,
         if (_cachedMapping?.anilistData?.format != null)
           InfoLabel(

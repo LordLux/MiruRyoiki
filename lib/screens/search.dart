@@ -22,6 +22,8 @@ import '../../widgets/fading_edge_scrollview.dart';
 import '../../widgets/page/search_template.dart';
 import '../../widgets/search_bg_library_shelf_cards.dart';
 import '../../widgets/search_filters.dart';
+import '../../widgets/top100_list.dart';
+import '../../widgets/section_grid_view.dart';
 import '../services/anilist/queries/anilist_service.dart';
 import '../services/library/library_provider.dart';
 import '../services/navigation/navigation.dart';
@@ -598,16 +600,24 @@ class SearchScreenState extends State<BrowseScreen> with AutomaticKeepAliveClien
                 key: const ValueKey('SearchResults'),
                 child: _buildResultsView(),
               )
-            : KeyedSubtree(
-                key: const ValueKey('Dashboard'),
-                child: AnimeContentDashboard(
-                  sectionManagers: _sectionManagers,
-                  onExpandSection: _expandSection,
-                  onSeriesOpen: _onSeriesOpen,
-                  onRetry: _fetchInitialData,
-                  expandedSectionId: _expandedSectionId,
-                ),
-              ),
+            : _expandedSectionId == 4
+                ? KeyedSubtree(
+                    key: const ValueKey('Top100Expanded'),
+                    child: SectionGridView(
+                      manager: _sectionManagers[4]!,
+                      onSeriesOpen: _onSeriesOpen,
+                    ),
+                  )
+                : KeyedSubtree(
+                    key: const ValueKey('Dashboard'),
+                    child: AnimeContentDashboard(
+                      sectionManagers: _sectionManagers,
+                      onExpandSection: _expandSection,
+                      onSeriesOpen: _onSeriesOpen,
+                      onRetry: _fetchInitialData,
+                      expandedSectionId: _expandedSectionId,
+                    ),
+                  ),
       ),
     );
   }
@@ -722,6 +732,17 @@ class AnimeContentDashboard extends StatelessWidget {
 
             final bool isExpanded = expandedSectionId == sectionId;
             final bool isHidden = expandedSectionId != null && !isExpanded;
+
+            if (sectionId == 4) {
+              return AnimatedSectionWrapper(
+                isHidden: isHidden,
+                child: Top100List(
+                  manager: sectionManagers[sectionId]!,
+                  onSeriesOpen: onSeriesOpen,
+                  onExpand: () => onExpandSection(sectionId),
+                ),
+              );
+            }
 
             return AnimatedSectionWrapper(
               isHidden: isHidden,

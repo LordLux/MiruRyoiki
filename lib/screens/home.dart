@@ -419,7 +419,7 @@ class _HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMi
     final Set<int> animeIds = {};
     for (final series_ in watchingSeries) {
       for (final mapping in series_.anilistMappings) {
-        if (mapping.anilistData?.status == 'RELEASING') animeIds.add(mapping.anilistId); // only display RELEASING series that the user is watching
+        if (mapping.anilistData?.status?.toAnimeStatus() == AnilistAnimeStatus.RELEASING) animeIds.add(mapping.anilistId); // only display RELEASING series that the user is watching
       }
     }
 
