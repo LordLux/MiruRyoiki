@@ -2,6 +2,7 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter_acrylic/window_effect.dart';
 import 'package:miruryoiki/main.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'database/database.dart';
 import 'database/daos/settings_dao.dart';
@@ -20,6 +21,7 @@ class SettingsManager extends ChangeNotifier {
   // ignore: prefer_final_fields
   Map<String, dynamic> _settings = {};
   SettingsDao? _settingsDao;
+  SharedPreferences? _prefs;
   bool _initialized = false;
 
   // // Typed getters/setters for settings
@@ -107,32 +109,44 @@ class SettingsManager extends ChangeNotifier {
   set suppressCloseWarning(bool value) => _setBool('suppressCloseWarning', value);
 
   // Window State
-  double? get windowX => _getDoubleOrNull('window_x');
+  double? get windowX => _prefs?.getDouble('window_x');
   set windowX(double? value) {
-    if (value == null) return;
-    _setDouble('window_x', value);
+    if (value == null) {
+      _prefs?.remove('window_x');
+      return;
+    }
+    _prefs?.setDouble('window_x', value);
   }
 
-  double? get windowY => _getDoubleOrNull('window_y');
+  double? get windowY => _prefs?.getDouble('window_y');
   set windowY(double? value) {
-    if (value == null) return;
-    _setDouble('window_y', value);
+    if (value == null) {
+      _prefs?.remove('window_y');
+      return;
+    }
+    _prefs?.setDouble('window_y', value);
   }
 
-  double? get windowWidth => _getDoubleOrNull('window_width');
+  double? get windowWidth => _prefs?.getDouble('window_width');
   set windowWidth(double? value) {
-    if (value == null) return;
-    _setDouble('window_width', value);
+    if (value == null) {
+      _prefs?.remove('window_width');
+      return;
+    }
+    _prefs?.setDouble('window_width', value);
   }
 
-  double? get windowHeight => _getDoubleOrNull('window_height');
+  double? get windowHeight => _prefs?.getDouble('window_height');
   set windowHeight(double? value) {
-    if (value == null) return;
-    _setDouble('window_height', value);
+    if (value == null) {
+      _prefs?.remove('window_height');
+      return;
+    }
+    _prefs?.setDouble('window_height', value);
   }
 
-  bool get windowMaximized => _getBool('window_maximized', defaultValue: false);
-  set windowMaximized(bool value) => _setBool('window_maximized', value);
+  bool get windowMaximized => _prefs?.getBool('window_maximized') ?? false;
+  set windowMaximized(bool value) => _prefs?.setBool('window_maximized', value);
 
   // Media Player Settings
   List<String> get mediaPlayerPriority => _getStringList('mediaPlayerPriority', defaultValue: ['vlc', 'mpc-hc']);
@@ -270,6 +284,7 @@ class SettingsManager extends ChangeNotifier {
     if (_initialized) return;
 
     _settingsDao = SettingsDao(db);
+    _prefs = await SharedPreferences.getInstance();
     await loadSettings();
     _initialized = true;
   }

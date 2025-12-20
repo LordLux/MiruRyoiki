@@ -260,11 +260,10 @@ class _SearchTemplatePageState extends State<SearchTemplatePage> with SingleTick
                                   return false;
                                 },
                                 child: FadingEdgeScrollView(
-                                  fadeEdges: const EdgeInsets.symmetric(vertical: 132.0),
                                   gradientColors: [
                                     Colors.black.withOpacity(0),
                                     Colors.black.withOpacity(0.1),
-                                    Colors.black,
+                                    Colors.black.withOpacity(0.4),
                                     Colors.black,
                                     Colors.black,
                                     Colors.black,
@@ -272,8 +271,8 @@ class _SearchTemplatePageState extends State<SearchTemplatePage> with SingleTick
                                   gradientStops: [
                                     0.08,
                                     0.09,
+                                    0.10,
                                     0.11,
-                                    0.80,
                                     0.885,
                                     0.9,
                                   ],

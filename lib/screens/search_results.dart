@@ -1,3 +1,4 @@
+import 'package:defer_pointer/defer_pointer.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/material.dart' as mat;
 import 'package:smooth_scroll_multiplatform/smooth_scroll_multiplatform.dart';
@@ -9,7 +10,7 @@ import '../models/anilist/page_info.dart';
 import '../services/navigation/shortcuts.dart';
 import '../utils/logging.dart';
 import '../utils/screen.dart';
-import '../widgets/cards/sarch_series_card.dart';
+import '../widgets/cards/search_series_card.dart';
 import '../widgets/context_menu/context_menu.dart';
 import '../widgets/page/page_template.dart';
 import '../widgets/page/header_widget.dart';
@@ -236,12 +237,13 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
                         }
                         return const Center(child: ProgressRing());
                       }
-
+                  
                       final anime = _animeList[index];
                       return AspectRatio(
                         aspectRatio: ScreenUtils.kDefaultAspectRatio,
                         child: SearchSeriesCard(
                           series: anime,
+                          number: null, // not showing top100 number
                           onTap: () => widget.onSeriesOpen(anime),
                         ),
                       );

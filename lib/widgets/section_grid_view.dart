@@ -3,7 +3,7 @@ import 'package:flutter/material.dart' hide TextBox, Slider, BackButton;
 import 'package:miruryoiki/models/anilist/anime.dart';
 import 'package:miruryoiki/screens/search.dart';
 import 'package:miruryoiki/utils/screen.dart';
-import 'package:miruryoiki/widgets/cards/sarch_series_card.dart';
+import 'package:miruryoiki/widgets/cards/search_series_card.dart';
 
 class SectionGridView extends StatelessWidget {
   final SectionDataManager manager;
@@ -44,6 +44,7 @@ class SectionGridView extends StatelessWidget {
                   final item = items[index];
                   return SearchSeriesCard(
                     series: item,
+                    number: index + 1,
                     onTap: () => onSeriesOpen(item),
                   );
                 },

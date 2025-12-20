@@ -17,7 +17,7 @@ import '../../utils/screen.dart';
 import '../../utils/time.dart';
 import '../../widgets/buttons/back_button.dart';
 import '../../widgets/buttons/button.dart';
-import '../../widgets/cards/sarch_series_card.dart';
+import '../widgets/cards/search_series_card.dart';
 import '../../widgets/fading_edge_scrollview.dart';
 import '../../widgets/page/search_template.dart';
 import '../../widgets/search_bg_library_shelf_cards.dart';
@@ -38,12 +38,12 @@ class SectionDataManager extends ChangeNotifier {
   bool isLoading = false;
   bool hasMore = true;
   int currentPage = 1;
-  int perPage = 6;
+  int perPage;
   String? errorMessage;
 
   bool isFetching = false;
 
-  SectionDataManager({required this.id, required this.type});
+  SectionDataManager({required this.id, required this.type, this.perPage = 6});
 
   Future<void> fetch({bool reset = false, int? overridePerPage, bool preserveCurrentItems = false}) async {
     if (isFetching) return;
@@ -153,14 +153,14 @@ class SearchScreenState extends State<BrowseScreen> with AutomaticKeepAliveClien
       1: SectionDataManager(id: 1, type: 'trending'),
       2: SectionDataManager(id: 2, type: 'popular'),
       3: SectionDataManager(id: 3, type: 'upcoming'),
-      4: SectionDataManager(id: 4, type: 'top100'),
+      4: SectionDataManager(id: 4, type: 'top100', perPage: 10),
     };
 
     _fetchInitialData();
   }
 
   void _fetchInitialData() {
-    for (var manager in _sectionManagers.values) manager.fetch(reset: true, overridePerPage: 6);
+    for (var manager in _sectionManagers.values) manager.fetch(reset: true, overridePerPage: manager.perPage);
     _imagesFuture = _aggregateImages();
   }
 
@@ -407,7 +407,21 @@ class SearchScreenState extends State<BrowseScreen> with AutomaticKeepAliveClien
           SearchTemplatePage(
             scrollController: widget.scrollController,
             searchBarStatus: (_isShowingSearchQuery || _expandedSectionId != null) ? SearchBarStatus.collapsed : _overrideSearchBarStatus,
-            header: Text('Browse', style: Manager.titleStyle),
+            header: Builder(builder: (context) {
+              if (_isShowingSearchQuery) return Text('Search Results for "${_resultsQuery ?? ''}"', style: Manager.titleStyle);
+              if (_expandedSectionId != null) {
+                final sectionTitles = {
+                  1: 'Trending Now',
+                  2: 'Popular This Season',
+                  3: 'Upcoming Next Season',
+                  4: 'Top 100 Anime',
+                };
+                final title = sectionTitles[_expandedSectionId!] ?? 'Browse';
+                return Text(title, style: Manager.titleStyle);
+              }
+
+              return Text('Browse', style: Manager.titleStyle);
+            }),
             behindSearchBar: (val) {
               // Capture animation value for other effects
               if (_animationValue != val) nextFrame(() => setState(() => _animationValue = val));
@@ -661,6 +675,7 @@ class SearchScreenState extends State<BrowseScreen> with AutomaticKeepAliveClien
               final item = _resultsList[index];
               return SearchSeriesCard(
                 series: item,
+                number: null, // not showing top100 number
                 onTap: () => _onSeriesOpen(item),
               );
             },
@@ -857,7 +872,7 @@ class _SectionWidgetState extends State<SectionWidget> {
             children: [
               // Section Header
               _buildSectionHeader(widget.title, widget.isExpanded),
-              
+
               // Series Grid
               AnimatedSize(
                 duration: const Duration(milliseconds: 800),
@@ -886,13 +901,21 @@ class _SectionWidgetState extends State<SectionWidget> {
                         child: FadeInEntry(
                           delay: _areExtrasLoaded ? 0 : (index - crossAxisCount) * 30,
                           duration: _isRestoring ? Duration.zero : const Duration(milliseconds: 600),
-                          child: SearchSeriesCard(series: item, onTap: () => widget.onSeriesOpen(item)),
+                          child: SearchSeriesCard(
+                            series: item,
+                            number: null, // not showing top100 number
+                            onTap: () => widget.onSeriesOpen(item),
+                          ),
                         ),
                       );
                     }
 
                     // Only Preview Cards are shown
-                    return SearchSeriesCard(series: item, onTap: () => widget.onSeriesOpen(item));
+                    return SearchSeriesCard(
+                      series: item,
+                      number: null, // not showing top100 number
+                      onTap: () => widget.onSeriesOpen(item),
+                    );
                   },
                 ),
               ),
@@ -930,18 +953,27 @@ class _SectionWidgetState extends State<SectionWidget> {
   }
 
   Widget _buildSectionHeader(String title, bool isExpanded) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16.0),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(title, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 0.5)),
-          if (!isExpanded)
-            GestureDetector(
-              onTap: widget.onExpand,
-              child: const Text("View All", style: TextStyle(color: Colors.grey, fontSize: 12, fontWeight: FontWeight.w500)),
-            ),
-        ],
+    return AnimatedOpacity(
+      duration: const Duration(milliseconds: 300),
+      opacity: isExpanded ? 0.0 : 1.0,
+      curve: Curves.easeOut,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
+        height: isExpanded ? 0.0 : null,
+        child: Padding(
+          padding: const EdgeInsets.only(bottom: 16.0),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(title, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 0.5)),
+              if (!isExpanded)
+                GestureDetector(
+                  onTap: widget.onExpand,
+                  child: const Text("View All", style: TextStyle(color: Colors.grey, fontSize: 12, fontWeight: FontWeight.w500)),
+                ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -969,7 +1001,6 @@ class AnimatedSectionWrapper extends StatelessWidget {
   }
 }
 
-// --- Fade In Entry (Stagger Effect) ---
 class FadeInEntry extends StatefulWidget {
   final Widget child;
   final int delay;
