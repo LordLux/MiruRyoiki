@@ -40,7 +40,7 @@ Size measureInlineSpan(
     maxLines: maxLines,
     textDirection: textDirection ?? TextDirection.ltr,
   );
-  
+
   // Count placeholder spans and set their dimensions if needed
   int placeholderCount = 0;
   span.visitChildren((InlineSpan child) {
@@ -49,18 +49,20 @@ Size measureInlineSpan(
     }
     return true;
   });
-  
+
   if (placeholderCount > 0) {
     // Set placeholder dimensions before layout
     textPainter.setPlaceholderDimensions(
-      List.generate(placeholderCount, (_) => const PlaceholderDimensions(
-        size: Size.zero,
-        alignment: PlaceholderAlignment.baseline,
-        baseline: TextBaseline.alphabetic,
-      )),
+      List.generate(
+          placeholderCount,
+          (_) => const PlaceholderDimensions(
+                size: Size.zero,
+                alignment: PlaceholderAlignment.baseline,
+                baseline: TextBaseline.alphabetic,
+              )),
     );
   }
-  
+
   textPainter.layout(minWidth: minWidth, maxWidth: maxWidth);
   return textPainter.size;
 }
@@ -77,6 +79,16 @@ String parseFormat(String? format) {
     // 'MANGA' => 'Manga',
     // 'NOVEL' => 'Novel',
     // 'ONE_SHOT' => 'One Shot',
+    _ => '',
+  };
+}
+
+String parseCountryOfOrigin(String? country) {
+  return switch (country?.toUpperCase()) {
+    "JP" => "Japan",
+    "KR" => "South Korea",
+    "CN" => "China",
+    "TW" => "Taiwan",
     _ => '',
   };
 }

@@ -1,0 +1,91 @@
+query search($search: String, $isAdult: Boolean) {
+  anime: Page(perPage: 8) {
+    pageInfo {
+      total
+    }
+    results: media(type: ANIME, isAdult: $isAdult, search: $search) {
+      id
+      title {
+        userPreferred
+      }
+      coverImage {
+        medium
+      }
+      type
+      format
+      bannerImage
+      isLicensed
+      startDate {
+        year
+      }
+    }
+  }
+  manga: Page(perPage: 8) {
+    pageInfo {
+      total
+    }
+    results: media(type: MANGA, isAdult: $isAdult, search: $search) {
+      id
+      title {
+        userPreferred
+      }
+      coverImage {
+        medium
+      }
+      type
+      format
+      bannerImage
+      isLicensed
+      startDate {
+        year
+      }
+    }
+  }
+  characters: Page(perPage: 8) {
+    pageInfo {
+      total
+    }
+    results: characters(search: $search) {
+      id
+      name {
+        userPreferred
+      }
+      image {
+        medium
+      }
+    }
+  }
+  staff: Page(perPage: 8) {
+    pageInfo {
+      total
+    }
+    results: staff(search: $search) {
+      id
+      primaryOccupations
+      name {
+        userPreferred
+      }
+      image {
+        medium
+      }
+    }
+  }
+  studios: Page(perPage: 13) {
+    pageInfo {
+      total
+    }
+    results: studios(search: $search) {
+      id
+      name
+    }
+  }
+  users: Page(perPage: 8) {
+    results: users(search: $search) {
+      id
+      name
+      avatar {
+        medium
+      }
+    }
+  }
+}

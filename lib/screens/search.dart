@@ -29,6 +29,7 @@ import '../services/library/library_provider.dart';
 import '../services/navigation/navigation.dart';
 import '../utils/logging.dart';
 import '../widgets/animated_hider.dart';
+import 'searched_series.dart';
 
 class SectionDataManager extends ChangeNotifier {
   final int id;
@@ -139,6 +140,13 @@ class SearchScreenState extends State<BrowseScreen> with AutomaticKeepAliveClien
   String? _resultsErrorMessage;
   double _filterButtonSize = 40;
   SearchBarStatus _overrideSearchBarStatus = SearchBarStatus.automatic;
+
+  // Series Navigation State
+  AnilistAnime? _selectedAnime;
+  bool _isSeriesView = false;
+  bool _isFinishedTransitioningToSeries = false;
+  bool _isFinishedTransitioningToSearch = true;
+  final GlobalKey<SearchedSeriesScreenState> searchedSeriesScreenKey = GlobalKey<SearchedSeriesScreenState>();
 
   @override
   bool get wantKeepAlive => true;
@@ -281,6 +289,11 @@ class SearchScreenState extends State<BrowseScreen> with AutomaticKeepAliveClien
   }
 
   void _handleBack() {
+    if (_isSeriesView) {
+      _exitSeriesView();
+      return;
+    }
+
     setState(() {
       if (_expandedSectionId != null) {
         _expandedSectionId = null;
@@ -324,9 +337,42 @@ class SearchScreenState extends State<BrowseScreen> with AutomaticKeepAliveClien
     }
   }
 
+  void _exitSeriesView() {
+    final navManager = Provider.of<NavigationManager>(context, listen: false);
+    if (navManager.currentView?.level == NavigationLevel.page) navManager.goBack();
+
+    setState(() {
+      _isSeriesView = false;
+      _isFinishedTransitioningToSeries = false;
+      // _selectedAnime not cleared to allow fade out animation
+    });
+  }
+
+  void onEndTransitionSeriesScreen() {
+    setState(() {
+      if (_isSeriesView) {
+        _isFinishedTransitioningToSeries = true;
+      } else {
+        _isFinishedTransitioningToSearch = true;
+        _isFinishedTransitioningToSeries = false;
+        _selectedAnime = null; // Clear selected anime after transition back to search
+      }
+    });
+}
+  
+
   void _onSeriesOpen(AnilistAnime anime) {
-    final navigator = Provider.of<NavigationManager>(context, listen: false);
-    navigator.pushPage("search:series:${anime.id}", anime.title.userPreferred ?? 'Anime Details');
+    setState(() {
+      _selectedAnime = anime;
+      _isSeriesView = true;
+      _isFinishedTransitioningToSearch = false;
+    });
+    
+    Provider.of<NavigationManager>(context, listen: false).pushPage(
+      'search:series:${anime.id}',
+      anime.title.userPreferred ?? 'Anime Details',
+      data: anime,
+    );
   }
 
   Future<List<String>> _aggregateImages() async {
@@ -370,234 +416,270 @@ class SearchScreenState extends State<BrowseScreen> with AutomaticKeepAliveClien
       link: deferredPointerLink,
       child: Stack(
         children: [
-          // Background Shelf Cards
-          IgnorePointer(
-            ignoring: true,
-            child: FadingEdgeScrollView(
-              axis: Axis.horizontal,
-              fadeEdges: const EdgeInsets.only(top: 300, bottom: 300), //TODO horiz/vert factory
-              child: FadingEdgeScrollView(
-                fadeEdges: const EdgeInsets.only(top: 100, bottom: 300),
-                child: FutureBuilder<List<String>>(
-                  future: _imagesFuture,
-                  builder: (context, snapshot) {
-                    final images = snapshot.data ?? [];
-                    final hasData = snapshot.hasData && images.isNotEmpty;
-                    final shouldHide = _isShowingSearchQuery || _expandedSectionId != null;
+          // Main Search Content (wrapped in Offstage/Opacity)
+          Offstage(
+            offstage: _isSeriesView && _isFinishedTransitioningToSeries,
+            child: AnimatedOpacity(
+              duration: mediumDuration,
+              opacity: _isSeriesView ? 0.0 : 1.0,
+              curve: Curves.ease,
+              child: AbsorbPointer(
+                absorbing: _isSeriesView,
+                child: Stack(
+                  children: [
+                    // Background Shelf Cards
+                    IgnorePointer(
+                      ignoring: true,
+                      child: FadingEdgeScrollView(
+                        axis: Axis.horizontal,
+                        fadeEdges: const EdgeInsets.only(top: 300, bottom: 300), //TODO horiz/vert factory
+                        child: FadingEdgeScrollView(
+                          fadeEdges: const EdgeInsets.only(top: 100, bottom: 300),
+                          child: FutureBuilder<List<String>>(
+                            future: _imagesFuture,
+                            builder: (context, snapshot) {
+                              final images = snapshot.data ?? [];
+                              final hasData = snapshot.hasData && images.isNotEmpty;
+                              final shouldHide = _isShowingSearchQuery || _expandedSectionId != null;
 
-                    return AnimatedHider(
-                      duration: const Duration(milliseconds: 800),
-                      switchInCurve: Curves.easeOut,
-                      switchOutCurve: Curves.easeIn,
-                      shouldShowChild: hasData && !shouldHide,
-                      child: Opacity(
-                        opacity: (1.0 - _animationValue).clamp(0.1, 0.5),
-                        child: SearchLibraryShelfDisplay(
-                          imageUrls: hasData ? images : [],
-                          verticalOffset: -50 * _animationValue,
+                              return AnimatedHider(
+                                duration: const Duration(milliseconds: 800),
+                                switchInCurve: Curves.easeOut,
+                                switchOutCurve: Curves.easeIn,
+                                shouldShowChild: hasData && !shouldHide,
+                                child: Opacity(
+                                  opacity: (1.0 - _animationValue).clamp(0.1, 0.5),
+                                  child: SearchLibraryShelfDisplay(
+                                    imageUrls: hasData ? images : [],
+                                    verticalOffset: -50 * _animationValue,
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
                         ),
                       ),
-                    );
-                  },
-                ),
-              ),
-            ),
-          ),
-          // Main Content
-          SearchTemplatePage(
-            scrollController: widget.scrollController,
-            searchBarStatus: (_isShowingSearchQuery || _expandedSectionId != null) ? SearchBarStatus.collapsed : _overrideSearchBarStatus,
-            header: Builder(builder: (context) {
-              if (_isShowingSearchQuery) return Text('Search Results for "${_resultsQuery ?? ''}"', style: Manager.titleStyle);
-              if (_expandedSectionId != null) {
-                final sectionTitles = {
-                  1: 'Trending Now',
-                  2: 'Popular This Season',
-                  3: 'Upcoming Next Season',
-                  4: 'Top 100 Anime',
-                };
-                final title = sectionTitles[_expandedSectionId!] ?? 'Browse';
-                return Text(title, style: Manager.titleStyle);
-              }
+                    ),
+                    // Main Content
+                    SearchTemplatePage(
+                      scrollController: widget.scrollController,
+                      searchBarStatus: (_isShowingSearchQuery || _expandedSectionId != null) ? SearchBarStatus.collapsed : _overrideSearchBarStatus,
+                      header: Builder(builder: (context) {
+                        if (_isShowingSearchQuery) return Text('Search Results for "${_resultsQuery ?? ''}"', style: Manager.titleStyle);
+                        if (_expandedSectionId != null) {
+                          final sectionTitles = {
+                            1: 'Trending Now',
+                            2: 'Popular This Season',
+                            3: 'Upcoming Next Season',
+                            4: 'Top 100 Anime',
+                          };
+                          final title = sectionTitles[_expandedSectionId!] ?? 'Browse';
+                          return Text(title, style: Manager.titleStyle);
+                        }
 
-              return Text('Browse', style: Manager.titleStyle);
-            }),
-            behindSearchBar: (val) {
-              // Capture animation value for other effects
-              if (_animationValue != val) nextFrame(() => setState(() => _animationValue = val));
-              return SizedBox.shrink();
-            },
-            content: _buildBody(library, settings),
-            searchBarCollapsedWidth: (maxConstrainedWidth) => min(maxConstrainedWidth, _textSearchWidth + 27 + _filterButtonSize),
-            searchBarMaxCollapsedWidth: (maxConstrainedWidth) => min(maxConstrainedWidth, ScreenUtils.kMaxContentWidth - 150),
-            searchBarMinCollapsedWidth: (_) => 350,
-            searchBar: (width, height, animationValue, focusNode) {
-              if (_searchFocusNode == null) {
-                _searchFocusNode = focusNode;
-                _searchFocusNode!.addListener(_onSearchFocusChange);
-              }
-
-              final bool isExpanded = animationValue < 0.2;
-              final double borderRadius = lerpDouble(8, 12, 1 - animationValue)!;
-              final double horizontalPadding = lerpDouble(12, 20, 1 - animationValue)!;
-              final double filterButtonSize = lerpDouble(43, ((height == null ? null : height + 3) ?? 40), 1 - animationValue)!;
-              _filterButtonSize = filterButtonSize;
-
-              Color color(double whiteAlpha) => _isSearchFocused ? (Manager.currentDominantAccentColor ?? Manager.accentColor) : Colors.white.withOpacity(whiteAlpha);
-              final Color filterColorBg = _showFilters ? (Manager.currentDominantAccentColor ?? Manager.accentColor) : Colors.transparent;
-              final double filtersButtonLeftPadding = 6.0;
-
-              return Stack(
-                alignment: Alignment.topCenter,
-                children: [
-                  Row(
-                    children: [
-                      // Search Box
-                      GlossyContainer(
-                        color: color(1).withOpacity(.015),
-                        opacity: 0.1,
-                        strengthX: 20,
-                        strengthY: 20,
-                        blendMode: BlendMode.src,
-                        borderRadius: BorderRadius.only(
-                          topLeft: Radius.circular(borderRadius),
-                          bottomLeft: Radius.circular(borderRadius),
-                          topRight: Radius.circular(borderRadius / 3),
-                          bottomRight: Radius.circular(borderRadius / 3),
-                        ),
-                        width: (width ?? ScreenUtils.kMaxContentWidth - 150) - (filterButtonSize + filtersButtonLeftPadding),
-                        height: (height == null ? null : height + 3) ?? 40,
-                        child: FrostedNoise(
-                          intensity: .5,
-                          child: Theme(
-                            data: Theme.of(context).copyWith(
-                              textSelectionTheme: TextSelectionThemeData(
-                                selectionColor: color(1).withOpacity(0.3),
-                                selectionHandleColor: color(1),
-                              ),
-                            ),
-                            child: TextBox(
-                              controller: _searchController,
-                              focusNode: _searchFocusNode,
-                              cursorOpacityAnimates: true,
-                              style: _searchTextStyle,
-                              padding: EdgeInsetsDirectional.fromSTEB(horizontalPadding, 0, horizontalPadding, 0),
-                              highlightColor: Colors.transparent,
-                              unfocusedColor: Colors.transparent,
-                              enableInteractiveSelection: true,
-                              suffix: _searchController.text.isNotEmpty
-                                  ? Padding(
-                                      padding: EdgeInsets.only(right: 20.0 - _animationValue * 8),
-                                      child: IconButton(
-                                        icon: Icon(FluentIcons.chrome_close, color: color(.6), size: 16),
-                                        onPressed: clearSearch,
-                                      ),
-                                    )
-                                  : null,
-                              prefix: Padding(padding: EdgeInsets.only(left: 20.0 - _animationValue * 8), child: Icon(Icons.search, color: color(.6), size: 23)),
-                              decoration: ButtonState.all(
-                                BoxDecoration(
+                        return Text('Browse', style: Manager.titleStyle);
+                      }),
+                      behindSearchBar: (val) {
+                        // Capture animation value for other effects
+                        if (_animationValue != val) nextFrame(() => setState(() => _animationValue = val));
+                        return SizedBox.shrink();
+                      },
+                      content: _buildBody(library, settings),
+                      searchBarCollapsedWidth: (maxConstrainedWidth) => min(maxConstrainedWidth, _textSearchWidth + 27 + _filterButtonSize),
+                      searchBarMaxCollapsedWidth: (maxConstrainedWidth) => min(maxConstrainedWidth, ScreenUtils.kMaxContentWidth - 150),
+                      searchBarMinCollapsedWidth: (_) => 350,
+                      searchBar: (width, height, animationValue, focusNode) {
+                        if (_searchFocusNode == null) {
+                          _searchFocusNode = focusNode;
+                          _searchFocusNode!.addListener(_onSearchFocusChange);
+                        }
+                        final bool isExpanded = animationValue < 0.2;
+                        final double borderRadius = lerpDouble(8, 12, 1 - animationValue)!;
+                        final double horizontalPadding = lerpDouble(12, 20, 1 - animationValue)!;
+                        final double filterButtonSize = lerpDouble(43, ((height == null ? null : height + 3) ?? 40), 1 - animationValue)!;
+                        _filterButtonSize = filterButtonSize;
+                        Color color(double whiteAlpha) => _isSearchFocused ? (Manager.currentDominantAccentColor ?? Manager.accentColor) : Colors.white.withOpacity(whiteAlpha);
+                        final Color filterColorBg = _showFilters ? (Manager.currentDominantAccentColor ?? Manager.accentColor) : Colors.transparent;
+                        final double filtersButtonLeftPadding = 6.0;
+                        return Stack(
+                          alignment: Alignment.topCenter,
+                          children: [
+                            Row(
+                              children: [
+                                // Search Box
+                                GlossyContainer(
                                   color: color(1).withOpacity(.015),
+                                  opacity: 0.1,
+                                  strengthX: 20,
+                                  strengthY: 20,
+                                  blendMode: BlendMode.src,
                                   borderRadius: BorderRadius.only(
                                     topLeft: Radius.circular(borderRadius),
                                     bottomLeft: Radius.circular(borderRadius),
                                     topRight: Radius.circular(borderRadius / 3),
                                     bottomRight: Radius.circular(borderRadius / 3),
                                   ),
-                                  border: Border.all(
-                                    color: _isSearchFocused //
-                                        ? (Manager.currentDominantAccentColor ?? Manager.accentColor).light
-                                        : Colors.white.withOpacity(0.1),
-                                    width: _searchController.text.isNotEmpty ? 1.5 : 1,
+                                  width: (width ?? ScreenUtils.kMaxContentWidth - 150) - (filterButtonSize + filtersButtonLeftPadding),
+                                  height: (height == null ? null : height + 3) ?? 40,
+                                  child: FrostedNoise(
+                                    intensity: .5,
+                                    child: Theme(
+                                      data: Theme.of(context).copyWith(
+                                        textSelectionTheme: TextSelectionThemeData(
+                                          selectionColor: color(1).withOpacity(0.3),
+                                          selectionHandleColor: color(1),
+                                        ),
+                                      ),
+                                      child: TextBox(
+                                        controller: _searchController,
+                                        focusNode: _searchFocusNode,
+                                        cursorOpacityAnimates: true,
+                                        style: _searchTextStyle,
+                                        padding: EdgeInsetsDirectional.fromSTEB(horizontalPadding, 0, horizontalPadding, 0),
+                                        highlightColor: Colors.transparent,
+                                        unfocusedColor: Colors.transparent,
+                                        enableInteractiveSelection: true,
+                                        suffix: _searchController.text.isNotEmpty
+                                            ? Padding(
+                                                padding: EdgeInsets.only(right: 20.0 - _animationValue * 8),
+                                                child: IconButton(
+                                                  icon: Icon(FluentIcons.chrome_close, color: color(.6), size: 16),
+                                                  onPressed: clearSearch,
+                                                ),
+                                              )
+                                            : null,
+                                        prefix: Padding(padding: EdgeInsets.only(left: 20.0 - _animationValue * 8), child: Icon(Icons.search, color: color(.6), size: 23)),
+                                        decoration: ButtonState.all(
+                                          BoxDecoration(
+                                            color: color(1).withOpacity(.015),
+                                            borderRadius: BorderRadius.only(
+                                              topLeft: Radius.circular(borderRadius),
+                                              bottomLeft: Radius.circular(borderRadius),
+                                              topRight: Radius.circular(borderRadius / 3),
+                                              bottomRight: Radius.circular(borderRadius / 3),
+                                            ),
+                                            border: Border.all(
+                                              color: _isSearchFocused //
+                                                  ? (Manager.currentDominantAccentColor ?? Manager.accentColor).light
+                                                  : Colors.white.withOpacity(0.1),
+                                              width: _searchController.text.isNotEmpty ? 1.5 : 1,
+                                            ),
+                                          ),
+                                        ),
+                                        placeholder: 'Search...',
+                                        onSubmitted: (value) {
+                                          if (value.isNotEmpty) _performTextSearch(value);
+                                        },
+                                        onChanged: (value) {
+                                          if (value.isEmpty && _isShowingSearchQuery) _handleBack();
+                                        },
+                                      ),
+                                    ),
                                   ),
                                 ),
-                              ),
-                              placeholder: 'Search...',
-                              onSubmitted: (value) {
-                                if (value.isNotEmpty) _performTextSearch(value);
-                              },
-                              onChanged: (value) {
-                                if (value.isEmpty && _isShowingSearchQuery) _handleBack();
-                              },
+                                SizedBox(width: filtersButtonLeftPadding),
+                                // Filters Button
+                                GlossyContainer(
+                                  color: filterColorBg,
+                                  opacity: 0.1,
+                                  strengthX: 20,
+                                  strengthY: 20,
+                                  blendMode: BlendMode.src,
+                                  border: Border.all(
+                                    color: _showFilters ? (Manager.currentDominantAccentColor ?? Manager.accentColor) : Colors.white.withOpacity(0.1),
+                                    width: 1.5,
+                                  ),
+                                  borderRadius: BorderRadius.only(
+                                    topLeft: Radius.circular(borderRadius / 3),
+                                    bottomLeft: Radius.circular(borderRadius / 3),
+                                    topRight: Radius.circular(borderRadius),
+                                    bottomRight: Radius.circular(borderRadius),
+                                  ),
+                                  width: filterButtonSize,
+                                  height: filterButtonSize,
+                                  child: FrostedNoise(
+                                    intensity: .5,
+                                    color: filterColorBg,
+                                    child: StandardButton.icon(
+                                      expandY: true,
+                                      padding: EdgeInsets.zero,
+                                      expand: true,
+                                      icon: Icon(FluentIcons.filter, color: _showFilters ? Manager.accentColor : Colors.grey, size: 20),
+                                      onPressed: () => setState(() => _showFilters = !_showFilters),
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
-                          ),
-                        ),
-                      ),
-                      SizedBox(width: filtersButtonLeftPadding),
-                      // Filters Button
-                      GlossyContainer(
-                        color: filterColorBg,
-                        opacity: 0.1,
-                        strengthX: 20,
-                        strengthY: 20,
-                        blendMode: BlendMode.src,
-                        border: Border.all(
-                          color: _showFilters ? (Manager.currentDominantAccentColor ?? Manager.accentColor) : Colors.white.withOpacity(0.1),
-                          width: 1.5,
-                        ),
-                        borderRadius: BorderRadius.only(
-                          topLeft: Radius.circular(borderRadius / 3),
-                          bottomLeft: Radius.circular(borderRadius / 3),
-                          topRight: Radius.circular(borderRadius),
-                          bottomRight: Radius.circular(borderRadius),
-                        ),
-                        width: filterButtonSize,
-                        height: filterButtonSize,
-                        child: FrostedNoise(
-                          intensity: .5,
-                          color: filterColorBg,
-                          child: StandardButton.icon(
-                            expandY: true,
-                            padding: EdgeInsets.zero,
-                            expand: true,
-                            icon: Icon(FluentIcons.filter, color: _showFilters ? Manager.accentColor : Colors.grey, size: 20),
-                            onPressed: () => setState(() => _showFilters = !_showFilters),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  // Filters Header
-                  AnimatedSwitcher(
-                    duration: dimDuration / 2,
-                    reverseDuration: dimDuration / 4,
-                    transitionBuilder: (child, animation) => SlideTransition(
-                      position: Tween<Offset>(
-                        begin: const Offset(0, 0.5),
-                        end: const Offset(0, 1.25),
-                      ).animate(animation),
-                      child: FadeTransition(
-                        opacity: animation,
-                        child: child,
-                      ),
+                            // Filters Header
+                            AnimatedSwitcher(
+                              duration: dimDuration / 2,
+                              reverseDuration: dimDuration / 4,
+                              transitionBuilder: (child, animation) => SlideTransition(
+                                position: Tween<Offset>(
+                                  begin: const Offset(0, 0.5),
+                                  end: const Offset(0, 1.25),
+                                ).animate(animation),
+                                child: FadeTransition(
+                                  opacity: animation,
+                                  child: child,
+                                ),
+                              ),
+                              child: _showFilters && isExpanded ? DeferPointer(child: const AnimeFilterHeader()) : const SizedBox.shrink(),
+                            ),
+                          ],
+                        );
+                      },
                     ),
-                    child: _showFilters && isExpanded ? DeferPointer(child: const AnimeFilterHeader()) : const SizedBox.shrink(),
-                  ),
-                ],
-              );
-            },
-          ),
-          // Back Button
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              AnimatedSwitcher(
-                duration: dimDuration,
-                child: showBackButton
-                    ? BackButton(
-                        onTap: _handleBack,
-                        label: 'Back to Browse',
-                        child: const Icon(FluentIcons.back),
-                      )
-                    : SizedBox.shrink(),
+                    // Back Button
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        AnimatedSwitcher(
+                          duration: dimDuration,
+                          child: showBackButton
+                              ? BackButton(
+                                  onTap: _handleBack,
+                                  label: 'Back to Browse',
+                                  child: const Icon(FluentIcons.back),
+                                )
+                              : SizedBox.shrink(),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
-            ],
+            ),
+          ),
+
+          // Series Screen
+          IgnorePointer(
+            ignoring: !_isSeriesView,
+            child: AbsorbPointer(
+              absorbing: !_isSeriesView,
+              child: AnimatedOpacity(
+                duration: mediumDuration,
+                opacity: _isSeriesView ? 1.0 : 0.0,
+                curve: Curves.ease,
+                onEnd: onEndTransitionSeriesScreen,
+                child: _isFinishedTransitioningToSearch
+                    ? const SizedBox.shrink()
+                    : _selectedAnime == null
+                        ? const SizedBox.shrink()
+                        : SearchedSeriesScreen(
+                            key: searchedSeriesScreenKey,
+                            anilistUrl: _selectedAnime!.id.toString(),
+                            onBack: _exitSeriesView,
+                          ),
+              ),
+            ),
           ),
         ],
       ),
     );
   }
-
+  
   Widget _buildBody(Library library, SettingsManager settings) {
     return FadingEdgeScrollView(
       fadeEdges: const EdgeInsets.only(bottom: 40),

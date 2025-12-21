@@ -112,6 +112,297 @@ extension AnilistServiceAnimeDetails on AnilistService {
       return null;
     }
   }
+  
+  /// Get extremely detailed anime information by ID
+  Future<AnilistAnime?> getDetailedAnimeDetails(int id) async {
+    if (_client == null) return null;
+
+    logTrace('Fetching Anilist details for ID: $id');
+
+    const detailsQuery = r'''
+      query GetDetailedAnimeDetails($id: Int!) {
+        Media(id: $id, type: ANIME) {
+          id
+          title {
+            userPreferred
+            romaji
+            english
+            native
+          }
+          coverImage {
+            extraLarge
+            large
+          }
+          bannerImage
+          startDate {
+            year
+            month
+            day
+          }
+          endDate {
+            year
+            month
+            day
+          }
+          description
+          season
+          seasonYear
+          type
+          format
+          status(version: 2)
+          episodes
+          duration
+          chapters
+          volumes
+          genres
+          synonyms
+          source(version: 3)
+          isAdult
+          isLocked
+          meanScore
+          averageScore
+          popularity
+          favourites
+          isFavouriteBlocked
+          hashtag
+          countryOfOrigin
+          isLicensed
+          isFavourite
+          isRecommendationBlocked
+          isFavouriteBlocked
+          isReviewBlocked
+          nextAiringEpisode {
+            airingAt
+            timeUntilAiring
+            episode
+          }
+          relations {
+            edges {
+              id
+              relationType(version: 2)
+              node {
+                id
+                title {
+                  userPreferred
+                }
+                format
+                type
+                status(version: 2)
+                bannerImage
+                coverImage {
+                  large
+                }
+              }
+            }
+          }
+          characterPreview: characters(perPage: 6, sort: [ROLE, RELEVANCE, ID]) {
+            edges {
+              id
+              role
+              name
+              voiceActors(language: JAPANESE, sort: [RELEVANCE, ID]) {
+                id
+                name {
+                  userPreferred
+                }
+                language: languageV2
+                image {
+                  large
+                }
+              }
+              node {
+                id
+                name {
+                  userPreferred
+                }
+                image {
+                  large
+                }
+              }
+            }
+          }
+          staffPreview: staff(perPage: 8, sort: [RELEVANCE, ID]) {
+            edges {
+              id
+              role
+              node {
+                id
+                name {
+                  userPreferred
+                }
+                language: languageV2
+                image {
+                  large
+                }
+              }
+            }
+          }
+          studios {
+            edges {
+              isMain
+              node {
+                id
+                name
+              }
+            }
+          }
+          reviewPreview: reviews(perPage: 2, sort: [RATING_DESC, ID]) {
+            pageInfo {
+              total
+            }
+            nodes {
+              id
+              summary
+              rating
+              ratingAmount
+              user {
+                id
+                name
+                avatar {
+                  large
+                }
+              }
+            }
+          }
+          recommendations(perPage: 7, sort: [RATING_DESC, ID]) {
+            pageInfo {
+              total
+            }
+            nodes {
+              id
+              rating
+              userRating
+              mediaRecommendation {
+                id
+                title {
+                  userPreferred
+                }
+                format
+                type
+                status(version: 2)
+                bannerImage
+                coverImage {
+                  large
+                }
+              }
+              user {
+                id
+                name
+                avatar {
+                  large
+                }
+              }
+            }
+          }
+          externalLinks {
+            id
+            site
+            url
+            type
+            language
+            color
+            icon
+            notes
+            isDisabled
+          }
+          streamingEpisodes {
+            site
+            title
+            thumbnail
+            url
+          }
+          trailer {
+            id
+            site
+          }
+          rankings {
+            id
+            rank
+            type
+            format
+            year
+            season
+            allTime
+            context
+          }
+          tags {
+            id
+            name
+            description
+            rank
+            isMediaSpoiler
+            isGeneralSpoiler
+            userId
+          }
+          mediaListEntry {
+            id
+            status
+            score
+          }
+          stats {
+            statusDistribution {
+              status
+              amount
+            }
+            scoreDistribution {
+              score
+              amount
+            }
+          }
+        }
+      }
+    ''';
+
+    try {
+      final result = await RetryUtils.retry<AnilistAnime?>(
+        (bool isOffline) async {
+          final queryResult = await _client!.query(
+            QueryOptions(
+              document: gql(detailsQuery),
+              variables: {
+                'id': id,
+              },
+              fetchPolicy: isOffline ? FetchPolicy.cacheOnly : FetchPolicy.cacheFirst,
+            ),
+          );
+
+          if (queryResult.hasException) {
+            // Check if offline before throwing
+            if (RetryUtils.isExpectedOfflineError(queryResult.exception)) return null;
+
+            if (queryResult.exception is OperationException && //
+                queryResult.exception!.linkException is UnknownException &&
+                queryResult.exception!.linkException!.originalException is TimeoutException) {
+              throw TimeoutException('Anilist anime details GET request timed out');
+            }
+            if (queryResult.exception is OperationException && //
+                queryResult.exception!.linkException is ServerException &&
+                queryResult.exception!.linkException!.originalException is HandshakeException ||
+                queryResult.exception!.linkException!.originalException is ClientException) {
+              throw HandshakeException('Anilist anime details GET request no internet connection');
+            }
+            throw Exception('Error getting anime details: ${queryResult.exception}');
+          }
+
+          final media = queryResult.data?['Media'];
+          return media != null ? AnilistAnime.fromJson(media) : null;
+        },
+        maxRetries: 3,
+        retryIf: RetryUtils.shouldRetryAnilistError,
+        operationName: 'getAnimeDetails(id: $id)',
+        isOfflineAware: true,
+      );
+
+      return result;
+    } catch (e, stackTrace) {
+      if (ConnectivityService().isOffline && RetryUtils.isExpectedOfflineError(e)) {
+        logDebug('Skipping anime details query - device is offline');
+        return null;
+      }
+      logErr('Error querying Anilist anime details', e, stackTrace);
+      return null;
+    }
+  }
 
   /// Get detailed anime information by ID
   Future<Map<int, AnilistAnime>> getMultipleAnimesDetails(List<int> ids, {int perPage = 50}) async {

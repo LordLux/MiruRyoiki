@@ -50,3 +50,6 @@ app.*.map.json
 
 # Environment variables
 .env
+
+# Gemini CLI
+GEMINI.md

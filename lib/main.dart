@@ -1038,7 +1038,8 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
     });
   }
 
-  // Add this helper method
+  /// Handles back navigation throughout the app
+  /// Returns true if back navigation was performed, false otherwise
   bool handleBackNavigation({bool isEsc = false}) {
     final navManager = Provider.of<NavigationManager>(context, listen: false);
 
@@ -1082,6 +1083,13 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
       logWarn('Unknown navigation state while in series view: $currentViewId');
       return true;
     }
+    
+    // Handle search series view navigation
+    if (browseScreenKey.currentState?.searchedSeriesScreenKey.currentState != null) {
+      logTrace('Going back in navigation stack! Searched Series -> Browse');
+      browseScreenKey.currentState?.searchedSeriesScreenKey.currentState?.widget.onBack();
+      return true;
+    }
 
     // Handle general back navigation
     if (navManager.canGoBack) {
@@ -1092,7 +1100,7 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
 
       switch (currentItem.level) {
         case NavigationLevel.pane:
-          final index = _getPaneIndexFromId(currentItem.id);
+          final index = NavigationManager.getPaneById(currentItem.id)?['index'] as int?;
           if (index != null && index != _selectedIndex) setState(() => _selectedIndex = index);
           break;
 
@@ -1117,9 +1125,6 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
 
     return false;
   }
-
-  // Helper method to determine pane index from ID
-  int? _getPaneIndexFromId(String id) => NavigationManager.getPaneById(id)?['index'] as int?;
 }
 
 Future<void> _initializeSplashScreenWindow() async {

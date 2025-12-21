@@ -1,0 +1,132 @@
+query (
+  $id: Int
+  $name: String
+  $animePage: Int
+  $mangaPage: Int
+  $charactersPage: Int
+  $staffPage: Int
+  $studiosPage: Int
+) {
+  User(id: $id, name: $name) {
+    id
+    name
+    favourites {
+      anime(page: $animePage) {
+        pageInfo {
+          total
+          perPage
+          currentPage
+          lastPage
+          hasNextPage
+        }
+        edges {
+          favouriteOrder
+          node {
+            id
+            type
+            status(version: 2)
+            format
+            isAdult
+            bannerImage
+            title {
+              userPreferred
+            }
+            coverImage {
+              large
+            }
+            startDate {
+              year
+            }
+          }
+        }
+      }
+      manga(page: $mangaPage) {
+        pageInfo {
+          total
+          perPage
+          currentPage
+          lastPage
+          hasNextPage
+        }
+        edges {
+          favouriteOrder
+          node {
+            id
+            type
+            status(version: 2)
+            format
+            isAdult
+            bannerImage
+            title {
+              userPreferred
+            }
+            coverImage {
+              large
+            }
+            startDate {
+              year
+            }
+          }
+        }
+      }
+      characters(page: $charactersPage) {
+        pageInfo {
+          total
+          perPage
+          currentPage
+          lastPage
+          hasNextPage
+        }
+        edges {
+          favouriteOrder
+          node {
+            id
+            name {
+              userPreferred
+            }
+            image {
+              large
+            }
+          }
+        }
+      }
+      staff(page: $staffPage) {
+        pageInfo {
+          total
+          perPage
+          currentPage
+          lastPage
+          hasNextPage
+        }
+        edges {
+          favouriteOrder
+          node {
+            id
+            name {
+              userPreferred
+            }
+            image {
+              large
+            }
+          }
+        }
+      }
+      studios(page: $studiosPage) {
+        pageInfo {
+          total
+          perPage
+          currentPage
+          lastPage
+          hasNextPage
+        }
+        edges {
+          favouriteOrder
+          node {
+            id
+            name
+          }
+        }
+      }
+    }
+  }
+}

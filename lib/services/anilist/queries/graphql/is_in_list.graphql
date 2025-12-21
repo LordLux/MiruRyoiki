@@ -1,0 +1,51 @@
+query isInList($mediaId: Int) {
+  Media(id: $mediaId) {
+    id
+    title {
+      userPreferred
+    }
+    coverImage {
+      large
+    }
+    bannerImage
+    type
+    status(version: 2)
+    episodes
+    chapters
+    volumes
+    isFavourite
+    mediaListEntry {
+        id
+    }
+    # mediaListEntry {
+    #   id
+    #   mediaId
+    #   status
+    #   score
+    #   advancedScores
+    #   progress
+    #   progressVolumes
+    #   repeat
+    #   priority
+    #   private
+    #   hiddenFromStatusLists
+    #   customLists
+    #   notes
+    #   updatedAt
+    #   startedAt {
+    #     year
+    #     month
+    #     day
+    #   }
+    #   completedAt {
+    #     year
+    #     month
+    #     day
+    #   }
+    #   user {
+    #     id
+    #     name
+    #   }
+    # }
+  }
+}
