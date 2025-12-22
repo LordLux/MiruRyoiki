@@ -1,8 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
 import 'package:graphql/client.dart';
-import 'package:http/http.dart';
 import 'package:provider/provider.dart';
 import '../../../../models/anilist/anime.dart';
 import '../../../../models/anilist/user_list.dart';
@@ -14,12 +12,12 @@ import '../../../models/notification.dart';
 import '../../../database/database.dart';
 import '../../../database/daos/notifications_dao.dart';
 import '../../../utils/logging.dart';
-import '../../../utils/retry.dart';
 import '../../../utils/time.dart';
 import '../../connectivity/connectivity_service.dart';
 import '../../library/library_provider.dart';
 import '../auth.dart';
 import '../provider/anilist_provider.dart';
+import 'anilist_query_executor.dart';
 
 part 'initialization.dart';
 part 'auth.dart';
@@ -31,7 +29,7 @@ part 'mutations.dart';
 part 'browse.dart';
 part '../notifications_service.dart';
 
-class AnilistService {
+class AnilistService with AnilistQueryExecutor {
   // Singleton
   static final AnilistService _instance = AnilistService._internal();
   factory AnilistService() => _instance;
@@ -39,6 +37,12 @@ class AnilistService {
 
   final AnilistAuthService _authService;
   GraphQLClient? _client;
+
+  @override
+  GraphQLClient? get client => _client;
+
+  /// Set the GraphQL client for testing purposes
+  set client(GraphQLClient? client) => _client = client;
 
   // Throttling + cache for notifications
   DateTime? _lastNotificationsFetchAt;

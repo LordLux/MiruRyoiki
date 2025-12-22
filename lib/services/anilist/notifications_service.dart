@@ -142,83 +142,47 @@ extension AnilistServiceNotifications on AnilistService {
       return [];
     }
 
-    // Access the GraphQL client directly since we're an extension
-    final client = _client;
-    if (client == null) throw Exception('GraphQL client not initialized');
-
     final variables = <String, dynamic>{
       'page': page,
       'perPage': perPage,
     };
 
     // Add type filter if specified
-    if (types != null && types.isNotEmpty) {
+    if (types != null && types.isNotEmpty) //
       variables['type_in'] = types.map((type) => type.name.toUpperCase()).toList();
-    }
 
-    try {
-      final result = await RetryUtils.retry<QueryResult>(
-        (bool isOffline) async {
-          return await client.query(
-            QueryOptions(
-              document: gql(_notificationsQuery),
-              variables: variables,
-              fetchPolicy: isOffline ? FetchPolicy.cacheOnly : FetchPolicy.networkOnly,
-            ),
-          );
-        },
-        maxRetries: 3,
-        retryIf: RetryUtils.shouldRetryAnilistError,
-        operationName: 'getNotifications(page: $page, perPage: $perPage)',
-        isOfflineAware: true,
-      );
+    final result = await executeQuery<List<AnilistNotification>>(
+      options: QueryOptions(
+        document: gql(_notificationsQuery),
+        variables: variables,
+        fetchPolicy: FetchPolicy.networkOnly,
+      ),
+      operationName: 'getNotifications(page: $page, perPage: $perPage)',
+      parser: (data) {
+        final notificationsData = data['Page']?['notifications'] as List<dynamic>? ?? [];
+        final notifications = <AnilistNotification>[];
 
-      if (result == null) {
-        // When offline and no cached data, return empty list instead of throwing
-        logDebug('No notifications available (offline with no cache)');
-        return [];
-      }
-      
-      if (result.hasException) {
-        // If the error itself indicates offline, treat as offline
-        if (RetryUtils.isExpectedOfflineError(result.exception)) {
-          logTrace('Skipping notification fetch - offline error detected');
-          return [];
+        for (final notificationJson in notificationsData) {
+          final notification = _parseNotification(notificationJson as Map<String, dynamic>);
+          if (notification != null) {
+            notifications.add(notification);
+          }
         }
-        throw Exception('Failed to fetch notifications: ${result.exception}');
-      }
+        return notifications;
+      },
+    );
 
-      final notificationsData = result.data?['Page']?['notifications'] as List<dynamic>? ?? [];
-      final notifications = <AnilistNotification>[];
-
-      for (final notificationJson in notificationsData) {
-        final notification = _parseNotification(notificationJson as Map<String, dynamic>);
-        if (notification != null) {
-          notifications.add(notification);
-        }
-      }
-
+    if (result != null) {
       // Save cache & metadata
       _lastNotificationsFetchAt = now;
-      _lastNotificationsCache = notifications;
+      _lastNotificationsCache = result;
       _lastNotificationsPage = page;
       _lastNotificationsPerPage = perPage;
       _lastNotificationsTypes = types == null ? null : List.of(types);
-      return notifications;
-    } catch (e) {
-      // Check if this is an expected offline error
-      final isOfflineError = RetryUtils.isExpectedOfflineError(e);
-      
-      if (ConnectivityService().isOffline && isOfflineError) {
-        // When offline, return empty list
-        logTrace('Skipping notification fetch - device is offline');
-        return [];
-      }
-      
-      // real errors
-      logErr('Error fetching notifications from Anilist', e);
-      throw Exception('Failed to fetch notifications: $e');
+      return result;
     }
+
+    return [];
   }
 
   bool _compareNotificationTypeLists(List<NotificationType>? a, List<NotificationType>? b) {

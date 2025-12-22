@@ -22,26 +22,23 @@ extension AnilistServiceGenres on AnilistService {
       }
     ''';
 
-    try {
-      final result = await _client!.query(
-        QueryOptions(
-          document: gql(query),
-          fetchPolicy: FetchPolicy.networkOnly,
-        ),
-      );
+    final result = await executeQuery<List<String>>(
+      options: QueryOptions(
+        document: gql(query),
+        fetchPolicy: FetchPolicy.networkOnly,
+      ),
+      operationName: 'getGenres',
+      parser: (data) {
+        final List<dynamic> genresData = data['GenreCollection'] ?? [];
+        return genresData.cast<String>();
+      },
+    );
 
-      if (result.hasException) throw Exception('Error fetching genres: ${result.exception}');
-
-      final List<dynamic> genresData = result.data?['GenreCollection'] ?? [];
-      final List<String> genres = genresData.cast<String>();
-
-      // Save to settings
-      if (genres.isNotEmpty) Manager.settings.genres = genres;
-
-      return genres;
-    } catch (e) {
-      logErr('Error fetching genres: $e');
-      return Manager.settings.genres;
+    if (result != null && result.isNotEmpty) {
+      Manager.settings.genres = result;
+      return result;
     }
+
+    return Manager.settings.genres;
   }
 }

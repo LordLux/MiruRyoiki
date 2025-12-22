@@ -78,7 +78,14 @@ class Manager {
 
   static NavigationManager get navigation => Provider.of<NavigationManager>(context, listen: false);
 
-  static SettingsManager get settings => rootNavigatorKey.currentContext != null ? SettingsManager() : Provider.of<SettingsManager>(context, listen: false);
+  static SettingsManager? _mockSettings;
+  @visibleForTesting
+  static set mockSettings(SettingsManager? mock) => _mockSettings = mock;
+
+  static SettingsManager get settings {
+    if (_mockSettings != null) return _mockSettings!;
+    return rootNavigatorKey.currentContext != null ? SettingsManager() : Provider.of<SettingsManager>(context, listen: false);
+  }
 
   static EpisodeNavigator get episodeNavigator => EpisodeNavigator.instance;
 

@@ -96,44 +96,22 @@ extension AnilistServiceSearch on AnilistService {
       }
     ''';
 
-    try {
-      final result = await RetryUtils.retry<List<AnilistAnime>>(
-        (bool isOffline) async {
-          final queryResult = await _client!.query(
-            QueryOptions(
-              document: gql(searchQuery),
-              variables: {
-                'search': query,
-                'limit': limit,
-              },
-              fetchPolicy: isOffline ? FetchPolicy.cacheOnly : FetchPolicy.cacheFirst,
-            ),
-          );
-
-          if (queryResult.hasException) {
-            // Check if offline before throwing
-            if (RetryUtils.isExpectedOfflineError(queryResult.exception)) return <AnilistAnime>[];
-
-            throw Exception('Error searching Anilist: ${queryResult.exception}');
-          }
-
-          final List<dynamic> media = queryResult.data?['Page']['media'] ?? [];
-          return media.map((item) => AnilistAnime.fromJson(item)).toList();
+    final result = await executeQuery<List<AnilistAnime>>(
+      options: QueryOptions(
+        document: gql(searchQuery),
+        variables: {
+          'search': query,
+          'limit': limit,
         },
-        maxRetries: 3,
-        retryIf: RetryUtils.shouldRetryAnilistError,
-        operationName: 'searchAnime(query: $query)',
-        isOfflineAware: true,
-      );
+        fetchPolicy: FetchPolicy.networkOnly,
+      ),
+      operationName: 'searchAnimeMatch(query: $query)',
+      parser: (data) {
+        final List<dynamic> media = data['Page']?['media'] ?? [];
+        return media.map((item) => AnilistAnime.fromJson(item)).toList();
+      },
+    );
 
-      return result ?? [];
-    } catch (e) {
-      if (ConnectivityService().isOffline && RetryUtils.isExpectedOfflineError(e)) {
-        logDebug('Skipping anime search - device is offline');
-        return [];
-      }
-      logErr('Error querying Anilist', e);
-      return [];
-    }
+    return result ?? [];
   }
 }

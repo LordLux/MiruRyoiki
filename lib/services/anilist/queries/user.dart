@@ -20,46 +20,17 @@ extension AnilistServiceUser on AnilistService {
       }
     ''';
 
-    try {
-      final result = await RetryUtils.retry<QueryResult>(
-        (bool isOffline) async {
-          return await _client!.query(
-            QueryOptions(
-              document: gql(userQuery),
-              fetchPolicy: isOffline ? FetchPolicy.cacheOnly : FetchPolicy.networkOnly,
-            ),
-          );
-        },
-        maxRetries: 3,
-        retryIf: RetryUtils.shouldRetryAnilistError,
-        operationName: 'getCurrentUser',
-        isOfflineAware: true,
-      );
-
-      if (result == null) {
-        logDebug('No user info available (offline with no cache)');
-        return null;
-      }
-
-      if (result.hasException) {
-        if (RetryUtils.isExpectedOfflineError(result.exception)) {
-          logDebug('Skipping user info fetch - offline status');
-          return null;
-        }
-        logErr('Error getting user info', result.exception);
-        return null;
-      }
-
-      final user = result.data?['Viewer'];
-      return user != null ? AnilistUser.fromJson(user) : null;
-    } catch (e) {
-      if (ConnectivityService().isOffline && RetryUtils.isExpectedOfflineError(e)) {
-        logDebug('Skipping user info query - device is offline');
-        return null;
-      }
-      logErr('Error querying Anilist', e);
-      return null;
-    }
+    return await executeQuery<AnilistUser?>(
+      options: QueryOptions(
+        document: gql(userQuery),
+        fetchPolicy: FetchPolicy.networkOnly,
+      ),
+      operationName: 'getCurrentUser',
+      parser: (data) {
+        final user = data['Viewer'];
+        return user != null ? AnilistUser.fromJson(user) : null;
+      },
+    );
   }
 
   Future<AnilistUserData?> getCurrentUserData() async {
@@ -184,46 +155,17 @@ extension AnilistServiceUser on AnilistService {
     }
   }
   ''';
-    try {
-      final result = await RetryUtils.retry<AnilistUserData?>(
-        (bool isOffline) async {
-          final queryResult = await _client!.query(
-            QueryOptions(
-              document: gql(userQuery),
-              fetchPolicy: isOffline ? FetchPolicy.cacheOnly : FetchPolicy.networkOnly,
-              cacheRereadPolicy: CacheRereadPolicy.ignoreAll,
-            ),
-          );
-
-          if (queryResult.hasException) {
-            // Check if offline before throwing
-            if (RetryUtils.isExpectedOfflineError(queryResult.exception)) return null;
-
-            if (queryResult.exception is OperationException && //
-                queryResult.exception!.linkException is UnknownException &&
-                queryResult.exception!.linkException!.originalException is TimeoutException) {
-              throw TimeoutException('Anilist user info GET request timed out', const Duration(seconds: 30));
-            }
-            throw Exception('Error getting user info data: ${queryResult.exception}');
-          }
-
-          final userData = queryResult.data?['Viewer'];
-          return userData != null ? AnilistUserData.fromJson(userData) : null;
-        },
-        maxRetries: 3,
-        retryIf: RetryUtils.shouldRetryAnilistError,
-        operationName: 'getCurrentUserData',
-        isOfflineAware: true,
-      );
-
-      return result;
-    } catch (e) {
-      if (ConnectivityService().isOffline && RetryUtils.isExpectedOfflineError(e)) {
-        logDebug('Skipping user data query - device is offline');
-        return null;
-      }
-      logErr('Error querying Anilist', e);
-      return null;
-    }
+    return await executeQuery<AnilistUserData?>(
+      options: QueryOptions(
+        document: gql(userQuery),
+        fetchPolicy: FetchPolicy.networkOnly,
+        cacheRereadPolicy: CacheRereadPolicy.ignoreAll,
+      ),
+      operationName: 'getCurrentUserData',
+      parser: (data) {
+        final userData = data['Viewer'];
+        return userData != null ? AnilistUserData.fromJson(userData) : null;
+      },
+    );
   }
 }

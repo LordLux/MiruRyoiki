@@ -7,13 +7,52 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import '../../utils/logging.dart';
 import '../../utils/time.dart' show now;
 
+/// Strategy for checking connectivity
+abstract class ConnectivityStrategy {
+  /// Stream of connectivity changes
+  Stream<List<ConnectivityResult>> get onConnectivityChanged;
+
+  /// Check if there is actual internet access
+  Future<bool> hasInternetAccess();
+}
+
+class RealConnectivityStrategy implements ConnectivityStrategy {
+  final Connectivity _connectivity = Connectivity();
+
+  @override
+  Stream<List<ConnectivityResult>> get onConnectivityChanged => _connectivity.onConnectivityChanged;
+
+  @override
+  Future<bool> hasInternetAccess() async {
+    try {
+      final hosts = [
+        'anilist.co', // Primary
+        'google.com', // Fallback
+      ];
+
+      for (final host in hosts) {
+        try {
+          final result = await InternetAddress.lookup(host).timeout(const Duration(seconds: 5));
+          if (result.isNotEmpty && result[0].rawAddress.isNotEmpty) return true;
+        } catch (_) {
+          continue;
+        }
+      }
+      return false;
+    } catch (_) {
+      return false;
+    }
+  }
+}
+
 /// Service to monitor network connectivity status with real-time updates
 class ConnectivityService extends ChangeNotifier {
   static final ConnectivityService _instance = ConnectivityService._internal();
   factory ConnectivityService() => _instance;
   ConnectivityService._internal();
 
-  final Connectivity _connectivity = Connectivity();
+  ConnectivityStrategy _strategy = RealConnectivityStrategy();
+
   StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
   Timer? _internetCheckTimer;
 
@@ -33,6 +72,22 @@ class ConnectivityService extends ChangeNotifier {
   DateTime? _lastConnectivityCheck;
   static const Duration _connectivityCheckInterval = Duration(seconds: 5);
 
+  /// Set a custom strategy for testing
+  @visibleForTesting
+  void setStrategy(ConnectivityStrategy strategy) {
+    _strategy = strategy;
+    // Re-initialize subscription if already initialized
+    if (_connectivitySubscription != null) {
+      _connectivitySubscription?.cancel();
+      _connectivitySubscription = _strategy.onConnectivityChanged.listen(
+        _onConnectivityChanged,
+        onError: (error) {
+          logErr('Connectivity stream error: $error');
+        },
+      );
+    }
+  }
+
   /// Initialize the connectivity service
   Future<void> initialize() async {
     logDebug('Initializing ConnectivityService...');
@@ -41,7 +96,7 @@ class ConnectivityService extends ChangeNotifier {
     await _checkInternetConnectivity();
 
     // Listen to connectivity changes
-    _connectivitySubscription = _connectivity.onConnectivityChanged.listen(
+    _connectivitySubscription = _strategy.onConnectivityChanged.listen(
       _onConnectivityChanged,
       onError: (error) {
         logErr('Connectivity stream error: $error');
@@ -98,32 +153,14 @@ class ConnectivityService extends ChangeNotifier {
   Future<void> _checkInternetConnectivity() async {
     _lastConnectivityCheck = now;
 
+    // If we're already checking, don't start another check
+    if (isCheckingConnectivity) return;
+
+    isCheckingConnectivity = true;
+
     try {
-      final hosts = [
-        'anilist.co', // Primary
-        'google.com', // Fallback
-      ];
-
-      bool hasConnection = false;
-      String? lastError;
-
-      for (final host in hosts) {
-        try {
-          final result = await InternetAddress.lookup(host).timeout(const Duration(seconds: 5));
-
-          if (result.isNotEmpty && result[0].rawAddress.isNotEmpty) {
-            hasConnection = true;
-            // logTrace('Successfully connected to $host');
-            break;
-          }
-        } catch (e) {
-          lastError = e.toString();
-          // logTrace('Connectivity Check: Failed to connect to $host: $e');
-          continue;
-        }
-      }
-
-      _updateConnectivityStatus(hasConnection, hasConnection ? 'Connected' : 'No internet access: $lastError');
+      final hasConnection = await _strategy.hasInternetAccess();
+      _updateConnectivityStatus(hasConnection, hasConnection ? 'Connected' : 'No internet access');
     } catch (e) {
       logErr('Error checking internet connectivity: $e');
       _updateConnectivityStatus(false, 'Connectivity check failed: $e');

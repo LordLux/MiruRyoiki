@@ -24,43 +24,17 @@ extension AnilistBrowseSearch on AnilistService {
     required String operationName,
     FetchPolicy fetchPolicy = FetchPolicy.networkOnly,
   }) async {
-    if (_client == null) return <String, dynamic>{};
+    final result = await executeQuery<Map<String, dynamic>>(
+      options: QueryOptions(
+        document: gql(query),
+        variables: variables,
+        fetchPolicy: fetchPolicy,
+      ),
+      operationName: operationName,
+      parser: (data) => data,
+    );
 
-    logTrace('Executing browse query: $operationName');
-
-    try {
-      final result = await RetryUtils.retry<Map<String, dynamic>>(
-        (bool isOffline) async {
-          final queryResult = await _client!.query(
-            QueryOptions(
-              document: gql(query),
-              variables: variables,
-              fetchPolicy: isOffline ? FetchPolicy.cacheOnly : fetchPolicy,
-            ),
-          );
-
-          if (queryResult.hasException) {
-            if (RetryUtils.isExpectedOfflineError(queryResult.exception)) return <String, dynamic>{};
-            throw Exception('Error executing $operationName: ${queryResult.exception}');
-          }
-
-          return queryResult.data ?? <String, dynamic>{};
-        },
-        maxRetries: 3,
-        retryIf: RetryUtils.shouldRetryAnilistError,
-        operationName: operationName,
-        isOfflineAware: true,
-      );
-
-      return result ?? <String, dynamic>{};
-    } catch (e, stackTrace) {
-      if (ConnectivityService().isOffline && RetryUtils.isExpectedOfflineError(e)) {
-        logDebug('Skipping $operationName - device is offline');
-        return <String, dynamic>{};
-      }
-      logErr('Error executing $operationName', e, stackTrace);
-      return <String, dynamic>{};
-    }
+    return result ?? <String, dynamic>{};
   }
 
   Future<AnilistSearchPage<AnilistAnime>?> getTrendingNow({int page = 1, int perPage = 6}) async {

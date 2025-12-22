@@ -62,57 +62,19 @@ extension AnilistServiceAnimeDetails on AnilistService {
       }
     ''';
 
-    try {
-      final result = await RetryUtils.retry<AnilistAnime?>(
-        (bool isOffline) async {
-          final queryResult = await _client!.query(
-            QueryOptions(
-              document: gql(detailsQuery),
-              variables: {
-                'id': id,
-              },
-              fetchPolicy: isOffline ? FetchPolicy.cacheOnly : FetchPolicy.cacheFirst,
-            ),
-          );
-
-          if (queryResult.hasException) {
-            // Check if offline before throwing
-            if (RetryUtils.isExpectedOfflineError(queryResult.exception)) return null;
-
-            if (queryResult.exception is OperationException && //
-                queryResult.exception!.linkException is UnknownException &&
-                queryResult.exception!.linkException!.originalException is TimeoutException) {
-              throw TimeoutException('Anilist anime details GET request timed out');
-            }
-            if (queryResult.exception is OperationException && //
-                queryResult.exception!.linkException is ServerException &&
-                queryResult.exception!.linkException!.originalException is HandshakeException ||
-                queryResult.exception!.linkException!.originalException is ClientException) {
-              throw HandshakeException('Anilist anime details GET request no internet connection');
-            }
-            throw Exception('Error getting anime details: ${queryResult.exception}');
-          }
-
-          final media = queryResult.data?['Media'];
-          return media != null ? AnilistAnime.fromJson(media) : null;
-        },
-        maxRetries: 3,
-        retryIf: RetryUtils.shouldRetryAnilistError,
-        operationName: 'getAnimeDetails(id: $id)',
-        isOfflineAware: true,
-      );
-
-      return result;
-    } catch (e, stackTrace) {
-      if (ConnectivityService().isOffline && RetryUtils.isExpectedOfflineError(e)) {
-        logDebug('Skipping anime details query - device is offline');
-        return null;
-      }
-      logErr('Error querying Anilist anime details', e, stackTrace);
-      return null;
-    }
+    return executeQuery<AnilistAnime?>(
+      options: QueryOptions(
+        document: gql(detailsQuery),
+        variables: {'id': id },
+      ),
+      operationName: 'getAnimeDetails(id: $id)',
+      parser: (data) {
+        final media = data['Media'];
+        return media != null ? AnilistAnime.fromJson(media) : null;
+      },
+    );
   }
-  
+
   /// Get extremely detailed anime information by ID
   Future<AnilistAnime?> getDetailedAnimeDetails(int id) async {
     if (_client == null) return null;
@@ -353,55 +315,17 @@ extension AnilistServiceAnimeDetails on AnilistService {
       }
     ''';
 
-    try {
-      final result = await RetryUtils.retry<AnilistAnime?>(
-        (bool isOffline) async {
-          final queryResult = await _client!.query(
-            QueryOptions(
-              document: gql(detailsQuery),
-              variables: {
-                'id': id,
-              },
-              fetchPolicy: isOffline ? FetchPolicy.cacheOnly : FetchPolicy.cacheFirst,
-            ),
-          );
-
-          if (queryResult.hasException) {
-            // Check if offline before throwing
-            if (RetryUtils.isExpectedOfflineError(queryResult.exception)) return null;
-
-            if (queryResult.exception is OperationException && //
-                queryResult.exception!.linkException is UnknownException &&
-                queryResult.exception!.linkException!.originalException is TimeoutException) {
-              throw TimeoutException('Anilist anime details GET request timed out');
-            }
-            if (queryResult.exception is OperationException && //
-                queryResult.exception!.linkException is ServerException &&
-                queryResult.exception!.linkException!.originalException is HandshakeException ||
-                queryResult.exception!.linkException!.originalException is ClientException) {
-              throw HandshakeException('Anilist anime details GET request no internet connection');
-            }
-            throw Exception('Error getting anime details: ${queryResult.exception}');
-          }
-
-          final media = queryResult.data?['Media'];
-          return media != null ? AnilistAnime.fromJson(media) : null;
-        },
-        maxRetries: 3,
-        retryIf: RetryUtils.shouldRetryAnilistError,
-        operationName: 'getAnimeDetails(id: $id)',
-        isOfflineAware: true,
-      );
-
-      return result;
-    } catch (e, stackTrace) {
-      if (ConnectivityService().isOffline && RetryUtils.isExpectedOfflineError(e)) {
-        logDebug('Skipping anime details query - device is offline');
-        return null;
-      }
-      logErr('Error querying Anilist anime details', e, stackTrace);
-      return null;
-    }
+    return executeQuery<AnilistAnime?>(
+      options: QueryOptions(
+        document: gql(detailsQuery),
+        variables: {'id': id },
+      ),
+      operationName: 'getDetailedAnimeDetails(id: $id)',
+      parser: (data) {
+        final media = data['Media'];
+        return media != null ? AnilistAnime.fromJson(media) : null;
+      },
+    );
   }
 
   /// Get detailed anime information by ID
@@ -477,78 +401,37 @@ extension AnilistServiceAnimeDetails on AnilistService {
         }
       ''';
 
-      try {
-        final result = await RetryUtils.retry<Map<int, AnilistAnime>>(
-          (bool isOffline) async {
-            final queryResult = await _client!.query(
-              QueryOptions(
-                document: gql(batchQuery),
-                variables: {
-                  'ids': chunk,
-                },
-                fetchPolicy: isOffline ? FetchPolicy.cacheOnly : FetchPolicy.cacheFirst,
-              ),
-            );
+      final result = await executeQuery<Map<int, AnilistAnime>>(
+        options: QueryOptions(
+          document: gql(batchQuery),
+          variables: {'ids': chunk },
+        ),
+        operationName: 'getMultipleAnimesDetails(chunk: ${chunk.length} items)',
+        parser: (data) {
+          final mediaList = data['Page']['media'] as List<dynamic>? ?? [];
+          final Map<int, AnilistAnime> chunkResults = {};
 
-            if (queryResult.hasException) {
-              // Check if offline before throwing
-              if (RetryUtils.isExpectedOfflineError(queryResult.exception)) return <int, AnilistAnime>{};
+          for (final item in mediaList) {
+            final anime = AnilistAnime.fromJson(item);
+            chunkResults[anime.id] = anime;
+          }
 
-              if (queryResult.exception is OperationException && //
-                  queryResult.exception!.linkException is UnknownException &&
-                  queryResult.exception!.linkException!.originalException is TimeoutException) {
-                throw TimeoutException('Anilist animes details GET request timed out');
-              }
-              if (queryResult.exception is OperationException && //
-                  queryResult.exception!.linkException is ServerException &&
-                  queryResult.exception!.linkException!.originalException is HandshakeException ||
-                  queryResult.exception!.linkException!.originalException is ClientException) {
-                throw HandshakeException('Anilist animes details GET request no internet connection');
-              }
-              throw Exception('Error getting anime details: ${queryResult.exception}');
-            }
+          logTrace('${i ~/ maxChunkSize + 1} | Fetched details for ${chunkResults.length} out of ${chunk.length} requested AniList IDs');
 
-            final mediaList = queryResult.data?['Page']['media'] as List<dynamic>? ?? [];
-            final Map<int, AnilistAnime> chunkResults = {};
+          return chunkResults;
+        },
+      );
 
-            for (final item in mediaList) {
-              final anime = AnilistAnime.fromJson(item);
-              chunkResults[anime.id] = anime;
-            }
+      // Merge chunk results into the overall results
+      if (result != null) allResults.addAll(result);
 
-            logTrace('${i ~/ maxChunkSize + 1} | Fetched details for ${chunkResults.length} out of ${chunk.length} requested AniList IDs');
-
-            return chunkResults;
-          },
-          maxRetries: 3,
-          retryIf: RetryUtils.shouldRetryAnilistError,
-          operationName: 'getMultipleAnimesDetails(chunk: ${chunk.length} items)',
-          isOfflineAware: true,
-        );
-
-        // Merge chunk results into the overall results
-        if (result != null) allResults.addAll(result);
-
-        // Log missing IDs for this chunk
-        final missingIds = chunk.where((id) => !allResults.containsKey(id)).toList();
-        if (missingIds.isNotEmpty) {
-          if (ConnectivityService().isOffline)
-            logWarn('Failed to fetch AniList details for ${missingIds.length} Animes - device is offline');
-          else
-            logWarn('Failed to fetch AniList details for ${missingIds.length} Animes - animes may not exist or be restricted');
-        }
-      } catch (e) {
-        if (ConnectivityService().isOffline && RetryUtils.isExpectedOfflineError(e)) {
-          logDebug('Skipping anime details chunk ${i ~/ maxChunkSize + 1} - device is offline');
-        } else {
-          logErr('Error querying Anilist chunk ${i ~/ maxChunkSize + 1}', e);
-
-          // Log all IDs in this chunk as failed
-          if (ConnectivityService().isOffline)
-            logWarn('Failed to fetch AniList details for ${chunk.length} animes - device is offline');
-          else
-            logWarn('Failed to fetch AniList details for ${chunk.length} animes - chunk request failed');
-        }
+      // Log missing IDs for this chunk
+      final missingIds = chunk.where((id) => !allResults.containsKey(id)).toList();
+      if (missingIds.isNotEmpty) {
+        if (ConnectivityService().isOffline)
+          logWarn('Failed to fetch AniList details for ${missingIds.length} Animes - device is offline');
+        else
+          logWarn('Failed to fetch AniList details for ${missingIds.length} Animes - animes may not exist or be restricted');
       }
     }
 
@@ -648,137 +531,105 @@ extension AnilistServiceAnimeDetails on AnilistService {
       }
     ''';
 
-    try {
-      final Map<String, dynamic> variables = {};
-      if (userName != null) {
-        variables['userName'] = userName;
-      } else if (userId != null) {
-        variables['userId'] = userId;
-      }
+    final Map<String, dynamic> variables = {};
+    if (userName != null) {
+      variables['userName'] = userName;
+    } else if (userId != null) {
+      variables['userId'] = userId;
+    }
 
-      final result = await RetryUtils.retry<Map<String, AnilistUserList>>(
-        (bool isOffline) async {
-          final queryResult = await _client!.query(
-            QueryOptions(
-              document: gql(listsQuery),
-              variables: variables,
-              fetchPolicy: isOffline ? FetchPolicy.cacheOnly : FetchPolicy.networkOnly,
-            ),
-          );
+    final result = await executeQuery<Map<String, AnilistUserList>>(
+      options: QueryOptions(
+        document: gql(listsQuery),
+        variables: variables,
+        fetchPolicy: FetchPolicy.networkOnly,
+      ),
+      operationName: 'getUserAnimeLists(user: $userName/$userId)',
+      parser: (data) {
+        final mediaListCollection = data['MediaListCollection'];
+        if (mediaListCollection == null) return <String, AnilistUserList>{};
 
-          if (queryResult.hasException) {
-            // Check if offline before throwing
-            if (RetryUtils.isExpectedOfflineError(queryResult.exception)) return <String, AnilistUserList>{};
+        final Map<String, AnilistUserList> lists = <String, AnilistUserList>{};
 
-            if (queryResult.exception is OperationException && //
-                queryResult.exception!.linkException is UnknownException &&
-                queryResult.exception!.linkException!.originalException is TimeoutException) {
-              throw TimeoutException('Anilist anime lists GET request timed out');
-            }
-            if (queryResult.exception is OperationException && //
-                queryResult.exception!.linkException is ServerException &&
-                queryResult.exception!.linkException!.originalException is HandshakeException ||
-                queryResult.exception!.linkException!.originalException is ClientException) {
-              throw HandshakeException('Anilist anime lists GET request no internet connection');
-            }
-            throw Exception('2 | Error getting anime lists: ${queryResult.exception}');
+        final user = mediaListCollection['user'];
+        final customListNames = user?['mediaListOptions']?['animeList']?['customLists'];
+
+        final standardLists = mediaListCollection['lists'] as List<dynamic>? ?? [];
+
+        // Standard lists
+        for (final list in standardLists) {
+          final status = list['status'] as String?;
+          if (status != null) {
+            lists[status] = AnilistUserList.fromJson(
+              {
+                'lists': [list]
+              },
+              StatusStatistic.statusNameToPretty(status),
+            );
           }
+        }
 
-          final mediaListCollection = queryResult.data?['MediaListCollection'];
-          if (mediaListCollection == null) return <String, AnilistUserList>{};
+        // Custom lists
+        if (customListNames != null) {
+          for (final customListName in customListNames) {
+            // Create a custom list with entries that have this custom list
+            final entriesForCustomList = [];
+            for (final list in standardLists) {
+              for (final entry in list['entries'] ?? []) {
+                // Handle the customLists field properly
+                Map<String, dynamic>? entryCustomLists;
 
-          final Map<String, AnilistUserList> lists = <String, AnilistUserList>{};
+                // Check what type of data we received
+                final customListsData = entry['customLists'];
+                if (customListsData is Map) {
+                  // If it's already a Map, use it directly
+                  entryCustomLists = Map<String, dynamic>.from(customListsData);
+                } else if (customListsData is String) {
+                  try {
+                    // Try to parse as JSON
+                    entryCustomLists = jsonDecode(customListsData) as Map<String, dynamic>?;
+                  } catch (e, stackTrace) {
+                    // If JSON parsing fails, the string might not be proper JSON
+                    logErr('Error parsing customLists', e, stackTrace);
+                    logWarn('Raw customLists value: $customListsData');
 
-          final user = mediaListCollection['user'];
-          final customListNames = user?['mediaListOptions']?['animeList']?['customLists'];
+                    // Continue to next entry, skip this one
+                    continue;
+                  }
+                } else if (customListsData != null) {
+                  logErr('Unexpected customLists type: ${customListsData.runtimeType}');
+                  continue;
+                } else {
+                  // customLists is null
+                  continue;
+                }
 
-          final standardLists = mediaListCollection['lists'] as List<dynamic>? ?? [];
-          // Standard lists (Watching, Completed, etc.)
-          for (final list in standardLists) {
-            final status = list['status'] as String?;
-            if (status != null) {
-              lists[status] = AnilistUserList.fromJson(
+                // Now check if this entry should be in this custom list
+                if (entryCustomLists != null && entryCustomLists.containsKey(customListName) && entryCustomLists[customListName] == true) {
+                  entriesForCustomList.add(entry);
+                }
+              }
+            }
+
+            if (entriesForCustomList.isNotEmpty) {
+              lists['custom_$customListName'] = AnilistUserList.fromJson(
                 {
-                  'lists': [list]
+                  'lists': [
+                    {'entries': entriesForCustomList}
+                  ]
                 },
-                StatusStatistic.statusNameToPretty(status),
+                customListName,
+                isCustomList: true,
               );
             }
           }
+        }
 
-          // Custom lists
-          if (customListNames != null) {
-            for (final customListName in customListNames) {
-              // Create a custom list with entries that have this custom list
-              final entriesForCustomList = [];
-              for (final list in standardLists) {
-                for (final entry in list['entries'] ?? []) {
-                  // Handle the customLists field properly
-                  Map<String, dynamic>? entryCustomLists;
+        return lists;
+      },
+    );
 
-                  // Check what type of data we received
-                  final customListsData = entry['customLists'];
-                  if (customListsData is Map) {
-                    // If it's already a Map, use it directly
-                    entryCustomLists = Map<String, dynamic>.from(customListsData);
-                  } else if (customListsData is String) {
-                    try {
-                      // Try to parse as JSON
-                      entryCustomLists = jsonDecode(customListsData) as Map<String, dynamic>?;
-                    } catch (e, stackTrace) {
-                      // If JSON parsing fails, the string might not be proper JSON
-                      logErr('Error parsing customLists', e, stackTrace);
-                      logWarn('Raw customLists value: $customListsData');
-
-                      // Continue to next entry, skip this one
-                      continue;
-                    }
-                  } else if (customListsData != null) {
-                    logErr('Unexpected customLists type: ${customListsData.runtimeType}');
-                    continue;
-                  } else {
-                    // customLists is null
-                    continue;
-                  }
-
-                  // Now check if this entry should be in this custom list
-                  if (entryCustomLists != null && entryCustomLists.containsKey(customListName) && entryCustomLists[customListName] == true) {
-                    entriesForCustomList.add(entry);
-                  }
-                }
-              }
-
-              if (entriesForCustomList.isNotEmpty) {
-                lists['custom_$customListName'] = AnilistUserList.fromJson(
-                  {
-                    'lists': [
-                      {'entries': entriesForCustomList}
-                    ]
-                  },
-                  customListName,
-                  isCustomList: true,
-                );
-              }
-            }
-          }
-
-          return lists;
-        },
-        maxRetries: 3,
-        retryIf: RetryUtils.shouldRetryAnilistError,
-        operationName: 'getUserAnimeLists(user: $userName/$userId)',
-        isOfflineAware: true,
-      );
-
-      return result ?? <String, AnilistUserList>{};
-    } catch (e) {
-      if (ConnectivityService().isOffline && RetryUtils.isExpectedOfflineError(e)) {
-        logDebug('Skipping anime lists query - device is offline');
-        return <String, AnilistUserList>{};
-      }
-      logErr('Error querying Anilist', e);
-      return <String, AnilistUserList>{};
-    }
+    return result ?? <String, AnilistUserList>{};
   }
 
   /// Get upcoming episodes for a list of anime IDs
@@ -817,73 +668,38 @@ extension AnilistServiceAnimeDetails on AnilistService {
         }
       ''';
 
-      try {
-        final result = await RetryUtils.retry<Map<int, AiringEpisode?>>(
-          (bool isOffline) async {
-            final queryResult = await _client!.query(
-              QueryOptions(
-                document: gql(upcomingEpisodesQuery),
-                variables: {'ids': chunk},
-                fetchPolicy: isOffline ? FetchPolicy.cacheOnly : FetchPolicy.cacheFirst,
-              ),
-            );
+      final result = await executeQuery<Map<int, AiringEpisode?>>(
+        options: QueryOptions(
+          document: gql(upcomingEpisodesQuery),
+          variables: {'ids': chunk},
+        ),
+        operationName: 'getUpcomingEpisodes(chunk: ${chunk.length} anime)',
+        parser: (data) {
+          final Map<int, AiringEpisode?> chunkResults = {};
+          final mediaList = data['Page']?['media'] as List<dynamic>?;
 
-            if (queryResult.hasException) {
-              // Check if offline before throwing
-              if (RetryUtils.isExpectedOfflineError(queryResult.exception)) return <int, AiringEpisode?>{};
+          if (mediaList != null) {
+            for (final media in mediaList) {
+              final int? id = media['id'];
+              final nextAiringData = media['nextAiringEpisode'];
 
-              if (queryResult.exception is OperationException && //
-                  queryResult.exception!.linkException is UnknownException &&
-                  queryResult.exception!.linkException!.originalException is TimeoutException) {
-                throw TimeoutException('Anilist upcoming episodes GET request timed out');
-              }
-              if (queryResult.exception is OperationException && //
-                  queryResult.exception!.linkException is ServerException &&
-                  queryResult.exception!.linkException!.originalException is HandshakeException ||
-                  queryResult.exception!.linkException!.originalException is ClientException) {
-                throw HandshakeException('Anilist upcoming episodes GET request no internet connection');
-              }
-              throw Exception('Error getting upcoming episodes: ${queryResult.exception}');
-            }
-
-            final Map<int, AiringEpisode?> chunkResults = {};
-            final mediaList = queryResult.data?['Page']?['media'] as List<dynamic>?;
-
-            if (mediaList != null) {
-              for (final media in mediaList) {
-                final int? id = media['id'];
-                final nextAiringData = media['nextAiringEpisode'];
-
-                if (id != null) {
-                  if (nextAiringData != null) {
-                    chunkResults[id] = AiringEpisode.fromJson(nextAiringData);
-                  } else {
-                    chunkResults[id] = null; // No upcoming episode
-                  }
+              if (id != null) {
+                if (nextAiringData != null) {
+                  chunkResults[id] = AiringEpisode.fromJson(nextAiringData);
+                } else {
+                  chunkResults[id] = null; // No upcoming episode
                 }
               }
             }
+          }
 
-            logTrace('Found ${chunkResults.length} upcoming episodes for ${chunk.length} anime in chunk');
-            return chunkResults;
-          },
-          maxRetries: 3,
-          retryIf: RetryUtils.shouldRetryAnilistError,
-          operationName: 'getUpcomingEpisodes(chunk: ${chunk.length} anime)',
-          isOfflineAware: true,
-        );
+          logTrace('Found ${chunkResults.length} upcoming episodes for ${chunk.length} anime in chunk');
+          return chunkResults;
+        },
+      );
 
-        // Merge chunk results into the overall results
-        if (result != null) {
-          allResults.addAll(result);
-        }
-      } catch (e) {
-        if (ConnectivityService().isOffline && RetryUtils.isExpectedOfflineError(e)) {
-          logDebug('Skipping upcoming episodes chunk ${i ~/ maxChunkSize + 1} - device is offline');
-        } else {
-          logErr('Error querying upcoming episodes for chunk ${i ~/ maxChunkSize + 1}', e);
-        }
-      }
+      // Merge chunk results into the overall results
+      if (result != null) allResults.addAll(result);
     }
 
     if (allResults.isNotEmpty) logTrace('Found ${allResults.length} upcoming episodes for ${animeIds.length} anime total');
@@ -907,70 +723,40 @@ extension AnilistServiceAnimeDetails on AnilistService {
       }
     ''';
 
-    try {
-      final result = await RetryUtils.retry<Map<int, String>>(
-        (bool isOffline) async {
-          final queryResult = await _client!.query(
-            QueryOptions(
-              document: gql(episodeTitlesQuery),
-              variables: {'id': animeId},
-              fetchPolicy: isOffline ? FetchPolicy.cacheOnly : FetchPolicy.cacheFirst,
-            ),
-          );
+    final result = await executeQuery<Map<int, String>>(
+      options: QueryOptions(
+        document: gql(episodeTitlesQuery),
+        variables: {'id': animeId},
+      ),
+      operationName: 'getEpisodeTitles(anime: $animeId)',
+      parser: (data) {
+        final Map<int, String> episodeTitles = {};
+        final mediaData = data['Media'];
 
-          if (queryResult.hasException) {
-            // Check if offline before throwing
-            if (RetryUtils.isExpectedOfflineError(queryResult.exception)) return <int, String>{};
+        if (mediaData != null) {
+          final streamingEpisodes = mediaData['streamingEpisodes'] as List<dynamic>? ?? [];
 
-            if (queryResult.exception is OperationException && //
-                queryResult.exception!.linkException is UnknownException &&
-                queryResult.exception!.linkException!.originalException is TimeoutException) {
-              throw TimeoutException('Anilist episode titles GET request timed out');
-            }
-            if (queryResult.exception is OperationException && //
-                queryResult.exception!.linkException is ServerException &&
-                queryResult.exception!.linkException!.originalException is HandshakeException ||
-                queryResult.exception!.linkException!.originalException is ClientException) {
-              throw HandshakeException('Anilist episode titles GET request no internet connection');
-            }
-            throw Exception('Error fetching episode titles: ${queryResult.exception}');
-          }
-
-          final Map<int, String> episodeTitles = {};
-          final mediaData = queryResult.data?['Media'];
-
-          if (mediaData != null) {
-            final streamingEpisodes = mediaData['streamingEpisodes'] as List<dynamic>? ?? [];
-
-            for (final episodeData in streamingEpisodes) {
-              final title = episodeData['title'] as String?;
-              if (title != null && title.isNotEmpty) {
-                // Parse episode number from title (format: "Episode DD - Title")
-                final match = RegExp(r'^Episode\s+(\d+)').firstMatch(title);
-                if (match != null) {
-                  final episodeNumber = int.tryParse(match.group(1)!);
-                  if (episodeNumber != null) {
-                    episodeTitles[episodeNumber] = title;
-                  }
+          for (final episodeData in streamingEpisodes) {
+            final title = episodeData['title'] as String?;
+            if (title != null && title.isNotEmpty) {
+              // Parse episode number from title (format: "Episode DD - Title")
+              final match = RegExp(r'^Episode\s+(\d+)').firstMatch(title);
+              if (match != null) {
+                final episodeNumber = int.tryParse(match.group(1)!);
+                if (episodeNumber != null) {
+                  episodeTitles[episodeNumber] = title;
                 }
               }
             }
           }
+        }
 
-          logTrace('Fetched ${episodeTitles.length} episode titles for anime $animeId');
-          return episodeTitles;
-        },
-        maxRetries: 3,
-        retryIf: RetryUtils.shouldRetryAnilistError,
-        operationName: 'getEpisodeTitles(anime: $animeId)',
-        isOfflineAware: true,
-      );
+        logTrace('Fetched ${episodeTitles.length} episode titles for anime $animeId');
+        return episodeTitles;
+      },
+    );
 
-      return result ?? <int, String>{};
-    } catch (e) {
-      logErr('Error querying episode titles for anime $animeId', e);
-      return <int, String>{};
-    }
+    return result ?? <int, String>{};
   }
 
   /// Get episode titles for multiple anime IDs in batches
@@ -1005,102 +791,67 @@ extension AnilistServiceAnimeDetails on AnilistService {
         }
       ''';
 
-      try {
-        final result = await RetryUtils.retry<Map<int, Map<int, String>>>(
-          (bool isOffline) async {
-            final queryResult = await _client!.query(
-              QueryOptions(
-                document: gql(batchEpisodeTitlesQuery),
-                variables: {'ids': chunk},
-                fetchPolicy: isOffline ? FetchPolicy.cacheOnly : FetchPolicy.cacheFirst,
-              ),
-            );
+      final result = await executeQuery<Map<int, Map<int, String>>>(
+        options: QueryOptions(
+          document: gql(batchEpisodeTitlesQuery),
+          variables: {'ids': chunk},
+        ),
+        operationName: 'getMultipleEpisodeTitles(chunk: ${chunk.length} anime)',
+        parser: (data) {
+          final Map<int, Map<int, String>> chunkResults = {};
+          final mediaList = data['Page']?['media'] as List<dynamic>? ?? [];
+          final List<int> animeWithEpisodes = [];
+          final List<int> animeWithoutEpisodes = [];
+          final List<int> animeNotFound = chunk.toList();
 
-            if (queryResult.hasException) {
-              // Check if offline before throwing
-              if (RetryUtils.isExpectedOfflineError(queryResult.exception)) return <int, Map<int, String>>{};
+          for (final mediaData in mediaList) {
+            final animeId = mediaData['id'] as int?;
+            if (animeId == null) continue;
 
-              if (queryResult.exception is OperationException && //
-                  queryResult.exception!.linkException is UnknownException &&
-                  queryResult.exception!.linkException!.originalException is TimeoutException) {
-                throw TimeoutException('Anilist episode titles batch GET request timed out');
-              }
-              if (queryResult.exception is OperationException && //
-                      queryResult.exception!.linkException is ServerException &&
-                      queryResult.exception!.linkException!.originalException is HandshakeException ||
-                  queryResult.exception!.linkException!.originalException is ClientException) {
-                throw HandshakeException('Anilist episode titles batch GET request no internet connection');
-              }
-              throw Exception('Error fetching episode titles batch: ${queryResult.exception}');
-            }
+            // Remove from not found list since we got a response for this ID
+            animeNotFound.remove(animeId);
 
-            final Map<int, Map<int, String>> chunkResults = {};
-            final mediaList = queryResult.data?['Page']?['media'] as List<dynamic>? ?? [];
-            final List<int> animeWithEpisodes = [];
-            final List<int> animeWithoutEpisodes = [];
-            final List<int> animeNotFound = chunk.toList();
+            final Map<int, String> episodeTitles = {};
+            final streamingEpisodes = mediaData['streamingEpisodes'] as List<dynamic>? ?? [];
 
-            for (final mediaData in mediaList) {
-              final animeId = mediaData['id'] as int?;
-              if (animeId == null) continue;
-
-              // Remove from not found list since we got a response for this ID
-              animeNotFound.remove(animeId);
-
-              final Map<int, String> episodeTitles = {};
-              final streamingEpisodes = mediaData['streamingEpisodes'] as List<dynamic>? ?? [];
-
-              if (streamingEpisodes.isEmpty) {
-                animeWithoutEpisodes.add(animeId);
-              } else {
-                for (final episodeData in streamingEpisodes) {
-                  final title = episodeData['title'] as String?;
-                  if (title != null && title.isNotEmpty) {
-                    // Parse episode number from title (format: "Episode DD - Title")
-                    final match = RegExp(r'^Episode\s+(\d+)').firstMatch(title);
-                    if (match != null) {
-                      final episodeNumber = int.tryParse(match.group(1)!);
-                      if (episodeNumber != null) episodeTitles[episodeNumber] = title;
-                    }
+            if (streamingEpisodes.isEmpty) {
+              animeWithoutEpisodes.add(animeId);
+            } else {
+              for (final episodeData in streamingEpisodes) {
+                final title = episodeData['title'] as String?;
+                if (title != null && title.isNotEmpty) {
+                  // Parse episode number from title (format: "Episode DD - Title")
+                  final match = RegExp(r'^Episode\s+(\d+)').firstMatch(title);
+                  if (match != null) {
+                    final episodeNumber = int.tryParse(match.group(1)!);
+                    if (episodeNumber != null) episodeTitles[episodeNumber] = title;
                   }
                 }
+              }
 
-                if (episodeTitles.isNotEmpty) {
-                  chunkResults[animeId] = episodeTitles;
-                  animeWithEpisodes.add(animeId);
-                } else {
-                  // Had streamingEpisodes data but no parseable titles
-                  animeWithoutEpisodes.add(animeId);
-                }
+              if (episodeTitles.isNotEmpty) {
+                chunkResults[animeId] = episodeTitles;
+                animeWithEpisodes.add(animeId);
+              } else {
+                // Had streamingEpisodes data but no parseable titles
+                animeWithoutEpisodes.add(animeId);
               }
             }
+          }
 
-            // Log detailed breakdown
-            logTrace('  Chunk ${i ~/ maxChunkSize + 1} episode title results:');
-            // log('    ${animeWithEpisodes.length} anime with episode titles: $animeWithEpisodes');
-            if (animeWithoutEpisodes.isNotEmpty) logTrace('    ${animeWithoutEpisodes.length} anime with empty/unparseable episodes: $animeWithoutEpisodes');
-            if (animeNotFound.isNotEmpty) logTrace('    ${animeNotFound.length} anime not found in AniList: $animeNotFound');
+          // Log detailed breakdown
+          logTrace('  Chunk ${i ~/ maxChunkSize + 1} episode title results:');
+          // log('    ${animeWithEpisodes.length} anime with episode titles: $animeWithEpisodes');
+          if (animeWithoutEpisodes.isNotEmpty) logTrace('    ${animeWithoutEpisodes.length} anime with empty/unparseable episodes: $animeWithoutEpisodes');
+          if (animeNotFound.isNotEmpty) logTrace('    ${animeNotFound.length} anime not found in AniList: $animeNotFound');
 
-            logTrace('Fetched episode titles for ${chunkResults.length} out of ${chunk.length} anime in chunk (${animeWithEpisodes.length} with episodes, ${animeWithoutEpisodes.length} without, ${animeNotFound.length} not found)');
-            return chunkResults;
-          },
-          maxRetries: 3,
-          retryIf: RetryUtils.shouldRetryAnilistError,
-          operationName: 'getMultipleEpisodeTitles(chunk: ${chunk.length} anime)',
-          isOfflineAware: true,
-        );
+          logTrace('Fetched episode titles for ${chunkResults.length} out of ${chunk.length} anime in chunk (${animeWithEpisodes.length} with episodes, ${animeWithoutEpisodes.length} without, ${animeNotFound.length} not found)');
+          return chunkResults;
+        },
+      );
 
-        // Merge chunk results into the overall results
-        if (result != null) {
-          allResults.addAll(result);
-        }
-      } catch (e) {
-        if (ConnectivityService().isOffline && RetryUtils.isExpectedOfflineError(e)) {
-          logDebug('Skipping episode titles chunk ${i ~/ maxChunkSize + 1} - device is offline');
-        } else {
-          logErr('Error querying episode titles for chunk ${i ~/ maxChunkSize + 1}', e);
-        }
-      }
+      // Merge chunk results into the overall results
+      if (result != null) allResults.addAll(result);
     }
 
     // Calculate final statistics
