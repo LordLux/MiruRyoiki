@@ -33,9 +33,10 @@ class Episode {
     this.metadata,
     this.mkvMetadata,
     String? anilistTitle,
+    ParsedAnime? parsedAnime,
   })  : _episodeNumber = episodeNumber,
         _progress = progress {
-    _parsedAnime = FlutterAnitomy().parse(path.name!);
+    _parsedAnime = parsedAnime ?? FlutterAnitomy().parse(path.name!);
     _episodeNumber ??= int.tryParse(_parsedAnime.episode ?? '');
     this.anilistTitle = anilistTitle;
   }

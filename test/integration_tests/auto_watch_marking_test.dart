@@ -5,6 +5,17 @@ import 'package:miruryoiki/models/episode.dart';
 import 'package:miruryoiki/models/players/mediastatus.dart';
 import 'package:miruryoiki/services/library/library_provider.dart';
 import 'package:miruryoiki/utils/path.dart';
+import 'package:flutter_anitomy/flutter_anitomy.dart';
+
+class FakeParsedAnime extends Fake implements ParsedAnime {
+  @override
+  final String? episode;
+  
+  @override
+  final String? episodeTitle;
+
+  FakeParsedAnime({this.episode, this.episodeTitle});
+}
 
 void main() {
   group('Auto Watch Marking Tests', () {
@@ -40,7 +51,7 @@ void main() {
       expect(belowProgress, lessThan(Library.progressThreshold));
       expect(aboveProgress, greaterThan(Library.progressThreshold));
 
-      print('✅ Auto-watch marking logic validated');
+      print('[SUCCESS] Auto-watch marking logic validated');
       print('   Episodes will be marked as watched when progress > ${(Library.progressThreshold * 100)}%');
     });
 
@@ -67,6 +78,7 @@ void main() {
         name: 'Already Watched Episode',
         watched: true,
         progress: 1.0,
+        parsedAnime: FakeParsedAnime(episode: '1'),
       );
 
       final unwatchedEpisode = Episode(
@@ -74,13 +86,14 @@ void main() {
         name: 'Unwatched Episode',
         watched: false,
         progress: 0.0,
+        parsedAnime: FakeParsedAnime(episode: '2'),
       );
 
       // Verify initial states
       expect(alreadyWatchedEpisode.watched, isTrue);
       expect(unwatchedEpisode.watched, isFalse);
 
-      print('✅ Episode watch state logic validated');
+      print('[SUCCESS] Episode watch state logic validated');
     });
   });
 }

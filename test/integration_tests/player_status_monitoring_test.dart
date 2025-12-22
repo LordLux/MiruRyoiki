@@ -21,13 +21,13 @@ void main() {
     });
 
     test('should monitor player status updates', () async {
-      print('🔍 Attempting to connect to media player...');
+      print('[INFO] Attempting to connect to media player...');
       
       final connected = await playerManager.autoConnect();
       
       if (!connected) {
-        print('⚠️  Skipping monitoring test - no media player available');
-        print('💡 To run this test:');
+        print('[WARNING] Skipping monitoring test - no media player available');
+        print('[TIP] To run this test:');
         print('   1. Start VLC or MPC-HC');
         print('   2. Enable web interface');
         print('   3. Load a video file');
@@ -35,8 +35,8 @@ void main() {
         return;
       }
 
-      print('✅ Connected to media player!');
-      print('📊 Monitoring status for 10 seconds...\n');
+      print('[SUCCESS] Connected to media player!');
+      print('[STATUS] Monitoring status for 10 seconds...\n');
       
       final statusUpdates = <MediaStatus>[];
       late StreamSubscription statusSubscription;
@@ -53,7 +53,7 @@ void main() {
         expect(statusUpdates.length, greaterThan(5), 
             reason: 'Should receive multiple status updates');
         
-        print('\n📋 Monitoring Complete:');
+        print('\n[SUMMARY] Monitoring Complete:');
         print('   Total Updates: ${statusUpdates.length}');
         print('   Average Updates/sec: ${(statusUpdates.length / 10).toStringAsFixed(1)}');
         
@@ -61,8 +61,8 @@ void main() {
         final hasValidFile = statusUpdates.any((s) => s.filePath.isNotEmpty);
         final hasValidDuration = statusUpdates.any((s) => s.totalDuration.inMilliseconds > 0);
         
-        print('   Has File Info: ${hasValidFile ? '✅' : '❌'}');
-        print('   Has Duration: ${hasValidDuration ? '✅' : '❌'}');
+        print('   Has File Info: ${hasValidFile ? '[YES]' : '[NO]'}');
+        print('   Has Duration: ${hasValidDuration ? '[YES]' : '[NO]'}');
         
       } finally {
         // Cancel subscription first to stop receiving updates
@@ -84,7 +84,7 @@ void _printStatusUpdate(MediaStatus status, int updateNumber) {
   final file = status.filePath.isEmpty ? 'No file' : status.filePath.split('\\').last;
   final progress = status.totalDuration.inMilliseconds > 0 ? 
       '${_formatTime(status.currentPosition.inMilliseconds)}/${_formatTime(status.totalDuration.inMilliseconds)}' : 'Unknown';
-  final playStatus = status.isPlaying ? '▶️ PLAYING' : '⏸️ PAUSED';
+  final playStatus = status.isPlaying ? '[PLAYING]' : '[PAUSED]';
   final volume = status.isMuted ? 'MUTED' : '${status.volumeLevel}%';
   
   print('[$timestamp] Update #$updateNumber:');

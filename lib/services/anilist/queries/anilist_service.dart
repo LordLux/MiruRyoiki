@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:graphql/client.dart';
 import 'package:provider/provider.dart';
 import '../../../../models/anilist/anime.dart';
@@ -35,7 +36,11 @@ class AnilistService with AnilistQueryExecutor {
   factory AnilistService() => _instance;
   AnilistService._internal() : _authService = AnilistAuthService();
 
-  final AnilistAuthService _authService;
+  AnilistAuthService _authService;
+  
+  @visibleForTesting
+  set authService(AnilistAuthService service) => _authService = service;
+
   GraphQLClient? _client;
 
   @override
@@ -52,6 +57,17 @@ class AnilistService with AnilistQueryExecutor {
   List<NotificationType>? _lastNotificationsTypes;
   DateTime? _lastNotificationsSyncAt; // whole-sync throttle timestamp
   Completer<List<AnilistNotification>>? _notificationsSyncCompleter; // dedupe concurrent syncs
+
+  @visibleForTesting
+  void resetCache() {
+    _lastNotificationsFetchAt = null;
+    _lastNotificationsCache = null;
+    _lastNotificationsPage = null;
+    _lastNotificationsPerPage = null;
+    _lastNotificationsTypes = null;
+    _lastNotificationsSyncAt = null;
+    _notificationsSyncCompleter = null;
+  }
 
   /// Whether the user is logged in.
   bool get isLoggedIn => _authService.isAuthenticated;

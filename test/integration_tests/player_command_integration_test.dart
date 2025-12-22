@@ -22,13 +22,13 @@ void main() {
 
     group('Real Player Tests (requires running media player)', () {
       test('should connect and execute commands successfully', () async {
-        print('🔍 Attempting to connect to media player...');
+        print('[INFO] Attempting to connect to media player...');
         
         final connected = await playerManager.autoConnect();
         
         if (!connected) {
-          print('⚠️  Skipping integration test - no media player available');
-          print('💡 To run this test:');
+          print('[WARNING] Skipping integration test - no media player available');
+          print('[TIP] To run this test:');
           print('   1. Start VLC or MPC-HC');
           print('   2. Enable web interface');
           print('   3. Load a video file');
@@ -36,7 +36,7 @@ void main() {
           return;
         }
 
-        print('✅ Connected to media player!');
+        print('[SUCCESS] Connected to media player!');
         
         // Wait for initial status
         final initialStatusCompleter = Completer<MediaStatus>();
@@ -50,13 +50,13 @@ void main() {
 
         try {
           final initialStatus = await initialStatusCompleter.future.timeout(Duration(seconds: 5));
-          print('📊 Initial status: ${initialStatus.isPlaying ? 'PLAYING' : 'PAUSED'} | Volume: ${initialStatus.volumeLevel}%');
+          print('[STATUS] Initial status: ${initialStatus.isPlaying ? 'PLAYING' : 'PAUSED'} | Volume: ${initialStatus.volumeLevel}%');
 
           // Test commands and verify responses
           await _testCommandSequence(playerManager);
 
         } catch (e) {
-          print('❌ Error during command testing: $e');
+          print('[ERROR] Error during command testing: $e');
           fail('Command testing failed: $e');
         } finally {
           // Cancel subscription first to stop receiving updates
@@ -74,7 +74,7 @@ void main() {
 }
 
 Future<void> _testCommandSequence(PlayerManager playerManager) async {
-  print('\n🧪 Testing command sequence...');
+  print('\n[TEST] Testing command sequence...');
   
   final testResults = <String, bool>{};
   
@@ -141,15 +141,15 @@ Future<void> _testCommandSequence(PlayerManager playerManager) async {
   );
 
   // Print test results
-  print('\n📋 Test Results Summary:');
+  print('\n[SUMMARY] Test Results Summary:');
   testResults.forEach((command, success) {
-    print('   ${success ? '✅' : '❌'} $command');
+    print('   ${success ? '[PASS]' : '[FAIL]'} $command');
   });
 
   final successCount = testResults.values.where((success) => success).length;
   final totalTests = testResults.length;
   
-  print('\n🎯 Success Rate: $successCount/$totalTests (${(successCount/totalTests*100).toStringAsFixed(1)}%)');
+  print('\n[RESULT] Success Rate: $successCount/$totalTests (${(successCount/totalTests*100).toStringAsFixed(1)}%)');
 
   // Overall test should pass if most commands work
   expect(successCount, greaterThan(totalTests ~/ 2), 
@@ -163,7 +163,7 @@ Future<void> _testCommand(
   PlayerManager playerManager,
   Map<String, bool> testResults,
 ) async {
-  print('   🧪 Testing: $commandName');
+  print('   [TEST] Testing: $commandName');
   
   try {
     // Execute command
@@ -186,9 +186,9 @@ Future<void> _testCommand(
       testResults[commandName] = success;
       
       if (success) {
-        print('      ✅ Command successful');
+        print('      [SUCCESS] Command successful');
       } else {
-        print('      ❌ Command validation failed');
+        print('      [FAILURE] Command validation failed');
       }
       
     } finally {
@@ -198,7 +198,7 @@ Future<void> _testCommand(
     }
     
   } catch (e) {
-    print('      ❌ Command failed: $e');
+    print('      [ERROR] Command failed: $e');
     testResults[commandName] = false;
   }
 }
@@ -220,7 +220,7 @@ Future<void> _testVolumeCommand(
       final withinTolerance = (actualVolume - expectedVolume).abs() <= tolerance;
       
       if (!withinTolerance) {
-        print('      📊 Expected: ~$expectedVolume%, Got: $actualVolume%');
+        print('      [DATA] Expected: ~$expectedVolume%, Got: $actualVolume%');
       }
       
       return withinTolerance;

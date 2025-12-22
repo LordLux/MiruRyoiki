@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:graphql/client.dart';
@@ -54,6 +55,7 @@ class TestExecutor with AnilistQueryExecutor {
 }
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
   late MockConnectivityStrategy mockConnectivity;
   late FakeGraphQLClient mockClient;
   late TestExecutor executor;
@@ -161,7 +163,7 @@ void main() {
             source: QueryResultSource.network,
             exception: OperationException(
               linkException: ServerException(
-                originalException: Exception('Network Error'),
+                originalException: SocketException('Network Error'),
                 parsedResponse: null,
               ),
             ),

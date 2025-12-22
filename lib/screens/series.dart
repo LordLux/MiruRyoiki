@@ -32,7 +32,7 @@ import '../services/anilist/linking.dart';
 import '../services/navigation/dialogs.dart';
 import '../services/navigation/shortcuts.dart';
 import '../utils/logging.dart';
-import '../utils/retry.dart';
+import '../utils/error_handling.dart';
 import '../utils/screen.dart';
 import '../utils/time.dart';
 import '../widgets/page/header_widget.dart';
@@ -42,7 +42,6 @@ import '../widgets/cards/mapping_card.dart';
 import '../widgets/shift_clickable_hover.dart';
 import '../widgets/shrinker.dart';
 import '../widgets/simple_html_parser.dart';
-import '../widgets/tooltip_wrapper.dart';
 import '../widgets/transparency_shadow_image.dart';
 import '../models/mapping_target.dart';
 import '../services/navigation/navigation.dart';
@@ -643,7 +642,7 @@ class SeriesScreenState extends State<SeriesScreen> {
 
       if (mounted) setState(() {});
     } catch (e) {
-      if (!RetryUtils.isExpectedOfflineError(e)) logErr('Failed to load Anilist data', e);
+      if (!isExpectedOfflineError(e)) logErr('Failed to load Anilist data', e);
     }
   }
 

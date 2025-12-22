@@ -108,10 +108,10 @@ void main() {
         // Should return false when no players are available
         if (!connected) {
           expect(playerManager.isConnected, isFalse);
-          print('⚠️  No media players available for testing');
+          print('[WARNING] No media players available for testing');
         } else {
           expect(playerManager.isConnected, isTrue);
-          print('✅ Successfully auto-connected to a media player');
+          print('[SUCCESS] Successfully auto-connected to a media player');
           
           // Test that we can get player info
           final players = await playerManager.getAvailablePlayers();

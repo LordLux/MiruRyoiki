@@ -47,7 +47,7 @@ class AnilistMediaListEntry {
   final AnilistAnime media;
   final AnilistListApiStatus status;
   final int? progress;
-  final int? score;
+  final int? score; // format POINT_10
   final String? customLists;
   final bool hiddenFromStatusLists;
   final int? priority;

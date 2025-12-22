@@ -12,10 +12,10 @@ void main() {
       expect(debouncedInterval, equals(5));
       expect(forcedInterval, equals(90));
       
-      print('✅ Progress save strategy validated');
-      print('   Debounced save: ${debouncedInterval}s after last change');
-      print('   Forced save: Every ${forcedInterval}s during playback');
-      print('   This ensures rapid saves after user actions while preventing data loss');
+      print('Progress save strategy validated');
+      print('Debounced save: ${debouncedInterval}s after last change');
+      print('Forced save: Every ${forcedInterval}s during playback');
+      print('This ensures rapid saves after user actions while preventing data loss');
     });
 
     test('should have reasonable timing for user experience', () {
@@ -29,7 +29,7 @@ void main() {
       expect(forcedInterval, greaterThanOrEqualTo(60));   // At least every minute
       expect(forcedInterval, lessThanOrEqualTo(120));     // At most every 2 minutes
       
-      print('✅ Timing intervals are user-friendly');
+      print('Timing intervals are user-friendly');
     });
   });
 }

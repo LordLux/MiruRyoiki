@@ -5,7 +5,7 @@ import 'package:graphql/client.dart';
 
 import '../../connectivity/connectivity_service.dart';
 import '../../../utils/logging.dart';
-import '../../../utils/retry.dart';
+import '../../../utils/error_handling.dart';
 
 mixin AnilistQueryExecutor {
   /// The GraphQL client to use for requests
@@ -118,9 +118,9 @@ mixin AnilistQueryExecutor {
           // TODO : Implement better rate limit handling in streams if needed
         }
 
-        if (isOffline && RetryUtils.isExpectedOfflineError(exception)) {
+        if (isOffline && isExpectedOfflineError(exception)) {
           // Expected offline error, ignore
-        } else if (RetryUtils.shouldRetryAnilistError(exception)) {
+        } else if (shouldRetryAnilistError(exception)) {
           logWarn('$operationName: Stream error: $exception');
         } else {
           logErr('$operationName: Stream error', exception);
@@ -227,13 +227,13 @@ mixin AnilistQueryExecutor {
         }
 
         // Check if we are offline
-        if (isOffline && RetryUtils.isExpectedOfflineError(exception)) {
+        if (isOffline && isExpectedOfflineError(exception)) {
           logTrace('$operationName: Offline error, returning null.');
           return null;
         }
 
         // Check if retryable
-        if (RetryUtils.shouldRetryAnilistError(exception)) {
+        if (shouldRetryAnilistError(exception)) {
           if (attempt >= maxRetries) {
             logErr('$operationName: Failed after $maxRetries retries.', exception);
             return null;
@@ -251,7 +251,7 @@ mixin AnilistQueryExecutor {
         return null;
       } catch (e) {
         // Catch non-GraphQL exceptions
-        if (isOffline && RetryUtils.isExpectedOfflineError(e)) return null;
+        if (isOffline && isExpectedOfflineError(e)) return null;
 
         if (attempt >= maxRetries) return null;
 

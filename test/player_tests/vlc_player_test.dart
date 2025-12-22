@@ -119,7 +119,7 @@ void main() {
         
         // If VLC is not running, skip the test
         if (!connected) {
-          print('⚠️  Skipping VLC integration test - VLC not running or not configured');
+          print('[WARNING] Skipping VLC integration test - VLC not running or not configured');
           return;
         }
 
@@ -140,10 +140,10 @@ void main() {
           expect(status.volumeLevel, inInclusiveRange(0, 100));
           expect(status.progress, inInclusiveRange(0.0, 1.0));
           
-          print('✅ VLC Status: ${status.isPlaying ? 'PLAYING' : 'PAUSED'} | Volume: ${status.volumeLevel}%');
+          print('[SUCCESS] VLC Status: ${status.isPlaying ? 'PLAYING' : 'PAUSED'} | Volume: ${status.volumeLevel}%');
           
         } catch (e) {
-          print('⚠️  Could not get status from VLC: $e');
+          print('[WARNING] Could not get status from VLC: $e');
         } finally {
           await subscription.cancel();
           vlcPlayer.disconnect();

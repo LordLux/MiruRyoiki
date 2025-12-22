@@ -23,7 +23,7 @@ import '../models/series.dart';
 import '../services/anilist/linking.dart';
 import '../services/navigation/dialogs.dart';
 import '../utils/logging.dart';
-import '../utils/retry.dart';
+import '../utils/error_handling.dart';
 import '../utils/screen.dart';
 import '../utils/time.dart';
 import '../widgets/page/header_widget.dart';
@@ -219,7 +219,7 @@ class SearchedSeriesScreenState extends State<SearchedSeriesScreen> {
       _loadColors();
       Manager.setState();
     } catch (e) {
-      if (!RetryUtils.isExpectedOfflineError(e)) logErr('Failed to load Anilist data', e);
+      if (!isExpectedOfflineError(e)) logErr('Failed to load Anilist data', e);
     }
   }
 
