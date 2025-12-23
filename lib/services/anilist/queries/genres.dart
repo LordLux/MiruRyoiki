@@ -16,27 +16,19 @@ extension AnilistServiceGenres on AnilistService {
       }
     }
 
-    const query = r'''
-      query GenreCollection {
-        GenreCollection
-      }
-    ''';
-
-    final result = await executeQuery<List<String>>(
+    final result = await executeQuery<Query$GetGenreCollection>(
       options: QueryOptions(
-        document: gql(query),
+        document: documentNodeQueryGetGenreCollection,
         fetchPolicy: FetchPolicy.networkOnly,
       ),
-      operationName: 'getGenres',
-      parser: (data) {
-        final List<dynamic> genresData = data['GenreCollection'] ?? [];
-        return genresData.cast<String>();
-      },
+      operationName: 'GetGenreCollection',
+      parser: (data) => Query$GetGenreCollection.fromJson(data),
     );
 
-    if (result != null && result.isNotEmpty) {
-      Manager.settings.genres = result;
-      return result;
+    if (result != null && result.GenreCollection != null) {
+      final genres = result.GenreCollection!.whereType<String>().toList();
+      Manager.settings.genres = genres;
+      return genres;
     }
 
     return Manager.settings.genres;

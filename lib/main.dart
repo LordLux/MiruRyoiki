@@ -1218,7 +1218,7 @@ Future<void> _registerWindowsUrlScheme(String scheme) async {
   }
 }
 
-// TODO add Nth badge to top 100 cards section in search
+// TODO migrate notifications and releasing episodes queries to graphql_codegen
 // TODO 'video player process monitoring failed to start' because already open, after a hot restart -> detect with ReassembleListener
 // TODO scanning library progress indicator in status bar in Browse page is bugged visually with background cards
 // TODO add 'random entry' button to top right corner of library

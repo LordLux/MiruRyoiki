@@ -2,7 +2,7 @@ name: miruryoiki
 description: "Flutter desktop application designed to track and manage local media files."
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 
-version: 1.1.9+0
+version: 1.1.10+0
 
 environment:
   sdk: '>=3.4.0 <4.0.0'
@@ -104,6 +104,8 @@ dev_dependencies:
     
   flutter_lints: ^5.0.0
   flutter_launcher_icons: ^0.14.3
+  graphql_codegen: ^1.2.4
+  plugin_platform_interface: ^2.1.8
 
 linter:
   rules:

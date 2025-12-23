@@ -1,4 +1,4 @@
-import 'dart:math' show max, min;
+import 'dart:math' show min;
 import 'dart:ui';
 
 import 'package:fluent_ui/fluent_ui.dart';

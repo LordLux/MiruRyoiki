@@ -1,0 +1,82 @@
+fragment AnimeCard on Media {
+  id
+  title {
+    userPreferred
+    romaji
+    english
+    native
+  }
+  coverImage {
+    extraLarge
+    large
+    color
+  }
+  type
+  format
+  status(version: 2)
+  episodes
+  seasonYear
+  season
+  averageScore
+  meanScore
+  popularity
+  isAdult
+  isFavourite
+  nextAiringEpisode {
+    airingAt
+    timeUntilAiring
+    episode
+  }
+  startDate {
+    year
+    month
+    day
+  }
+  genres
+}
+
+fragment AnimeOverview on Media {
+  ...AnimeCard
+  bannerImage
+  description
+  endDate {
+    year
+    month
+    day
+  }
+  trending
+  favourites
+  updatedAt
+  siteUrl
+  rankings {
+    id
+    rank
+    type
+    format
+    year
+    season
+    allTime
+    context
+  }
+}
+
+fragment CharacterCard on Character {
+  id
+  name { userPreferred }
+  image { large }
+}
+
+fragment StaffCard on Staff {
+  id
+  name { userPreferred }
+  image { large }
+  language: languageV2
+}
+
+fragment UserAvatar on User {
+  id
+  name
+  avatar { large }
+  donatorTier
+  donatorBadge
+}

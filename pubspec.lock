@@ -707,6 +707,22 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.0.1-alpha+1730759315362"
+  gql_code_builder:
+    dependency: transitive
+    description:
+      name: gql_code_builder
+      sha256: ce60e637b7b5250bebd6a136e5fd784bc94b860ecdcb745163ce27201023816e
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.13.1"
+  gql_code_builder_serializers:
+    dependency: transitive
+    description:
+      name: gql_code_builder_serializers
+      sha256: "5344091f97afb44b15840e32889cacc18116e095105d07671ba762e897c465d4"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.1.0"
   gql_dedupe_link:
     dependency: transitive
     description:
@@ -755,6 +771,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.0.0"
+  gql_tristate_value:
+    dependency: transitive
+    description:
+      name: gql_tristate_value
+      sha256: "2fdf2b9364bb2164fe7d23696d6128e8f76660941521a4851a4c19a2983422f5"
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.1.0"
   graphql:
     dependency: "direct main"
     description:
@@ -763,6 +787,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "5.2.1"
+  graphql_codegen:
+    dependency: "direct dev"
+    description:
+      name: graphql_codegen
+      sha256: "402aad923673bfbe8ee6fc7e22be165bc3ebd6bf06cd95ac95e23a9ef65e9dfe"
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.2.4"
   graphs:
     dependency: transitive
     description:
@@ -1275,7 +1307,7 @@ packages:
     source: hosted
     version: "3.1.6"
   plugin_platform_interface:
-    dependency: transitive
+    dependency: "direct dev"
     description:
       name: plugin_platform_interface
       sha256: "4820fbfdb9478b1ebae27888254d445073732dae3d6ea81f0b7e06d5dedc3f02"

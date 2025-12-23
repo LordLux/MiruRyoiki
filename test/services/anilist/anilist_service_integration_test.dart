@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:graphql/client.dart';
+import 'package:miruryoiki/models/anilist/anime_card.dart';
 import 'package:miruryoiki/services/anilist/queries/anilist_service.dart';
-import 'package:miruryoiki/models/anilist/anime.dart';
 import 'package:miruryoiki/services/connectivity/connectivity_service.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -55,7 +55,7 @@ void main() {
       expect(result, isNotNull);
       expect(result!.results, isNotEmpty);
       expect(result.results.length, 5);
-      expect(result.results.first, isA<AnilistAnime>());
+      expect(result.results.first, isA<AnimeCard>());
       expect(result.results.first.title.userPreferred, isNotEmpty);
       
       print('Trending: ${result.results.first.title.userPreferred}');
@@ -66,7 +66,7 @@ void main() {
       
       expect(result, isNotNull);
       expect(result!.results, isNotEmpty);
-      expect(result.results.first, isA<AnilistAnime>());
+      expect(result.results.first, isA<AnimeCard>());
       
       print('Popular This Season: ${result.results.first.title.userPreferred}');
     });
@@ -131,14 +131,6 @@ void main() {
       // Check for detailed fields if possible, e.g. characters or staff if they are in the model
     });
 
-    test('getMultipleAnimesDetails returns multiple anime', () async {
-      final ids = [1, 5]; // Cowboy Bebop, Cowboy Bebop: Knockin' on Heaven's Door
-      final result = await service.getMultipleAnimesDetails(ids);
-      
-      expect(result, isNotEmpty);
-      expect(result.length, 2);
-      expect(result[1]?.title.english, 'Cowboy Bebop');
-    });
 
     test('getGenres returns a list of genres', () async {
       final result = await service.getGenres(forceRefresh: true);

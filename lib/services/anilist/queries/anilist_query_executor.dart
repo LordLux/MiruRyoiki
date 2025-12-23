@@ -110,11 +110,11 @@ mixin AnilistQueryExecutor {
       if (result.hasException) {
         final exception = result.exception!;
 
-        // Handle Rate Limits (Basic logging for stream, as we can't easily "pause" the stream)
+        // Handle Rate Limits
         if (exception.toString().contains('Too Many Requests.') || exception.toString().contains('429')) {
           logWarn('$operationName: Rate limited in stream!');
           // In a stream, we might just yield null or the previous data if available
-          // For now, we'll just log it.
+          // For now we'll just log it
           // TODO : Implement better rate limit handling in streams if needed
         }
 
@@ -253,7 +253,7 @@ mixin AnilistQueryExecutor {
         // Catch non-GraphQL exceptions
         if (isOffline && isExpectedOfflineError(e)) return null;
 
-        if (attempt >= maxRetries) return null;
+        if (attempt >= maxRetries) rethrow;
 
         final delay = (baseDelay * pow(1.5, attempt - 1)).toInt();
         logWarn('$operationName: Unexpected error (attempt $attempt). Retrying... $e');

@@ -7,15 +7,15 @@ import 'package:miruryoiki/screens/search.dart';
 import 'package:miruryoiki/widgets/buttons/wrapper.dart';
 import 'package:miruryoiki/widgets/frosted_noise.dart';
 import 'package:transparent_image/transparent_image.dart';
-import 'package:recase/recase.dart';
 
 import '../manager.dart';
+import '../models/anilist/anime_card.dart';
 import '../utils/color.dart';
 import '../utils/time.dart';
 
 class Top100List extends StatefulWidget {
   final SectionDataManager manager;
-  final Function(AnilistAnime) onSeriesOpen;
+  final Function(AnimeCard) onSeriesOpen;
   final VoidCallback? onExpand;
 
   const Top100List({
@@ -80,7 +80,7 @@ class _Top100ListState extends State<Top100List> {
     );
   }
 
-  Widget _buildItem(AnilistAnime anime, int rank) {
+  Widget _buildItem(AnimeCard anime, int rank) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
       child: MouseButtonWrapper(
@@ -133,7 +133,7 @@ class _Top100ListState extends State<Top100List> {
                             aspectRatio: 2 / 3,
                             child: FadeInImage.memoryNetwork(
                               placeholder: kTransparentImage,
-                              image: anime.posterImage ?? '',
+                              image: anime.coverImage ?? '',
                               fit: BoxFit.cover,
                               imageErrorBuilder: (context, error, stackTrace) => Container(color: Colors.grey[800]),
                             ),

@@ -1,0 +1,116 @@
+#import "../common/fragments.graphql"
+
+query SearchAnime(
+  $page: Int,
+  $perPage: Int,
+  $search: String,
+  $genres: [String],
+  $excludedGenres: [String],
+  $tags: [String],
+  $excludedTags: [String],
+  $format: [MediaFormat],
+  $status: MediaStatus,
+  $season: MediaSeason,
+  $year: String,
+  $yearLesser: FuzzyDateInt,
+  $yearGreater: FuzzyDateInt,
+  $episodeLesser: Int,
+  $episodeGreater: Int,
+  $durationLesser: Int,
+  $durationGreater: Int,
+  $onList: Boolean,
+  $isLicensed: Boolean,
+  $licensedBy: [Int],
+  $minimumTagRank: Int,
+  $countryOfOrigin: CountryCode,
+  $source: MediaSource,
+  $sort: [MediaSort],
+  $isAdult: Boolean
+) {
+  Page(page: $page, perPage: $perPage) {
+    pageInfo {
+      total
+      perPage
+      currentPage
+      lastPage
+      hasNextPage
+    }
+    media(
+      type: ANIME,
+      search: $search,
+      genre_in: $genres,
+      genre_not_in: $excludedGenres,
+      tag_in: $tags,
+      tag_not_in: $excludedTags,
+      format_in: $format,
+      status: $status,
+      season: $season,
+      startDate_like: $year,
+      startDate_lesser: $yearLesser,
+      startDate_greater: $yearGreater,
+      episodes_lesser: $episodeLesser,
+      episodes_greater: $episodeGreater,
+      duration_lesser: $durationLesser,
+      duration_greater: $durationGreater,
+      onList: $onList,
+      isLicensed: $isLicensed,
+      licensedById_in: $licensedBy,
+      minimumTagRank: $minimumTagRank,
+      countryOfOrigin: $countryOfOrigin,
+      source: $source,
+      sort: $sort,
+      isAdult: $isAdult
+    ) {
+      ...AnimeCard
+      bannerImage
+      description
+      endDate {
+        year
+        month
+        day
+      }
+      updatedAt
+      siteUrl
+    }
+  }
+}
+
+query GetHomeSection($page: Int, $perPage: Int, $season: MediaSeason, $seasonYear: Int, $sort: [MediaSort], $status: MediaStatus) {
+  Page(page: $page, perPage: $perPage) {
+    pageInfo { total perPage currentPage lastPage hasNextPage }
+    media(type: ANIME, season: $season, seasonYear: $seasonYear, sort: $sort, status: $status, isAdult: false) {
+      ...AnimeCard 
+    }
+  }
+}
+
+query GetGenreCollection {
+  GenreCollection
+}
+
+query GetUpcomingEpisodes($ids: [Int]) {
+  Page(perPage: 50) {
+    media(id_in: $ids, type: ANIME) {
+      id
+      status
+      format
+      episodes
+      nextAiringEpisode {
+        airingAt
+        episode
+        timeUntilAiring
+      }
+    }
+  }
+}
+
+query GetEpisodeTitles($ids: [Int]) {
+  Page(perPage: 50) {
+    media(id_in: $ids, type: ANIME) {
+      id
+      streamingEpisodes {
+        title
+      }
+    }
+  }
+}

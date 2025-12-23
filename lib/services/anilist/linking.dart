@@ -1,3 +1,4 @@
+import '../../models/anilist/anime_overview.dart';
 import '../../models/series.dart';
 import '../../models/anilist/anime.dart';
 import '../../utils/logging.dart';
@@ -17,6 +18,10 @@ class SeriesLinkService {
 
   Future<AnilistAnime?> fetchAnimeDetails(int anilistId) async {
     return await _anilistService.getAnimeDetails(anilistId);
+  }
+
+  Future<AnimeOverview?> fetchDetailedAnimeDetails(int anilistId) async {
+    return await _anilistService.getDetailedAnimeDetails(anilistId);
   }
 
   Future<Map<int, AnilistAnime?>> fetchMultipleAnimeDetails(List<int> anilistIds) async {

@@ -1,0 +1,20 @@
+mutation UpdateProgress($mediaId: Int!, $progress: Int!) {
+  SaveMediaListEntry(mediaId: $mediaId, progress: $progress) {
+    id
+    progress
+  }
+}
+
+mutation UpdateStatus($mediaId: Int!, $status: MediaListStatus!) {
+  SaveMediaListEntry(mediaId: $mediaId, status: $status) {
+    id
+    status
+  }
+}
+
+mutation UpdateScore($mediaId: Int!, $score: Float!) {
+  SaveMediaListEntry(mediaId: $mediaId, score: $score) {
+    id
+    score
+  }
+}

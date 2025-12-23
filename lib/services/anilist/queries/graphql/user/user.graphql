@@ -1,0 +1,117 @@
+#import "../common/fragments.graphql"
+
+query GetCurrentUser {
+  Viewer {
+    id
+    name
+    avatar { large }
+    bannerImage
+  }
+}
+
+query GetCurrentUserData {
+  Viewer {
+    about
+    siteUrl
+    options {
+      titleLanguage
+      displayAdultContent
+      airingNotifications
+      profileColor
+      timezone
+      activityMergeTime
+      restrictMessagesToFollowing
+      staffNameLanguage
+    }
+    favourites {
+      anime {
+        nodes {
+          ...AnimeCard
+          siteUrl
+        }
+      }
+      characters {
+        nodes {
+          id
+          name { full native }
+          image { large }
+          siteUrl
+        }
+      }
+      staff {
+        nodes {
+          id
+          name { full native }
+          image { large }
+          siteUrl
+        }
+      }
+      studios {
+        nodes {
+          id
+          name
+          siteUrl
+        }
+      }
+    }
+    stats {
+      activityHistory {
+        date
+        amount
+        level
+      }
+    }
+    statistics {
+      anime {
+        count
+        meanScore
+        standardDeviation
+        minutesWatched
+        episodesWatched
+        genres { genre count meanScore minutesWatched }
+        tags { tag { id name } count meanScore minutesWatched }
+        formats { format count meanScore minutesWatched }
+        statuses { status count meanScore minutesWatched }
+      }
+    }
+    donatorTier
+    donatorBadge
+    createdAt
+    updatedAt
+  }
+}
+
+query GetUserAnimeLists($userName: String, $userId: Int) {
+  MediaListCollection(userName: $userName, userId: $userId, type: ANIME) {
+    lists {
+      name
+      status
+      entries {
+        id
+        mediaId
+        status
+        progress
+        score(format: POINT_10)
+        hiddenFromStatusLists
+        priority
+        createdAt
+        updatedAt
+        startedAt { year month day }
+        completedAt { year month day }
+        customLists
+        media {
+          ...AnimeCard
+          siteUrl
+          mediaListEntry { id }
+        }
+      }
+    }
+    user {
+      id
+      name
+      mediaListOptions {
+        animeList { customLists }
+      }
+    }
+  }
+}

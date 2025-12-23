@@ -10,13 +10,13 @@ import 'package:miruryoiki/widgets/frosted_noise.dart';
 import 'package:provider/provider.dart';
 
 import '../../manager.dart';
-import '../../models/anilist/anime.dart';
 import '../../models/anilist/page_info.dart';
 import '../../settings.dart';
 import '../../utils/screen.dart';
 import '../../utils/time.dart';
 import '../../widgets/buttons/back_button.dart';
 import '../../widgets/buttons/button.dart';
+import '../models/anilist/anime_card.dart';
 import '../widgets/cards/search_series_card.dart';
 import '../../widgets/fading_edge_scrollview.dart';
 import '../../widgets/page/search_template.dart';
@@ -35,7 +35,7 @@ class SectionDataManager extends ChangeNotifier {
   final int id;
   final String type; // 'trending', 'popular', 'upcoming', 'top100'
 
-  List<AnilistAnime> items = [];
+  List<AnimeCard> items = [];
   bool isLoading = false;
   bool hasMore = true;
   int currentPage = 1;
@@ -63,7 +63,7 @@ class SectionDataManager extends ChangeNotifier {
       int reqPerPage = overridePerPage ?? perPage;
 
       final service = AnilistService();
-      AnilistSearchPage<AnilistAnime>? result;
+      AnilistSearchPage<AnimeCard>? result;
 
       switch (type) {
         case 'trending':
@@ -132,7 +132,7 @@ class SearchScreenState extends State<BrowseScreen> with AutomaticKeepAliveClien
 
   String? _resultsQuery;
   Map<String, dynamic>? _resultsFilters;
-  final List<AnilistAnime> _resultsList = [];
+  final List<AnimeCard> _resultsList = [];
   bool _resultsIsLoading = false;
   bool _resultsIsLoadingUI = false;
   bool _resultsHasNextPage = true;
@@ -142,7 +142,7 @@ class SearchScreenState extends State<BrowseScreen> with AutomaticKeepAliveClien
   SearchBarStatus _overrideSearchBarStatus = SearchBarStatus.automatic;
 
   // Series Navigation State
-  AnilistAnime? _selectedAnime;
+  AnimeCard? _selectedAnime;
   bool _isSeriesView = false;
   bool _isFinishedTransitioningToSeries = false;
   bool _isFinishedTransitioningToSearch = true;
@@ -250,7 +250,7 @@ class SearchScreenState extends State<BrowseScreen> with AutomaticKeepAliveClien
       final service = AnilistService();
       final perPage = 42;
 
-      AnilistSearchPage<AnilistAnime>? result = await service.searchAnime(
+      AnilistSearchPage<AnimeCard>? result = await service.searchAnime(
         page: _resultsCurrentPage,
         perPage: perPage,
         search: _resultsQuery,
@@ -344,6 +344,7 @@ class SearchScreenState extends State<BrowseScreen> with AutomaticKeepAliveClien
     setState(() {
       _isSeriesView = false;
       _isFinishedTransitioningToSeries = false;
+      Manager.currentDominantColor = null;
       // _selectedAnime not cleared to allow fade out animation
     });
   }
@@ -361,7 +362,7 @@ class SearchScreenState extends State<BrowseScreen> with AutomaticKeepAliveClien
 }
   
 
-  void _onSeriesOpen(AnilistAnime anime) {
+  void _onSeriesOpen(AnimeCard anime) {
     setState(() {
       _selectedAnime = anime;
       _isSeriesView = true;
@@ -382,7 +383,7 @@ class SearchScreenState extends State<BrowseScreen> with AutomaticKeepAliveClien
     for (var page in results) {
       if (page?.results != null) {
         for (var anime in page!.results) {
-          if (anime.posterImage != null) images.add(anime.posterImage!);
+          if (anime.coverImage != null) images.add(anime.coverImage!);
         }
       }
     }
@@ -791,7 +792,7 @@ class SearchScreenState extends State<BrowseScreen> with AutomaticKeepAliveClien
 class AnimeContentDashboard extends StatelessWidget {
   final Map<int, SectionDataManager> sectionManagers;
   final Function(int sectionId) onExpandSection;
-  final Function(AnilistAnime anime) onSeriesOpen;
+  final Function(AnimeCard anime) onSeriesOpen;
   final VoidCallback onRetry;
   final int? expandedSectionId;
 
@@ -863,7 +864,7 @@ class SectionWidget extends StatefulWidget {
   final SectionDataManager manager;
   final bool isExpanded;
   final VoidCallback onExpand;
-  final Function(AnilistAnime) onSeriesOpen;
+  final Function(AnimeCard) onSeriesOpen;
 
   const SectionWidget({
     super.key,

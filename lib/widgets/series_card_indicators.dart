@@ -4,6 +4,7 @@ import 'package:miruryoiki/utils/time.dart';
 
 import '../manager.dart';
 import '../models/anilist/anime.dart';
+import '../models/anilist/anime_card.dart';
 import '../models/series.dart';
 import 'hidden.dart';
 
@@ -93,7 +94,7 @@ class AiringIndicator extends StatefulWidget {
 class _AiringIndicatorState extends State<AiringIndicator> {
   @override
   Widget build(BuildContext context) {
-    assert(widget.series is Series || widget.series is AnilistAnime);
+    assert(widget.series is Series || widget.series is AnimeCard);
 
     final bool isAiring;
     final bool isUpcoming;
@@ -104,7 +105,7 @@ class _AiringIndicatorState extends State<AiringIndicator> {
       isUpcoming = widget.series.anilistMappings.any((mapping) => mapping.anilistData?.status == 'NOT_YET_RELEASED');
       isLocal = !widget.series.isLinked;
     } else {
-      widget.series as AnilistAnime;
+      widget.series as AnimeCard;
       isAiring = widget.series.status == 'RELEASING';
       isUpcoming = widget.series.status == 'NOT_YET_RELEASED';
       isLocal = false;

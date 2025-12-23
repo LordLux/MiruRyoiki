@@ -75,7 +75,7 @@ class MutationsDao extends DatabaseAccessor<AppDatabase> with _$MutationsDaoMixi
     return AnilistMutation(
       type: row.type,
       mediaId: row.mediaId,
-      changes: row.changes ?? {},
+      changes: row.changes,
       createdAt: row.createdAt,
     );
   }

@@ -3,6 +3,7 @@
 import 'package:miruryoiki/enums.dart';
 import 'package:path/path.dart';
 import 'package:recase/recase.dart';
+import 'package:miruryoiki/services/anilist/queries/graphql/anime/discover.graphql.dart';
 
 enum AnilistAnimeStatus {
   FINISHED,
@@ -97,6 +98,47 @@ class AnilistAnime {
     this.siteUrl,
     this.hiddenFromStatusLists,
   });
+
+  factory AnilistAnime.fromSearchMedia(Query$SearchAnime$Page$media fragment) {
+    return AnilistAnime(
+      id: fragment.id,
+      title: AnilistTitle(
+        romaji: fragment.title?.romaji,
+        english: fragment.title?.english,
+        native: fragment.title?.native,
+        userPreferred: fragment.title?.userPreferred,
+      ),
+      posterImage: fragment.coverImage?.extraLarge ?? fragment.coverImage?.large,
+      dominantColor: fragment.coverImage?.color,
+      bannerImage: fragment.bannerImage,
+      description: fragment.description,
+      status: fragment.status?.name,
+      format: fragment.format?.name,
+      episodes: fragment.episodes,
+      seasonYear: fragment.seasonYear,
+      season: fragment.season?.name,
+      averageScore: fragment.averageScore,
+      meanScore: fragment.meanScore,
+      popularity: fragment.popularity,
+      isFavourite: fragment.isFavourite,
+      siteUrl: fragment.siteUrl,
+      updatedAt: fragment.updatedAt,
+      startDate: fragment.startDate != null
+          ? DateValue(year: fragment.startDate!.year, month: fragment.startDate!.month, day: fragment.startDate!.day)
+          : null,
+      endDate: fragment.endDate != null
+          ? DateValue(year: fragment.endDate!.year, month: fragment.endDate!.month, day: fragment.endDate!.day)
+          : null,
+      nextAiringEpisode: fragment.nextAiringEpisode != null
+          ? AiringEpisode(
+              airingAt: fragment.nextAiringEpisode!.airingAt,
+              episode: fragment.nextAiringEpisode!.episode,
+              timeUntilAiring: fragment.nextAiringEpisode!.timeUntilAiring,
+            )
+          : null,
+      genres: [],
+    );
+  }
 
   factory AnilistAnime.fromJson(Map<String, dynamic> json) {
     return AnilistAnime(
@@ -437,5 +479,22 @@ class AiringEpisode {
       'episode': episode,
       'timeUntilAiring': timeUntilAiring,
     };
+  }
+  
+  @override
+  int get hashCode => Object.hash(airingAt, episode, timeUntilAiring);
+  
+  @override
+  operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is AiringEpisode &&
+        other.airingAt == airingAt &&
+        other.episode == episode &&
+        other.timeUntilAiring == timeUntilAiring;
+  }
+  
+  @override
+  String toString() {
+    return 'AiringEpisode(airingAt: ${DateTime.fromMillisecondsSinceEpoch((airingAt ?? 0) * 1000).pretty()}, episode: $episode, timeUntilAiring: $timeUntilAiring)';
   }
 }

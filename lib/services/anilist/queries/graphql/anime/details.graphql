@@ -1,0 +1,301 @@
+#import "../common/fragments.graphql"
+
+# OVERVIEW TAB
+query GetAnimeOverview($id: Int!) {
+  # Anime Media
+  Media(id: $id, type: ANIME) {
+    ...AnimeOverview
+    
+    # Stats
+    stats {
+      statusDistribution { status amount }
+      scoreDistribution { score amount }
+    }
+
+    # Relations (Max 10)
+    relations {
+      edges {
+        id
+        relationType(version: 2)
+        node {
+          ...AnimeCard
+          bannerImage
+        }
+      }
+    }
+
+    # Characters Preview (Max 6)
+    characterPreview: characters(perPage: 6, sort: [ROLE, RELEVANCE, ID]) {
+      edges {
+        id
+        role
+        name
+        node { ...CharacterCard }
+        voiceActors(language: JAPANESE, sort: [RELEVANCE, ID]) {
+          ...StaffCard
+        }
+      }
+    }
+
+    # Staff Preview (Max 3)
+    staffPreview: staff(perPage: 3, sort: [RELEVANCE, ID]) {
+      edges {
+        id
+        role
+        node { ...StaffCard }
+      }
+    }
+
+    # Recommendations Preview (Max 7)
+    recommendations(perPage: 7, sort: [RATING_DESC, ID]) {
+      nodes {
+        id
+        rating
+        userRating
+        mediaRecommendation {
+          ...AnimeCard
+        }
+        user { ...UserAvatar }
+      }
+    }
+    
+    # External Links
+    externalLinks {
+      id site url type language color icon notes isDisabled
+    }
+  }
+
+  # Following who are watching this (Max 8)
+  Page(perPage: 8) {
+    mediaList(mediaId: $id, isFollowing: true, sort: [UPDATED_TIME_DESC]) {
+      id
+      status
+      score(format: POINT_10)
+      user { ...UserAvatar }
+    }
+  }
+}
+
+query GetMultipleAnimeDetails($ids: [Int]) {
+  Page(perPage: 50) {
+    media(id_in: $ids, type: ANIME) {
+      ...AnimeCard
+      bannerImage
+      description
+      endDate {
+        year
+        month
+        day
+      }
+      genres
+      trending
+      favourites
+      updatedAt
+      siteUrl
+      rankings {
+        id
+        rank
+        type
+        format
+        year
+        season
+        allTime
+        context
+      }
+    }
+  }
+}
+
+# CHARACTERS TAB
+query GetAnimeCharacters($id: Int!, $page: Int) {
+  Media(id: $id, type: ANIME) {
+    id
+    characters(page: $page, perPage: 25, sort: [ROLE, RELEVANCE, ID]) {
+      pageInfo {
+        total perPage currentPage lastPage hasNextPage
+      }
+      edges {
+        id
+        role
+        name
+        node { ...CharacterCard }
+        voiceActors(language: JAPANESE, sort: [RELEVANCE, ID]) {
+          ...StaffCard
+        }
+      }
+    }
+  }
+}
+
+# STAFF TAB
+query GetAnimeStaff($id: Int!, $page: Int) {
+  Media(id: $id, type: ANIME) {
+    id
+    staff(page: $page, perPage: 25, sort: [RELEVANCE, ID]) {
+      pageInfo {
+        total perPage currentPage lastPage hasNextPage
+      }
+      edges {
+        id
+        role
+        node { ...StaffCard }
+      }
+    }
+  }
+}
+
+# FOLLOWING TAB
+query GetAnimeSocial($id: Int!, $page: Int) {
+  Page(page: $page, perPage: 25) {
+    pageInfo {
+      total perPage currentPage lastPage hasNextPage
+    }
+    mediaList(mediaId: $id, isFollowing: true, sort: [UPDATED_TIME_DESC]) {
+      id
+      status
+      score(format: POINT_10)
+      updatedAt
+      user { ...UserAvatar }
+    }
+  }
+}
+
+# STATS TAB
+query GetAnimeStats($id: Int!) {
+  Media(id: $id, type: ANIME) {
+    id
+    stats {
+      statusDistribution {
+        status
+        amount
+      }
+      scoreDistribution {
+        score
+        amount
+      }
+    }
+    trends(sort: EPISODE_DESC, perPage: 25) {
+      nodes {
+        date
+        episode
+        averageScore   # Replaces airingProgression.score
+        inProgress     # Replaces airingProgression.watching
+        trending
+        popularity
+      }
+    }
+  }
+}
+query GetFullAnimeData($id: Int!) {
+  Media(id: $id, type: ANIME) {
+    id
+    relations {
+      edges {
+        id
+        relationType(version: 2)
+        node {
+          id
+          title {
+            userPreferred
+          }
+          format
+          type
+          status(version: 2)
+          bannerImage
+          coverImage {
+            large
+          }
+        }
+      }
+    }
+    characters(perPage: 25, sort: [ROLE, RELEVANCE, ID]) {
+      pageInfo {
+        total
+        perPage
+        currentPage
+        lastPage
+        hasNextPage
+      }
+      edges {
+        id
+        role
+        name
+        voiceActors(language: JAPANESE, sort: [RELEVANCE, ID]) {
+          id
+          name {
+            userPreferred
+          }
+          language: languageV2
+          image {
+            large
+          }
+        }
+        node {
+          id
+          name {
+            userPreferred
+          }
+          image {
+            large
+          }
+        }
+      }
+    }
+    staff(perPage: 25, sort: [RELEVANCE, ID]) {
+      pageInfo {
+        total
+        perPage
+        currentPage
+        lastPage
+        hasNextPage
+      }
+      edges {
+        id
+        role
+        node {
+          id
+          name {
+            userPreferred
+          }
+          language: languageV2
+          image {
+            large
+          }
+        }
+      }
+    }
+    stats {
+      statusDistribution {
+        status
+        amount
+      }
+      scoreDistribution {
+        score
+        amount
+      }
+    }
+    mediaListEntry {
+      id
+      status
+      score
+      progress
+      repeat
+      private
+      notes
+      hiddenFromStatusLists
+      customLists
+      startedAt {
+        year
+        month
+        day
+      }
+      completedAt {
+        year
+        month
+        day
+      }
+      updatedAt
+      createdAt
+    }
+  }
+}

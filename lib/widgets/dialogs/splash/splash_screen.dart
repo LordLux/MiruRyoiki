@@ -273,6 +273,7 @@ Future<void> setToSavedWindowStateWithoutAnimation() async {
       await windowManager.setPosition(Offset(savedState['x'] ?? 100.0, savedState['y'] ?? 100.0), animate: true);
     }
   }
+  WindowStateService.shouldSaveWindowState = true;
 }
 
 Future<void> morphToSavedWindowState() async {

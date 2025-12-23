@@ -12,6 +12,8 @@ import 'package:miruryoiki/services/connectivity/connectivity_service.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 
 import 'package:miruryoiki/services/anilist/auth.dart';
+import 'package:miruryoiki/services/anilist/queries/graphql/user/notifications.graphql.dart';
+import 'package:miruryoiki/services/anilist/queries/graphql/schema.graphql.dart';
 
 // Alias to avoid conflict if necessary, though Notification is the Drift class here
 // If Notification is ambiguous, we'll need to be specific.
@@ -214,17 +216,44 @@ void main() {
   test('syncNotifications fetches from API and saves to DB', () async {
     // Setup API response
     fakeClient.responseData = {
+      '__typename': 'Query',
       'Page': {
-        'pageInfo': {'hasNextPage': false},
+        '__typename': 'Page',
+        'pageInfo': {
+          '__typename': 'PageInfo',
+          'hasNextPage': false,
+          'total': 1,
+          'currentPage': 1,
+          'lastPage': 1,
+          'perPage': 25
+        },
         'notifications': [
           {
+            '__typename': 'AiringNotification',
             'id': 1,
             'type': 'AIRING',
             'createdAt': 1234567890,
             'animeId': 100,
             'episode': 1,
             'contexts': ['Episode 1 aired'],
-            'media': {'id': 100, 'title': {'romaji': 'Test Anime'}}
+            'media': {
+              '__typename': 'Media',
+              'id': 100, 
+              'type': 'ANIME',
+              'format': 'TV',
+              'title': {
+                '__typename': 'MediaTitle',
+                'romaji': 'Test Anime',
+                'english': 'Test Anime',
+                'native': 'Test Anime'
+              },
+              'coverImage': {
+                '__typename': 'MediaCoverImage',
+                'large': 'url',
+                'medium': 'url'
+              },
+              'episodes': 12
+            }
           }
         ]
       }
@@ -249,17 +278,44 @@ void main() {
 
     // 2. API returns the same notification (which comes as unread by default from API usually)
     fakeClient.responseData = {
+      '__typename': 'Query',
       'Page': {
-        'pageInfo': {'hasNextPage': false},
+        '__typename': 'Page',
+        'pageInfo': {
+          '__typename': 'PageInfo',
+          'hasNextPage': false,
+          'total': 1,
+          'currentPage': 1,
+          'lastPage': 1,
+          'perPage': 25
+        },
         'notifications': [
           {
+            '__typename': 'AiringNotification',
             'id': 1,
             'type': 'AIRING',
             'createdAt': 1000,
             'animeId': 100,
             'episode': 1,
             'contexts': [],
-            'media': {'id': 100, 'title': {'romaji': 'Test Anime'}}
+            'media': {
+              '__typename': 'Media',
+              'id': 100, 
+              'type': 'ANIME',
+              'format': 'TV',
+              'title': {
+                '__typename': 'MediaTitle',
+                'romaji': 'Test Anime',
+                'english': 'Test Anime',
+                'native': 'Test Anime'
+              },
+              'coverImage': {
+                '__typename': 'MediaCoverImage',
+                'large': 'url',
+                'medium': 'url'
+              },
+              'episodes': 12
+            }
           }
         ]
       }
@@ -289,5 +345,85 @@ void main() {
 
     final notifications = await fakeDb.notificationsDao.getRecentNotifications();
     expect(notifications.first.isRead, true);
+  });
+
+  test('syncNotifications filters out non-anime notifications', () async {
+    fakeClient.responseData = {
+      '__typename': 'Query',
+      'Page': {
+        '__typename': 'Page',
+        'pageInfo': {
+          '__typename': 'PageInfo',
+          'hasNextPage': false,
+          'total': 2,
+          'currentPage': 1,
+          'lastPage': 1,
+          'perPage': 25
+        },
+        'notifications': [
+          {
+            '__typename': 'AiringNotification',
+            'id': 1,
+            'type': 'AIRING',
+            'createdAt': 1234567890,
+            'animeId': 100,
+            'episode': 1,
+            'contexts': ['Episode 1 aired'],
+            'media': {
+              '__typename': 'Media',
+              'id': 100, 
+              'type': 'ANIME',
+              'format': 'TV',
+              'title': {
+                '__typename': 'MediaTitle',
+                'romaji': 'Anime Title', 
+                'english': 'Anime Title', 
+                'native': 'Anime Title'
+              },
+              'coverImage': {
+                '__typename': 'MediaCoverImage',
+                'large': 'url', 
+                'medium': 'url'
+              },
+              'episodes': 12
+            }
+          },
+          {
+            '__typename': 'AiringNotification',
+            'id': 2,
+            'type': 'AIRING',
+            'createdAt': 1234567891,
+            'animeId': 101,
+            'episode': 1,
+            'contexts': ['Chapter 1 released'],
+            'media': {
+              '__typename': 'Media',
+              'id': 101, 
+              'type': 'MANGA',
+              'format': 'MANGA',
+              'title': {
+                '__typename': 'MediaTitle',
+                'romaji': 'Manga Title', 
+                'english': 'Manga Title', 
+                'native': 'Manga Title'
+              },
+              'coverImage': {
+                '__typename': 'MediaCoverImage',
+                'large': 'url', 
+                'medium': 'url'
+              },
+              'episodes': null
+            }
+          }
+        ]
+      }
+    };
+
+    final result = await service.syncNotifications(database: fakeDb);
+
+    expect(result.length, 1);
+    expect(result.first.id, 1);
+    expect(result.first, isA<AiringNotification>());
+    expect((result.first as AiringNotification).media?.title, 'Anime Title');
   });
 }

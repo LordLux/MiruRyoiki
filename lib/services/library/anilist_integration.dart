@@ -156,7 +156,8 @@ extension LibraryAnilistIntegration on Library {
     }
 
     if (failedSeries.isNotEmpty) {
-      if (animeMap.isEmpty && anilistIds.isNotEmpty) {
+      // Check if all failed (likely offline)
+      if (failedSeries.length == allSeriesToFetch.length && allSeriesToFetch.isNotEmpty) {
         // All fetches failed, probably offline
         logDebug('Failed to fetch AniList details for ${failedSeries.length} series - preserving existing data');
       } else {

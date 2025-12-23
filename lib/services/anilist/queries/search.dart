@@ -1,37 +1,6 @@
 part of 'anilist_service.dart';
 
 extension AnilistServiceSearch on AnilistService {
-  Map<String, dynamic> _getSeasonData(DateTime date) {
-    // 1 = Winter, 2 = Spring, 3 = Summer, 4 = Fall
-    // Standard Anime Seasons:
-    // Winter: Jan, Feb, Mar
-    // Spring: Apr, May, Jun
-    // Summer: Jul, Aug, Sep
-    // Fall: Oct, Nov, Dec
-    
-    int month = date.month;
-    String season;
-    int year = date.year;
-
-    if (month >= 1 && month <= 3) {
-      season = 'WINTER';
-    } else if (month >= 4 && month <= 6) {
-      season = 'SPRING';
-    } else if (month >= 7 && month <= 9) {
-      season = 'SUMMER';
-    } else {
-      season = 'FALL';
-    }
-
-    return {'season': season, 'year': year};
-  }
-  
-  Map<String, dynamic> _getNextSeasonData() {
-    DateTime now = DateTime.now();
-    // Add 3 months to roughly jump to next season, then recalculate
-    return _getSeasonData(now.add(const Duration(days: 90))); 
-  }
-  
   /// Search for anime by title
   Future<List<AnilistAnime>> searchAnimeMatch(String query, {int limit = 10}) async {
     if (_client == null) {
@@ -49,69 +18,25 @@ extension AnilistServiceSearch on AnilistService {
     }
 
     logTrace('Searching Anilist for "$query"...');
-    const searchQuery = r'''
-      query SearchAnime($search: String, $limit: Int) {
-        Page(perPage: $limit) {
-          media(type: ANIME, search: $search) {
-            id
-            title {
-              romaji
-              english
-              native
-            }
-            coverImage {
-              extraLarge
-              color
-            }
-            bannerImage
-            description
-            popularity
-            averageScore
-            episodes
-            format
-            status
-            seasonYear
-            season
-            
-            startDate {
-              year
-              month
-              day
-            }
-            endDate {
-              year
-              month
-              day
-            }
-            updatedAt
-            nextAiringEpisode {
-              airingAt
-              episode
-              timeUntilAiring
-            }
-            isFavourite
-            siteUrl
-          }
-        }
-      }
-    ''';
 
-    final result = await executeQuery<List<AnilistAnime>>(
+    final result = await executeQuery<Query$SearchAnime>(
       options: QueryOptions(
-        document: gql(searchQuery),
-        variables: {
-          'search': query,
-          'limit': limit,
-        },
+        document: documentNodeQuerySearchAnime,
+        variables: Variables$Query$SearchAnime(
+          search: query,
+          perPage: limit,
+        ).toJson(),
         fetchPolicy: FetchPolicy.networkOnly,
       ),
-      operationName: 'searchAnimeMatch(query: $query)',
-      parser: (data) {
-        final List<dynamic> media = data['Page']?['media'] ?? [];
-        return media.map((item) => AnilistAnime.fromJson(item)).toList();
-      },
+      operationName: 'searchAnimeMatch',
+      parser: (data) => Query$SearchAnime.fromJson(data),
     );
 
-    return result ?? [];
+    if (result == null || result.Page == null || result.Page!.media == null) return [];
+
+    return result.Page!.media!
+        .whereType<Query$SearchAnime$Page$media>()
+        .map((media) => AnilistAnime.fromSearchMedia(media))
+        .toList();
   }
 }

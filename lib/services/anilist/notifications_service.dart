@@ -1,123 +1,6 @@
 part of 'queries/anilist_service.dart';
 
 extension AnilistServiceNotifications on AnilistService {
-  // GraphQL query for fetching notifications
-  static const String _notificationsQuery = '''
-    query GetNotifications(\$page: Int = 1, \$perPage: Int = 25, \$type_in: [NotificationType]) {
-      Page(page: \$page, perPage: \$perPage) {
-        pageInfo {
-          total
-          currentPage
-          lastPage
-          hasNextPage
-          perPage
-        }
-        notifications(type_in: \$type_in) {
-          ... on AiringNotification {
-            id
-            type
-            animeId
-            episode
-            contexts
-            createdAt
-            media {
-              id
-              title {
-                romaji
-                english
-                native
-              }
-              coverImage {
-                large
-                medium
-              }
-              type
-              format
-              episodes
-            }
-          }
-          ... on RelatedMediaAdditionNotification {
-            id
-            type
-            mediaId
-            context
-            createdAt
-            media {
-              id
-              title {
-                romaji
-                english
-                native
-              }
-              coverImage {
-                large
-                medium
-              }
-              type
-              format
-              episodes
-            }
-          }
-          ... on MediaDataChangeNotification {
-            id
-            type
-            mediaId
-            context
-            reason
-            createdAt
-            media {
-              id
-              title {
-                romaji
-                english
-                native
-              }
-              coverImage {
-                large
-                medium
-              }
-              type
-              format
-              episodes
-            }
-          }
-          ... on MediaMergeNotification {
-            id
-            type
-            mediaId
-            deletedMediaTitles
-            context
-            reason
-            createdAt
-            media {
-              id
-              title {
-                romaji
-                english
-                native
-              }
-              coverImage {
-                large
-                medium
-              }
-              type
-              format
-              episodes
-            }
-          }
-          ... on MediaDeletionNotification {
-            id
-            type
-            deletedMediaTitle
-            context
-            reason
-            createdAt
-          }
-        }
-      }
-    }
-  ''';
-
   // Fetch notifications from Anilist API
   Future<List<AnilistNotification>> fetchNotifications({
     int page = 1,
@@ -142,47 +25,134 @@ extension AnilistServiceNotifications on AnilistService {
       return [];
     }
 
-    final variables = <String, dynamic>{
-      'page': page,
-      'perPage': perPage,
-    };
+    final typeIn = types?.map((t) {
+      switch (t) {
+        case NotificationType.AIRING:
+          return Enum$NotificationType.AIRING;
+        case NotificationType.RELATED_MEDIA_ADDITION:
+          return Enum$NotificationType.RELATED_MEDIA_ADDITION;
+        case NotificationType.MEDIA_DATA_CHANGE:
+          return Enum$NotificationType.MEDIA_DATA_CHANGE;
+        case NotificationType.MEDIA_MERGE:
+          return Enum$NotificationType.MEDIA_MERGE;
+        case NotificationType.MEDIA_DELETION:
+          return Enum$NotificationType.MEDIA_DELETION;
+      }
+    }).toList();
 
-    // Add type filter if specified
-    if (types != null && types.isNotEmpty) //
-      variables['type_in'] = types.map((type) => type.name.toUpperCase()).toList();
-
-    final result = await executeQuery<List<AnilistNotification>>(
+    final result = await executeQuery<Query$GetNotifications>(
       options: QueryOptions(
-        document: gql(_notificationsQuery),
-        variables: variables,
+        document: documentNodeQueryGetNotifications,
+        variables: Variables$Query$GetNotifications(
+          page: page,
+          perPage: perPage,
+          type_in: typeIn,
+        ).toJson(),
         fetchPolicy: FetchPolicy.networkOnly,
       ),
-      operationName: 'getNotifications(page: $page, perPage: $perPage)',
-      parser: (data) {
-        final notificationsData = data['Page']?['notifications'] as List<dynamic>? ?? [];
-        final notifications = <AnilistNotification>[];
-
-        for (final notificationJson in notificationsData) {
-          final notification = _parseNotification(notificationJson as Map<String, dynamic>);
-          if (notification != null) {
-            notifications.add(notification);
-          }
-        }
-        return notifications;
-      },
+      operationName: 'GetNotifications',
+      parser: (data) => Query$GetNotifications.fromJson(data),
     );
 
-    if (result != null) {
+    if (result != null && result.Page?.notifications != null) {
+      final notifications = <AnilistNotification>[];
+      for (final notificationData in result.Page!.notifications!) {
+        if (notificationData == null) continue;
+        final notification = _convertNotification(notificationData);
+        if (notification != null) {
+          notifications.add(notification);
+        }
+      }
+
       // Save cache & metadata
       _lastNotificationsFetchAt = now;
-      _lastNotificationsCache = result;
+      _lastNotificationsCache = notifications;
       _lastNotificationsPage = page;
       _lastNotificationsPerPage = perPage;
       _lastNotificationsTypes = types == null ? null : List.of(types);
-      return result;
+      return notifications;
     }
 
     return [];
+  }
+
+  /// Convert GraphQL notification data to AnilistNotification model
+  /// 
+  /// Filters by ANIME type notifications
+  /// 
+  /// Returns null if the notification type is unsupported or invalid
+  AnilistNotification? _convertNotification(Query$GetNotifications$Page$notifications data) {
+    if (data is Query$GetNotifications$Page$notifications$$AiringNotification) {
+      if (data.media?.type != Enum$MediaType.ANIME) return null;
+      return AiringNotification(
+        id: data.id,
+        type: NotificationType.AIRING,
+        createdAt: data.createdAt ?? 0,
+        animeId: data.animeId,
+        episode: data.episode,
+        contexts: data.contexts?.whereType<String>().toList() ?? [],
+        media: _convertMediaInfo(data.media),
+        format: data.media?.format?.name,
+      );
+    } else if (data is Query$GetNotifications$Page$notifications$$RelatedMediaAdditionNotification) {
+      if (data.media?.type != Enum$MediaType.ANIME) return null;
+      return RelatedMediaAdditionNotification(
+        id: data.id,
+        type: NotificationType.RELATED_MEDIA_ADDITION,
+        createdAt: data.createdAt ?? 0,
+        mediaId: data.mediaId,
+        context: data.context,
+        media: _convertMediaInfo(data.media),
+      );
+    } else if (data is Query$GetNotifications$Page$notifications$$MediaDataChangeNotification) {
+      if (data.media?.type != Enum$MediaType.ANIME) return null;
+      return MediaDataChangeNotification(
+        id: data.id,
+        type: NotificationType.MEDIA_DATA_CHANGE,
+        createdAt: data.createdAt ?? 0,
+        mediaId: data.mediaId,
+        context: data.context,
+        reason: data.reason,
+        media: _convertMediaInfo(data.media),
+      );
+    } else if (data is Query$GetNotifications$Page$notifications$$MediaMergeNotification) {
+      if (data.media?.type != Enum$MediaType.ANIME) return null;
+      return MediaMergeNotification(
+        id: data.id,
+        type: NotificationType.MEDIA_MERGE,
+        createdAt: data.createdAt ?? 0,
+        mediaId: data.mediaId,
+        deletedMediaTitles: data.deletedMediaTitles?.whereType<String>().toList() ?? [],
+        context: data.context,
+        reason: data.reason,
+        media: _convertMediaInfo(data.media),
+      );
+    }
+    //  else if (data is Query$GetNotifications$Page$notifications$$MediaDeletionNotification) {
+    //   // MediaDeletionNotification doesn't have media object so we can't filter by type
+    //   return MediaDeletionNotification(
+    //     id: data.id,
+    //     type: NotificationType.MEDIA_DELETION,
+    //     createdAt: data.createdAt ?? 0,
+    //     deletedMediaTitle: data.deletedMediaTitle,
+    //     context: data.context,
+    //     reason: data.reason,
+    //   );
+    // }
+    return null;
+  }
+
+  MediaInfo? _convertMediaInfo(dynamic media) {
+    if (media == null) return null;
+    // All media objects in the query have the same structure
+    return MediaInfo(
+      id: media.id,
+      title: media.title?.english ?? media.title?.romaji ?? media.title?.native,
+      coverImage: media.coverImage?.large ?? media.coverImage?.medium,
+      type: media.type?.toJson(),
+      format: media.format?.toJson(),
+      episodes: media.episodes,
+    );
   }
 
   bool _compareNotificationTypeLists(List<NotificationType>? a, List<NotificationType>? b) {
@@ -195,149 +165,7 @@ extension AnilistServiceNotifications on AnilistService {
     return true;
   }
 
-  // Parse notification JSON from Anilist API
-  AnilistNotification? _parseNotification(Map<String, dynamic> json) {
-    final typeStr = json['type'] as String?;
-    if (typeStr == null) return null;
 
-    final notificationType = _parseNotificationType(typeStr);
-    if (notificationType == null) return null;
-
-    final id = json['id'] as int?;
-    final createdAt = json['createdAt'] as int?;
-
-    if (id == null || createdAt == null) return null;
-
-    // Parse media info if available
-    MediaInfo? mediaInfo;
-    final mediaJson = json['media'] as Map<String, dynamic>?;
-    if (mediaJson != null) {
-      mediaInfo = _parseMediaInfo(mediaJson);
-    }
-
-    switch (notificationType) {
-      case NotificationType.AIRING:
-        final animeId = json['animeId'] as int? ?? 0;
-        final episode = json['episode'] as int? ?? 0;
-        final contexts = (json['contexts'] as List<dynamic>?)?.cast<String>() ?? [];
-        final format = mediaJson?['format'] as String?;
-
-        return AiringNotification(
-          id: id,
-          type: notificationType,
-          createdAt: createdAt,
-          animeId: animeId,
-          episode: episode,
-          contexts: contexts,
-          media: mediaInfo,
-          format: format,
-        );
-      case NotificationType.RELATED_MEDIA_ADDITION:
-        final mediaId = json['mediaId'] as int? ?? 0;
-        final context = json['context'] as String?;
-
-        return RelatedMediaAdditionNotification(
-          id: id,
-          type: notificationType,
-          createdAt: createdAt,
-          mediaId: mediaId,
-          context: context,
-          media: mediaInfo,
-        );
-
-      case NotificationType.MEDIA_DATA_CHANGE:
-        final mediaId = json['mediaId'] as int? ?? 0;
-        final context = json['context'] as String?;
-        final reason = json['reason'] as String?;
-
-        return MediaDataChangeNotification(
-          id: id,
-          type: notificationType,
-          createdAt: createdAt,
-          mediaId: mediaId,
-          context: context,
-          reason: reason,
-          media: mediaInfo,
-        );
-
-      case NotificationType.MEDIA_MERGE:
-        final mediaId = json['mediaId'] as int? ?? 0;
-        final deletedMediaTitles = (json['deletedMediaTitles'] as List<dynamic>?)?.cast<String>() ?? [];
-        final context = json['context'] as String?;
-        final reason = json['reason'] as String?;
-
-        return MediaMergeNotification(
-          id: id,
-          type: notificationType,
-          createdAt: createdAt,
-          mediaId: mediaId,
-          deletedMediaTitles: deletedMediaTitles,
-          context: context,
-          reason: reason,
-          media: mediaInfo,
-        );
-
-      case NotificationType.MEDIA_DELETION:
-        final deletedMediaTitle = json['deletedMediaTitle'] as String?;
-        final context = json['context'] as String?;
-        final reason = json['reason'] as String?;
-
-        return MediaDeletionNotification(
-          id: id,
-          type: notificationType,
-          createdAt: createdAt,
-          deletedMediaTitle: deletedMediaTitle,
-          context: context,
-          reason: reason,
-        );
-    }
-  }
-
-  // Parse notification type from string
-  NotificationType? _parseNotificationType(String typeStr) {
-    switch (typeStr.toUpperCase()) {
-      case 'AIRING':
-        return NotificationType.AIRING;
-      case 'RELATED_MEDIA_ADDITION':
-        return NotificationType.RELATED_MEDIA_ADDITION;
-      case 'MEDIA_DATA_CHANGE':
-        return NotificationType.MEDIA_DATA_CHANGE;
-      case 'MEDIA_MERGE':
-        return NotificationType.MEDIA_MERGE;
-      case 'MEDIA_DELETION':
-        return NotificationType.MEDIA_DELETION;
-      default:
-        return null;
-    }
-  }
-
-  // Parse media info from JSON
-  MediaInfo _parseMediaInfo(Map<String, dynamic> json) {
-    final id = json['id'] as int;
-
-    // Extract title (prefer English, fallback to romaji, then native)
-    final titleJson = json['title'] as Map<String, dynamic>?;
-    String? title;
-    if (titleJson != null) {
-      title = titleJson['english'] as String? ?? titleJson['romaji'] as String? ?? titleJson['native'] as String?;
-    }
-
-    // Extract cover image
-    final coverImageJson = json['coverImage'] as Map<String, dynamic>?;
-    String? coverImage;
-    if (coverImageJson != null) {
-      coverImage = coverImageJson['large'] as String? ?? coverImageJson['medium'] as String?;
-    }
-
-    return MediaInfo(
-      id: id,
-      title: title,
-      coverImage: coverImage,
-      type: json['type'] as String?,
-      format: json['format'] as String?,
-      episodes: json['episodes'] as int?,
-    );
-  }
 
   // Sync notifications from Anilist and update local database
   Future<List<AnilistNotification>> syncNotifications({

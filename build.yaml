@@ -1,0 +1,23 @@
+targets:
+  $default:
+    builders:
+      drift_dev:
+        generate_for:
+          - lib/database/**
+      graphql_codegen:
+        generate_for:
+          include:
+            - lib/services/anilist/queries/graphql/**
+          exclude:
+            - lib/services/anilist/queries/graphql/official/**
+        options:
+          schema: lib/services/anilist/queries/graphql/schema.graphql
+          clients:
+            - graphql
+          scalars:
+            Json:
+              type: dynamic
+            FuzzyDateInt:
+              type: dynamic
+            CountryCode:
+              type: String

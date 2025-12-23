@@ -80,7 +80,9 @@ ANILIST_CLIENT_SECRET=dummy_secret
           options: options,
           source: QueryResultSource.network,
           data: {
+            '__typename': 'Mutation',
             'SaveMediaListEntry': {
+              '__typename': 'MediaList',
               'id': 123,
               'progress': 5
             }
@@ -100,7 +102,9 @@ ANILIST_CLIENT_SECRET=dummy_secret
           options: options,
           source: QueryResultSource.network,
           data: {
+            '__typename': 'Mutation',
             'SaveMediaListEntry': {
+              '__typename': 'MediaList',
               'id': 123,
               'status': 'CURRENT'
             }
@@ -120,7 +124,9 @@ ANILIST_CLIENT_SECRET=dummy_secret
           options: options,
           source: QueryResultSource.network,
           data: {
+            '__typename': 'Mutation',
             'SaveMediaListEntry': {
+              '__typename': 'MediaList',
               'id': 123,
               'score': 85.0
             }
@@ -139,28 +145,40 @@ ANILIST_CLIENT_SECRET=dummy_secret
           options: options,
           source: QueryResultSource.network,
           data: {
+            '__typename': 'Query',
             'MediaListCollection': {
+              '__typename': 'MediaListCollection',
               'user': {
+                '__typename': 'User',
                 'id': 1,
                 'name': 'TestUser',
                 'mediaListOptions': {
+                  '__typename': 'MediaListOptions',
                   'animeList': {
+                    '__typename': 'MediaListTypeOptions',
                     'customLists': ['My Custom List']
                   }
                 }
               },
               'lists': [
                 {
+                  '__typename': 'MediaListGroup',
                   'name': 'Completed',
                   'status': 'COMPLETED',
                   'entries': [
                     {
+                      '__typename': 'MediaList',
                       'id': 1,
                       'mediaId': 100,
                       'status': 'COMPLETED',
                       'media': {
+                        '__typename': 'Media',
                         'id': 100,
-                        'title': {'userPreferred': 'Test Anime'}
+                        'isFavourite': false,
+                        'title': {
+                          '__typename': 'MediaTitle',
+                          'userPreferred': 'Test Anime'
+                        }
                       }
                     }
                   ]

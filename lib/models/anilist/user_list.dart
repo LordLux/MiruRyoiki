@@ -79,7 +79,7 @@ class AnilistMediaListEntry {
       media: AnilistAnime.fromJson(json['media']),
       status: json['status'].toString().toListStatus() ?? AnilistListApiStatus.CURRENT,
       progress: json['progress'],
-      score: json['score'],
+      score: (json['score'] as num?)?.toInt(),
       customLists: json['customLists']?.toString(),
       hiddenFromStatusLists: json['hiddenFromStatusLists'] ?? false,
       priority: json['priority'],

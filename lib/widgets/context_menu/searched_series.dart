@@ -4,29 +4,13 @@ import 'dart:io';
 
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter_desktop_context_menu/flutter_desktop_context_menu.dart';
-import 'package:miruryoiki/models/anilist/anime.dart';
-import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
-import '../../main.dart';
-import '../../manager.dart';
-import '../../models/anilist/user_data.dart';
-import '../../models/anilist/user_list.dart';
-import '../../models/series.dart';
-import '../../services/anilist/provider/anilist_provider.dart';
-import '../../services/anilist/queries/anilist_service.dart';
-import '../../services/library/library_provider.dart';
-import '../../services/lock_manager.dart';
-import '../../services/navigation/dialogs.dart';
-import '../../services/navigation/show_info.dart';
-import '../../screens/series.dart';
-import '../../utils/logging.dart';
-import '../../utils/shell.dart';
-import '../dialogs/image_select.dart';
+import '../../models/anilist/anime_card.dart';
 import '../../utils/icons.dart' as icons;
 import 'controller.dart';
 
 class SearchedSeriesContextMenu extends StatefulWidget {
-  final AnilistAnime series;
+  final AnimeCard series;
   final Widget child;
   final BuildContext context;
   final DesktopContextMenuController controller;
@@ -80,7 +64,7 @@ class SearchedSeriesContextMenuState extends State<SearchedSeriesContextMenu> {
 
   Menu seriesMenu({
     required final BuildContext context,
-    required final AnilistAnime series,
+    required final AnimeCard series,
   }) {
     return Menu(
       items: [

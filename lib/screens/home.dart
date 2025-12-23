@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:miruryoiki/models/anilist/user_list.dart';
 import 'package:miruryoiki/widgets/buttons/button.dart';
 import 'package:provider/provider.dart';
-import 'package:recase/recase.dart';
 
 import '../models/episode.dart';
 import '../services/library/library_provider.dart';

@@ -2,26 +2,20 @@ import 'dart:async';
 import 'package:collection/collection.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/material.dart' as mat;
+import 'package:miruryoiki/models/anilist/anime_overview.dart';
 import 'package:miruryoiki/widgets/acrylic_header.dart';
-import 'package:provider/provider.dart';
 import 'package:defer_pointer/defer_pointer.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../models/anilist/anime.dart';
 import '../services/connectivity/connectivity_service.dart';
-import '../services/library/library_provider.dart';
-import '../services/lock_manager.dart';
 import '../services/navigation/show_info.dart';
-import '../utils/color.dart';
 import '../utils/text.dart';
 import '../widgets/buttons/back_button.dart';
 import '../widgets/buttons/button.dart';
-import '../widgets/dialogs/link_anilist.dart';
 import '../enums.dart';
 import '../manager.dart';
-import '../models/series.dart';
 import '../services/anilist/linking.dart';
-import '../services/navigation/dialogs.dart';
 import '../utils/logging.dart';
 import '../utils/error_handling.dart';
 import '../utils/screen.dart';
@@ -66,13 +60,10 @@ class SearchedSeriesScreenState extends State<SearchedSeriesScreen> {
   DeferredPointerHandlerLink? deferredPointerLink;
 
   /// Cached reference to the current series, updated via Selector in build()
-  AnilistAnime? _cachedSeries;
-
-  late Color _textColor;
-  late Color _selectedTextColor;
+  AnimeOverview? _cachedSeries;
 
   // Widget: whether to allocate a full row or divide it in 2 columns [true = full row, false = 2 columns]
-  Map<InfoLabel, bool> getInfos(AnilistAnime? series) {
+  Map<InfoLabel, bool> getInfos(AnimeOverview? series) {
     return {
       if (series?.episodes != null)
         InfoLabel(
@@ -84,7 +75,7 @@ class SearchedSeriesScreenState extends State<SearchedSeriesScreen> {
         InfoLabel(
           label: 'Status',
           labelStyle: Manager.bodyStrongStyle,
-          child: Text(series!.status!.toAnimeStatus()?.name_ ?? series!.status!),
+          child: Text(series!.status!.toAnimeStatus()?.name_ ?? series.status!),
         ): false,
       if (series?.format != null)
         InfoLabel(
@@ -133,11 +124,6 @@ class SearchedSeriesScreenState extends State<SearchedSeriesScreen> {
 
   //
 
-  void _loadColors() {
-    _textColor = Colors.white;
-    _selectedTextColor = getTextColor(Manager.currentDominantColor ?? Manager.accentColor);
-  }
-
   @override
   void initState() {
     super.initState();
@@ -183,7 +169,7 @@ class SearchedSeriesScreenState extends State<SearchedSeriesScreen> {
     final series = _cachedSeries;
     if (series == null) return null;
 
-    final imageUrl = banner ? series.bannerImage : series.posterImage;
+    final imageUrl = banner ? series.bannerImage : series.coverImage;
     if (imageUrl == null) return null;
 
     final imageCache = ImageCacheService();
@@ -200,7 +186,7 @@ class SearchedSeriesScreenState extends State<SearchedSeriesScreen> {
       final anilistId = int.parse(widget.anilistUrl.split('/').last);
       logTrace('Fetching AniList data for ID $anilistId');
 
-      final AnilistAnime? anilistAnime = await SeriesLinkService().fetchAnimeDetails(anilistId);
+      final AnimeOverview? anilistAnime = await SeriesLinkService().fetchDetailedAnimeDetails(anilistId);
       if (!mounted) return;
 
       if (anilistAnime == null) {
@@ -216,7 +202,6 @@ class SearchedSeriesScreenState extends State<SearchedSeriesScreen> {
       _cachedSeries = anilistAnime;
 
       // Finalize UI
-      _loadColors();
       Manager.setState();
     } catch (e) {
       if (!isExpectedOfflineError(e)) logErr('Failed to load Anilist data', e);
@@ -235,7 +220,7 @@ class SearchedSeriesScreenState extends State<SearchedSeriesScreen> {
     );
   }
 
-  HeaderWidget _buildHeader(BuildContext context, AnilistAnime? series) {
+  HeaderWidget _buildHeader(BuildContext context, AnimeOverview? series) {
     final title = series?.title.userPreferred ?? '';
     final description = series?.description;
     final imageFuture = _getAnilistImage(banner: true);
@@ -271,7 +256,7 @@ class SearchedSeriesScreenState extends State<SearchedSeriesScreen> {
                 children: [
                   BackButton(
                     onTap: widget.onBack,
-                    label: 'Back to Library',
+                    label: 'Back to Browse',
                     child: const Icon(FluentIcons.back),
                   ),
                 ],
@@ -312,7 +297,7 @@ class SearchedSeriesScreenState extends State<SearchedSeriesScreen> {
     );
   }
 
-  MiruRyoikiInfobar _buildInfoBar(BuildContext context, AnilistAnime? series) {
+  MiruRyoikiInfobar _buildInfoBar(BuildContext context, AnimeOverview? series) {
     final posterImage = _getAnilistImage(banner: false);
 
     return MiruRyoikiInfobar(
@@ -408,7 +393,7 @@ class SearchedSeriesScreenState extends State<SearchedSeriesScreen> {
     );
   }
 
-  Widget _buildInfoBarContent(AnilistAnime? series) {
+  Widget _buildInfoBarContent(AnimeOverview? series) {
     final infos_ = getInfos(series);
     final genres = series?.genres ?? [];
 
@@ -475,13 +460,15 @@ class SearchedSeriesScreenState extends State<SearchedSeriesScreen> {
     );
   }
 
-  Widget _buildContentGrid(BuildContext context, AnilistAnime? series) {
+  Widget _buildContentGrid(BuildContext context, AnimeOverview? series) {
     final headerHeight = 45.0;
     final borderRadius = ScreenUtils.kEpisodeCardBorderRadius;
     final pages = [
       "Overview",
       null,
       "Watch",
+      null,
+      "Characters",
       null,
       "Staff",
       null,
@@ -578,7 +565,10 @@ class SearchedSeriesScreenState extends State<SearchedSeriesScreen> {
               ),
               child: Padding(
                 padding: EdgeInsets.only(right: 2),
-                child: Container(),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: Text(series.toString()),
+                ),
               ),
             ),
           ),
@@ -586,102 +576,4 @@ class SearchedSeriesScreenState extends State<SearchedSeriesScreen> {
       ],
     );
   }
-}
-
-void linkWithAnilist(BuildContext context, Series? series, Future<void> Function(List<int>) loadData, void Function(VoidCallback) setState) async {
-  if (series == null) {
-    snackBar('Series not found', severity: InfoBarSeverity.error);
-    return;
-  }
-
-  // Show the dialog
-  await showManagedDialog(
-    context: context,
-    id: 'linkAnilist:${series.path}',
-    title: 'Link to Anilist',
-    data: series.path,
-    barrierColor: Manager.currentDominantColor?.withOpacity(0.5),
-    canUserPopDialog: true,
-    closeExistingDialogs: true, // Close existing dialogs, important
-    dialogDoPopCheck: () => Manager.canPopDialog, // Allow popping only when in view mode
-    builder: (context) => AnilistLinkMultiDialog(
-      constraints: const BoxConstraints(
-        maxWidth: 1300,
-        maxHeight: 600,
-      ),
-      series: series,
-      popContext: context,
-      linkService: SeriesLinkService(),
-      onLink: (_, __) {},
-      onDialogComplete: (success, mappings) async {
-        // if the dialog was closed without a result, do nothing
-        if (success == null)
-          // logDebug('Dialog closed without result');
-          return;
-
-        // if the dialog was closed with a result, check if it was successful
-        if (!success) {
-          logErr('Linking failed');
-          snackBar('Failed to link with Anilist', severity: InfoBarSeverity.error);
-          return;
-        }
-
-        // if dialog was closed with a result, and it was successful, update the series mappings
-        final library = Provider.of<Library>(context, listen: false);
-
-        // Check if the action should be disabled during indexing
-        if (library.lockManager.shouldDisableAction(UserAction.anilistOperations)) {
-          snackBar(
-            library.lockManager.getDisabledReason(UserAction.anilistOperations),
-            severity: InfoBarSeverity.warning,
-          );
-          return;
-        }
-
-        // Calculate the number of new mappings
-        final oldMappings = series.anilistMappings;
-        List<int> anilistIdsToLoad = [];
-
-        for (final mapping in mappings) {
-          bool isNew = !oldMappings.any((m) => m.anilistId == mapping.anilistId && m.localPath == mapping.localPath);
-          if (isNew) anilistIdsToLoad.add(mapping.anilistId);
-        }
-
-        // Ensure the library gets saved
-        await library.updateSeriesMappings(series, mappings);
-
-        // If links were added
-        if (anilistIdsToLoad.isNotEmpty) {
-          snackBar(
-            'Successfully linked ${anilistIdsToLoad.length} ${anilistIdsToLoad.length == 1 ? 'new item' : 'new items'} with Anilist',
-            severity: InfoBarSeverity.success,
-          );
-        } else if (mappings.length < oldMappings.length) {
-          // If links were removed
-          final removedCount = oldMappings.length - mappings.length;
-          snackBar(
-            'Removed $removedCount ${removedCount == 1 ? 'link' : 'links'} from Anilist',
-            severity: InfoBarSeverity.success,
-          );
-        } else {
-          // No changes in link count but mappings might have been updated
-          snackBar(
-            'Anilist links updated successfully',
-            severity: InfoBarSeverity.success,
-          );
-        }
-
-        closeDialog(context);
-
-        // Load Anilist data
-        if (anilistIdsToLoad.isNotEmpty) await loadData(anilistIdsToLoad);
-
-        // Update the series with the new mappings
-        final newColor = await series.effectivePrimaryColor();
-        Manager.currentDominantColor = newColor;
-        Manager.seriesDominantColor = newColor;
-        Manager.setState();
-      },
-    ),
-  );
 }

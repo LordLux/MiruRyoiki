@@ -1,13 +1,13 @@
 import 'package:fluent_ui/fluent_ui.dart' hide Colors, IconButton;
-import 'package:flutter/material.dart' hide TextBox, Slider, BackButton;
-import 'package:miruryoiki/models/anilist/anime.dart';
 import 'package:miruryoiki/screens/search.dart';
 import 'package:miruryoiki/utils/screen.dart';
 import 'package:miruryoiki/widgets/cards/search_series_card.dart';
 
+import '../models/anilist/anime_card.dart';
+
 class SectionGridView extends StatelessWidget {
   final SectionDataManager manager;
-  final Function(AnilistAnime) onSeriesOpen;
+  final Function(AnimeCard) onSeriesOpen;
 
   const SectionGridView({
     super.key,

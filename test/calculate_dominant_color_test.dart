@@ -13,7 +13,6 @@ import 'package:miruryoiki/models/anilist/anime.dart';
 import 'package:miruryoiki/models/anilist/mapping.dart';
 import 'package:miruryoiki/models/series.dart';
 import 'package:miruryoiki/services/isolates/isolate_manager.dart';
-import 'package:miruryoiki/utils/color.dart';
 import 'package:miruryoiki/utils/path.dart';
 import 'package:miruryoiki/utils/time.dart';
 import 'package:path_provider_platform_interface/path_provider_platform_interface.dart';

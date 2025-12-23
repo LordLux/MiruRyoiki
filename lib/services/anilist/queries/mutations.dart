@@ -3,79 +3,56 @@ part of 'anilist_service.dart';
 extension AnilistServiceMutations on AnilistService {
   /// Update progress for an anime
   Future<bool> updateProgress(int mediaId, int progress) async {
-    const mutation = r'''
-      mutation UpdateProgress($mediaId: Int!, $progress: Int!) {
-        SaveMediaListEntry(mediaId: $mediaId, progress: $progress) {
-          id
-          progress
-        }
-      }
-    ''';
-
-    final result = await executeMutation<bool>(
+    final result = await executeMutation<Mutation$UpdateProgress>(
       options: MutationOptions(
-        document: gql(mutation),
-        variables: {
-          'mediaId': mediaId,
-          'progress': progress,
-        },
+        document: documentNodeMutationUpdateProgress,
+        variables: Variables$Mutation$UpdateProgress(
+          mediaId: mediaId,
+          progress: progress,
+        ).toJson(),
       ),
-      operationName: 'updateProgress(mediaId: $mediaId, progress: $progress)',
-      parser: (data) => data['SaveMediaListEntry'] != null,
+      operationName: 'UpdateProgress',
+      parser: (data) => Mutation$UpdateProgress.fromJson(data),
     );
 
-    return result ?? false;
+    return result?.SaveMediaListEntry != null;
   }
 
   /// Update status for an anime
   Future<bool> updateStatus(int mediaId, AnilistListApiStatus status) async {
-    const mutation = r'''
-      mutation UpdateStatus($mediaId: Int!, $status: MediaListStatus!) {
-        SaveMediaListEntry(mediaId: $mediaId, status: $status) {
-          id
-          status
-        }
-      }
-    ''';
+    final statusEnum = Enum$MediaListStatus.values.firstWhereOrNull((e) => e.name == status.name_);
+    
+    if (statusEnum == null) return false;
 
-    final result = await executeMutation<bool>(
+    final result = await executeMutation<Mutation$UpdateStatus>(
       options: MutationOptions(
-        document: gql(mutation),
-        variables: {
-          'mediaId': mediaId,
-          'status': status.name_,
-        },
+        document: documentNodeMutationUpdateStatus,
+        variables: Variables$Mutation$UpdateStatus(
+          mediaId: mediaId,
+          status: statusEnum,
+        ).toJson(),
       ),
-      operationName: 'updateStatus(mediaId: $mediaId, status: $status)',
-      parser: (data) => data['SaveMediaListEntry'] != null,
+      operationName: 'UpdateStatus',
+      parser: (data) => Mutation$UpdateStatus.fromJson(data),
     );
 
-    return result ?? false;
+    return result?.SaveMediaListEntry != null;
   }
 
   /// Update score for an anime
   Future<bool> updateScore(int mediaId, int score) async {
-    const mutation = r'''
-      mutation UpdateScore($mediaId: Int!, $score: Float!) {
-        SaveMediaListEntry(mediaId: $mediaId, score: $score) {
-          id
-          score
-        }
-      }
-    ''';
-
-    final result = await executeMutation<bool>(
+    final result = await executeMutation<Mutation$UpdateScore>(
       options: MutationOptions(
-        document: gql(mutation),
-        variables: {
-          'mediaId': mediaId,
-          'score': score.toDouble(),
-        },
+        document: documentNodeMutationUpdateScore,
+        variables: Variables$Mutation$UpdateScore(
+          mediaId: mediaId,
+          score: score.toDouble(),
+        ).toJson(),
       ),
-      operationName: 'updateScore(mediaId: $mediaId, score: $score)',
-      parser: (data) => data['SaveMediaListEntry'] != null,
+      operationName: 'UpdateScore',
+      parser: (data) => Mutation$UpdateScore.fromJson(data),
     );
 
-    return result ?? false;
+    return result?.SaveMediaListEntry != null;
   }
 }

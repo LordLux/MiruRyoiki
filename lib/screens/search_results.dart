@@ -1,11 +1,10 @@
-import 'package:defer_pointer/defer_pointer.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/material.dart' as mat;
 import 'package:smooth_scroll_multiplatform/smooth_scroll_multiplatform.dart';
 import '../main.dart';
 import '../manager.dart';
+import '../models/anilist/anime_card.dart';
 import '../services/anilist/queries/anilist_service.dart';
-import '../models/anilist/anime.dart';
 import '../models/anilist/page_info.dart';
 import '../services/navigation/shortcuts.dart';
 import '../utils/logging.dart';
@@ -22,7 +21,7 @@ class SearchResultsScreen extends StatefulWidget {
   final String? searchQuery;
   final Map<String, dynamic>? filters;
   final VoidCallback onBack;
-  final void Function(AnilistAnime anime) onSeriesOpen;
+  final void Function(AnimeCard anime) onSeriesOpen;
 
   const SearchResultsScreen({
     super.key,
@@ -39,7 +38,7 @@ class SearchResultsScreen extends StatefulWidget {
 }
 
 class _SearchResultsScreenState extends State<SearchResultsScreen> {
-  final List<AnilistAnime> _animeList = [];
+  final List<AnimeCard> _animeList = [];
   bool _isLoading = false;
   bool _hasNextPage = true;
   int _currentPage = 1;
@@ -78,7 +77,7 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
     try {
       final service = AnilistService();
 
-      AnilistSearchPage<AnilistAnime>? result = await switch (widget.queryType) {
+      AnilistSearchPage<AnimeCard>? result = await switch (widget.queryType) {
         'trending' => service.getTrendingNow(page: _currentPage, perPage: 20),
         'popular' => service.getPopularThisSeason(page: _currentPage, perPage: 20),
         'upcoming' => service.getUpcomingNextSeason(page: _currentPage, perPage: 20),

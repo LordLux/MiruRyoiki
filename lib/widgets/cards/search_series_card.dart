@@ -3,11 +3,11 @@ import 'dart:math';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/material.dart' show InkWell, Material;
-import 'package:miruryoiki/models/anilist/anime.dart';
 import 'package:miruryoiki/widgets/frosted_noise.dart';
 import '../../enums.dart';
 import '../../manager.dart';
 
+import '../../models/anilist/anime_card.dart';
 import '../../services/navigation/statusbar.dart';
 import '../../utils/color.dart';
 import '../../utils/screen.dart';
@@ -17,7 +17,7 @@ import '../context_menu/controller.dart';
 import '../series_card_indicators.dart';
 
 class SearchSeriesCard extends StatefulWidget {
-  final AnilistAnime series;
+  final AnimeCard series;
   final VoidCallback onTap;
   final BorderRadius borderRadius;
   final int? number;
@@ -58,7 +58,7 @@ class _SearchSeriesCardState extends State<SearchSeriesCard> {
         constraints.minWidth.toInt(),
         constraints.maxHeight.toInt(),
         CachedNetworkImageProvider(
-          widget.series.posterImage ?? '',
+          widget.series.coverImage ?? '',
           // memCacheHeight: (211 * pixelResolution).toInt(),
           // memCacheWidth: (211 * ScreenUtils.kDefaultAspectRatio * pixelResolution).toInt(),
           // imageUrl: widget.series.posterImage ?? '',

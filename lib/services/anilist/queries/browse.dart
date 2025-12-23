@@ -1,117 +1,176 @@
 part of 'anilist_service.dart';
 
-extension AnilistBrowseSearch on AnilistService {
-  List<AnilistAnime> _parseAnimeList(Map<String, dynamic> data) {
-    if (data.isEmpty || 
-        data['Page'] == null ||
-        data['Page']['media'] == null) return [];
+class _AnimeSeasonUtil {
+  static const List<String> _seasons = ['WINTER', 'SPRING', 'SUMMER', 'FALL'];
 
-    final List<dynamic> mediaList = data['Page']['media'];
-    return mediaList.map((json) => AnilistAnime.fromJson(json)).toList();
+  /// Returns the current season and year based on the current date
+  static Map<String, dynamic> getCurrentSeasonData() {
+    final now = DateTime.now();
+    return _getSeasonForMonth(now.month, now.year);
   }
 
-  AnilistSearchPage<AnilistAnime>? _parseSearchPage(Map<String, dynamic> data) {
-    if (data.isEmpty || data['Page'] == null) return null;
+  /// Returns the strictly defined next season
+  static Map<String, dynamic> getNextSeasonData() {
+    final now = DateTime.now();
+    final currentData = _getSeasonForMonth(now.month, now.year);
     
-    final pageInfo = AnilistPageInfo.fromJson(data['Page']['pageInfo']);
-    final results = _parseAnimeList(data);
-    return AnilistSearchPage(pageInfo: pageInfo, results: results);
+    String currentSeason = currentData['season'];
+    int currentYear = currentData['year'];
+
+    // Find the index of the current season
+    int currentIndex = _seasons.indexOf(currentSeason);
+
+    int nextIndex = (currentIndex + 1) % 4;
+    
+    // If we wrapped from 3 (Fall) back to 0 (Winter), increment the year
+    int nextYear = (nextIndex == 0) ? currentYear + 1 : currentYear;
+
+    return {
+      'season': _seasons[nextIndex],
+      'year': nextYear
+    };
   }
 
-  Future<Map<String, dynamic>> _executeBrowseQuery({
-    required String query,
-    required Map<String, dynamic> variables,
+  // Helper to determine season from month
+  static Map<String, dynamic> _getSeasonForMonth(int month, int year) {
+    String season;
+    if (month >= 1 && month <= 3) {
+      season = 'WINTER';
+    } else if (month >= 4 && month <= 6) {
+      season = 'SPRING';
+    } else if (month >= 7 && month <= 9) {
+      season = 'SUMMER';
+    } else {
+      season = 'FALL';
+    }
+    return {'season': season, 'year': year};
+  }
+}
+
+extension AnilistBrowseSearch on AnilistService {
+  Future<AnilistSearchPage<AnimeCard>?> _executeHomeSectionQuery({
+    required Variables$Query$GetHomeSection variables,
     required String operationName,
-    FetchPolicy fetchPolicy = FetchPolicy.networkOnly,
   }) async {
-    final result = await executeQuery<Map<String, dynamic>>(
+    if (_client == null) return null;
+
+    final result = await executeQuery<Query$GetHomeSection>(
       options: QueryOptions(
-        document: gql(query),
-        variables: variables,
-        fetchPolicy: fetchPolicy,
+        document: documentNodeQueryGetHomeSection,
+        variables: variables.toJson(),
+        fetchPolicy: FetchPolicy.networkOnly,
       ),
       operationName: operationName,
-      parser: (data) => data,
+      parser: (data) => Query$GetHomeSection.fromJson(data),
     );
 
-    return result ?? <String, dynamic>{};
+    if (result == null || result.Page == null) return null;
+
+    final pageInfo = AnilistPageInfo(
+      total: result.Page!.pageInfo?.total ?? 0,
+      perPage: result.Page!.pageInfo?.perPage ?? 0,
+      currentPage: result.Page!.pageInfo?.currentPage ?? 1,
+      lastPage: result.Page!.pageInfo?.lastPage ?? 1,
+      hasNextPage: result.Page!.pageInfo?.hasNextPage ?? false,
+    );
+
+    final mediaList = result.Page!.media
+            ?.whereType<Fragment$AnimeCard>()
+            .map((media) => AnimeCard.fromFragment(media))
+            .toList() ??
+        [];
+
+    return AnilistSearchPage(pageInfo: pageInfo, results: mediaList);
   }
 
-  Future<AnilistSearchPage<AnilistAnime>?> getTrendingNow({int page = 1, int perPage = 6}) async {
-    // Trending doesn't need season info, just the sort
-    final data = await _executeBrowseQuery(
-      query: homeSectionQuery,
-      variables: {
-        'page': page,
-        'perPage': perPage,
-        'sort': ['TRENDING_DESC'],
-      },
+  Future<AnilistSearchPage<AnimeCard>?> getTrendingNow({int page = 1, int perPage = 6}) async {
+    return _executeHomeSectionQuery(
+      variables: Variables$Query$GetHomeSection(
+        page: page,
+        perPage: perPage,
+        sort: [Enum$MediaSort.TRENDING_DESC],
+      ),
       operationName: 'getTrendingNow',
     );
-    return _parseSearchPage(data);
   }
 
-  Future<AnilistSearchPage<AnilistAnime>?> getPopularThisSeason({int page = 1, int perPage = 6}) async {
-    final seasonData = _getSeasonData(now);
-    final data = await _executeBrowseQuery(
-      query: homeSectionQuery,
-      variables: {
-        'page': page,
-        'perPage': perPage,
-        'season': seasonData['season'],
-        'seasonYear': seasonData['year'],
-        'sort': ['POPULARITY_DESC'],
-      },
+  Future<AnilistSearchPage<AnimeCard>?> getPopularThisSeason({int page = 1, int perPage = 6}) async {
+    final seasonData = _AnimeSeasonUtil.getCurrentSeasonData();
+    return _executeHomeSectionQuery(
+      variables: Variables$Query$GetHomeSection(
+        page: page,
+        perPage: perPage,
+        season: _parseSeason(seasonData['season']),
+        seasonYear: seasonData['year'],
+        sort: [Enum$MediaSort.POPULARITY_DESC],
+      ),
       operationName: 'getPopularThisSeason',
     );
-    return _parseSearchPage(data);
   }
 
-  Future<AnilistSearchPage<AnilistAnime>?> getUpcomingNextSeason({int page = 1, int perPage = 6}) async {
-    final seasonData = _getNextSeasonData();
-    final data = await _executeBrowseQuery(
-      query: homeSectionQuery,
-      variables: {
-        'page': page,
-        'perPage': perPage,
-        'season': seasonData['season'],
-        'seasonYear': seasonData['year'],
-        'sort': ['POPULARITY_DESC'],
-      },
+  Future<AnilistSearchPage<AnimeCard>?> getUpcomingNextSeason({int page = 1, int perPage = 6}) async {
+    final seasonData = _AnimeSeasonUtil.getNextSeasonData();
+    return _executeHomeSectionQuery(
+      variables: Variables$Query$GetHomeSection(
+        page: page,
+        perPage: perPage,
+        season: _parseSeason(seasonData['season']),
+        seasonYear: seasonData['year'],
+        sort: [Enum$MediaSort.POPULARITY_DESC],
+      ),
       operationName: 'getUpcomingNextSeason',
     );
-    return _parseSearchPage(data);
   }
 
-  Future<AnilistSearchPage<AnilistAnime>?> getAllTimePopular({int page = 1, int perPage = 6}) async {
-    final data = await _executeBrowseQuery(
-      query: homeSectionQuery,
-      variables: {
-        'page': page,
-        'perPage': perPage,
-        'sort': ['POPULARITY_DESC'],
-      },
+  Future<AnilistSearchPage<AnimeCard>?> getAllTimePopular({int page = 1, int perPage = 6}) async {
+    return _executeHomeSectionQuery(
+      variables: Variables$Query$GetHomeSection(
+        page: page,
+        perPage: perPage,
+        sort: [Enum$MediaSort.POPULARITY_DESC],
+      ),
       operationName: 'getAllTimePopular',
     );
-    return _parseSearchPage(data);
   }
 
-  Future<AnilistSearchPage<AnilistAnime>?> getTop100Anime({int page = 1, int perPage = 10}) async {
-    // Requested first 10 for this specific section
-    final data = await _executeBrowseQuery(
-      query: homeSectionQuery,
-      variables: {
-        'page': page,
-        'perPage': perPage,
-        'sort': ['SCORE_DESC'],
-      },
+  Future<AnilistSearchPage<AnimeCard>?> getTop100Anime({int page = 1, int perPage = 10}) async {
+    return _executeHomeSectionQuery(
+      variables: Variables$Query$GetHomeSection(
+        page: page,
+        perPage: perPage,
+        sort: [Enum$MediaSort.SCORE_DESC],
+      ),
       operationName: 'getTop100Anime',
     );
-    return _parseSearchPage(data);
+  }
+
+  Enum$MediaSeason? _parseSeason(String? season) {
+    if (season == null) return null;
+    return Enum$MediaSeason.values.firstWhereOrNull((e) => e.name == season);
+  }
+
+  Enum$MediaSort? _parseSort(String? sort) {
+    if (sort == null) return null;
+    return Enum$MediaSort.values.firstWhereOrNull((e) => e.toJson() == sort);
+  }
+
+  Enum$MediaFormat? _parseFormat(String? format) {
+    if (format == null) return null;
+    return Enum$MediaFormat.values.firstWhereOrNull((e) => e.toJson() == format);
+  }
+
+  Enum$MediaStatus? _parseStatus(String? status) {
+    if (status == null) return null;
+    return Enum$MediaStatus.values.firstWhereOrNull((e) => e.toJson() == status);
+  }
+
+  Enum$MediaSource? _parseSource(String? source) {
+    if (source == null) return null;
+    return Enum$MediaSource.values.firstWhereOrNull((e) => e.toJson() == source);
   }
 
   /// "View All" (passing filters) and generic "Search" functionality.
-  Future<AnilistSearchPage<AnilistAnime>?> searchAnime({
+  Future<AnilistSearchPage<AnimeCard>?> searchAnime({
     required int page,
     int perPage = 20,
     String? search,
@@ -138,189 +197,64 @@ extension AnilistBrowseSearch on AnilistService {
     String? source,
     List<String> sort = const ['POPULARITY_DESC'],
   }) async {
-    // Prepare variables, removing nulls so GraphQL doesn't complain
-    final Map<String, dynamic> variables = {
-      'page': page,
-      'perPage': perPage,
-      'sort': sort,
-      'isAdult': isAdult ?? false,
-    };
+    if (_client == null) return null;
 
-    if (search != null && search.isNotEmpty) variables['search'] = search;
-    if (genres != null && genres.isNotEmpty) variables['genres'] = genres;
-    if (excludedGenres != null && excludedGenres.isNotEmpty) variables['excludedGenres'] = excludedGenres;
-    if (tags != null && tags.isNotEmpty) variables['tags'] = tags;
-    if (excludedTags != null && excludedTags.isNotEmpty) variables['excludedTags'] = excludedTags;
-    if (format != null) variables['format'] = [format];
-    if (status != null) variables['status'] = status;
-    if (season != null) variables['season'] = season;
-    // Note: AniList "startDate_like" expects "2023%" for year searching usually,
-    // or you can use separate seasonYear argument if strictly looking for a season's anime.
-    if (seasonYear != null) variables['year'] = "$seasonYear%";
-    if (yearLesser != null) variables['yearLesser'] = yearLesser;
-    if (yearGreater != null) variables['yearGreater'] = yearGreater;
-    if (episodeLesser != null) variables['episodeLesser'] = episodeLesser;
-    if (episodeGreater != null) variables['episodeGreater'] = episodeGreater;
-    if (durationLesser != null) variables['durationLesser'] = durationLesser;
-    if (durationGreater != null) variables['durationGreater'] = durationGreater;
-    if (onList != null) variables['onList'] = onList;
-    if (isLicensed != null) variables['isLicensed'] = isLicensed;
-    if (licensedBy != null && licensedBy.isNotEmpty) variables['licensedBy'] = licensedBy;
-    if (minimumTagRank != null) variables['minimumTagRank'] = minimumTagRank;
-    if (countryOfOrigin != null) variables['countryOfOrigin'] = countryOfOrigin;
-    if (source != null) variables['source'] = source;
-
-    final data = await _executeBrowseQuery(
-      query: searchAnimeQuery,
-      variables: variables,
-      operationName: 'searchAnime',
+    final variables = Variables$Query$SearchAnime(
+      page: page,
+      perPage: perPage,
+      search: search,
+      genres: genres,
+      excludedGenres: excludedGenres,
+      tags: tags,
+      excludedTags: excludedTags,
+      format: format != null ? [_parseFormat(format)] : null,
+      status: _parseStatus(status),
+      season: _parseSeason(season),
+      year: seasonYear != null ? "$seasonYear%" : null,
+      yearLesser: yearLesser,
+      yearGreater: yearGreater,
+      episodeLesser: episodeLesser,
+      episodeGreater: episodeGreater,
+      durationLesser: durationLesser,
+      durationGreater: durationGreater,
+      onList: onList,
+      isLicensed: isLicensed,
+      licensedBy: licensedBy,
+      minimumTagRank: minimumTagRank,
+      countryOfOrigin: countryOfOrigin,
+      source: _parseSource(source),
+      sort: sort.map((s) => _parseSort(s)).whereType<Enum$MediaSort>().toList(),
+      isAdult: isAdult ?? false,
     );
-    return _parseSearchPage(data);
+
+    final result = await executeQuery<Query$SearchAnime>(
+      options: QueryOptions(
+        document: documentNodeQuerySearchAnime,
+        variables: variables.toJson(),
+        fetchPolicy: FetchPolicy.networkOnly,
+      ),
+      operationName: 'searchAnime',
+      parser: (data) => Query$SearchAnime.fromJson(data),
+    );
+
+    if (result == null || result.Page == null) return null;
+
+    final pageInfo = AnilistPageInfo(
+      total: result.Page!.pageInfo?.total ?? 0,
+      perPage: result.Page!.pageInfo?.perPage ?? 0,
+      currentPage: result.Page!.pageInfo?.currentPage ?? 1,
+      lastPage: result.Page!.pageInfo?.lastPage ?? 1,
+      hasNextPage: result.Page!.pageInfo?.hasNextPage ?? false,
+    );
+
+    final mediaList = result.Page!.media
+            ?.whereType<Query$SearchAnime$Page$media>()
+            .map((media) => AnimeCard.fromFragment(media)) // TODO fromFragment accepts Fragment$AnimeCard but given Query$SearchAnime$Page$media
+            .toList() ??
+        [];
+
+    return AnilistSearchPage(pageInfo: pageInfo, results: mediaList);
   }
 }
 
-const String mediaFragment = r'''
-  fragment media on Media {
-    id
-    title {
-      userPreferred
-      romaji
-      english
-      native
-    }
-    coverImage {
-      extraLarge
-      large
-      medium
-      color
-    }
-    startDate {
-      year
-      month
-      day
-    }
-    endDate {
-      year
-      month
-      day
-    }
-    bannerImage
-    season
-    seasonYear
-    description
-    type
-    format
-    status(version: 2)
-    episodes
-    duration
-    chapters
-    volumes
-    genres
-    isAdult
-    averageScore
-    popularity
-    nextAiringEpisode {
-      airingAt
-      timeUntilAiring
-      episode
-    }
-    studios(isMain: true) {
-      edges {
-        isMain
-        node {
-          id
-          name
-        }
-      }
-    }
-  }
-''';
-
-// Query for the specific "Preview" sections (Trending, Popular, etc.)
-// We use hardcoded "perPage: 6" for previews as requested, but you can override it.
-const String homeSectionQuery = r'''
-query ($page: Int, $perPage: Int, $season: MediaSeason, $seasonYear: Int, $sort: [MediaSort], $status: MediaStatus) {
-  Page(page: $page, perPage: $perPage) {
-    pageInfo {
-      total
-      perPage
-      currentPage
-      lastPage
-      hasNextPage
-    }
-    media(season: $season, seasonYear: $seasonYear, sort: $sort, type: ANIME, status: $status, isAdult: false) {
-      ...media
-    }
-  }
-}
-''' + mediaFragment;
-
-// The Main Search Query (Supports Filters & Pagination)
-const String searchAnimeQuery = r'''
-query (
-  $page: Int,
-  $perPage: Int,
-  $search: String,
-  $genres: [String],
-  $excludedGenres: [String],
-  $tags: [String],
-  $excludedTags: [String],
-  $format: [MediaFormat],
-  $status: MediaStatus,
-  $season: MediaSeason,
-  $year: String,
-  $yearLesser: FuzzyDateInt,
-  $yearGreater: FuzzyDateInt,
-  $episodeLesser: Int,
-  $episodeGreater: Int,
-  $durationLesser: Int,
-  $durationGreater: Int,
-  $onList: Boolean,
-  $isLicensed: Boolean,
-  $licensedBy: [Int],
-  $minimumTagRank: Int,
-  $countryOfOrigin: CountryCode,
-  $source: MediaSource,
-  $sort: [MediaSort],
-  $isAdult: Boolean
-) {
-  Page(page: $page, perPage: $perPage) {
-    pageInfo {
-      total
-      perPage
-      currentPage
-      lastPage
-      hasNextPage
-    }
-    media(
-      search: $search,
-      genre_in: $genres,
-      genre_not_in: $excludedGenres,
-      tag_in: $tags,
-      tag_not_in: $excludedTags,
-      format_in: $format,
-      status: $status,
-      season: $season,
-      startDate_like: $year,
-      startDate_lesser: $yearLesser,
-      startDate_greater: $yearGreater,
-      episodes_lesser: $episodeLesser,
-      episodes_greater: $episodeGreater,
-      duration_lesser: $durationLesser,
-      duration_greater: $durationGreater,
-      onList: $onList,
-      isLicensed: $isLicensed,
-      licensedById_in: $licensedBy,
-      minimumTagRank: $minimumTagRank,
-      countryOfOrigin: $countryOfOrigin,
-      source: $source,
-      sort: $sort,
-      type: ANIME,
-      isAdult: $isAdult
-    ) {
-      ...media
-    }
-  }
-}
-''' + mediaFragment;
   

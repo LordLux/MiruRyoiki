@@ -38,7 +38,6 @@ import '../widgets/dialogs/splash/progress.dart';
 import '../widgets/page/header_widget.dart';
 import '../widgets/page/page_template.dart';
 import '../widgets/cards/series_card.dart';
-import '../widgets/pill.dart';
 import '../widgets/series_list_tile.dart';
 import '../widgets/styled_scrollbar.dart';
 import '../widgets/dialogs/lists.dart';
@@ -169,7 +168,6 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
   Map<String, List<Series>>? _groupedDataCache;
   _CacheParameters? _cacheParameters;
 
-  bool _isDialogToggling = false;
   bool _filtersOpen = false;
   bool _listsOpen = false;
 

@@ -7,30 +7,18 @@ extension AnilistServiceUser on AnilistService {
 
     logTrace('Fetching current user info from Anilist...');
 
-    const userQuery = r'''
-      query {
-        Viewer {
-          id
-          name
-          avatar {
-            large
-          }
-          bannerImage
-        }
-      }
-    ''';
-
-    return await executeQuery<AnilistUser?>(
+    final result = await executeQuery<Query$GetCurrentUser>(
       options: QueryOptions(
-        document: gql(userQuery),
+        document: documentNodeQueryGetCurrentUser,
         fetchPolicy: FetchPolicy.networkOnly,
       ),
-      operationName: 'getCurrentUser',
-      parser: (data) {
-        final user = data['Viewer'];
-        return user != null ? AnilistUser.fromJson(user) : null;
-      },
+      operationName: 'GetCurrentUser',
+      parser: (data) => Query$GetCurrentUser.fromJson(data),
     );
+
+    if (result == null || result.Viewer == null) return null;
+
+    return AnilistUser.fromJson(result.Viewer!.toJson());
   }
 
   Future<AnilistUserData?> getCurrentUserData() async {
@@ -38,134 +26,18 @@ extension AnilistServiceUser on AnilistService {
 
     logTrace('Fetching current user data from Anilist...');
 
-    final userQuery = '''query {
-    Viewer {
-      about
-      siteUrl
-      options {
-        titleLanguage
-        displayAdultContent
-        airingNotifications
-        profileColor
-        timezone
-        activityMergeTime
-        restrictMessagesToFollowing
-        staffNameLanguage
-      }
-      favourites {
-        anime {
-          nodes {
-            id
-            title {
-              romaji
-              english
-              native
-              userPreferred
-            }
-            coverImage {
-              extraLarge
-              color
-            }
-            seasonYear
-            format
-            siteUrl
-          }
-        }
-        characters {
-          nodes {
-            id
-            name {
-              full
-              native
-            }
-            image {
-              large
-            }
-            siteUrl
-          }
-        }
-        staff {
-          nodes {
-            id
-            name {
-              full
-              native
-            }
-            image {
-              large
-            }
-            siteUrl
-          }
-        }
-        studios {
-          nodes {
-            id
-            name
-            siteUrl
-          }
-        }
-      }
-      stats {
-        activityHistory {
-          date
-          amount
-          level
-        }
-      }
-      statistics {
-        anime {
-          count
-          meanScore
-          standardDeviation
-          minutesWatched
-          episodesWatched
-          genres {
-            genre
-            count
-            meanScore
-            minutesWatched
-          }
-          tags {
-            tag {
-              id
-              name
-            }
-            count
-            meanScore
-            minutesWatched
-          }
-          formats {
-            format
-            count
-            meanScore
-            minutesWatched
-          }
-          statuses {
-            status
-            count
-            meanScore
-            minutesWatched
-          }
-        }
-      }
-      donatorTier
-      donatorBadge
-      createdAt
-      updatedAt
-    }
-  }
-  ''';
-    return await executeQuery<AnilistUserData?>(
+    final result = await executeQuery<Query$GetCurrentUserData>(
       options: QueryOptions(
-        document: gql(userQuery),
+        document: documentNodeQueryGetCurrentUserData,
         fetchPolicy: FetchPolicy.networkOnly,
         cacheRereadPolicy: CacheRereadPolicy.ignoreAll,
       ),
-      operationName: 'getCurrentUserData',
-      parser: (data) {
-        final userData = data['Viewer'];
-        return userData != null ? AnilistUserData.fromJson(userData) : null;
-      },
+      operationName: 'GetCurrentUserData',
+      parser: (data) => Query$GetCurrentUserData.fromJson(data),
     );
+
+    if (result == null || result.Viewer == null) return null;
+
+    return AnilistUserData.fromJson(result.Viewer!.toJson());
   }
 }

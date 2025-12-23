@@ -1,0 +1,113 @@
+query GetNotifications($page: Int = 1, $perPage: Int = 25, $type_in: [NotificationType]) {
+  Page(page: $page, perPage: $perPage) {
+    pageInfo {
+      total
+      currentPage
+      lastPage
+      hasNextPage
+      perPage
+    }
+    notifications(type_in: $type_in) {
+      ... on AiringNotification {
+        id
+        type
+        animeId
+        episode
+        contexts
+        createdAt
+        media {
+          id
+          title {
+            romaji
+            english
+            native
+          }
+          coverImage {
+            large
+            medium
+          }
+          type
+          format
+          episodes
+        }
+      }
+      ... on RelatedMediaAdditionNotification {
+        id
+        type
+        mediaId
+        context
+        createdAt
+        media {
+          id
+          title {
+            romaji
+            english
+            native
+          }
+          coverImage {
+            large
+            medium
+          }
+          type
+          format
+          episodes
+        }
+      }
+      ... on MediaDataChangeNotification {
+        id
+        type
+        mediaId
+        context
+        reason
+        createdAt
+        media {
+          id
+          title {
+            romaji
+            english
+            native
+          }
+          coverImage {
+            large
+            medium
+          }
+          type
+          format
+          episodes
+        }
+      }
+      ... on MediaMergeNotification {
+        id
+        type
+        mediaId
+        deletedMediaTitles
+        context
+        reason
+        createdAt
+        media {
+          id
+          title {
+            romaji
+            english
+            native
+          }
+          coverImage {
+            large
+            medium
+          }
+          type
+          format
+          episodes
+        }
+      }
+      ... on MediaDeletionNotification {
+        id
+        type
+        deletedMediaTitle
+        context
+        reason
+        createdAt
+      }
+    }
+  }
+}
