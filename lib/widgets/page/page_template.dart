@@ -32,6 +32,7 @@ class MiruRyoikiTemplatePage extends StatefulWidget {
   final EdgeInsets? cardPadding;
   final Widget? floatingButton;
   final double? contentRightPadding;
+  final Widget? stickyHeader;
 
   const MiruRyoikiTemplatePage({
     super.key,
@@ -54,7 +55,8 @@ class MiruRyoikiTemplatePage extends StatefulWidget {
     this.contentRightPadding,
     this.cardPadding,
     this.floatingButton,
-  });
+    this.stickyHeader,
+  }) : assert((stickyHeader != null) == (scrollableContent == true), 'stickyHeader can only be used when scrollableContent is true');
 
   @override
   State<MiruRyoikiTemplatePage> createState() => _MiruRyoikiTemplatePageState();
@@ -132,40 +134,40 @@ class _MiruRyoikiTemplatePageState extends State<MiruRyoikiTemplatePage> {
                 child: widget.headerWidget,
               ),
               Expanded(
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    return SizedBox(
-                      width: double.infinity,
-                      height: double.infinity,
-                      child: Stack(
-                        alignment: Alignment.center,
-                        children: [
-                          SizedBox(
-                            width: ScreenUtils.kMaxContentWidth,
-                            child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                // Info bar on the left
-                                if (!widget.hideInfoBar)
-                                  SizedBox(
-                                    height: widget.infobarHeight ?? double.infinity,
-                                    width: ScreenUtils.kInfoBarWidth,
-                                    child: widget.infobar!(widget.noHeaderBanner),
-                                  ),
-                                // Content area on the right
-                                Expanded(
-                                  child: Align(
-                                    alignment: Alignment.topCenter,
-                                    child: Padding(
-                                      padding: EdgeInsets.only(left: 16.0 * Manager.fontSizeMultiplier, top: widget.noHeaderBanner && !widget.enableContentExtraHeaderPadding ? 0.0 : widget.contentExtraHeaderPadding, right: widget.contentRightPadding ?? 16.0),
-                                      child: ClipRRect(
-                                        borderRadius: BorderRadius.circular(ScreenUtils.kStatCardBorderRadius),
-                                        child: SizedBox(
-                                          height: widget.contentHeight ?? double.infinity,
-                                          child: Builder(
+                child: LayoutBuilder(builder: (context, constraints) {
+                  return SizedBox(
+                    width: double.infinity,
+                    height: double.infinity,
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        SizedBox(
+                          width: ScreenUtils.kMaxContentWidth,
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Info bar on the left
+                              if (!widget.hideInfoBar)
+                                SizedBox(
+                                  height: widget.infobarHeight ?? double.infinity,
+                                  width: ScreenUtils.kInfoBarWidth,
+                                  child: widget.infobar!(widget.noHeaderBanner),
+                                ),
+                              // Content area on the right
+                              Expanded(
+                                child: Align(
+                                  alignment: Alignment.topCenter,
+                                  child: Padding(
+                                    padding: EdgeInsets.only(left: 16.0 * Manager.fontSizeMultiplier, top: widget.noHeaderBanner && !widget.enableContentExtraHeaderPadding ? 0.0 : widget.contentExtraHeaderPadding, right: widget.contentRightPadding ?? 16.0),
+                                    child: ClipRRect(
+                                      borderRadius: BorderRadius.circular(ScreenUtils.kStatCardBorderRadius),
+                                      child: SizedBox(
+                                        height: widget.contentHeight ?? double.infinity,
+                                        child: Builder(builder: (context) {
+                                          if (!widget.scrollableContent) return widget.content;
+                                          
+                                          final scrollableContent = Builder(
                                             builder: (context) {
-                                              if (!widget.scrollableContent) return widget.content;
-                    
                                               final child = ScrollConfiguration(
                                                 behavior: ScrollConfiguration.of(context).copyWith(overscroll: true, platform: TargetPlatform.windows, scrollbars: false),
                                                 child: DynMouseScroll(
@@ -178,7 +180,7 @@ class _MiruRyoikiTemplatePageState extends State<MiruRyoikiTemplatePage> {
                                                     // Skip if we want a static header
                                                     _scrollController = controller;
                                                     if (_scrollController != null) _setupScrollListener();
-                    
+
                                                     // Then use the controller for your scrollable content
                                                     return CustomScrollView(
                                                       controller: controller,
@@ -195,32 +197,43 @@ class _MiruRyoikiTemplatePageState extends State<MiruRyoikiTemplatePage> {
                                                 );
                                               return child;
                                             },
-                                          ),
-                                        ),
+                                          );
+                                          
+                                          if (widget.stickyHeader != null) {
+                                            return Column(
+                                              children: [
+                                                widget.stickyHeader!,
+                                                VDiv(16.0),
+                                                Expanded(child: scrollableContent),
+                                              ],
+                                            );
+                                          }
+                                          return scrollableContent;
+                                        }),
                                       ),
                                     ),
                                   ),
                                 ),
-                              ],
-                            ),
+                              ),
+                            ],
                           ),
-                          if (widget.floatingButton != null)
-                            Positioned(
-                              bottom: 0,
-                              child: Container(
-                                width: min(ScreenUtils.kMaxContentWidth + 100, constraints.maxWidth),
-                                alignment: Alignment.bottomRight,
-                                child: Padding(
-                                  padding: const EdgeInsets.only(right: 16.0), // to always keep some space from the right edge when the screen is smaller than max content width
-                                  child: widget.floatingButton!,
-                                ),
+                        ),
+                        if (widget.floatingButton != null)
+                          Positioned(
+                            bottom: 0,
+                            child: Container(
+                              width: min(ScreenUtils.kMaxContentWidth + 100, constraints.maxWidth),
+                              alignment: Alignment.bottomRight,
+                              child: Padding(
+                                padding: const EdgeInsets.only(right: 16.0), // to always keep some space from the right edge when the screen is smaller than max content width
+                                child: widget.floatingButton!,
                               ),
                             ),
-                        ],
-                      ),
-                    );
-                  }
-                ),
+                          ),
+                      ],
+                    ),
+                  );
+                }),
               ),
             ],
           ),

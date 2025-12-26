@@ -12,42 +12,75 @@ query GetAnimeOverview($id: Int!) {
       scoreDistribution { score amount }
     }
 
-    # Relations (Max 10)
+    # Relations
     relations {
       edges {
         id
         relationType(version: 2)
         node {
           ...AnimeCard
-          bannerImage
         }
       }
     }
 
-    # Characters Preview (Max 6)
+    # Characters Preview
     characterPreview: characters(perPage: 6, sort: [ROLE, RELEVANCE, ID]) {
       edges {
         id
         role
         name
-        node { ...CharacterCard }
         voiceActors(language: JAPANESE, sort: [RELEVANCE, ID]) {
+          ...StaffCard
+        }
+        node {
+          ...CharacterCard
+        }
+      }
+    }
+
+    # Staff Preview
+    staffPreview: staff(perPage: 4, sort: [RELEVANCE, ID]) {
+      edges {
+        id
+        role
+        node {
           ...StaffCard
         }
       }
     }
 
-    # Staff Preview (Max 3)
-    staffPreview: staff(perPage: 3, sort: [RELEVANCE, ID]) {
+    # Studios
+    studios {
       edges {
-        id
-        role
-        node { ...StaffCard }
+        isMain
+        node {
+          id
+          name
+        }
       }
     }
 
-    # Recommendations Preview (Max 7)
+    # # Review Preview
+    # reviewPreview: reviews(perPage: 2, sort: [RATING_DESC, ID]) {
+    #   pageInfo {
+    #     total
+    #   }
+    #   nodes {
+    #     id
+    #     summary
+    #     rating
+    #     ratingAmount
+    #     user {
+    #       ...UserAvatar
+    #     }
+    #   }
+    # }
+
+    # Recommendations Preview
     recommendations(perPage: 7, sort: [RATING_DESC, ID]) {
+      pageInfo {
+        total
+      }
       nodes {
         id
         rating
@@ -55,7 +88,9 @@ query GetAnimeOverview($id: Int!) {
         mediaRecommendation {
           ...AnimeCard
         }
-        user { ...UserAvatar }
+        user {
+          ...UserAvatar
+        }
       }
     }
     
@@ -65,13 +100,30 @@ query GetAnimeOverview($id: Int!) {
     }
   }
 
-  # Following who are watching this (Max 8)
+  # Following who are watching this
   Page(perPage: 8) {
+    pageInfo {
+      total
+      perPage
+      currentPage
+      lastPage
+      hasNextPage
+    }
     mediaList(mediaId: $id, isFollowing: true, sort: [UPDATED_TIME_DESC]) {
       id
       status
-      score(format: POINT_10)
-      user { ...UserAvatar }
+      score
+      progress
+      user {
+        id
+        name
+        avatar {
+          large
+        }
+        mediaListOptions {
+          scoreFormat
+        }
+      }
     }
   }
 }
@@ -183,119 +235,6 @@ query GetAnimeStats($id: Int!) {
         trending
         popularity
       }
-    }
-  }
-}
-query GetFullAnimeData($id: Int!) {
-  Media(id: $id, type: ANIME) {
-    id
-    relations {
-      edges {
-        id
-        relationType(version: 2)
-        node {
-          id
-          title {
-            userPreferred
-          }
-          format
-          type
-          status(version: 2)
-          bannerImage
-          coverImage {
-            large
-          }
-        }
-      }
-    }
-    characters(perPage: 25, sort: [ROLE, RELEVANCE, ID]) {
-      pageInfo {
-        total
-        perPage
-        currentPage
-        lastPage
-        hasNextPage
-      }
-      edges {
-        id
-        role
-        name
-        voiceActors(language: JAPANESE, sort: [RELEVANCE, ID]) {
-          id
-          name {
-            userPreferred
-          }
-          language: languageV2
-          image {
-            large
-          }
-        }
-        node {
-          id
-          name {
-            userPreferred
-          }
-          image {
-            large
-          }
-        }
-      }
-    }
-    staff(perPage: 25, sort: [RELEVANCE, ID]) {
-      pageInfo {
-        total
-        perPage
-        currentPage
-        lastPage
-        hasNextPage
-      }
-      edges {
-        id
-        role
-        node {
-          id
-          name {
-            userPreferred
-          }
-          language: languageV2
-          image {
-            large
-          }
-        }
-      }
-    }
-    stats {
-      statusDistribution {
-        status
-        amount
-      }
-      scoreDistribution {
-        score
-        amount
-      }
-    }
-    mediaListEntry {
-      id
-      status
-      score
-      progress
-      repeat
-      private
-      notes
-      hiddenFromStatusLists
-      customLists
-      startedAt {
-        year
-        month
-        day
-      }
-      completedAt {
-        year
-        month
-        day
-      }
-      updatedAt
-      createdAt
     }
   }
 }

@@ -4,13 +4,14 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../manager.dart';
 import '../../utils/screen.dart';
 import '../../utils/time.dart';
+import 'highlighted_button.dart';
 import 'wrapper.dart';
 
 class WrappedHyperlinkButton extends StatelessWidget {
   final String? text;
   final Widget? title;
   final Widget? icon;
-  final String? url;
+  final String url;
   final VoidCallback? onPressed;
   final TextStyle? style;
   final Color? iconColor;
@@ -21,7 +22,7 @@ class WrappedHyperlinkButton extends StatelessWidget {
 
   const WrappedHyperlinkButton({
     super.key,
-    this.url,
+    required this.url,
     this.text,
     this.title,
     this.icon,
@@ -36,57 +37,22 @@ class WrappedHyperlinkButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Transform.translate(
-      offset: Offset(-12, 0),
-      child: MouseButtonWrapper(
-        tooltipWaitDuration: tooltipWaitDuration,
-        tooltip: tooltip,
-        tooltipWidget: tooltipWidget,
-        child: (isHovering) => HyperlinkButton(
-          style: ButtonStyle(
-            backgroundColor: WidgetStateProperty.resolveWith((states) {
-              final hoverCol = hoverColor?.toAccentColor() ?? Manager.accentColor;
-              if (states.isDisabled) {
-                return hoverCol.darker.withOpacity(.2);
-              } else if (states.isPressed) {
-                return hoverCol.lightest.withOpacity(.2);
-              } else if (states.isHovered) {
-                return hoverCol.light.withOpacity(.2);
-              } else {
-                return null;
-              }
-            }),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (text != null) Text(text!, style: style ?? Manager.subtitleStyle),
-              if (title != null) ...[
-                if (text != null) HDiv(4),
-                title!,
-              ],
-              HDiv(8),
-              if (icon != null)
-                AnimatedOpacity(
-                  opacity: isHovering ? 1.0 : 0.0,
-                  duration: shortDuration,
-                  child: ColorFiltered(
-                    colorFilter: ColorFilter.mode(
-                      iconColor ?? Manager.accentColor.lightest,
-                      BlendMode.srcIn,
-                    ),
-                    child: icon!,
-                  ),
-                ),
-            ],
-          ),
-          onPressed: () {
-            if (url != null && url!.isNotEmpty) launchUrl(Uri.parse(url!));
-
-            onPressed?.call();
-          },
-        ),
-      ),
+    return HighlightedButton(
+      text: text,
+      title: title,
+      icon: icon,
+      onPressed: () async {
+        final uri = Uri.parse(url);
+        if (await canLaunchUrl(uri)) await launchUrl(uri);
+        
+        if (onPressed != null) onPressed!();
+      },
+      style: style,
+      iconColor: iconColor,
+      tooltip: tooltip,
+      tooltipWidget: tooltipWidget,
+      tooltipWaitDuration: tooltipWaitDuration,
+      hoverColor: hoverColor,
     );
   }
 }

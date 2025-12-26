@@ -1515,7 +1515,21 @@ class Fragment$AnimeOverview implements Fragment$AnimeCard {
     this.favourites,
     this.updatedAt,
     this.siteUrl,
+    this.duration,
+    this.hashtag,
+    this.synonyms,
+    this.source,
+    this.isLocked,
+    required this.isFavouriteBlocked,
+    this.countryOfOrigin,
+    this.isLicensed,
+    this.isRecommendationBlocked,
+    this.isReviewBlocked,
+    this.streamingEpisodes,
+    this.trailer,
     this.rankings,
+    this.tags,
+    this.mediaListEntry,
   });
 
   factory Fragment$AnimeOverview.fromJson(Map<String, dynamic> json) {
@@ -1544,7 +1558,21 @@ class Fragment$AnimeOverview implements Fragment$AnimeCard {
     final l$favourites = json['favourites'];
     final l$updatedAt = json['updatedAt'];
     final l$siteUrl = json['siteUrl'];
+    final l$duration = json['duration'];
+    final l$hashtag = json['hashtag'];
+    final l$synonyms = json['synonyms'];
+    final l$source = json['source'];
+    final l$isLocked = json['isLocked'];
+    final l$isFavouriteBlocked = json['isFavouriteBlocked'];
+    final l$countryOfOrigin = json['countryOfOrigin'];
+    final l$isLicensed = json['isLicensed'];
+    final l$isRecommendationBlocked = json['isRecommendationBlocked'];
+    final l$isReviewBlocked = json['isReviewBlocked'];
+    final l$streamingEpisodes = json['streamingEpisodes'];
+    final l$trailer = json['trailer'];
     final l$rankings = json['rankings'];
+    final l$tags = json['tags'];
+    final l$mediaListEntry = json['mediaListEntry'];
     return Fragment$AnimeOverview(
       id: (l$id as int),
       title: l$title == null
@@ -1592,12 +1620,45 @@ class Fragment$AnimeOverview implements Fragment$AnimeCard {
       favourites: (l$favourites as int?),
       updatedAt: (l$updatedAt as int?),
       siteUrl: (l$siteUrl as String?),
+      duration: (l$duration as int?),
+      hashtag: (l$hashtag as String?),
+      synonyms:
+          (l$synonyms as List<dynamic>?)?.map((e) => (e as String?)).toList(),
+      source: l$source == null
+          ? null
+          : fromJson$Enum$MediaSource((l$source as String)),
+      isLocked: (l$isLocked as bool?),
+      isFavouriteBlocked: (l$isFavouriteBlocked as bool),
+      countryOfOrigin: (l$countryOfOrigin as String?),
+      isLicensed: (l$isLicensed as bool?),
+      isRecommendationBlocked: (l$isRecommendationBlocked as bool?),
+      isReviewBlocked: (l$isReviewBlocked as bool?),
+      streamingEpisodes: (l$streamingEpisodes as List<dynamic>?)
+          ?.map((e) => e == null
+              ? null
+              : Fragment$AnimeOverview$streamingEpisodes.fromJson(
+                  (e as Map<String, dynamic>)))
+          .toList(),
+      trailer: l$trailer == null
+          ? null
+          : Fragment$AnimeOverview$trailer.fromJson(
+              (l$trailer as Map<String, dynamic>)),
       rankings: (l$rankings as List<dynamic>?)
           ?.map((e) => e == null
               ? null
               : Fragment$AnimeOverview$rankings.fromJson(
                   (e as Map<String, dynamic>)))
           .toList(),
+      tags: (l$tags as List<dynamic>?)
+          ?.map((e) => e == null
+              ? null
+              : Fragment$AnimeOverview$tags.fromJson(
+                  (e as Map<String, dynamic>)))
+          .toList(),
+      mediaListEntry: l$mediaListEntry == null
+          ? null
+          : Fragment$AnimeOverview$mediaListEntry.fromJson(
+              (l$mediaListEntry as Map<String, dynamic>)),
     );
   }
 
@@ -1651,7 +1712,35 @@ class Fragment$AnimeOverview implements Fragment$AnimeCard {
 
   final String? siteUrl;
 
+  final int? duration;
+
+  final String? hashtag;
+
+  final List<String?>? synonyms;
+
+  final Enum$MediaSource? source;
+
+  final bool? isLocked;
+
+  final bool isFavouriteBlocked;
+
+  final String? countryOfOrigin;
+
+  final bool? isLicensed;
+
+  final bool? isRecommendationBlocked;
+
+  final bool? isReviewBlocked;
+
+  final List<Fragment$AnimeOverview$streamingEpisodes?>? streamingEpisodes;
+
+  final Fragment$AnimeOverview$trailer? trailer;
+
   final List<Fragment$AnimeOverview$rankings?>? rankings;
+
+  final List<Fragment$AnimeOverview$tags?>? tags;
+
+  final Fragment$AnimeOverview$mediaListEntry? mediaListEntry;
 
   Map<String, dynamic> toJson() {
     final _resultData = <String, dynamic>{};
@@ -1708,8 +1797,38 @@ class Fragment$AnimeOverview implements Fragment$AnimeCard {
     _resultData['updatedAt'] = l$updatedAt;
     final l$siteUrl = siteUrl;
     _resultData['siteUrl'] = l$siteUrl;
+    final l$duration = duration;
+    _resultData['duration'] = l$duration;
+    final l$hashtag = hashtag;
+    _resultData['hashtag'] = l$hashtag;
+    final l$synonyms = synonyms;
+    _resultData['synonyms'] = l$synonyms?.map((e) => e).toList();
+    final l$source = source;
+    _resultData['source'] =
+        l$source == null ? null : toJson$Enum$MediaSource(l$source);
+    final l$isLocked = isLocked;
+    _resultData['isLocked'] = l$isLocked;
+    final l$isFavouriteBlocked = isFavouriteBlocked;
+    _resultData['isFavouriteBlocked'] = l$isFavouriteBlocked;
+    final l$countryOfOrigin = countryOfOrigin;
+    _resultData['countryOfOrigin'] = l$countryOfOrigin;
+    final l$isLicensed = isLicensed;
+    _resultData['isLicensed'] = l$isLicensed;
+    final l$isRecommendationBlocked = isRecommendationBlocked;
+    _resultData['isRecommendationBlocked'] = l$isRecommendationBlocked;
+    final l$isReviewBlocked = isReviewBlocked;
+    _resultData['isReviewBlocked'] = l$isReviewBlocked;
+    final l$streamingEpisodes = streamingEpisodes;
+    _resultData['streamingEpisodes'] =
+        l$streamingEpisodes?.map((e) => e?.toJson()).toList();
+    final l$trailer = trailer;
+    _resultData['trailer'] = l$trailer?.toJson();
     final l$rankings = rankings;
     _resultData['rankings'] = l$rankings?.map((e) => e?.toJson()).toList();
+    final l$tags = tags;
+    _resultData['tags'] = l$tags?.map((e) => e?.toJson()).toList();
+    final l$mediaListEntry = mediaListEntry;
+    _resultData['mediaListEntry'] = l$mediaListEntry?.toJson();
     return _resultData;
   }
 
@@ -1740,7 +1859,21 @@ class Fragment$AnimeOverview implements Fragment$AnimeCard {
     final l$favourites = favourites;
     final l$updatedAt = updatedAt;
     final l$siteUrl = siteUrl;
+    final l$duration = duration;
+    final l$hashtag = hashtag;
+    final l$synonyms = synonyms;
+    final l$source = source;
+    final l$isLocked = isLocked;
+    final l$isFavouriteBlocked = isFavouriteBlocked;
+    final l$countryOfOrigin = countryOfOrigin;
+    final l$isLicensed = isLicensed;
+    final l$isRecommendationBlocked = isRecommendationBlocked;
+    final l$isReviewBlocked = isReviewBlocked;
+    final l$streamingEpisodes = streamingEpisodes;
+    final l$trailer = trailer;
     final l$rankings = rankings;
+    final l$tags = tags;
+    final l$mediaListEntry = mediaListEntry;
     return Object.hashAll([
       l$id,
       l$title,
@@ -1767,7 +1900,23 @@ class Fragment$AnimeOverview implements Fragment$AnimeCard {
       l$favourites,
       l$updatedAt,
       l$siteUrl,
+      l$duration,
+      l$hashtag,
+      l$synonyms == null ? null : Object.hashAll(l$synonyms.map((v) => v)),
+      l$source,
+      l$isLocked,
+      l$isFavouriteBlocked,
+      l$countryOfOrigin,
+      l$isLicensed,
+      l$isRecommendationBlocked,
+      l$isReviewBlocked,
+      l$streamingEpisodes == null
+          ? null
+          : Object.hashAll(l$streamingEpisodes.map((v) => v)),
+      l$trailer,
       l$rankings == null ? null : Object.hashAll(l$rankings.map((v) => v)),
+      l$tags == null ? null : Object.hashAll(l$tags.map((v) => v)),
+      l$mediaListEntry,
     ]);
   }
 
@@ -1915,6 +2064,88 @@ class Fragment$AnimeOverview implements Fragment$AnimeCard {
     if (l$siteUrl != lOther$siteUrl) {
       return false;
     }
+    final l$duration = duration;
+    final lOther$duration = other.duration;
+    if (l$duration != lOther$duration) {
+      return false;
+    }
+    final l$hashtag = hashtag;
+    final lOther$hashtag = other.hashtag;
+    if (l$hashtag != lOther$hashtag) {
+      return false;
+    }
+    final l$synonyms = synonyms;
+    final lOther$synonyms = other.synonyms;
+    if (l$synonyms != null && lOther$synonyms != null) {
+      if (l$synonyms.length != lOther$synonyms.length) {
+        return false;
+      }
+      for (int i = 0; i < l$synonyms.length; i++) {
+        final l$synonyms$entry = l$synonyms[i];
+        final lOther$synonyms$entry = lOther$synonyms[i];
+        if (l$synonyms$entry != lOther$synonyms$entry) {
+          return false;
+        }
+      }
+    } else if (l$synonyms != lOther$synonyms) {
+      return false;
+    }
+    final l$source = source;
+    final lOther$source = other.source;
+    if (l$source != lOther$source) {
+      return false;
+    }
+    final l$isLocked = isLocked;
+    final lOther$isLocked = other.isLocked;
+    if (l$isLocked != lOther$isLocked) {
+      return false;
+    }
+    final l$isFavouriteBlocked = isFavouriteBlocked;
+    final lOther$isFavouriteBlocked = other.isFavouriteBlocked;
+    if (l$isFavouriteBlocked != lOther$isFavouriteBlocked) {
+      return false;
+    }
+    final l$countryOfOrigin = countryOfOrigin;
+    final lOther$countryOfOrigin = other.countryOfOrigin;
+    if (l$countryOfOrigin != lOther$countryOfOrigin) {
+      return false;
+    }
+    final l$isLicensed = isLicensed;
+    final lOther$isLicensed = other.isLicensed;
+    if (l$isLicensed != lOther$isLicensed) {
+      return false;
+    }
+    final l$isRecommendationBlocked = isRecommendationBlocked;
+    final lOther$isRecommendationBlocked = other.isRecommendationBlocked;
+    if (l$isRecommendationBlocked != lOther$isRecommendationBlocked) {
+      return false;
+    }
+    final l$isReviewBlocked = isReviewBlocked;
+    final lOther$isReviewBlocked = other.isReviewBlocked;
+    if (l$isReviewBlocked != lOther$isReviewBlocked) {
+      return false;
+    }
+    final l$streamingEpisodes = streamingEpisodes;
+    final lOther$streamingEpisodes = other.streamingEpisodes;
+    if (l$streamingEpisodes != null && lOther$streamingEpisodes != null) {
+      if (l$streamingEpisodes.length != lOther$streamingEpisodes.length) {
+        return false;
+      }
+      for (int i = 0; i < l$streamingEpisodes.length; i++) {
+        final l$streamingEpisodes$entry = l$streamingEpisodes[i];
+        final lOther$streamingEpisodes$entry = lOther$streamingEpisodes[i];
+        if (l$streamingEpisodes$entry != lOther$streamingEpisodes$entry) {
+          return false;
+        }
+      }
+    } else if (l$streamingEpisodes != lOther$streamingEpisodes) {
+      return false;
+    }
+    final l$trailer = trailer;
+    final lOther$trailer = other.trailer;
+    if (l$trailer != lOther$trailer) {
+      return false;
+    }
     final l$rankings = rankings;
     final lOther$rankings = other.rankings;
     if (l$rankings != null && lOther$rankings != null) {
@@ -1929,6 +2160,27 @@ class Fragment$AnimeOverview implements Fragment$AnimeCard {
         }
       }
     } else if (l$rankings != lOther$rankings) {
+      return false;
+    }
+    final l$tags = tags;
+    final lOther$tags = other.tags;
+    if (l$tags != null && lOther$tags != null) {
+      if (l$tags.length != lOther$tags.length) {
+        return false;
+      }
+      for (int i = 0; i < l$tags.length; i++) {
+        final l$tags$entry = l$tags[i];
+        final lOther$tags$entry = lOther$tags[i];
+        if (l$tags$entry != lOther$tags$entry) {
+          return false;
+        }
+      }
+    } else if (l$tags != lOther$tags) {
+      return false;
+    }
+    final l$mediaListEntry = mediaListEntry;
+    final lOther$mediaListEntry = other.mediaListEntry;
+    if (l$mediaListEntry != lOther$mediaListEntry) {
       return false;
     }
     return true;
@@ -1978,19 +2230,47 @@ abstract class CopyWith$Fragment$AnimeOverview<TRes> {
     int? favourites,
     int? updatedAt,
     String? siteUrl,
+    int? duration,
+    String? hashtag,
+    List<String?>? synonyms,
+    Enum$MediaSource? source,
+    bool? isLocked,
+    bool? isFavouriteBlocked,
+    String? countryOfOrigin,
+    bool? isLicensed,
+    bool? isRecommendationBlocked,
+    bool? isReviewBlocked,
+    List<Fragment$AnimeOverview$streamingEpisodes?>? streamingEpisodes,
+    Fragment$AnimeOverview$trailer? trailer,
     List<Fragment$AnimeOverview$rankings?>? rankings,
+    List<Fragment$AnimeOverview$tags?>? tags,
+    Fragment$AnimeOverview$mediaListEntry? mediaListEntry,
   });
   CopyWith$Fragment$AnimeOverview$title<TRes> get title;
   CopyWith$Fragment$AnimeOverview$coverImage<TRes> get coverImage;
   CopyWith$Fragment$AnimeOverview$nextAiringEpisode<TRes> get nextAiringEpisode;
   CopyWith$Fragment$AnimeOverview$startDate<TRes> get startDate;
   CopyWith$Fragment$AnimeOverview$endDate<TRes> get endDate;
+  TRes streamingEpisodes(
+      Iterable<Fragment$AnimeOverview$streamingEpisodes?>? Function(
+              Iterable<
+                  CopyWith$Fragment$AnimeOverview$streamingEpisodes<
+                      Fragment$AnimeOverview$streamingEpisodes>?>?)
+          _fn);
+  CopyWith$Fragment$AnimeOverview$trailer<TRes> get trailer;
   TRes rankings(
       Iterable<Fragment$AnimeOverview$rankings?>? Function(
               Iterable<
                   CopyWith$Fragment$AnimeOverview$rankings<
                       Fragment$AnimeOverview$rankings>?>?)
           _fn);
+  TRes tags(
+      Iterable<Fragment$AnimeOverview$tags?>? Function(
+              Iterable<
+                  CopyWith$Fragment$AnimeOverview$tags<
+                      Fragment$AnimeOverview$tags>?>?)
+          _fn);
+  CopyWith$Fragment$AnimeOverview$mediaListEntry<TRes> get mediaListEntry;
 }
 
 class _CopyWithImpl$Fragment$AnimeOverview<TRes>
@@ -2032,7 +2312,21 @@ class _CopyWithImpl$Fragment$AnimeOverview<TRes>
     Object? favourites = _undefined,
     Object? updatedAt = _undefined,
     Object? siteUrl = _undefined,
+    Object? duration = _undefined,
+    Object? hashtag = _undefined,
+    Object? synonyms = _undefined,
+    Object? source = _undefined,
+    Object? isLocked = _undefined,
+    Object? isFavouriteBlocked = _undefined,
+    Object? countryOfOrigin = _undefined,
+    Object? isLicensed = _undefined,
+    Object? isRecommendationBlocked = _undefined,
+    Object? isReviewBlocked = _undefined,
+    Object? streamingEpisodes = _undefined,
+    Object? trailer = _undefined,
     Object? rankings = _undefined,
+    Object? tags = _undefined,
+    Object? mediaListEntry = _undefined,
   }) =>
       _then(Fragment$AnimeOverview(
         id: id == _undefined || id == null ? _instance.id : (id as int),
@@ -2099,9 +2393,50 @@ class _CopyWithImpl$Fragment$AnimeOverview<TRes>
             updatedAt == _undefined ? _instance.updatedAt : (updatedAt as int?),
         siteUrl:
             siteUrl == _undefined ? _instance.siteUrl : (siteUrl as String?),
+        duration:
+            duration == _undefined ? _instance.duration : (duration as int?),
+        hashtag:
+            hashtag == _undefined ? _instance.hashtag : (hashtag as String?),
+        synonyms: synonyms == _undefined
+            ? _instance.synonyms
+            : (synonyms as List<String?>?),
+        source: source == _undefined
+            ? _instance.source
+            : (source as Enum$MediaSource?),
+        isLocked:
+            isLocked == _undefined ? _instance.isLocked : (isLocked as bool?),
+        isFavouriteBlocked:
+            isFavouriteBlocked == _undefined || isFavouriteBlocked == null
+                ? _instance.isFavouriteBlocked
+                : (isFavouriteBlocked as bool),
+        countryOfOrigin: countryOfOrigin == _undefined
+            ? _instance.countryOfOrigin
+            : (countryOfOrigin as String?),
+        isLicensed: isLicensed == _undefined
+            ? _instance.isLicensed
+            : (isLicensed as bool?),
+        isRecommendationBlocked: isRecommendationBlocked == _undefined
+            ? _instance.isRecommendationBlocked
+            : (isRecommendationBlocked as bool?),
+        isReviewBlocked: isReviewBlocked == _undefined
+            ? _instance.isReviewBlocked
+            : (isReviewBlocked as bool?),
+        streamingEpisodes: streamingEpisodes == _undefined
+            ? _instance.streamingEpisodes
+            : (streamingEpisodes
+                as List<Fragment$AnimeOverview$streamingEpisodes?>?),
+        trailer: trailer == _undefined
+            ? _instance.trailer
+            : (trailer as Fragment$AnimeOverview$trailer?),
         rankings: rankings == _undefined
             ? _instance.rankings
             : (rankings as List<Fragment$AnimeOverview$rankings?>?),
+        tags: tags == _undefined
+            ? _instance.tags
+            : (tags as List<Fragment$AnimeOverview$tags?>?),
+        mediaListEntry: mediaListEntry == _undefined
+            ? _instance.mediaListEntry
+            : (mediaListEntry as Fragment$AnimeOverview$mediaListEntry?),
       ));
 
   CopyWith$Fragment$AnimeOverview$title<TRes> get title {
@@ -2146,6 +2481,29 @@ class _CopyWithImpl$Fragment$AnimeOverview<TRes>
             local$endDate, (e) => call(endDate: e));
   }
 
+  TRes streamingEpisodes(
+          Iterable<Fragment$AnimeOverview$streamingEpisodes?>? Function(
+                  Iterable<
+                      CopyWith$Fragment$AnimeOverview$streamingEpisodes<
+                          Fragment$AnimeOverview$streamingEpisodes>?>?)
+              _fn) =>
+      call(
+          streamingEpisodes:
+              _fn(_instance.streamingEpisodes?.map((e) => e == null
+                  ? null
+                  : CopyWith$Fragment$AnimeOverview$streamingEpisodes(
+                      e,
+                      (i) => i,
+                    )))?.toList());
+
+  CopyWith$Fragment$AnimeOverview$trailer<TRes> get trailer {
+    final local$trailer = _instance.trailer;
+    return local$trailer == null
+        ? CopyWith$Fragment$AnimeOverview$trailer.stub(_then(_instance))
+        : CopyWith$Fragment$AnimeOverview$trailer(
+            local$trailer, (e) => call(trailer: e));
+  }
+
   TRes rankings(
           Iterable<Fragment$AnimeOverview$rankings?>? Function(
                   Iterable<
@@ -2159,6 +2517,28 @@ class _CopyWithImpl$Fragment$AnimeOverview<TRes>
                   e,
                   (i) => i,
                 )))?.toList());
+
+  TRes tags(
+          Iterable<Fragment$AnimeOverview$tags?>? Function(
+                  Iterable<
+                      CopyWith$Fragment$AnimeOverview$tags<
+                          Fragment$AnimeOverview$tags>?>?)
+              _fn) =>
+      call(
+          tags: _fn(_instance.tags?.map((e) => e == null
+              ? null
+              : CopyWith$Fragment$AnimeOverview$tags(
+                  e,
+                  (i) => i,
+                )))?.toList());
+
+  CopyWith$Fragment$AnimeOverview$mediaListEntry<TRes> get mediaListEntry {
+    final local$mediaListEntry = _instance.mediaListEntry;
+    return local$mediaListEntry == null
+        ? CopyWith$Fragment$AnimeOverview$mediaListEntry.stub(_then(_instance))
+        : CopyWith$Fragment$AnimeOverview$mediaListEntry(
+            local$mediaListEntry, (e) => call(mediaListEntry: e));
+  }
 }
 
 class _CopyWithStubImpl$Fragment$AnimeOverview<TRes>
@@ -2193,7 +2573,21 @@ class _CopyWithStubImpl$Fragment$AnimeOverview<TRes>
     int? favourites,
     int? updatedAt,
     String? siteUrl,
+    int? duration,
+    String? hashtag,
+    List<String?>? synonyms,
+    Enum$MediaSource? source,
+    bool? isLocked,
+    bool? isFavouriteBlocked,
+    String? countryOfOrigin,
+    bool? isLicensed,
+    bool? isRecommendationBlocked,
+    bool? isReviewBlocked,
+    List<Fragment$AnimeOverview$streamingEpisodes?>? streamingEpisodes,
+    Fragment$AnimeOverview$trailer? trailer,
     List<Fragment$AnimeOverview$rankings?>? rankings,
+    List<Fragment$AnimeOverview$tags?>? tags,
+    Fragment$AnimeOverview$mediaListEntry? mediaListEntry,
   }) =>
       _res;
 
@@ -2213,7 +2607,17 @@ class _CopyWithStubImpl$Fragment$AnimeOverview<TRes>
   CopyWith$Fragment$AnimeOverview$endDate<TRes> get endDate =>
       CopyWith$Fragment$AnimeOverview$endDate.stub(_res);
 
+  streamingEpisodes(_fn) => _res;
+
+  CopyWith$Fragment$AnimeOverview$trailer<TRes> get trailer =>
+      CopyWith$Fragment$AnimeOverview$trailer.stub(_res);
+
   rankings(_fn) => _res;
+
+  tags(_fn) => _res;
+
+  CopyWith$Fragment$AnimeOverview$mediaListEntry<TRes> get mediaListEntry =>
+      CopyWith$Fragment$AnimeOverview$mediaListEntry.stub(_res);
 }
 
 const fragmentDefinitionAnimeOverview = FragmentDefinitionNode(
@@ -2308,6 +2712,153 @@ const fragmentDefinitionAnimeOverview = FragmentDefinitionNode(
       selectionSet: null,
     ),
     FieldNode(
+      name: NameNode(value: 'duration'),
+      alias: null,
+      arguments: [],
+      directives: [],
+      selectionSet: null,
+    ),
+    FieldNode(
+      name: NameNode(value: 'hashtag'),
+      alias: null,
+      arguments: [],
+      directives: [],
+      selectionSet: null,
+    ),
+    FieldNode(
+      name: NameNode(value: 'synonyms'),
+      alias: null,
+      arguments: [],
+      directives: [],
+      selectionSet: null,
+    ),
+    FieldNode(
+      name: NameNode(value: 'source'),
+      alias: null,
+      arguments: [
+        ArgumentNode(
+          name: NameNode(value: 'version'),
+          value: IntValueNode(value: '3'),
+        )
+      ],
+      directives: [],
+      selectionSet: null,
+    ),
+    FieldNode(
+      name: NameNode(value: 'isLocked'),
+      alias: null,
+      arguments: [],
+      directives: [],
+      selectionSet: null,
+    ),
+    FieldNode(
+      name: NameNode(value: 'isFavouriteBlocked'),
+      alias: null,
+      arguments: [],
+      directives: [],
+      selectionSet: null,
+    ),
+    FieldNode(
+      name: NameNode(value: 'countryOfOrigin'),
+      alias: null,
+      arguments: [],
+      directives: [],
+      selectionSet: null,
+    ),
+    FieldNode(
+      name: NameNode(value: 'isLicensed'),
+      alias: null,
+      arguments: [],
+      directives: [],
+      selectionSet: null,
+    ),
+    FieldNode(
+      name: NameNode(value: 'isRecommendationBlocked'),
+      alias: null,
+      arguments: [],
+      directives: [],
+      selectionSet: null,
+    ),
+    FieldNode(
+      name: NameNode(value: 'isReviewBlocked'),
+      alias: null,
+      arguments: [],
+      directives: [],
+      selectionSet: null,
+    ),
+    FieldNode(
+      name: NameNode(value: 'streamingEpisodes'),
+      alias: null,
+      arguments: [],
+      directives: [],
+      selectionSet: SelectionSetNode(selections: [
+        FieldNode(
+          name: NameNode(value: 'site'),
+          alias: null,
+          arguments: [],
+          directives: [],
+          selectionSet: null,
+        ),
+        FieldNode(
+          name: NameNode(value: 'title'),
+          alias: null,
+          arguments: [],
+          directives: [],
+          selectionSet: null,
+        ),
+        FieldNode(
+          name: NameNode(value: 'thumbnail'),
+          alias: null,
+          arguments: [],
+          directives: [],
+          selectionSet: null,
+        ),
+        FieldNode(
+          name: NameNode(value: 'url'),
+          alias: null,
+          arguments: [],
+          directives: [],
+          selectionSet: null,
+        ),
+        FieldNode(
+          name: NameNode(value: '__typename'),
+          alias: null,
+          arguments: [],
+          directives: [],
+          selectionSet: null,
+        ),
+      ]),
+    ),
+    FieldNode(
+      name: NameNode(value: 'trailer'),
+      alias: null,
+      arguments: [],
+      directives: [],
+      selectionSet: SelectionSetNode(selections: [
+        FieldNode(
+          name: NameNode(value: 'id'),
+          alias: null,
+          arguments: [],
+          directives: [],
+          selectionSet: null,
+        ),
+        FieldNode(
+          name: NameNode(value: 'site'),
+          alias: null,
+          arguments: [],
+          directives: [],
+          selectionSet: null,
+        ),
+        FieldNode(
+          name: NameNode(value: '__typename'),
+          alias: null,
+          arguments: [],
+          directives: [],
+          selectionSet: null,
+        ),
+      ]),
+    ),
+    FieldNode(
       name: NameNode(value: 'rankings'),
       alias: null,
       arguments: [],
@@ -2364,6 +2915,106 @@ const fragmentDefinitionAnimeOverview = FragmentDefinitionNode(
         ),
         FieldNode(
           name: NameNode(value: 'context'),
+          alias: null,
+          arguments: [],
+          directives: [],
+          selectionSet: null,
+        ),
+        FieldNode(
+          name: NameNode(value: '__typename'),
+          alias: null,
+          arguments: [],
+          directives: [],
+          selectionSet: null,
+        ),
+      ]),
+    ),
+    FieldNode(
+      name: NameNode(value: 'tags'),
+      alias: null,
+      arguments: [],
+      directives: [],
+      selectionSet: SelectionSetNode(selections: [
+        FieldNode(
+          name: NameNode(value: 'id'),
+          alias: null,
+          arguments: [],
+          directives: [],
+          selectionSet: null,
+        ),
+        FieldNode(
+          name: NameNode(value: 'name'),
+          alias: null,
+          arguments: [],
+          directives: [],
+          selectionSet: null,
+        ),
+        FieldNode(
+          name: NameNode(value: 'description'),
+          alias: null,
+          arguments: [],
+          directives: [],
+          selectionSet: null,
+        ),
+        FieldNode(
+          name: NameNode(value: 'rank'),
+          alias: null,
+          arguments: [],
+          directives: [],
+          selectionSet: null,
+        ),
+        FieldNode(
+          name: NameNode(value: 'isMediaSpoiler'),
+          alias: null,
+          arguments: [],
+          directives: [],
+          selectionSet: null,
+        ),
+        FieldNode(
+          name: NameNode(value: 'isGeneralSpoiler'),
+          alias: null,
+          arguments: [],
+          directives: [],
+          selectionSet: null,
+        ),
+        FieldNode(
+          name: NameNode(value: 'userId'),
+          alias: null,
+          arguments: [],
+          directives: [],
+          selectionSet: null,
+        ),
+        FieldNode(
+          name: NameNode(value: '__typename'),
+          alias: null,
+          arguments: [],
+          directives: [],
+          selectionSet: null,
+        ),
+      ]),
+    ),
+    FieldNode(
+      name: NameNode(value: 'mediaListEntry'),
+      alias: null,
+      arguments: [],
+      directives: [],
+      selectionSet: SelectionSetNode(selections: [
+        FieldNode(
+          name: NameNode(value: 'id'),
+          alias: null,
+          arguments: [],
+          directives: [],
+          selectionSet: null,
+        ),
+        FieldNode(
+          name: NameNode(value: 'status'),
+          alias: null,
+          arguments: [],
+          directives: [],
+          selectionSet: null,
+        ),
+        FieldNode(
+          name: NameNode(value: 'score'),
           alias: null,
           arguments: [],
           directives: [],
@@ -3257,6 +3908,328 @@ class _CopyWithStubImpl$Fragment$AnimeOverview$endDate<TRes>
       _res;
 }
 
+class Fragment$AnimeOverview$streamingEpisodes {
+  Fragment$AnimeOverview$streamingEpisodes({
+    this.site,
+    this.title,
+    this.thumbnail,
+    this.url,
+    this.$__typename = 'MediaStreamingEpisode',
+  });
+
+  factory Fragment$AnimeOverview$streamingEpisodes.fromJson(
+      Map<String, dynamic> json) {
+    final l$site = json['site'];
+    final l$title = json['title'];
+    final l$thumbnail = json['thumbnail'];
+    final l$url = json['url'];
+    final l$$__typename = json['__typename'];
+    return Fragment$AnimeOverview$streamingEpisodes(
+      site: (l$site as String?),
+      title: (l$title as String?),
+      thumbnail: (l$thumbnail as String?),
+      url: (l$url as String?),
+      $__typename: (l$$__typename as String),
+    );
+  }
+
+  final String? site;
+
+  final String? title;
+
+  final String? thumbnail;
+
+  final String? url;
+
+  final String $__typename;
+
+  Map<String, dynamic> toJson() {
+    final _resultData = <String, dynamic>{};
+    final l$site = site;
+    _resultData['site'] = l$site;
+    final l$title = title;
+    _resultData['title'] = l$title;
+    final l$thumbnail = thumbnail;
+    _resultData['thumbnail'] = l$thumbnail;
+    final l$url = url;
+    _resultData['url'] = l$url;
+    final l$$__typename = $__typename;
+    _resultData['__typename'] = l$$__typename;
+    return _resultData;
+  }
+
+  @override
+  int get hashCode {
+    final l$site = site;
+    final l$title = title;
+    final l$thumbnail = thumbnail;
+    final l$url = url;
+    final l$$__typename = $__typename;
+    return Object.hashAll([
+      l$site,
+      l$title,
+      l$thumbnail,
+      l$url,
+      l$$__typename,
+    ]);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) {
+      return true;
+    }
+    if (other is! Fragment$AnimeOverview$streamingEpisodes ||
+        runtimeType != other.runtimeType) {
+      return false;
+    }
+    final l$site = site;
+    final lOther$site = other.site;
+    if (l$site != lOther$site) {
+      return false;
+    }
+    final l$title = title;
+    final lOther$title = other.title;
+    if (l$title != lOther$title) {
+      return false;
+    }
+    final l$thumbnail = thumbnail;
+    final lOther$thumbnail = other.thumbnail;
+    if (l$thumbnail != lOther$thumbnail) {
+      return false;
+    }
+    final l$url = url;
+    final lOther$url = other.url;
+    if (l$url != lOther$url) {
+      return false;
+    }
+    final l$$__typename = $__typename;
+    final lOther$$__typename = other.$__typename;
+    if (l$$__typename != lOther$$__typename) {
+      return false;
+    }
+    return true;
+  }
+}
+
+extension UtilityExtension$Fragment$AnimeOverview$streamingEpisodes
+    on Fragment$AnimeOverview$streamingEpisodes {
+  CopyWith$Fragment$AnimeOverview$streamingEpisodes<
+          Fragment$AnimeOverview$streamingEpisodes>
+      get copyWith => CopyWith$Fragment$AnimeOverview$streamingEpisodes(
+            this,
+            (i) => i,
+          );
+}
+
+abstract class CopyWith$Fragment$AnimeOverview$streamingEpisodes<TRes> {
+  factory CopyWith$Fragment$AnimeOverview$streamingEpisodes(
+    Fragment$AnimeOverview$streamingEpisodes instance,
+    TRes Function(Fragment$AnimeOverview$streamingEpisodes) then,
+  ) = _CopyWithImpl$Fragment$AnimeOverview$streamingEpisodes;
+
+  factory CopyWith$Fragment$AnimeOverview$streamingEpisodes.stub(TRes res) =
+      _CopyWithStubImpl$Fragment$AnimeOverview$streamingEpisodes;
+
+  TRes call({
+    String? site,
+    String? title,
+    String? thumbnail,
+    String? url,
+    String? $__typename,
+  });
+}
+
+class _CopyWithImpl$Fragment$AnimeOverview$streamingEpisodes<TRes>
+    implements CopyWith$Fragment$AnimeOverview$streamingEpisodes<TRes> {
+  _CopyWithImpl$Fragment$AnimeOverview$streamingEpisodes(
+    this._instance,
+    this._then,
+  );
+
+  final Fragment$AnimeOverview$streamingEpisodes _instance;
+
+  final TRes Function(Fragment$AnimeOverview$streamingEpisodes) _then;
+
+  static const _undefined = <dynamic, dynamic>{};
+
+  TRes call({
+    Object? site = _undefined,
+    Object? title = _undefined,
+    Object? thumbnail = _undefined,
+    Object? url = _undefined,
+    Object? $__typename = _undefined,
+  }) =>
+      _then(Fragment$AnimeOverview$streamingEpisodes(
+        site: site == _undefined ? _instance.site : (site as String?),
+        title: title == _undefined ? _instance.title : (title as String?),
+        thumbnail: thumbnail == _undefined
+            ? _instance.thumbnail
+            : (thumbnail as String?),
+        url: url == _undefined ? _instance.url : (url as String?),
+        $__typename: $__typename == _undefined || $__typename == null
+            ? _instance.$__typename
+            : ($__typename as String),
+      ));
+}
+
+class _CopyWithStubImpl$Fragment$AnimeOverview$streamingEpisodes<TRes>
+    implements CopyWith$Fragment$AnimeOverview$streamingEpisodes<TRes> {
+  _CopyWithStubImpl$Fragment$AnimeOverview$streamingEpisodes(this._res);
+
+  TRes _res;
+
+  call({
+    String? site,
+    String? title,
+    String? thumbnail,
+    String? url,
+    String? $__typename,
+  }) =>
+      _res;
+}
+
+class Fragment$AnimeOverview$trailer {
+  Fragment$AnimeOverview$trailer({
+    this.id,
+    this.site,
+    this.$__typename = 'MediaTrailer',
+  });
+
+  factory Fragment$AnimeOverview$trailer.fromJson(Map<String, dynamic> json) {
+    final l$id = json['id'];
+    final l$site = json['site'];
+    final l$$__typename = json['__typename'];
+    return Fragment$AnimeOverview$trailer(
+      id: (l$id as String?),
+      site: (l$site as String?),
+      $__typename: (l$$__typename as String),
+    );
+  }
+
+  final String? id;
+
+  final String? site;
+
+  final String $__typename;
+
+  Map<String, dynamic> toJson() {
+    final _resultData = <String, dynamic>{};
+    final l$id = id;
+    _resultData['id'] = l$id;
+    final l$site = site;
+    _resultData['site'] = l$site;
+    final l$$__typename = $__typename;
+    _resultData['__typename'] = l$$__typename;
+    return _resultData;
+  }
+
+  @override
+  int get hashCode {
+    final l$id = id;
+    final l$site = site;
+    final l$$__typename = $__typename;
+    return Object.hashAll([
+      l$id,
+      l$site,
+      l$$__typename,
+    ]);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) {
+      return true;
+    }
+    if (other is! Fragment$AnimeOverview$trailer ||
+        runtimeType != other.runtimeType) {
+      return false;
+    }
+    final l$id = id;
+    final lOther$id = other.id;
+    if (l$id != lOther$id) {
+      return false;
+    }
+    final l$site = site;
+    final lOther$site = other.site;
+    if (l$site != lOther$site) {
+      return false;
+    }
+    final l$$__typename = $__typename;
+    final lOther$$__typename = other.$__typename;
+    if (l$$__typename != lOther$$__typename) {
+      return false;
+    }
+    return true;
+  }
+}
+
+extension UtilityExtension$Fragment$AnimeOverview$trailer
+    on Fragment$AnimeOverview$trailer {
+  CopyWith$Fragment$AnimeOverview$trailer<Fragment$AnimeOverview$trailer>
+      get copyWith => CopyWith$Fragment$AnimeOverview$trailer(
+            this,
+            (i) => i,
+          );
+}
+
+abstract class CopyWith$Fragment$AnimeOverview$trailer<TRes> {
+  factory CopyWith$Fragment$AnimeOverview$trailer(
+    Fragment$AnimeOverview$trailer instance,
+    TRes Function(Fragment$AnimeOverview$trailer) then,
+  ) = _CopyWithImpl$Fragment$AnimeOverview$trailer;
+
+  factory CopyWith$Fragment$AnimeOverview$trailer.stub(TRes res) =
+      _CopyWithStubImpl$Fragment$AnimeOverview$trailer;
+
+  TRes call({
+    String? id,
+    String? site,
+    String? $__typename,
+  });
+}
+
+class _CopyWithImpl$Fragment$AnimeOverview$trailer<TRes>
+    implements CopyWith$Fragment$AnimeOverview$trailer<TRes> {
+  _CopyWithImpl$Fragment$AnimeOverview$trailer(
+    this._instance,
+    this._then,
+  );
+
+  final Fragment$AnimeOverview$trailer _instance;
+
+  final TRes Function(Fragment$AnimeOverview$trailer) _then;
+
+  static const _undefined = <dynamic, dynamic>{};
+
+  TRes call({
+    Object? id = _undefined,
+    Object? site = _undefined,
+    Object? $__typename = _undefined,
+  }) =>
+      _then(Fragment$AnimeOverview$trailer(
+        id: id == _undefined ? _instance.id : (id as String?),
+        site: site == _undefined ? _instance.site : (site as String?),
+        $__typename: $__typename == _undefined || $__typename == null
+            ? _instance.$__typename
+            : ($__typename as String),
+      ));
+}
+
+class _CopyWithStubImpl$Fragment$AnimeOverview$trailer<TRes>
+    implements CopyWith$Fragment$AnimeOverview$trailer<TRes> {
+  _CopyWithStubImpl$Fragment$AnimeOverview$trailer(this._res);
+
+  TRes _res;
+
+  call({
+    String? id,
+    String? site,
+    String? $__typename,
+  }) =>
+      _res;
+}
+
 class Fragment$AnimeOverview$rankings {
   Fragment$AnimeOverview$rankings({
     required this.id,
@@ -3513,6 +4486,411 @@ class _CopyWithStubImpl$Fragment$AnimeOverview$rankings<TRes>
     Enum$MediaSeason? season,
     bool? allTime,
     String? context,
+    String? $__typename,
+  }) =>
+      _res;
+}
+
+class Fragment$AnimeOverview$tags {
+  Fragment$AnimeOverview$tags({
+    required this.id,
+    required this.name,
+    this.description,
+    this.rank,
+    this.isMediaSpoiler,
+    this.isGeneralSpoiler,
+    this.userId,
+    this.$__typename = 'MediaTag',
+  });
+
+  factory Fragment$AnimeOverview$tags.fromJson(Map<String, dynamic> json) {
+    final l$id = json['id'];
+    final l$name = json['name'];
+    final l$description = json['description'];
+    final l$rank = json['rank'];
+    final l$isMediaSpoiler = json['isMediaSpoiler'];
+    final l$isGeneralSpoiler = json['isGeneralSpoiler'];
+    final l$userId = json['userId'];
+    final l$$__typename = json['__typename'];
+    return Fragment$AnimeOverview$tags(
+      id: (l$id as int),
+      name: (l$name as String),
+      description: (l$description as String?),
+      rank: (l$rank as int?),
+      isMediaSpoiler: (l$isMediaSpoiler as bool?),
+      isGeneralSpoiler: (l$isGeneralSpoiler as bool?),
+      userId: (l$userId as int?),
+      $__typename: (l$$__typename as String),
+    );
+  }
+
+  final int id;
+
+  final String name;
+
+  final String? description;
+
+  final int? rank;
+
+  final bool? isMediaSpoiler;
+
+  final bool? isGeneralSpoiler;
+
+  final int? userId;
+
+  final String $__typename;
+
+  Map<String, dynamic> toJson() {
+    final _resultData = <String, dynamic>{};
+    final l$id = id;
+    _resultData['id'] = l$id;
+    final l$name = name;
+    _resultData['name'] = l$name;
+    final l$description = description;
+    _resultData['description'] = l$description;
+    final l$rank = rank;
+    _resultData['rank'] = l$rank;
+    final l$isMediaSpoiler = isMediaSpoiler;
+    _resultData['isMediaSpoiler'] = l$isMediaSpoiler;
+    final l$isGeneralSpoiler = isGeneralSpoiler;
+    _resultData['isGeneralSpoiler'] = l$isGeneralSpoiler;
+    final l$userId = userId;
+    _resultData['userId'] = l$userId;
+    final l$$__typename = $__typename;
+    _resultData['__typename'] = l$$__typename;
+    return _resultData;
+  }
+
+  @override
+  int get hashCode {
+    final l$id = id;
+    final l$name = name;
+    final l$description = description;
+    final l$rank = rank;
+    final l$isMediaSpoiler = isMediaSpoiler;
+    final l$isGeneralSpoiler = isGeneralSpoiler;
+    final l$userId = userId;
+    final l$$__typename = $__typename;
+    return Object.hashAll([
+      l$id,
+      l$name,
+      l$description,
+      l$rank,
+      l$isMediaSpoiler,
+      l$isGeneralSpoiler,
+      l$userId,
+      l$$__typename,
+    ]);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) {
+      return true;
+    }
+    if (other is! Fragment$AnimeOverview$tags ||
+        runtimeType != other.runtimeType) {
+      return false;
+    }
+    final l$id = id;
+    final lOther$id = other.id;
+    if (l$id != lOther$id) {
+      return false;
+    }
+    final l$name = name;
+    final lOther$name = other.name;
+    if (l$name != lOther$name) {
+      return false;
+    }
+    final l$description = description;
+    final lOther$description = other.description;
+    if (l$description != lOther$description) {
+      return false;
+    }
+    final l$rank = rank;
+    final lOther$rank = other.rank;
+    if (l$rank != lOther$rank) {
+      return false;
+    }
+    final l$isMediaSpoiler = isMediaSpoiler;
+    final lOther$isMediaSpoiler = other.isMediaSpoiler;
+    if (l$isMediaSpoiler != lOther$isMediaSpoiler) {
+      return false;
+    }
+    final l$isGeneralSpoiler = isGeneralSpoiler;
+    final lOther$isGeneralSpoiler = other.isGeneralSpoiler;
+    if (l$isGeneralSpoiler != lOther$isGeneralSpoiler) {
+      return false;
+    }
+    final l$userId = userId;
+    final lOther$userId = other.userId;
+    if (l$userId != lOther$userId) {
+      return false;
+    }
+    final l$$__typename = $__typename;
+    final lOther$$__typename = other.$__typename;
+    if (l$$__typename != lOther$$__typename) {
+      return false;
+    }
+    return true;
+  }
+}
+
+extension UtilityExtension$Fragment$AnimeOverview$tags
+    on Fragment$AnimeOverview$tags {
+  CopyWith$Fragment$AnimeOverview$tags<Fragment$AnimeOverview$tags>
+      get copyWith => CopyWith$Fragment$AnimeOverview$tags(
+            this,
+            (i) => i,
+          );
+}
+
+abstract class CopyWith$Fragment$AnimeOverview$tags<TRes> {
+  factory CopyWith$Fragment$AnimeOverview$tags(
+    Fragment$AnimeOverview$tags instance,
+    TRes Function(Fragment$AnimeOverview$tags) then,
+  ) = _CopyWithImpl$Fragment$AnimeOverview$tags;
+
+  factory CopyWith$Fragment$AnimeOverview$tags.stub(TRes res) =
+      _CopyWithStubImpl$Fragment$AnimeOverview$tags;
+
+  TRes call({
+    int? id,
+    String? name,
+    String? description,
+    int? rank,
+    bool? isMediaSpoiler,
+    bool? isGeneralSpoiler,
+    int? userId,
+    String? $__typename,
+  });
+}
+
+class _CopyWithImpl$Fragment$AnimeOverview$tags<TRes>
+    implements CopyWith$Fragment$AnimeOverview$tags<TRes> {
+  _CopyWithImpl$Fragment$AnimeOverview$tags(
+    this._instance,
+    this._then,
+  );
+
+  final Fragment$AnimeOverview$tags _instance;
+
+  final TRes Function(Fragment$AnimeOverview$tags) _then;
+
+  static const _undefined = <dynamic, dynamic>{};
+
+  TRes call({
+    Object? id = _undefined,
+    Object? name = _undefined,
+    Object? description = _undefined,
+    Object? rank = _undefined,
+    Object? isMediaSpoiler = _undefined,
+    Object? isGeneralSpoiler = _undefined,
+    Object? userId = _undefined,
+    Object? $__typename = _undefined,
+  }) =>
+      _then(Fragment$AnimeOverview$tags(
+        id: id == _undefined || id == null ? _instance.id : (id as int),
+        name: name == _undefined || name == null
+            ? _instance.name
+            : (name as String),
+        description: description == _undefined
+            ? _instance.description
+            : (description as String?),
+        rank: rank == _undefined ? _instance.rank : (rank as int?),
+        isMediaSpoiler: isMediaSpoiler == _undefined
+            ? _instance.isMediaSpoiler
+            : (isMediaSpoiler as bool?),
+        isGeneralSpoiler: isGeneralSpoiler == _undefined
+            ? _instance.isGeneralSpoiler
+            : (isGeneralSpoiler as bool?),
+        userId: userId == _undefined ? _instance.userId : (userId as int?),
+        $__typename: $__typename == _undefined || $__typename == null
+            ? _instance.$__typename
+            : ($__typename as String),
+      ));
+}
+
+class _CopyWithStubImpl$Fragment$AnimeOverview$tags<TRes>
+    implements CopyWith$Fragment$AnimeOverview$tags<TRes> {
+  _CopyWithStubImpl$Fragment$AnimeOverview$tags(this._res);
+
+  TRes _res;
+
+  call({
+    int? id,
+    String? name,
+    String? description,
+    int? rank,
+    bool? isMediaSpoiler,
+    bool? isGeneralSpoiler,
+    int? userId,
+    String? $__typename,
+  }) =>
+      _res;
+}
+
+class Fragment$AnimeOverview$mediaListEntry {
+  Fragment$AnimeOverview$mediaListEntry({
+    required this.id,
+    this.status,
+    this.score,
+    this.$__typename = 'MediaList',
+  });
+
+  factory Fragment$AnimeOverview$mediaListEntry.fromJson(
+      Map<String, dynamic> json) {
+    final l$id = json['id'];
+    final l$status = json['status'];
+    final l$score = json['score'];
+    final l$$__typename = json['__typename'];
+    return Fragment$AnimeOverview$mediaListEntry(
+      id: (l$id as int),
+      status: l$status == null
+          ? null
+          : fromJson$Enum$MediaListStatus((l$status as String)),
+      score: (l$score as num?)?.toDouble(),
+      $__typename: (l$$__typename as String),
+    );
+  }
+
+  final int id;
+
+  final Enum$MediaListStatus? status;
+
+  final double? score;
+
+  final String $__typename;
+
+  Map<String, dynamic> toJson() {
+    final _resultData = <String, dynamic>{};
+    final l$id = id;
+    _resultData['id'] = l$id;
+    final l$status = status;
+    _resultData['status'] =
+        l$status == null ? null : toJson$Enum$MediaListStatus(l$status);
+    final l$score = score;
+    _resultData['score'] = l$score;
+    final l$$__typename = $__typename;
+    _resultData['__typename'] = l$$__typename;
+    return _resultData;
+  }
+
+  @override
+  int get hashCode {
+    final l$id = id;
+    final l$status = status;
+    final l$score = score;
+    final l$$__typename = $__typename;
+    return Object.hashAll([
+      l$id,
+      l$status,
+      l$score,
+      l$$__typename,
+    ]);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) {
+      return true;
+    }
+    if (other is! Fragment$AnimeOverview$mediaListEntry ||
+        runtimeType != other.runtimeType) {
+      return false;
+    }
+    final l$id = id;
+    final lOther$id = other.id;
+    if (l$id != lOther$id) {
+      return false;
+    }
+    final l$status = status;
+    final lOther$status = other.status;
+    if (l$status != lOther$status) {
+      return false;
+    }
+    final l$score = score;
+    final lOther$score = other.score;
+    if (l$score != lOther$score) {
+      return false;
+    }
+    final l$$__typename = $__typename;
+    final lOther$$__typename = other.$__typename;
+    if (l$$__typename != lOther$$__typename) {
+      return false;
+    }
+    return true;
+  }
+}
+
+extension UtilityExtension$Fragment$AnimeOverview$mediaListEntry
+    on Fragment$AnimeOverview$mediaListEntry {
+  CopyWith$Fragment$AnimeOverview$mediaListEntry<
+          Fragment$AnimeOverview$mediaListEntry>
+      get copyWith => CopyWith$Fragment$AnimeOverview$mediaListEntry(
+            this,
+            (i) => i,
+          );
+}
+
+abstract class CopyWith$Fragment$AnimeOverview$mediaListEntry<TRes> {
+  factory CopyWith$Fragment$AnimeOverview$mediaListEntry(
+    Fragment$AnimeOverview$mediaListEntry instance,
+    TRes Function(Fragment$AnimeOverview$mediaListEntry) then,
+  ) = _CopyWithImpl$Fragment$AnimeOverview$mediaListEntry;
+
+  factory CopyWith$Fragment$AnimeOverview$mediaListEntry.stub(TRes res) =
+      _CopyWithStubImpl$Fragment$AnimeOverview$mediaListEntry;
+
+  TRes call({
+    int? id,
+    Enum$MediaListStatus? status,
+    double? score,
+    String? $__typename,
+  });
+}
+
+class _CopyWithImpl$Fragment$AnimeOverview$mediaListEntry<TRes>
+    implements CopyWith$Fragment$AnimeOverview$mediaListEntry<TRes> {
+  _CopyWithImpl$Fragment$AnimeOverview$mediaListEntry(
+    this._instance,
+    this._then,
+  );
+
+  final Fragment$AnimeOverview$mediaListEntry _instance;
+
+  final TRes Function(Fragment$AnimeOverview$mediaListEntry) _then;
+
+  static const _undefined = <dynamic, dynamic>{};
+
+  TRes call({
+    Object? id = _undefined,
+    Object? status = _undefined,
+    Object? score = _undefined,
+    Object? $__typename = _undefined,
+  }) =>
+      _then(Fragment$AnimeOverview$mediaListEntry(
+        id: id == _undefined || id == null ? _instance.id : (id as int),
+        status: status == _undefined
+            ? _instance.status
+            : (status as Enum$MediaListStatus?),
+        score: score == _undefined ? _instance.score : (score as double?),
+        $__typename: $__typename == _undefined || $__typename == null
+            ? _instance.$__typename
+            : ($__typename as String),
+      ));
+}
+
+class _CopyWithStubImpl$Fragment$AnimeOverview$mediaListEntry<TRes>
+    implements CopyWith$Fragment$AnimeOverview$mediaListEntry<TRes> {
+  _CopyWithStubImpl$Fragment$AnimeOverview$mediaListEntry(this._res);
+
+  TRes _res;
+
+  call({
+    int? id,
+    Enum$MediaListStatus? status,
+    double? score,
     String? $__typename,
   }) =>
       _res;

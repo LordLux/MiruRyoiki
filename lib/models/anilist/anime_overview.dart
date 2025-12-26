@@ -11,12 +11,30 @@ class AnimeOverview extends AnimeCard {
   final int? favourites;
   final int? updatedAt;
   final String? siteUrl;
+  final int? duration;
+  final List<String> synonyms;
+  final String? source;
+  final String? hashtag;
+  final bool isLocked;
+  final bool isFavouriteBlocked;
+  final String? countryOfOrigin;
+  final bool isLicensed;
+  final bool isRecommendationBlocked;
+  final bool isReviewBlocked;
+  final List<StreamingEpisode> streamingEpisodes;
+  final Trailer? trailer;
+  final List<AnimeTag> tags;
+  final MediaListEntry? mediaListEntry;
+  final List<StudioEdge> studios;
+  // final List<ReviewNode> reviewPreview;
+  final List<RelationEdge> relations;
   final List<AnimeRanking> rankings;
   final AnimeStats? stats;
   final List<CharacterEdge> characters;
   final List<StaffEdge> staff;
   final List<RecommendationNode> recommendations;
   final List<ExternalLink> externalLinks;
+  final List<MediaListFollowing> following;
 
   const AnimeOverview({
     required super.id,
@@ -43,90 +61,151 @@ class AnimeOverview extends AnimeCard {
     this.favourites,
     this.updatedAt,
     this.siteUrl,
+    this.duration,
+    this.synonyms = const [],
+    this.source,
+    this.hashtag,
+    this.isLocked = false,
+    this.isFavouriteBlocked = false,
+    this.countryOfOrigin,
+    this.isLicensed = false,
+    this.isRecommendationBlocked = false,
+    this.isReviewBlocked = false,
+    this.streamingEpisodes = const [],
+    this.trailer,
+    this.tags = const [],
+    this.mediaListEntry,
+    this.studios = const [],
+    // this.reviewPreview = const [],
+    this.relations = const [],
     this.rankings = const [],
     this.stats,
     this.characters = const [],
     this.staff = const [],
     this.recommendations = const [],
     this.externalLinks = const [],
+    this.following = const [],
   });
 
-  factory AnimeOverview.fromQuery(Query$GetAnimeOverview$Media data) {
+  factory AnimeOverview.fromQuery(Query$GetAnimeOverview data) {
+    final media = data.Media!;
     return AnimeOverview(
       // AnimeCard fields
-      id: data.id,
+      id: media.id,
       title: AnilistTitle(
-        romaji: data.title?.romaji,
-        english: data.title?.english,
-        native: data.title?.native,
-        userPreferred: data.title?.userPreferred,
+        romaji: media.title?.romaji,
+        english: media.title?.english,
+        native: media.title?.native,
+        userPreferred: media.title?.userPreferred,
       ),
-      coverImage: data.coverImage?.extraLarge ?? data.coverImage?.large,
-      dominantColor: data.coverImage?.color,
-      status: data.status?.name,
-      format: data.format?.name,
-      episodes: data.episodes,
-      seasonYear: data.seasonYear,
-      season: data.season?.name,
-      averageScore: data.averageScore,
-      meanScore: data.meanScore,
-      popularity: data.popularity,
-      isAdult: data.isAdult ?? false,
-      isFavourite: data.isFavourite,
-      nextAiringEpisode: data.nextAiringEpisode != null
+      coverImage: media.coverImage?.extraLarge ?? media.coverImage?.large,
+      dominantColor: media.coverImage?.color,
+      status: media.status?.name,
+      format: media.format?.name,
+      duration: media.duration,
+      episodes: media.episodes,
+      seasonYear: media.seasonYear,
+      season: media.season?.name,
+      averageScore: media.averageScore,
+      meanScore: media.meanScore,
+      popularity: media.popularity,
+      isAdult: media.isAdult ?? false,
+      isFavourite: media.isFavourite,
+      nextAiringEpisode: media.nextAiringEpisode != null
           ? AiringEpisode(
-              airingAt: data.nextAiringEpisode!.airingAt,
-              episode: data.nextAiringEpisode!.episode,
-              timeUntilAiring: data.nextAiringEpisode!.timeUntilAiring,
+              airingAt: media.nextAiringEpisode!.airingAt,
+              episode: media.nextAiringEpisode!.episode,
+              timeUntilAiring: media.nextAiringEpisode!.timeUntilAiring,
             )
           : null,
-      startDate: data.startDate != null
+      startDate: media.startDate != null
           ? DateValue(
-              year: data.startDate!.year,
-              month: data.startDate!.month,
-              day: data.startDate!.day,
+              year: media.startDate!.year,
+              month: media.startDate!.month,
+              day: media.startDate!.day,
             )
           : null,
 
       // AnimeOverview fields
-      bannerImage: data.bannerImage,
-      description: data.description,
-      endDate: data.endDate != null
+      bannerImage: media.bannerImage,
+      description: media.description,
+      endDate: media.endDate != null
           ? DateValue(
-              year: data.endDate!.year,
-              month: data.endDate!.month,
-              day: data.endDate!.day,
+              year: media.endDate!.year,
+              month: media.endDate!.month,
+              day: media.endDate!.day,
             )
           : null,
-      genres: data.genres?.whereType<String>().toList() ?? [],
-      trending: data.trending,
-      favourites: data.favourites,
-      updatedAt: data.updatedAt,
-      siteUrl: data.siteUrl,
-      rankings: data.rankings //
+      genres: media.genres?.whereType<String>().toList() ?? [],
+      trending: media.trending,
+      favourites: media.favourites,
+      updatedAt: media.updatedAt,
+      siteUrl: media.siteUrl,
+      synonyms: media.synonyms?.whereType<String>().toList() ?? [],
+      source: media.source?.name,
+      hashtag: media.hashtag,
+      isLocked: media.isLocked ?? false,
+      isFavouriteBlocked: media.isFavouriteBlocked,
+      countryOfOrigin: media.countryOfOrigin.toString(),
+      isLicensed: media.isLicensed ?? false,
+      isRecommendationBlocked: media.isRecommendationBlocked ?? false,
+      isReviewBlocked: media.isReviewBlocked ?? false,
+      streamingEpisodes: media.streamingEpisodes //
+              ?.whereType<Query$GetAnimeOverview$Media$streamingEpisodes>()
+              .map((e) => StreamingEpisode.fromFragment(e))
+              .toList() ??
+          [],
+      trailer: media.trailer != null ? Trailer.fromFragment(media.trailer!) : null,
+      tags: media.tags //
+              ?.whereType<Query$GetAnimeOverview$Media$tags>()
+              .map((e) => AnimeTag.fromFragment(e))
+              .toList() ??
+          [],
+      mediaListEntry: media.mediaListEntry != null ? MediaListEntry.fromFragment(media.mediaListEntry!) : null,
+      studios: media.studios?.edges //
+              ?.whereType<Query$GetAnimeOverview$Media$studios$edges>()
+              .map((e) => StudioEdge.fromFragment(e))
+              .toList() ??
+          [],
+      // reviewPreview: media.reviewPreview?.nodes //
+      //         ?.whereType<Query$GetAnimeOverview$Media$reviewPreview$nodes>()
+      //         .map((e) => ReviewNode.fromFragment(e))
+      //         .toList() ??
+      //     [],
+      relations: media.relations?.edges //
+              ?.whereType<Query$GetAnimeOverview$Media$relations$edges>()
+              .map((e) => RelationEdge.fromFragment(e))
+              .toList() ??
+          [],
+      rankings: media.rankings //
               ?.whereType<Query$GetAnimeOverview$Media$rankings>()
               .map((e) => AnimeRanking.fromFragment(e))
               .toList() ??
           [],
-      stats: data.stats != null ? AnimeStats.fromFragment(data.stats!) : null,
-      characters: data.characterPreview?.edges //
+      stats: media.stats != null ? AnimeStats.fromFragment(media.stats!) : null,
+      characters: media.characterPreview?.edges //
               ?.whereType<Query$GetAnimeOverview$Media$characterPreview$edges>()
               .map((e) => CharacterEdge.fromFragment(e))
               .toList() ??
           [],
-      staff: data.staffPreview?.edges //
+      staff: media.staffPreview?.edges //
               ?.whereType<Query$GetAnimeOverview$Media$staffPreview$edges>()
               .map((e) => StaffEdge.fromFragment(e))
               .toList() ??
           [],
-      recommendations: data.recommendations?.nodes //
+      recommendations: media.recommendations?.nodes //
               ?.whereType<Query$GetAnimeOverview$Media$recommendations$nodes>()
               .map((e) => RecommendationNode.fromFragment(e))
               .toList() ??
           [],
-      externalLinks: data.externalLinks //
+      externalLinks: media.externalLinks //
               ?.whereType<Query$GetAnimeOverview$Media$externalLinks>()
               .map((e) => ExternalLink.fromFragment(e))
+              .toList() ??
+          [],
+      following: data.Page?.mediaList //
+              ?.whereType<Query$GetAnimeOverview$Page$mediaList>()
+              .map((e) => MediaListFollowing.fromFragment(e))
               .toList() ??
           [],
     );
@@ -156,12 +235,29 @@ class AnimeOverview extends AnimeCard {
       favourites: $favourites,
       updatedAt: $updatedAt,
       siteUrl: $siteUrl,
+      duration: $duration,
+      synonyms: $synonyms,
+      source: $source,
+      hashtag: $hashtag,
+      isLocked: $isLocked,
+      isFavouriteBlocked: $isFavouriteBlocked,
+      countryOfOrigin: $countryOfOrigin,
+      isLicensed: $isLicensed,
+      isRecommendationBlocked: $isRecommendationBlocked,
+      isReviewBlocked: $isReviewBlocked,
+      streamingEpisodes count: ${streamingEpisodes.length},
+      trailer: $trailer,
+      tags count: ${tags.length},
+      mediaListEntry: $mediaListEntry,
+      studios count: ${studios.length},
+      relations count: ${relations.length},
       rankings count: ${rankings.length},
       stats: $stats,
       characters count: ${characters.length},
       staff count: ${staff.length},
       recommendations count: ${recommendations.length},
       externalLinks count: ${externalLinks.length},
+      following count: ${following.length},
     )
     ''';
 }
@@ -362,6 +458,141 @@ class ExternalLink {
   }
 }
 
+class StreamingEpisode {
+  final String site;
+  final String title;
+  final String? thumbnail;
+  final String? url;
+
+  const StreamingEpisode({
+    required this.site,
+    required this.title,
+    this.thumbnail,
+    this.url,
+  });
+
+  factory StreamingEpisode.fromFragment(Query$GetAnimeOverview$Media$streamingEpisodes fragment) {
+    return StreamingEpisode(
+      site: fragment.site ?? '',
+      title: fragment.title ?? '',
+      thumbnail: fragment.thumbnail,
+      url: fragment.url,
+    );
+  }
+}
+
+class Trailer {
+  final String? id;
+  final String? site;
+
+  const Trailer({this.id, this.site});
+
+  factory Trailer.fromFragment(Query$GetAnimeOverview$Media$trailer fragment) {
+    return Trailer(
+      id: fragment.id,
+      site: fragment.site,
+    );
+  }
+}
+
+class AnimeTag {
+  final int id;
+  final String name;
+  final String? description;
+  final int? rank;
+  final bool isMediaSpoiler;
+  final bool isGeneralSpoiler;
+  final int? userId;
+
+  const AnimeTag({
+    required this.id,
+    required this.name,
+    this.description,
+    this.rank,
+    this.isMediaSpoiler = false,
+    this.isGeneralSpoiler = false,
+    this.userId,
+  });
+
+  factory AnimeTag.fromFragment(Query$GetAnimeOverview$Media$tags fragment) {
+    return AnimeTag(
+      id: fragment.id,
+      name: fragment.name,
+      description: fragment.description,
+      rank: fragment.rank,
+      isMediaSpoiler: fragment.isMediaSpoiler ?? false,
+      isGeneralSpoiler: fragment.isGeneralSpoiler ?? false,
+      userId: fragment.userId,
+    );
+  }
+}
+
+class MediaListEntry {
+  final int id;
+  final String? status;
+  final double? score;
+
+  const MediaListEntry({
+    required this.id,
+    this.status,
+    this.score,
+  });
+
+  factory MediaListEntry.fromFragment(Query$GetAnimeOverview$Media$mediaListEntry fragment) {
+    return MediaListEntry(
+      id: fragment.id,
+      status: fragment.status?.name,
+      score: fragment.score,
+    );
+  }
+}
+
+class StudioEdge {
+  final bool isMain;
+  final int id;
+  final String name;
+
+  const StudioEdge({
+    required this.isMain,
+    required this.id,
+    required this.name,
+  });
+
+  factory StudioEdge.fromFragment(Query$GetAnimeOverview$Media$studios$edges fragment) {
+    return StudioEdge(
+      isMain: fragment.isMain,
+      id: fragment.node?.id ?? 0,
+      name: fragment.node?.name ?? '',
+    );
+  }
+}
+
+// class ReviewNode {
+//   final int id;
+//   final String? summary;
+//   final int? rating;
+//   final int? ratingAmount;
+//   final UserAvatar? user;
+
+//   const ReviewNode({
+//     required this.id,
+//     this.summary,
+//     this.rating,
+//     this.ratingAmount,
+//     this.user,
+//   });
+
+//   factory ReviewNode.fromFragment(Query$GetAnimeOverview$Media$reviewPreview$nodes fragment) {
+//     return ReviewNode(
+//       id: fragment.id,
+//       summary: fragment.summary,
+//       rating: fragment.rating,
+//       ratingAmount: fragment.ratingAmount,
+//       user: fragment.user != null ? UserAvatar.fromFragment(fragment.user!) : null,
+//     );
+//   }
+// }
+
 class CharacterCard {
   final int id;
   final String? name;
@@ -418,6 +649,58 @@ class UserAvatar {
       avatar: fragment.avatar?.large,
       donatorTier: fragment.donatorTier,
       donatorBadge: fragment.donatorBadge,
+    );
+  }
+}
+
+class RelationEdge {
+  final int id;
+  final String? relationType;
+  final AnimeCard? node;
+
+  const RelationEdge({
+    required this.id,
+    this.relationType,
+    this.node,
+  });
+
+  factory RelationEdge.fromFragment(Query$GetAnimeOverview$Media$relations$edges fragment) {
+    return RelationEdge(
+      id: fragment.id ?? 0,
+      relationType: fragment.relationType?.name,
+      node: fragment.node != null ? AnimeCard.fromFragment(fragment.node!) : null,
+    );
+  }
+}
+
+class MediaListFollowing {
+  final int id;
+  final String? status;
+  final double? score;
+  final int? progress;
+  final UserAvatar? user;
+
+  const MediaListFollowing({
+    required this.id,
+    this.status,
+    this.score,
+    this.progress,
+    this.user,
+  });
+
+  factory MediaListFollowing.fromFragment(Query$GetAnimeOverview$Page$mediaList fragment) {
+    return MediaListFollowing(
+      id: fragment.id,
+      status: fragment.status?.name,
+      score: fragment.score,
+      progress: fragment.progress,
+      user: fragment.user != null
+          ? UserAvatar(
+              id: fragment.user!.id,
+              name: fragment.user!.name,
+              avatar: fragment.user!.avatar?.large,
+            )
+          : null,
     );
   }
 }

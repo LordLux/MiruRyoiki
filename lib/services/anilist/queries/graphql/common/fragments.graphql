@@ -48,6 +48,29 @@ fragment AnimeOverview on Media {
   favourites
   updatedAt
   siteUrl
+  duration
+  hashtag
+  synonyms
+  source(version: 3)
+  isLocked
+  isFavouriteBlocked
+  countryOfOrigin
+  isLicensed
+  isRecommendationBlocked
+  isReviewBlocked
+  
+  streamingEpisodes {
+    site
+    title
+    thumbnail
+    url
+  }
+  
+  trailer {
+    id
+    site
+  }
+  
   rankings {
     id
     rank
@@ -57,6 +80,22 @@ fragment AnimeOverview on Media {
     season
     allTime
     context
+  }
+  
+  tags {
+    id
+    name
+    description
+    rank
+    isMediaSpoiler
+    isGeneralSpoiler
+    userId
+  }
+  
+  mediaListEntry {
+    id
+    status
+    score
   }
 }
 

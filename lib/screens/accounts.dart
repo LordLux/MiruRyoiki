@@ -36,6 +36,7 @@ import '../utils/logging.dart';
 import '../utils/screen.dart';
 import '../widgets/activity_graph.dart';
 import '../widgets/animated_stats_counter.dart';
+import '../widgets/buttons/highlighted_button.dart';
 import '../widgets/buttons/hyperlink.dart';
 import '../widgets/buttons/loading_button.dart';
 import '../widgets/page/header_widget.dart';
@@ -102,7 +103,7 @@ class AccountsScreenState extends State<AccountsScreen> with AutomaticKeepAliveC
       title: (style, _) => Align(
         alignment: Alignment.centerLeft,
         child: anilistProvider.isLoggedIn
-            ? WrappedHyperlinkButton(
+            ? HighlightedButton(
                 tooltipWaitDuration: const Duration(milliseconds: 600),
                 tooltip: 'Copy your Anilist Profile ID',
                 onPressed: () {

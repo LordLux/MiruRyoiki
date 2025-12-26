@@ -1,14 +1,17 @@
 import 'dart:async';
+import 'dart:math';
 import 'package:collection/collection.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/material.dart' as mat;
 import 'package:miruryoiki/models/anilist/anime_overview.dart';
 import 'package:miruryoiki/widgets/acrylic_header.dart';
 import 'package:defer_pointer/defer_pointer.dart';
+import 'package:smooth_scroll_multiplatform/smooth_scroll_multiplatform.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../models/anilist/anime.dart';
 import '../services/connectivity/connectivity_service.dart';
+import '../services/navigation/shortcuts.dart';
 import '../services/navigation/show_info.dart';
 import '../utils/text.dart';
 import '../widgets/buttons/back_button.dart';
@@ -20,17 +23,22 @@ import '../utils/logging.dart';
 import '../utils/error_handling.dart';
 import '../utils/screen.dart';
 import '../utils/time.dart';
+import '../widgets/buttons/highlighted_button.dart';
+import '../widgets/info_label_text.dart';
 import '../widgets/page/header_widget.dart';
 import '../widgets/page/infobar.dart';
 import '../widgets/page/page_template.dart';
+import '../widgets/pill.dart';
 import '../widgets/shrinker.dart';
 import '../widgets/simple_html_parser.dart';
 import '../widgets/transparency_shadow_image.dart';
 import 'package:recase/recase.dart';
 import 'dart:io';
 import '../services/file_system/cache.dart';
-import 'anilist_settings.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+
+import '../widgets/cards/dual_info_card.dart';
+import 'settings.dart';
 
 /// Duration for which AniList data is considered fresh and doesn't need refetching
 const Duration kAnilistCacheDuration = Duration(days: 1);
@@ -52,12 +60,15 @@ class SearchedSeriesScreen extends StatefulWidget {
 }
 
 class SearchedSeriesScreenState extends State<SearchedSeriesScreen> {
+  int currentTabIndex = 0;
   late final SimpleHtmlParser parser;
 
   final ShrinkerController _descriptionController = ShrinkerController();
 
   bool isReloadingSeries = false;
   DeferredPointerHandlerLink? deferredPointerLink;
+  final List<String> _tabNames = [];
+  final List<Map<int, String>?> _pages = [];
 
   /// Cached reference to the current series, updated via Selector in build()
   AnimeOverview? _cachedSeries;
@@ -65,60 +76,107 @@ class SearchedSeriesScreenState extends State<SearchedSeriesScreen> {
   // Widget: whether to allocate a full row or divide it in 2 columns [true = full row, false = 2 columns]
   Map<InfoLabel, bool> getInfos(AnimeOverview? series) {
     return {
+      if (series?.format != null)
+        InfoLabelText(
+          label: 'Format',
+          text: series!.format!,
+        ): false,
       if (series?.episodes != null)
-        InfoLabel(
+        InfoLabelText(
           label: 'Episodes',
-          labelStyle: Manager.bodyStrongStyle,
-          child: Text('${_cachedSeries!.episodes}'),
+          text: '${_cachedSeries!.episodes}',
+        ): false,
+      if (series?.duration != null)
+        InfoLabelText(
+          label: '${formatEpisodic.contains(series?.format) ? "Episode " : ""}Duration',
+          text: '${_cachedSeries!.duration} mins',
         ): false,
       if (series?.status != null)
-        InfoLabel(
+        InfoLabelText(
           label: 'Status',
-          labelStyle: Manager.bodyStrongStyle,
-          child: Text(series!.status!.toAnimeStatus()?.name_ ?? series.status!),
+          text: series!.status!.toAnimeStatus()?.name_ ?? series.status!,
         ): false,
-      if (series?.format != null)
-        InfoLabel(
-          label: 'Format',
-          labelStyle: Manager.bodyStrongStyle,
-          child: Text(series!.format!),
+      if (series?.startDate != null)
+        InfoLabelText(
+          label: 'Start Date',
+          text: '${series!.startDate!.year}-${series.startDate!.month}-${series.startDate!.day}',
         ): false,
-      if (series?.seasonYear != null)
-        InfoLabel(
-          label: 'Year',
-          labelStyle: Manager.bodyStrongStyle,
-          child: Text('${series!.seasonYear}'),
+      if (series?.endDate != null)
+        InfoLabelText(
+          label: 'End Date',
+          text: '${series!.endDate!.year}-${series.endDate!.month}-${series.endDate!.day}',
         ): false,
       if (series?.season != null)
-        InfoLabel(
+        InfoLabelText(
           label: 'Season',
-          labelStyle: Manager.bodyStrongStyle,
-          child: Text(series!.season!.toLowerCase().titleCase),
+          text: '${series!.season!.toLowerCase().titleCase} ${series.seasonYear ?? ""}',
+        ): false,
+      if (series?.source != null)
+        InfoLabelText(
+          label: 'Source',
+          text: series!.source!.replaceAll('_', ' ').titleCase,
         ): false,
       if (series?.averageScore != null)
-        InfoLabel(
-          label: 'Rating',
-          labelStyle: Manager.bodyStrongStyle,
-          child: Text('${series!.averageScore! / 10}/10'),
+        InfoLabelText(
+          label: 'Average Score',
+          text: '${series!.averageScore}%',
         ): false,
       if (series?.meanScore != null)
-        InfoLabel(
+        InfoLabelText(
           label: 'Mean Score',
-          labelStyle: Manager.bodyStrongStyle,
-          child: Text('${series!.meanScore! / 10}/10'),
+          text: '${series!.meanScore}%',
         ): false,
       if (series?.popularity != null)
-        InfoLabel(
+        InfoLabelText(
           label: 'Popularity',
-          labelStyle: Manager.bodyStrongStyle,
-          child: Text('#${series!.popularity}'),
+          text: '${series!.popularity}',
         ): false,
       if (series?.favourites != null)
-        InfoLabel(
+        InfoLabelText(
           label: 'Favourites',
-          labelStyle: Manager.bodyStrongStyle,
-          child: Text('${series!.favourites}'),
+          text: '${series!.favourites}',
         ): false,
+      if (series?.studios.isNotEmpty == true)
+        InfoLabelText(
+          label: 'Studios',
+          text: series!.studios.where((s) => s.isMain).map((s) => s.name).join('\n'),
+        ): true,
+      if (series?.studios.isNotEmpty == true)
+        InfoLabelText(
+          label: 'Producers',
+          text: series!.studios.where((s) => !s.isMain).map((s) => s.name).join('\n'),
+        ): true,
+      if (series?.hashtag != null)
+        InfoLabelText(
+          label: 'Hashtag',
+          text: series!.hashtag!,
+        ): false,
+      // if (series?.genres != null && series!.genres.isNotEmpty)
+      //   InfoLabel(
+      //     label: 'Genres',
+      //     labelStyle: Manager.bodyStrongStyle,
+      //     child: Text(series.genres.join(', ')),
+      //   ): true,
+      if (series?.title.romaji != null)
+        InfoLabelText(
+          label: 'Romaji',
+          text: series!.title.romaji!,
+        ): true,
+      if (series?.title.english != null)
+        InfoLabelText(
+          label: 'English',
+          text: series!.title.english!,
+        ): true,
+      if (series?.title.native != null)
+        InfoLabelText(
+          label: 'Native',
+          text: series!.title.native!,
+        ): true,
+      if (series?.synonyms.isNotEmpty == true)
+        InfoLabelText(
+          label: 'Synonyms',
+          text: series!.synonyms.join('\n'),
+        ): true,
     };
   }
 
@@ -130,6 +188,28 @@ class SearchedSeriesScreenState extends State<SearchedSeriesScreen> {
     deferredPointerLink = DeferredPointerHandlerLink();
     nextFrame(() => _loadAnilistData());
     parser = SimpleHtmlParser(context);
+  }
+
+  void _initTabs() {
+    // Tabs
+    final List<String> tabNames = [
+      "Overview",
+      if (_cachedSeries?.characters.isNotEmpty == true) "Characters",
+      "Watch", // TODO: radarr/sonarr integration
+      if (_cachedSeries?.staff.isNotEmpty == true) "Staff",
+      if (_cachedSeries?.stats?.scoreDistribution.isNotEmpty == true && _cachedSeries?.stats?.statusDistribution.isNotEmpty == true) "Statistics",
+      if (_cachedSeries?.following.isNotEmpty == true) "Social",
+    ];
+
+    // Pages
+    List<Map<int, String>?> pages = [];
+    for (int i = 0; i < tabNames.length; i++) {
+      pages.add({i: tabNames[i]});
+      if (i < tabNames.length - 1) pages.add(null);
+    }
+
+    _tabNames.addAll(tabNames);
+    _pages.addAll(pages);
   }
 
   @override
@@ -202,6 +282,7 @@ class SearchedSeriesScreenState extends State<SearchedSeriesScreen> {
       _cachedSeries = anilistAnime;
 
       // Finalize UI
+      _initTabs();
       Manager.setState();
     } catch (e) {
       if (!isExpectedOfflineError(e)) logErr('Failed to load Anilist data', e);
@@ -213,10 +294,10 @@ class SearchedSeriesScreenState extends State<SearchedSeriesScreen> {
     return MiruRyoikiTemplatePage(
       headerWidget: _buildHeader(context, _cachedSeries),
       infobar: (_) => _buildInfoBar(context, _cachedSeries),
-      content: _buildContentGrid(context, _cachedSeries),
+      content: _buildContent(context, _cachedSeries),
       backgroundColor: Manager.currentDominantColor,
       onHeaderCollapse: () => _descriptionController.collapse(),
-      scrollableContent: false,
+      stickyHeader: buildHeader(45.0, ScreenUtils.kStatCardBorderRadius),
     );
   }
 
@@ -452,128 +533,401 @@ class SearchedSeriesScreenState extends State<SearchedSeriesScreen> {
             Wrap(
               spacing: 8,
               runSpacing: 8,
-              children: genres.map((genre) => Chip(text: (color) => Text(genre, style: Manager.bodyStyle.copyWith(color: color)))).toList(),
+              children: genres.map((genre) => FluentPill(text: genre)).toList(),
             ),
+            SizedBox(height: 8),
           ],
         ],
       ),
     );
   }
 
-  Widget _buildContentGrid(BuildContext context, AnimeOverview? series) {
-    final headerHeight = 45.0;
-    final borderRadius = ScreenUtils.kEpisodeCardBorderRadius;
-    final pages = [
-      "Overview",
-      null,
-      "Watch",
-      null,
-      "Characters",
-      null,
-      "Staff",
-      null,
-      "Reviews",
-      null,
-      "Stats",
-      null,
-      "Social",
-    ];
+  Widget _buildContent(BuildContext context, AnimeOverview? series) {
+    int? getTabIndex(String name) {
+      final index = _tabNames.indexOf(name);
+      return index != -1 ? index : null;
+    }
 
-    final visibleHeader = Container(
+    // Overview Content
+    List<List<Widget>> sections = [];
+    // Relations
+    if (series?.relations.isNotEmpty == true) sections.add(buildRelationsSection(-1, series!.relations));
+    // Characters
+    if (series?.characters.isNotEmpty == true) {
+      final index = getTabIndex("Characters");
+      if (index != null) sections.add(buildCharactersSection(index, series!.characters));
+    }
+    // Staff
+    if (series?.staff.isNotEmpty == true) {
+      final index = getTabIndex("Staff");
+      if (index != null) sections.add(buildStaffSection(index, series!.staff));
+    }
+    // Stats
+    if (series?.stats?.scoreDistribution.isNotEmpty == true && series?.stats?.statusDistribution.isNotEmpty == true) {
+      final index = getTabIndex("Statistics");
+      if (index != null) sections.add(buildStatsSection(index, series!.stats!));
+    }
+    // Social
+    if (series?.following.isNotEmpty == true) {
+      final index = getTabIndex("Social");
+      if (index != null) sections.add(buildSocialSection(index, series!.following));
+    }
+    // Recommendations
+    if (series?.recommendations.isNotEmpty == true) sections.add(buildRecommendationsSection(series!.recommendations));
+
+    final List<Widget> contents = sections.map((sectionWidgets) {
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 16.0),
+        child: SettingsCard(
+          children: sectionWidgets,
+          padding: EdgeInsets.only(top: 24.0, left: 32.0, right: 32.0, bottom: 32.0),
+        ),
+      );
+    }).toList();
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(ScreenUtils.kStatCardBorderRadius),
+      child: ScrollConfiguration(
+        behavior: ScrollConfiguration.of(context).copyWith(overscroll: true, platform: TargetPlatform.windows, scrollbars: false),
+        child: DynMouseScroll(
+          stopScroll: KeyboardState.ctrlPressedNotifier,
+          scrollSpeed: 1.0,
+          enableSmoothScroll: Manager.animationsEnabled,
+          durationMS: 350,
+          animationCurve: Curves.easeOutQuint,
+          builder: (context, controller, physics) {
+            return ValueListenableBuilder(
+              valueListenable: KeyboardState.ctrlPressedNotifier,
+              builder: (context, isCtrlPressed, _) {
+                return SingleChildScrollView(
+                  controller: controller,
+                  physics: isCtrlPressed ? const NeverScrollableScrollPhysics() : physics,
+                  child: Column(children: contents),
+                );
+              },
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  List<Widget> buildRelationsSection(int _, List<RelationEdge> relations) {
+    return [
+      Text('Relations', style: Manager.subtitleStyle),
+      VDiv(16),
+      LayoutBuilder(
+        builder: (context, constraints) {
+          final double spacing = 12;
+          final double minItemWidth = 100;
+
+          final int crossAxisCount = ((constraints.maxWidth + spacing) / (minItemWidth + spacing)).floor().clamp(1, 20);
+          final double itemWidth = (constraints.maxWidth - (spacing * (crossAxisCount - 1))) / crossAxisCount;
+
+          final double totalHeight = itemWidth / ScreenUtils.kDefaultAspectRatio;
+          final int rows = (relations.length / crossAxisCount).ceil();
+
+          return SizedBox(
+            height: rows * totalHeight + (rows > 0 ? (rows - 1) * spacing : 0),
+            child: GridView.builder(
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: crossAxisCount,
+                mainAxisSpacing: spacing,
+                crossAxisSpacing: spacing,
+                childAspectRatio: ScreenUtils.kDefaultAspectRatio,
+              ),
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: relations.length,
+              itemBuilder: (context, index) {
+                final relation = relations[index];
+                return ClipRRect(
+                  borderRadius: BorderRadius.circular(ScreenUtils.kEpisodeCardBorderRadius),
+                  child: Stack(
+                    children: [
+                      // Cover Image
+                      CachedNetworkImage(
+                        imageUrl: relation.node?.coverImage ?? '',
+                        width: itemWidth,
+                        height: totalHeight,
+                        fit: BoxFit.cover,
+                      ),
+                      // Title
+                      Positioned(
+                        bottom: 0,
+                        child: Container(
+                          color: Colors.black.withOpacity(.5),
+                          height: 35,
+                          width: itemWidth,
+                          child: Center(
+                            child: Text(
+                              relation.relationType?.titleCase ?? '',
+                              style: Manager.bodyStyle,
+                              textAlign: TextAlign.center,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          );
+        },
+      ),
+    ];
+  }
+
+  List<Widget> _buildGridSection<T>({
+    required String title,
+    required List<T> items,
+    required Widget Function(BuildContext, T) itemBuilder,
+    VoidCallback? onHeaderPressed,
+  }) {
+    return [
+      HighlightedButton(
+        title: Text(title, style: Manager.subtitleStyle),
+        onPressed: onHeaderPressed,
+      ),
+      VDiv(16),
+      LayoutBuilder(builder: (context, constraints) {
+        final double itemWidth = 300;
+        final int crossAxisCount = (constraints.maxWidth / itemWidth).floor().clamp(1, 3);
+        final double spacing = 12;
+        final double itemHeight = 80;
+
+        return GridView.builder(
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: crossAxisCount,
+            mainAxisSpacing: spacing,
+            crossAxisSpacing: spacing,
+            mainAxisExtent: itemHeight,
+          ),
+          shrinkWrap: true,
+          physics: NeverScrollableScrollPhysics(),
+          itemCount: items.length,
+          itemBuilder: (context, index) => itemBuilder(context, items[index]),
+        );
+      }),
+    ];
+  }
+
+  List<Widget> buildCharactersSection(int index, List<CharacterEdge> characters) {
+    return _buildGridSection(
+      title: 'Characters',
+      items: characters.take(6).toList(),
+      onHeaderPressed: () => setState(() => currentTabIndex = index),
+      itemBuilder: (context, characterEdge) {
+        final character = characterEdge.node;
+        final voiceActor = characterEdge.voiceActors.isNotEmpty ? characterEdge.voiceActors.first : null;
+
+        return DualInfoCard(
+          nameLeft: character?.name ?? 'Unknown',
+          descLeft: characterEdge.role?.titleCase ?? '',
+          imageLeft: character?.image ?? '',
+          nameRight: voiceActor?.name,
+          descRight: voiceActor?.language,
+          imageRight: voiceActor?.image,
+        );
+      },
+    );
+  }
+
+  List<Widget> buildStaffSection(int index, List<StaffEdge> staff) {
+    return _buildGridSection(
+      title: 'Staff',
+      items: staff.take(3).toList(),
+      onHeaderPressed: () => setState(() => currentTabIndex = index),
+      itemBuilder: (context, staffEdge) {
+        final staffMember = staffEdge.node;
+        return DualInfoCard(
+          nameLeft: staffMember?.name ?? 'Unknown',
+          descLeft: staffEdge.role?.titleCase ?? '',
+          imageLeft: staffMember?.image ?? '',
+        );
+      },
+    );
+  }
+
+  List<Widget> buildStatsSection(int index, AnimeStats stats) {
+    return [
+      HighlightedButton(
+        title: Text('Statistics', style: Manager.subtitleStyle),
+        onPressed: () => setState(() => currentTabIndex = index),
+      ),
+      VDiv(16),
+      Row(
+        children: [
+          Expanded(child: Text("Status Distribution Placeholder")),
+          Expanded(child: Text("Score Distribution Placeholder")),
+        ],
+      )
+    ];
+  }
+
+  List<Widget> buildSocialSection(int index, List<MediaListFollowing> following) {
+    return _buildGridSection(
+      title: 'Social',
+      items: following.take(6).toList(),
+      onHeaderPressed: () => setState(() => currentTabIndex = index),
+      itemBuilder: (context, user) {
+        return DualInfoCard(
+          nameLeft: user.user?.name ?? 'Unknown',
+          descLeft: '',
+          imageLeft: user.user?.avatar ?? '',
+        );
+      },
+    );
+  }
+
+  List<Widget> buildRecommendationsSection(List<RecommendationNode> recommendations) {
+    return [
+      Text('Recommendations', style: Manager.subtitleStyle),
+      VDiv(16),
+      Wrap(
+        spacing: 12,
+        runSpacing: 12,
+        children: recommendations.take(6).map((rec) {
+          return SizedBox(
+            width: 120,
+            child: Column(
+              children: [
+                CachedNetworkImage(
+                  imageUrl: rec.mediaRecommendation?.coverImage ?? '',
+                  width: 100,
+                  height: 150,
+                  fit: BoxFit.cover,
+                ),
+                VDiv(8),
+                Text(
+                  rec.mediaRecommendation?.title.userPreferred ?? '',
+                  style: Manager.bodyStyle,
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          );
+        }).toList(),
+      ),
+    ];
+  }
+
+  Widget buildHeader(double headerHeight, double borderRadius) {
+    return Container(
       height: headerHeight,
       margin: EdgeInsets.all(.5),
       constraints: BoxConstraints(maxHeight: headerHeight),
       child: AcrylicHeader(
-        borderRadius: BorderRadius.only(
-          topRight: Radius.circular(borderRadius),
-          topLeft: Radius.circular(borderRadius),
-        ),
+        borderRadius: BorderRadius.circular(borderRadius),
         useFrostedNoise: false,
         useAcrylic: false,
-        padding: EdgeInsets.all(3),
+        padding: EdgeInsets.all(0.001),
         child: LayoutBuilder(builder: (context, constraints) {
+          final pages = _pages.whereNot((p) => p == null).toList();
           final threshold = 500.0;
-          final sepMargin = 2.0;
-          Widget tab(bool isFirst, bool isLast, double extra, String page, Widget Function({required Widget child})? wrapper) {
-            wrapper ??= _kIdentityWrapper;
-            return wrapper(
-              child: SizedBox(
-                width: ((threshold - 18) - (isFirst || isLast ? (extra * 2) : 0) - (sepMargin * (pages.whereNot((p) => p == null).length - 1))) / pages.whereNot((p) => p == null).length + extra,
-                height: headerHeight,
-                child: mat.InkWell(
-                  borderRadius: BorderRadius.circular(4),
-                  onTap: () {
-                    logTrace('Clicked on tab: $page');
-                  },
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      if (!isFirst) SizedBox.shrink() else SizedBox(width: extra),
-                      Text(page, style: Manager.captionStyle, textAlign: TextAlign.center),
-                      if (!isLast) SizedBox.shrink() else SizedBox(width: extra),
-                    ],
-                  ),
+          final sepMargin = 4.0;
+
+          return Stack(
+            children: [
+              Positioned.fill(
+                child: Builder(builder: (context) {
+                  Widget tab(bool isFirst, bool isLast, double extra, String page, Widget Function({required Widget child})? wrapper) {
+                    wrapper ??= _kIdentityWrapper;
+                    final width = ((threshold - 25) - (isFirst || isLast ? (extra * 2) : 0) - (sepMargin * (pages.length - 1))) / pages.length + extra;
+                    return wrapper(
+                      child: SizedBox(
+                        width: width,
+                        height: headerHeight,
+                        child: mat.InkWell(
+                          borderRadius: BorderRadius.circular(4),
+                          onTap: () {
+                            logTrace('Clicked on tab: $page');
+                            final pageIndex = _tabNames.indexOf(page);
+                            if (pageIndex != -1) setState(() => currentTabIndex = pageIndex);
+                          },
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              if (!isFirst) SizedBox.shrink() else SizedBox(width: extra),
+                              Text(page, style: Manager.captionStyle, textAlign: TextAlign.center),
+                              if (!isLast) SizedBox.shrink() else SizedBox(width: extra),
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
+                  }
+
+                  Widget builder(Widget Function({required Widget child})? wrapper) {
+                    return Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: _pages.map((page) {
+                        final isFirst = _pages.indexOf(page) == 0;
+                        final isSeparator = page == null;
+                        final isLast = _pages.indexOf(page) == _pages.length - 1;
+                        final extra = 0.0;
+
+                        // Separator
+                        if (isSeparator) return Container(width: 1, height: 24, margin: EdgeInsets.symmetric(horizontal: sepMargin), color: Colors.white.withOpacity(0.2));
+
+                        // Normal tab
+                        return tab(isFirst, isLast, extra, page.values.first, wrapper);
+                      }).toList(),
+                    );
+                  }
+
+                  // Decide layout based on available width
+                  if (constraints.maxWidth >= threshold)
+                    // Full row when enough width
+                    return builder(({required Widget child}) => Expanded(child: child));
+                  else
+                    // Scrollable list when width is limited
+                    return SingleChildScrollView(scrollDirection: Axis.horizontal, child: builder(null));
+                }),
+              ),
+              // Tab Indicator
+              if (_cachedSeries != null) Positioned.fill(
+                bottom: 0,
+                child: Align(
+                  alignment: Alignment.bottomLeft,
+                  child: Builder(builder: (context) {
+                    final tabWidth = (max(constraints.maxWidth, threshold)) / (pages.length);
+                    // final tabIndicatorWidth = min(tabWidth - 32, measureTextWidth(pages[currentTabIndex]!.values.first, style: Manager.captionStyle) + 16);
+                    var sidePadding = 32;
+                    final tempWidth = tabWidth - (sidePadding * 2);
+                    var tabIndicatorWidth = tempWidth;
+                    if (tempWidth < 30) {
+                      tabIndicatorWidth = 30;
+                      sidePadding = max((tabWidth - tabIndicatorWidth) ~/ 2, 0);
+                    }
+                    return AnimatedContainer(
+                      duration: const Duration(milliseconds: 150),
+                      curve: Curves.easeInOut,
+                      height: 3,
+                      width: tabIndicatorWidth,
+                      margin: EdgeInsets.only(
+                        // left: currentTabIndex * tabWidth + (tabWidth / 2) - (tabIndicatorWidth / 2) - (((pages.length / 2) - currentTabIndex) * 2),
+                        left: (currentTabIndex * tabWidth) + sidePadding,
+                      ),
+                      decoration: BoxDecoration(
+                        color: (Manager.currentDominantAccentColor ?? Manager.accentColor).light.withOpacity(0.5),
+                        borderRadius: BorderRadius.only(
+                          topLeft: Radius.circular(10),
+                          topRight: Radius.circular(10),
+                        ),
+                      ),
+                    );
+                  }),
                 ),
               ),
-            );
-          }
-
-          Widget builder(Widget Function({required Widget child})? wrapper) {
-            return Row(
-              mainAxisSize: MainAxisSize.min,
-              children: pages.map((page) {
-                final isFirst = pages.indexOf(page) == 0;
-                final isSeparator = page == null;
-                final isLast = pages.indexOf(page) == pages.length - 1;
-                final extra = 0.0;
-
-                // Separator
-                if (isSeparator) return Container(width: 1, height: 24, margin: EdgeInsets.symmetric(horizontal: sepMargin), color: Colors.white.withOpacity(0.2));
-
-                // Normal tab
-                return tab(isFirst, isLast, extra, page, wrapper);
-              }).toList(),
-            );
-          }
-
-          // Decide layout based on available width
-          if (constraints.maxWidth >= threshold)
-            // Full row when enough width
-            return builder(({required Widget child}) => Expanded(child: child));
-          else
-            // Scrollable list when width is limited
-            return SingleChildScrollView(scrollDirection: Axis.horizontal, child: builder(null));
+            ],
+          );
         }),
       ),
-    );
-
-    return Column(
-      children: [
-        visibleHeader,
-        SizedBox(height: 4),
-        Expanded(
-          child: Card(
-            borderRadius: BorderRadius.only(
-              bottomLeft: Radius.circular(borderRadius),
-              bottomRight: Radius.circular(borderRadius),
-            ),
-            padding: EdgeInsets.only(top: 16, left: 16, bottom: 16),
-            child: ClipRRect(
-              borderRadius: BorderRadius.only(
-                bottomLeft: Radius.circular(borderRadius),
-                bottomRight: Radius.circular(borderRadius),
-              ),
-              child: Padding(
-                padding: EdgeInsets.only(right: 2),
-                child: SizedBox(
-                  width: double.infinity,
-                  child: Text(series.toString()),
-                ),
-              ),
-            ),
-          ),
-        ),
-      ],
     );
   }
 }

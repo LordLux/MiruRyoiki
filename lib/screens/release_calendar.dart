@@ -1075,6 +1075,7 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> with Autom
     }
 
     final isToday = _selectedDate.year == now.year && _selectedDate.month == now.month && _selectedDate.day == now.day;
+    final isFutureDate = _selectedDate.isAfter(DateTime(now.year, now.month, now.day));
 
     // Check if we should show the "Show older notifications" button
     // Show the button when:
@@ -1110,7 +1111,7 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> with Autom
                 Icon(FluentIcons.calendar_day, size: 48, color: FluentTheme.of(context).inactiveColor),
                 VDiv(16),
                 Text(
-                  isToday ? 'No episodes scheduled for today' : 'No episodes scheduled for this date',
+                  isToday ? 'No episodes scheduled for today' : isFutureDate ? 'No episodes scheduled for this date' : 'No episodes aired on this date',
                   style: FluentTheme.of(context).typography.subtitle,
                 ),
               ],

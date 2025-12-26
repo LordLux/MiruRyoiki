@@ -1020,6 +1020,26 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
     }
     Manager.setState();
   }
+  
+  void navigateToSearchedSeries() {
+    setState(() {
+      _isCompactView = true;
+    });
+  }
+  
+  void exitSearchedSeriesView() {
+    final navManager = Provider.of<NavigationManager>(context, listen: false);
+    if (navManager.currentView?.level == NavigationLevel.page) navManager.goBack();
+    
+    setState(() {
+      Manager.currentDominantColor = null;
+      Manager.seriesDominantColor = null;
+      _isSeriesView = false;
+      _isCompactView = false;
+      _isFinishedTransitioningToLibrary = false;
+      _isFinishedTransitioningToSeries = false;
+    });
+  }
 
   /// Called when the transition to the library view ends
   void onEndTransitionSeriesScreen() {
@@ -1218,7 +1238,7 @@ Future<void> _registerWindowsUrlScheme(String scheme) async {
   }
 }
 
-// TODO migrate notifications and releasing episodes queries to graphql_codegen
+// TODO dominant color to null when navigating to release calendar via notification dialog
 // TODO 'video player process monitoring failed to start' because already open, after a hot restart -> detect with ReassembleListener
 // TODO scanning library progress indicator in status bar in Browse page is bugged visually with background cards
 // TODO add 'random entry' button to top right corner of library

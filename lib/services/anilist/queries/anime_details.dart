@@ -25,7 +25,7 @@ extension AnilistServiceAnimeDetails on AnilistService {
 
     if (result == null || result.Media == null) return null;
 
-    return AnimeOverview.fromQuery(result.Media!);
+    return AnimeOverview.fromQuery(result);
   }
 
   /// Get multiple anime details
@@ -86,33 +86,6 @@ extension AnilistServiceAnimeDetails on AnilistService {
     }
 
     return animeMap;
-  }
-
-  AnilistAnime convertFragmentToAnilistAnime(AnimeOverview fragment) {
-    return AnilistAnime(
-      id: fragment.id,
-      title: fragment.title,
-      posterImage: fragment.coverImage,
-      dominantColor: fragment.dominantColor,
-      bannerImage: fragment.bannerImage,
-      description: fragment.description,
-      status: fragment.status,
-      format: fragment.format,
-      episodes: fragment.episodes,
-      seasonYear: fragment.seasonYear,
-      season: fragment.season,
-      genres: fragment.genres,
-      averageScore: fragment.averageScore,
-      meanScore: fragment.meanScore,
-      popularity: fragment.popularity,
-      isFavourite: fragment.isFavourite,
-      startDate: fragment.startDate,
-      endDate: fragment.endDate,
-      updatedAt: fragment.updatedAt,
-      nextAiringEpisode: fragment.nextAiringEpisode,
-      siteUrl: fragment.siteUrl,
-      rankings: fragment.rankings.isNotEmpty ? fragment.rankings.first.rank : null,
-    );
   }
 
   /// Get user anime lists

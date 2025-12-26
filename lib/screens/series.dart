@@ -1153,7 +1153,7 @@ class SeriesScreenState extends State<SeriesScreen> {
   Widget _buildContentGrid(BuildContext context, Series series) {
     if (isMappingMode && widget.target != null) {
       final headerHeight = 45.0;
-      final borderRadius = ScreenUtils.kEpisodeCardBorderRadius;
+      final borderRadius = ScreenUtils.kStatCardBorderRadius;
 
       final visibleHeader = Container(
         height: headerHeight,

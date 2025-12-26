@@ -131,140 +131,134 @@ class GenresFilterContentState extends State<_GenresFilterContent> {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisAlignment: MainAxisAlignment.start,
           children: [
-          InfoLabel(
-            label: 'Sort by',
-            labelStyle: Manager.smallSubtitleStyle.copyWith(color: Manager.pastelAccentColor),
-            child: Row(
-              children: [
-                Expanded(
-                  child: MouseButtonWrapper(
-                    tooltip: libraryScreenKey.currentState?.sortOrder.name_,
-                    child: (_) => ComboBox<SortOrder>(
-                      isExpanded: true,
-                      value: libraryScreenKey.currentState?.sortOrder,
-                      placeholder: const Text('Sort By'),
-                      items: SortOrder.values.map((order) => ComboBoxItem(value: order, child: Text(libraryScreenKey.currentState?.getSortText(order) ?? ''))).toList(),
-                      onChanged: (p0) => setState(() => libraryScreenKey.currentState?.onSortOrderChanged(p0)),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                SizedBox(
-                  height: 34,
-                  width: 34,
-                  child: StandardButton(
-                    tooltip: 'Sort results in ${!(libraryScreenKey.currentState?.sortDescending ?? false) ? "Ascending" : "Descending"} order',
-                    tooltipWaitDuration: Duration(milliseconds: 150),
-                    padding: EdgeInsets.zero,
-                    label: Center(
-                      child: AnimatedRotation(
-                        duration: shortStickyHeaderDuration,
-                        turns: libraryScreenKey.currentState?.sortDescending ?? false ? 0 : 1,
-                        child: Icon(libraryScreenKey.currentState?.sortDescending ?? false ? FluentIcons.sort_lines : FluentIcons.sort_lines_ascending, color: Manager.pastelAccentColor),
+            InfoLabel(
+              label: 'Sort by',
+              labelStyle: Manager.smallSubtitleStyle.copyWith(color: Manager.pastelAccentColor),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: MouseButtonWrapper(
+                      tooltip: libraryScreenKey.currentState?.sortOrder.name_,
+                      child: (_) => ComboBox<SortOrder>(
+                        isExpanded: true,
+                        value: libraryScreenKey.currentState?.sortOrder,
+                        placeholder: const Text('Sort By'),
+                        items: SortOrder.values.map((order) => ComboBoxItem(value: order, child: Text(libraryScreenKey.currentState?.getSortText(order) ?? ''))).toList(),
+                        onChanged: (p0) => setState(() => libraryScreenKey.currentState?.onSortOrderChanged(p0)),
                       ),
                     ),
-                    onPressed: () => setState(() => libraryScreenKey.currentState?.onSortDirectionChanged()),
                   ),
-                ),
-              ],
-            ),
-          ),
-          VDiv(24),
-
-          // Genre Filter
-          InfoLabel(
-            label: 'Filter by Genre',
-            labelStyle: Manager.smallSubtitleStyle.copyWith(color: Manager.pastelAccentColor),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                AutoSuggestBox<String>(
-                  key: asgbKey,
-                  placeholder: 'Select Genre',
-                  clearButtonEnabled: false,
-                  cursorColor: Manager.pastelAccentColor,
-                  decoration: ButtonState.all(
-                    BoxDecoration(
-                      color: Colors.white.withOpacity(0.05),
-                      borderRadius: BorderRadius.circular(4),
-                      border: Border.all(color: Colors.white.withOpacity(0.1)),
+                  const SizedBox(width: 8),
+                  SizedBox(
+                    height: 34,
+                    width: 34,
+                    child: StandardButton(
+                      tooltip: 'Sort results in ${!(libraryScreenKey.currentState?.sortDescending ?? false) ? "Ascending" : "Descending"} order',
+                      tooltipWaitDuration: Duration(milliseconds: 150),
+                      padding: EdgeInsets.zero,
+                      label: Center(
+                        child: AnimatedRotation(
+                          duration: shortStickyHeaderDuration,
+                          turns: libraryScreenKey.currentState?.sortDescending ?? false ? 0 : 1,
+                          child: Icon(libraryScreenKey.currentState?.sortDescending ?? false ? FluentIcons.sort_lines : FluentIcons.sort_lines_ascending, color: Manager.pastelAccentColor),
+                        ),
+                      ),
+                      onPressed: () => setState(() => libraryScreenKey.currentState?.onSortDirectionChanged()),
                     ),
                   ),
-                  noResultsFoundBuilder: (context) => const Padding(padding: EdgeInsets.all(8.0), child: Text('No genres found')),
-                  controller: genres_controller,
-                  items: genres.where((g) => !selectedGenres.contains(g)).map((genre) {
-                    return AutoSuggestBoxItem<String>(
-                      value: genre,
-                      label: genre,
-                    );
-                  }).toList(),
-                  focusNode: genre_focus_node,
-                  onSelected: (item) {
-                    if (item.value != null) _addGenre(item.value!);
-
-                    // Clear the controller after a short delay to ensure it overrides the default behavior
-                    Future.microtask(() {
-                      genres_controller.clear();
-                      (asgbKey.currentWidget as AutoSuggestBox<String>?)?.controller?.clear();
-                    });
-                  },
-                ),
-                if (selectedGenres.isNotEmpty) ...[
-                  const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: selectedGenres.map((genre) {
-                      return MouseButtonWrapper(
-                        child: (isHovered) => Pill(
-                          text: genre,
-                          color: Colors.white,
-                          selectedColor: getTextColor(Manager.currentDominantColor ?? Manager.accentColor),
-                          icon: FluentIcons.clear,
-                          iconSize: 10,
-                          spacing: 4,
-                          onTap: () => _removeGenre(genre),
-                          isSelected: isHovered,
-                        ),
-                      );
-                    }).toList(),
-                  ),
                 ],
-              ],
-            ),
-          ),
-          VDiv(24),
-          InfoLabel(
-            label: 'View',
-            labelStyle: Manager.smallSubtitleStyle.copyWith(color: Manager.pastelDominantColor),
-            child: MouseButtonWrapper(
-              tooltip: libraryScreenKey.currentState?.currentView == LibraryView.all ? 'Show all series' : 'Show only series linked to AniList',
-              child: (_) => ComboBox<LibraryView>(
-                isExpanded: true,
-                value: libraryScreenKey.currentState?.currentView,
-                items: [
-                  ComboBoxItem(value: LibraryView.all, child: Text('All Series')),
-                  ComboBoxItem(value: LibraryView.linked, child: Text('Linked Series Only')),
-                ],
-                onChanged: (view) => setState(() => libraryScreenKey.currentState?.onViewChanged(view)),
               ),
             ),
-          ),
-          VDiv(16),
+            VDiv(24),
 
-          // Grouping Toggle
-          MouseButtonWrapper(
-            tooltip: (libraryScreenKey.currentState?.showGrouped ?? false) ? 'Display series grouped by AniList lists' : 'Display series in a flat list',
-            child: (_) => ToggleSwitch(
-              checked: libraryScreenKey.currentState?.showGrouped ?? false,
-              content: Expanded(child: Text('Group by AniList Lists', style: Manager.bodyStyle, maxLines: 2, overflow: TextOverflow.ellipsis)),
-              onChanged: (value) => setState(() => libraryScreenKey.currentState?.onShowGroupedChanged(value)),
+            // Genre Filter
+            InfoLabel(
+              label: 'Filter by Genre',
+              labelStyle: Manager.smallSubtitleStyle.copyWith(color: Manager.pastelAccentColor),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  AutoSuggestBox<String>(
+                    key: asgbKey,
+                    placeholder: 'Select Genre',
+                    clearButtonEnabled: false,
+                    cursorColor: Manager.pastelAccentColor,
+                    decoration: ButtonState.all(
+                      BoxDecoration(
+                        color: Colors.white.withOpacity(0.05),
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(color: Colors.white.withOpacity(0.1)),
+                      ),
+                    ),
+                    noResultsFoundBuilder: (context) => const Padding(padding: EdgeInsets.all(8.0), child: Text('No genres found')),
+                    controller: genres_controller,
+                    items: genres.where((g) => !selectedGenres.contains(g)).map((genre) {
+                      return AutoSuggestBoxItem<String>(
+                        value: genre,
+                        label: genre,
+                      );
+                    }).toList(),
+                    focusNode: genre_focus_node,
+                    onSelected: (item) {
+                      if (item.value != null) _addGenre(item.value!);
+
+                      // Clear the controller after a short delay to ensure it overrides the default behavior
+                      Future.microtask(() {
+                        genres_controller.clear();
+                        (asgbKey.currentWidget as AutoSuggestBox<String>?)?.controller?.clear();
+                      });
+                    },
+                  ),
+                  if (selectedGenres.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: selectedGenres.map((genre) {
+                        return FluentPill(
+                          text: genre,
+                          icon: FluentIcons.clear,
+                          onTap: (g) => _removeGenre(g),
+                        );
+                      }).toList(),
+                    ),
+                  ],
+                ],
+              ),
             ),
-          ),
-          VDiv(24),
-        ],
+            VDiv(24),
+            InfoLabel(
+              label: 'View',
+              labelStyle: Manager.smallSubtitleStyle.copyWith(color: Manager.pastelDominantColor),
+              child: MouseButtonWrapper(
+                tooltip: libraryScreenKey.currentState?.currentView == LibraryView.all ? 'Show all series' : 'Show only series linked to AniList',
+                child: (_) => ComboBox<LibraryView>(
+                  isExpanded: true,
+                  value: libraryScreenKey.currentState?.currentView,
+                  items: [
+                    ComboBoxItem(value: LibraryView.all, child: Text('All Series')),
+                    ComboBoxItem(value: LibraryView.linked, child: Text('Linked Series Only')),
+                  ],
+                  onChanged: (view) => setState(() => libraryScreenKey.currentState?.onViewChanged(view)),
+                ),
+              ),
+            ),
+            VDiv(16),
+
+            // Grouping Toggle
+            MouseButtonWrapper(
+              tooltip: (libraryScreenKey.currentState?.showGrouped ?? false) ? 'Display series grouped by AniList lists' : 'Display series in a flat list',
+              child: (_) => ToggleSwitch(
+                checked: libraryScreenKey.currentState?.showGrouped ?? false,
+                content: Expanded(child: Text('Group by AniList Lists', style: Manager.bodyStyle, maxLines: 2, overflow: TextOverflow.ellipsis)),
+                onChanged: (value) => setState(() => libraryScreenKey.currentState?.onShowGroupedChanged(value)),
+              ),
+            ),
+            VDiv(24),
+          ],
+        ),
       ),
-    ));
+    );
   }
 }
 

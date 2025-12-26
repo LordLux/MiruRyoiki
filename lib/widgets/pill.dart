@@ -1,7 +1,10 @@
+// ignore_for_file: unnecessary_this
+
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/material.dart' as mat;
 
 import '../manager.dart';
+import '../utils/color.dart';
 import '../utils/time.dart';
 import 'buttons/wrapper.dart';
 
@@ -10,27 +13,35 @@ class Pill extends StatelessWidget {
   final String tooltip;
   final VoidCallback? onTap;
   final bool isSelected;
-  final IconData icon;
+  final IconData? icon;
   final double iconSize;
   final double spacing;
-  final Color color;
-  final Color selectedColor;
+  final Color? textColor;
+  final Color? selectedTextColor;
+  final AccentColor backgroundColor;
+  final AccentColor selectedBackgroundColor;
 
-  const Pill({
+  Pill({
     super.key,
     required this.text,
-    required this.icon,
-    required this.color,
+    this.icon,
+    AccentColor? backgroundColor,
+    AccentColor? selectedBackgroundColor,
+    this.textColor,
+    this.selectedTextColor,
     String? tooltip,
     this.onTap,
-    this.selectedColor = Colors.white,
     this.spacing = 2,
     this.iconSize = 14,
     this.isSelected = false,
-  }) : tooltip = tooltip ?? text;
+  })  : tooltip = tooltip ?? text,
+        this.backgroundColor = backgroundColor ?? Colors.white.toAccentColor(),
+        this.selectedBackgroundColor = selectedBackgroundColor ?? Manager.currentDominantAccentColor ?? Manager.accentColor;
 
   @override
   Widget build(BuildContext context) {
+    final textColor_ = textColor ?? Colors.white;
+    final selectedTextColor_ = selectedTextColor ?? getTextColor(this.selectedBackgroundColor.light, preferBlack: 0.8);
     return MouseButtonWrapper(
       tooltip: tooltip,
       tooltipWaitDuration: const Duration(milliseconds: 350),
@@ -41,26 +52,28 @@ class Pill extends StatelessWidget {
           duration: shortDuration,
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
           decoration: BoxDecoration(
-            color: isSelected ? (Manager.currentDominantAccentColor ?? Manager.accentColor).light : Colors.white.withOpacity(0.1),
+            color: isSelected ? selectedBackgroundColor.light : backgroundColor.light.withOpacity(.1),
             borderRadius: BorderRadius.circular(4),
             border: Border.all(
-              color: isSelected ? (Manager.currentDominantAccentColor ?? Manager.accentColor).dark : Colors.white.withOpacity(0.2),
+              color: isSelected ? selectedBackgroundColor.dark : backgroundColor.dark.withOpacity(0.2),
               width: 1,
             ),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(
-                icon,
-                size: iconSize,
-                color: isSelected ? selectedColor : color,
-              ),
-              SizedBox(width: spacing),
+              if (icon != null) ...[
+                Icon(
+                  icon,
+                  size: iconSize,
+                  color: isSelected ? selectedTextColor_ : textColor_,
+                ),
+                SizedBox(width: spacing),
+              ],
               Text(
                 text,
                 style: Manager.captionStyle.copyWith(
-                  color: isSelected ? selectedColor : color,
+                  color: isSelected ? selectedTextColor_ : textColor_,
                   fontSize: 11 * Manager.fontSizeMultiplier,
                 ),
               ),
@@ -70,4 +83,31 @@ class Pill extends StatelessWidget {
       ),
     );
   }
+}
+
+Widget FluentPill({
+  required String text,
+  AccentColor? backgroundColor,
+  AccentColor? selectedBackgroundColor,
+  Color? textColor,
+  Color? selectedTextColor,
+  IconData? icon,
+  double iconSize = 10,
+  double spacing = 4,
+  Function(String)? onTap,
+}) {
+  return MouseButtonWrapper(
+    child: (isHovered) => Pill(
+      text: text,
+      backgroundColor: backgroundColor,
+      selectedBackgroundColor: selectedBackgroundColor,
+      textColor: textColor,
+      selectedTextColor: selectedTextColor,
+      icon: icon,
+      iconSize: iconSize,
+      spacing: spacing,
+      onTap: onTap != null ? () => onTap(text) : null,
+      isSelected: isHovered,
+    ),
+  );
 }

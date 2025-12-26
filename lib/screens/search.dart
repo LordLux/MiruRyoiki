@@ -16,6 +16,7 @@ import '../../utils/screen.dart';
 import '../../utils/time.dart';
 import '../../widgets/buttons/back_button.dart';
 import '../../widgets/buttons/button.dart';
+import '../main.dart';
 import '../models/anilist/anime_card.dart';
 import '../widgets/cards/search_series_card.dart';
 import '../../widgets/fading_edge_scrollview.dart';
@@ -210,7 +211,7 @@ class SearchScreenState extends State<BrowseScreen> with AutomaticKeepAliveClien
     if (widget.scrollController.hasClients)
       widget.scrollController.animateTo(
         0,
-        duration: const Duration(milliseconds: 600),
+        duration: const Duration(milliseconds: 300),
         curve: Curves.easeOut,
       );
 
@@ -233,7 +234,11 @@ class SearchScreenState extends State<BrowseScreen> with AutomaticKeepAliveClien
 
     // Scroll to top
     if (widget.scrollController.hasClients) //
-      widget.scrollController.animateTo(0, duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
+      widget.scrollController.animateTo(
+        0,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+      );
 
     _fetchTextSearchResults();
   }
@@ -304,7 +309,7 @@ class SearchScreenState extends State<BrowseScreen> with AutomaticKeepAliveClien
           if (widget.scrollController.hasClients)
             widget.scrollController.animateTo(
               _lastScrollPosition,
-              duration: const Duration(milliseconds: 600),
+              duration: const Duration(milliseconds: 400),
               curve: Curves.easeInOut,
             );
         });
@@ -338,13 +343,10 @@ class SearchScreenState extends State<BrowseScreen> with AutomaticKeepAliveClien
   }
 
   void _exitSeriesView() {
-    final navManager = Provider.of<NavigationManager>(context, listen: false);
-    if (navManager.currentView?.level == NavigationLevel.page) navManager.goBack();
-
+    homeKey.currentState?.exitSearchedSeriesView();
     setState(() {
       _isSeriesView = false;
       _isFinishedTransitioningToSeries = false;
-      Manager.currentDominantColor = null;
       // _selectedAnime not cleared to allow fade out animation
     });
   }
@@ -359,16 +361,16 @@ class SearchScreenState extends State<BrowseScreen> with AutomaticKeepAliveClien
         _selectedAnime = null; // Clear selected anime after transition back to search
       }
     });
-}
-  
+  }
 
   void _onSeriesOpen(AnimeCard anime) {
+    homeKey.currentState?.navigateToSearchedSeries();
     setState(() {
       _selectedAnime = anime;
       _isSeriesView = true;
       _isFinishedTransitioningToSearch = false;
     });
-    
+
     Provider.of<NavigationManager>(context, listen: false).pushPage(
       'search:series:${anime.id}',
       anime.title.userPreferred ?? 'Anime Details',
@@ -680,7 +682,7 @@ class SearchScreenState extends State<BrowseScreen> with AutomaticKeepAliveClien
       ),
     );
   }
-  
+
   Widget _buildBody(Library library, SettingsManager settings) {
     return FadingEdgeScrollView(
       fadeEdges: const EdgeInsets.only(bottom: 40),
@@ -924,7 +926,7 @@ class _SectionWidgetState extends State<SectionWidget> {
     } else if (!widget.isExpanded && oldWidget.isExpanded) {
       // Start collapse animation
       setState(() => _isCollapsing = true);
-      Future.delayed(const Duration(milliseconds: 300), () {
+      Future.delayed(const Duration(milliseconds: 100), () {
         if (mounted && !widget.isExpanded) {
           setState(() {
             _areExtrasLoaded = false;
@@ -958,7 +960,7 @@ class _SectionWidgetState extends State<SectionWidget> {
 
               // Series Grid
               AnimatedSize(
-                duration: const Duration(milliseconds: 800),
+                duration: const Duration(milliseconds: 400),
                 curve: Curves.easeOutQuart,
                 alignment: Alignment.topCenter,
                 child: GridView.builder(
@@ -1078,7 +1080,7 @@ class AnimatedSectionWrapper extends StatelessWidget {
       firstChild: child,
       secondChild: const SizedBox(width: double.infinity, height: 0),
       crossFadeState: isHidden ? CrossFadeState.showSecond : CrossFadeState.showFirst,
-      duration: const Duration(milliseconds: 600),
+      duration: const Duration(milliseconds: 300),
       sizeCurve: Curves.easeInOutQuart,
     );
   }

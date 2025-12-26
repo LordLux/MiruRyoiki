@@ -31,8 +31,6 @@ class ViewTypeSwitcher extends StatelessWidget {
       offset: const Offset(3, 0),
       child: buildViewTypePills(
         currentViewType,
-        textColor,
-        selectedTextColor,
         onViewTypeChanged,
       ),
     );
@@ -74,7 +72,7 @@ class ViewTypeSwitcher extends StatelessWidget {
   }
 }
 
-Widget buildViewTypePills(ViewType currentViewType, Color textColor, Color selectedTextColor, void Function(ViewType) onViewTypeChanged) {
+Widget buildViewTypePills(ViewType currentViewType, void Function(ViewType) onViewTypeChanged) {
   return Row(
     mainAxisSize: MainAxisSize.min,
     children: ViewType.values.map((viewType) {
@@ -86,8 +84,6 @@ Widget buildViewTypePills(ViewType currentViewType, Color textColor, Color selec
           text: viewType.label,
           icon: viewType.icon,
           tooltip: viewType.tooltip,
-          color: textColor,
-          selectedColor: selectedTextColor,
           isSelected: isSelected,
           onTap: () => onViewTypeChanged(viewType),
         ),

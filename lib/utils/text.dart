@@ -83,6 +83,8 @@ String parseFormat(String? format) {
   };
 }
 
+const formatEpisodic = ['TV', 'TV_SHORT', 'OVA', 'ONA'];
+
 String parseCountryOfOrigin(String? country) {
   return switch (country?.toUpperCase()) {
     "JP" => "Japan",
