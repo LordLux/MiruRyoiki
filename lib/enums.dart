@@ -399,3 +399,24 @@ extension MapSwitch on Map<String, String> {
     return Map.fromEntries(entries.map((e) => MapEntry(e.value, e.key)));
   }
 }
+
+enum PageTransitionMode { none, fade, slide }
+
+extension PageTransitionModeX on PageTransitionMode {
+  String get name_ {
+    switch (this) {
+      case PageTransitionMode.none:
+        return 'None';
+      case PageTransitionMode.fade:
+        return 'Fade';
+      case PageTransitionMode.slide:
+        return 'Fade and Slide';
+    }
+  }
+
+  static PageTransitionMode fromString(String value, {PageTransitionMode? defaultValue}) => fromStringX<PageTransitionMode>(
+        value,
+        PageTransitionMode.values,
+        defaultValue,
+      );
+}

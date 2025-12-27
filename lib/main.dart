@@ -25,6 +25,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:win32_registry/win32_registry.dart';
 
 import 'database/database.dart';
+import 'enums.dart';
 import 'screens/downloads_screen.dart';
 import 'screens/search.dart';
 import 'screens/searched_series.dart';
@@ -34,6 +35,7 @@ import 'screens/release_calendar.dart';
 import 'services/isolates/thumbnail_manager.dart';
 import 'widgets/dialogs/splash/progress.dart';
 import 'widgets/reassemble_widget.dart';
+import 'widgets/route_transition_builders.dart';
 import 'widgets/sidebar_opener_detector.dart';
 import 'widgets/player.dart';
 import 'widgets/release_notification.dart';
@@ -872,22 +874,7 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
       return PageRouteBuilder(
         settings: settings,
         pageBuilder: (context, animation, secondaryAnimation) => page,
-        transitionsBuilder: (context, animation, secondaryAnimation, child) {
-          // Custom fade transition
-          return FadeTransition(
-            opacity: CurvedAnimation(
-              parent: animation,
-              curve: Curves.easeInOut,
-            ),
-            child: FadeTransition(
-              opacity: CurvedAnimation(
-                parent: ReverseAnimation(secondaryAnimation),
-                curve: Curves.easeInOut,
-              ),
-              child: child,
-            ),
-          );
-        },
+        transitionsBuilder: (context, animation, secondaryAnimation, child) => fadeTransitionsBuilder(context, animation, secondaryAnimation, child),
         transitionDuration: mediumDuration,
         reverseTransitionDuration: mediumDuration,
         maintainState: true,
@@ -909,32 +896,14 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
       pageBuilder: (context, animation, secondaryAnimation) => page,
       transitionsBuilder: (context, animation, secondaryAnimation, child) {
         // Custom fade transition
-        return SlideTransition(
-          position: Tween<Offset>(
-            begin: Offset(0, direction >= 0 ? 0.15 : -0.15),
-            end: Offset.zero,
-          ).animate(CurvedAnimation(
-            parent: animation,
-            curve: Curves.easeInOut,
-          )),
-          child: FadeTransition(
-            opacity: CurvedAnimation(
-              parent: animation,
-              curve: Curves.easeInOut,
-            ),
-            child: FadeTransition(
-              opacity: CurvedAnimation(
-                parent: ReverseAnimation(secondaryAnimation),
-                curve: Curves.easeInOut,
-              ),
-              child: child,
-            ),
-          ),
-        );
+        return switch (Manager.settings.pageTransitionMode) {
+          PageTransitionMode.none => noneTransitionsBuilder(context, animation, secondaryAnimation, child),
+          PageTransitionMode.fade => fadeTransitionsBuilder(context, animation, secondaryAnimation, child),
+          PageTransitionMode.slide => slideTransitionsBuilder(context, animation, secondaryAnimation, child, direction),
+        };
       },
-      transitionDuration: mediumDuration,
-      reverseTransitionDuration: mediumDuration,
-      // barrierColor: Colors.black,
+      transitionDuration: Manager.settings.pageTransitionMode == PageTransitionMode.none ? Duration.zero : mediumDuration,
+      reverseTransitionDuration: Manager.settings.pageTransitionMode == PageTransitionMode.none ? Duration.zero : mediumDuration,
       maintainState: true,
     );
   }

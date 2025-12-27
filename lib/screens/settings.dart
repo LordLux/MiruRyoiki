@@ -114,6 +114,7 @@ class SettingsScreenState extends State<SettingsScreen> with AutomaticKeepAliveC
   bool _isClearingThumbnailCache = false;
 
   final FocusNode fontSizeFocusNode = FocusNode();
+  final FocusNode transitionAnimationFocusNode = FocusNode();
 
   int _selectedSettingCategory = 0;
 
@@ -1408,6 +1409,32 @@ class SettingsScreenState extends State<SettingsScreen> with AutomaticKeepAliveC
                     },
                   ),
                   tooltip: 'When enabled, the video progress slider will have a squiggly animation effect when the video is playing.\nWhen disabled, the slider will appear like a normal line.',
+                ),
+              ],
+            ),
+          ],
+          VDiv(12),
+          // Transition Animations
+          ...[
+            Row(
+              children: [
+                Text('Transition Animations', style: Manager.bodyStyle),
+                const SizedBox(width: 12),
+                MouseButtonWrapper(
+                  tooltip: 'Select the type of transition animations used during pane changes throughout the app.',
+                  child: (_) => ComboBox<PageTransitionMode>(
+                    focusNode: transitionAnimationFocusNode,
+                    value: settings.pageTransitionMode,
+                    items: PageTransitionMode.values.map((PageTransitionMode value) {
+                      return ComboBoxItem<PageTransitionMode>(
+                        value: value,
+                        child: Text(value.name_),
+                      );
+                    }).toList(),
+                    onChanged: (PageTransitionMode? newValue) {
+                      settings.pageTransitionMode = newValue!;
+                    },
+                  ),
                 ),
               ],
             ),

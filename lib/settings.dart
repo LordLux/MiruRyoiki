@@ -69,6 +69,9 @@ class SettingsManager extends ChangeNotifier {
   DominantColorSource get dominantColorSource => DominantColorSourceX.fromString(_getString('dominantColorSource', defaultValue: DominantColorSource.poster.name_));
   set dominantColorSource(DominantColorSource value) => _setString('dominantColorSource', value.name_);
 
+  PageTransitionMode get pageTransitionMode => PageTransitionModeX.fromString(_getString('pageTransitionMode', defaultValue: PageTransitionMode.fade.name_));
+  set pageTransitionMode(PageTransitionMode value) => _setString('pageTransitionMode', value.name_);
+
   bool get returnToLibraryAfterSeriesScreen => _getBool('returnToLibraryAfterSeriesScreen', defaultValue: true);
   set returnToLibraryAfterSeriesScreen(bool value) => _setBool('returnToLibraryAfterSeriesScreen', value);
 
