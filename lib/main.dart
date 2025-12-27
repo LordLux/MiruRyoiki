@@ -9,6 +9,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_acrylic/flutter_acrylic.dart';
 import 'package:flutter_acrylic/window.dart' as flutter_acrylic;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:miruryoiki/models/anilist/anime_card.dart';
 import 'package:miruryoiki/widgets/frosted_noise.dart';
 import 'package:provider/provider.dart';
 import 'package:app_links/app_links.dart';
@@ -25,6 +26,7 @@ import 'package:win32_registry/win32_registry.dart';
 import 'database/database.dart';
 import 'screens/downloads_screen.dart';
 import 'screens/search.dart';
+import 'screens/searched_series.dart';
 import 'services/downloads/torrent_manager.dart';
 import 'screens/home.dart';
 import 'screens/release_calendar.dart';
@@ -66,7 +68,8 @@ import 'widgets/dialogs/link_anilist.dart';
 import 'widgets/window_buttons.dart';
 
 final _appTheme = AppTheme();
-final _navigationManager = NavigationManager();
+final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
+final _navigationManager = NavigationManager(_navigatorKey);
 final _settings = SettingsManager();
 RootIsolateToken? rootIsolateToken;
 
@@ -351,23 +354,12 @@ class MiruRyoiki extends StatefulWidget {
 ValueNotifier<int?> previousGridColumnCount = ValueNotifier<int?>(null);
 
 class _MiruRyoikiState extends State<MiruRyoiki> {
+  // UI State
   int _selectedIndex = 0;
-  int get selectedIndex => _selectedIndex; // Public getter for helper function
-  int _previousIndex = 0;
-  PathString? _selectedSeriesPath;
-  PathString? lastSelectedSeriesPath;
-  bool _isSeriesView = false;
+
   bool _isCompactView = false;
-  bool isStartedTransitioning = false;
-
-  /// Whether the transition animation to the series screen has fully completed
-  bool _isFinishedTransitioningToSeries = false;
-
-  /// Whether the transition animation back to the library screen has fully completed
-  bool _isFinishedTransitioningToLibrary = true;
   bool _isSecondaryTitleBarVisible = false;
   bool seriesWasModified = false;
-  // ignore: unused_field
   bool _isNavigationPaneCollapsed = false;
 
   final ScrollController libraryController = ScrollController();
@@ -380,10 +372,18 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
 
   late final LibraryScreen _libraryScreen;
 
-  // bool get _isLibraryView => !(_isSeriesView && _selectedSeriesPath != null);
-  bool get isSeriesView => _isSeriesView;
+  /// Whether we're currently viewing a series (derived from navigation stack)
+  bool get isSeriesView {
+    final navManager = Provider.of<NavigationManager>(context, listen: false);
+    return navManager.hasPage && navManager.currentView?.id.startsWith('series:') == true;
+  }
 
-  PathString? get selectedSeriesPath => _selectedSeriesPath;
+  /// Currently selected series path
+  PathString? get selectedSeriesPath {
+    if (!isSeriesView) return null;
+    final navManager = Provider.of<NavigationManager>(context, listen: false);
+    return navManager.currentView?.data as PathString?;
+  }
 
   final GlobalKey<NavigationViewState> _paneKey = GlobalKey<NavigationViewState>();
 
@@ -434,6 +434,8 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
     }
   }
 
+  bool _isCurrentIdSelected(int index) => _selectedIndex == index;
+
   set setCompactView(bool value) => setState(() => _isCompactView = value);
   bool get isCompactView => _isCompactView;
 
@@ -442,13 +444,9 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
   void onChangedPane(int index) {
     setState(() {
       _selectedIndex = index;
-      lastSelectedSeriesPath = _selectedSeriesPath;
-      _selectedSeriesPath = null;
-      _isSeriesView = false;
       _isCompactView = false;
       Manager.currentDominantColor = null;
 
-      // Reset scroll when directly navigating to library
       _resetScrollPosition(index);
 
       Manager.navigation.pushPaneIndex(index);
@@ -471,14 +469,75 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
       scrollController: NavigationManager.getScrollController(NavigationManager.LibraryIndex),
     );
 
+    Manager.navigation.addListener(_onNavigationChanged);
+
     nextFrame(() async => Manager.navigation.pushPaneIndex(NavigationManager.HomeIndex));
   }
 
   @override
   void dispose() {
+    Manager.navigation.removeListener(_onNavigationChanged);
     final navManager = Provider.of<NavigationManager>(context, listen: false);
     navManager.dispose();
     super.dispose();
+  }
+
+  void _onNavigationChanged() {
+    final current = Manager.navigation.currentView;
+    if (current == null) return;
+
+    // Handle Pane Selection
+    if (current.level == NavigationLevel.pane) {
+      final paneData = NavigationManager.getPaneById(current.id);
+      if (paneData != null) {
+        // Find index
+        int index = NavigationManager.getIndexById(current.id) ?? -1;
+        if (index != -1 && _selectedIndex != index) {
+          setState(() {
+            _selectedIndex = index;
+            _resetScrollPosition(index);
+          });
+        }
+      }
+    }
+
+    // Handle Compact View & Colors
+    final shouldBeCompact = current.level == NavigationLevel.page;
+    if (_isCompactView != shouldBeCompact) setState(() => _isCompactView = shouldBeCompact);
+
+    if (current.id.startsWith('series:')) {
+      // Entering Series View
+      if (previousGridColumnCount.value == null) //
+        previousGridColumnCount.value = ScreenUtils.crossAxisCount(ScreenUtils.libraryContentWidthWithoutPadding);
+
+      final path = current.data as PathString?;
+      if (path != null) {
+        // Load color asynchronously
+        Provider.of<Library>(context, listen: false) //
+            .getSeriesByPath(path) //
+            ?.effectivePrimaryColor() //
+            .then(
+          (color) {
+            if (mounted && color != null) {
+              Manager.setState(() {
+                Manager.currentDominantColor = color;
+                Manager.seriesDominantColor = color;
+              });
+            }
+          },
+        );
+      }
+    } else if (current.level == NavigationLevel.pane) {
+      // Exiting to Pane
+      if (previousGridColumnCount.value != null) previousGridColumnCount.value = null;
+
+      if (Manager.currentDominantColor != null) {
+        Manager.setState(() {
+          Manager.currentDominantColor = null;
+          Manager.seriesDominantColor = null;
+        });
+      }
+    }
   }
 
   @override
@@ -511,11 +570,17 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
                               _isNavigationPaneCollapsed = _paneKey.currentState?.displayMode == PaneDisplayMode.compact;
                             })),
                         key: _paneKey,
-                        paneBodyBuilder: (item, body) {
+                        paneBodyBuilder: (item, _) {
                           return Column(
                             children: [
+                              Expanded(
+                                child: Navigator(
+                                  key: _navigatorKey,
+                                  initialRoute: '/',
+                                  onGenerateRoute: _onGenerateRoute,
+                                ),
+                              ),
                               // Offline banner
-                              Expanded(child: body!),
                               const OfflineBanner(),
                               ValueListenableBuilder(
                                 valueListenable: LibraryScanProgressManager().showingNotifier,
@@ -530,8 +595,8 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
                             ],
                           );
                         },
-                        transitionBuilder: (child, animation) => EntrancePageTransition(
-                          animation: animation,
+                        transitionBuilder: (child, animation) => SuppressPageTransition(
+                          // animation: animation,
                           child: child,
                         ),
                         pane: NavigationPane(
@@ -539,9 +604,10 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
                           selected: _selectedIndex,
                           onItemPressed: (index) {
                             previousGridColumnCount.value = null;
-                            if (_isSeriesView && _selectedSeriesPath != null) {
-                              // If in series view, exit series view first
-                              exitSeriesView();
+
+                            if (isSeriesView) {
+                              // If in series view, reset to pane first
+                              Manager.navigation.resetCurrentPane();
                             }
                             if (_selectedIndex == index) {
                               // If clicking the same tab, reset its scroll position
@@ -559,93 +625,36 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
                           items: [
                             buildPaneItem(
                               NavigationManager.HomeIndex,
+                              mouseCursorClick: !_isCurrentIdSelected(NavigationManager.HomeIndex),
                               icon: movedPaneItemIcon(const Icon(FluentIcons.home)),
-                              body: HomeScreen(
-                                onSeriesSelected: navigateToSeries,
-                                scrollController: NavigationManager.getScrollController(NavigationManager.HomeIndex),
-                              ),
                             ),
                             buildPaneItem(
                               NavigationManager.LibraryIndex,
-                              mouseCursorClick: _selectedIndex != NavigationManager.LibraryIndex || _isSeriesView,
+                              mouseCursorClick: !_isCurrentIdSelected(NavigationManager.LibraryIndex), // || _isSeriesView,
                               icon: movedPaneItemIcon(const Icon(Symbols.newsstand)),
-                              body: Stack(
-                                children: [
-                                  // Always keep LibraryScreen in the tree with Offstage
-                                  Offstage(
-                                    offstage: _isSeriesView && _selectedSeriesPath != null && _isFinishedTransitioningToSeries,
-                                    child: AnimatedOpacity(
-                                      duration: mediumDuration,
-                                      opacity: _isSeriesView ? 0.0 : 1.0,
-                                      curve: Curves.ease,
-                                      child: AbsorbPointer(
-                                        absorbing: _isSeriesView,
-                                        child: _libraryScreen,
-                                      ),
-                                    ),
-                                  ),
-
-                                  // Animated container for the SeriesScreen
-                                  // will hide only after fade out animation finishes
-                                  IgnorePointer(
-                                    ignoring: !_isSeriesView,
-                                    child: AbsorbPointer(
-                                      absorbing: !_isSeriesView,
-                                      child: AnimatedOpacity(
-                                        duration: mediumDuration,
-                                        opacity: _isSeriesView ? 1.0 : 0.0,
-                                        curve: Curves.ease,
-                                        onEnd: onEndTransitionSeriesScreen,
-                                        child: _isFinishedTransitioningToLibrary
-                                            ? const SizedBox.shrink()
-                                            : SeriesScreenContainer(
-                                                key: seriesScreenContainerKey,
-                                                seriesPath: _selectedSeriesPath,
-                                                onBack: exitSeriesView,
-                                              ),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
                             ),
                             buildPaneItem(
                               NavigationManager.CalendarIndex,
+                              mouseCursorClick: !_isCurrentIdSelected(NavigationManager.CalendarIndex),
                               icon: movedPaneItemIcon(const Icon(FluentIcons.calendar)),
-                              body: ReleaseCalendarScreen(
-                                key: releaseCalendarScreenKey,
-                                onSeriesSelected: navigateToSeries,
-                                scrollController: NavigationManager.getScrollController(NavigationManager.CalendarIndex),
-                              ),
                             ),
                             buildPaneItem(
                               NavigationManager.BrowseIndex,
+                              mouseCursorClick: !_isCurrentIdSelected(NavigationManager.BrowseIndex),
                               icon: movedPaneItemIcon(const Icon(FluentIcons.search)),
-                              body: BrowseScreen(
-                                key: browseScreenKey,
-                                scrollController: NavigationManager.getScrollController(NavigationManager.BrowseIndex),
-                              ),
                             ),
                             buildPaneItem(
                               NavigationManager.TorrentIndex,
+                              mouseCursorClick: !_isCurrentIdSelected(NavigationManager.TorrentIndex),
                               icon: movedPaneItemIcon(const Icon(FluentIcons.download)),
-                              body: DownloadsScreen(
-                                key: torrentScreenKey,
-                                controller: TorrentManager.downloadController!,
-                                sonarrRepo: TorrentManager.sonarrRepository!,
-                                scrollController: NavigationManager.getScrollController(NavigationManager.TorrentIndex),
-                              ),
                             ),
                           ],
                           footerItems: [
                             PaneItemSeparator(),
                             buildPaneItem(
                               NavigationManager.AccountsIndex,
+                              mouseCursorClick: !_isCurrentIdSelected(NavigationManager.AccountsIndex),
                               icon: anilistIcon(anilistProvider.isOffline),
-                              body: AccountsScreen(
-                                key: accountsKey,
-                                scrollController: NavigationManager.getScrollController(NavigationManager.AccountsIndex),
-                              ),
                               extra: (isHovered) {
                                 final anilistProvider = Provider.of<AnilistProvider>(context, listen: false);
                                 final user = anilistProvider.currentUser;
@@ -686,10 +695,8 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
                             ),
                             buildPaneItem(
                               NavigationManager.SettingsIndex,
+                              mouseCursorClick: !_isCurrentIdSelected(NavigationManager.SettingsIndex),
                               icon: movedPaneItemIcon(const Icon(FluentIcons.settings)),
-                              body: SettingsScreen(
-                                scrollController: NavigationManager.getScrollController(NavigationManager.SettingsIndex),
-                              ),
                             ),
                           ],
                         ),
@@ -761,7 +768,7 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
                 SidebarOpenerDetector(
                   onHover: () => setCompactView = false,
                   onExit: () => setCompactView = true,
-                  isSeriesView: _isSeriesView,
+                  isSeriesView: isSeriesView,
                   shouldExpand: !_isCompactView,
                 )
               ],
@@ -769,6 +776,99 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
           ),
         );
       },
+    );
+  }
+
+  /// Generates routes for the inner Navigator
+  Route<dynamic>? _onGenerateRoute(RouteSettings settings) {
+    final String routeName = settings.name ?? '/';
+
+    log("route name: $routeName");
+
+    // Determine which page to show
+    Widget page;
+
+    if (routeName == '/${NavigationManager.HomeId}') {
+      page = HomeScreen(
+        onSeriesSelected: navigateToSeries,
+        scrollController: NavigationManager.getScrollController(NavigationManager.HomeIndex),
+      );
+    } else if (routeName == '/${NavigationManager.LibraryId}') {
+      page = _libraryScreen;
+    } else if (routeName == '/series' || routeName.startsWith('series:')) {
+      // Series view with custom transition
+      final seriesPath = settings.arguments as PathString?;
+      page = SeriesScreenContainer(
+        key: seriesScreenContainerKey,
+        seriesPath: seriesPath,
+        onBack: () => Manager.navigation.goBack(),
+      );
+    } else if (routeName == '/${NavigationManager.CalendarId}') {
+      page = ReleaseCalendarScreen(
+        key: releaseCalendarScreenKey,
+        onSeriesSelected: navigateToSeries,
+        scrollController: NavigationManager.getScrollController(NavigationManager.CalendarIndex),
+      );
+    } else if (routeName == '/${NavigationManager.BrowseId}') {
+      page = BrowseScreen(
+        scrollController: NavigationManager.getScrollController(NavigationManager.BrowseIndex),
+      );
+    } else if (routeName == '/${NavigationManager.TorrentId}') {
+      page = DownloadsScreen(
+        key: torrentScreenKey,
+        controller: TorrentManager.downloadController!,
+        sonarrRepo: TorrentManager.sonarrRepository!,
+        scrollController: NavigationManager.getScrollController(NavigationManager.TorrentIndex),
+      );
+    } else if (routeName == '/${NavigationManager.AccountsId}') {
+      page = AccountsScreen(
+        key: accountsKey,
+        scrollController: NavigationManager.getScrollController(NavigationManager.AccountsIndex),
+      );
+    } else if (routeName == '/${NavigationManager.SettingsId}') {
+      page = SettingsScreen(
+        scrollController: NavigationManager.getScrollController(NavigationManager.SettingsIndex),
+      );
+    } else if (routeName.startsWith('searched_series:')) {
+      final anime = settings.arguments as AnimeCard;
+      page = SearchedSeriesScreen(
+        anilistUrl: "https://anilist.co/anime/${anime.id}",
+        onBack: () => Manager.navigation.goBack(),
+      );
+    } else {
+      // Default to home
+      page = HomeScreen(
+        onSeriesSelected: navigateToSeries,
+        scrollController: NavigationManager.getScrollController(NavigationManager.HomeIndex),
+      );
+    }
+
+    // Use custom page route with fade transition for series view
+    if (routeName == '/series' || routeName.startsWith('series:') || routeName.startsWith('searched_series:')) {
+      return PageRouteBuilder(
+        settings: settings,
+        pageBuilder: (context, animation, secondaryAnimation) => page,
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          // Custom fade transition
+          return FadeTransition(
+            opacity: CurvedAnimation(
+              parent: animation,
+              curve: Curves.easeInOut,
+            ),
+            child: child,
+          );
+        },
+        transitionDuration: mediumDuration,
+        reverseTransitionDuration: mediumDuration,
+        maintainState: true,
+      );
+    }
+
+    // Standard route for other pages
+    return FluentPageRoute(
+      builder: (_) => page,
+      settings: settings,
+      maintainState: true,
     );
   }
 
@@ -782,7 +882,6 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
   PaneItem buildPaneItem(
     int id, {
     required Widget icon,
-    required Widget body,
     bool? mouseCursorClick,
     Widget? Function(bool isHovered)? extra,
   }) {
@@ -815,7 +914,7 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
               color: Manager.accentColor.lighter,
             )
           : null,
-      body: body,
+      body: const SizedBox.shrink(),
       trailing: extra?.call(true),
     );
   }
@@ -904,20 +1003,17 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
 
                                         await Future.delayed(const Duration(milliseconds: 100));
                                         setState(() {
-                                          if (_isSeriesView && _selectedSeriesPath != null) exitSeriesView();
+                                          if (isSeriesView) Manager.navigation.resetCurrentPane();
 
                                           _selectedIndex = NavigationManager.CalendarIndex;
                                           _resetScrollPosition(NavigationManager.CalendarIndex);
+                                          Manager.currentDominantColor = null;
 
-                                          final navManager = Manager.navigation;
-
-                                          navManager.pushPaneIndex(NavigationManager.CalendarIndex);
+                                          Manager.navigation.pushPaneIndex(NavigationManager.CalendarIndex);
                                         });
 
                                         // Refresh the release calendar after navigation
-                                        nextFrame(() {
-                                          releaseCalendarScreenKey.currentState?.loadReleaseData();
-                                        });
+                                        nextFrame(() => releaseCalendarScreenKey.currentState?.loadReleaseData());
                                       },
                                     ),
                                   );
@@ -940,139 +1036,36 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
 
   /// Called immediately when a series is selected from the library or home screen
   void navigateToSeries(PathString seriesPath) async {
-    _previousIndex = _selectedIndex;
     // First, ensure we're on the library pane if not already
-    if (_selectedIndex != NavigationManager.LibraryIndex || _isSeriesView) {
+    if (_selectedIndex != NavigationManager.LibraryIndex) {
       logTrace('Navigating to library pane before opening series view');
-      setState(() {
-        _selectedIndex = NavigationManager.LibraryIndex;
-        lastSelectedSeriesPath = _selectedSeriesPath;
-        _selectedSeriesPath = null;
-        _isSeriesView = false;
-        _isCompactView = false;
-        Manager.currentDominantColor = null;
-
-        // Reset scroll when directly navigating to library
-        _resetScrollPosition(NavigationManager.LibraryIndex);
-
-        // Register in navigation stack
-        final navManager = Provider.of<NavigationManager>(context, listen: false);
-        navManager.clearStack();
-
-        navManager.pushPaneIndex(NavigationManager.LibraryIndex);
-      });
+      // We just push the pane. The listener will handle the UI updates.
+      Manager.navigation.pushPaneIndex(NavigationManager.LibraryIndex);
 
       // Small delay to allow UI to update to library pane first
       await Future.delayed(const Duration(milliseconds: 50));
     }
 
-    isStartedTransitioning = true;
-
-    previousGridColumnCount.value = ScreenUtils.crossAxisCount(ScreenUtils.libraryContentWidthWithoutPadding);
-
     final series = Provider.of<Library>(context, listen: false).getSeriesByPath(seriesPath);
     final seriesName = series?.name ?? 'Series';
 
     // Update navigation stack with the series page
-    Provider.of<NavigationManager>(context, listen: false).pushPage('series:$seriesPath', seriesName, data: seriesPath);
-
-    setState(() {
-      _selectedSeriesPath = seriesPath;
-      _isSeriesView = true;
-      _isCompactView = true;
-      _isFinishedTransitioningToLibrary = false;
-    });
-
-    Manager.currentDominantColor = await series?.effectivePrimaryColor();
-    if (Manager.currentDominantColor != null) Manager.seriesDominantColor = Manager.currentDominantColor;
-
-    Manager.setState();
-  }
-
-  /// Called immediately when exiting the series view
-  void exitSeriesView() {
-    previousGridColumnCount.value = ScreenUtils.crossAxisCount(ScreenUtils.libraryContentWidthWithoutPadding);
-
-    final navManager = Provider.of<NavigationManager>(context, listen: false);
-
-    if (navManager.currentView?.level == NavigationLevel.page) //
-      navManager.goBack();
-
-    if (!Manager.settings.returnToLibraryAfterSeriesScreen) {
-      navManager.navigateToPane(NavigationManager.getPane(_previousIndex)!['id']);
-      _selectedIndex = _previousIndex;
-    }
-
-    setState(() {
-      Manager.currentDominantColor = null;
-      Manager.seriesDominantColor = null;
-      lastSelectedSeriesPath = _selectedSeriesPath ?? lastSelectedSeriesPath;
-      _isSeriesView = false;
-      _isCompactView = false;
-      _isFinishedTransitioningToLibrary = false;
-      _isFinishedTransitioningToSeries = false;
-    });
-
-    if (seriesWasModified) {
-      // Use the key to access the library screen state
-      libraryScreenKey.currentState?.invalidateSortCache();
-      seriesWasModified = false;
-    }
-    Manager.setState();
-  }
-  
-  void navigateToSearchedSeries() {
-    setState(() {
-      _isCompactView = true;
-    });
-  }
-  
-  void exitSearchedSeriesView() {
-    final navManager = Provider.of<NavigationManager>(context, listen: false);
-    if (navManager.currentView?.level == NavigationLevel.page) navManager.goBack();
-    
-    setState(() {
-      Manager.currentDominantColor = null;
-      Manager.seriesDominantColor = null;
-      _isSeriesView = false;
-      _isCompactView = false;
-      _isFinishedTransitioningToLibrary = false;
-      _isFinishedTransitioningToSeries = false;
-    });
-  }
-
-  /// Called when the transition to the library view ends
-  void onEndTransitionSeriesScreen() {
-    setState(() {
-      // When going from series view to library
-      if (_isSeriesView) {
-        _isFinishedTransitioningToSeries = true;
-      } else {
-        _selectedSeriesPath = null;
-        _isFinishedTransitioningToLibrary = true;
-        _isFinishedTransitioningToSeries = false;
-        Manager.currentDominantColor = null;
-      }
-      isStartedTransitioning = false;
-      previousGridColumnCount.value = null;
-    });
+    Manager.navigation.pushPage('series:$seriesPath', seriesName, data: seriesPath);
   }
 
   /// Handles back navigation throughout the app
   /// Returns true if back navigation was performed, false otherwise
-  bool handleBackNavigation({bool isEsc = false}) {
-    final navManager = Provider.of<NavigationManager>(context, listen: false);
-
+  bool handleBackNavigation({bool isBackFromEscKey = false}) {
     // Handle dialog closure
-    if (navManager.hasDialog) {
-      if (!isEsc) {
+    if (Manager.navigation.hasDialog) {
+      if (!isBackFromEscKey) {
         logTrace('$nowFormatted | Back Mouse Button Pressed: Closing dialog');
-        // TODO: closeDialog(rootNavigatorKey.currentContext!);
-        return true;
+        // goBack() will pop the navigator, which closes the dialog
+        return Manager.navigation.goBack();
       }
 
       if (!Manager.canPopDialog) {
-        if (navManager.currentView?.id.startsWith('linkAnilist') ?? false) {
+        if (Manager.navigation.currentView?.id.startsWith('linkAnilist') ?? false) {
           logTrace('Link Anilist dialog is open, switching to view mode');
           nextFrame(() => linkMultiDialogKey.currentState?.switchToViewMode());
         }
@@ -1080,69 +1073,17 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
       }
 
       logTrace('Closing dialog from back navigation in series view');
-      closeDialog(rootNavigatorKey.currentContext!);
-      return true;
-    }
-
-    // Handle series view navigation
-    if (_isSeriesView) {
-      final currentViewId = navManager.currentView?.id;
-
-      if (currentViewId?.startsWith("mapping:") ?? false) {
-        logTrace('Going back in navigation stack! Mapping -> Series');
-        seriesScreenContainerKey.currentState?.exitMapping();
-        return true;
-      }
-
-      if (currentViewId?.startsWith("series:") ?? false) {
-        logTrace('Going back in navigation stack! Series -> Library');
-        exitSeriesView();
-        return true;
-      }
-
-      logWarn('Unknown navigation state while in series view: $currentViewId');
-      return true;
-    }
-    
-    // Handle search series view navigation
-    if (browseScreenKey.currentState?.searchedSeriesScreenKey.currentState != null) {
-      logTrace('Going back in navigation stack! Searched Series -> Browse');
-      browseScreenKey.currentState?.searchedSeriesScreenKey.currentState?.widget.onBack();
-      return true;
+      // goBack() will pop the navigator, which closes the dialog
+      return Manager.navigation.goBack();
     }
 
     // Handle general back navigation
-    if (navManager.canGoBack) {
-      logDebug('Going back in navigation stack -> ${navManager.stack[navManager.stack.length - 2].title}');
-
-      final currentItem = navManager.currentView;
-      if (currentItem == null) return false;
-
-      switch (currentItem.level) {
-        case NavigationLevel.pane:
-          final index = NavigationManager.getPaneById(currentItem.id)?['index'] as int?;
-          if (index != null && index != _selectedIndex) setState(() => _selectedIndex = index);
-          break;
-
-        case NavigationLevel.page:
-          if (currentItem.id.startsWith('series:') && currentItem.data is String) {
-            setState(() {
-              _selectedSeriesPath = currentItem.data as PathString;
-              _isSeriesView = true;
-            });
-          }
-          break;
-
-        case NavigationLevel.dialog:
-          // Should not reach here due to earlier dialog handling
-          logWarn('Unexpected dialog level in back navigation: ${currentItem.id}');
-          break;
-      }
-
-      return true;
+    if (Manager.navigation.canGoBack) {
+      logDebug('Going back in navigation stack -> ${Manager.navigation.stack[Manager.navigation.stack.length - 2].title}');
+      return Manager.navigation.goBack();
     }
-    logTrace('Back navigation not possible');
 
+    logTrace('Back navigation not possible');
     return false;
   }
 }

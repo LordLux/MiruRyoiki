@@ -346,7 +346,7 @@ class _CustomKeyboardListenerState extends State<CustomKeyboardListener> {
     final homeState = homeKey.currentState;
 
     if (homeState != null && homeState.mounted) {
-      if (homeState.handleBackNavigation(isEsc: isEsc)) {
+      if (homeState.handleBackNavigation(isBackFromEscKey: isEsc)) {
         logTrace('Back navigation via ${isEsc ? "ESC":"mouse button 4"}');
         // Handled by AppRoot
         return;
@@ -356,8 +356,7 @@ class _CustomKeyboardListenerState extends State<CustomKeyboardListener> {
 
   void _handleForwardNavigation() {
     logTrace('Forward navigation via mouse button 5');
-    // Implementation for forward navigation would go here
-    // You'd need to track forward history separately
+    Manager.navigation.goForward();
   }
 
   // void _toggleSeason(int season) {

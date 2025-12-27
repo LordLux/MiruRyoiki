@@ -1,6 +1,5 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/material.dart' show Material, MaterialState;
-import 'package:provider/provider.dart';
 import 'package:glossy/glossy.dart';
 
 import '../../utils/screen.dart';
@@ -12,7 +11,6 @@ import '../../widgets/dialogs/show_dialog.dart';
 import '../../main.dart';
 import '../../widgets/frosted_noise.dart';
 import 'debug.dart';
-import 'navigation.dart';
 
 bool kReturnTrueCallback() => true;
 bool kReturnFalseCallback() => false;
@@ -46,10 +44,8 @@ Future<T?> showManagedDialog<T>({
   VoidCallback? onDismiss,
   RouteTransitionsBuilder? transitionBuilder,
 }) async {
-  final navManager = Manager.navigation;
-
   // Register in navigation stack
-  navManager.pushDialog(id, title, data: data);
+  Manager.navigation.pushDialog(id, title, data: data);
 
   // Show the dialog
   final result = await showPaddedDialog<T>(
@@ -75,10 +71,11 @@ Future<T?> showManagedDialog<T>({
       },
       child: builder(context),
     ),
-  ).then((_) {
-    navManager.popDialog();
+  ).then((result) {
+    Manager.navigation.popDialog();
     Manager.canPopDialog = true; // Reset dialog pop state
     nextFrame(Manager.setState);
+    return result;
   });
 
   return result;
@@ -109,10 +106,8 @@ Future<T?> showSimpleManagedDialog<T>({
   /// Callback for the negative button, automatically closes the dialog
   Function()? onNegative,
 }) async {
-  assert(
-    body.isNotEmpty || builder != null,
-    'Either body or builder must be provided for the dialog content',
-  );
+  assert(body.isNotEmpty || builder != null, 'Either body or builder must be provided for the dialog content');
+
   return showManagedDialog(
     context: context,
     id: id,
@@ -123,11 +118,7 @@ Future<T?> showSimpleManagedDialog<T>({
         popContext: context,
         title: hideTitle ? null : titleWidget ?? Text(title),
         contentBuilder: (context, __) => builder != null ? builder(context) : Text(body),
-        constraints: constraints ??
-            const BoxConstraints(
-              maxWidth: 500,
-              minWidth: 300,
-            ),
+        constraints: constraints ?? const BoxConstraints(maxWidth: 500, minWidth: 300),
         actions: (popContext) => [
           ManagedDialogButton(
             popContext: popContext,
@@ -176,10 +167,8 @@ Future<T?> showSimpleTickboxManagedDialog<T>({
   /// Callback for the negative button, automatically closes the dialog
   Function(bool tickboxValue)? onNegative,
 }) async {
-  assert(
-    body.isNotEmpty || builder != null,
-    'Either body or builder must be provided for the dialog content',
-  );
+  assert(body.isNotEmpty || builder != null, 'Either body or builder must be provided for the dialog content');
+
   bool localTickboxValue = tickboxValue;
   return showManagedDialog(
     context: context,
@@ -214,11 +203,7 @@ Future<T?> showSimpleTickboxManagedDialog<T>({
             );
           }),
         ]),
-        constraints: constraints ??
-            const BoxConstraints(
-              maxWidth: 500,
-              minWidth: 300,
-            ),
+        constraints: constraints ?? const BoxConstraints(maxWidth: 500, minWidth: 300),
         actions: (popContext) => [
           ManagedDialogButton(
             popContext: popContext,
@@ -249,10 +234,8 @@ Future<T?> showSimpleOneButtonManagedDialog<T>({
   /// Callback for the positive button, automatically closes the dialog
   Function()? onPositive,
 }) async {
-  assert(
-    (body == null && builder != null) || (body != null && builder == null),
-    'Only one of body or builder should be provided',
-  );
+  assert((body == null && builder != null) || (body != null && builder == null), 'Only one of body or builder should be provided');
+
   return showManagedDialog(
     context: context,
     id: id,
@@ -263,11 +246,7 @@ Future<T?> showSimpleOneButtonManagedDialog<T>({
         popContext: context,
         title: Text(title),
         contentBuilder: (context, __) => builder != null ? builder(context) : Text(body!),
-        constraints: constraints ??
-            const BoxConstraints(
-              maxWidth: 500,
-              minWidth: 300,
-            ),
+        constraints: constraints ?? const BoxConstraints(maxWidth: 500, minWidth: 300),
         actions: (popContext) => [
           ManagedDialogButton(
             popContext: popContext,
@@ -291,10 +270,8 @@ Future<T?> showSimpleNoButtonManagedDialog<T>({
   /// Callback for the positive button, automatically closes the dialog
   Function()? onPositive,
 }) async {
-  assert(
-    (body == null && builder != null) || (body != null && builder == null),
-    'Only one of body or builder should be provided',
-  );
+  assert((body == null && builder != null) || (body != null && builder == null), 'Only one of body or builder should be provided');
+
   return showManagedDialog(
     context: context,
     id: id,
@@ -371,18 +348,27 @@ class ManagedDialogButton extends StatelessWidget {
   }
 }
 
+// void closeDialog<T>(BuildContext popContext, {T? result}) {
+//   // First check if Flutter's Navigator has a dialog to pop
+//   if (Navigator.of(popContext).canPop() && Manager.navigation.hasDialog) {
+//     // Update custom navigation stack if needed
+//     Manager.navigation.popDialog();
+
+//     // Pop the actual dialog
+//     Navigator.of(popContext).pop(result);
+//   } else {
+//     logWarn('No dialog to pop in Flutter Navigator');
+//   }
+// }
 void closeDialog<T>(BuildContext popContext, {T? result}) {
-  final navManager = Provider.of<NavigationManager>(popContext, listen: false);
+  // We check if we can pop, but we DO NOT touch Manager.navigation here.
+  // We let the `showManagedDialog`'s `.then()` callback handle the state update.
+  final navigator = Navigator.of(popContext);
 
-  // First check if Flutter's Navigator has a dialog to pop
-  if (Navigator.of(popContext, rootNavigator: true).canPop() && navManager.hasDialog) {
-    // Update custom navigation stack if needed
-    navManager.popDialog();
-
-    // Pop the actual dialog
-    Navigator.of(popContext, rootNavigator: true).pop(result);
+  if (navigator.canPop()) {
+    navigator.pop(result);
   } else {
-    logWarn('No dialog to pop in Flutter Navigator');
+    logWarn('Attempted to closeDialog, but Navigator could not pop.');
   }
 }
 
@@ -438,59 +424,27 @@ class ManagedDialogState extends State<ManagedDialog> {
   }
 
   /// Position the dialog on screen
-  void positionDialog(Alignment alignment) {
-    setState(() {
-      this.alignment = alignment;
-    });
-  }
+  void positionDialog(Alignment alignment) => setState(() => this.alignment = alignment);
 
   Positioned AlignmentWidget({required Widget child}) {
     return switch (alignment) {
-      Alignment.topLeft => Positioned(
-          top: 0,
-          left: 0,
-          child: child,
-        ),
-      Alignment.topCenter => Positioned(
-          top: 0,
-          child: child,
-        ),
-      Alignment.topRight => Positioned(
-          top: 0,
-          right: 0,
-          child: child,
-        ),
-      Alignment.centerRight => Positioned(
-          right: 0,
-          child: child,
-        ),
-      Alignment.bottomRight => Positioned(
-          bottom: 0,
-          right: 0,
-          child: child,
-        ),
-      Alignment.bottomCenter => Positioned(
-          bottom: 0,
-          child: child,
-        ),
-      Alignment.bottomLeft => Positioned(
-          bottom: 0,
-          left: 0,
-          child: child,
-        ),
-      Alignment.centerLeft => Positioned(
-          left: 0,
-          child: child,
-        ),
-      _ => Positioned(
-          child: child,
-        ),
+      Alignment.topLeft => Positioned(top: 0, left: 0, child: child),
+      Alignment.topCenter => Positioned(top: 0, child: child),
+      Alignment.topRight => Positioned(top: 0, right: 0, child: child),
+      Alignment.centerRight => Positioned(right: 0, child: child),
+      Alignment.bottomRight => Positioned(bottom: 0, right: 0, child: child),
+      Alignment.bottomCenter => Positioned(bottom: 0, child: child),
+      Alignment.bottomLeft => Positioned(bottom: 0, left: 0, child: child),
+      Alignment.centerLeft => Positioned(left: 0, child: child),
+      _ => Positioned(child: child),
     };
   }
 
   @override
   Widget build(BuildContext context) {
     return Stack(
+      //TODO maybe see if `alignment` param of stack needs to be set as well
+      // alignment: alignment,
       children: [
         AlignmentWidget(
           child: Padding(

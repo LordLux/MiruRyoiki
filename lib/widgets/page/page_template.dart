@@ -56,7 +56,10 @@ class MiruRyoikiTemplatePage extends StatefulWidget {
     this.cardPadding,
     this.floatingButton,
     this.stickyHeader,
-  }) : assert((stickyHeader != null) == (scrollableContent == true), 'stickyHeader can only be used when scrollableContent is true');
+  }) : assert(
+          (scrollableContent || (!scrollableContent && stickyHeader == null)) ,
+          'stickyHeader can only be used when scrollableContent is true',
+        );
 
   @override
   State<MiruRyoikiTemplatePage> createState() => _MiruRyoikiTemplatePageState();
@@ -165,7 +168,7 @@ class _MiruRyoikiTemplatePageState extends State<MiruRyoikiTemplatePage> {
                                         height: widget.contentHeight ?? double.infinity,
                                         child: Builder(builder: (context) {
                                           if (!widget.scrollableContent) return widget.content;
-                                          
+
                                           final scrollableContent = Builder(
                                             builder: (context) {
                                               final child = ScrollConfiguration(
@@ -198,7 +201,7 @@ class _MiruRyoikiTemplatePageState extends State<MiruRyoikiTemplatePage> {
                                               return child;
                                             },
                                           );
-                                          
+
                                           if (widget.stickyHeader != null) {
                                             return Column(
                                               children: [

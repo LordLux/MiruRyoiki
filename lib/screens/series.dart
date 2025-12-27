@@ -88,11 +88,10 @@ class SeriesScreenContainerState extends State<SeriesScreenContainer> {
   void navigateToMapping(AnilistMapping mapping, MappingTarget target) {
     if (!mounted) return;
 
-    final navManager = Provider.of<NavigationManager>(context, listen: false);
     final mappingName = target.displayName;
 
     // Push the inner mapping page to navigation stack
-    navManager.pushPage(
+    Manager.navigation.pushPage(
       'mapping:${mapping.localPath}',
       mappingName,
       data: mapping.localPath,
@@ -110,11 +109,9 @@ class SeriesScreenContainerState extends State<SeriesScreenContainer> {
   void exitMapping() {
     if (!mounted) return;
 
-    final navManager = Provider.of<NavigationManager>(context, listen: false);
-
     // Pop the mapping page from navigation stack
-    if (navManager.currentView?.level == NavigationLevel.page && navManager.currentView?.id.startsWith('mapping:') == true) {
-      navManager.goBack();
+    if (Manager.navigation.currentView?.level == NavigationLevel.page && Manager.navigation.currentView?.id.startsWith('mapping:') == true) {
+      Manager.navigation.goBack();
     }
 
     setState(() {

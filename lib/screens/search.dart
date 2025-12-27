@@ -27,7 +27,6 @@ import '../../widgets/top100_list.dart';
 import '../../widgets/section_grid_view.dart';
 import '../services/anilist/queries/anilist_service.dart';
 import '../services/library/library_provider.dart';
-import '../services/navigation/navigation.dart';
 import '../utils/logging.dart';
 import '../widgets/animated_hider.dart';
 import 'searched_series.dart';
@@ -343,7 +342,6 @@ class SearchScreenState extends State<BrowseScreen> with AutomaticKeepAliveClien
   }
 
   void _exitSeriesView() {
-    homeKey.currentState?.exitSearchedSeriesView();
     setState(() {
       _isSeriesView = false;
       _isFinishedTransitioningToSeries = false;
@@ -364,15 +362,14 @@ class SearchScreenState extends State<BrowseScreen> with AutomaticKeepAliveClien
   }
 
   void _onSeriesOpen(AnimeCard anime) {
-    homeKey.currentState?.navigateToSearchedSeries();
     setState(() {
       _selectedAnime = anime;
       _isSeriesView = true;
       _isFinishedTransitioningToSearch = false;
     });
 
-    Provider.of<NavigationManager>(context, listen: false).pushPage(
-      'search:series:${anime.id}',
+    Manager.navigation.pushPage(
+      'searched_series:${anime.id}',
       anime.title.userPreferred ?? 'Anime Details',
       data: anime,
     );

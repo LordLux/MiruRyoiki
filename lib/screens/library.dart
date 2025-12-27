@@ -1202,7 +1202,9 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
       // Only hide library content if it's an initial scan (first time or new path)
       // For normal scans show the library with disabled actions
       final bool hideLibrary = library.isIndexing && library.isInitialScan;
-      if (homeKey.currentState?.isStartedTransitioning == false) {
+      
+      // We use previousGridColumnCount to detect if we are transitioning
+      if (previousGridColumnCount.value == null) {
         ScreenUtils.libraryContentWidthWithoutPadding = constraints.maxWidth; // account for right padding
         // log('updated contentWidth: ${ScreenUtils.libraryContentWidthWithoutPadding}');
       }
@@ -1725,10 +1727,8 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
   }
 
   void _showFilterDialog() async {
-    final navManager = Provider.of<NavigationManager>(context, listen: false);
-
-    if (navManager.hasDialog) {
-      final currentDialog = navManager.currentView;
+    if (Manager.navigation.hasDialog) {
+      final currentDialog = Manager.navigation.currentView;
 
       // If the filter dialog is already open, close it and return
       if (currentDialog?.id == "library:filters") {
@@ -1807,10 +1807,8 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
   }
 
   void _showListDialog() async {
-    final navManager = Provider.of<NavigationManager>(context, listen: false);
-
-    if (navManager.hasDialog) {
-      final currentDialog = navManager.currentView;
+    if (Manager.navigation.hasDialog) {
+      final currentDialog = Manager.navigation.currentView;
 
       // If the lists dialog is already open, close it and return
       if (currentDialog?.id == "library:lists") {
