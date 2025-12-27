@@ -83,8 +83,8 @@ class ImageSelectionDialog extends ManagedDialog {
                 preferredBannerSource: isBanner ? source : series.preferredBannerSource,
               );
 
-              final seriesScreenState = getActiveSeriesScreenContainerState();
-              if (seriesScreenState != null && seriesScreenState is SeriesScreenState) {
+              final seriesScreenState = seriesScreenKey.currentState;
+              if (seriesScreenState != null) {
                 // log('Disabling poster/banner change buttons');
                 seriesScreenState.posterChangeDisabled = !isBanner;
                 seriesScreenState.bannerChangeDisabled = isBanner;
@@ -114,8 +114,8 @@ class ImageSelectionDialog extends ManagedDialog {
                   isBanner ? 'Banner preference saved' : 'Poster preference saved',
                   severity: InfoBarSeverity.success,
                 );
-                final seriesScreenState = getActiveSeriesScreenContainerState();
-                if (seriesScreenState != null && seriesScreenState is SeriesScreenState) {
+                final seriesScreenState = seriesScreenKey.currentState;
+                if (seriesScreenState != null) {
                   // log('Enabling poster/banner change buttons');
                   seriesScreenState.posterChangeDisabled = false;
                   seriesScreenState.bannerChangeDisabled = false;
@@ -318,8 +318,8 @@ class _ImageSelectionContentState extends State<_ImageSelectionContent> {
                     linkWithAnilist(
                       context,
                       widget.series,
-                      (ids) => (getActiveSeriesScreenContainerState() as SeriesScreenState).loadAnilistData(ids),
-                      (_) => getActiveSeriesScreenContainerState()?.setState(() {}),
+                      (ids) => seriesScreenKey.currentState!.loadAnilistData(ids),
+                      (_) => seriesScreenKey.currentState?.setState(() {}),
                     );
                   },
                 ),

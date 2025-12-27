@@ -1,4 +1,5 @@
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:miruryoiki/utils/text.dart';
 import 'package:miruryoiki/utils/time.dart';
 import '../manager.dart';
 import '../models/players/mediastatus.dart';
@@ -118,9 +119,18 @@ class _VideoDurationBarState extends State<VideoDurationBar> with SingleTickerPr
       mainAxisSize: MainAxisSize.min,
       children: [
         // Time labels
-        Text(
-          _formatDuration(_isDragging ? Duration(seconds: (_dragValue * status.totalDuration.inSeconds).round()) : status.currentPosition),
-          style: const TextStyle(fontSize: 10, color: _whiteColor),
+        Builder(
+          builder: (context) {
+            final text = _formatDuration(_isDragging ? Duration(seconds: (_dragValue * status.totalDuration.inSeconds).round()) : status.currentPosition);
+            final width = measureTextWidth(text, style: const TextStyle(fontSize: 10)) + 4;
+            return SizedBox(
+              width: width,
+              child: Text(
+                text,
+                style: const TextStyle(fontSize: 10, color: _whiteColor),
+              ),
+            );
+          }
         ),
         // Progress bar
         Expanded(
@@ -168,9 +178,18 @@ class _VideoDurationBarState extends State<VideoDurationBar> with SingleTickerPr
             ),
           ),
         ),
-        Text(
-          _formatDuration(status.totalDuration),
-          style: const TextStyle(fontSize: 10, color: _whiteColor),
+        Builder(
+          builder: (context) {
+            final text = _formatDuration(status.totalDuration);
+            final width = measureTextWidth(text, style: const TextStyle(fontSize: 10)) + 4;
+            return SizedBox(
+              width: width,
+              child: Text(
+                text,
+                style: const TextStyle(fontSize: 10, color: _whiteColor),
+              ),
+            );
+          }
         ),
       ],
     );

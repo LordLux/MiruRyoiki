@@ -2,6 +2,7 @@
 
 import 'dart:async';
 import 'dart:io';
+import 'package:collection/collection.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart' show Material, MaterialPageRoute, ScaffoldMessenger;
 import 'package:fluent_ui/fluent_ui.dart';
@@ -52,6 +53,8 @@ import 'screens/accounts.dart';
 import 'screens/library.dart';
 import 'screens/series.dart';
 import 'screens/settings.dart';
+import 'models/anilist/mapping.dart';
+import 'models/mapping_target.dart';
 import 'services/anilist/auth.dart';
 import 'services/file_system/cache.dart';
 import 'services/navigation/navigation.dart';
@@ -75,26 +78,14 @@ RootIsolateToken? rootIsolateToken;
 
 final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
 final GlobalKey<_MiruRyoikiState> homeKey = GlobalKey<_MiruRyoikiState>();
-final GlobalKey<SeriesScreenContainerState> seriesScreenContainerKey = GlobalKey<SeriesScreenContainerState>();
+final GlobalKey<SeriesScreenState> seriesScreenKey = GlobalKey<SeriesScreenState>();
+final GlobalKey<SeriesScreenState> seriesMappingScreenKey = GlobalKey<SeriesScreenState>();
 final GlobalKey<LibraryScreenState> libraryScreenKey = GlobalKey<LibraryScreenState>();
 final GlobalKey<ReleaseCalendarScreenState> releaseCalendarScreenKey = GlobalKey<ReleaseCalendarScreenState>();
 final GlobalKey<DownloadsScreenState> torrentScreenKey = GlobalKey<DownloadsScreenState>();
 final GlobalKey<AccountsScreenState> accountsKey = GlobalKey<AccountsScreenState>();
 
 final GlobalKey<State<StatefulWidget>> paletteOverlayKey = GlobalKey<State<StatefulWidget>>();
-
-/// Get the currently active SeriesScreenContainerState based on which page is open
-dynamic getActiveSeriesScreenContainerState() {
-  // Check the current navigation view to determine which screen is active
-  final currentView = _navigationManager.currentView;
-  if (currentView == null) return null;
-
-  // If we're on a mapping page or series page, return the SeriesScreenState
-  if (currentView.id.startsWith('mapping:') || currentView.id.startsWith('series:')) //
-    return seriesScreenContainerKey.currentState?.seriesScreenKey?.currentState;
-
-  return null;
-}
 
 void main(List<String> args) async {
   // runZonedGuarded(
@@ -372,10 +363,11 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
 
   late final LibraryScreen _libraryScreen;
 
-  /// Whether we're currently viewing a series (derived from navigation stack)
+  /// Whether we're currently viewing a series
   bool get isSeriesView {
     final navManager = Provider.of<NavigationManager>(context, listen: false);
-    return navManager.hasPage && navManager.currentView?.id.startsWith('series:') == true;
+    final id = navManager.currentView?.id;
+    return navManager.hasPage && (id?.startsWith('/series:') == true || id?.startsWith('/mapping:') == true || (id?.startsWith('/searched_series:') == true));
   }
 
   /// Currently selected series path
@@ -388,7 +380,6 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
   final GlobalKey<NavigationViewState> _paneKey = GlobalKey<NavigationViewState>();
 
   Widget anilistIcon(bool offline) {
-    homeKey.currentState?.isSeriesView;
     return SizedBox(
       height: 25,
       width: 18,
@@ -419,9 +410,6 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
       child: const Icon(FluentIcons.settings, size: 18),
     );
   }
-
-  // Controllers will be added in initState
-  // Define static consts for navigation indices to avoid duplication
 
   // Reset scroll position to top
   void _resetScrollPosition(int index, {bool animate = false}) {
@@ -505,7 +493,7 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
     final shouldBeCompact = current.level == NavigationLevel.page;
     if (_isCompactView != shouldBeCompact) setState(() => _isCompactView = shouldBeCompact);
 
-    if (current.id.startsWith('series:')) {
+    if (current.id.startsWith('/series:')) {
       // Entering Series View
       if (previousGridColumnCount.value == null) //
         previousGridColumnCount.value = ScreenUtils.crossAxisCount(ScreenUtils.libraryContentWidthWithoutPadding);
@@ -609,6 +597,7 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
                               // If in series view, reset to pane first
                               Manager.navigation.resetCurrentPane();
                             }
+
                             if (_selectedIndex == index) {
                               // If clicking the same tab, reset its scroll position
                               _resetScrollPosition(index, animate: true);
@@ -768,7 +757,7 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
                 SidebarOpenerDetector(
                   onHover: () => setCompactView = false,
                   onExit: () => setCompactView = true,
-                  isSeriesView: isSeriesView,
+                  enabled: isSeriesView,
                   shouldExpand: !_isCompactView,
                 )
               ],
@@ -795,13 +784,48 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
       );
     } else if (routeName == '/${NavigationManager.LibraryId}') {
       page = _libraryScreen;
-    } else if (routeName == '/series' || routeName.startsWith('series:')) {
+    } else if (routeName == '/series' || routeName.startsWith('/series:')) {
       // Series view with custom transition
       final seriesPath = settings.arguments as PathString?;
-      page = SeriesScreenContainer(
-        key: seriesScreenContainerKey,
+      page = SeriesScreen(
+        key: seriesScreenKey,
         seriesPath: seriesPath,
         onBack: () => Manager.navigation.goBack(),
+      );
+    } else if (routeName.startsWith('/mapping:')) {
+      final args = settings.arguments as Map<String, dynamic>;
+      final seriesPath = args['seriesPath'] as PathString?;
+      final mappingPath = args['mappingPath'] as PathString?;
+
+      final library = Provider.of<Library>(context, listen: false);
+      final series = seriesPath != null ? library.getSeriesByPath(seriesPath) : null;
+
+      AnilistMapping? mapping;
+      MappingTarget? target;
+
+      if (series != null && mappingPath != null) {
+        mapping = series.anilistMappings.firstWhereOrNull((m) => m.localPath == mappingPath);
+        if (mapping != null) {
+          if (File(mappingPath.path).existsSync()) {
+            final episode = series.getEpisodeByPath(mappingPath);
+            if (episode != null) {
+              target = MappingTarget.episode(episode);
+            }
+          } else if (Directory(mappingPath.path).existsSync()) {
+            final season = series.getSeasonFromPath(mappingPath);
+            if (season != null) target = MappingTarget.season(season);
+          }
+        }
+      } else {
+        logWarn('Failed to open mapping view: series - $series | mappingPath - $mappingPath');
+      }
+
+      page = SeriesScreen(
+        key: seriesMappingScreenKey,
+        seriesPath: seriesPath,
+        onBack: () => Manager.navigation.goBack(),
+        mapping: mapping,
+        target: target,
       );
     } else if (routeName == '/${NavigationManager.CalendarId}') {
       page = ReleaseCalendarScreen(
@@ -829,7 +853,7 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
       page = SettingsScreen(
         scrollController: NavigationManager.getScrollController(NavigationManager.SettingsIndex),
       );
-    } else if (routeName.startsWith('searched_series:')) {
+    } else if (routeName.startsWith('/searched_series:')) {
       final anime = settings.arguments as AnimeCard;
       page = SearchedSeriesScreen(
         anilistUrl: "https://anilist.co/anime/${anime.id}",
@@ -844,7 +868,7 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
     }
 
     // Use custom page route with fade transition for series view
-    if (routeName == '/series' || routeName.startsWith('series:') || routeName.startsWith('searched_series:')) {
+    if (routeName.startsWith('/series:') || routeName.startsWith('/mapping:') || routeName.startsWith('/searched_series:')) {
       return PageRouteBuilder(
         settings: settings,
         pageBuilder: (context, animation, secondaryAnimation) => page,
@@ -855,7 +879,13 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
               parent: animation,
               curve: Curves.easeInOut,
             ),
-            child: child,
+            child: FadeTransition(
+              opacity: CurvedAnimation(
+                parent: ReverseAnimation(secondaryAnimation),
+                curve: Curves.easeInOut,
+              ),
+              child: child,
+            ),
           );
         },
         transitionDuration: mediumDuration,
@@ -864,10 +894,47 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
       );
     }
 
+    // based on previous index and current index, detect if we went upwards or downwards in the panes indexes
+    final previous = Manager.navigation.previousView;
+    final previousIndex = previous != null ? NavigationManager.getIndexById(previous.id) ?? 0 : 0;
+
+    final current = Manager.navigation.currentView;
+    final currentIndex = current != null ? NavigationManager.getIndexById(current.id) ?? 0 : 0;
+    final direction = currentIndex - previousIndex;
+    print('Transition direction: $direction');
+
     // Standard route for other pages
-    return FluentPageRoute(
-      builder: (_) => page,
+    return PageRouteBuilder(
       settings: settings,
+      pageBuilder: (context, animation, secondaryAnimation) => page,
+      transitionsBuilder: (context, animation, secondaryAnimation, child) {
+        // Custom fade transition
+        return SlideTransition(
+          position: Tween<Offset>(
+            begin: Offset(0, direction >= 0 ? 0.15 : -0.15),
+            end: Offset.zero,
+          ).animate(CurvedAnimation(
+            parent: animation,
+            curve: Curves.easeInOut,
+          )),
+          child: FadeTransition(
+            opacity: CurvedAnimation(
+              parent: animation,
+              curve: Curves.easeInOut,
+            ),
+            child: FadeTransition(
+              opacity: CurvedAnimation(
+                parent: ReverseAnimation(secondaryAnimation),
+                curve: Curves.easeInOut,
+              ),
+              child: child,
+            ),
+          ),
+        );
+      },
+      transitionDuration: mediumDuration,
+      reverseTransitionDuration: mediumDuration,
+      // barrierColor: Colors.black,
       maintainState: true,
     );
   }
@@ -984,7 +1051,7 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
                           ),
                         ),
                       ),
-                      // Notification area - before window buttons
+                      // Notification area, before window buttons
                       Row(
                         children: [
                           Padding(
@@ -1050,41 +1117,7 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
     final seriesName = series?.name ?? 'Series';
 
     // Update navigation stack with the series page
-    Manager.navigation.pushPage('series:$seriesPath', seriesName, data: seriesPath);
-  }
-
-  /// Handles back navigation throughout the app
-  /// Returns true if back navigation was performed, false otherwise
-  bool handleBackNavigation({bool isBackFromEscKey = false}) {
-    // Handle dialog closure
-    if (Manager.navigation.hasDialog) {
-      if (!isBackFromEscKey) {
-        logTrace('$nowFormatted | Back Mouse Button Pressed: Closing dialog');
-        // goBack() will pop the navigator, which closes the dialog
-        return Manager.navigation.goBack();
-      }
-
-      if (!Manager.canPopDialog) {
-        if (Manager.navigation.currentView?.id.startsWith('linkAnilist') ?? false) {
-          logTrace('Link Anilist dialog is open, switching to view mode');
-          nextFrame(() => linkMultiDialogKey.currentState?.switchToViewMode());
-        }
-        return true;
-      }
-
-      logTrace('Closing dialog from back navigation in series view');
-      // goBack() will pop the navigator, which closes the dialog
-      return Manager.navigation.goBack();
-    }
-
-    // Handle general back navigation
-    if (Manager.navigation.canGoBack) {
-      logDebug('Going back in navigation stack -> ${Manager.navigation.stack[Manager.navigation.stack.length - 2].title}');
-      return Manager.navigation.goBack();
-    }
-
-    logTrace('Back navigation not possible');
-    return false;
+    Manager.navigation.pushPage('/series:$seriesPath', seriesName, data: seriesPath);
   }
 }
 

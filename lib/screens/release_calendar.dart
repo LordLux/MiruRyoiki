@@ -353,7 +353,7 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> with Autom
         });
       }
 
-      if (_isDisposed) return;
+      if (!mounted || _isDisposed) return;
 
       // If Online, sync notifications in background
       if (!anilistProvider.isOffline) {
@@ -365,14 +365,14 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> with Autom
             maxPages: 2,
           );
 
-          if (_isDisposed) return;
+          if (!mounted || _isDisposed) return;
 
           // Reload data after sync to get fresh notifications
           final freshCalendarMap = <DateTime, List<CalendarEntry>>{};
           await _loadNotificationData(library, freshCalendarMap, null, now);
           await _loadEpisodeData(library, anilistProvider, freshCalendarMap, now, null);
 
-          if (_isDisposed) return;
+          if (!mounted || _isDisposed) return;
 
           // Sort entries by date within each day
           for (final dayEntries in freshCalendarMap.values) {

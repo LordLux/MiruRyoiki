@@ -355,7 +355,7 @@ class AnilistLinkMultiContentState extends State<_AnilistLinkMultiContent> {
                               if (libraryScreenKey.currentState != null) libraryScreenKey.currentState!.updateSeriesInSortCache(widget.series);
 
                               // Fetch and load Anilist data for the selected mapping
-                              await seriesScreenContainerKey.currentState!.seriesScreenKey!.currentState!.changePrimaryId(value);
+                              await seriesScreenKey.currentState!.changePrimaryId(value);
                               if (mounted) setState(() {});
                             }
                           },

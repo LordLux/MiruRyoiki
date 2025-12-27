@@ -7,7 +7,7 @@ import 'package:miruryoiki/utils/time.dart';
 class SidebarOpenerDetector extends StatelessWidget {
   final VoidCallback onHover;
   final VoidCallback onExit;
-  final bool isSeriesView;
+  final bool enabled;
   final bool shouldExpand;
 
   const SidebarOpenerDetector({
@@ -15,7 +15,7 @@ class SidebarOpenerDetector extends StatelessWidget {
     required this.onHover,
     required this.onExit,
     required this.shouldExpand,
-    required this.isSeriesView,
+    required this.enabled,
   });
 
   @override
@@ -29,8 +29,8 @@ class SidebarOpenerDetector extends StatelessWidget {
         height: ScreenUtils.height,
         child: MouseRegion(
           hitTestBehavior: HitTestBehavior.translucent,
-          onEnter: (_) => isSeriesView ? onHover() : null,
-          onExit: (_) => isSeriesView ? onExit() : null,
+          onEnter: (_) => enabled ? onHover() : null,
+          onExit: (_) => enabled ? onExit() : null,
         ),
       ),
     );

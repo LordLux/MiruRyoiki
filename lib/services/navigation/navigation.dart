@@ -347,4 +347,7 @@ class NavigationManager extends ChangeNotifier {
     }
     return true;
   }
+
+  NavigationItem? get previousView => _stack.length > 1 ? _stack[_stack.length - 2] : null;
+  NavigationItem? get nextView => _forwardStack.isNotEmpty ? _forwardStack.last : null;
 }

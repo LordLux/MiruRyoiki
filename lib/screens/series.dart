@@ -56,91 +56,9 @@ import 'package:cached_network_image/cached_network_image.dart';
 /// Duration for which AniList data is considered fresh and doesn't need refetching
 const Duration kAnilistCacheDuration = Duration(days: 1);
 
-/// Wrapper that manages navigation between SeriesScreen (grid of mappings) and InnerSeriesScreen (single mapping)
-class SeriesScreenContainer extends StatefulWidget {
-  final PathString? seriesPath;
-  final VoidCallback onBack;
-
-  const SeriesScreenContainer({
-    super.key,
-    required this.seriesPath,
-    required this.onBack,
-  });
-
-  @override
-  SeriesScreenContainerState createState() => SeriesScreenContainerState();
-}
-
-class SeriesScreenContainerState extends State<SeriesScreenContainer> {
-  AnilistMapping? _selectedMapping;
-  MappingTarget? _selectedTarget;
-
-  final GlobalKey<SeriesScreenState> _seriesScreenKey = GlobalKey<SeriesScreenState>();
-
-  /// Get the isReloadingSeries property from the currently active screen
-  bool get isReloadingSeries => _seriesScreenKey.currentState?.isReloadingSeries ?? false;
-
-  GlobalKey<SeriesScreenState>? get seriesScreenKey => _seriesScreenKey;
-
-  /// Check if we're currently showing the inner series screen
-  bool get isShowingInnerScreen => _selectedMapping != null && _selectedTarget != null;
-
-  void navigateToMapping(AnilistMapping mapping, MappingTarget target) {
-    if (!mounted) return;
-
-    final mappingName = target.displayName;
-
-    // Push the inner mapping page to navigation stack
-    Manager.navigation.pushPage(
-      'mapping:${mapping.localPath}',
-      mappingName,
-      data: mapping.localPath,
-    );
-
-    setState(() {
-      _selectedMapping = mapping;
-      _selectedTarget = target;
-      // Save the series color if not already saved, then set the mapping color as current
-      Manager.seriesDominantColor ??= Manager.currentDominantColor ?? Manager.accentColor;
-      Manager.currentDominantColor = mapping.effectivePrimaryColorSync() ?? Manager.seriesDominantColor ?? Manager.accentColor;
-    });
-  }
-
-  void exitMapping() {
-    if (!mounted) return;
-
-    // Pop the mapping page from navigation stack
-    if (Manager.navigation.currentView?.level == NavigationLevel.page && Manager.navigation.currentView?.id.startsWith('mapping:') == true) {
-      Manager.navigation.goBack();
-    }
-
-    setState(() {
-      _selectedMapping = null;
-      _selectedTarget = null;
-      // Restore the series color from seriesDominantColor
-      Manager.currentDominantColor = Manager.seriesDominantColor ?? Manager.accentColor;
-    });
-
-    Manager.setState();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return SeriesScreen(
-      key: _seriesScreenKey,
-      seriesPath: widget.seriesPath,
-      onBack: isShowingInnerScreen ? exitMapping : widget.onBack,
-      onNavigateToMapping: navigateToMapping,
-      target: _selectedTarget,
-      mapping: _selectedMapping,
-    );
-  }
-}
-
 class SeriesScreen extends StatefulWidget {
   final PathString? seriesPath;
   final VoidCallback onBack;
-  final Function(AnilistMapping mapping, MappingTarget target)? onNavigateToMapping;
   final MappingTarget? target;
   final AnilistMapping? mapping;
 
@@ -148,7 +66,6 @@ class SeriesScreen extends StatefulWidget {
     super.key,
     required this.seriesPath,
     required this.onBack,
-    this.onNavigateToMapping,
     this.target,
     this.mapping,
   });
@@ -182,7 +99,21 @@ class SeriesScreenState extends State<SeriesScreen> {
 
   bool get isMappingMode => widget.target != null;
 
-  // Color? dominantColor;
+  void navigateToMapping(AnilistMapping mapping, MappingTarget target) {
+    if (!mounted) return;
+
+    final mappingName = target.displayName;
+
+    // Push the inner mapping page to navigation stack
+    Manager.navigation.pushPage(
+      '/mapping:${mapping.localPath}',
+      mappingName,
+      data: {
+        'seriesPath': widget.seriesPath,
+        'mappingPath': mapping.localPath,
+      },
+    );
+  }
 
   // Widget: whether to allocate a full row or divide it in 2 columns [true = full row, false = 2 columns]
   Map<InfoLabel, bool> infos(Series series) {
@@ -342,7 +273,10 @@ class SeriesScreenState extends State<SeriesScreen> {
       _cachedMapping = widget.mapping;
       if (_cachedMapping?.viewType != null) _currentViewType = _cachedMapping!.viewType!;
 
-      if (isMappingMode) nextFrame(() => _initializeMappingData());
+      if (isMappingMode) 
+        nextFrame(() => _initializeMappingData());
+      else
+        Manager.setState(() => Manager.currentDominantColor = Manager.seriesDominantColor ?? Manager.accentColor);
     }
   }
 
@@ -1257,10 +1191,7 @@ class SeriesScreenState extends State<SeriesScreen> {
             series: series,
             mapping: mapping,
             onTap: () {
-              if (widget.onNavigateToMapping != null)
-                widget.onNavigateToMapping!(mapping, target);
-              else
-                logWarn('onNavigateToMapping callback is null');
+              navigateToMapping(mapping, target);
             },
           );
         }).toList();

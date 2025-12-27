@@ -9,6 +9,8 @@ import 'package:provider/provider.dart';
 
 import '../../main.dart';
 import '../../manager.dart';
+import '../../utils/time.dart';
+import '../../widgets/dialogs/link_anilist.dart';
 import '../../widgets/dialogs/notifications.dart';
 import '../library/library_provider.dart';
 import '../../utils/logging.dart';
@@ -185,7 +187,7 @@ class _CustomKeyboardListenerState extends State<CustomKeyboardListener> {
 
           if (homeState != null && homeState.mounted) {
             if (homeState.isSeriesView) {
-              final seriesScreenState = getActiveSeriesScreenContainerState();
+              final seriesScreenState = seriesScreenKey.currentState;
               snackBar('Clearing Series cache...', severity: InfoBarSeverity.info, autoHide: false);
 
               // Clear thumbnails for the CURRENT SERIES if possible
@@ -271,7 +273,7 @@ class _CustomKeyboardListenerState extends State<CustomKeyboardListener> {
       //
       // Esc
       if (event.logicalKey == LogicalKeyboardKey.escape) {
-        _handleBackNavigation(isEsc: true);
+        _handleBackNavigation(isBackFromEscKey: true);
       } else
       //
       //
@@ -342,36 +344,52 @@ class _CustomKeyboardListenerState extends State<CustomKeyboardListener> {
       _handleForwardNavigation();
   }
 
-  void _handleBackNavigation({bool isEsc = false}) {
-    final homeState = homeKey.currentState;
-
-    if (homeState != null && homeState.mounted) {
-      if (homeState.handleBackNavigation(isBackFromEscKey: isEsc)) {
-        logTrace('Back navigation via ${isEsc ? "ESC":"mouse button 4"}');
+  void _handleBackNavigation({bool isBackFromEscKey = false}) {
+      if (handleBackNavigation(isBackFromEscKey: isBackFromEscKey)) {
+        logTrace('Back navigation via ${isBackFromEscKey ? "ESC":"mouse button 4"}');
         // Handled by AppRoot
         return;
       }
+  }
+
+  /// Handles back navigation throughout the app
+  /// Returns true if back navigation was performed, false otherwise
+  bool handleBackNavigation({bool isBackFromEscKey = false}) {
+    // Handle dialog closure
+    if (Manager.navigation.hasDialog) {
+      if (!isBackFromEscKey) {
+        logTrace('$nowFormatted | Back Mouse Button Pressed: Closing dialog');
+        // goBack() will pop the navigator, which closes the dialog
+        return Manager.navigation.goBack();
+      }
+
+      if (!Manager.canPopDialog) {
+        if (Manager.navigation.currentView?.id.startsWith('linkAnilist') ?? false) {
+          logTrace('Link Anilist dialog is open, switching to view mode');
+          nextFrame(() => linkMultiDialogKey.currentState?.switchToViewMode());
+        }
+        return true;
+      }
+
+      logTrace('Closing dialog from back navigation in series view');
+      // goBack() will pop the navigator, which closes the dialog
+      return Manager.navigation.goBack();
     }
+
+    // Handle general back navigation
+    if (Manager.navigation.canGoBack && !isBackFromEscKey) {
+      logDebug('Going back in navigation stack -> ${Manager.navigation.stack[Manager.navigation.stack.length - 2].title}');
+      return Manager.navigation.goBack();
+    }
+
+    logTrace('Back navigation not possible');
+    return false;
   }
 
   void _handleForwardNavigation() {
     logTrace('Forward navigation via mouse button 5');
     Manager.navigation.goForward();
   }
-
-  // void _toggleSeason(int season) {
-  //   final homeState = homeKey.currentState;
-  //   if (homeState != null && homeState.mounted && homeState.isSeriesView) {
-  //     final seriesScreenState = getActiveSeriesScreenState();
-
-  //     if (seriesScreenState != null) {
-  //       logTrace('Ctrl + $season pressed: Toggling season $season');
-  //       seriesScreenState.toggleSeasonExpander(season);
-  //     } else {
-  //       logDebug('SeriesScreenState not found');
-  //     }
-  //   }
-  // }
 
   @override
   void dispose() {
