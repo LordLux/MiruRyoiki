@@ -7,18 +7,18 @@ import 'package:material_symbols_icons/material_symbols_icons.dart';
 import 'package:miruryoiki/widgets/tooltip_wrapper.dart';
 import 'package:provider/provider.dart';
 
-import '../main.dart';
 import '../manager.dart';
 import '../models/notification.dart';
 import '../services/anilist/provider/anilist_provider.dart';
 import '../services/anilist/queries/anilist_service.dart';
 import '../services/library/library_provider.dart';
-import '../services/navigation/dialogs.dart';
+import '../services/navigation/dialogs2.dart';
 import '../services/navigation/navigation.dart';
 import '../utils/screen.dart';
 import '../utils/time.dart';
 import 'animated_icon.dart' as anim_icon;
 import 'dialogs/notifications.dart';
+import 'dialogs/show_dialog.dart';
 
 /// Widget that shows a notification bell icon with unread count badge.
 /// Tapping the icon opens a dialog showing recent notifications.
@@ -104,15 +104,15 @@ class _ReleaseNotificationWidgetState extends State<ReleaseNotificationWidget> {
 
   bool _isDialogToggling = false;
 
-  void _showNotificationDialog() async {
+  Future<void> _showNotificationDialog(BuildContext context) async {
     // Prevent multiple clicks during toggle
     if (_isDialogToggling || Manager.notificationsPopping) return;
 
     final currentDialog = Manager.navigation.currentView;
-    if (Navigator.of(context, rootNavigator: true).canPop() && currentDialog?.level == NavigationLevel.dialog) {
+    if (Manager.navigation.hasDialog) {
       _isDialogToggling = true;
+      closeDialog(context);
       //get current top dialog id
-      closeDialog(rootNavigatorKey.currentContext!);
       if (currentDialog?.id == "notifications") {
         _isDialogToggling = false;
         return;
@@ -124,26 +124,40 @@ class _ReleaseNotificationWidgetState extends State<ReleaseNotificationWidget> {
 
     if (!context.mounted) return;
 
-    await showManagedDialog(
-      context: context,
-      id: 'notifications',
-      title: 'Notifications',
-      canUserPopDialog: true,
-      dialogDoPopCheck: () => Manager.canPopDialog,
-      barrierColor: Colors.transparent,
-      data: {"darkenTitleBar" : false},
-      overrideColor: true,
-      closeExistingDialogs: false,
-      transparentBarrier: true,
-      onDismiss: () async {
-        Manager.notificationsPopping = true;
-        await Future.delayed(dimDuration);
-        Manager.notificationsPopping = false;
-      },
-      builder: (ctx) => NotificationsDialog(
-        popContext: ctx,
-        onMorePressed: (ctx2) => widget.onMorePressed?.call(ctx2),
+    await showPaddedDialog(
+      context,
+      navigationItem: DialogNavigationItem(
+        id: 'notifications',
+        title: 'Notifications',
+        dialogDoPopCheck: () => Manager.canPopDialog,
+        data: {"darkenTitleBar": false},
+        onDismiss: () async {
+          Manager.notificationsPopping = true;
+          await Future.delayed(dimDuration);
+          Manager.notificationsPopping = false;
+        },
       ),
+      barrierOptions: PaddedBarrierOptions(
+        userDismissable: true,
+        barrierColor: Colors.transparent,
+        exactColor: true,
+        transluscentBarrier: true,
+      ),
+      builder: (ctx, item, option) {
+        const boxConstraints = BoxConstraints(maxWidth: 480, maxHeight: 513);
+
+        return PaddedDialog.frosted(
+          navigationItem: item,
+          barrierOptions: option,
+          constraints: boxConstraints,
+          content: NotificationsContent(
+            key: notificationsContentKey,
+            onMorePressed: widget.onMorePressed,
+            constraints: boxConstraints,
+          ),
+          alignment: Position.fromAlignment(Alignment.topRight),
+        );
+      },
       transitionBuilder: (context, animation, secondaryAnimation, child) {
         return ScaleTransition(
           alignment: alignmentFromPixels(ScreenUtils.width - 155, 25, ScreenUtils.screenSize), // Top-right corner
@@ -213,7 +227,7 @@ class _ReleaseNotificationWidgetState extends State<ReleaseNotificationWidget> {
                   ),
               ],
             ),
-            onPressed: isEnabled && !_isDialogToggling ? _showNotificationDialog : null,
+            onPressed: isEnabled && !_isDialogToggling ? () => _showNotificationDialog(context) : null,
           ),
         );
       },

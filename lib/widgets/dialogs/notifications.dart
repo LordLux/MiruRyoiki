@@ -12,7 +12,6 @@ import '../../manager.dart';
 import '../../models/notification.dart';
 import '../../services/anilist/queries/anilist_service.dart';
 import '../../services/library/library_provider.dart';
-import '../../services/navigation/dialogs.dart';
 import '../../utils/time.dart';
 import '../../widgets/buttons/wrapper.dart';
 import '../buttons/rotating_loading_button.dart';
@@ -22,47 +21,18 @@ import '../tooltip_wrapper.dart';
 
 final GlobalKey<NotificationsContentState> notificationsContentKey = GlobalKey<NotificationsContentState>();
 
-class NotificationsDialog extends ManagedDialog {
-  final void Function(BuildContext context)? onMorePressed;
 
-  NotificationsDialog({
-    super.key,
-    required super.popContext,
-    this.onMorePressed,
-  }) : super(
-          title: null, // Remove the static title
-          constraints: const BoxConstraints(maxWidth: 480, maxHeight: 513),
-          contentBuilder: (context, constraints) => _NotificationsContent(
-            key: notificationsContentKey,
-            onMorePressed: onMorePressed,
-            constraints: constraints,
-          ),
-          alignment: Alignment.topRight,
-        );
-
-  @override
-  State<ManagedDialog> createState() => _NotificationsDialogState();
-}
-
-class _NotificationsDialogState extends NotificationManagedDialogState {
-  @override
-  void initState() {
-    super.initState();
-    Manager.canPopDialog = true;
-  }
-}
-
-class _NotificationsContent extends StatefulWidget {
+class NotificationsContent extends StatefulWidget {
   final void Function(BuildContext context)? onMorePressed;
   final BoxConstraints constraints;
 
-  const _NotificationsContent({super.key, this.onMorePressed, required this.constraints});
+  const NotificationsContent({super.key, this.onMorePressed, required this.constraints});
 
   @override
   NotificationsContentState createState() => NotificationsContentState();
 }
 
-class NotificationsContentState extends State<_NotificationsContent> {
+class NotificationsContentState extends State<NotificationsContent> {
   AnilistService? _anilistService;
   List<AnilistNotification> _notifications = [];
   int _unreadCount = 0;
@@ -324,16 +294,18 @@ class NotificationsContentState extends State<_NotificationsContent> {
           ),
         ),
 
-        AnimatedSwitcher(
-          duration: const Duration(milliseconds: 500),
-          transitionBuilder: (child, animation) => FadeTransition(opacity: animation, child: child),
-          child: _isRefreshing //
-              ? mat.LinearProgressIndicator(
-                  color: Manager.currentDominantColor ?? Manager.accentColor,
-                  backgroundColor: Color(0xFF484848),
-                  minHeight: 2,
-                )
-              : Container(height: 2, decoration: DividerTheme.of(context).decoration),
+        RepaintBoundary(
+          child: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 500),
+            transitionBuilder: (child, animation) => FadeTransition(opacity: animation, child: child),
+            child: _isRefreshing //
+                ? mat.LinearProgressIndicator(
+                    color: Manager.currentDominantColor ?? Manager.accentColor,
+                    backgroundColor: Color(0xFF484848),
+                    minHeight: 2,
+                  )
+                : Container(height: 2, decoration: DividerTheme.of(context).decoration),
+          ),
         ),
 
         // Notification list

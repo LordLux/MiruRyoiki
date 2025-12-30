@@ -3,7 +3,6 @@ import 'package:miruryoiki/utils/screen.dart';
 import 'package:miruryoiki/utils/time.dart';
 
 import '../manager.dart';
-import '../models/anilist/anime.dart';
 import '../models/anilist/anime_card.dart';
 import '../models/series.dart';
 import 'hidden.dart';

@@ -4,6 +4,7 @@ import 'package:miruryoiki/functions.dart';
 import 'package:miruryoiki/services/navigation/dialogs.dart';
 import 'package:miruryoiki/services/navigation/show_info.dart';
 import '../../manager.dart';
+import '../../services/navigation/navigation.dart';
 import '../../utils/database_recovery.dart';
 import '../../utils/time.dart';
 import '../buttons/button.dart';
@@ -46,7 +47,7 @@ class _DatabaseRecoveryDialogState extends State<DatabaseRecoveryDialog> {
         
         await Future.delayed(const Duration(milliseconds: 500));
         
-        if (mounted) closeDialog(context);
+        if (mounted) closeDialog();
         return true;
       }
     } catch (e, st) {
@@ -144,7 +145,7 @@ class _DatabaseRecoveryDialogState extends State<DatabaseRecoveryDialog> {
                   alignment: Alignment.centerRight,
                   child: StandardButton.iconLabel(
                     onPressed: _isProcessing ? null : () => _attemptAutomaticRecovery(),
-                    icon: _isProcessing ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.healing, color: Colors.white),
+                    icon: _isProcessing ? const SizedBox(width: 16, height: 16, child: RepaintBoundary(child: CircularProgressIndicator(strokeWidth: 2))) : const Icon(Icons.healing, color: Colors.white),
                     label: Text(_isProcessing ? 'Processing...' : 'Attempt Automatic Fix', style: Manager.bodyStrongStyle.copyWith(color: Colors.white)),
                   ),
                 ),
@@ -165,11 +166,12 @@ class _DatabaseRecoveryDialogState extends State<DatabaseRecoveryDialog> {
 }
 
 /// Function to show the database recovery dialog
-Future<bool?> showDatabaseRecoveryDialog(BuildContext context) {
-  return showSimpleOneButtonManagedDialog<bool>(
+void showDatabaseRecoveryDialog(BuildContext context) {
+  showSimpleOneButtonManagedDialog(
+    context,
     id: 'database_recovery',
-    context: context,
-    builder: (_) => const DatabaseRecoveryDialog(),
     title: 'Database Recovery',
+    constraints: const BoxConstraints(maxWidth: 500, minWidth: 500, maxHeight: 1200),
+    builder: (_) => const DatabaseRecoveryDialog(),
   );
 }

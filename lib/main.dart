@@ -33,6 +33,7 @@ import 'services/downloads/torrent_manager.dart';
 import 'screens/home.dart';
 import 'screens/release_calendar.dart';
 import 'services/isolates/thumbnail_manager.dart';
+import 'widgets/dialogs/padded_dialog_route.dart';
 import 'widgets/dialogs/splash/progress.dart';
 import 'widgets/reassemble_widget.dart';
 import 'widgets/route_transition_builders.dart';
@@ -43,7 +44,6 @@ import 'widgets/svg.dart';
 import 'widgets/connectivity_indicator.dart';
 import 'services/anilist/provider/anilist_provider.dart';
 import 'services/connectivity/connectivity_service.dart';
-import 'services/navigation/dialogs.dart';
 import 'services/navigation/statusbar.dart';
 import 'services/window/service.dart';
 import 'settings.dart';
@@ -69,12 +69,11 @@ import 'utils/screen.dart';
 import 'utils/time.dart';
 import 'widgets/animated_indicator.dart';
 import 'widgets/cursors.dart';
-import 'widgets/dialogs/link_anilist.dart';
 import 'widgets/window_buttons.dart';
 
 final _appTheme = AppTheme();
-final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
-final _navigationManager = NavigationManager(_navigatorKey);
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+final _navigationManager = NavigationManager(navigatorKey);
 final _settings = SettingsManager();
 RootIsolateToken? rootIsolateToken;
 
@@ -151,7 +150,11 @@ void main(List<String> args) async {
   runApp(
     ReassembleListener(
       onReassemble: () {
-        logInfo('Hot restart detected');
+        if (kDebugMode) {
+          logInfo('Hot reload detected');
+          Manager.skipScan = true;
+          nextFrame(delay: 10000, () => Manager.skipScan = false);
+        }
       },
       child: MultiProvider(
         providers: [
@@ -179,16 +182,18 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     final appTheme = context.watch<AppTheme>();
     return ScaffoldMessenger(
-      child: FluentApp(
-        navigatorKey: rootNavigatorKey,
-        title: Manager.appTitle,
-        theme: FluentThemeData(accentColor: appTheme.color, brightness: Brightness.light),
-        darkTheme: FluentThemeData(accentColor: appTheme.color, brightness: Brightness.dark),
-        color: appTheme.color,
-        themeMode: appTheme.mode,
-        home: AppContainer(),
-        builder: (context, child) => _rootBuilder(context, child, appTheme),
-        debugShowCheckedModeBanner: false,
+      child: CustomKeyboardListener(
+        child: FluentApp(
+          navigatorKey: rootNavigatorKey,
+          title: Manager.appTitle,
+          theme: FluentThemeData(accentColor: appTheme.color, brightness: Brightness.light),
+          darkTheme: FluentThemeData(accentColor: appTheme.color, brightness: Brightness.dark),
+          color: appTheme.color,
+          themeMode: appTheme.mode,
+          home: AppContainer(),
+          builder: (context, child) => _rootBuilder(context, child, appTheme),
+          debugShowCheckedModeBanner: false,
+        ),
       ),
     );
   }
@@ -334,7 +339,7 @@ class _MiruRyoikiRootState extends State<MiruRyoikiRoot> {
   }
 
   @override
-  Widget build(BuildContext context) => CustomKeyboardListener(child: MiruRyoiki(key: homeKey));
+  Widget build(BuildContext context) => MiruRyoiki(key: homeKey);
 }
 
 class MiruRyoiki extends StatefulWidget {
@@ -492,7 +497,7 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
     }
 
     // Handle Compact View & Colors
-    final shouldBeCompact = current.level == NavigationLevel.page;
+    final shouldBeCompact = Manager.navigation.isTherePage;
     if (_isCompactView != shouldBeCompact) setState(() => _isCompactView = shouldBeCompact);
 
     if (current.id.startsWith('/series:')) {
@@ -565,7 +570,7 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
                             children: [
                               Expanded(
                                 child: Navigator(
-                                  key: _navigatorKey,
+                                  key: navigatorKey,
                                   initialRoute: '/',
                                   onGenerateRoute: _onGenerateRoute,
                                 ),
@@ -888,7 +893,6 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
     final current = Manager.navigation.currentView;
     final currentIndex = current != null ? NavigationManager.getIndexById(current.id) ?? 0 : 0;
     final direction = currentIndex - previousIndex;
-    print('Transition direction: $direction');
 
     // Standard route for other pages
     return PageRouteBuilder(
@@ -1181,6 +1185,8 @@ Future<void> _registerWindowsUrlScheme(String scheme) async {
   }
 }
 
+// TODO esc closes linking dialog when it should actually go back
+// TODO fix the fact that we're saving the whole userdata to the database
 // TODO dominant color to null when navigating to release calendar via notification dialog
 // TODO 'video player process monitoring failed to start' because already open, after a hot restart -> detect with ReassembleListener
 // TODO scanning library progress indicator in status bar in Browse page is bugged visually with background cards

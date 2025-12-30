@@ -246,8 +246,8 @@ class _CustomKeyboardListenerState extends State<CustomKeyboardListener> {
                 clearAllCaches();
               else
                 // Confirm before clearing all thumbnails if the setting is not enabled
-                await showSimpleTickboxManagedDialog<bool>(
-                  context: context,
+                await showSimpleTickboxManagedDialog(
+                  Manager.context,
                   id: 'confirm_clear_all_thumbnails',
                   title: 'Clear All Caches?',
                   body: 'Are you sure you want to clear ALL caches?\nThis will clear thumbnails and AniList data for all Series in your Library and they will be refetched when needed.',
@@ -360,9 +360,10 @@ class _CustomKeyboardListenerState extends State<CustomKeyboardListener> {
       if (!isBackFromEscKey) {
         logTrace('$nowFormatted | Back Mouse Button Pressed: Closing dialog');
         // goBack() will pop the navigator, which closes the dialog
-        return Manager.navigation.goBack();
+        return Manager.navigation.popDialog();
       }
 
+      // Link Anilist dialog special handling
       if (!Manager.canPopDialog) {
         if (Manager.navigation.currentView?.id.startsWith('linkAnilist') ?? false) {
           logTrace('Link Anilist dialog is open, switching to view mode');
@@ -382,7 +383,7 @@ class _CustomKeyboardListenerState extends State<CustomKeyboardListener> {
       return Manager.navigation.goBack();
     }
 
-    logTrace('Back navigation not possible');
+    logTrace('Back navigation not possible: \n${isBackFromEscKey ? "Cannot go back to another page with ESC key, use mouse button 4 instead or UI Back Button" : "No dialog to close and no back navigation available: ${Manager.navigation.currentStackString}"}');
     return false;
   }
 
@@ -393,6 +394,9 @@ class _CustomKeyboardListenerState extends State<CustomKeyboardListener> {
 
   @override
   void dispose() {
+    KeyboardState.ctrlPressedNotifier.dispose();
+    KeyboardState.shiftPressedNotifier.dispose();
+    KeyboardState.zoomReleaseNotifier.dispose();
     super.dispose();
   }
 

@@ -10,6 +10,10 @@ extension LibraryScanning on Library {
 
   /// Scans the local library using a non-blocking, task-based approach.
   Future<void> scanLocalLibrary({bool showSnack = false}) async {
+    if (kDebugMode && Manager.skipScan) {
+      logDebug('Skipping scan, Manager.skipScan is true');
+      return;
+    }
     if (_libraryPath == null) {
       logDebug('\n3 | Skipping scan, library path is null', splitLines: true);
       return;

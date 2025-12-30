@@ -4,97 +4,43 @@ import 'package:glossy/glossy.dart';
 
 import '../../utils/screen.dart';
 import '../../manager.dart';
-import '../../utils/logging.dart';
-import '../../utils/time.dart';
 import '../../widgets/buttons/wrapper.dart';
 import '../../widgets/dialogs/show_dialog.dart';
-import '../../main.dart';
 import '../../widgets/frosted_noise.dart';
 import 'debug.dart';
+import 'dialogs2.dart';
+import 'navigation.dart';
 
 bool kReturnTrueCallback() => true;
 bool kReturnFalseCallback() => false;
 
-Color getBarrierColor(Color? color, {bool override = false}) {
-  if (override && color != null) return color;
-
-  final Color baseColor = const Color(0xFF000000);
-  if (color == null) return baseColor.withAlpha(0x84);
-  // If no color is provided, use the default barrier color
-  return (baseColor.lerpWith(color, .025)).withAlpha(0x84);
-}
-
-/// Helper for managing dialog navigation state
-Future<T?> showManagedDialog<T>({
-  required BuildContext context,
+Future showSimpleManagedDialog(
+  BuildContext context, {
+  /// Unique identifier for the dialog
   required String id,
-  required String title,
-  required ManagedDialog Function(BuildContext) builder,
-  Color? barrierColor = const Color(0x8A000000),
 
-  /// Whether to use the exact barrier color or a lerped version of it
-  bool overrideColor = false,
-  Object? data,
-  bool canUserPopDialog = true,
-
-  /// Whether the barrier should let interactions through or not
-  bool transparentBarrier = false,
-  bool Function() dialogDoPopCheck = kReturnFalseCallback,
-  bool closeExistingDialogs = false,
-  VoidCallback? onDismiss,
-  RouteTransitionsBuilder? transitionBuilder,
-}) async {
-  // Register in navigation stack
-  Manager.navigation.pushDialog(id, title, data: data);
-
-  // Show the dialog
-  final result = await showPaddedDialog<T>(
-    context: rootNavigatorKey.currentContext!,
-    barrierColor: getBarrierColor(barrierColor, override: overrideColor),
-    useRootNavigator: true,
-    transitionBuilder: transitionBuilder,
-    dismissWithEsc: false, // DO NOT allow ESC to close the dialog, as esc already triggers normal pop (wtf flutter?)
-    barrierDismissible: canUserPopDialog, // allow barrier to dismiss if no check provided
-    barrierPadding: EdgeInsets.only(top: ScreenUtils.kTitleBarHeight),
-    closeExistingDialogs: closeExistingDialogs,
-    transparentBarrier: transparentBarrier,
-    onDismiss: onDismiss,
-    builder: (context) => PopScope(
-      canPop: false, // Prevent popping from the dialog itself
-      onPopInvoked: (didPop) async {
-        if (didPop) return; // If the pop was invoked, do nothing
-
-        if (dialogDoPopCheck()) {
-          logTrace('Dialog pop invoked, closing dialog');
-          Navigator.of(context).pop(); // Close the dialog
-        }
-      },
-      child: builder(context),
-    ),
-  ).then((result) {
-    Manager.navigation.popDialog();
-    Manager.canPopDialog = true; // Reset dialog pop state
-    nextFrame(Manager.setState);
-    return result;
-  });
-
-  return result;
-}
-
-Future<T?> showSimpleManagedDialog<T>({
-  required BuildContext context,
-  required String id,
+  /// Title of the dialog
   required String title,
 
   /// Body text of the dialog, if not provided, builder will be used
   String body = '',
+
+  /// Content builder for the dialog, used if body is not provided
+  Widget Function(BuildContext)? builder,
+
+  /// Constraints for the dialog
   BoxConstraints? constraints,
 
-  /// Builder for the dialog content, if not provided, defaults to a Text widget
-  Widget Function(BuildContext)? builder,
+  /// Text to display on the positive button
   String positiveButtonText = 'OK',
+
+  /// Text to display on the negative button
   String negativeButtonText = 'Cancel',
+
+  /// Whether the positive button is styled as primary
   bool isPositiveButtonPrimary = false,
+
+  /// Whether to hide the title of the dialog
   bool hideTitle = false,
 
   /// Optional custom title widget, overrides the title string if provided
@@ -105,29 +51,41 @@ Future<T?> showSimpleManagedDialog<T>({
 
   /// Callback for the negative button, automatically closes the dialog
   Function()? onNegative,
+
+  /// A function that checks whether the dialog can be popped at the moment of non-barrier dismissal
+  bool Function()? dialogDoPopCheck,
+
+  /// Theme for the ContentDialog
+  ContentDialogThemeData? theme,
+
+  /// Additional data associated with the dialog
+  Object? data,
 }) async {
   assert(body.isNotEmpty || builder != null, 'Either body or builder must be provided for the dialog content');
 
-  return showManagedDialog(
-    context: context,
-    id: id,
-    title: title,
-    dialogDoPopCheck: () => true,
-    builder: (context) {
-      return ManagedDialog(
-        popContext: context,
+  return showPaddedDialog(
+    context,
+    navigationItem: DialogNavigationItem(
+      id: id,
+      title: title,
+      data: data,
+      dialogDoPopCheck: dialogDoPopCheck,
+    ),
+    builder: (context, item, options) {
+      return PaddedDialog.simple(
+        navigationItem: item,
+        barrierOptions: options,
+        theme: theme,
         title: hideTitle ? null : titleWidget ?? Text(title),
-        contentBuilder: (context, __) => builder != null ? builder(context) : Text(body),
-        constraints: constraints ?? const BoxConstraints(maxWidth: 500, minWidth: 300),
-        actions: (popContext) => [
+        content: builder != null ? builder(context) : Text(body, style: Manager.bodyStyle),
+        constraints: constraints,
+        actions: [
           ManagedDialogButton(
-            popContext: popContext,
             text: negativeButtonText,
             onPressed: () => onNegative?.call(),
           ),
           ManagedDialogButton(
             isPrimary: isPositiveButtonPrimary,
-            popContext: popContext,
             text: positiveButtonText,
             onPressed: () => onPositive?.call(),
           ),
@@ -137,82 +95,113 @@ Future<T?> showSimpleManagedDialog<T>({
   );
 }
 
-Future<T?> showSimpleTickboxManagedDialog<T>({
-  required BuildContext context,
+Future showSimpleTickboxManagedDialog(
+  BuildContext context, {
+  /// Unique identifier for the dialog
   required String id,
+
+  /// Title of the dialog
   required String title,
 
   /// Body text of the dialog, if not provided, builder will be used
   String body = '',
+
+  /// Content builder for the dialog, used if body is not provided
+  Widget Function(BuildContext)? builder,
+
+  /// Constraints for the dialog
   BoxConstraints? constraints,
 
-  /// Builder for the dialog content, if not provided, defaults to a Text widget
-  Widget Function(BuildContext)? builder,
+  /// Text to display on the positive button
   String positiveButtonText = 'OK',
-  String negativeButtonText = 'Cancel',
-  bool isPositiveButtonPrimary = false,
-  bool hideTitle = false,
-  bool tickboxValue = false,
 
-  /// Callback when the tickbox value changes
-  ValueChanged<bool>? onTickboxChanged,
-  String tickboxLabel = 'Do not show this again',
+  /// Text to display on the negative button
+  String negativeButtonText = 'Cancel',
+
+  /// Whether the positive button is styled as primary
+  bool isPositiveButtonPrimary = false,
+
+  /// Whether to hide the title of the dialog
+  bool hideTitle = false,
 
   /// Optional custom title widget, overrides the title string if provided
   Widget? titleWidget,
 
   /// Callback for the positive button, automatically closes the dialog
-  Function(bool tickboxValue)? onPositive,
+  Function(bool)? onPositive,
 
   /// Callback for the negative button, automatically closes the dialog
-  Function(bool tickboxValue)? onNegative,
+  Function(bool)? onNegative,
+
+  /// A function that checks whether the dialog can be popped at the moment of non-barrier dismissal
+  bool Function()? dialogDoPopCheck,
+
+  /// Theme for the ContentDialog
+  ContentDialogThemeData? theme,
+
+  /// Additional data associated with the dialog
+  Object? data,
+
+  /// Callback when the tickbox value changes
+  ValueChanged<bool>? onTickboxChanged,
+
+  /// Label for the tickbox
+  String tickboxLabel = 'Do not show this again',
+
+  /// Initial value for the tickbox
+  bool tickboxValue = false,
 }) async {
   assert(body.isNotEmpty || builder != null, 'Either body or builder must be provided for the dialog content');
 
   bool localTickboxValue = tickboxValue;
-  return showManagedDialog(
-    context: context,
-    id: id,
-    title: title,
-    dialogDoPopCheck: () => true,
-    builder: (context) {
-      return ManagedDialog(
-        popContext: context,
+  return showPaddedDialog(
+    context,
+    navigationItem: DialogNavigationItem(
+      id: id,
+      title: title,
+      data: data,
+      dialogDoPopCheck: dialogDoPopCheck,
+    ),
+    builder: (context, item, options) {
+      return PaddedDialog.simple(
+        navigationItem: item,
+        barrierOptions: options,
+        theme: theme,
         title: hideTitle ? null : titleWidget ?? Text(title, style: Manager.subtitleStyle),
-        contentBuilder: (context, __) => Column(mainAxisSize: MainAxisSize.min, children: [
-          builder != null ? builder(context) : Text(body, style: Manager.bodyStyle),
-          const SizedBox(height: 24),
-          StatefulBuilder(builder: (context, setState) {
-            return Align(
-              alignment: Alignment.centerLeft,
-              child: SizedBox(
-                height: 20,
-                child: Checkbox(
-                  checked: localTickboxValue,
-                  onChanged: (value) {
-                    if (value != null) {
-                      onTickboxChanged?.call(value);
-                      setState(() {
-                        localTickboxValue = value;
-                      });
-                    }
-                  },
-                  content: Text(tickboxLabel, style: Manager.bodyStyle),
+        content: Expanded(
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            builder != null ? builder(context) : Text(body, style: Manager.bodyStyle),
+            const SizedBox(height: 24),
+            StatefulBuilder(builder: (context, setState) {
+              return Align(
+                alignment: Alignment.centerLeft,
+                child: SizedBox(
+                  height: 20,
+                  child: Checkbox(
+                    checked: localTickboxValue,
+                    onChanged: (value) {
+                      if (value != null) {
+                        onTickboxChanged?.call(value);
+                        setState(() {
+                          localTickboxValue = value;
+                        });
+                      }
+                    },
+                    content: Text(tickboxLabel, style: Manager.bodyStyle),
+                  ),
                 ),
-              ),
-            );
-          }),
-        ]),
+              );
+            }),
+          ]),
+        ),
         constraints: constraints ?? const BoxConstraints(maxWidth: 500, minWidth: 300),
-        actions: (popContext) => [
+        actions: [
           ManagedDialogButton(
-            popContext: popContext,
             text: negativeButtonText,
             onPressed: () => onNegative?.call(localTickboxValue),
           ),
           ManagedDialogButton(
             isPrimary: isPositiveButtonPrimary,
-            popContext: popContext,
             text: positiveButtonText,
             onPressed: () => onPositive?.call(localTickboxValue),
           ),
@@ -222,34 +211,68 @@ Future<T?> showSimpleTickboxManagedDialog<T>({
   );
 }
 
-Future<T?> showSimpleOneButtonManagedDialog<T>({
-  required BuildContext context,
+Future showSimpleOneButtonManagedDialog(
+  BuildContext context, {
+  /// Unique identifier for the dialog
   required String id,
+
+  /// Title of the dialog
   required String title,
-  String? body,
+
+  /// Body text of the dialog, if not provided, builder will be used
+  String body = '',
+
+  /// Content builder for the dialog, used if body is not provided
   Widget Function(BuildContext)? builder,
+
+  /// Constraints for the dialog
   BoxConstraints? constraints,
+
+  /// Text to display on the positive button
   String positiveButtonText = 'OK',
+
+  /// Whether the positive button is styled as primary
+  bool isPositiveButtonPrimary = false,
+
+  /// Whether to hide the title of the dialog
+  bool hideTitle = false,
+
+  /// Optional custom title widget, overrides the title string if provided
+  Widget? titleWidget,
 
   /// Callback for the positive button, automatically closes the dialog
   Function()? onPositive,
-}) async {
-  assert((body == null && builder != null) || (body != null && builder == null), 'Only one of body or builder should be provided');
 
-  return showManagedDialog(
-    context: context,
-    id: id,
-    title: title,
-    dialogDoPopCheck: () => true,
-    builder: (context) {
-      return ManagedDialog(
-        popContext: context,
-        title: Text(title),
-        contentBuilder: (context, __) => builder != null ? builder(context) : Text(body!),
-        constraints: constraints ?? const BoxConstraints(maxWidth: 500, minWidth: 300),
-        actions: (popContext) => [
+  /// A function that checks whether the dialog can be popped at the moment of non-barrier dismissal
+  bool Function()? dialogDoPopCheck,
+
+  /// Theme for the ContentDialog
+  ContentDialogThemeData? theme,
+
+  /// Additional data associated with the dialog
+  Object? data,
+}) async {
+  assert(body.isNotEmpty || builder != null, 'Either body or builder must be provided for the dialog content');
+
+  return showPaddedDialog(
+    context,
+    navigationItem: DialogNavigationItem(
+      id: id,
+      title: title,
+      data: data,
+      dialogDoPopCheck: dialogDoPopCheck,
+    ),
+    builder: (context, item, options) {
+      return PaddedDialog.simple(
+        navigationItem: item,
+        barrierOptions: options,
+        theme: theme,
+        title: hideTitle ? null : titleWidget ?? Text(title),
+        content: builder != null ? builder(context) : Text(body, style: Manager.bodyStyle),
+        constraints: constraints,
+        actions: [
           ManagedDialogButton(
-            popContext: popContext,
+            isPrimary: isPositiveButtonPrimary,
             text: positiveButtonText,
             onPressed: () => onPositive?.call(),
           ),
@@ -259,31 +282,53 @@ Future<T?> showSimpleOneButtonManagedDialog<T>({
   );
 }
 
-Future<T?> showSimpleNoButtonManagedDialog<T>({
-  required BuildContext context,
+Future showSimpleNoButtonManagedDialog(
+  BuildContext context, {
+  /// Unique identifier for the dialog
   required String id,
+
+  /// Title of the dialog
   required String title,
-  String? body,
+
+  /// Body text of the dialog, if not provided, builder will be used
+  String body = '',
+
+  /// Content builder for the dialog, used if body is not provided
   Widget Function(BuildContext)? builder,
+
+  /// Constraints for the dialog
   BoxConstraints? constraints,
 
-  /// Callback for the positive button, automatically closes the dialog
-  Function()? onPositive,
-}) async {
-  assert((body == null && builder != null) || (body != null && builder == null), 'Only one of body or builder should be provided');
+  /// Whether to hide the title of the dialog
+  bool hideTitle = false,
 
-  return showManagedDialog(
-    context: context,
-    id: id,
-    title: title,
-    dialogDoPopCheck: () => true,
-    builder: (context) {
-      return ManagedDialog(
-        popContext: context,
-        title: Text(title),
-        contentBuilder: (context, __) => builder != null ? builder(context) : Text(body!),
-        constraints: constraints ?? const BoxConstraints(maxWidth: 500, minWidth: 300),
-        actions: (popContext) => [],
+  /// Optional custom title widget, overrides the title string if provided
+  Widget? titleWidget,
+
+  /// A function that checks whether the dialog can be popped at the moment of non-barrier dismissal
+  bool Function()? dialogDoPopCheck,
+
+  /// Additional data associated with the dialog
+  Object? data,
+}) async {
+  assert(body.isNotEmpty || builder != null, 'Either body or builder must be provided for the dialog content');
+
+  return showPaddedDialog(
+    context,
+    navigationItem: DialogNavigationItem(
+      id: id,
+      title: title,
+      data: data,
+      dialogDoPopCheck: dialogDoPopCheck,
+    ),
+    builder: (context, item, options) {
+      return PaddedDialog.simple(
+        navigationItem: item,
+        barrierOptions: options,
+        title: hideTitle ? null : titleWidget ?? Text(title),
+        content: builder != null ? builder(context) : Text(body, style: Manager.bodyStyle),
+        constraints: constraints,
+        actions: [],
       );
     },
   );
@@ -295,7 +340,6 @@ class ManagedDialogButton extends StatelessWidget {
   /// Callback to be executed when the button is pressed, the closing of the dialog is handled by the widget itself
   final VoidCallback? onPressed;
   final String text;
-  final BuildContext popContext;
   final bool isPrimary;
   final bool isDisabled;
   final String? tooltip;
@@ -309,7 +353,6 @@ class ManagedDialogButton extends StatelessWidget {
     this.isDisabled = false,
     this.isLoading = false,
     this.tooltip,
-    required this.popContext,
   });
 
   @override
@@ -319,7 +362,7 @@ class ManagedDialogButton extends StatelessWidget {
       onPressed?.call();
 
       // Close the dialog
-      closeDialog(popContext);
+      closeDialog();
     }
 
     return MouseButtonWrapper(
@@ -348,30 +391,6 @@ class ManagedDialogButton extends StatelessWidget {
   }
 }
 
-// void closeDialog<T>(BuildContext popContext, {T? result}) {
-//   // First check if Flutter's Navigator has a dialog to pop
-//   if (Navigator.of(popContext).canPop() && Manager.navigation.hasDialog) {
-//     // Update custom navigation stack if needed
-//     Manager.navigation.popDialog();
-
-//     // Pop the actual dialog
-//     Navigator.of(popContext).pop(result);
-//   } else {
-//     logWarn('No dialog to pop in Flutter Navigator');
-//   }
-// }
-void closeDialog<T>(BuildContext popContext, {T? result}) {
-  // We check if we can pop, but we DO NOT touch Manager.navigation here.
-  // We let the `showManagedDialog`'s `.then()` callback handle the state update.
-  final navigator = Navigator.of(popContext);
-
-  if (navigator.canPop()) {
-    navigator.pop(result);
-  } else {
-    logWarn('Attempted to closeDialog, but Navigator could not pop.');
-  }
-}
-
 class ManagedDialog extends StatefulWidget {
   final Widget? title;
   final Widget Function(BuildContext, BoxConstraints)? contentBuilder;
@@ -397,13 +416,13 @@ class ManagedDialog extends StatefulWidget {
 }
 
 class ManagedDialogState extends State<ManagedDialog> {
-  late BoxConstraints _currentConstraints;
+  late BoxConstraints currentConstraints;
   late Alignment alignment;
 
   @override
   void initState() {
     super.initState();
-    _currentConstraints = widget.constraints;
+    currentConstraints = widget.constraints;
     alignment = widget.alignment;
   }
 
@@ -411,13 +430,13 @@ class ManagedDialogState extends State<ManagedDialog> {
   void resizeDialog({double? width, double? height, BoxConstraints? constraints}) {
     setState(() {
       if (constraints != null) {
-        _currentConstraints = constraints;
+        currentConstraints = constraints;
       } else {
-        _currentConstraints = BoxConstraints(
-          minWidth: width ?? _currentConstraints.minWidth,
-          maxWidth: width ?? _currentConstraints.maxWidth,
-          minHeight: height ?? _currentConstraints.minHeight,
-          maxHeight: height ?? _currentConstraints.maxHeight,
+        currentConstraints = BoxConstraints(
+          minWidth: width ?? currentConstraints.minWidth,
+          maxWidth: width ?? currentConstraints.maxWidth,
+          minHeight: height ?? currentConstraints.minHeight,
+          maxHeight: height ?? currentConstraints.maxHeight,
         );
       }
     });
@@ -426,7 +445,9 @@ class ManagedDialogState extends State<ManagedDialog> {
   /// Position the dialog on screen
   void positionDialog(Alignment alignment) => setState(() => this.alignment = alignment);
 
-  Positioned AlignmentWidget({required Widget child}) {
+  Positioned AlignmentWidget({required Widget child, Positioned? Function({required Widget child})? customPositioning}) {
+    if (customPositioning != null) return customPositioning(child: child)!;
+
     return switch (alignment) {
       Alignment.topLeft => Positioned(top: 0, left: 0, child: child),
       Alignment.topCenter => Positioned(top: 0, child: child),
@@ -440,30 +461,50 @@ class ManagedDialogState extends State<ManagedDialog> {
     };
   }
 
+  Widget BuildPositionerBuilder({
+    required BuildContext context,
+    required Widget Function(Widget? customChild) child,
+    Positioned? Function({required Widget child})? customPositioning,
+  }) {
+    return AlignmentWidget(child: child(null), customPositioning: customPositioning);
+  }
+
+  Widget buildDialog(BuildContext context, Widget content) {
+    return ContentDialog(
+      style: widget.theme,
+      title: widget.title,
+      content: Material(
+        color: Colors.transparent,
+        child: Container(
+          constraints: currentConstraints,
+          child: content,
+        ),
+      ),
+      // ignore: prefer_null_aware_operators
+      actions: widget.actions != null ? widget.actions!.call(widget.popContext) : null,
+      constraints: currentConstraints,
+    );
+  }
+
+  Widget buildContent(BuildContext context, Widget? customChild) {
+    return Padding(
+      padding: const EdgeInsets.only(top: ScreenUtils.kTitleBarHeight, right: 16, bottom: 16, left: 16),
+      child: buildDialog(
+        context,
+        customChild ?? (widget.contentBuilder != null ? widget.contentBuilder!(context, currentConstraints) : const SizedBox()),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Stack(
       //TODO maybe see if `alignment` param of stack needs to be set as well
       // alignment: alignment,
       children: [
-        AlignmentWidget(
-          child: Padding(
-            padding: const EdgeInsets.only(top: ScreenUtils.kTitleBarHeight - 5),
-            child: ContentDialog(
-              style: widget.theme,
-              title: widget.title,
-              content: Material(
-                color: Colors.transparent,
-                child: Container(
-                  constraints: _currentConstraints,
-                  child: widget.contentBuilder != null ? widget.contentBuilder!(context, _currentConstraints) : null,
-                ),
-              ),
-              // ignore: prefer_null_aware_operators
-              actions: widget.actions != null ? widget.actions!.call(widget.popContext) : null,
-              constraints: _currentConstraints,
-            ),
-          ),
+        BuildPositionerBuilder(
+          context: context,
+          child: (customChild) => buildContent(context, customChild),
         ),
       ],
     );
@@ -617,27 +658,19 @@ extension ManagedDialogExtensions on BuildContext {
 }
 
 void showDebugDialog(BuildContext context) {
-  showManagedDialog(
-    context: context,
+  showSimpleOneButtonManagedDialog(
+    context,
     id: 'history:debug',
     title: 'Debug History',
     dialogDoPopCheck: () => true,
-    builder: (context) => ManagedDialog(
-      popContext: context,
-      theme: ContentDialogThemeData(
-        decoration: BoxDecoration(
-          color: Colors.black.withOpacity(0.9),
-          borderRadius: BorderRadius.circular(12),
-        ),
+    theme: ContentDialogThemeData(
+      decoration: BoxDecoration(
+        color: Colors.black.withOpacity(0.9),
+        borderRadius: BorderRadius.circular(12),
       ),
-      actions: (popContext) => [
-        ManagedDialogButton(
-          popContext: popContext,
-          text: 'Close History Debug',
-        )
-      ],
-      contentBuilder: (_, __) => const NavigationHistoryDebug(),
-      title: Text('Debug History'),
     ),
+    positiveButtonText: 'Close History Debug',
+    constraints: BoxConstraints(maxHeight: 1200, maxWidth: 400, minHeight: 300),
+    builder: (_) => NavigationHistoryDebug(),
   );
 }

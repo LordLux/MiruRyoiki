@@ -1,4 +1,4 @@
-import 'package:flutter_test/flutter_test.dart' hide Notification;
+import 'package:flutter_test/flutter_test.dart';
 import 'package:miruryoiki/services/anilist/queries/anilist_service.dart';
 import 'package:miruryoiki/database/database.dart';
 import 'package:miruryoiki/database/daos/notifications_dao.dart';
@@ -12,8 +12,6 @@ import 'package:miruryoiki/services/connectivity/connectivity_service.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 
 import 'package:miruryoiki/services/anilist/auth.dart';
-import 'package:miruryoiki/services/anilist/queries/graphql/user/notifications.graphql.dart';
-import 'package:miruryoiki/services/anilist/queries/graphql/schema.graphql.dart';
 
 // Alias to avoid conflict if necessary, though Notification is the Drift class here
 // If Notification is ambiguous, we'll need to be specific.

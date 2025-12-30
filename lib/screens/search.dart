@@ -16,7 +16,6 @@ import '../../utils/screen.dart';
 import '../../utils/time.dart';
 import '../../widgets/buttons/back_button.dart';
 import '../../widgets/buttons/button.dart';
-import '../main.dart';
 import '../models/anilist/anime_card.dart';
 import '../widgets/cards/search_series_card.dart';
 import '../../widgets/fading_edge_scrollview.dart';

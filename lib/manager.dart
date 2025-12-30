@@ -42,6 +42,7 @@ class Manager {
   /// Indicates if the current dialog can be popped, used when dialogs have multiple 'views'
   static bool canPopDialog = true;
   static bool notificationsPopping = false;
+  static bool skipScan = false;
   static Color? currentDominantColor;
   static Color? seriesDominantColor;
 
@@ -55,6 +56,14 @@ class Manager {
   static ArgResults? _args;
   static ArgResults parsedArgs(List<String> args) {
     _args = parser.parse(args);
+    if (_args!.wasParsed('help')) {
+      // ignore: avoid_print
+      print(parser.usage);
+      exit(0);
+    }
+    if (_args!.wasParsed("skipScan")) {
+      skipScan = true;
+    }
     return _args!;
   }
 

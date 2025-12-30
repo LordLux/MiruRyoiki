@@ -370,6 +370,12 @@ extension DateTimeX on DateTime? {
     final timeFormat = DateFormat('HH:mm${seconds ? ':ss' : ''}', 'en');
     return '${dateFormat.format(this!)}${time ? ' ${timeFormat.format(this!)}' : ''}';
   }
+  
+  String get prettyMs {
+    if (this == null) return 'null';
+    final timeFormat = DateFormat('HH:mm:ss.SSS', 'en');
+    return timeFormat.format(this!);
+  }
 
   static DateTime get epoch => DateTime.fromMillisecondsSinceEpoch(0);
 

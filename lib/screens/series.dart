@@ -11,6 +11,7 @@ import '../models/anilist/anime.dart';
 import '../services/connectivity/connectivity_service.dart';
 import '../services/library/library_provider.dart';
 import '../services/lock_manager.dart';
+import '../services/navigation/dialogs2.dart';
 import '../services/navigation/show_info.dart';
 import '../services/navigation/statusbar.dart';
 import '../utils/color.dart';
@@ -28,12 +29,12 @@ import '../manager.dart';
 import '../models/anilist/mapping.dart';
 import '../models/series.dart';
 import '../services/anilist/linking.dart';
-import '../services/navigation/dialogs.dart';
 import '../services/navigation/shortcuts.dart';
 import '../utils/logging.dart';
 import '../utils/error_handling.dart';
 import '../utils/screen.dart';
 import '../utils/time.dart';
+import '../widgets/dialogs/show_dialog.dart';
 import '../widgets/page/header_widget.dart';
 import '../widgets/page/infobar.dart';
 import '../widgets/page/page_template.dart';
@@ -43,7 +44,6 @@ import '../widgets/shrinker.dart';
 import '../widgets/simple_html_parser.dart';
 import '../widgets/transparency_shadow_image.dart';
 import '../models/mapping_target.dart';
-import '../services/navigation/navigation.dart';
 import 'package:recase/recase.dart';
 import 'dart:io';
 import '../services/file_system/cache.dart';
@@ -273,7 +273,7 @@ class SeriesScreenState extends State<SeriesScreen> {
       _cachedMapping = widget.mapping;
       if (_cachedMapping?.viewType != null) _currentViewType = _cachedMapping!.viewType!;
 
-      if (isMappingMode) 
+      if (isMappingMode)
         nextFrame(() => _initializeMappingData());
       else
         Manager.setState(() => Manager.currentDominantColor = Manager.seriesDominantColor ?? Manager.accentColor);
@@ -359,34 +359,6 @@ class SeriesScreenState extends State<SeriesScreen> {
   void _playEpisode(Episode episode) {
     final library = Provider.of<Library>(context, listen: false);
     library.playEpisode(episode);
-  }
-
-  void selectImage(BuildContext context, {required bool isBanner}) {
-    final library = Provider.of<Library>(context, listen: false);
-    if (_cachedSeries == null) return;
-
-    // Check if the action should be disabled during indexing
-    if (library.lockManager.shouldDisableAction(UserAction.seriesImageSelection)) {
-      snackBar(
-        library.lockManager.getDisabledReason(UserAction.seriesImageSelection),
-        severity: InfoBarSeverity.warning,
-      );
-      return;
-    }
-
-    showManagedDialog<ImageSource?>(
-      context: context,
-      id: isBanner ? 'bannerSelection:${_cachedSeries!.path}' : 'posterSelection:${_cachedSeries!.path}',
-      title: isBanner ? 'Select Banner' : 'Select Poster',
-      dialogDoPopCheck: () => true,
-      builder: (context) => ImageSelectionDialog(
-        series: _cachedSeries!,
-        popContext: context,
-        isBanner: isBanner,
-      ),
-    ).then((source) {
-      if (source != null && mounted) setState(() {});
-    });
   }
 
   Future<void> _loadAnilistDataForCurrentSeries() async {
@@ -491,9 +463,11 @@ class SeriesScreenState extends State<SeriesScreen> {
         final anilistAnime = entry.value;
 
         if (anilistAnime == null) {
-          if (ConnectivityService().isOffline) logWarn('Failed to fetch AniList details for ID $anilistId: device is offline');
-          else logErr('Failed to load Anilist data for ID: $anilistId');
-          
+          if (ConnectivityService().isOffline)
+            logWarn('Failed to fetch AniList details for ID $anilistId: device is offline');
+          else
+            logErr('Failed to load Anilist data for ID: $anilistId');
+
           continue;
         }
 
@@ -532,7 +506,7 @@ class SeriesScreenState extends State<SeriesScreen> {
           }
         }
 
-        // Queue partial update if 
+        // Queue partial update if
         if (!needsFullSave) {
           if (oldData != anilistAnime)
             pendingPartialUpdates.add(() => library.updateMappingAnilistData(series, anilistId, anilistAnime, currentTime));
@@ -568,7 +542,6 @@ class SeriesScreenState extends State<SeriesScreen> {
       }
 
       if (libraryScreenKey.currentState != null) libraryScreenKey.currentState!.updateSeriesInSortCache(series);
-      
 
       if (mounted) setState(() {});
     } catch (e) {
@@ -647,7 +620,7 @@ class SeriesScreenState extends State<SeriesScreen> {
               ShiftClickableHover(
                 color: Manager.currentDominantColor,
                 enabled: !isMapping && _isBannerHovering && !bannerChangeDisabled,
-                onTap: (context) => selectImage(context, isBanner: true),
+                onTap: (context) => selectSeriesImage(context, isBanner: true, series: _cachedSeries),
                 onEnter: bannerChangeDisabled ? () {} : () => setState(() => _isBannerHovering = true),
                 onExit: () {
                   StatusBarManager().hide();
@@ -765,7 +738,6 @@ class SeriesScreenState extends State<SeriesScreen> {
     );
   }
 
-  // Get the decoration image based on the banner image
   DecorationImage? _getBannerDecoration(imageProvider) {
     if (imageProvider == null) return null;
 
@@ -824,7 +796,7 @@ class SeriesScreenState extends State<SeriesScreen> {
             child: ShiftClickableHover(
               color: Manager.currentDominantColor,
               enabled: !isMapping && _isPosterHovering && !posterChangeDisabled,
-              onTap: (context) => selectImage(context, isBanner: false),
+              onTap: (context) => selectSeriesImage(context, isBanner: false, series: _cachedSeries),
               onEnter: posterChangeDisabled ? () {} : () => setState(() => _isPosterHovering = true),
               onExit: () {
                 setState(() => _isPosterHovering = false);
@@ -1214,100 +1186,128 @@ class SeriesScreenState extends State<SeriesScreen> {
   }
 }
 
-void linkWithAnilist(BuildContext context, Series? series, Future<void> Function(List<int>) loadData, void Function(VoidCallback) setState) async {
-  if (series == null) {
-    snackBar('Series not found', severity: InfoBarSeverity.error);
+void selectSeriesImage(BuildContext context, {required bool isBanner, Series? series}) {
+  final library = Provider.of<Library>(context, listen: false);
+  if (series == null) return;
+
+  // Check if the action should be disabled during indexing
+  if (library.lockManager.shouldDisableAction(UserAction.seriesImageSelection)) {
+    snackBar(
+      library.lockManager.getDisabledReason(UserAction.seriesImageSelection),
+      severity: InfoBarSeverity.warning,
+    );
     return;
   }
 
-  // Show the dialog
-  await showManagedDialog(
-    context: context,
-    id: 'linkAnilist:${series.path}',
-    title: 'Link to Anilist',
-    data: series.path,
-    barrierColor: Manager.currentDominantColor?.withOpacity(0.5),
-    canUserPopDialog: true,
-    closeExistingDialogs: true, // Close existing dialogs, important
-    dialogDoPopCheck: () => Manager.canPopDialog, // Allow popping only when in view mode
-    builder: (context) => AnilistLinkMultiDialog(
-      constraints: const BoxConstraints(
-        maxWidth: 1300,
-        maxHeight: 600,
-      ),
-      series: series,
-      popContext: context,
-      linkService: SeriesLinkService(),
-      onLink: (_, __) {},
-      onDialogComplete: (success, mappings) async {
-        // if the dialog was closed without a result, do nothing
-        if (success == null)
-          // logDebug('Dialog closed without result');
-          return;
-
-        // if the dialog was closed with a result, check if it was successful
-        if (!success) {
-          logErr('Linking failed');
-          snackBar('Failed to link with Anilist', severity: InfoBarSeverity.error);
-          return;
-        }
-
-        // if dialog was closed with a result, and it was successful, update the series mappings
-        final library = Provider.of<Library>(context, listen: false);
-
-        // Check if the action should be disabled during indexing
-        if (library.lockManager.shouldDisableAction(UserAction.anilistOperations)) {
-          snackBar(
-            library.lockManager.getDisabledReason(UserAction.anilistOperations),
-            severity: InfoBarSeverity.warning,
-          );
-          return;
-        }
-
-        // Calculate the number of new mappings
-        final oldMappings = series.anilistMappings;
-        List<int> anilistIdsToLoad = [];
-
-        for (final mapping in mappings) {
-          bool isNew = !oldMappings.any((m) => m.anilistId == mapping.anilistId && m.localPath == mapping.localPath);
-          if (isNew) anilistIdsToLoad.add(mapping.anilistId);
-        }
-
-        // Ensure the library gets saved
-        await library.updateSeriesMappings(series, mappings);
-
-        // If links were added
-        if (anilistIdsToLoad.isNotEmpty) {
-          snackBar(
-            'Successfully linked ${anilistIdsToLoad.length} ${anilistIdsToLoad.length == 1 ? 'new item' : 'new items'} with Anilist',
-            severity: InfoBarSeverity.success,
-          );
-        } else if (mappings.length < oldMappings.length) {
-          // If links were removed
-          final removedCount = oldMappings.length - mappings.length;
-          snackBar(
-            'Removed $removedCount ${removedCount == 1 ? 'link' : 'links'} from Anilist',
-            severity: InfoBarSeverity.success,
-          );
-        } else {
-          // No changes in link count but mappings might have been updated
-          snackBar(
-            'Anilist links updated successfully',
-            severity: InfoBarSeverity.success,
-          );
-        }
-
-        closeDialog(context);
-
-        // Load Anilist data
-        if (anilistIdsToLoad.isNotEmpty) await loadData(anilistIdsToLoad);
-
-        // Update the series with the new mappings
-        final newColor = await series.effectivePrimaryColor();
-        Manager.currentDominantColor = newColor;
-        Manager.seriesDominantColor = newColor;
-        Manager.setState();
-      },
+  showPaddedDialog(
+    context,
+    navigationItem: DialogNavigationItem(
+      id: isBanner ? 'bannerSelection:${series.path}' : 'posterSelection:${series.path}',
+      title: isBanner ? 'Select Banner' : 'Select Poster',
+      dialogDoPopCheck: () => true,
     ),
-  );
+    builder: (ctx, item, options) {
+      const boxConstraints = BoxConstraints(maxWidth: 1000, maxHeight: 700);
+      return PaddedDialog.simple(
+      navigationItem: item,
+      barrierOptions: options,
+      constraints: boxConstraints,
+      title: Text(isBanner ? 'Select Banner Image' : 'Select Poster Image', style: Manager.titleStyle),
+      content: ImageSelectionContent(
+        series: series,
+        constraints: boxConstraints,
+        isBanner: isBanner,
+        onSave: (source, path) async {
+          // Save the selection
+          final library = Provider.of<Library>(context, listen: false);
+
+          final bool isLocalSource = source == ImageSource.local;
+          Color? newLocalPosterColor;
+          Color? newLocalBannerColor;
+          PathString? newFolderPosterPath;
+          PathString? newFolderBannerPath;
+
+          if (!isBanner) {
+            // Poster
+            if (isLocalSource) {
+              // Set local poster path and keep local color
+              newFolderPosterPath = PathString(path);
+              newLocalPosterColor = series.localPosterColor; // Will recalculate below
+            } else {
+              // Switching to Anilist
+              newFolderPosterPath = series.localPosterPath;
+              newLocalPosterColor = null; // Clear local color
+            }
+            newFolderBannerPath = series.localBannerPath;
+            newLocalBannerColor = series.localBannerColor;
+          } else {
+            // Banner
+            if (isLocalSource) {
+              // Set local banner path and keep local color
+              newFolderBannerPath = PathString(path);
+              newLocalBannerColor = series.localBannerColor; // Will recalculate below
+            } else {
+              // Switching to Anilist
+              newFolderBannerPath = series.localBannerPath;
+              newLocalBannerColor = null; // Clear local color
+            }
+            newFolderPosterPath = series.localPosterPath;
+            newLocalPosterColor = series.localPosterColor;
+          }
+
+          final Series updatedSeries = series.copyWith(
+            folderPosterPath: newFolderPosterPath,
+            folderBannerPath: newFolderBannerPath,
+            posterColor: newLocalPosterColor,
+            bannerColor: newLocalBannerColor,
+            preferredPosterSource: isBanner ? series.preferredPosterSource : source,
+            preferredBannerSource: isBanner ? source : series.preferredBannerSource,
+          );
+
+          final seriesScreenState = seriesScreenKey.currentState;
+          if (seriesScreenState != null) {
+            // log('Disabling poster/banner change buttons');
+            seriesScreenState.posterChangeDisabled = !isBanner;
+            seriesScreenState.bannerChangeDisabled = isBanner;
+          }
+
+          if (libraryScreenKey.currentState != null) libraryScreenKey.currentState!.updateSeriesInSortCache(updatedSeries);
+          logTrace('Saving ${isBanner ? 'banner' : 'poster'} preference: $source, path: ${PathUtils.getFileName(path)}');
+          snackBar(
+            'Saving preference...',
+            severity: InfoBarSeverity.info,
+          );
+
+          // Calculate dominant color for local images
+          if (isLocalSource) {
+            if (!isBanner) {
+              await updatedSeries.calculateLocalPosterDominantColor(forceRecalculate: true);
+            } else {
+              await updatedSeries.calculateLocalBannerDominantColor(forceRecalculate: true);
+            }
+          }
+
+          Manager.setState(() => Manager.currentDominantColor = updatedSeries.effectivePrimaryColorSync());
+
+          // Explicitly save the entire series and show confirmation
+          library.updateSeries(updatedSeries, invalidateCache: false).then((_) {
+            snackBar(
+              isBanner ? 'Banner preference saved' : 'Poster preference saved',
+              severity: InfoBarSeverity.success,
+            );
+            final seriesScreenState = seriesScreenKey.currentState;
+            if (seriesScreenState != null) {
+              // log('Enabling poster/banner change buttons');
+              seriesScreenState.posterChangeDisabled = false;
+              seriesScreenState.bannerChangeDisabled = false;
+            }
+            Manager.setState();
+          });
+        },
+      ),
+    );
+    },
+  ).then((source) {
+    if (context.mounted) Manager.setState();
+  });
 }

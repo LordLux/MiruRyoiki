@@ -1,9 +1,11 @@
 // ignore_for_file: constant_identifier_names
 
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:miruryoiki/services/navigation/dialogs2.dart';
 import 'package:tray_manager/tray_manager.dart';
 
 import '../../utils/icons.dart' as icons;
+import '../../widgets/dialogs/show_dialog.dart';
 import '../navigation/dialogs.dart';
 import '../navigation/modifier_key_utils.dart';
 import 'dart:io';
@@ -156,20 +158,25 @@ class MyWindowListener extends WindowListener with TrayListener {
 
       if (Manager.context.mounted && Manager.navigation.currentView?.id == 'SavingDatabaseDialog') {
         final title = 'Saving Database';
-        showManagedDialog(
-          context: Manager.context,
-          id: 'SavingDatabaseDialog',
-          title: title,
-          dialogDoPopCheck: () => false,
-          canUserPopDialog: false,
+        showPaddedDialog(
+          Manager.context,
+          navigationItem: DialogNavigationItem(
+            id: 'SavingDatabaseDialog',
+            title: title,
+            dialogDoPopCheck: () => false,
+          ),
+          barrierOptions: PaddedBarrierOptions(userDismissable: false),
           closeExistingDialogs: true,
-          builder: (context) {
-            return ManagedDialog(
-              popContext: context,
-              title: Text(title),
-              contentBuilder: (p0, p1) => Text('Please wait while the database is being saved...\nThe program will close automatically once the process is complete.'),
-              constraints: const BoxConstraints(maxWidth: 500, minWidth: 300),
-              actions: (popContext) => [],
+          builder: (ctx, item, options) {
+            return PaddedDialog.simple(
+              constraints: const BoxConstraints(maxWidth: 400, minWidth: 400, maxHeight: 300),
+              navigationItem: item,
+              barrierOptions: options,
+              title: Text(title, style: Manager.titleStyle),
+              content: Text(
+                'Please wait while the database is being saved...\n'
+                'The program will close automatically once the process is complete.',
+              ),
             );
           },
         );
@@ -201,10 +208,11 @@ class MyWindowListener extends WindowListener with TrayListener {
       if (closeAttempts.length >= 4) {
         closeAttempts.clear();
         showSimpleTickboxManagedDialog(
-          context: Manager.context,
+          Manager.context,
           id: 'close_warning',
           title: 'Quit ${Manager.appTitle}?',
-          body: 'You have tried to close the application multiple times recently.\nDo you want to quit the application completely?',
+          body: 'You have tried to close the application multiple times recently.\n'
+              'Do you want to quit the application completely?',
           positiveButtonText: 'Yes, Quit ${Manager.appTitle}',
           negativeButtonText: 'No, Just hide ${Manager.appTitle}',
           isPositiveButtonPrimary: false,
@@ -212,8 +220,6 @@ class MyWindowListener extends WindowListener with TrayListener {
           onPositive: (_) => performShutdown(),
           onNegative: (tickboxValue) {
             if (tickboxValue) Manager.settings.suppressCloseWarning = true;
-            print('suppressCloseWarning set to $tickboxValue');
-
             return windowManager.hide();
           },
         );

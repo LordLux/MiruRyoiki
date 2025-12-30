@@ -1,68 +1,26 @@
 // ignore_for_file: invalid_use_of_protected_member
 
 import 'package:fluent_ui/fluent_ui.dart';
-import 'package:flutter/material.dart' as mat;
-import 'package:glossy/glossy.dart';
 
 import '../../enums.dart';
 import '../../main.dart';
 import '../../manager.dart';
 import '../../services/anilist/queries/anilist_service.dart';
-import '../../services/navigation/dialogs.dart';
-import '../../utils/color.dart';
+import '../../services/navigation/dialogs2.dart';
 import '../../utils/screen.dart';
 import '../../utils/time.dart';
 import '../buttons/button.dart';
 import '../buttons/wrapper.dart';
-import '../frosted_noise.dart';
 import '../pill.dart';
 
-final GlobalKey<GenresFilterContentState> genresFilterContentKey = GlobalKey<GenresFilterContentState>();
-
-class GenresFilterDialog extends ManagedDialog {
-  final Offset? anchorPosition;
-  final Size? anchorSize;
-
-  GenresFilterDialog({
-    super.key,
-    required super.popContext,
-    this.anchorPosition,
-    this.anchorSize,
-  }) : super(
-          title: null, // Remove the static title
-          constraints: BoxConstraints(
-            maxWidth: 250,
-            maxHeight: Manager.settings.genresFilterHeight,
-          ),
-          contentBuilder: (context, constraints) => _GenresFilterContent(
-            key: genresFilterContentKey,
-            constraints: constraints,
-          ),
-          alignment: Alignment.topRight,
-        );
-
-  @override
-  State<ManagedDialog> createState() => _GenresFilterDialogState();
-}
-
-class _GenresFilterDialogState extends GenresFilterManagedDialogState {
-  @override
-  void initState() {
-    super.initState();
-    Manager.canPopDialog = true;
-  }
-}
-
-class _GenresFilterContent extends StatefulWidget {
-  final BoxConstraints constraints;
-
-  const _GenresFilterContent({super.key, required this.constraints});
+class GenresFilterContent extends StatefulWidget {
+  const GenresFilterContent({super.key});
 
   @override
   GenresFilterContentState createState() => GenresFilterContentState();
 }
 
-class GenresFilterContentState extends State<_GenresFilterContent> {
+class GenresFilterContentState extends State<GenresFilterContent> {
   final GlobalKey<AutoSuggestBoxState<String>> asgbKey = GlobalKey<AutoSuggestBoxState<String>>();
   final GlobalKey _columnKey = GlobalKey();
   List<String> genres = [];
@@ -88,7 +46,7 @@ class GenresFilterContentState extends State<_GenresFilterContent> {
       final renderBox = _columnKey.currentContext?.findRenderObject() as RenderBox?;
       if (renderBox != null) {
         final height = renderBox.size.height;
-        context.findAncestorStateOfType<GenresFilterManagedDialogState>()?.resizeDialog(height: height + 24); // +32 padding
+        context.findAncestorStateOfType<PaddedDialogState>()?.resizeDialog(height: height + 24); // 24 padding
       }
     });
   }
@@ -260,98 +218,4 @@ class GenresFilterContentState extends State<_GenresFilterContent> {
       ),
     );
   }
-}
-
-class GenresFilterManagedDialogState extends State<ManagedDialog> {
-  late BoxConstraints _currentConstraints;
-  late Alignment alignment;
-
-  @override
-  void initState() {
-    super.initState();
-    _currentConstraints = widget.constraints;
-    alignment = widget.alignment;
-  }
-
-  // Method to resize the dialog
-  void resizeDialog({double? width, double? height, BoxConstraints? constraints}) {
-    setState(() {
-      if (constraints != null) {
-        _currentConstraints = constraints;
-      } else {
-        _currentConstraints = BoxConstraints(
-          minWidth: width ?? _currentConstraints.minWidth,
-          maxWidth: width ?? _currentConstraints.maxWidth,
-          minHeight: height ?? _currentConstraints.minHeight,
-          maxHeight: height ?? _currentConstraints.maxHeight,
-        );
-      }
-    });
-
-    if (height != null) Manager.settings.genresFilterHeight = height;
-  }
-
-  /// Position the dialog on screen
-  void positionDialog(Alignment alignment) => setState(() => this.alignment = alignment);
-
-  @override
-  Widget build(BuildContext context) {
-    double? top;
-    double? left;
-
-    if (widget is GenresFilterDialog) {
-      final dialog = widget as GenresFilterDialog;
-      if (dialog.anchorPosition != null && dialog.anchorSize != null) {
-        top = dialog.anchorPosition!.dy + dialog.anchorSize!.height - 50;
-        left = dialog.anchorPosition!.dx + (dialog.anchorSize!.width / 2) - (_currentConstraints.maxWidth / 2);
-      }
-    }
-
-    return Stack(
-      alignment: alignment,
-      children: [
-        Positioned(
-          top: top ?? 142,
-          left: left,
-          right: left == null ? 450 : null,
-          child: Padding(
-            padding: const EdgeInsets.only(top: ScreenUtils.kTitleBarHeight + 16, right: 16, bottom: 16),
-            child: GlossyContainer(
-              width: _currentConstraints.maxWidth,
-              height: _currentConstraints.maxHeight,
-              color: Colors.black,
-              opacity: 0.1,
-              strengthX: 20,
-              strengthY: 20,
-              blendMode: BlendMode.src,
-              borderRadius: BorderRadius.circular(12),
-              child: Stack(
-                children: [
-                  FrostedNoise(
-                    intensity: 0.7,
-                    child: ContentDialog(
-                      style: ContentDialogThemeData(decoration: BoxDecoration(color: Colors.transparent)),
-                      title: widget.title,
-                      content: mat.Material(
-                        color: Colors.transparent,
-                        child: Container(
-                          constraints: _currentConstraints,
-                          child: widget.contentBuilder != null ? widget.contentBuilder!(context, _currentConstraints) : null,
-                        ),
-                      ),
-                      // ignore: prefer_null_aware_operators
-                      actions: widget.actions != null ? widget.actions!.call(widget.popContext) : null,
-                      constraints: _currentConstraints,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  void popDialog() => closeDialog(widget.popContext);
 }

@@ -10,7 +10,6 @@ import 'package:miruryoiki/settings.dart';
 
 // Mock strategy to force online
 class MockConnectivityStrategy implements ConnectivityStrategy {
-  @override
   bool get isOffline => false;
   
   @override
@@ -171,7 +170,7 @@ void main() {
       // We need an ID of a currently airing anime. 
       // We can fetch "Trending" first to find one.
       final trending = await service.getTrendingNow(page: 1, perPage: 5);
-      final airingAnime = trending?.results.firstWhere((a) => a.status == 'RELEASING', orElse: () => trending!.results.first);
+      final airingAnime = trending?.results.firstWhere((a) => a.status == 'RELEASING', orElse: () => trending.results.first);
       
       if (airingAnime != null) {
         final result = await service.getUpcomingEpisodes([airingAnime.id]);

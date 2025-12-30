@@ -17,17 +17,17 @@ extension DatabaseLockDetection on AppDatabase {
       if (_isDatabaseLockError(error)) {
         logWarn('Database lock detected during: ${operationName ?? 'database operation'}');
 
-        final recovered = await showDatabaseRecoveryDialog(context);
-        if (recovered == true) {
-          // Retry after recovery
-          try {
-            logInfo('Retrying operation $operationName after database recovery');
-            return await operation();
-          } catch (retryError) {
-            logErr('Operation $operationName even after recovery', retryError);
-            rethrow;
-          }
-        }
+        showDatabaseRecoveryDialog(context);
+        // if (recovered == true) {
+        //   // Retry after recovery
+        //   try {
+        //     logInfo('Retrying operation $operationName after database recovery');
+        //     return await operation();
+        //   } catch (retryError) {
+        //     logErr('Operation $operationName even after recovery', retryError);
+        //     rethrow;
+        //   }
+        // }
       }
       rethrow;
     }
@@ -50,11 +50,11 @@ mixin DatabaseLockHandler<T extends StatefulWidget> on State<T> {
     if (_isDatabaseLockError(error)) {
       logWarn('Database lock detected, showing recovery dialog');
 
-      final result = await showDatabaseRecoveryDialog(context); //TODO see if this mixin on State is ok or if we should use rootnavigatorkey
-      if (result == true) {
-        logInfo('Database recovery completed successfully');
-        return true;
-      }
+      showDatabaseRecoveryDialog(context); //TODO see if this mixin on State is ok or if we should use rootnavigatorkey
+      // if (result == true) {
+      //   logInfo('Database recovery completed successfully');
+      //   return true;
+      // }
     }
     return false;
   }

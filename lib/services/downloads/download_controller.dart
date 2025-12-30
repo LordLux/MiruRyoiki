@@ -14,11 +14,11 @@ class DownloadController {
   DownloadController(this._sonarr, this._mappingService);
 
   Future<(int, List<dynamic>)> syncAndFetchEpisodes(AnilistAnime anime) async {
+    final library = Provider.of<Library>(Manager.context, listen: false);
+
     final mapping = await _mappingService.getMapping(anime.id);
     if (mapping == null) throw Exception("Mapping not found");
 
-    final library = Provider.of<Library>(Manager.context, listen: false);
-    
     // 1. Ensure Series Exists (Your existing logic)
     final sonarrSeriesId = await _sonarr.ensureSeriesExists(
       tvdbId: mapping.tvdbId,
@@ -26,12 +26,12 @@ class DownloadController {
       rootFolderPath: library.libraryDockerPath!,
       qualityProfileId: 1, // TODO get from /api/v3/qualityprofile
     );
-    
+
     if (sonarrSeriesId == null) throw Exception("Failed to sync series");
 
     // 2. Fetch Episode Metadata (Not downloads yet, just the list)
     final episodes = await _sonarr.getEpisodes(sonarrSeriesId);
-    
+
     return (sonarrSeriesId, episodes);
   }
 }

@@ -2,8 +2,8 @@
 
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/material.dart' as mat;
-import 'package:glossy/glossy.dart';
 import 'package:material_symbols_icons/symbols.dart';
+import 'package:miruryoiki/services/navigation/dialogs2.dart';
 import 'package:provider/provider.dart';
 
 import '../../enums.dart';
@@ -12,70 +12,14 @@ import '../../models/anilist/user_data.dart';
 import '../../models/series.dart';
 import '../../services/anilist/provider/anilist_provider.dart';
 import '../../services/anilist/queries/anilist_service.dart';
-import '../../services/navigation/dialogs.dart';
 import '../../services/navigation/shortcuts.dart';
 import '../../utils/screen.dart';
 import '../../utils/time.dart';
 import '../animated_order_tile.dart';
 import '../buttons/wrapper.dart';
-import '../frosted_noise.dart';
 import '../tooltip_wrapper.dart';
 
-final GlobalKey<ListsContentState> listsContentKey = GlobalKey<ListsContentState>();
-
-class ListsDialog extends ManagedDialog {
-  final Offset? anchorPosition;
-  final Size? anchorSize;
-
-  ListsDialog({
-    super.key,
-    required super.popContext,
-    required LibraryView currentView,
-    required List<String> customListOrder,
-    required Set<String> hiddenLists,
-    required Map<String, List<Series>>? groupedDataCache,
-    required Function(String) onScrollToList,
-    required VoidCallback onInvalidateSortCache,
-    required VoidCallback onSaveUserPreferences,
-    required Function(Set<String>) onHiddenListsChanged,
-    required Function(List<String>) onCustomListOrderChanged,
-    this.anchorPosition,
-    this.anchorSize,
-  }) : super(
-          title: null, // Remove the static title
-          constraints: BoxConstraints(
-            maxWidth: 250,
-            maxHeight: Manager.settings.listsDialogHeight,
-          ),
-          contentBuilder: (context, constraints) => _ListsContent(
-            key: listsContentKey,
-            constraints: constraints,
-            currentView: currentView,
-            customListOrder: customListOrder,
-            hiddenLists: hiddenLists,
-            groupedDataCache: groupedDataCache,
-            onScrollToList: onScrollToList,
-            onInvalidateSortCache: onInvalidateSortCache,
-            onSaveUserPreferences: onSaveUserPreferences,
-            onHiddenListsChanged: onHiddenListsChanged,
-            onCustomListOrderChanged: onCustomListOrderChanged,
-          ),
-          alignment: Alignment.topRight,
-        );
-
-  @override
-  State<ManagedDialog> createState() => _ListsDialogState();
-}
-
-class _ListsDialogState extends ListsManagedDialogState {
-  @override
-  void initState() {
-    super.initState();
-    Manager.canPopDialog = true;
-  }
-}
-
-class _ListsContent extends StatefulWidget {
+class ListsContent extends StatefulWidget {
   final BoxConstraints constraints;
   final LibraryView currentView;
   final List<String> customListOrder;
@@ -87,7 +31,7 @@ class _ListsContent extends StatefulWidget {
   final Function(Set<String>) onHiddenListsChanged;
   final Function(List<String>) onCustomListOrderChanged;
 
-  const _ListsContent({
+  const ListsContent({
     super.key,
     required this.constraints,
     required this.currentView,
@@ -105,7 +49,7 @@ class _ListsContent extends StatefulWidget {
   ListsContentState createState() => ListsContentState();
 }
 
-class ListsContentState extends State<_ListsContent> {
+class ListsContentState extends State<ListsContent> {
   bool editListsEnabled = false;
   List<String> _previousCustomListOrder = [];
   late List<String> _customListOrder;
@@ -120,7 +64,7 @@ class ListsContentState extends State<_ListsContent> {
   }
 
   @override
-  void didUpdateWidget(_ListsContent oldWidget) {
+  void didUpdateWidget(ListsContent oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.hiddenLists != oldWidget.hiddenLists) {
       _updateHeight();
@@ -133,7 +77,7 @@ class ListsContentState extends State<_ListsContent> {
         final renderBox = _columnKey.currentContext?.findRenderObject() as RenderBox?;
         if (renderBox != null) {
           final height = renderBox.size.height;
-          context.findAncestorStateOfType<ListsManagedDialogState>()?.resizeDialog(height: height + 40);
+          context.findAncestorStateOfType<PaddedDialogState>()?.resizeDialog(height: height + 40);
         }
       }
     });
@@ -399,35 +343,12 @@ class ListsContentState extends State<_ListsContent> {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisAlignment: MainAxisAlignment.start,
           children: [
-          Row(
-            children: [
-              Text(
-                'Lists',
-                style: Manager.smallSubtitleStyle.copyWith(color: Manager.pastelAccentColor),
-              ),
-              const SizedBox(width: 4),
-              Transform.translate(
-                offset: const Offset(0, 1.5),
-                child: SizedBox(
-                  height: 22,
-                  width: 22,
-                  child: MouseButtonWrapper(
-                    tooltipWaitDuration: const Duration(milliseconds: 250),
-                    tooltip: editListsEnabled ? 'Save Changes' : 'Edit List Order',
-                    child: (_) => IconButton(
-                      icon: Icon(editListsEnabled ? FluentIcons.check_mark : FluentIcons.edit, size: 11 * Manager.fontSizeMultiplier, color: Manager.pastelAccentColor),
-                      onPressed: () {
-                        setState(() {
-                          editListsEnabled = !editListsEnabled;
-                          if (editListsEnabled) _previousCustomListOrder = List.from(_customListOrder);
-                          _updateHeight();
-                        });
-                      },
-                    ),
-                  ),
+            Row(
+              children: [
+                Text(
+                  'Lists',
+                  style: Manager.smallSubtitleStyle.copyWith(color: Manager.pastelAccentColor),
                 ),
-              ),
-              if (editListsEnabled && !isResetDisabled) ...[
                 const SizedBox(width: 4),
                 Transform.translate(
                   offset: const Offset(0, 1.5),
@@ -435,125 +356,55 @@ class ListsContentState extends State<_ListsContent> {
                     height: 22,
                     width: 22,
                     child: MouseButtonWrapper(
-                      isButtonDisabled: isResetDisabled,
                       tooltipWaitDuration: const Duration(milliseconds: 250),
-                      tooltip: 'Cancel Changes',
+                      tooltip: editListsEnabled ? 'Save Changes' : 'Edit List Order',
                       child: (_) => IconButton(
-                        icon: Icon(Symbols.rotate_left, size: 11, color: Manager.pastelAccentColor),
-                        onPressed: isResetDisabled //
-                            ? null
-                            : () {
-                                setState(() {
-                                  _customListOrder = List.from(_previousCustomListOrder);
-                                  widget.onCustomListOrderChanged(_customListOrder);
-                                  _updateHeight();
-                                });
-                              },
+                        icon: Icon(editListsEnabled ? FluentIcons.check_mark : FluentIcons.edit, size: 11 * Manager.fontSizeMultiplier, color: Manager.pastelAccentColor),
+                        onPressed: () {
+                          setState(() {
+                            editListsEnabled = !editListsEnabled;
+                            if (editListsEnabled) _previousCustomListOrder = List.from(_customListOrder);
+                            _updateHeight();
+                          });
+                        },
                       ),
                     ),
                   ),
                 ),
-              ]
-            ],
-          ),
-          VDiv(3),
-          _buildListOrderUI(),
-        ],
-      ),
-    ));
-  }
-}
-
-class ListsManagedDialogState extends State<ManagedDialog> {
-  late BoxConstraints _currentConstraints;
-  late Alignment alignment;
-
-  @override
-  void initState() {
-    super.initState();
-    _currentConstraints = widget.constraints;
-    alignment = widget.alignment;
-  }
-
-  // Method to resize the dialog
-  void resizeDialog({double? width, double? height, BoxConstraints? constraints}) {
-    setState(() {
-      if (constraints != null) {
-        _currentConstraints = constraints;
-      } else {
-        _currentConstraints = BoxConstraints(
-          minWidth: width ?? _currentConstraints.minWidth,
-          maxWidth: width ?? _currentConstraints.maxWidth,
-          minHeight: height ?? _currentConstraints.minHeight,
-          maxHeight: height ?? _currentConstraints.maxHeight,
-        );
-      }
-    });
-
-    if (height != null) Manager.settings.listsDialogHeight = height;
-  }
-
-  /// Position the dialog on screen
-  void positionDialog(Alignment alignment) => setState(() => this.alignment = alignment);
-
-  @override
-  Widget build(BuildContext context) {
-    double? top;
-    double? left;
-
-    if (widget is ListsDialog) {
-      final dialog = widget as ListsDialog;
-      if (dialog.anchorPosition != null && dialog.anchorSize != null) {
-        top = dialog.anchorPosition!.dy + dialog.anchorSize!.height - 50;
-        left = dialog.anchorPosition!.dx + (dialog.anchorSize!.width / 2) - (_currentConstraints.maxWidth / 2);
-      }
-    }
-
-    return Stack(
-      alignment: alignment,
-      children: [
-        Positioned(
-          top: top ?? 142,
-          left: left,
-          right: left == null ? 450 : null,
-          child: Padding(
-            padding: const EdgeInsets.only(top: ScreenUtils.kTitleBarHeight + 16, right: 16, bottom: 16),
-            child: GlossyContainer(
-              width: _currentConstraints.maxWidth,
-              height: _currentConstraints.maxHeight,
-              color: Colors.black,
-              opacity: 0.1,
-              strengthX: 20,
-              strengthY: 20,
-              blendMode: BlendMode.src,
-              borderRadius: BorderRadius.circular(12),
-              child: Stack(
-                children: [
-                  FrostedNoise(
-                    intensity: 0.7,
-                    child: ContentDialog(
-                      style: ContentDialogThemeData(decoration: BoxDecoration(color: Colors.transparent)),
-                      title: widget.title,
-                      content: mat.Material(
-                        color: Colors.transparent,
-                        child: Container(
-                          constraints: _currentConstraints,
-                          child: widget.contentBuilder != null ? widget.contentBuilder!(context, _currentConstraints) : null,
+                if (editListsEnabled && !isResetDisabled) ...[
+                  const SizedBox(width: 4),
+                  Transform.translate(
+                    offset: const Offset(0, 1.5),
+                    child: SizedBox(
+                      height: 22,
+                      width: 22,
+                      child: MouseButtonWrapper(
+                        isButtonDisabled: isResetDisabled,
+                        tooltipWaitDuration: const Duration(milliseconds: 250),
+                        tooltip: 'Cancel Changes',
+                        child: (_) => IconButton(
+                          icon: Icon(Symbols.rotate_left, size: 11, color: Manager.pastelAccentColor),
+                          onPressed: isResetDisabled //
+                              ? null
+                              : () {
+                                  setState(() {
+                                    _customListOrder = List.from(_previousCustomListOrder);
+                                    widget.onCustomListOrderChanged(_customListOrder);
+                                    _updateHeight();
+                                  });
+                                },
                         ),
                       ),
-                      // ignore: prefer_null_aware_operators
-                      actions: widget.actions != null ? widget.actions!.call(widget.popContext) : null,
-                      constraints: _currentConstraints,
                     ),
                   ),
-                ],
-              ),
+                ]
+              ],
             ),
-          ),
+            VDiv(3),
+            _buildListOrderUI(),
+          ],
         ),
-      ],
+      ),
     );
   }
-
-  void popDialog() => closeDialog(widget.popContext);
 }

@@ -1,11 +1,7 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import '../../manager.dart';
-import '../../utils/screen.dart';
-import '../../utils/time.dart';
 import 'highlighted_button.dart';
-import 'wrapper.dart';
 
 class WrappedHyperlinkButton extends StatelessWidget {
   final String? text;

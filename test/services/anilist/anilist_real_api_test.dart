@@ -1,12 +1,10 @@
 import 'dart:async';
-import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:graphql/client.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:miruryoiki/services/connectivity/connectivity_service.dart';
 import 'package:miruryoiki/services/anilist/queries/anilist_query_executor.dart';
-import 'package:miruryoiki/utils/logging.dart';
 import 'package:miruryoiki/models/anilist/anime.dart';
 
 // A concrete implementation of the mixin for testing

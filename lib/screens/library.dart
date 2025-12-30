@@ -23,7 +23,7 @@ import '../services/library/library_provider.dart';
 import '../services/library/search_service.dart';
 import '../models/series.dart';
 import '../services/anilist/provider/anilist_provider.dart';
-import '../services/navigation/dialogs.dart';
+import '../services/navigation/dialogs2.dart';
 import '../services/navigation/navigation.dart';
 import '../services/navigation/shortcuts.dart';
 import '../utils/logging.dart';
@@ -34,6 +34,7 @@ import '../widgets/acrylic_header.dart';
 import '../widgets/buttons/button.dart';
 import '../widgets/buttons/wrapper.dart';
 import '../widgets/dialogs/genres_filter.dart';
+import '../widgets/dialogs/show_dialog.dart';
 import '../widgets/dialogs/splash/progress.dart';
 import '../widgets/page/header_widget.dart';
 import '../widgets/page/page_template.dart';
@@ -193,7 +194,7 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
     _textColor = Colors.white;
     _selectedTextColor = getTextColor(Manager.currentDominantColor ?? Manager.accentColor);
   }
-  
+
   Color getViewTypeColor(bool isSelected) => isSelected ? _selectedTextColor : _textColor;
 
   void addGenre(String genre) {
@@ -993,7 +994,6 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
                   ),
                   HDiv(8),
                   SizedBox(
-                    //TODO close dialog before opening a new one
                     height: ScreenUtils.kDefaultButtonSize + 1,
                     child: StandardButton.iconLabel(
                       tooltip: 'Filter and Sort Options',
@@ -1002,7 +1002,7 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
                       filledColor: _isGettingFiltered ? (Manager.currentDominantAccentColor ?? Manager.accentColor).light : Colors.white.withOpacity(0.1),
                       key: _filterButtonKey,
                       icon: Icon(_filtersOpen ? mat.Icons.filter_alt : mat.Icons.filter_alt_outlined, size: 16, color: getViewTypeColor(_isGettingFiltered)),
-                      onPressed: _showFilterDialog,
+                      onPressed: _filtersOpen ? null : _showFilterDialog,
                     ),
                   ),
                   HDiv(8),
@@ -1013,71 +1013,73 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
                       label: Text("Lists", style: Manager.subtitleStyle.copyWith(fontSize: 12)),
                       key: _listButtonKey,
                       icon: Icon(mat.Icons.list, size: 16, color: getViewTypeColor(_listsOpen)),
-                      onPressed: _showListDialog,
+                      onPressed: _listsOpen ? null : _showListDialog,
                     ),
                   ),
                 ],
               ),
-              SizedBox(
-                width: 300,
-                height: ScreenUtils.kDefaultButtonSize + 1,
-                child: mat.Theme(
-                  data: mat.Theme.of(context).copyWith(
-                    textSelectionTheme: TextSelectionThemeData(
-                      selectionColor: (Manager.currentDominantColor ?? Manager.accentColor).withOpacity(0.3),
-                      selectionHandleColor: Manager.currentDominantColor ?? Manager.accentColor,
-                    ),
-                  ),
-                  child: TextBox(
-                    controller: _searchController,
-                    cursorOpacityAnimates: true,
-                    cursorColor: Manager.pastelAccentColor,
-                    padding: EdgeInsetsDirectional.fromSTEB(10, 0, 6, 0),
-                    style: Manager.bodyStyle.copyWith(height: 0),
-                    placeholder: 'Search in your library...',
-                    focusNode: _searchFocusNode,
-                    enableInteractiveSelection: true,
-                    prefix: Padding(
-                      padding: EdgeInsets.only(left: 9, top: 9, bottom: 9),
-                      child: MouseButtonWrapper(
-                        child: (_) => Transform.translate(offset: Offset(0, 1), child: Icon(mat.Icons.search, size: 16)),
+              Flexible(
+                child: SizedBox(
+                  width: 300,
+                  height: ScreenUtils.kDefaultButtonSize + 1,
+                  child: mat.Theme(
+                    data: mat.Theme.of(context).copyWith(
+                      textSelectionTheme: TextSelectionThemeData(
+                        selectionColor: (Manager.currentDominantColor ?? Manager.accentColor).withOpacity(0.3),
+                        selectionHandleColor: Manager.currentDominantColor ?? Manager.accentColor,
                       ),
                     ),
-                    suffix: _searchQuery.isNotEmpty
-                        ? Padding(
-                            padding: EdgeInsets.all(3).copyWith(right: 2.3),
-                            child: MouseButtonWrapper(
-                              tooltip: 'Clear search',
-                              child: (_) => SizedBox(
-                                height: 30,
-                                child: StandardButton.icon(
-                                  icon: Icon(mat.Icons.clear, size: 16),
-                                  onPressed: () {
-                                    setState(() {
-                                      _searchQuery = '';
-                                      _searchController.clear();
-                                    });
-                                  },
-                                ),
-                              ),
-                            ),
-                          )
-                        : null,
-                    decoration: ButtonState.all(
-                      BoxDecoration(
-                        color: Colors.white.withOpacity(0.05),
-                        borderRadius: BorderRadius.circular(4),
-                        border: Border.all(
-                          color: _searchController.text.isNotEmpty //
-                              ? (Manager.currentDominantAccentColor ?? Manager.accentColor).light
-                              : Colors.white.withOpacity(0.1),
-                          width: _searchController.text.isNotEmpty ? 1.5 : 1,
+                    child: TextBox(
+                      controller: _searchController,
+                      cursorOpacityAnimates: true,
+                      cursorColor: Manager.pastelAccentColor,
+                      padding: EdgeInsetsDirectional.fromSTEB(10, 0, 6, 0),
+                      style: Manager.bodyStyle.copyWith(height: 0),
+                      placeholder: 'Search in your library...',
+                      focusNode: _searchFocusNode,
+                      enableInteractiveSelection: true,
+                      prefix: Padding(
+                        padding: EdgeInsets.only(left: 9, top: 9, bottom: 9),
+                        child: MouseButtonWrapper(
+                          child: (_) => Transform.translate(offset: Offset(0, 1), child: Icon(mat.Icons.search, size: 16)),
                         ),
                       ),
+                      suffix: _searchQuery.isNotEmpty
+                          ? Padding(
+                              padding: EdgeInsets.all(3).copyWith(right: 2.3),
+                              child: MouseButtonWrapper(
+                                tooltip: 'Clear search',
+                                child: (_) => SizedBox(
+                                  height: 30,
+                                  child: StandardButton.icon(
+                                    icon: Icon(mat.Icons.clear, size: 16),
+                                    onPressed: () {
+                                      setState(() {
+                                        _searchQuery = '';
+                                        _searchController.clear();
+                                      });
+                                    },
+                                  ),
+                                ),
+                              ),
+                            )
+                          : null,
+                      decoration: ButtonState.all(
+                        BoxDecoration(
+                          color: Colors.white.withOpacity(0.05),
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(
+                            color: _searchController.text.isNotEmpty //
+                                ? (Manager.currentDominantAccentColor ?? Manager.accentColor).light
+                                : Colors.white.withOpacity(0.1),
+                            width: _searchController.text.isNotEmpty ? 1.5 : 1,
+                          ),
+                        ),
+                      ),
+                      highlightColor: Colors.transparent,
+                      unfocusedColor: Colors.transparent,
+                      onChanged: (value) => setState(() => _searchQuery = value),
                     ),
-                    highlightColor: Colors.transparent,
-                    unfocusedColor: Colors.transparent,
-                    onChanged: (value) => setState(() => _searchQuery = value),
                   ),
                 ),
               ),
@@ -1202,7 +1204,7 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
       // Only hide library content if it's an initial scan (first time or new path)
       // For normal scans show the library with disabled actions
       final bool hideLibrary = library.isIndexing && library.isInitialScan;
-      
+
       // We use previousGridColumnCount to detect if we are transitioning
       if (previousGridColumnCount.value == null) {
         ScreenUtils.libraryContentWidthWithoutPadding = constraints.maxWidth; // account for right padding
@@ -1651,39 +1653,41 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
                 // Ensure we have a key for this group
                 if (!_groupKeys.containsKey(groupName)) _groupKeys[groupName] = GlobalKey();
 
-                return Container(
-                  key: _groupKeys[groupName],
-                  child: ClipRRect(
-                    clipBehavior: Clip.antiAlias,
-                    borderRadius: const BorderRadius.all(Radius.circular(ScreenUtils.kStatCardBorderRadius)),
-                    child: Padding(
-                      padding: EdgeInsets.only(bottom: isLastGroup ? 0 : ScreenUtils.kLibraryHeaderHeaderSeparatorHeight),
-                      child: ExpandingStickyHeaderBuilder(
-                        contentBackgroundColor: Colors.transparent,
-                        contentShape: (open) => RoundedRectangleBorder(),
-                        useInkWell: false,
-                        builder: (BuildContext context, {double stuckAmount = 0.0, bool isHovering = false, bool isExpanded = false}) => Transform.translate(
-                          offset: const Offset(0, -1),
-                          child: AcrylicHeader(
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(groupName, style: Manager.subtitleStyle),
-                                Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Transform.translate(offset: const Offset(0, -1.5), child: Text('${seriesInGroup.length} Series', style: Manager.captionStyle)),
-                                    const SizedBox(width: 8),
-                                    AnimatedRotation(turns: isExpanded ? 0 : .5, duration: shortDuration, child: const Icon(mat.Icons.expand_more)),
-                                  ],
-                                )
-                              ],
+                return RepaintBoundary(
+                  child: Container(
+                    key: _groupKeys[groupName],
+                    child: ClipRRect(
+                      clipBehavior: Clip.antiAlias,
+                      borderRadius: const BorderRadius.all(Radius.circular(ScreenUtils.kStatCardBorderRadius)),
+                      child: Padding(
+                        padding: EdgeInsets.only(bottom: isLastGroup ? 0 : ScreenUtils.kLibraryHeaderHeaderSeparatorHeight),
+                        child: ExpandingStickyHeaderBuilder(
+                          contentBackgroundColor: Colors.transparent,
+                          contentShape: (open) => RoundedRectangleBorder(),
+                          useInkWell: false,
+                          builder: (BuildContext context, {double stuckAmount = 0.0, bool isHovering = false, bool isExpanded = false}) => Transform.translate(
+                            offset: const Offset(0, -1),
+                            child: AcrylicHeader(
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(groupName, style: Manager.subtitleStyle),
+                                  Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Transform.translate(offset: const Offset(0, -1.5), child: Text('${seriesInGroup.length} Series', style: Manager.captionStyle)),
+                                      const SizedBox(width: 8),
+                                      AnimatedRotation(turns: isExpanded ? 0 : .5, duration: shortDuration, child: const Icon(mat.Icons.expand_more)),
+                                    ],
+                                  )
+                                ],
+                              ),
                             ),
                           ),
-                        ),
-                        content: Padding(
-                          padding: const EdgeInsets.only(top: ScreenUtils.kLibraryHeaderContentSeparatorHeight),
-                          child: episodesGrid(seriesInGroup, controller, physics, false, allowMeasurement: index == 0, isNestedInScrollable: true),
+                          content: Padding(
+                            padding: const EdgeInsets.only(top: ScreenUtils.kLibraryHeaderContentSeparatorHeight),
+                            child: episodesGrid(seriesInGroup, controller, physics, false, allowMeasurement: index == 0, isNestedInScrollable: true),
+                          ),
                         ),
                       ),
                     ),
@@ -1727,20 +1731,10 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
   }
 
   void _showFilterDialog() async {
-    if (Manager.navigation.hasDialog) {
-      final currentDialog = Manager.navigation.currentView;
-
-      // If the filter dialog is already open, close it and return
-      if (currentDialog?.id == "library:filters") {
-        closeDialog(rootNavigatorKey.currentContext!);
-        return;
-      }
-
-      // If the lists dialog is open, close it before opening filters
-      if (currentDialog?.id == "library:lists") {
-        closeDialog(rootNavigatorKey.currentContext!);
-        await Future.delayed(const Duration(milliseconds: 50));
-      }
+    if (Manager.navigation.hasDialog && Manager.navigation.currentView?.id == "library:lists") {
+      closeDialog();
+      log('Lists dialog open, closing it and opening filters dialog');
+      await Future.delayed(const Duration(milliseconds: 50));
     }
 
     if (mounted) setState(() => _filtersOpen = true);
@@ -1752,7 +1746,7 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
 
     if (_filterButtonKey.currentContext != null) {
       final RenderBox renderBox = _filterButtonKey.currentContext!.findRenderObject() as RenderBox;
-      anchorPosition = renderBox.localToGlobal(Offset.zero);
+      anchorPosition = renderBox.localToGlobal(Offset(-140, -33));
       anchorSize = renderBox.size;
     }
 
@@ -1769,24 +1763,34 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
       alignment = Alignment(alignmentX, alignmentY);
     }
 
-    await showManagedDialog(
-      context: context,
-      id: 'library:filters',
-      title: 'Filters',
-      canUserPopDialog: true,
-      dialogDoPopCheck: () => Manager.canPopDialog,
-      barrierColor: Colors.red,
-      data: {"darkenTitleBar": false},
-      overrideColor: true,
+    showPaddedDialog(
+      context,
+      navigationItem: DialogNavigationItem(
+        id: 'library:filters',
+        title: 'Filters',
+        dialogDoPopCheck: () => Manager.canPopDialog,
+        data: {"darkenTitleBar": false},
+        onDismiss: () async {
+          await Future.delayed(const Duration(milliseconds: 100));
+          if (mounted) setState(() => _filtersOpen = false);
+        },
+      ),
+      barrierOptions: PaddedBarrierOptions(
+        exactColor: true,
+        transluscentBarrier: true,
+        barrierColor: Colors.transparent,
+      ),
       closeExistingDialogs: true,
-      transparentBarrier: true,
-      onDismiss: () async {
-        if (mounted) setState(() => _filtersOpen = false);
-      },
-      builder: (ctx) => GenresFilterDialog(
-        popContext: ctx,
-        anchorPosition: anchorPosition,
-        anchorSize: anchorSize,
+      builder: (ctx, item, options) => PaddedDialog.frosted(
+        constraints: BoxConstraints(
+          maxWidth: 250,
+          // TODO do the same as listsDialogHeight
+          maxHeight: Manager.settings.listsDialogHeight, //just temporarily initialize with this value
+        ),
+        navigationItem: item,
+        barrierOptions: options,
+        alignment: Position.fromAlignment(alignment),
+        content: GenresFilterContent(),
       ),
       transitionBuilder: (context, animation, secondaryAnimation, child) {
         return ScaleTransition(
@@ -1801,26 +1805,14 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
           child: child,
         );
       },
-    ).then((_) {
-      if (mounted) setState(() => _filtersOpen = false);
-    });
+    );
   }
 
   void _showListDialog() async {
-    if (Manager.navigation.hasDialog) {
-      final currentDialog = Manager.navigation.currentView;
-
-      // If the lists dialog is already open, close it and return
-      if (currentDialog?.id == "library:lists") {
-        closeDialog(rootNavigatorKey.currentContext!);
-        return;
-      }
-
-      // If the filters dialog is open, close it before opening lists
-      if (currentDialog?.id == "library:filters") {
-        closeDialog(rootNavigatorKey.currentContext!);
-        await Future.delayed(const Duration(milliseconds: 50));
-      }
+    if (Manager.navigation.hasDialog && Manager.navigation.currentView?.id == "library:filters") {
+      closeDialog();
+      log('Filters dialog open, closing it and opening lists dialog');
+      await Future.delayed(const Duration(milliseconds: 50));
     }
 
     if (mounted) setState(() => _listsOpen = true);
@@ -1832,7 +1824,7 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
 
     if (_listButtonKey.currentContext != null) {
       final RenderBox renderBox = _listButtonKey.currentContext!.findRenderObject() as RenderBox;
-      anchorPosition = renderBox.localToGlobal(Offset.zero);
+      anchorPosition = renderBox.localToGlobal(Offset(-140, -33));
       anchorSize = renderBox.size;
     }
 
@@ -1845,46 +1837,59 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
       // Convert to Alignment coordinates (-1.0 to 1.0)
       final double alignmentX = (buttonCenterX / ScreenUtils.width) * 2 - 1;
       final double alignmentY = (buttonCenterY / ScreenUtils.height) * 2 - 1;
-
+      
+      print('buttonCenterX: $buttonCenterX, buttonCenterY: $buttonCenterY');
       alignment = Alignment(alignmentX, alignmentY);
     }
 
-    await showManagedDialog(
-      context: context,
-      id: 'library:lists',
-      title: 'Lists',
-      canUserPopDialog: true,
-      dialogDoPopCheck: () => Manager.canPopDialog,
-      barrierColor: Colors.red,
-      data: {"darkenTitleBar": false},
-      overrideColor: true,
-      closeExistingDialogs: true,
-      transparentBarrier: true,
-      onDismiss: () async {
-        if (mounted) setState(() => _listsOpen = false);
-      },
-      builder: (ctx) => ListsDialog(
-        popContext: ctx,
-        currentView: _currentView,
-        customListOrder: customListOrder,
-        hiddenLists: hiddenLists,
-        groupedDataCache: _groupedDataCache,
-        onScrollToList: _scrollToList,
-        onInvalidateSortCache: invalidateSortCache,
-        onSaveUserPreferences: _saveUserPreferences,
-        onHiddenListsChanged: (newHiddenLists) {
-          setState(() {
-            hiddenLists = newHiddenLists;
-          });
+    showPaddedDialog(
+      context,
+      navigationItem: DialogNavigationItem(
+        id: 'library:lists',
+        title: 'Lists',
+        dialogDoPopCheck: () => Manager.canPopDialog,
+        data: {"darkenTitleBar": false},
+        onDismiss: () async {
+          await Future.delayed(const Duration(milliseconds: 100));
+          if (mounted) setState(() => _listsOpen = false);
         },
-        onCustomListOrderChanged: (newOrder) {
-          setState(() {
-            customListOrder = newOrder;
-          });
-        },
-        anchorPosition: anchorPosition,
-        anchorSize: anchorSize,
       ),
+      barrierOptions: PaddedBarrierOptions(
+        exactColor: true,
+        transluscentBarrier: true,
+        barrierColor: Colors.transparent,
+      ),
+      closeExistingDialogs: true,
+      builder: (ctx, item, options) {
+        final constraints = BoxConstraints(maxWidth: 250, maxHeight: Manager.settings.listsDialogHeight);
+
+        return PaddedDialog.frosted(
+          constraints: constraints,
+          navigationItem: item,
+          barrierOptions: options,
+          alignment: Position.fromAlignment(alignment),
+          content: ListsContent(
+            constraints: constraints,
+            currentView: _currentView,
+            customListOrder: customListOrder,
+            hiddenLists: hiddenLists,
+            groupedDataCache: _groupedDataCache,
+            onScrollToList: _scrollToList,
+            onInvalidateSortCache: invalidateSortCache,
+            onSaveUserPreferences: _saveUserPreferences,
+            onHiddenListsChanged: (newHiddenLists) {
+              setState(() {
+                hiddenLists = newHiddenLists;
+              });
+            },
+            onCustomListOrderChanged: (newOrder) {
+              setState(() {
+                customListOrder = newOrder;
+              });
+            },
+          ),
+        );
+      },
       transitionBuilder: (context, animation, secondaryAnimation, child) {
         return ScaleTransition(
           alignment: alignment,
@@ -1898,8 +1903,6 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
           child: child,
         );
       },
-    ).then((_) {
-      if (mounted) setState(() => _listsOpen = false);
-    });
+    );
   }
 }

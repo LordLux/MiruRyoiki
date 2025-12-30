@@ -14,12 +14,10 @@ import '../../services/anilist/provider/anilist_provider.dart';
 import '../../services/anilist/queries/anilist_service.dart';
 import '../../services/library/library_provider.dart';
 import '../../services/lock_manager.dart';
-import '../../services/navigation/dialogs.dart';
 import '../../services/navigation/show_info.dart';
 import '../../screens/series.dart';
 import '../../utils/logging.dart';
 import '../../utils/shell.dart';
-import '../dialogs/image_select.dart';
 import '../../utils/icons.dart' as icons;
 import 'controller.dart';
 
@@ -101,14 +99,14 @@ class SeriesContextMenuState extends State<SeriesContextMenu> {
           shortcutKey: 'p',
           disabled: shouldDisable,
           shortcutModifiers: ShortcutModifiers(control: Platform.isWindows, meta: Platform.isMacOS),
-          onClick: (_) => _changePosterImage(context),
+          onClick: (_) => selectSeriesImage(context, isBanner: false, series: series),
         ),
         MenuItem(
           label: 'Change Banner Image',
           shortcutKey: 'b',
           disabled: shouldDisable,
           shortcutModifiers: ShortcutModifiers(control: Platform.isWindows, meta: Platform.isMacOS),
-          onClick: (_) => _changeBannerImage(context),
+          onClick: (_) => selectSeriesImage(context, isBanner: true, series: series),
         ),
         if (series.isLinked)
           MenuItem(
@@ -155,52 +153,6 @@ class SeriesContextMenuState extends State<SeriesContextMenu> {
         stackTrace: stackTrace,
       );
     }
-  }
-
-  void _changePosterImage(BuildContext context) {
-    // Get the current SeriesScreenState if available
-    final seriesScreenState = context.findAncestorStateOfType<SeriesScreenState>();
-
-    if (seriesScreenState != null) {
-      // Use the existing method if we're on the series screen
-      seriesScreenState.selectImage(context, isBanner: false);
-    } else {
-      // Otherwise show a standalone dialog
-      showManagedDialog(
-        context: context,
-        id: 'posterSelection:${widget.series.path}',
-        title: 'Select Poster',
-        dialogDoPopCheck: () => true,
-        builder: (context) => ImageSelectionDialog(
-          series: widget.series,
-          popContext: context,
-          isBanner: false,
-        ),
-      );
-    }
-    Manager.setState();
-  }
-
-  void _changeBannerImage(BuildContext context) {
-    // Similar to poster but with isBanner = true
-    final seriesScreenState = context.findAncestorStateOfType<SeriesScreenState>();
-
-    if (seriesScreenState != null) {
-      seriesScreenState.selectImage(context, isBanner: true);
-    } else {
-      showManagedDialog(
-        context: context,
-        id: 'bannerSelection:${widget.series.path}',
-        title: 'Select Banner',
-        dialogDoPopCheck: () => true,
-        builder: (context) => ImageSelectionDialog(
-          series: widget.series,
-          popContext: context,
-          isBanner: true,
-        ),
-      );
-    }
-    Manager.setState();
   }
 
   static void _undoToggleHiddenStatus(BuildContext context) {

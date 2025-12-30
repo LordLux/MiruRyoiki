@@ -10,7 +10,6 @@ import '../../main.dart';
 import '../../manager.dart';
 import '../../models/series.dart';
 import '../../services/library/library_provider.dart';
-import '../../screens/series.dart';
 import '../../services/navigation/dialogs.dart';
 import '../../services/navigation/show_info.dart';
 import '../../utils/image.dart';
@@ -19,6 +18,7 @@ import '../../utils/path.dart';
 import '../../utils/screen.dart';
 import '../series_image.dart';
 import '../transparency_shadow_image.dart';
+import 'link_anilist.dart';
 
 class ImageSelectionDialog extends ManagedDialog {
   final Series series;
@@ -32,7 +32,7 @@ class ImageSelectionDialog extends ManagedDialog {
     super.constraints = const BoxConstraints(maxWidth: 1000, maxHeight: 700),
   }) : super(
           title: Text(title ?? (isBanner ? 'Select Banner Image' : 'Select Poster Image')),
-          contentBuilder: (context, constraints) => _ImageSelectionContent(
+          contentBuilder: (context, constraints) => ImageSelectionContent(
             series: series,
             constraints: constraints,
             isBanner: isBanner,
@@ -127,18 +127,18 @@ class ImageSelectionDialog extends ManagedDialog {
         );
 }
 
-class _ImageSelectionContent extends StatefulWidget {
+class ImageSelectionContent extends StatefulWidget {
   final Series series;
   final BoxConstraints constraints;
   final Function(ImageSource, String) onSave;
   final VoidCallback? onCancel;
   final bool isBanner;
 
-  const _ImageSelectionContent({
+  const ImageSelectionContent({
+    super.key,
     required this.series,
     required this.constraints,
     required this.onSave,
-    // ignore: unused_element_parameter
     this.onCancel,
     required this.isBanner,
   });
@@ -147,7 +147,7 @@ class _ImageSelectionContent extends StatefulWidget {
   _ImageSelectionContentState createState() => _ImageSelectionContentState();
 }
 
-class _ImageSelectionContentState extends State<_ImageSelectionContent> {
+class _ImageSelectionContentState extends State<ImageSelectionContent> {
   late ImageSource _selectedSource;
   bool _localImageLoading = false;
   bool _anilistImageLoading = false;
@@ -367,7 +367,6 @@ class _ImageSelectionContentState extends State<_ImageSelectionContent> {
               child: TooltipWrapper(
                 tooltip: 'Reset to ${_getSourceDisplayName(Manager.defaultPosterSource)}\nThis setting can be changed in settings',
                 child: (_) => ManagedDialogButton(
-                  popContext: context,
                   onPressed: () {
                     _deselectEverything();
                     widget.onSave(
@@ -391,14 +390,12 @@ class _ImageSelectionContentState extends State<_ImageSelectionContent> {
               children: [
                 ManagedDialogButton(
                   text: 'Cancel',
-                  popContext: context,
                   onPressed: () => widget.onCancel?.call(),
                 ),
                 SizedBox(width: 8),
                 TooltipWrapper(
                   tooltip: _canSavePreference() ? 'Save the selected image preference' : 'Select an image first',
                   child: (_) => ManagedDialogButton(
-                    popContext: context,
                     isPrimary: true,
                     text: 'Save Preference',
                     onPressed: _canSavePreference()

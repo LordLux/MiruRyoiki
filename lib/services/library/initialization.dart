@@ -105,7 +105,7 @@ extension LibraryInitialization on Library {
             final cachedPath = await imageCache.getCachedImagePath(mapping.anilistData!.posterImage!);
             if (cachedPath == null) {
               imageCache.cacheImage(mapping.anilistData!.posterImage!);
-              logTrace('4 | Re-caching mapping poster for: ${series.name}');
+              logTrace('4 | Re-caching mapping poster for: ${mapping.title}');
             }
           }
 

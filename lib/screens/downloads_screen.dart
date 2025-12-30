@@ -163,7 +163,7 @@ class DownloadsScreenState extends State<DownloadsScreen> {
           const Divider(),
           Expanded(
             child: _isLoading 
-              ? const Center(child: CircularProgressIndicator()) 
+              ? const Center(child: RepaintBoundary(child: CircularProgressIndicator())) 
               : _episodesMetadata.isEmpty 
                 ? const Center(child: Text("No episodes found. Try entering an ID and fetching."))
                 : ListView.builder(
@@ -303,7 +303,7 @@ class _ReleaseTileState extends State<ReleaseTile> {
                         // Visual warning if trying to download a rejected release
                         backgroundColor: r.rejected ? Colors.orange.shade100 : null),
                     onPressed: _isGrabbing ? null : _handleGrab,
-                    icon: _isGrabbing ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.download),
+                    icon: _isGrabbing ? const SizedBox(width: 16, height: 16, child: RepaintBoundary(child: CircularProgressIndicator(strokeWidth: 2))) : const Icon(Icons.download),
                     label: Text(_isGrabbing ? "Sending..." : "Download"),
                   )
                 ],

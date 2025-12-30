@@ -359,7 +359,7 @@ class AccountsScreenState extends State<AccountsScreen> with AutomaticKeepAliveC
         isBigEvenWithoutLoading: true,
         onPressed: () async {
           await showSimpleManagedDialog(
-            context: context,
+            context,
             id: 'anilist-logout',
             title: 'Logout from Anilist',
             body: 'Are you sure you want to logout from Anilist?',

@@ -163,22 +163,24 @@ class _AnimatedProgressIndicatorState extends State<AnimatedProgressIndicator> {
 
   @override
   Widget build(BuildContext context) {
-    return ValueListenableBuilder<double?>(
-      valueListenable: widget.progressNotifier,
-      builder: (context, progress, _) {
-        // If progress is null, show indeterminate indicator immediately.
-        if (progress == null) return _indicator(null);
-
-        final beginValue = _previousValue ?? 0.0;
-        _previousValue = progress;
-
-        return TweenAnimationBuilder<double>(
-          tween: Tween(begin: progress == 0.0 ? 0.0 : beginValue, end: progress),
-          duration: progress == 0.0 ? Duration.zero : const Duration(milliseconds: 600),
-          curve: Curves.easeOut,
-          builder: (context, animatedValue, _) => _indicator(animatedValue),
-        );
-      },
+    return RepaintBoundary(
+      child: ValueListenableBuilder<double?>(
+        valueListenable: widget.progressNotifier,
+        builder: (context, progress, _) {
+          // If progress is null, show indeterminate indicator immediately.
+          if (progress == null) return _indicator(null);
+      
+          final beginValue = _previousValue ?? 0.0;
+          _previousValue = progress;
+      
+          return TweenAnimationBuilder<double>(
+            tween: Tween(begin: progress == 0.0 ? 0.0 : beginValue, end: progress),
+            duration: progress == 0.0 ? Duration.zero : const Duration(milliseconds: 600),
+            curve: Curves.easeOut,
+            builder: (context, animatedValue, _) => _indicator(animatedValue),
+          );
+        },
+      ),
     );
   }
 }

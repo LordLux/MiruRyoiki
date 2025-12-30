@@ -266,7 +266,13 @@ Widget buildNotificationImage(String? imageUrl, Series? series) {
           return ClipRRect(
             borderRadius: BorderRadius.circular(4),
             child: Image(
-              image: snapshot.data!,
+              height: 64 * ScreenUtils.pixelResolution,
+              width: 50 * ScreenUtils.pixelResolution,
+              image: ResizeImage(
+                snapshot.data!,
+                height: (64 * ScreenUtils.pixelResolution).floor(),
+                width: (50 * ScreenUtils.pixelResolution).floor(),
+              ),
               fit: BoxFit.cover,
               errorBuilder: (context, error, stackTrace) => const NoImageWidget(),
             ),
@@ -278,15 +284,24 @@ Widget buildNotificationImage(String? imageUrl, Series? series) {
           return CachedNetworkImage(
             imageUrl: imageUrl,
             fit: BoxFit.cover,
-            maxWidthDiskCache: 200,
-            maxHeightDiskCache: 200 ~/ ScreenUtils.kDefaultAspectRatio,
+            maxHeightDiskCache: (64 * ScreenUtils.pixelResolution).floor(),
+            maxWidthDiskCache: (50 * ScreenUtils.pixelResolution).floor(),
+            memCacheHeight: (64 * ScreenUtils.pixelResolution).floor(),
+            memCacheWidth: (50 * ScreenUtils.pixelResolution).floor(),
+            height: 64 * ScreenUtils.pixelResolution,
+            width: 50 * ScreenUtils.pixelResolution,
+            cacheKey: 'notif$imageUrl',
             imageBuilder: (context, imageProvider) => ClipRRect(
               borderRadius: BorderRadius.circular(4),
               child: Image(
-                image: imageProvider,
+                image: ResizeImage(
+                  imageProvider,
+                  height: (64 * ScreenUtils.pixelResolution).floor(),
+                  width: (50 * ScreenUtils.pixelResolution).floor(),
+                ),
                 fit: BoxFit.cover,
-                width: 50,
-                height: 64,
+                width: 50 * ScreenUtils.pixelResolution,
+                height: 64 * ScreenUtils.pixelResolution,
               ),
             ),
             errorWidget: (context, error, stackTrace) => const NoImageWidget(),
@@ -298,11 +313,25 @@ Widget buildNotificationImage(String? imageUrl, Series? series) {
     return CachedNetworkImage(
       imageUrl: imageUrl,
       fit: BoxFit.cover,
-      maxWidthDiskCache: 200,
-      maxHeightDiskCache: 200 ~/ ScreenUtils.kDefaultAspectRatio,
+      maxHeightDiskCache: (64 * ScreenUtils.pixelResolution).floor(),
+      maxWidthDiskCache: (50 * ScreenUtils.pixelResolution).floor(),
+      memCacheHeight: (64 * ScreenUtils.pixelResolution).floor(),
+      memCacheWidth: (50 * ScreenUtils.pixelResolution).floor(),
+      height: 64 * ScreenUtils.pixelResolution,
+      width: 50 * ScreenUtils.pixelResolution,
+      cacheKey: 'notif$imageUrl',
       imageBuilder: (context, imageProvider) => ClipRRect(
         borderRadius: BorderRadius.circular(4),
-        child: Image(image: imageProvider, fit: BoxFit.cover),
+        child: Image(
+          image: ResizeImage(
+            imageProvider,
+            height: (64 * ScreenUtils.pixelResolution).floor(),
+            width: (50 * ScreenUtils.pixelResolution).floor(),
+          ),
+          fit: BoxFit.cover,
+          height: 64 * ScreenUtils.pixelResolution,
+          width: 50 * ScreenUtils.pixelResolution,
+        ),
       ),
       errorWidget: (context, error, stackTrace) => const NoImageWidget(),
     );

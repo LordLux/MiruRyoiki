@@ -14,10 +14,14 @@ import '../../models/series.dart';
 import '../../services/anilist/linking.dart';
 import '../../services/file_system/cache.dart';
 import '../../services/library/library_provider.dart';
+import '../../services/lock_manager.dart';
 import '../../services/navigation/dialogs.dart';
+import '../../services/navigation/dialogs2.dart';
+import '../../services/navigation/navigation.dart';
 import '../../services/navigation/shortcuts.dart';
 import '../../services/navigation/show_info.dart';
 import '../../utils/color.dart';
+import '../../utils/logging.dart';
 import '../../utils/path.dart';
 import '../../utils/shell.dart';
 import '../buttons/button.dart';
@@ -25,47 +29,50 @@ import '../buttons/hyperlink.dart';
 import '../buttons/wrapper.dart';
 import '../tooltip_wrapper.dart';
 import 'search_panel.dart';
+import 'show_dialog.dart';
 
 final GlobalKey<AnilistLinkMultiContentState> linkMultiDialogKey = GlobalKey<AnilistLinkMultiContentState>();
 
-class AnilistLinkMultiDialog extends ManagedDialog {
+class AnilistLinkMultiDialog extends StatelessWidget {
   final Series series;
   final SeriesLinkService linkService;
   final Function(int, String)? onLink;
   final Function(bool? success, List<AnilistMapping> mappings)? onDialogComplete;
+  final BoxConstraints constraints;
 
-  AnilistLinkMultiDialog({
+  const AnilistLinkMultiDialog({
     super.key,
     required this.series,
     required this.linkService,
-    this.onLink,
-    required super.popContext,
-    this.onDialogComplete,
-    super.constraints = const BoxConstraints(maxWidth: 1400, maxHeight: 700),
-  }) : super(
-          title: Text('Anilist Links for ${series.displayTitle}', overflow: TextOverflow.ellipsis),
-          contentBuilder: (context, constraints) => _AnilistLinkMultiContent(
-            key: linkMultiDialogKey,
-            series: series,
-            linkService: linkService,
-            onLink: onLink,
-            constraints: constraints,
-            onSave: (mappings) {
-              onDialogComplete?.call(true, mappings);
+    required this.onLink,
+    required this.onDialogComplete,
+    required this.constraints,
+  });
 
-              if (mappings.isEmpty) {
-                homeKey.currentState?.setState(() {});
-                return;
-              }
-              homeKey.currentState?.setState(() {});
-            },
-            onCancel: () => onDialogComplete?.call(null, <AnilistMapping>[]),
-          ),
-          // actions: (_) => [],
-        );
+  @override
+  Widget build(BuildContext context) {
+    return AnilistLinkMultiContent(
+      key: linkMultiDialogKey,
+      series: series,
+      linkService: linkService,
+      onLink: onLink,
+      constraints: constraints,
+      onSave: (mappings) {
+        onDialogComplete?.call(true, mappings);
+
+        if (mappings.isEmpty) {
+          homeKey.currentState?.setState(() {});
+          return;
+        }
+
+        homeKey.currentState?.setState(() {});
+      },
+      onCancel: () => onDialogComplete?.call(null, <AnilistMapping>[]),
+    );
+  }
 }
 
-class _AnilistLinkMultiContent extends StatefulWidget {
+class AnilistLinkMultiContent extends StatefulWidget {
   final Series series;
   final SeriesLinkService linkService;
   final Function(int, String)? onLink;
@@ -73,7 +80,7 @@ class _AnilistLinkMultiContent extends StatefulWidget {
   final Function(List<AnilistMapping> mappings) onSave;
   final VoidCallback onCancel;
 
-  const _AnilistLinkMultiContent({
+  const AnilistLinkMultiContent({
     super.key,
     required this.series,
     required this.linkService,
@@ -87,7 +94,7 @@ class _AnilistLinkMultiContent extends StatefulWidget {
   AnilistLinkMultiContentState createState() => AnilistLinkMultiContentState();
 }
 
-class AnilistLinkMultiContentState extends State<_AnilistLinkMultiContent> {
+class AnilistLinkMultiContentState extends State<AnilistLinkMultiContent> {
   late List<AnilistMapping> mappings;
   late List<AnilistMapping> oldMappings;
   String mode = 'view';
@@ -310,7 +317,6 @@ class AnilistLinkMultiContentState extends State<_AnilistLinkMultiContent> {
               tooltip: _mappingsChanged ? 'Cancel and close Dialog' : 'Close Dialog',
               child: (_) => ManagedDialogButton(
                 text: _mappingsChanged ? 'Cancel' : 'Close',
-                popContext: context,
                 onPressed: () => widget.onCancel.call(),
               ),
             ),
@@ -394,7 +400,6 @@ class AnilistLinkMultiContentState extends State<_AnilistLinkMultiContent> {
                               isPrimary: true,
                               isLoading: indexing,
                               isDisabled: indexing,
-                              popContext: context,
                               onPressed: _mappingsChanged ? () => widget.onSave(mappings) : null,
                             ));
                   }),
@@ -613,7 +618,7 @@ class AnilistLinkMultiContentState extends State<_AnilistLinkMultiContent> {
                         : ButtonStyle(
                             backgroundColor: ButtonState.all(Manager.currentDominantColor ?? Manager.accentColor),
                             foregroundColor: ButtonState.all(getTextColor(Manager.currentDominantColor ?? Manager.accentColor)),
-                        ),
+                          ),
                 onPressed: (selectedLocalPath != null && selectedAnilistId != null && !_isExactDuplicate)
                     ? () {
                         if (_isExactDuplicate) {
@@ -623,57 +628,45 @@ class AnilistLinkMultiContentState extends State<_AnilistLinkMultiContent> {
 
                         if (_hasDuplicateWarning) {
                           // Show warning dialog
-                          showManagedDialog(
-                            context: context,
+                          showSimpleManagedDialog(
+                            context,
                             id: 'linkWarning',
                             title: 'Warning: Potential Duplicate Link',
-                            builder: (context) => ManagedDialog(
-                              popContext: context,
-                              title: Text('Warning: Potential Duplicate Link'),
-                              contentBuilder: (context, _) => Column(
-                                mainAxisSize: MainAxisSize.min,
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  if (_existingPathMapping != null)
-                                    Text(
-                                      'The selected file/folder is already linked to another Anilist entry (ID: ${_existingPathMapping!.anilistId}).',
-                                      style: FluentTheme.of(context).typography.body,
-                                    ),
-                                  if (_existingPathMapping != null) SizedBox(height: 8),
-                                  if (_existingIdMapping != null)
-                                    Text(
-                                      'The selected Anilist entry is already linked to another file/folder.',
-                                      style: FluentTheme.of(context).typography.body,
-                                    ),
-                                  SizedBox(height: 12),
+                            builder: (context) => Column(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                if (_existingPathMapping != null)
                                   Text(
-                                    'Creating this link may lead to unexpected behavior. Do you want to continue?',
+                                    'The selected file/folder is already linked to another Anilist entry (ID: ${_existingPathMapping!.anilistId}).',
                                     style: FluentTheme.of(context).typography.body,
                                   ),
-                                ],
-                              ),
-                              actions: (context) => <ManagedDialogButton>[
-                                ManagedDialogButton(
-                                  popContext: context,
-                                  text: 'Cancel',
-                                ),
-                                ManagedDialogButton(
-                                  popContext: context,
-                                  text: 'Create Link Anyway',
-                                  isPrimary: true,
-                                  onPressed: () {
-                                    setState(() {
-                                      mappings.add(AnilistMapping(
-                                        localPath: selectedLocalPath!,
-                                        anilistId: selectedAnilistId!,
-                                        title: selectedTitle,
-                                      ));
-                                      switchToViewMode();
-                                    });
-                                  },
+                                if (_existingPathMapping != null) SizedBox(height: 8),
+                                if (_existingIdMapping != null)
+                                  Text(
+                                    'The selected Anilist entry is already linked to another file/folder.',
+                                    style: FluentTheme.of(context).typography.body,
+                                  ),
+                                SizedBox(height: 12),
+                                Text(
+                                  'Creating this link may lead to unexpected behavior. Do you want to continue?',
+                                  style: FluentTheme.of(context).typography.body,
                                 ),
                               ],
                             ),
+                            negativeButtonText: 'Cancel',
+                            positiveButtonText: 'Create Link Anyway',
+                            isPositiveButtonPrimary: true,
+                            onPositive: () {
+                              setState(() {
+                                mappings.add(AnilistMapping(
+                                  localPath: selectedLocalPath!,
+                                  anilistId: selectedAnilistId!,
+                                  title: selectedTitle,
+                                ));
+                                switchToViewMode();
+                              });
+                            },
                           );
                         } else {
                           // No conflicts, add the mapping directly
@@ -972,5 +965,114 @@ Widget FileEntityIcon(BuildContext context, bool isDir, bool isSelected) {
   return Icon(
     isDir ? FluentIcons.folder : FluentIcons.document,
     color: isSelected ? FluentTheme.of(context).accentColor : null,
+  );
+}
+
+void linkWithAnilist(BuildContext context, Series? series, Future<void> Function(List<int>) loadData, void Function(VoidCallback) setState) async {
+  if (series == null) {
+    snackBar('Series not found', severity: InfoBarSeverity.error);
+    return;
+  }
+
+  // Show the dialog
+  await showPaddedDialog(
+    context,
+    navigationItem: DialogNavigationItem(
+      id: 'linkAnilist:${series.path}',
+      title: 'Link to Anilist',
+      data: series.path,
+      dialogDoPopCheck: () => Manager.canPopDialog, // Allow popping only when in view mode
+    ),
+    barrierOptions: PaddedBarrierOptions(
+      barrierColor: Manager.currentDominantColor?.withOpacity(0.5),
+      userDismissable: true,
+    ),
+    closeExistingDialogs: true,
+    builder: (ctx, item, options) {
+      const boxConstraints = BoxConstraints(maxWidth: 1300, maxHeight: 600);
+
+      return PaddedDialog.simple(
+        navigationItem: item,
+        barrierOptions: options,
+        title: Text('Anilist Links for ${series.displayTitle}', overflow: TextOverflow.ellipsis),
+        constraints: boxConstraints,
+        content: AnilistLinkMultiDialog(
+          series: series,
+          linkService: SeriesLinkService(),
+          onLink: (_, __) {},
+          constraints: boxConstraints,
+          onDialogComplete: (success, mappings) async {
+            // if the dialog was closed without a result, do nothing
+            if (success == null) {
+              // logDebug('Dialog closed without result');
+              return;
+            }
+
+            // if the dialog was closed with a result, check if it was successful
+            if (!success) {
+              logErr('Linking failed');
+              snackBar('Failed to link with Anilist', severity: InfoBarSeverity.error);
+              return;
+            }
+
+            // if dialog was closed with a result, and it was successful, update the series mappings
+            final library = Provider.of<Library>(context, listen: false);
+
+            // Check if the action should be disabled during indexing
+            if (library.lockManager.shouldDisableAction(UserAction.anilistOperations)) {
+              snackBar(
+                library.lockManager.getDisabledReason(UserAction.anilistOperations),
+                severity: InfoBarSeverity.warning,
+              );
+              return;
+            }
+
+            // Calculate the number of new mappings
+            final oldMappings = series.anilistMappings;
+            List<int> anilistIdsToLoad = [];
+
+            for (final mapping in mappings) {
+              bool isNew = !oldMappings.any((m) => m.anilistId == mapping.anilistId && m.localPath == mapping.localPath);
+              if (isNew) anilistIdsToLoad.add(mapping.anilistId);
+            }
+
+            // Ensure the library gets saved
+            await library.updateSeriesMappings(series, mappings);
+
+            // If links were added
+            if (anilistIdsToLoad.isNotEmpty) {
+              snackBar(
+                'Successfully linked ${anilistIdsToLoad.length} ${anilistIdsToLoad.length == 1 ? 'new item' : 'new items'} with Anilist',
+                severity: InfoBarSeverity.success,
+              );
+            } else if (mappings.length < oldMappings.length) {
+              // If links were removed
+              final removedCount = oldMappings.length - mappings.length;
+              snackBar(
+                'Removed $removedCount ${removedCount == 1 ? 'link' : 'links'} from Anilist',
+                severity: InfoBarSeverity.success,
+              );
+            } else {
+              // No changes in link count but mappings might have been updated
+              snackBar(
+                'Anilist links updated successfully',
+                severity: InfoBarSeverity.success,
+              );
+            }
+
+            closeDialog();
+
+            // Load Anilist data
+            if (anilistIdsToLoad.isNotEmpty) await loadData(anilistIdsToLoad);
+
+            // Update the series with the new mappings
+            final newColor = await series.effectivePrimaryColor();
+            Manager.currentDominantColor = newColor;
+            Manager.seriesDominantColor = newColor;
+            Manager.setState();
+          },
+        ),
+      );
+    },
   );
 }

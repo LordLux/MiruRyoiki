@@ -60,7 +60,6 @@ class ScreenUtils {
   static Size get screenSize => _mediaQuery.size;
   static double get width => _mediaQuery.size.width;
   static double get height => _mediaQuery.size.height;
-  static double get pixelRatio => _mediaQuery.devicePixelRatio;
   static double get textScaleFactor => _mediaQuery.textScaleFactor;
   static double get fallbackWidth => (width - kNavigationBarWidth - 32 /*padding*/);
   static double get maxCardWidth => Manager.fontSizeMultiplier * kDefaultCardWidth;
