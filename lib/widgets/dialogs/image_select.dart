@@ -3,15 +3,12 @@ import 'dart:math' show min;
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:miruryoiki/widgets/tooltip_wrapper.dart';
-import 'package:provider/provider.dart';
 
 import '../../enums.dart';
 import '../../main.dart';
 import '../../manager.dart';
 import '../../models/series.dart';
-import '../../services/library/library_provider.dart';
 import '../../services/navigation/dialogs.dart';
-import '../../services/navigation/show_info.dart';
 import '../../utils/image.dart';
 import '../../utils/logging.dart';
 import '../../utils/path.dart';
@@ -20,118 +17,10 @@ import '../series_image.dart';
 import '../transparency_shadow_image.dart';
 import 'link_anilist.dart';
 
-class ImageSelectionDialog extends ManagedDialog {
-  final Series series;
-
-  ImageSelectionDialog({
-    super.key,
-    required this.series,
-    required super.popContext,
-    required isBanner,
-    String? title,
-    super.constraints = const BoxConstraints(maxWidth: 1000, maxHeight: 700),
-  }) : super(
-          title: Text(title ?? (isBanner ? 'Select Banner Image' : 'Select Poster Image')),
-          contentBuilder: (context, constraints) => ImageSelectionContent(
-            series: series,
-            constraints: constraints,
-            isBanner: isBanner,
-            onSave: (source, path) async {
-              // Save the selection
-              final library = Provider.of<Library>(popContext, listen: false);
-
-              final bool isLocalSource = source == ImageSource.local;
-              Color? newLocalPosterColor;
-              Color? newLocalBannerColor;
-              PathString? newFolderPosterPath;
-              PathString? newFolderBannerPath;
-
-              if (!isBanner) {
-                // Poster
-                if (isLocalSource) {
-                  // Set local poster path and keep local color
-                  newFolderPosterPath = PathString(path);
-                  newLocalPosterColor = series.localPosterColor; // Will recalculate below
-                } else {
-                  // Switching to Anilist
-                  newFolderPosterPath = series.localPosterPath;
-                  newLocalPosterColor = null; // Clear local color
-                }
-                newFolderBannerPath = series.localBannerPath;
-                newLocalBannerColor = series.localBannerColor;
-              } else {
-                // Banner
-                if (isLocalSource) {
-                  // Set local banner path and keep local color
-                  newFolderBannerPath = PathString(path);
-                  newLocalBannerColor = series.localBannerColor; // Will recalculate below
-                } else {
-                  // Switching to Anilist
-                  newFolderBannerPath = series.localBannerPath;
-                  newLocalBannerColor = null; // Clear local color
-                }
-                newFolderPosterPath = series.localPosterPath;
-                newLocalPosterColor = series.localPosterColor;
-              }
-
-              final Series updatedSeries = series.copyWith(
-                folderPosterPath: newFolderPosterPath,
-                folderBannerPath: newFolderBannerPath,
-                posterColor: newLocalPosterColor,
-                bannerColor: newLocalBannerColor,
-                preferredPosterSource: isBanner ? series.preferredPosterSource : source,
-                preferredBannerSource: isBanner ? source : series.preferredBannerSource,
-              );
-
-              final seriesScreenState = seriesScreenKey.currentState;
-              if (seriesScreenState != null) {
-                // log('Disabling poster/banner change buttons');
-                seriesScreenState.posterChangeDisabled = !isBanner;
-                seriesScreenState.bannerChangeDisabled = isBanner;
-              }
-
-              if (libraryScreenKey.currentState != null) libraryScreenKey.currentState!.updateSeriesInSortCache(updatedSeries);
-              logTrace('Saving ${isBanner ? 'banner' : 'poster'} preference: $source, path: ${PathUtils.getFileName(path)}');
-              snackBar(
-                'Saving preference...',
-                severity: InfoBarSeverity.info,
-              );
-
-              // Calculate dominant color for local images
-              if (isLocalSource) {
-                if (!isBanner) {
-                  await updatedSeries.calculateLocalPosterDominantColor(forceRecalculate: true);
-                } else {
-                  await updatedSeries.calculateLocalBannerDominantColor(forceRecalculate: true);
-                }
-              }
-
-              Manager.setState(() => Manager.currentDominantColor = updatedSeries.effectivePrimaryColorSync());
-
-              // Explicitly save the entire series and show confirmation
-              library.updateSeries(updatedSeries, invalidateCache: false).then((_) {
-                snackBar(
-                  isBanner ? 'Banner preference saved' : 'Poster preference saved',
-                  severity: InfoBarSeverity.success,
-                );
-                final seriesScreenState = seriesScreenKey.currentState;
-                if (seriesScreenState != null) {
-                  // log('Enabling poster/banner change buttons');
-                  seriesScreenState.posterChangeDisabled = false;
-                  seriesScreenState.bannerChangeDisabled = false;
-                }
-                Manager.setState();
-              });
-            },
-          ),
-        );
-}
-
 class ImageSelectionContent extends StatefulWidget {
   final Series series;
   final BoxConstraints constraints;
   final Function(ImageSource, String) onSave;
-  final VoidCallback? onCancel;
   final bool isBanner;
 
   const ImageSelectionContent({
@@ -139,7 +28,6 @@ class ImageSelectionContent extends StatefulWidget {
     required this.series,
     required this.constraints,
     required this.onSave,
-    this.onCancel,
     required this.isBanner,
   });
 
@@ -278,125 +166,119 @@ class _ImageSelectionContentState extends State<ImageSelectionContent> {
     else
       isAvailable = s.isAnilistPosterBeingUsed ? s.effectivePosterPath != null : false; // Only available if linked to Anilist and actually has a poster on Anilist
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Choose the ${widget.isBanner ? 'banner' : 'poster'} image source for "${widget.series.name}"',
-          style: Manager.bodyStyle,
-        ),
-        SizedBox(height: 20),
-
-        Expanded(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // Local poster option
-              Expanded(
-                child: _localImageFiles.isEmpty
-                    ? _buildPosterOption(
-                        title: 'Local Folder Images',
-                        isAvailable: false,
-                        isLoading: _localImageLoading,
-                        posterProvider: null,
-                        source: ImageSource.local,
-                        unavailableMessage: 'No local images available,\nPlease add images to the folder',
-                      )
-                    : _buildLocalImagesOption(),
-              ),
-              SizedBox(width: 16),
-              // Anilist poster option
-              Expanded(
-                child: _buildPosterOption(
-                  title: 'Anilist Image',
-                  isAvailable: isAvailable,
-                  isLoading: _anilistImageLoading,
-                  posterProvider: _anilistImageProvider,
-                  source: ImageSource.anilist,
-                  unavailableMessage: 'No Anilist image available',
-                  linkToAnilistAction: () {
-                    linkWithAnilist(
-                      context,
-                      widget.series,
-                      (ids) => seriesScreenKey.currentState!.loadAnilistData(ids),
-                      (_) => seriesScreenKey.currentState?.setState(() {}),
-                    );
-                  },
-                ),
-              ),
-            ],
+    final style = ContentDialogThemeData.standard(FluentTheme.of(Manager.context)).merge(FluentTheme.of(context).dialogTheme);
+    return Container(
+      padding: style.padding,
+      decoration: style.decoration,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(widget.isBanner ? 'Select Banner Image' : 'Select Poster Image', style: Manager.titleStyle),
+          Text(
+            'Choose the ${widget.isBanner ? 'banner' : 'poster'} image source for "${widget.series.name}"',
+            style: Manager.bodyStyle,
           ),
-        ),
+          SizedBox(height: 20),
 
-        SizedBox(height: 20),
-        // Status message
-        _canSavePreference()
-            ? Text.rich(
-                TextSpan(children: [
-                  TextSpan(
-                    text: 'New preference: ',
-                    style: Manager.bodyStrongStyle,
-                  ),
-                  TextSpan(
-                    text: _getSourceDisplayName(_selectedSource),
-                    style: Manager.bodyStrongStyle.copyWith(color: Manager.accentColor.lighter),
-                  ),
-                ]),
-              )
-            : Text.rich(
-                TextSpan(children: [
-                  TextSpan(
-                    text: 'Current preference: ',
-                    style: Manager.bodyStrongStyle,
-                  ),
-                  TextSpan(
-                    text: widget.isBanner ? _getSourceDisplayName(widget.series.preferredBannerSource ?? Manager.defaultPosterSource) : _getSourceDisplayName(widget.series.preferredPosterSource ?? Manager.defaultPosterSource),
-                    style: Manager.bodyStrongStyle,
-                  ),
-                ]),
-              ),
-        SizedBox(height: 20),
-        // Action buttons
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            TooltipTheme(
-              data: TooltipThemeData(
-                waitDuration: const Duration(milliseconds: 100),
-              ),
-              child: TooltipWrapper(
-                tooltip: 'Reset to ${_getSourceDisplayName(Manager.defaultPosterSource)}\nThis setting can be changed in settings',
-                child: (_) => ManagedDialogButton(
-                  onPressed: () {
-                    _deselectEverything();
-                    widget.onSave(
-                      _selectedSource,
-                      widget.isBanner
-                          ? Manager.defaultBannerSource == ImageSource.local || Manager.defaultPosterSource == ImageSource.autoLocal
-                              ? _localImageFiles[_selectedLocalImageIndex!].path
-                              : widget.series.anilistData?.bannerImage ?? ''
-                          : Manager.defaultPosterSource == ImageSource.local || Manager.defaultPosterSource == ImageSource.autoLocal
-                              ? _localImageFiles[_selectedLocalImageIndex!].path
-                              : widget.series.anilistData?.posterImage ?? '',
-                    );
-                    Manager.setState();
-                  },
-                  text: 'Reset to Auto',
-                ),
-              ),
-            ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
+          Expanded(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                ManagedDialogButton(
-                  text: 'Cancel',
-                  onPressed: () => widget.onCancel?.call(),
+                // Local poster option
+                Expanded(
+                  child: _localImageFiles.isEmpty
+                      ? _buildPosterOption(
+                          title: 'Local Folder Images',
+                          isAvailable: false,
+                          isLoading: _localImageLoading,
+                          posterProvider: null,
+                          source: ImageSource.local,
+                          unavailableMessage: 'No local images available,\nPlease add images to the folder',
+                        )
+                      : _buildLocalImagesOption(),
                 ),
-                SizedBox(width: 8),
-                TooltipWrapper(
-                  tooltip: _canSavePreference() ? 'Save the selected image preference' : 'Select an image first',
-                  child: (_) => ManagedDialogButton(
+                SizedBox(width: 16),
+                // Anilist poster option
+                Expanded(
+                  child: _buildPosterOption(
+                    title: 'Anilist Image',
+                    isAvailable: isAvailable,
+                    isLoading: _anilistImageLoading,
+                    posterProvider: _anilistImageProvider,
+                    source: ImageSource.anilist,
+                    unavailableMessage: 'No Anilist image available',
+                    linkToAnilistAction: () {
+                      linkWithAnilist(
+                        context,
+                        widget.series,
+                        (ids) => seriesScreenKey.currentState!.loadAnilistData(ids),
+                        (_) => seriesScreenKey.currentState?.setState(() {}),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          SizedBox(height: 20),
+          // Status message
+          _canSavePreference()
+              ? Text.rich(
+                  TextSpan(children: [
+                    TextSpan(
+                      text: 'New preference: ',
+                      style: Manager.bodyStrongStyle,
+                    ),
+                    TextSpan(
+                      text: _getSourceDisplayName(_selectedSource),
+                      style: Manager.bodyStrongStyle.copyWith(color: Manager.accentColor.lighter),
+                    ),
+                  ]),
+                )
+              : Text.rich(
+                  TextSpan(children: [
+                    TextSpan(
+                      text: 'Current preference: ',
+                      style: Manager.bodyStrongStyle,
+                    ),
+                    TextSpan(
+                      text: widget.isBanner ? _getSourceDisplayName(widget.series.preferredBannerSource ?? Manager.defaultPosterSource) : _getSourceDisplayName(widget.series.preferredPosterSource ?? Manager.defaultPosterSource),
+                      style: Manager.bodyStrongStyle,
+                    ),
+                  ]),
+                ),
+          SizedBox(height: 20),
+          // Action buttons
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              PaddedDialogButton(
+                tooltip: 'Reset to ${_getSourceDisplayName(Manager.defaultPosterSource)}\nThis setting can be changed in settings',
+                onPressed: () {
+                  _deselectEverything();
+                  widget.onSave(
+                    _selectedSource,
+                    widget.isBanner
+                        ? Manager.defaultBannerSource == ImageSource.local || Manager.defaultPosterSource == ImageSource.autoLocal
+                            ? _localImageFiles[_selectedLocalImageIndex!].path
+                            : widget.series.anilistData?.bannerImage ?? ''
+                        : Manager.defaultPosterSource == ImageSource.local || Manager.defaultPosterSource == ImageSource.autoLocal
+                            ? _localImageFiles[_selectedLocalImageIndex!].path
+                            : widget.series.anilistData?.posterImage ?? '',
+                  );
+                  Manager.setState();
+                },
+                text: 'Reset to Auto',
+              ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  PaddedDialogButton(text: 'Cancel'),
+                  SizedBox(width: 8),
+                  PaddedDialogButton(
                     isPrimary: true,
+                    tooltip: _canSavePreference() ? 'Save the selected image preference' : 'Select an image first',
                     text: 'Save Preference',
                     onPressed: _canSavePreference()
                         ? () {
@@ -412,12 +294,12 @@ class _ImageSelectionContentState extends State<ImageSelectionContent> {
                           }
                         : null,
                   ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ],
+                ],
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 

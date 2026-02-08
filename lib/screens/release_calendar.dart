@@ -537,12 +537,7 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> with Autom
           int? anilistIdToCheck;
 
           // Extract the AniList ID based on notification type
-          anilistIdToCheck = switch (notification) {
-            AiringNotification n => n.animeId,
-            RelatedMediaAdditionNotification n => n.mediaId,
-            MediaDataChangeNotification n => n.mediaId,
-            _ => null,
-          };
+          anilistIdToCheck = notification.anilistId;
 
           // Look for a series with matching anilist ID
           if (anilistIdToCheck != null) {
@@ -1069,7 +1064,15 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> with Autom
     final sortedDates = entriesByDate.keys.toList()..sort();
 
     final List<Object> flattenedList = [];
+    final todayKey = DateTime(now.year, now.month, now.day);
+    bool dividerInserted = false;
     for (final date in sortedDates) {
+      // Insert a divider before the first date that is today or in the future
+      if (!dividerInserted && !date.isBefore(todayKey)) {
+        // Only add divider if there are past entries before this
+        if (flattenedList.isNotEmpty) flattenedList.add(const _PastFutureDivider());
+        dividerInserted = true;
+      }
       flattenedList.add(date); // Add the date as a header item
       flattenedList.addAll(entriesByDate[date]!); // Add all entries for that date
     }
@@ -1111,7 +1114,11 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> with Autom
                 Icon(FluentIcons.calendar_day, size: 48, color: FluentTheme.of(context).inactiveColor),
                 VDiv(16),
                 Text(
-                  isToday ? 'No episodes scheduled for today' : isFutureDate ? 'No episodes scheduled for this date' : 'No episodes aired on this date',
+                  isToday
+                      ? 'No episodes scheduled for today'
+                      : isFutureDate
+                          ? 'No episodes scheduled for this date'
+                          : 'No episodes aired on this date',
                   style: FluentTheme.of(context).typography.subtitle,
                 ),
               ],
@@ -1165,6 +1172,32 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> with Autom
                         itemCount: flattenedList.length,
                         itemBuilder: (context, index) {
                           final item = flattenedList[index];
+
+                          // Past/future divider
+                          if (item is _PastFutureDivider) {
+                            return Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                              child: Padding(
+                                padding: const EdgeInsets.only(top: 12.0),
+                                child: Row(
+                                  children: [
+                                    const Expanded(child: Divider()),
+                                    Padding(
+                                      padding: const EdgeInsets.symmetric(horizontal: 12.0),
+                                      child: Text(
+                                        'Upcoming',
+                                        style: Manager.captionStyle.copyWith(
+                                          color: FluentTheme.of(context).inactiveColor,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ),
+                                    const Expanded(child: Divider()),
+                                  ],
+                                ),
+                              ),
+                            );
+                          }
 
                           // Date header
                           if (item is DateTime) {
@@ -1230,62 +1263,67 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> with Autom
   }
 
   Widget _buildCalendarEntryItem(CalendarEntry entry) {
-    return switch (entry) {
-      NotificationCalendarEntry notificationEntry => NotificationCalendarEntryWidget(
-          notificationEntry.notification,
-          notificationEntry.series,
-          onSeriesSelected: widget.onSeriesSelected,
-          onDownloadButton: (animeId, episodeId) {
-            // TODO callback for when user wants to download this episode -> go to download page with preselected anime/episode
-            log('Download button clicked for episode $episodeId of anime ID: $animeId');
-            snackBar('Download feature not implemented yet', severity: InfoBarSeverity.warning);
-          },
-          onAddedToList: (animeId) {
-            // TODO show anilist dialog with list preselected to Plan to Watch
-            log('Add to list clicked for anime ID: $animeId');
-            snackBar('Add to list feature not implemented yet', severity: InfoBarSeverity.warning);
-          },
-          onRelatedMediaAdditionNotificationTapped: (animeId) {
-            final url = 'https://anilist.co/anime/$animeId';
-            logTrace('Opening related media addition notification URL: $url');
-            launchUrl(Uri.parse(url));
-          },
-          onMediaDataChangeNotificationTapped: (animeId) async {
-            final url = 'https://anilist.co/anime/$animeId';
-            logTrace('Opening media data change notification URL: $url');
-            launchUrl(Uri.parse(url));
-          },
-          onNotificationRead: (notificationId) async {
-            // check if the notification is already marked as read and if so, do nothing
-            if (notificationEntry.notification.isRead) return;
+    try {
+      return switch (entry) {
+        NotificationCalendarEntry notificationEntry => NotificationCalendarEntryWidget(
+            notificationEntry.notification,
+            notificationEntry.series,
+            onSeriesSelected: widget.onSeriesSelected,
+            onDownloadButton: (animeId, episodeId) {
+              // TODO callback for when user wants to download this episode -> go to download page with preselected anime/episode
+              log('Download button clicked for episode $episodeId of anime ID: $animeId');
+              snackBar('Download feature not implemented yet', severity: InfoBarSeverity.warning);
+            },
+            onAddedToList: (animeId) {
+              // TODO show anilist dialog with list preselected to Plan to Watch
+              log('Add to list clicked for anime ID: $animeId');
+              snackBar('Add to list feature not implemented yet', severity: InfoBarSeverity.warning);
+            },
+            onRelatedMediaAdditionNotificationTapped: (animeId) {
+              final url = 'https://anilist.co/anime/$animeId';
+              logTrace('Opening related media addition notification URL: $url');
+              launchUrl(Uri.parse(url));
+            },
+            onMediaDataChangeNotificationTapped: (animeId) async {
+              final url = 'https://anilist.co/anime/$animeId';
+              logTrace('Opening media data change notification URL: $url');
+              launchUrl(Uri.parse(url));
+            },
+            onNotificationRead: (notificationId) async {
+              // check if the notification is already marked as read and if so, do nothing
+              if (notificationEntry.notification.isRead) return;
 
-            final library = Provider.of<Library>(context, listen: false);
-            await AnilistService().markAsRead(library.database, notificationId);
-            setState(() {
-              final dateKey = DateTime(notificationEntry.date.year, notificationEntry.date.month, notificationEntry.date.day);
-              final entriesForDate = _calendarCache[dateKey];
-              if (entriesForDate != null) {
-                _calendarCache[dateKey] = entriesForDate.map((e) {
-                  if (e is NotificationCalendarEntry && e.notification.id == notificationId) {
-                    final updatedNotification = e.notification.copyWith(isRead: true);
-                    return NotificationCalendarEntry(notification: updatedNotification, series: e.series);
-                  }
-                  return e;
-                }).toList();
-              }
-            });
-          },
-        ),
-      EpisodeCalendarEntry episodeEntry => ScheduledEpisodeCalendarEntryWidget(
-          episodeEntry: episodeEntry,
-          onNotificationButtonToggled: (series) /* we have the DB id of the series, not anilist id */ {
-            // TODO callback for when user wants to be notified about this episode(remember to account for when seriesId is -1)
-            log('Notification button toggled for episode ${episodeEntry.episodeInfo.airingEpisode.episode} of series: ${series?.name}');
-            snackBar('Notification feature not implemented yet', severity: InfoBarSeverity.warning);
-          },
-        ),
-      _ => const SizedBox(), // fallback for abstract CalendarEntry
-    };
+              final library = Provider.of<Library>(context, listen: false);
+              await AnilistService().markAsRead(library.database, notificationId);
+              setState(() {
+                final dateKey = DateTime(notificationEntry.date.year, notificationEntry.date.month, notificationEntry.date.day);
+                final entriesForDate = _calendarCache[dateKey];
+                if (entriesForDate != null) {
+                  _calendarCache[dateKey] = entriesForDate.map((e) {
+                    if (e is NotificationCalendarEntry && e.notification.id == notificationId) {
+                      final updatedNotification = e.notification.copyWith(isRead: true);
+                      return NotificationCalendarEntry(notification: updatedNotification, series: e.series);
+                    }
+                    return e;
+                  }).toList();
+                }
+              });
+            },
+          ),
+        EpisodeCalendarEntry episodeEntry => ScheduledEpisodeCalendarEntryWidget(
+            episodeEntry: episodeEntry,
+            onNotificationButtonToggled: (series) /* we have the DB id of the series, not anilist id */ {
+              // TODO callback for when user wants to be notified about this episode(remember to account for when seriesId is -1)
+              log('Notification button toggled for episode ${episodeEntry.episodeInfo.airingEpisode.episode} of series: ${series?.name}');
+              snackBar('Notification feature not implemented yet', severity: InfoBarSeverity.warning);
+            },
+          ),
+        _ => const SizedBox(), // fallback for abstract CalendarEntry
+      };
+    } catch (e) {
+      logErr('Error building calendar entry item', e);
+      return const SizedBox.shrink();
+    }
   }
 
   String _getRelativeDateLabel(DateTime date) {
@@ -1365,4 +1403,9 @@ class NotificationCalendarEntry extends CalendarEntry {
   }) : super(
           date: notification.createdAt != 0 ? DateTime.fromMillisecondsSinceEpoch(notification.createdAt * 1000) : now,
         );
+}
+
+/// Sentinel marker inserted into the flattened list to render a divider between aired entries and scheduled entries
+class _PastFutureDivider {
+  const _PastFutureDivider();
 }

@@ -53,19 +53,24 @@ class _ReleaseNotificationWidgetState extends State<ReleaseNotificationWidget> {
   }
 
   Future<void> _initializeService() async {
-    final anilistProvider = Provider.of<AnilistProvider>(context, listen: false);
-    if (anilistProvider.isLoggedIn) {
-      _anilistService = AnilistService();
-      await _loadNotifications();
+    try {
+      final anilistProvider = Provider.of<AnilistProvider>(context, listen: false);
+      if (anilistProvider.isLoggedIn) {
+        _anilistService = AnilistService();
+        await _loadNotifications();
 
-      // Set up a periodic refresh for notifications
-      _refreshTimer = Timer.periodic(const Duration(minutes: 5), (timer) {
-        if (mounted && _anilistService != null) {
-          _loadNotifications();
-        } else {
-          timer.cancel();
-        }
-      });
+        // Set up a periodic refresh for notifications
+        _refreshTimer = Timer.periodic(const Duration(minutes: 5), (timer) {
+          if (mounted && _anilistService != null) {
+            _loadNotifications();
+          } else {
+            timer.cancel();
+          }
+        });
+      }
+    } catch (e) {
+      // Prevent notification initialization errors from crashing the app
+      debugPrint('Error initializing notification service: $e');
     }
   }
 
@@ -108,23 +113,24 @@ class _ReleaseNotificationWidgetState extends State<ReleaseNotificationWidget> {
     // Prevent multiple clicks during toggle
     if (_isDialogToggling || Manager.notificationsPopping) return;
 
-    final currentDialog = Manager.navigation.currentView;
-    if (Manager.navigation.hasDialog) {
-      _isDialogToggling = true;
-      closeDialog(context);
-      //get current top dialog id
-      if (currentDialog?.id == "notifications") {
+    try {
+      final currentDialog = Manager.navigation.currentView;
+      if (Manager.navigation.hasDialog) {
+        _isDialogToggling = true;
+        closeDialog(context);
+        //get current top dialog id
+        if (currentDialog?.id == "notifications") {
+          _isDialogToggling = false;
+          return;
+        }
+        await Future.delayed(dimDuration);
         _isDialogToggling = false;
-        return;
       }
-      await Future.delayed(dimDuration);
-      _isDialogToggling = false;
-    }
-    _notificationsOpen = true;
+      _notificationsOpen = true;
 
-    if (!context.mounted) return;
+      if (!context.mounted) return;
 
-    await showPaddedDialog(
+      await showPaddedDialog(
       context,
       navigationItem: DialogNavigationItem(
         id: 'notifications',
@@ -173,8 +179,13 @@ class _ReleaseNotificationWidgetState extends State<ReleaseNotificationWidget> {
       },
     ).then((_) => _notificationsOpen = false);
 
-    // Refresh the unread count after the dialog is closed
-    await _loadNotifications();
+      // Refresh the unread count after the dialog is closed
+      await _loadNotifications();
+    } catch (e) {
+      _isDialogToggling = false;
+      _notificationsOpen = false;
+      debugPrint('Error showing notification dialog: $e');
+    }
   }
 
   @override

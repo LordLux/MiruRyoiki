@@ -65,26 +65,11 @@ class _NotificationCalendarEntryWidgetState extends State<NotificationCalendarEn
   }
 
   String _getNotificationTitle(AnilistNotification notification, Series? series) {
-    return switch (notification) {
-      AiringNotification airing => airing.getFormattedTitle(series?.displayTitle),
-      RelatedMediaAdditionNotification related => '${series?.displayTitle ?? related.media?.title ?? 'Unknown anime'} was added to Anilist',
-      MediaDataChangeNotification dataChange => '${series?.displayTitle ?? dataChange.media?.title ?? 'Unknown anime'} was updated',
-      MediaMergeNotification merge => '${series?.displayTitle ?? merge.media?.title ?? 'Unknown anime'} was merged',
-      MediaDeletionNotification deletion => '${deletion.deletedMediaTitle ?? 'Unknown Anime'} was deleted',
-      _ => 'Unknown notification',
-    };
+    if (notification is AiringNotification) return notification.getFormattedTitle(series?.displayTitle);
+    return notification.getDisplayTitle(series?.displayTitle);
   }
 
-  String? _getNotificationImageString(AnilistNotification notification) {
-    return switch (notification) {
-      AiringNotification airing => airing.media?.coverImage,
-      RelatedMediaAdditionNotification related => related.media?.coverImage,
-      MediaDataChangeNotification dataChange => dataChange.media?.coverImage,
-      MediaMergeNotification merge => merge.media?.coverImage,
-      MediaDeletionNotification _ => null, // No media info for deletion notifications
-      _ => null,
-    };
-  }
+  String? _getNotificationImageString(AnilistNotification notification) => notification.coverImageUrl;
 
   @override
   Widget build(BuildContext context) {
@@ -144,7 +129,7 @@ class _NotificationCalendarEntryWidgetState extends State<NotificationCalendarEn
           );
         return child;
       },
-      subtitle: formatTimeAgo(widget.notification, notificationDate, widget.isDense, customStr: isMediaDataChangeNotification ? 'Updated' : null),
+      subtitle: formatTimeAgo(widget.notification, notificationDate, widget.isDense),
       subtitleTooltip: widget.isDense ? notificationDate : null,
       timestamp: widget.isDense ? null : DateFormat.yMMMd().add_jm().format(notificationDate),
       isRead: widget.notification.isRead,
@@ -203,7 +188,7 @@ class _NotificationCalendarEntryWidgetState extends State<NotificationCalendarEn
                     icon: (isHovered) => anim.AnimatedIcon(Icon(Symbols.download, color: isHovered ? Colors.white : Manager.accentColor.light, weight: 400, grade: 0, opticalSize: 24, size: 18)),
                     onPressed: () async => widget.onDownloadButton!((widget.notification as AiringNotification).animeId, (widget.notification as AiringNotification).episode),
                     tooltipWaitDuration: longDuration,
-                    tooltip: 'Download this episode',
+                    tooltip: 'Download this episode', // TODO different tooltip based on entry type (movie, tv, ona, ova, etc)
                   );
                 },
               ),
@@ -238,7 +223,7 @@ class _NotificationCalendarEntryWidgetState extends State<NotificationCalendarEn
   }
 }
 
-String formatTimeAgo(AnilistNotification? notification, DateTime notificationDate, bool isDense, {String? customStr}) {
+String formatTimeAgo(AnilistNotification? notification, DateTime notificationDate, bool isDense) {
   String str = "";
   final compareNowDate = now;
   final compareTodayDate = DateTime(compareNowDate.year, compareNowDate.month, compareNowDate.day);
@@ -252,7 +237,8 @@ String formatTimeAgo(AnilistNotification? notification, DateTime notificationDat
   else
     str = '${duration.inMinutes} minute${duration.inMinutes > 1 ? 's' : ''} ago';
 
-  if (notification == null || notification is! RelatedMediaAdditionNotification) str = '${customStr ?? "Aired"} $str';
+  final verb = notification?.actionVerb ?? 'Aired';
+  if (verb.isNotEmpty) str = '$verb $str';
   return str;
 }
 

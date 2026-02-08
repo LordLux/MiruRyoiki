@@ -57,14 +57,22 @@ class NavigationManager extends ChangeNotifier {
   final GlobalKey<NavigatorState> _navigatorKey;
   NavigationManager(this._navigatorKey);
 
+  static const String HomeId = 'home';
+  static const String LibraryId = 'library';
+  static const String CalendarId = 'calendar';
+  static const String BrowseId = 'search';
+  static const String TorrentId = 'torrent';
+  static const String AccountsId = 'accounts';
+  static const String SettingsId = 'settings';
+
   static final Map<int, Map<String, dynamic>> _navigationMap = {
-    HomeIndex: {'id': 'home', 'title': 'Home', 'controller': null},
-    LibraryIndex: {'id': 'library', 'title': 'Library', 'controller': null},
-    CalendarIndex: {'id': 'calendar', 'title': 'Releases', 'controller': null},
-    BrowseIndex: {'id': 'search', 'title': 'Search', 'controller': null},
-    TorrentIndex: {'id': 'torrent', 'title': 'Torrent', 'controller': null},
-    AccountsIndex: {'id': 'accounts', 'title': 'Account', 'controller': null},
-    SettingsIndex: {'id': 'settings', 'title': 'Settings', 'controller': null},
+    HomeIndex: {'id': HomeId, 'title': 'Home', 'controller': null},
+    LibraryIndex: {'id': LibraryId, 'title': 'Library', 'controller': null},
+    CalendarIndex: {'id': CalendarId, 'title': 'Releases', 'controller': null},
+    BrowseIndex: {'id': BrowseId, 'title': 'Search', 'controller': null},
+    TorrentIndex: {'id': TorrentId, 'title': 'Torrent', 'controller': null},
+    AccountsIndex: {'id': AccountsId, 'title': 'Account', 'controller': null},
+    SettingsIndex: {'id': SettingsId, 'title': 'Settings', 'controller': null},
   };
 
   static Map<String, dynamic> get HomeMap => _navigationMap[HomeIndex]!;
@@ -82,14 +90,6 @@ class NavigationManager extends ChangeNotifier {
   static const int TorrentIndex = 4;
   static const int AccountsIndex = 5;
   static const int SettingsIndex = 6;
-
-  static String get HomeId => HomeMap['id'] as String;
-  static String get LibraryId => LibraryMap['id'] as String;
-  static String get CalendarId => CalendarMap['id'] as String;
-  static String get BrowseId => BrowseMap['id'] as String;
-  static String get TorrentId => TorrentMap['id'] as String;
-  static String get AccountsId => AccountsMap['id'] as String;
-  static String get SettingsId => SettingsMap['id'] as String;
 
   static String get HomeTitle => HomeMap['title'] as String;
   static String get LibraryTitle => LibraryMap['title'] as String;
@@ -139,18 +139,22 @@ class NavigationManager extends ChangeNotifier {
   bool get hasPage => _stack.isNotEmpty && _stack.last.level == NavigationLevel.page;
   bool get hasDialog => _stack.length > 1 && _stack.last.level == NavigationLevel.dialog;
   bool get isDialogLocked => hasDialog && !(_stack.last as DialogNavigationItem).dialogDoPopCheck();
+
   /// Returns if between the closest pane and the current view there is at least one page.
   bool get isTherePage {
     // Find the last pane index
     final lastPaneIndex = _stack.lastIndexWhere((item) => item.level == NavigationLevel.pane);
     if (lastPaneIndex == -1 || lastPaneIndex == _stack.length - 1) return false;
-    
+
     // Check if any items between the pane and current view are pages
     return _stack.sublist(lastPaneIndex + 1).any((item) => item.level == NavigationLevel.page);
   }
 
   bool get canGoBack => _stack.length > 1;
   bool get canGoForward => _forwardStack.isNotEmpty;
+
+  DateTime? _lastDialogOpenTime;
+  DateTime? get lastDialogOpenTime => _lastDialogOpenTime;
 
   /// Pushes a Pane. Adds to history
   void pushPaneIndex(int index, {Object? data}) {
@@ -196,6 +200,7 @@ class NavigationManager extends ChangeNotifier {
   bool pushDialog(DialogNavigationItem item) {
     if (isDialogLocked) return false; // Prevent opening new dialog if existing one cannot be closed
 
+    _lastDialogOpenTime = now;
     _pushToStack(item);
     return true;
   }

@@ -3,7 +3,6 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:miruryoiki/services/navigation/dialogs.dart';
 import 'package:miruryoiki/services/navigation/show_info.dart';
-import 'package:miruryoiki/services/window/service.dart';
 import 'package:miruryoiki/theme.dart';
 import 'package:provider/provider.dart';
 
@@ -319,10 +318,7 @@ class _CustomKeyboardListenerState extends State<CustomKeyboardListener> {
       //   _toggleSeason(9);
       // } else if (isCtrlPressed && event.logicalKey == LogicalKeyboardKey.digit0) {
       //   _toggleSeason(0);
-      // } else
-      if (event.logicalKey == LogicalKeyboardKey.f11) {
-        WindowStateService.toggleFullScreen();
-      }
+      // }
     } else if (event is RawKeyUpEvent) {
       // Update key states on key release
       if (event.logicalKey == LogicalKeyboardKey.controlLeft || event.logicalKey == LogicalKeyboardKey.controlRight) {
@@ -358,7 +354,7 @@ class _CustomKeyboardListenerState extends State<CustomKeyboardListener> {
     // Handle dialog closure
     if (Manager.navigation.hasDialog) {
       if (!isBackFromEscKey) {
-        logTrace('$nowFormatted | Back Mouse Button Pressed: Closing dialog');
+        logTrace('Back Mouse Button Pressed: Closing dialog');
         // goBack() will pop the navigator, which closes the dialog
         return Manager.navigation.popDialog();
       }

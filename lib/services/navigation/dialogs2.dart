@@ -121,12 +121,12 @@ class Position {
       Alignment.bottomLeft => Position(bottom: 0, left: 0),
       Alignment.centerLeft => Position(left: 0),
       _ => Position(
-        top: ScreenUtils.height * ((alignment.y + 1) / 2),
-        left: ScreenUtils.width * ((alignment.x + 1) / 2),
-      ),
+          top: ScreenUtils.height * ((alignment.y + 1) / 2),
+          left: ScreenUtils.width * ((alignment.x + 1) / 2),
+        ),
     };
   }
-  
+
   @override
   String toString() {
     final StringBuffer sb = StringBuffer('Position(');
@@ -178,14 +178,14 @@ class PaddedDialog extends StatefulWidget {
   final _PaddedDialogType _type;
 
   /// Creates a [PaddedDialog].
-  const PaddedDialog({
+  PaddedDialog({
     super.key,
     required this.title,
     required this.contentBuilder,
     EdgeInsets? padding,
     this.actions,
     BoxConstraints? constraints,
-    this.theme,
+    ContentDialogThemeData? theme,
     this.alignment,
     this.onDismiss,
     this.navigationItem,
@@ -194,6 +194,20 @@ class PaddedDialog extends StatefulWidget {
   })  : _type = type,
         padding = padding ?? const EdgeInsets.all(16.0),
         constraints = constraints ?? const BoxConstraints(maxWidth: 500, maxHeight: 300, minWidth: 300),
+        // TODO
+        //theme = (theme ?? ContentDialogThemeData()).merge(
+        //   ContentDialogThemeData(
+        //     actionsDecoration: BoxDecoration(
+        //       border: Border.all(
+        //         color: Colors.transparent,
+        //         width: 0,
+        //       ),
+        //       color: Colors.transparent,
+        //     ),
+        //   ),
+        // ),
+        theme = theme,
+
         // [navigationItem] can't be defaulted here
         barrierOptions = barrierOptions ?? const PaddedBarrierOptions();
 
@@ -221,11 +235,11 @@ class PaddedDialog extends StatefulWidget {
     required DialogNavigationItem? navigationItem,
     required PaddedBarrierOptions? barrierOptions,
   }) {
-    alignment ??= Position.fromAlignment(Alignment.center);
+    alignment ??= Position();
     constraints ??= BoxConstraints(maxWidth: 500, maxHeight: 300, minWidth: 300);
     return PaddedDialog(
       title: title,
-      contentBuilder: (_, __) => content,
+      contentBuilder: (_, constraints) => ConstrainedBox(constraints: constraints, child: content),
       padding: padding,
       actions: (data) => actions ?? [],
       constraints: constraints,
@@ -256,7 +270,7 @@ class PaddedDialog extends StatefulWidget {
     required DialogNavigationItem? navigationItem,
     required PaddedBarrierOptions? barrierOptions,
   }) {
-    alignment ??= Position.fromAlignment(Alignment.center);
+    alignment ??= Position();
     constraints ??= BoxConstraints(maxWidth: 500, maxHeight: 300, minWidth: 300);
     return PaddedDialog(
       title: null,
@@ -404,7 +418,7 @@ class PaddedDialogState extends State<PaddedDialog> {
                           child: widget.contentBuilder(context, currentConstraints),
                         ),
                       ),
-                      actions: widget.actions != null ? widget.actions!(null) : [],
+                      actions: widget.actions != null ? widget.actions!(null) : null,
                     ),
                   _PaddedDialogType.custom => mat.Material(
                       color: Colors.transparent,

@@ -80,11 +80,11 @@ Future showSimpleManagedDialog(
         content: builder != null ? builder(context) : Text(body, style: Manager.bodyStyle),
         constraints: constraints,
         actions: [
-          ManagedDialogButton(
+          PaddedDialogButton(
             text: negativeButtonText,
             onPressed: () => onNegative?.call(),
           ),
-          ManagedDialogButton(
+          PaddedDialogButton(
             isPrimary: isPositiveButtonPrimary,
             text: positiveButtonText,
             onPressed: () => onPositive?.call(),
@@ -196,11 +196,11 @@ Future showSimpleTickboxManagedDialog(
         ),
         constraints: constraints ?? const BoxConstraints(maxWidth: 500, minWidth: 300),
         actions: [
-          ManagedDialogButton(
+          PaddedDialogButton(
             text: negativeButtonText,
             onPressed: () => onNegative?.call(localTickboxValue),
           ),
-          ManagedDialogButton(
+          PaddedDialogButton(
             isPrimary: isPositiveButtonPrimary,
             text: positiveButtonText,
             onPressed: () => onPositive?.call(localTickboxValue),
@@ -271,7 +271,7 @@ Future showSimpleOneButtonManagedDialog(
         content: builder != null ? builder(context) : Text(body, style: Manager.bodyStyle),
         constraints: constraints,
         actions: [
-          ManagedDialogButton(
+          PaddedDialogButton(
             isPrimary: isPositiveButtonPrimary,
             text: positiveButtonText,
             onPressed: () => onPositive?.call(),
@@ -336,7 +336,7 @@ Future showSimpleNoButtonManagedDialog(
 
 void kEmptyVoidCallBack() {}
 
-class ManagedDialogButton extends StatelessWidget {
+class PaddedDialogButton extends StatelessWidget {
   /// Callback to be executed when the button is pressed, the closing of the dialog is handled by the widget itself
   final VoidCallback? onPressed;
   final String text;
@@ -344,8 +344,9 @@ class ManagedDialogButton extends StatelessWidget {
   final bool isDisabled;
   final String? tooltip;
   final bool isLoading;
+  final bool closeDialogAfterPress;
 
-  const ManagedDialogButton({
+  const PaddedDialogButton({
     super.key,
     this.onPressed = kEmptyVoidCallBack,
     this.text = 'Cancel',
@@ -353,7 +354,29 @@ class ManagedDialogButton extends StatelessWidget {
     this.isDisabled = false,
     this.isLoading = false,
     this.tooltip,
+    this.closeDialogAfterPress = true,
   });
+
+  static Widget pair({
+    required PaddedDialogButton button1,
+    required PaddedDialogButton button2,
+    double? width1,
+    double? width2,
+  }) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        SizedBox(
+          width: width1,
+          child: button1,
+        ),
+        SizedBox(
+          width: width2,
+          child: button2,
+        ),
+      ],
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -362,7 +385,7 @@ class ManagedDialogButton extends StatelessWidget {
       onPressed?.call();
 
       // Close the dialog
-      closeDialog();
+      if (closeDialogAfterPress) closeDialog();
     }
 
     return MouseButtonWrapper(
@@ -391,269 +414,21 @@ class ManagedDialogButton extends StatelessWidget {
   }
 }
 
-class ManagedDialog extends StatefulWidget {
-  final Widget? title;
-  final Widget Function(BuildContext, BoxConstraints)? contentBuilder;
-  final List<Widget> Function(dynamic)? actions;
-  final BoxConstraints constraints;
-  final Alignment alignment;
-  final ContentDialogThemeData? theme;
-  final BuildContext popContext;
-
-  const ManagedDialog({
-    super.key,
-    required this.title,
-    required this.popContext,
-    this.contentBuilder,
-    this.actions,
-    this.constraints = const BoxConstraints(maxWidth: 500, minWidth: 300),
-    this.theme,
-    this.alignment = Alignment.center,
-  });
-
-  @override
-  State<ManagedDialog> createState() => ManagedDialogState();
-}
-
-class ManagedDialogState extends State<ManagedDialog> {
-  late BoxConstraints currentConstraints;
-  late Alignment alignment;
-
-  @override
-  void initState() {
-    super.initState();
-    currentConstraints = widget.constraints;
-    alignment = widget.alignment;
-  }
-
-  // Method to resize the dialog
-  void resizeDialog({double? width, double? height, BoxConstraints? constraints}) {
-    setState(() {
-      if (constraints != null) {
-        currentConstraints = constraints;
-      } else {
-        currentConstraints = BoxConstraints(
-          minWidth: width ?? currentConstraints.minWidth,
-          maxWidth: width ?? currentConstraints.maxWidth,
-          minHeight: height ?? currentConstraints.minHeight,
-          maxHeight: height ?? currentConstraints.maxHeight,
-        );
-      }
-    });
-  }
-
-  /// Position the dialog on screen
-  void positionDialog(Alignment alignment) => setState(() => this.alignment = alignment);
-
-  Positioned AlignmentWidget({required Widget child, Positioned? Function({required Widget child})? customPositioning}) {
-    if (customPositioning != null) return customPositioning(child: child)!;
-
-    return switch (alignment) {
-      Alignment.topLeft => Positioned(top: 0, left: 0, child: child),
-      Alignment.topCenter => Positioned(top: 0, child: child),
-      Alignment.topRight => Positioned(top: 0, right: 0, child: child),
-      Alignment.centerRight => Positioned(right: 0, child: child),
-      Alignment.bottomRight => Positioned(bottom: 0, right: 0, child: child),
-      Alignment.bottomCenter => Positioned(bottom: 0, child: child),
-      Alignment.bottomLeft => Positioned(bottom: 0, left: 0, child: child),
-      Alignment.centerLeft => Positioned(left: 0, child: child),
-      _ => Positioned(child: child),
-    };
-  }
-
-  Widget BuildPositionerBuilder({
-    required BuildContext context,
-    required Widget Function(Widget? customChild) child,
-    Positioned? Function({required Widget child})? customPositioning,
-  }) {
-    return AlignmentWidget(child: child(null), customPositioning: customPositioning);
-  }
-
-  Widget buildDialog(BuildContext context, Widget content) {
-    return ContentDialog(
-      style: widget.theme,
-      title: widget.title,
-      content: Material(
-        color: Colors.transparent,
-        child: Container(
-          constraints: currentConstraints,
-          child: content,
-        ),
-      ),
-      // ignore: prefer_null_aware_operators
-      actions: widget.actions != null ? widget.actions!.call(widget.popContext) : null,
-      constraints: currentConstraints,
-    );
-  }
-
-  Widget buildContent(BuildContext context, Widget? customChild) {
-    return Padding(
-      padding: const EdgeInsets.only(top: ScreenUtils.kTitleBarHeight, right: 16, bottom: 16, left: 16),
-      child: buildDialog(
-        context,
-        customChild ?? (widget.contentBuilder != null ? widget.contentBuilder!(context, currentConstraints) : const SizedBox()),
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Stack(
-      //TODO maybe see if `alignment` param of stack needs to be set as well
-      // alignment: alignment,
-      children: [
-        BuildPositionerBuilder(
-          context: context,
-          child: (customChild) => buildContent(context, customChild),
-        ),
-      ],
-    );
-  }
-
-  void popDialog() => closeDialog(widget.popContext);
-}
-
-class NotificationManagedDialogState extends State<ManagedDialog> {
-  late BoxConstraints _currentConstraints;
-  late Alignment alignment;
-
-  @override
-  void initState() {
-    super.initState();
-    _currentConstraints = widget.constraints;
-    alignment = widget.alignment;
-  }
-
-  // Method to resize the dialog
-  void resizeDialog({double? width, double? height, BoxConstraints? constraints}) {
-    setState(() {
-      if (constraints != null) {
-        _currentConstraints = constraints;
-      } else {
-        _currentConstraints = BoxConstraints(
-          minWidth: width ?? _currentConstraints.minWidth,
-          maxWidth: width ?? _currentConstraints.maxWidth,
-          minHeight: height ?? _currentConstraints.minHeight,
-          maxHeight: height ?? _currentConstraints.maxHeight,
-        );
-      }
-    });
-  }
-
-  /// Position the dialog on screen
-  void positionDialog(Alignment alignment) {
-    setState(() {
-      this.alignment = alignment;
-    });
-  }
-
-  Positioned AlignmentWidget({required Widget child}) {
-    return switch (alignment) {
-      Alignment.topLeft => Positioned(
-          top: 0,
-          left: 0,
-          child: child,
-        ),
-      Alignment.topCenter => Positioned(
-          top: 0,
-          child: child,
-        ),
-      Alignment.topRight => Positioned(
-          top: 0,
-          right: 0,
-          child: child,
-        ),
-      Alignment.centerRight => Positioned(
-          right: 0,
-          child: child,
-        ),
-      Alignment.bottomRight => Positioned(
-          bottom: 0,
-          right: 0,
-          child: child,
-        ),
-      Alignment.bottomCenter => Positioned(
-          bottom: 0,
-          child: child,
-        ),
-      Alignment.bottomLeft => Positioned(
-          bottom: 0,
-          left: 0,
-          child: child,
-        ),
-      Alignment.centerLeft => Positioned(
-          left: 0,
-          child: child,
-        ),
-      _ => Positioned(
-          child: child,
-        ),
-    };
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Stack(
-      alignment: alignment,
-      children: [
-        AlignmentWidget(
-          child: Padding(
-            padding: const EdgeInsets.only(top: ScreenUtils.kTitleBarHeight + 16, right: 16, bottom: 16),
-            child: GlossyContainer(
-              width: _currentConstraints.maxWidth,
-              height: _currentConstraints.maxHeight,
-              color: Colors.black,
-              opacity: 0.4,
-              strengthX: 20,
-              strengthY: 20,
-              blendMode: BlendMode.src,
-              borderRadius: BorderRadius.circular(12),
-              child: Stack(
-                children: [
-                  FrostedNoise(
-                    intensity: 0.7,
-                    child: ContentDialog(
-                      style: ContentDialogThemeData(decoration: BoxDecoration(color: Colors.transparent)),
-                      title: widget.title,
-                      content: Material(
-                        color: Colors.transparent,
-                        child: Container(
-                          constraints: _currentConstraints,
-                          child: widget.contentBuilder != null ? widget.contentBuilder!(context, _currentConstraints) : null,
-                        ),
-                      ),
-                      // ignore: prefer_null_aware_operators
-                      actions: widget.actions != null ? widget.actions!.call(widget.popContext) : null,
-                      constraints: _currentConstraints,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  void popDialog() => closeDialog(widget.popContext);
-}
-
-extension ManagedDialogExtensions on BuildContext {
+extension PaddedDialogExtensions on BuildContext {
   // Helper to access the dialog state from child widgets
-  ManagedDialogState? get managedDialogState => findAncestorStateOfType<ManagedDialogState>();
+  PaddedDialogState? get managedDialogState => findAncestorStateOfType<PaddedDialogState>();
 
   // Helper to resize the dialog
   void resizeManagedDialog({double? width, double? height, BoxConstraints? constraints}) {
     final state = managedDialogState;
-    if (state != null) //
-      state.resizeDialog(width: width, height: height, constraints: constraints);
+
+    if (state != null) state.resizeDialog(width: width, height: height, constraints: constraints);
   }
 
-  void positionManagedDialog(Alignment alignment) {
+  void positionManagedDialog(Position alignment) {
     final state = managedDialogState;
-    if (state != null) //
-      state.positionDialog(alignment);
+
+    if (state != null) state.positionDialog(alignment);
   }
 }
 

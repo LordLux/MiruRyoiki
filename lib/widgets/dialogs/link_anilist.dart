@@ -315,7 +315,7 @@ class AnilistLinkMultiContentState extends State<AnilistLinkMultiContent> {
           children: [
             TooltipWrapper(
               tooltip: _mappingsChanged ? 'Cancel and close Dialog' : 'Close Dialog',
-              child: (_) => ManagedDialogButton(
+              child: (_) => PaddedDialogButton(
                 text: _mappingsChanged ? 'Cancel' : 'Close',
                 onPressed: () => widget.onCancel.call(),
               ),
@@ -393,7 +393,7 @@ class AnilistLinkMultiContentState extends State<AnilistLinkMultiContent> {
                     final bool indexing = library.isIndexing;
                     return TooltipWrapper(
                         tooltip: indexing ? 'Please wait for indexing to complete before saving changes.' : 'Save changes',
-                        child: (_) => ManagedDialogButton(
+                        child: (_) => PaddedDialogButton(
                               text: mappings.isEmpty && oldMappings.isNotEmpty //
                                   ? 'Remove All Links'
                                   : 'Save Changes',

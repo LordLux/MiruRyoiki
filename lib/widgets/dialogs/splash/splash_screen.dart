@@ -234,7 +234,6 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
 }
 
 Future<void> initializeAndMorphWindow() async {
-  // await windowManager.setFullScreen(false);
   await windowManager.maximize();
   await Future.delayed(Duration(milliseconds: 20));
   await windowManager.unmaximize();

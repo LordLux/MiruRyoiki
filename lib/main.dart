@@ -45,7 +45,6 @@ import 'widgets/connectivity_indicator.dart';
 import 'services/anilist/provider/anilist_provider.dart';
 import 'services/connectivity/connectivity_service.dart';
 import 'services/navigation/statusbar.dart';
-import 'services/window/service.dart';
 import 'settings.dart';
 import 'widgets/dialogs/splash/splash_screen.dart';
 import 'utils/logging.dart';
@@ -356,7 +355,6 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
   int _selectedIndex = 0;
 
   bool _isCompactView = false;
-  bool _isSecondaryTitleBarVisible = false;
   bool seriesWasModified = false;
   bool _isNavigationPaneCollapsed = false;
 
@@ -539,239 +537,198 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
   Widget build(BuildContext context) {
     final anilistProvider = Provider.of<AnilistProvider>(context, listen: false);
 
-    return ValueListenableBuilder(
-      valueListenable: WindowStateService.isFullscreenNotifier,
-      builder: (context, isFullscreen, child) {
-        return AnimatedContainer(
-          duration: dimDuration,
-          color: getDimmableBlack(context),
-          child: FrostedNoise(
-            intensity: 0.25,
-            child: Stack(
-              children: [
-                // Actual Window Content
-                Positioned.fill(
-                  child: AnimatedPadding(
-                    duration: shortDuration,
-                    padding: EdgeInsets.only(
-                      top: _isSecondaryTitleBarVisible ? ScreenUtils.kTitleBarHeight : getTitleBarHeight(isFullscreen),
-                      bottom: 0,
+    return AnimatedContainer(
+      duration: dimDuration,
+      color: getDimmableBlack(context),
+      child: FrostedNoise(
+        intensity: 0.25,
+        child: Stack(
+          children: [
+            // Actual Window Content
+            Positioned.fill(
+              child: AnimatedPadding(
+                duration: shortDuration,
+                padding: EdgeInsets.only(
+                  top: ScreenUtils.kTitleBarHeight,
+                  bottom: 0,
+                ),
+                child: AnimatedContainer(
+                  duration: dimDuration,
+                  color: getDimmableBlack(context),
+                  child: NavigationView(
+                    onDisplayModeChanged: (value) => nextFrame(() => setState(() {
+                          _isNavigationPaneCollapsed = _paneKey.currentState?.displayMode == PaneDisplayMode.compact;
+                        })),
+                    key: _paneKey,
+                    paneBodyBuilder: (item, _) {
+                      return Column(
+                        children: [
+                          Expanded(
+                            child: Navigator(
+                              key: navigatorKey,
+                              initialRoute: '/',
+                              onGenerateRoute: _onGenerateRoute,
+                            ),
+                          ),
+                          // Offline banner
+                          const OfflineBanner(),
+                          ValueListenableBuilder(
+                            valueListenable: LibraryScanProgressManager().showingNotifier,
+                            builder: (context, isShowing, child) {
+                              return AnimatedContainer(
+                                duration: mediumDuration,
+                                color: getDimmableWhite(context),
+                                height: isShowing ? ScreenUtils.kStatusBarHeight : 0,
+                              );
+                            },
+                          )
+                        ],
+                      );
+                    },
+                    transitionBuilder: (child, animation) => SuppressPageTransition(
+                      // animation: animation,
+                      child: child,
                     ),
-                    child: AnimatedContainer(
-                      duration: dimDuration,
-                      color: getDimmableBlack(context),
-                      child: NavigationView(
-                        onDisplayModeChanged: (value) => nextFrame(() => setState(() {
-                              _isNavigationPaneCollapsed = _paneKey.currentState?.displayMode == PaneDisplayMode.compact;
-                            })),
-                        key: _paneKey,
-                        paneBodyBuilder: (item, _) {
-                          return Column(
-                            children: [
-                              Expanded(
-                                child: Navigator(
-                                  key: navigatorKey,
-                                  initialRoute: '/',
-                                  onGenerateRoute: _onGenerateRoute,
+                    pane: NavigationPane(
+                      menuButton: const SizedBox.shrink(), //_appTitle(),
+                      selected: _selectedIndex,
+                      onItemPressed: (index) {
+                        previousGridColumnCount.value = null;
+
+                        if (isSeriesView) {
+                          // If in series view, reset to pane first
+                          Manager.navigation.resetCurrentPane();
+                        }
+
+                        if (_selectedIndex == index) {
+                          // If clicking the same tab, reset its scroll position
+                          _resetScrollPosition(index, animate: true);
+                          // releaseCalendarScreenKey.currentState?.toggleFilter(false);
+                          releaseCalendarScreenKey.currentState?.focusToday();
+                        }
+                      },
+                      onChanged: onChangedPane,
+                      displayMode: _isCompactView ? PaneDisplayMode.compact : PaneDisplayMode.auto,
+                      indicator: AnimatedNavigationIndicator(
+                        targetColor: Manager.currentDominantColor ?? Manager.accentColor,
+                        indicatorBuilder: (color) => StickyNavigationIndicator(color: color),
+                      ),
+                      items: [
+                        buildPaneItem(
+                          NavigationManager.HomeIndex,
+                          mouseCursorClick: !_isCurrentIdSelected(NavigationManager.HomeIndex),
+                          icon: movedPaneItemIcon(const Icon(FluentIcons.home)),
+                        ),
+                        buildPaneItem(
+                          NavigationManager.LibraryIndex,
+                          mouseCursorClick: !_isCurrentIdSelected(NavigationManager.LibraryIndex), // || _isSeriesView,
+                          icon: movedPaneItemIcon(const Icon(Symbols.newsstand)),
+                        ),
+                        buildPaneItem(
+                          NavigationManager.CalendarIndex,
+                          mouseCursorClick: !_isCurrentIdSelected(NavigationManager.CalendarIndex),
+                          icon: movedPaneItemIcon(const Icon(FluentIcons.calendar)),
+                        ),
+                        buildPaneItem(
+                          NavigationManager.BrowseIndex,
+                          mouseCursorClick: !_isCurrentIdSelected(NavigationManager.BrowseIndex),
+                          icon: movedPaneItemIcon(const Icon(FluentIcons.search)),
+                        ),
+                        buildPaneItem(
+                          NavigationManager.TorrentIndex,
+                          mouseCursorClick: !_isCurrentIdSelected(NavigationManager.TorrentIndex),
+                          icon: movedPaneItemIcon(const Icon(FluentIcons.download)),
+                        ),
+                      ],
+                      footerItems: [
+                        PaneItemSeparator(),
+                        buildPaneItem(
+                          NavigationManager.AccountsIndex,
+                          mouseCursorClick: !_isCurrentIdSelected(NavigationManager.AccountsIndex),
+                          icon: anilistIcon(anilistProvider.isOffline),
+                          extra: (isHovered) {
+                            final anilistProvider = Provider.of<AnilistProvider>(context, listen: false);
+                            final user = anilistProvider.currentUser;
+
+                            if (user == null) return null;
+
+                            return Flexible(
+                              child: Align(
+                                alignment: Alignment.centerRight,
+                                child: SizedBox(
+                                  height: 50,
+                                  width: 50,
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 8.0),
+                                    child: Builder(builder: (context) {
+                                      if (user.avatar == null) return CircleAvatar(backgroundColor: Manager.accentColor.withOpacity(0.25));
+
+                                      return CircleAvatar(
+                                        backgroundImage: ResizeImage.resizeIfNeeded(
+                                          50,
+                                          50,
+                                          CachedNetworkImageProvider(
+                                            user.avatar!,
+                                            errorListener: (error) {
+                                              logWarn('Failed to load Anilist avatar image: $error');
+                                            },
+                                          ),
+                                        ),
+                                        backgroundColor: Manager.accentColor.withOpacity(0.25),
+                                        radius: 17,
+                                      );
+                                    }),
+                                  ),
                                 ),
                               ),
-                              // Offline banner
-                              const OfflineBanner(),
-                              ValueListenableBuilder(
-                                valueListenable: LibraryScanProgressManager().showingNotifier,
-                                builder: (context, isShowing, child) {
-                                  return AnimatedContainer(
-                                    duration: mediumDuration,
-                                    color: getDimmableWhite(context),
-                                    height: isShowing ? ScreenUtils.kStatusBarHeight : 0,
-                                  );
-                                },
-                              )
-                            ],
-                          );
-                        },
-                        transitionBuilder: (child, animation) => SuppressPageTransition(
-                          // animation: animation,
-                          child: child,
-                        ),
-                        pane: NavigationPane(
-                          menuButton: const SizedBox.shrink(), //_appTitle(),
-                          selected: _selectedIndex,
-                          onItemPressed: (index) {
-                            previousGridColumnCount.value = null;
-
-                            if (isSeriesView) {
-                              // If in series view, reset to pane first
-                              Manager.navigation.resetCurrentPane();
-                            }
-
-                            if (_selectedIndex == index) {
-                              // If clicking the same tab, reset its scroll position
-                              _resetScrollPosition(index, animate: true);
-                              // releaseCalendarScreenKey.currentState?.toggleFilter(false);
-                              releaseCalendarScreenKey.currentState?.focusToday();
-                            }
+                            );
                           },
-                          onChanged: onChangedPane,
-                          displayMode: _isCompactView ? PaneDisplayMode.compact : PaneDisplayMode.auto,
-                          indicator: AnimatedNavigationIndicator(
-                            targetColor: Manager.currentDominantColor ?? Manager.accentColor,
-                            indicatorBuilder: (color) => StickyNavigationIndicator(color: color),
-                          ),
-                          items: [
-                            buildPaneItem(
-                              NavigationManager.HomeIndex,
-                              mouseCursorClick: !_isCurrentIdSelected(NavigationManager.HomeIndex),
-                              icon: movedPaneItemIcon(const Icon(FluentIcons.home)),
-                            ),
-                            buildPaneItem(
-                              NavigationManager.LibraryIndex,
-                              mouseCursorClick: !_isCurrentIdSelected(NavigationManager.LibraryIndex), // || _isSeriesView,
-                              icon: movedPaneItemIcon(const Icon(Symbols.newsstand)),
-                            ),
-                            buildPaneItem(
-                              NavigationManager.CalendarIndex,
-                              mouseCursorClick: !_isCurrentIdSelected(NavigationManager.CalendarIndex),
-                              icon: movedPaneItemIcon(const Icon(FluentIcons.calendar)),
-                            ),
-                            buildPaneItem(
-                              NavigationManager.BrowseIndex,
-                              mouseCursorClick: !_isCurrentIdSelected(NavigationManager.BrowseIndex),
-                              icon: movedPaneItemIcon(const Icon(FluentIcons.search)),
-                            ),
-                            buildPaneItem(
-                              NavigationManager.TorrentIndex,
-                              mouseCursorClick: !_isCurrentIdSelected(NavigationManager.TorrentIndex),
-                              icon: movedPaneItemIcon(const Icon(FluentIcons.download)),
-                            ),
-                          ],
-                          footerItems: [
-                            PaneItemSeparator(),
-                            buildPaneItem(
-                              NavigationManager.AccountsIndex,
-                              mouseCursorClick: !_isCurrentIdSelected(NavigationManager.AccountsIndex),
-                              icon: anilistIcon(anilistProvider.isOffline),
-                              extra: (isHovered) {
-                                final anilistProvider = Provider.of<AnilistProvider>(context, listen: false);
-                                final user = anilistProvider.currentUser;
-
-                                if (user == null) return null;
-
-                                return Flexible(
-                                  child: Align(
-                                    alignment: Alignment.centerRight,
-                                    child: SizedBox(
-                                      height: 50,
-                                      width: 50,
-                                      child: Padding(
-                                        padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 8.0),
-                                        child: Builder(builder: (context) {
-                                          if (user.avatar == null) return CircleAvatar(backgroundColor: Manager.accentColor.withOpacity(0.25));
-
-                                          return CircleAvatar(
-                                            backgroundImage: ResizeImage.resizeIfNeeded(
-                                              50,
-                                              50,
-                                              CachedNetworkImageProvider(
-                                                user.avatar!,
-                                                errorListener: (error) {
-                                                  logWarn('Failed to load Anilist avatar image: $error');
-                                                },
-                                              ),
-                                            ),
-                                            backgroundColor: Manager.accentColor.withOpacity(0.25),
-                                            radius: 17,
-                                          );
-                                        }),
-                                      ),
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
-                            buildPaneItem(
-                              NavigationManager.SettingsIndex,
-                              mouseCursorClick: !_isCurrentIdSelected(NavigationManager.SettingsIndex),
-                              icon: movedPaneItemIcon(const Icon(FluentIcons.settings)),
-                            ),
-                          ],
                         ),
-                      ),
+                        buildPaneItem(
+                          NavigationManager.SettingsIndex,
+                          mouseCursorClick: !_isCurrentIdSelected(NavigationManager.SettingsIndex),
+                          icon: movedPaneItemIcon(const Icon(FluentIcons.settings)),
+                        ),
+                      ],
                     ),
                   ),
                 ),
-                // Title Bar
-                Positioned(
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  child: AnimatedContainer(
-                    duration: shortDuration,
-                    color: getDimmableBlack(context),
-                    height: getTitleBarHeight(isFullscreen),
-                    child: AnimatedOpacity(
-                      duration: shortDuration,
-                      opacity: isFullscreen ? 0 : 1,
-                      child: _buildTitleBar(),
-                    ),
-                  ),
-                ),
-                Positioned(
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  child: AnimatedContainer(
-                    color: getDimmableBlack(context),
-                    duration: shortDuration,
-                    height: _isSecondaryTitleBarVisible ? ScreenUtils.kTitleBarHeight - getTitleBarHeight(isFullscreen) : 0,
-                    child: AnimatedOpacity(
-                      duration: shortDuration,
-                      opacity: _isSecondaryTitleBarVisible && isFullscreen ? 1 : 0,
-                      child: _buildTitleBar(isSecondary: true),
-                    ),
-                  ),
-                ),
-                Positioned(
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  child: SizedBox(
-                    height: _isSecondaryTitleBarVisible
-                        ? ScreenUtils.kTitleBarHeight - getTitleBarHeight(isFullscreen)
-                        : isFullscreen
-                            ? 5
-                            : 0,
-                    child: MouseRegion(
-                      hitTestBehavior: HitTestBehavior.translucent,
-                      onEnter: (_) => setState(() => _isSecondaryTitleBarVisible = true),
-                      onExit: (_) => setState(() => _isSecondaryTitleBarVisible = false),
-                    ),
-                  ),
-                ),
-                const StatusBarWidget(), // ep/series name, zoom, etc.
-                ValueListenableBuilder(
-                  valueListenable: LibraryScanProgressManager().showingNotifier,
-                  builder: (context, isShowing, _) {
-                    return AnimatedPositioned(
-                      duration: mediumDuration,
-                      bottom: 0,
-                      right: 8,
-                      child: LibraryScanProgressIndicator(), // Bottom right library scan progress indicator
-                    );
-                  },
-                ),
-                Player(),
-                SidebarOpenerDetector(
-                  onHover: () => setCompactView = false,
-                  onExit: () => setCompactView = true,
-                  enabled: isSeriesView,
-                  shouldExpand: !_isCompactView,
-                )
-              ],
+              ),
             ),
-          ),
-        );
-      },
+            // Title Bar
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              child: AnimatedContainer(
+                duration: shortDuration,
+                color: getDimmableBlack(context),
+                height: ScreenUtils.kTitleBarHeight,
+                child: _buildTitleBar(),
+              ),
+            ),
+            const StatusBarWidget(), // ep/series name, zoom, etc.
+            ValueListenableBuilder(
+              valueListenable: LibraryScanProgressManager().showingNotifier,
+              builder: (context, isShowing, _) {
+                return AnimatedPositioned(
+                  duration: mediumDuration,
+                  bottom: 0,
+                  right: 8,
+                  child: LibraryScanProgressIndicator(), // Bottom right library scan progress indicator
+                );
+              },
+            ),
+            Player(),
+            SidebarOpenerDetector(
+              onHover: () => setCompactView = false,
+              onExit: () => setCompactView = true,
+              enabled: isSeriesView,
+              shouldExpand: !_isCompactView,
+            )
+          ],
+        ),
+      ),
     );
   }
 
@@ -784,94 +741,95 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
     // Determine which page to show
     Widget page;
 
-    if (routeName == '/${NavigationManager.HomeId}') {
-      page = HomeScreen(
-        onSeriesSelected: navigateToSeries,
-        scrollController: NavigationManager.getScrollController(NavigationManager.HomeIndex),
-      );
-    } else if (routeName == '/${NavigationManager.LibraryId}') {
-      page = _libraryScreen;
-    } else if (routeName == '/series' || routeName.startsWith('/series:')) {
-      // Series view with custom transition
-      final seriesPath = settings.arguments as PathString?;
-      page = SeriesScreen(
-        key: seriesScreenKey,
-        seriesPath: seriesPath,
-        onBack: () => Manager.navigation.goBack(),
-      );
-    } else if (routeName.startsWith('/mapping:')) {
-      final args = settings.arguments as Map<String, dynamic>;
-      final seriesPath = args['seriesPath'] as PathString?;
-      final mappingPath = args['mappingPath'] as PathString?;
+    switch (routeName) {
+      case '/${NavigationManager.HomeId}':
+        page = HomeScreen(
+          onSeriesSelected: navigateToSeries,
+          scrollController: NavigationManager.getScrollController(NavigationManager.HomeIndex),
+        );
+      case '/${NavigationManager.LibraryId}':
+        page = _libraryScreen;
+      case '/series':
+      case String() when routeName.startsWith('/series:'):
+        // Series view with custom transition
+        final seriesPath = settings.arguments as PathString?;
+        page = SeriesScreen(
+          key: seriesScreenKey,
+          seriesPath: seriesPath,
+          onBack: () => Manager.navigation.goBack(),
+        );
+      case String() when routeName.startsWith('/mapping:'):
+        final args = settings.arguments as Map<String, dynamic>;
+        final seriesPath = args['seriesPath'] as PathString?;
+        final mappingPath = args['mappingPath'] as PathString?;
 
-      final library = Provider.of<Library>(context, listen: false);
-      final series = seriesPath != null ? library.getSeriesByPath(seriesPath) : null;
+        final library = Provider.of<Library>(context, listen: false);
+        final series = seriesPath != null ? library.getSeriesByPath(seriesPath) : null;
 
-      AnilistMapping? mapping;
-      MappingTarget? target;
+        AnilistMapping? mapping;
+        MappingTarget? target;
 
-      if (series != null && mappingPath != null) {
-        mapping = series.anilistMappings.firstWhereOrNull((m) => m.localPath == mappingPath);
-        if (mapping != null) {
-          if (File(mappingPath.path).existsSync()) {
-            final episode = series.getEpisodeByPath(mappingPath);
-            if (episode != null) {
-              target = MappingTarget.episode(episode);
+        if (series != null && mappingPath != null) {
+          mapping = series.anilistMappings.firstWhereOrNull((m) => m.localPath == mappingPath);
+          if (mapping != null) {
+            if (File(mappingPath.path).existsSync()) {
+              final episode = series.getEpisodeByPath(mappingPath);
+              if (episode != null) {
+                target = MappingTarget.episode(episode);
+              }
+            } else if (Directory(mappingPath.path).existsSync()) {
+              final season = series.getSeasonFromPath(mappingPath);
+              if (season != null) target = MappingTarget.season(season);
             }
-          } else if (Directory(mappingPath.path).existsSync()) {
-            final season = series.getSeasonFromPath(mappingPath);
-            if (season != null) target = MappingTarget.season(season);
           }
+        } else {
+          logWarn('Failed to open mapping view: series - $series | mappingPath - $mappingPath');
         }
-      } else {
-        logWarn('Failed to open mapping view: series - $series | mappingPath - $mappingPath');
-      }
 
-      page = SeriesScreen(
-        key: seriesMappingScreenKey,
-        seriesPath: seriesPath,
-        onBack: () => Manager.navigation.goBack(),
-        mapping: mapping,
-        target: target,
-      );
-    } else if (routeName == '/${NavigationManager.CalendarId}') {
-      page = ReleaseCalendarScreen(
-        key: releaseCalendarScreenKey,
-        onSeriesSelected: navigateToSeries,
-        scrollController: NavigationManager.getScrollController(NavigationManager.CalendarIndex),
-      );
-    } else if (routeName == '/${NavigationManager.BrowseId}') {
-      page = BrowseScreen(
-        scrollController: NavigationManager.getScrollController(NavigationManager.BrowseIndex),
-      );
-    } else if (routeName == '/${NavigationManager.TorrentId}') {
-      page = DownloadsScreen(
-        key: torrentScreenKey,
-        controller: TorrentManager.downloadController!,
-        sonarrRepo: TorrentManager.sonarrRepository!,
-        scrollController: NavigationManager.getScrollController(NavigationManager.TorrentIndex),
-      );
-    } else if (routeName == '/${NavigationManager.AccountsId}') {
-      page = AccountsScreen(
-        key: accountsKey,
-        scrollController: NavigationManager.getScrollController(NavigationManager.AccountsIndex),
-      );
-    } else if (routeName == '/${NavigationManager.SettingsId}') {
-      page = SettingsScreen(
-        scrollController: NavigationManager.getScrollController(NavigationManager.SettingsIndex),
-      );
-    } else if (routeName.startsWith('/searched_series:')) {
-      final anime = settings.arguments as AnimeCard;
-      page = SearchedSeriesScreen(
-        anilistUrl: "https://anilist.co/anime/${anime.id}",
-        onBack: () => Manager.navigation.goBack(),
-      );
-    } else {
-      // Default to home
-      page = HomeScreen(
-        onSeriesSelected: navigateToSeries,
-        scrollController: NavigationManager.getScrollController(NavigationManager.HomeIndex),
-      );
+        page = SeriesScreen(
+          key: seriesMappingScreenKey,
+          seriesPath: seriesPath,
+          onBack: () => Manager.navigation.goBack(),
+          mapping: mapping,
+          target: target,
+        );
+      case '/${NavigationManager.CalendarId}':
+        page = ReleaseCalendarScreen(
+          key: releaseCalendarScreenKey,
+          onSeriesSelected: navigateToSeries,
+          scrollController: NavigationManager.getScrollController(NavigationManager.CalendarIndex),
+        );
+      case '/${NavigationManager.BrowseId}':
+        page = BrowseScreen(
+          scrollController: NavigationManager.getScrollController(NavigationManager.BrowseIndex),
+        );
+      case '/${NavigationManager.TorrentId}':
+        page = DownloadsScreen(
+          key: torrentScreenKey,
+          controller: TorrentManager.downloadController!,
+          sonarrRepo: TorrentManager.sonarrRepository!,
+          scrollController: NavigationManager.getScrollController(NavigationManager.TorrentIndex),
+        );
+      case '/${NavigationManager.AccountsId}':
+        page = AccountsScreen(
+          key: accountsKey,
+          scrollController: NavigationManager.getScrollController(NavigationManager.AccountsIndex),
+        );
+      case '/${NavigationManager.SettingsId}':
+        page = SettingsScreen(
+          scrollController: NavigationManager.getScrollController(NavigationManager.SettingsIndex),
+        );
+      case String() when routeName.startsWith('/searched_series:'):
+        page = SearchedSeriesScreen(
+          anilistUrl: "https://anilist.co/anime/${(settings.arguments as AnimeCard).id}",
+          onBack: () => Manager.navigation.goBack(),
+        );
+      default:
+        // Default to home
+        page = HomeScreen(
+          onSeriesSelected: navigateToSeries,
+          scrollController: NavigationManager.getScrollController(NavigationManager.HomeIndex),
+        );
     }
 
     // Use custom page route with fade transition for series view
@@ -959,8 +917,6 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
     );
   }
 
-  double getTitleBarHeight(bool isFullscreen) => isFullscreen ? 0.0 : ScreenUtils.kTitleBarHeight;
-
   /// Custom title bar with menu bar and window buttons
   Widget _buildTitleBar({bool isSecondary = false}) {
     double winButtonsWidth = 128;
@@ -1029,39 +985,31 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
                         children: [
                           Padding(
                             padding: const EdgeInsets.only(right: 8.0),
-                            child: ValueListenableBuilder(
-                                valueListenable: WindowStateService.isFullscreenNotifier,
-                                builder: (context, isFullscreen, child) {
-                                  return AnimatedSlide(
-                                    duration: shortDuration,
-                                    offset: isFullscreen ? const Offset(1.5, 0) : const Offset(0, 0),
-                                    child: ReleaseNotificationWidget(
-                                      onMorePressed: (ctx) async {
-                                        // Navigate to calendar screen
-                                        closeDialog(ctx);
-                                        if (_selectedIndex == NavigationManager.CalendarIndex) return;
+                            child: ReleaseNotificationWidget(
+                              onMorePressed: (ctx) async {
+                                // Navigate to calendar screen
+                                closeDialog(ctx);
+                                if (_selectedIndex == NavigationManager.CalendarIndex) return;
 
-                                        await Future.delayed(const Duration(milliseconds: 100));
-                                        setState(() {
-                                          if (isSeriesView) Manager.navigation.resetCurrentPane();
+                                await Future.delayed(const Duration(milliseconds: 100));
+                                setState(() {
+                                  if (isSeriesView) Manager.navigation.resetCurrentPane();
 
-                                          _selectedIndex = NavigationManager.CalendarIndex;
-                                          _resetScrollPosition(NavigationManager.CalendarIndex);
-                                          Manager.currentDominantColor = null;
+                                  _selectedIndex = NavigationManager.CalendarIndex;
+                                  _resetScrollPosition(NavigationManager.CalendarIndex);
+                                  Manager.currentDominantColor = null;
 
-                                          Manager.navigation.pushPaneIndex(NavigationManager.CalendarIndex);
-                                        });
+                                  Manager.navigation.pushPaneIndex(NavigationManager.CalendarIndex);
+                                });
 
-                                        // Refresh the release calendar after navigation
-                                        nextFrame(() => releaseCalendarScreenKey.currentState?.loadReleaseData());
-                                      },
-                                    ),
-                                  );
-                                }),
+                                // Refresh the release calendar after navigation
+                                nextFrame(() => releaseCalendarScreenKey.currentState?.loadReleaseData());
+                              },
+                            ),
                           ),
                           SizedBox(
                             height: ScreenUtils.kTitleBarHeight,
-                            child: WindowButtons(isSecondary: isSecondary, onFullScreenOpen: () => setState(() => _isSecondaryTitleBarVisible = true)),
+                            child: WindowButtons(isSecondary: isSecondary),
                           ),
                         ],
                       ),
@@ -1186,6 +1134,8 @@ Future<void> _registerWindowsUrlScheme(String scheme) async {
 }
 
 // TODO esc closes linking dialog when it should actually go back
+// TODO fix 'unwatch' context menu item that brings you to search screen instead of just unwatching (use same fix as image picker context menu item fix) + 'watch' context menu crashes app
+// TODO fix esc key closes 2 dialogs at a time
 // TODO fix the fact that we're saving the whole userdata to the database
 // TODO dominant color to null when navigating to release calendar via notification dialog
 // TODO 'video player process monitoring failed to start' because already open, after a hot restart -> detect with ReassembleListener
@@ -1194,8 +1144,6 @@ Future<void> _registerWindowsUrlScheme(String scheme) async {
 // TODO throttle db save events after 5s
 // TODO add 'play episode' button on continue watching series card -> click on card simply opens series
 // TODO cache images smaller to be displayed without using too much memory
-// TODO add divider between notifications and scheduled episodes in release calendar
-// TODO add polimorphic method to Notifications to get their "aired"/"Updated"/"Deleted" etc string for time ago formatting
 // TODO add NonMapping for series that are not to be linked with Anilist
 // TODO create widget for Smooth scrolling scroll controllers
 // TODO reload inner series screen after reloading library if the series is open
@@ -1225,6 +1173,7 @@ Future<void> _registerWindowsUrlScheme(String scheme) async {
 // TODO add indicator of which episodes have anilist titles
 // TODO add per-episode/season/series toggle to use anilist titles or local titles
 // TODO sometimes anilist episode numbering for seasons > 1 continue from previous season, need to handle that
+// TODO add watch log with timestamps and episode names, and ability to export it to a file
 
 // TODO add marquee to notification titles
 // TODO add 'state' and 'stateString' to MediaStatus

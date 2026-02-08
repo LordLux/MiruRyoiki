@@ -27,6 +27,19 @@ abstract class AnilistNotification {
 
   Map<String, dynamic> toJson();
 
+  /// The verb describing what happened (e.g. "Aired", "Updated", "Deleted").
+  /// Used for time-ago formatting like "Aired 3 hours ago".
+  String get actionVerb;
+
+  /// A display title for this notification, incorporating the series name if available.
+  String getDisplayTitle(String? seriesTitle);
+
+  /// The cover image URL for the notification, or null if not available.
+  String? get coverImageUrl;
+
+  /// The AniList media ID associated with this notification, if any.
+  int? get anilistId;
+
   AnilistNotification copyWith({
     int? id,
     NotificationType? type,
@@ -68,6 +81,18 @@ class AiringNotification extends AnilistNotification {
 
   @override
   Map<String, dynamic> toJson() => _$AiringNotificationToJson(this);
+
+  @override
+  String get actionVerb => 'Aired';
+
+  @override
+  String getDisplayTitle(String? seriesTitle) => getFormattedTitle(seriesTitle);
+
+  @override
+  String? get coverImageUrl => media?.coverImage;
+
+  @override
+  int? get anilistId => animeId;
 
   /// Returns true if this notification is for a movie (based on format)
   bool get isMovie => format?.toUpperCase() == 'MOVIE';
@@ -129,6 +154,18 @@ class RelatedMediaAdditionNotification extends AnilistNotification {
   Map<String, dynamic> toJson() => _$RelatedMediaAdditionNotificationToJson(this);
 
   @override
+  String get actionVerb => 'Added';
+
+  @override
+  String getDisplayTitle(String? seriesTitle) => '${seriesTitle ?? media?.title ?? 'Unknown anime'} was added to Anilist';
+
+  @override
+  String? get coverImageUrl => media?.coverImage;
+
+  @override
+  int? get anilistId => mediaId;
+
+  @override
   RelatedMediaAdditionNotification copyWith({
     int? id,
     NotificationType? type,
@@ -172,6 +209,18 @@ class MediaDataChangeNotification extends AnilistNotification {
 
   @override
   Map<String, dynamic> toJson() => _$MediaDataChangeNotificationToJson(this);
+
+  @override
+  String get actionVerb => 'Updated';
+
+  @override
+  String getDisplayTitle(String? seriesTitle) => '${seriesTitle ?? media?.title ?? 'Unknown anime'} was updated';
+
+  @override
+  String? get coverImageUrl => media?.coverImage;
+
+  @override
+  int? get anilistId => mediaId;
 
   @override
   MediaDataChangeNotification copyWith({
@@ -223,6 +272,18 @@ class MediaMergeNotification extends AnilistNotification {
   Map<String, dynamic> toJson() => _$MediaMergeNotificationToJson(this);
 
   @override
+  String get actionVerb => 'Merged';
+
+  @override
+  String getDisplayTitle(String? seriesTitle) => '${seriesTitle ?? media?.title ?? 'Unknown anime'} was merged';
+
+  @override
+  String? get coverImageUrl => media?.coverImage;
+
+  @override
+  int? get anilistId => mediaId;
+
+  @override
   MediaMergeNotification copyWith({
     int? id,
     NotificationType? type,
@@ -268,6 +329,18 @@ class MediaDeletionNotification extends AnilistNotification {
 
   @override
   Map<String, dynamic> toJson() => _$MediaDeletionNotificationToJson(this);
+
+  @override
+  String get actionVerb => 'Deleted';
+
+  @override
+  String getDisplayTitle(String? seriesTitle) => '${deletedMediaTitle ?? 'Unknown Anime'} was deleted';
+
+  @override
+  String? get coverImageUrl => null;
+
+  @override
+  int? get anilistId => null;
 
   @override
   MediaDeletionNotification copyWith({

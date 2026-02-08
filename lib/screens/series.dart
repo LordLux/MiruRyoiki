@@ -1208,104 +1208,104 @@ void selectSeriesImage(BuildContext context, {required bool isBanner, Series? se
     ),
     builder: (ctx, item, options) {
       const boxConstraints = BoxConstraints(maxWidth: 1000, maxHeight: 700);
-      return PaddedDialog.simple(
-      navigationItem: item,
-      barrierOptions: options,
-      constraints: boxConstraints,
-      title: Text(isBanner ? 'Select Banner Image' : 'Select Poster Image', style: Manager.titleStyle),
-      content: ImageSelectionContent(
-        series: series,
+      return PaddedDialog.custom(
+        navigationItem: item,
+        barrierOptions: options,
         constraints: boxConstraints,
-        isBanner: isBanner,
-        onSave: (source, path) async {
-          // Save the selection
-          final library = Provider.of<Library>(context, listen: false);
+        alignment: Position.fromAlignment(Alignment.center),
+        contentBuilder: (context, _) => ImageSelectionContent(
+          series: series,
+          constraints: boxConstraints,
+          isBanner: isBanner,
+          onSave: (source, path) async {
+            // Save the selection
+            final library = Provider.of<Library>(context, listen: false);
 
-          final bool isLocalSource = source == ImageSource.local;
-          Color? newLocalPosterColor;
-          Color? newLocalBannerColor;
-          PathString? newFolderPosterPath;
-          PathString? newFolderBannerPath;
+            final bool isLocalSource = source == ImageSource.local;
+            Color? newLocalPosterColor;
+            Color? newLocalBannerColor;
+            PathString? newFolderPosterPath;
+            PathString? newFolderBannerPath;
 
-          if (!isBanner) {
-            // Poster
-            if (isLocalSource) {
-              // Set local poster path and keep local color
-              newFolderPosterPath = PathString(path);
-              newLocalPosterColor = series.localPosterColor; // Will recalculate below
-            } else {
-              // Switching to Anilist
-              newFolderPosterPath = series.localPosterPath;
-              newLocalPosterColor = null; // Clear local color
-            }
-            newFolderBannerPath = series.localBannerPath;
-            newLocalBannerColor = series.localBannerColor;
-          } else {
-            // Banner
-            if (isLocalSource) {
-              // Set local banner path and keep local color
-              newFolderBannerPath = PathString(path);
-              newLocalBannerColor = series.localBannerColor; // Will recalculate below
-            } else {
-              // Switching to Anilist
-              newFolderBannerPath = series.localBannerPath;
-              newLocalBannerColor = null; // Clear local color
-            }
-            newFolderPosterPath = series.localPosterPath;
-            newLocalPosterColor = series.localPosterColor;
-          }
-
-          final Series updatedSeries = series.copyWith(
-            folderPosterPath: newFolderPosterPath,
-            folderBannerPath: newFolderBannerPath,
-            posterColor: newLocalPosterColor,
-            bannerColor: newLocalBannerColor,
-            preferredPosterSource: isBanner ? series.preferredPosterSource : source,
-            preferredBannerSource: isBanner ? source : series.preferredBannerSource,
-          );
-
-          final seriesScreenState = seriesScreenKey.currentState;
-          if (seriesScreenState != null) {
-            // log('Disabling poster/banner change buttons');
-            seriesScreenState.posterChangeDisabled = !isBanner;
-            seriesScreenState.bannerChangeDisabled = isBanner;
-          }
-
-          if (libraryScreenKey.currentState != null) libraryScreenKey.currentState!.updateSeriesInSortCache(updatedSeries);
-          logTrace('Saving ${isBanner ? 'banner' : 'poster'} preference: $source, path: ${PathUtils.getFileName(path)}');
-          snackBar(
-            'Saving preference...',
-            severity: InfoBarSeverity.info,
-          );
-
-          // Calculate dominant color for local images
-          if (isLocalSource) {
             if (!isBanner) {
-              await updatedSeries.calculateLocalPosterDominantColor(forceRecalculate: true);
+              // Poster
+              if (isLocalSource) {
+                // Set local poster path and keep local color
+                newFolderPosterPath = PathString(path);
+                newLocalPosterColor = series.localPosterColor; // Will recalculate below
+              } else {
+                // Switching to Anilist
+                newFolderPosterPath = series.localPosterPath;
+                newLocalPosterColor = null; // Clear local color
+              }
+              newFolderBannerPath = series.localBannerPath;
+              newLocalBannerColor = series.localBannerColor;
             } else {
-              await updatedSeries.calculateLocalBannerDominantColor(forceRecalculate: true);
+              // Banner
+              if (isLocalSource) {
+                // Set local banner path and keep local color
+                newFolderBannerPath = PathString(path);
+                newLocalBannerColor = series.localBannerColor; // Will recalculate below
+              } else {
+                // Switching to Anilist
+                newFolderBannerPath = series.localBannerPath;
+                newLocalBannerColor = null; // Clear local color
+              }
+              newFolderPosterPath = series.localPosterPath;
+              newLocalPosterColor = series.localPosterColor;
             }
-          }
 
-          Manager.setState(() => Manager.currentDominantColor = updatedSeries.effectivePrimaryColorSync());
-
-          // Explicitly save the entire series and show confirmation
-          library.updateSeries(updatedSeries, invalidateCache: false).then((_) {
-            snackBar(
-              isBanner ? 'Banner preference saved' : 'Poster preference saved',
-              severity: InfoBarSeverity.success,
+            final Series updatedSeries = series.copyWith(
+              folderPosterPath: newFolderPosterPath,
+              folderBannerPath: newFolderBannerPath,
+              posterColor: newLocalPosterColor,
+              bannerColor: newLocalBannerColor,
+              preferredPosterSource: isBanner ? series.preferredPosterSource : source,
+              preferredBannerSource: isBanner ? source : series.preferredBannerSource,
             );
+
             final seriesScreenState = seriesScreenKey.currentState;
             if (seriesScreenState != null) {
-              // log('Enabling poster/banner change buttons');
-              seriesScreenState.posterChangeDisabled = false;
-              seriesScreenState.bannerChangeDisabled = false;
+              // log('Disabling poster/banner change buttons');
+              seriesScreenState.posterChangeDisabled = !isBanner;
+              seriesScreenState.bannerChangeDisabled = isBanner;
             }
-            Manager.setState();
-          });
-        },
-      ),
-    );
+
+            if (libraryScreenKey.currentState != null) libraryScreenKey.currentState!.updateSeriesInSortCache(updatedSeries);
+            logTrace('Saving ${isBanner ? 'banner' : 'poster'} preference: $source, path: ${PathUtils.getFileName(path)}');
+            snackBar(
+              'Saving preference...',
+              severity: InfoBarSeverity.info,
+            );
+
+            // Calculate dominant color for local images
+            if (isLocalSource) {
+              if (!isBanner) {
+                await updatedSeries.calculateLocalPosterDominantColor(forceRecalculate: true);
+              } else {
+                await updatedSeries.calculateLocalBannerDominantColor(forceRecalculate: true);
+              }
+            }
+
+            Manager.setState(() => Manager.currentDominantColor = updatedSeries.effectivePrimaryColorSync());
+
+            // Explicitly save the entire series and show confirmation
+            library.updateSeries(updatedSeries, invalidateCache: false).then((_) {
+              snackBar(
+                isBanner ? 'Banner preference saved' : 'Poster preference saved',
+                severity: InfoBarSeverity.success,
+              );
+              final seriesScreenState = seriesScreenKey.currentState;
+              if (seriesScreenState != null) {
+                // log('Enabling poster/banner change buttons');
+                seriesScreenState.posterChangeDisabled = false;
+                seriesScreenState.bannerChangeDisabled = false;
+              }
+              Manager.setState();
+            });
+          },
+        ),
+      );
     },
   ).then((source) {
     if (context.mounted) Manager.setState();

@@ -1,4 +1,3 @@
-import 'package:fluent_ui/fluent_ui.dart';
 import 'package:window_manager/window_manager.dart';
 
 import '../../settings.dart';
@@ -11,7 +10,6 @@ class WindowStateService {
   /// after the window has finished its initial setup (e.g. from `splash_screen.dart`
   /// once the window has been shown and positioned) to avoid persisting transient
   /// or incorrect geometry.
-  static final ValueNotifier<bool> isFullscreenNotifier = ValueNotifier<bool>(false);
   static bool shouldSaveWindowState = false;
 
   static Future<void> saveWindowState() async {
@@ -39,13 +37,5 @@ class WindowStateService {
       'height': settings.windowHeight,
       'maximized': settings.windowMaximized, // TODO remember size and position even when restored from maximized
     };
-  }
-
-  // TODO completely remove fullscreen feature in the future
-  static Future<void> toggleFullScreen([bool? isFullscreen]) async {
-    await windowManager.setFullScreen(isFullscreen ?? !isFullscreenNotifier.value);
-
-    isFullscreenNotifier.value = await windowManager.isFullScreen(); // update state after toggling
-    // isFullscreenNotifier.value = !isFullscreenNotifier.value; // update state after toggling
   }
 }

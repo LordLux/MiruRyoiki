@@ -58,28 +58,8 @@ class NotificationsContentState extends State<NotificationsContent> {
 
     /// Return only notifications not related to hidden series (true = keep)
     return notifications.where((notification) {
-      int? anilistIdToCheck;
-
       // Extract AniList ID based on notification type
-      switch (notification) {
-        case AiringNotification airing:
-          anilistIdToCheck = airing.animeId;
-          break;
-        case RelatedMediaAdditionNotification related:
-          anilistIdToCheck = related.mediaId;
-          break;
-        case MediaDataChangeNotification dataChange:
-          anilistIdToCheck = dataChange.mediaId;
-          break;
-        case MediaMergeNotification merge:
-          anilistIdToCheck = merge.mediaId;
-          break;
-        case MediaDeletionNotification _:
-          // Deletion notifications don't have an AniList ID, as the media has been deleted
-          return true;
-        default:
-          logErr('Unknown notification type: ${notification.runtimeType}');
-      }
+      final anilistIdToCheck = notification.anilistId;
 
       // Filter out if the AniList ID is in the hidden cache
       if (anilistIdToCheck != null && library.hiddenSeriesService.shouldFilterAnilistId(anilistIdToCheck)) {

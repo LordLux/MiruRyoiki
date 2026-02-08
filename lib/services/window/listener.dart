@@ -102,12 +102,10 @@ class MyWindowListener extends WindowListener with TrayListener {
   void onTrayIconMouseDown() async {
     // Hide if already open, show and focus if hidden
     if (lastFocusTime != null && now.difference(lastFocusTime!).inMilliseconds < 170) {
-      WindowStateService.toggleFullScreen(false);
       windowManager.hide();
     } else {
       windowManager.show();
       windowManager.focus();
-      WindowStateService.toggleFullScreen(false);
     }
   }
 
@@ -115,10 +113,8 @@ class MyWindowListener extends WindowListener with TrayListener {
   void onTrayIconRightMouseDown() => trayManager.popUpContextMenu(bringAppToFront: true);
 
   Future<void> _showAndFocus() async {
-    WindowStateService.toggleFullScreen(true);
     await windowManager.show();
     await windowManager.focus();
-    await WindowStateService.toggleFullScreen(false);
   }
 
   Future<void> navigateToMenuKey(int index) async {
@@ -126,8 +122,14 @@ class MyWindowListener extends WindowListener with TrayListener {
     homeKey.currentState?.onChangedPane(index);
   }
 
-  @override
+  @override // TODO fix bug for some reason this gets called when running
   void onTrayMenuItemClick(MenuItem menuItem) {
+    // Prevents menu item clicks immediately after opening a dialog
+    if (Manager.navigation.lastDialogOpenTime != null && now.difference(Manager.navigation.lastDialogOpenTime!).inMilliseconds < 100) {
+      // This fixes a bug in Tray Manager when for some reason, after the image picker dialog is opened via context menu, this gets called immediately after
+      return;
+    }
+    
     switch (menuItem.key) {
       case ShowWindowMenuKey:
         _showAndFocus();
@@ -250,7 +252,6 @@ class MyWindowListener extends WindowListener with TrayListener {
     update();
     WindowStateService.saveWindowState();
     super.onWindowMaximize();
-    WindowStateService.toggleFullScreen(false);
     // logTrace('Window maximized');
   }
 
@@ -259,7 +260,6 @@ class MyWindowListener extends WindowListener with TrayListener {
     update();
     WindowStateService.saveWindowState();
     super.onWindowUnmaximize();
-    WindowStateService.toggleFullScreen(false);
     // logTrace('Window unmaximized');
   }
 
@@ -267,7 +267,6 @@ class MyWindowListener extends WindowListener with TrayListener {
   void onWindowMinimize() {
     update();
     super.onWindowMinimize();
-    WindowStateService.toggleFullScreen(false);
     // logTrace('Window minimized');
   }
 
@@ -275,7 +274,6 @@ class MyWindowListener extends WindowListener with TrayListener {
   void onWindowRestore() {
     update();
     super.onWindowRestore();
-    WindowStateService.toggleFullScreen(false);
     // logTrace('Window restored');
   }
 
@@ -294,7 +292,6 @@ class MyWindowListener extends WindowListener with TrayListener {
     libraryScreenKey.currentState?.measureCardSize();
     WindowStateService.saveWindowState();
     super.onWindowResized();
-    WindowStateService.toggleFullScreen(false);
     // logTrace('Window resized');
   }
 
@@ -303,23 +300,8 @@ class MyWindowListener extends WindowListener with TrayListener {
   // onWindowMoved
 
   @override
-  void onWindowEnterFullScreen() {
-    update();
-    super.onWindowEnterFullScreen();
-    logTrace('Window entered full screen');
-  }
-
-  @override
-  void onWindowLeaveFullScreen() {
-    update();
-    super.onWindowLeaveFullScreen();
-    logTrace('Window left full screen');
-  }
-
-  @override
   void onWindowDocked() {
     update();
-    WindowStateService.toggleFullScreen(false);
     super.onWindowDocked();
     logTrace('Window docked');
   }
@@ -327,7 +309,6 @@ class MyWindowListener extends WindowListener with TrayListener {
   @override
   void onWindowUndocked() {
     update();
-    WindowStateService.toggleFullScreen(false);
     super.onWindowUndocked();
     logTrace('Window undocked');
   }
