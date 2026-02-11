@@ -180,9 +180,11 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final appTheme = context.watch<AppTheme>();
+    final shortcuts = Map.of(WidgetsApp.defaultShortcuts)..removeWhere((key, value) => key.triggers!.contains(LogicalKeyboardKey.escape)); // Remove default escape key behavior to prevent it from interfering with our custom dialog handling
     return ScaffoldMessenger(
       child: CustomKeyboardListener(
         child: FluentApp(
+          shortcuts: shortcuts,
           navigatorKey: rootNavigatorKey,
           title: Manager.appTitle,
           theme: FluentThemeData(accentColor: appTheme.color, brightness: Brightness.light),

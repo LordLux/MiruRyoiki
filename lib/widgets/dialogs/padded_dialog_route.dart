@@ -25,8 +25,10 @@ Color getBarrierColor(Color? color, {bool exactColor = false}) {
 class PaddedDialogRoute extends FluentDialogRoute {
   /// Callback when the dialog is dismissed.
   final VoidCallback? onDismiss;
+
   /// The navigation item associated with this dialog.
   final DialogNavigationItem item;
+
   /// The barrier options for this dialog.
   final PaddedBarrierOptions options;
 
@@ -66,7 +68,7 @@ class PaddedDialogRoute extends FluentDialogRoute {
       barrierSemanticsDismissible: barrierDismissible,
       onDismiss: onDismiss,
     );
-    
+
     if (!options.transluscentBarrier)
       return Stack(
         children: [
