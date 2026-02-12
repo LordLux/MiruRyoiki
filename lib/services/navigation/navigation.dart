@@ -287,6 +287,7 @@ class NavigationManager extends ChangeNotifier {
     }
 
     _notifyChange();
+    Manager.setState();
     return true;
   }
 

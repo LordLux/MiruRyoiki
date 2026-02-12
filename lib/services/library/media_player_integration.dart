@@ -43,32 +43,44 @@ extension LibraryMediaPlayerIntegration on Library {
 
     // Initialize video player process monitoring
     logDebug('Initializing video player process monitoring...');
-    final processMonitorStarted = await process_monitor.VideoPlayerProcessIntegration.initialize(
-      onPlayerDetected: () {
-        logDebug('Video player detected by process monitor - starting reconnection timer');
-        _startPlayerAutoConnection();
-      },
-      onPlayerStopped: () {
-        if (!process_monitor.VideoPlayerProcessIntegration.hasRunningPlayers) {
-          logDebug('All video players stopped - stopping reconnection timer');
-          _stopConnectionTimer();
-        }
-      },
-      onSpecificPlayerStarted: (processName, playerType) {
-        logDebug('Started: $processName (type: $playerType)');
-      },
-      onSpecificPlayerStopped: (processName, playerType) {
-        logDebug('Stopped: $processName (type: $playerType)');
-        // If the currently connected player's process stopped, disconnect immediately
-        _handlePlayerProcessStopped(processName, playerType);
-      },
-    );
+
+    Future<bool> startProcessMonitoring() {
+      return process_monitor.VideoPlayerProcessIntegration.initialize(
+        onPlayerDetected: () {
+          logDebug('Video player detected by process monitor - starting reconnection timer');
+          _startPlayerAutoConnection();
+        },
+        onPlayerStopped: () {
+          if (!process_monitor.VideoPlayerProcessIntegration.hasRunningPlayers) {
+            logDebug('All video players stopped - stopping reconnection timer');
+            _stopConnectionTimer();
+          }
+        },
+        onSpecificPlayerStarted: (processName, playerType) {
+          logDebug('Started: $processName (type: $playerType)');
+        },
+        onSpecificPlayerStopped: (processName, playerType) {
+          logDebug('Stopped: $processName (type: $playerType)');
+          _handlePlayerProcessStopped(processName, playerType);
+        },
+      );
+    }
+
+    var processMonitorStarted = await startProcessMonitoring();
 
     if (processMonitorStarted) {
       logDebug('Video player process monitoring started successfully');
     } else {
-      logWarn('Video player process monitoring failed to start - starting timer-based connection as fallback');
-      await _startPlayerAutoConnection(); // Fallback to timer-based connection
+      logWarn('Video player process monitoring failed to start - it may already be running, restarting service to recover');
+      
+      await process_monitor.VideoPlayerProcessIntegration.stop();
+      await Future.delayed(const Duration(seconds: 1));
+      processMonitorStarted = await startProcessMonitoring();
+
+      if (!processMonitorStarted) {
+        logWarn('Video player process monitoring failed to start - starting timer-based connection as fallback');
+        await _startPlayerAutoConnection();
+      }
     }
   }
 

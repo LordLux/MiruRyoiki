@@ -150,9 +150,14 @@ void main(List<String> args) async {
     ReassembleListener(
       onReassemble: () {
         if (kDebugMode) {
-          logInfo('Hot reload detected');
-          Manager.skipScan = true;
-          nextFrame(delay: 10000, () => Manager.skipScan = false);
+          if (Manager.isHotRestart) {
+            // Hot restart: skip scanning and keep monitoring processes, since the process monitor should survive hot reloads and we don't want to interrupt it
+            logInfo('Hot restart detected');
+            Manager.skipScan = true;
+            nextFrame(delay: 10000, () => Manager.skipScan = false);
+          } else {
+            // Hot reload
+          }
         }
       },
       child: MultiProvider(
@@ -1135,12 +1140,7 @@ Future<void> _registerWindowsUrlScheme(String scheme) async {
   }
 }
 
-// TODO esc closes linking dialog when it should actually go back
-// TODO fix 'unwatch' context menu item that brings you to search screen instead of just unwatching (use same fix as image picker context menu item fix) + 'watch' context menu crashes app
-// TODO fix esc key closes 2 dialogs at a time
 // TODO fix the fact that we're saving the whole userdata to the database
-// TODO dominant color to null when navigating to release calendar via notification dialog
-// TODO 'video player process monitoring failed to start' because already open, after a hot restart -> detect with ReassembleListener
 // TODO scanning library progress indicator in status bar in Browse page is bugged visually with background cards
 // TODO add 'random entry' button to top right corner of library
 // TODO throttle db save events after 5s
@@ -1187,3 +1187,6 @@ Future<void> _registerWindowsUrlScheme(String scheme) async {
 // TODO detect custom players
 // TODO create autolinker
 // TODO change FORMATTER format for specials (allow specials inside season, OVA/ONAs in separate folder if not alone)
+
+// would be nice
+// TODO 'video player process monitoring failed to start' because already open, after a hot restart -> detect with ReassembleListener

@@ -28,6 +28,7 @@ class Manager {
     appVersion = packageInfo.version;
     buildNumber = packageInfo.buildNumber;
     lastUpdate = packageInfo.updateTime;
+    Future.delayed(Duration(seconds: 1), () => Manager.isHotRestart = false);
   }
 
   static Future<void> closeDB() async => await db.close();
@@ -43,6 +44,7 @@ class Manager {
   static bool canPopDialog = true;
   static bool notificationsPopping = false;
   static bool skipScan = false;
+  static bool isHotRestart = true;
   static Color? currentDominantColor;
   static Color? seriesDominantColor;
 
@@ -122,8 +124,9 @@ class Manager {
   }
 
   static AccentColor get accentColor => (kDebugMode //
-      ? Colors.green
-      : settings.accentColor).toAccentColor();
+          ? Colors.green
+          : settings.accentColor)
+      .toAccentColor();
   static Color get genericGray => FluentTheme.of(context).acrylicBackgroundColor.lerpWith(const Color.fromARGB(255, 35, 35, 35), 0.5);
   static Color get pastelDominantColor => Color.lerp(currentDominantColor ?? accentColor, Colors.white, .8)!;
   static Color get pastelAccentColor => Color.lerp(accentColor, Colors.white, .8)!;
