@@ -10,7 +10,7 @@ import 'mkv_metadata.dart';
 class Episode {
   final int? id;
   final PathString path;
-  final String name;
+  final String name; // filename
   int? _episodeNumber;
   PathString? thumbnailPath;
   bool watched;
@@ -36,7 +36,7 @@ class Episode {
     ParsedAnime? parsedAnime,
   })  : _episodeNumber = episodeNumber,
         _progress = progress {
-    _parsedAnime = parsedAnime ?? FlutterAnitomy().parse(path.name!);
+    _parsedAnime = parsedAnime ?? FlutterAnitomy().parse(path.fileName!);
     _episodeNumber ??= int.tryParse(_parsedAnime.episode ?? '');
     this.anilistTitle = anilistTitle;
   }

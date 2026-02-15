@@ -482,6 +482,12 @@ extension LibraryScanning on Library {
       relatedMedia.addAll(episodesByParentDir[otherPath]!);
     }
 
+    // Sort episodes within each season by episode number, then by filename
+    for (final season in seasons) {
+      season.episodes.sort(_compareEpisodes);
+    }
+    relatedMedia.sort(_compareEpisodes);
+
     // Sort seasons by season number (preserve original numbering)
     seasons.sort((a, b) {
       final aNum = a.seasonNumber;
@@ -504,6 +510,22 @@ extension LibraryScanning on Library {
       seasons: seasons,
       relatedMedia: relatedMedia,
     );
+  }
+
+  /// Compare two episodes for sorting: by episode number first (if available), then by filename.
+  static int _compareEpisodes(Episode a, Episode b) {
+    final aNum = a.episodeNumber;
+    final bNum = b.episodeNumber;
+
+    // Both have episode numbers — sort numerically
+    if (aNum != null && bNum != null) return aNum.compareTo(bNum);
+
+    // Episodes with a number come before those without
+    if (aNum != null) return -1;
+    if (bNum != null) return 1;
+
+    // Neither has an episode number — fall back to filename
+    return a.name.compareTo(b.name);
   }
 
   /// Check if a directory name matches the season pattern ([S or s]eason (\d){1+} or [S or s](\s){0 or 1}(\d){1+})

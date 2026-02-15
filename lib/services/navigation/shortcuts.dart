@@ -198,11 +198,11 @@ class _CustomKeyboardListenerState extends State<CustomKeyboardListener> {
                   library.clearThumbnailCacheForSeries(seriesScreenState.widget.seriesPath),
                   library.clearSingleAnilistCache(seriesScreenState.widget.seriesPath),
                 ]).then((_) {
-                  logTrace('Cleared cache for series: ${seriesScreenState.widget.seriesPath?.name}');
+                  logTrace('Cleared cache for series: ${seriesScreenState.widget.seriesPath?.fileName}');
                   imageCache.clear();
                   imageCache.clearLiveImages();
                 }).catchError((error) {
-                  logErr('Error clearing cache for series: ${seriesScreenState.widget.seriesPath?.name}', error);
+                  logErr('Error clearing cache for series: ${seriesScreenState.widget.seriesPath?.fileName}', error);
                 });
 
                 library.reloadLibrary(force: true, showSnackBar: false).then((_) {

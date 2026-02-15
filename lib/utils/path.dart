@@ -56,7 +56,7 @@ class PathString {
   String? get pathMaybe => PathUtils.normalizePath(_path);
 
   String? get original => _path;
-  String? get name => PathUtils.getFileName(_path);
+  String? get fileName => PathUtils.getFileName(_path);
   String? get ext => PathUtils.getFileExtension(_path);
 
   /// Returns the asset path if this path is within the assets directory, otherwise null.

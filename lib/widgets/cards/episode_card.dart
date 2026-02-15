@@ -72,16 +72,22 @@ class _HoverableEpisodeTileState extends State<HoverableEpisodeTile> {
           final number = widget.episode.episodeNumber;
           final title = widget.episode.displayTitle;
           final String text;
+          // if (widget.isReloadingSeries) {
+          //   text = "Reloading series, please wait...";
+          // } else if (title != null && number != null && !widget.episode.isDisplayTitleSimple) {
+          //   text = "$number - $title";
+          // } else if (title == null && number != null) {
+          //   text = "Episode $number";
+          // } else if (widget.episode.isDisplayTitleSimple) {
+          //   text = title!;
+          // } else {
+          //   text = widget.episode.name; // show original file name
+          // }
+
           if (widget.isReloadingSeries) {
             text = "Reloading series, please wait...";
-          } else if (title != null && number != null && !widget.episode.isDisplayTitleSimple) {
-            text = "$number - $title";
-          } else if (title == null && number != null) {
-            text = "Episode $number";
-          } else if (widget.episode.isDisplayTitleSimple) {
-            text = title!;
           } else {
-            text = widget.episode.name; // show original file name
+            text = widget.episode.path.fileName ?? widget.episode.name;
           }
           StatusBarManager().showDelayed(text);
         },
@@ -340,7 +346,11 @@ class _HoverableEpisodeTileState extends State<HoverableEpisodeTile> {
         }
 
         try {
-          final key = hasThumbnail ? 'thumbnail' : isLoading ? 'loading' : 'fallback';
+          final key = hasThumbnail
+              ? 'thumbnail'
+              : isLoading
+                  ? 'loading'
+                  : 'fallback';
           return AnimatedSwitcher(
             duration: mediumDuration,
             switchInCurve: Curves.easeIn,

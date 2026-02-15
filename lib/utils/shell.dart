@@ -109,7 +109,7 @@ class ShellUtils {
   static String resolveShortcutInternal(String shortcutPath) {
     shortcutPath = shortcutPath.replaceAll(" - Shortcut.lnk", "");
     final path = PathString(shortcutPath);
-    return r"M:\Videos\Series\" + path.name!;
+    return r"M:\Videos\Series\" + path.fileName!;
   }
 
   /// Resolves a Windows shortcut (.lnk) file to its target path

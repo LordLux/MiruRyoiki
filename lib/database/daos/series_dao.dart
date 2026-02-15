@@ -193,7 +193,15 @@ class SeriesDao extends DatabaseAccessor<AppDatabase> with _$SeriesDaoMixin {
     for (final s in seasonRows) {
       final epRows = await (select(episodesTable)..where((t) => t.seasonId.equals(s.id))) //
           .get();
-      final eps = epRows.map(_tableToEpisode).toList();
+      final eps = epRows.map(_tableToEpisode).toList()
+        ..sort((a, b) {
+          final aNum = a.episodeNumber;
+          final bNum = b.episodeNumber;
+          if (aNum != null && bNum != null) return aNum.compareTo(bNum);
+          if (aNum != null) return -1;
+          if (bNum != null) return 1;
+          return a.name.compareTo(b.name);
+        });
       seasons.add(Season(name: s.name, path: s.path, episodes: eps));
     }
 

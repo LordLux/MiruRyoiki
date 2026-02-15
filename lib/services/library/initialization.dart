@@ -68,6 +68,8 @@ extension LibraryInitialization on Library {
           }
         });
 
+    await reloadOpenedSeries();
+
     logDebug('Finished Reloading Library');
     if (showSnackBar) snackBar('Library Reloaded', severity: InfoBarSeverity.success);
     notifyListeners();
@@ -127,5 +129,23 @@ extension LibraryInitialization on Library {
 
   Future<void> ensureCacheValidated() async {
     if (!_cacheValidated) await cacheValidation();
+  }
+
+  /// After a library reload, refresh any open series/mapping screens to reflect updated data
+  /// Uses global keys to call [SeriesScreenState.refreshFromLibrary] on mounted screens
+  Future<void> reloadOpenedSeries() async {
+    // Refresh the main series screen if it's currently mounted
+    final seriesState = seriesScreenKey.currentState;
+    if (seriesState != null && seriesState.mounted) {
+      logTrace('Refreshing open series screen after library reload');
+      seriesState.refreshFromLibrary();
+    }
+
+    // Refresh the mapping screen if it's currently mounted
+    final mappingState = seriesMappingScreenKey.currentState;
+    if (mappingState != null && mappingState.mounted) {
+      logTrace('Refreshing open mapping screen after library reload');
+      mappingState.refreshFromLibrary();
+    }
   }
 }

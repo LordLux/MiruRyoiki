@@ -91,6 +91,7 @@ class SeriesScreenState extends State<SeriesScreen> {
   /// Cached reference to the current series, updated via Selector in build()
   Series? _cachedSeries;
   AnilistMapping? _cachedMapping;
+  MappingTarget? _cachedTarget;
 
   ViewType _currentViewType = ViewType.grid;
 
@@ -117,13 +118,13 @@ class SeriesScreenState extends State<SeriesScreen> {
 
   // Widget: whether to allocate a full row or divide it in 2 columns [true = full row, false = 2 columns]
   Map<InfoLabel, bool> infos(Series series) {
-    if (isMappingMode && widget.target != null) {
+    if (isMappingMode && _cachedTarget != null) {
       return {
-        if (widget.target!.isSeason)
+        if (_cachedTarget!.isSeason)
           InfoLabel(
             label: 'Episodes',
             labelStyle: Manager.bodyStrongStyle,
-            child: Text('${widget.target!.episodes.length}'),
+            child: Text('${_cachedTarget!.episodes.length}'),
           ): false,
         if (_cachedMapping?.anilistData?.status != null)
           InfoLabel(
@@ -173,11 +174,11 @@ class SeriesScreenState extends State<SeriesScreen> {
             labelStyle: Manager.bodyStrongStyle,
             child: Text('${_cachedMapping!.anilistData!.favourites}'),
           ): false,
-        if (widget.target!.metadata?.duration != null && widget.target!.metadata!.duration.inSeconds > 0)
+        if (_cachedTarget!.metadata?.duration != null && _cachedTarget!.metadata!.duration.inSeconds > 0)
           InfoLabel(
             label: 'Duration',
             labelStyle: Manager.bodyStrongStyle,
-            child: Text(widget.target!.metadata!.durationFormatted),
+            child: Text(_cachedTarget!.metadata!.durationFormatted),
           ): true,
       };
     }
@@ -248,8 +249,9 @@ class SeriesScreenState extends State<SeriesScreen> {
       nextFrame(() => _loadAnilistDataForCurrentSeries());
     }
 
-    // Initialize the cached mapping from the widget
+    // Initialize the cached mapping and target from the widget
     _cachedMapping = widget.mapping;
+    _cachedTarget = widget.target;
     if (_cachedMapping?.viewType != null) _currentViewType = _cachedMapping!.viewType!;
 
     if (isMappingMode) nextFrame(() => _initializeMappingData());
@@ -271,6 +273,7 @@ class SeriesScreenState extends State<SeriesScreen> {
     // Mapping or target changed
     if (widget.target != oldWidget.target || widget.mapping != oldWidget.mapping) {
       _cachedMapping = widget.mapping;
+      _cachedTarget = widget.target;
       if (_cachedMapping?.viewType != null) _currentViewType = _cachedMapping!.viewType!;
 
       if (isMappingMode)
@@ -287,6 +290,41 @@ class SeriesScreenState extends State<SeriesScreen> {
       final library = Provider.of<Library>(context, listen: false);
       library.updateMappingViewType(_cachedMapping!.anilistId, newViewType);
     }
+  }
+
+  /// Re-resolves the cached mapping/target from the current Library state
+  /// Called by [Library.reloadOpenedSeries] after a library reload to refresh stale data
+  void refreshFromLibrary() {
+    if (!mounted) return;
+
+    final library = Provider.of<Library>(context, listen: false);
+    final series = library.getSeriesByPath(widget.seriesPath!);
+    if (series == null) return;
+
+    _cachedSeries = series;
+
+    if (isMappingMode && _cachedMapping != null) {
+      final localPath = _cachedMapping!.localPath;
+
+      // Re-resolve mapping from the fresh series
+      final freshMapping = series.anilistMappings.firstWhereOrNull((m) => m.localPath == localPath);
+      if (freshMapping != null) {
+        _cachedMapping = freshMapping;
+        _cachedTarget = series.getTargetForMapping(freshMapping);
+      } else {
+        // Mapping path no longer exists
+        logWarn('Mapping path no longer found after library reload: $localPath');
+        snackBar('Mapping no longer available', severity: InfoBarSeverity.warning); // TODO in the future, try to match possibly-moved folder to preserve the mapping if the original path is gone
+        widget.onBack();
+        return;
+      }
+    }
+
+    // Reload Anilist data and colors
+    _loadAnilistDataForCurrentSeries();
+    _loadColors();
+
+    if (mounted) setState(() {});
   }
 
   @override
@@ -606,7 +644,7 @@ class SeriesScreenState extends State<SeriesScreen> {
 
   HeaderWidget _buildHeader(BuildContext context, Series series) {
     final isMapping = isMappingMode;
-    final title = isMapping ? widget.target!.displayName : series.displayTitle;
+    final title = isMapping ? _cachedTarget!.displayName : series.displayTitle;
     final description = isMapping ? _cachedMapping?.anilistData?.description : series.description;
     final imageFuture = isMapping ? _getMappingImage(banner: true) : series.getBannerImage();
 
@@ -779,7 +817,7 @@ class SeriesScreenState extends State<SeriesScreen> {
           ),
           expand: true,
           tooltip: 'Open the series folder in your file explorer',
-          onPressed: () => ShellUtils.openFolder(isMapping ? (widget.mapping?.localPath.path ?? series.path.path) : series.path.path),
+          onPressed: () => ShellUtils.openFolder(isMapping ? (_cachedMapping?.localPath.path ?? series.path.path) : series.path.path),
         ),
         if (!isMapping) ...[
           SizedBox(height: 6.0),
@@ -943,7 +981,7 @@ class SeriesScreenState extends State<SeriesScreen> {
     final infos_ = infos(series);
     final isMapping = isMappingMode;
     final genres = isMapping ? (_cachedMapping?.anilistData?.genres ?? []) : series.genres;
-    final watchedPercentage = isMapping ? (widget.target?.watchedPercentage ?? 0) : series.watchedPercentage;
+    final watchedPercentage = isMapping ? (_cachedTarget?.watchedPercentage ?? 0) : series.watchedPercentage;
 
     return LayoutBuilder(builder: (context, constraints) {
       return Column(
@@ -1023,27 +1061,27 @@ class SeriesScreenState extends State<SeriesScreen> {
                 }),
           ),
 
-          if (isMapping ? (widget.target?.metadata != null) : (series.metadata != null)) ...[
+          if (isMapping ? (_cachedTarget?.metadata != null) : (series.metadata != null)) ...[
             VDiv(16),
             Wrap(alignment: WrapAlignment.spaceBetween, spacing: 8, runSpacing: 8, children: [
               InfoLabel(
                 label: 'Path',
                 child: Text(
-                  isMapping ? widget.target!.path.path : series.path.path,
+                  isMapping ? _cachedTarget!.path.path : series.path.path,
                   style: Manager.captionStyle,
                 ),
               ),
               InfoLabel(
                 label: 'Size',
-                child: Text(isMapping ? widget.target!.metadata!.fileSize() : series.metadata!.fileSize(), style: Manager.captionStyle),
+                child: Text(isMapping ? _cachedTarget!.metadata!.fileSize() : series.metadata!.fileSize(), style: Manager.captionStyle),
               ),
               InfoLabel(
                 label: 'First Downloaded',
-                child: Text(isMapping ? widget.target!.metadata!.creationTime.pretty() : series.metadata!.creationTime.pretty(), style: Manager.captionStyle),
+                child: Text(isMapping ? _cachedTarget!.metadata!.creationTime.pretty() : series.metadata!.creationTime.pretty(), style: Manager.captionStyle),
               ),
               InfoLabel(
                 label: 'Last Modified',
-                child: Text(isMapping ? widget.target!.metadata!.lastModified.pretty() : series.metadata!.lastModified.pretty(), style: Manager.captionStyle),
+                child: Text(isMapping ? _cachedTarget!.metadata!.lastModified.pretty() : series.metadata!.lastModified.pretty(), style: Manager.captionStyle),
               ),
             ]),
             VDiv(16),
@@ -1054,7 +1092,7 @@ class SeriesScreenState extends State<SeriesScreen> {
   }
 
   Widget _buildContentGrid(BuildContext context, Series series) {
-    if (isMappingMode && widget.target != null) {
+    if (isMappingMode && _cachedTarget != null) {
       final headerHeight = 45.0;
       final borderRadius = ScreenUtils.kStatCardBorderRadius;
 
@@ -1107,10 +1145,10 @@ class SeriesScreenState extends State<SeriesScreen> {
                   padding: EdgeInsets.only(right: 2),
                   child: EpisodeGrid(
                     collapsable: false,
-                    episodes: widget.target!.episodes,
+                    episodes: _cachedTarget!.episodes,
                     onTap: (episode) => _playEpisode(episode),
                     series: series,
-                    mapping: widget.mapping,
+                    mapping: _cachedMapping,
                     padding: EdgeInsets.only(right: 14),
                   ),
                 ),
