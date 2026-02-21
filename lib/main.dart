@@ -152,9 +152,11 @@ void main(List<String> args) async {
         if (kDebugMode) {
           if (Manager.isHotRestart) {
             // Hot restart: skip scanning and keep monitoring processes, since the process monitor should survive hot reloads and we don't want to interrupt it
-            logInfo('Hot restart detected');
-            Manager.skipScan = true;
-            nextFrame(delay: 10000, () => Manager.skipScan = false);
+            if (!Manager.doSkipDebugHotRestartInitialization) {
+              logInfo('Hot restart detected, skipping library scan and keeping process monitor running');
+              Manager.skipScan = true;
+              nextFrame(delay: 10000, () => Manager.skipScan = false);
+            }
           } else {
             // Hot reload
           }
@@ -1141,10 +1143,8 @@ Future<void> _registerWindowsUrlScheme(String scheme) async {
 }
 
 // TODO update notification icon badge when reading notifications from notification dialog
-// TODO fix the fact that we're saving the whole userdata to the database
 // TODO scanning library progress indicator in status bar in Browse page is bugged visually with background cards
 // TODO add 'random entry' button to top right corner of library
-// TODO throttle db save events after 5s
 // TODO add 'play episode' button on continue watching series card -> click on card simply opens series
 // TODO cache images smaller to be displayed without using too much memory
 // TODO add NonMapping for series that are not to be linked with Anilist
@@ -1168,7 +1168,6 @@ Future<void> _registerWindowsUrlScheme(String scheme) async {
 // TODO fix image cache not working (es when changing primary id)
 // TODO cache Anilist lists to be able to work offline
 
-// TODO fix library scanning that keeps finding the same files every time even though they were already there
 // TODO change scanning: any folders [names] will remain as is and only loose files will be moved to 'Related Media'
 
 // beta

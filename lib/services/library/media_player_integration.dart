@@ -72,7 +72,7 @@ extension LibraryMediaPlayerIntegration on Library {
       logDebug('Video player process monitoring started successfully');
     } else {
       logWarn('Video player process monitoring failed to start - it may already be running, restarting service to recover');
-      
+
       await process_monitor.VideoPlayerProcessIntegration.stop();
       await Future.delayed(const Duration(seconds: 1));
       processMonitorStarted = await startProcessMonitoring();
@@ -408,8 +408,13 @@ extension LibraryMediaPlayerIntegration on Library {
           _updateEpisodeFromPlayerStatus(currentEpisode, currentStatus);
           logTrace('Updated episode progress during periodic check: ${currentEpisode.progressPercentage}');
 
-          // Save to database and update UI
-          await _saveLibrary();
+          // Find parent series and save directly instead of marking dirty and waiting for next full save
+          final parentSeries = _series.firstWhereOrNull((s) => //
+              s.seasons.any((season) => season.episodes.contains(currentEpisode)) || //
+              s.relatedMedia.contains(currentEpisode));
+          if (parentSeries != null) {
+            await _saveSingleSeries(parentSeries);
+          }
           notifyListeners();
           Manager.setState();
           // logTrace('Auto-saved episode progress from media player monitoring (periodic)');
@@ -482,8 +487,24 @@ extension LibraryMediaPlayerIntegration on Library {
     _progressSaveTimer?.cancel();
     _progressSaveTimer = null;
 
-    // Perform immediate save
-    await _saveLibrary();
+    // Find parent series of current episode and save it directly
+    Series? parentSeries;
+    if (currentStatus != null && currentStatus.filePath.isNotEmpty) {
+      final currentEpisode = findEpisodeByPath(currentStatus.filePath);
+      if (currentEpisode != null) {
+        parentSeries = _series.firstWhereOrNull((s) => //
+            s.seasons.any((season) => season.episodes.contains(currentEpisode)) || //
+            s.relatedMedia.contains(currentEpisode));
+      }
+    }
+
+    // Save only the affected series
+    if (parentSeries != null) {
+      await _saveSingleSeries(parentSeries);
+    } else {
+      // Fallback to full save if we couldn't identify the series
+      await _saveLibrary();
+    }
     notifyListeners();
     Manager.setState();
 

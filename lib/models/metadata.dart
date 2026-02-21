@@ -42,7 +42,7 @@ class Metadata {
       lastAccessed: parseDate(json['lastAccessed']),
     );
   }
-  
+
   Map<String, dynamic> toJson() {
     return {
       'fileSize': size,
@@ -104,19 +104,32 @@ class Metadata {
     )""";
   }
 
+  @override
+  bool operator ==(Object other) => //
+      identical(this, other) || //
+      other is Metadata && //
+          size == other.size &&
+          duration == other.duration &&
+          creationTime == other.creationTime &&
+          lastModified == other.lastModified &&
+          lastAccessed == other.lastAccessed;
+
+  @override
+  int get hashCode => Object.hash(size, duration, creationTime, lastModified, lastAccessed);
+
   Metadata copyWith({
     int? size,
     Duration? duration,
     DateTime? creationTime,
     DateTime? lastModified,
-    DateTime? lastAccessed
+    DateTime? lastAccessed,
   }) {
     return Metadata(
       size: size ?? this.size,
       duration: duration ?? this.duration,
       creationTime: creationTime ?? this.creationTime,
       lastModified: lastModified ?? this.lastModified,
-      lastAccessed: lastAccessed ?? this.lastAccessed
+      lastAccessed: lastAccessed ?? this.lastAccessed,
     );
   }
 }

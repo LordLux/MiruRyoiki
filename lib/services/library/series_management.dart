@@ -58,6 +58,7 @@ extension LibrarySeriesManagement on Library {
   Future<void> addSeries(Series series) async {
     _series.add(series);
     _dataVersion++;
+    _markDirty(series);
     await _saveLibrary();
     notifyListeners();
   }
@@ -65,6 +66,7 @@ extension LibrarySeriesManagement on Library {
   Future<void> removeSeries(Series series) async {
     _series.removeWhere((s) => s.path == series.path);
     _dataVersion++;
+    _hasPendingDeletions = true;
     await _saveLibrary();
     notifyListeners();
   }
@@ -164,6 +166,7 @@ extension LibrarySeriesManagement on Library {
     );
 
     try {
+      _markDirty(series);
       await _saveLibrary();
       notifyListeners();
     } finally {
@@ -224,7 +227,12 @@ extension LibrarySeriesManagement on Library {
       // Set the flag indicating a series was modified
       if (homeKey.currentState != null) homeKey.currentState!.seriesWasModified = true;
 
-      _saveLibrary();
+      // Find the series containing this episode and mark it dirty
+      final series = _series.firstWhereOrNull((s) => //
+          s.seasons.any((season) => season.episodes.contains(episode)) || //
+          s.relatedMedia.contains(episode));
+      if (series != null) _markDirty(series);
+      _scheduleDebouncedSave();
       notifyListeners();
     }
   }
@@ -248,7 +256,12 @@ extension LibrarySeriesManagement on Library {
       // Set the flag indicating a series was modified
       if (homeKey.currentState != null) homeKey.currentState!.seriesWasModified = true;
 
-      _saveLibrary();
+      // Find series containing these episodes and mark dirty
+      for (final episode in episodes) {
+        final series = _series.firstWhereOrNull((s) => s.seasons.any((season) => season.episodes.contains(episode)) || s.relatedMedia.contains(episode));
+        if (series != null) _markDirty(series);
+      }
+      _scheduleDebouncedSave();
       notifyListeners();
     }
   }
@@ -267,7 +280,10 @@ extension LibrarySeriesManagement on Library {
       markEpisodeWatched(episode, watched: watched, save: false, overrideProgress: true);
 
     if (save) {
-      _saveLibrary();
+      // Find the series containing this season and mark dirty
+      final parentSeries = _series.firstWhereOrNull((s) => s.seasons.contains(season));
+      if (parentSeries != null) _markDirty(parentSeries);
+      _scheduleDebouncedSave();
       notifyListeners();
     }
   }
@@ -291,7 +307,8 @@ extension LibrarySeriesManagement on Library {
     // Set the flag indicating a series was modified
     if (homeKey.currentState != null) homeKey.currentState!.seriesWasModified = true;
 
-    _saveLibrary();
+    _markDirty(series);
+    _scheduleDebouncedSave();
     notifyListeners();
   }
 
@@ -316,7 +333,10 @@ extension LibrarySeriesManagement on Library {
     // Set the flag indicating a series was modified
     if (homeKey.currentState != null) homeKey.currentState!.seriesWasModified = true;
 
-    _saveLibrary();
+    // Mark the series that owns this target as dirty
+    final parentSeries = _series.firstWhereOrNull((s) => s.seasons.any((season) => season.episodes.any((e) => target.episodes.contains(e))) || s.relatedMedia.any((e) => target.episodes.contains(e)));
+    if (parentSeries != null) _markDirty(parentSeries);
+    _scheduleDebouncedSave();
     notifyListeners();
   }
 
@@ -372,6 +392,7 @@ extension LibrarySeriesManagement on Library {
       episode.thumbnailPath = null;
     }
 
+    _markDirty(series);
     await _saveLibrary();
     notifyListeners();
 
@@ -403,6 +424,7 @@ extension LibrarySeriesManagement on Library {
     // Reset all failed attempts in ThumbnailManager
     Episode.resetAllFailedAttempts();
 
+    _markAllDirty();
     await _saveLibrary();
     notifyListeners();
 

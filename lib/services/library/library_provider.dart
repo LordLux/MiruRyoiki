@@ -116,6 +116,12 @@ class Library with ChangeNotifier {
   /// Timestamp of when the current playback position was at the last save
   Duration? _lastSavedPosition;
 
+  /// Set of series paths that have been modified since last save
+  final Set<PathString> _dirtySeries = {};
+  Timer? _debouncedSaveTimer;
+  /// Whether series were deleted since last save
+  bool _hasPendingDeletions = false;
+
   //
   // Services and utilities
   final SettingsManager _settings;
@@ -186,6 +192,7 @@ class Library with ChangeNotifier {
   @override
   void dispose() {
     scanProgress.dispose();
+    _debouncedSaveTimer?.cancel();
     disposeMediaPlayerIntegration();
     super.dispose();
   }

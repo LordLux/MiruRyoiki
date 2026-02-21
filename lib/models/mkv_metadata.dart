@@ -1,4 +1,3 @@
-
 import '../utils/units.dart' as units;
 
 class MkvMetadata {
@@ -40,6 +39,29 @@ class MkvMetadata {
     };
   }
 
+  @override
+  bool operator ==(Object other) => //
+      identical(this, other) || //
+      other is MkvMetadata && //
+          format == other.format &&
+          bitrate == other.bitrate &&
+          _listEquals(attachments, other.attachments) &&
+          _listEquals(videoStreams, other.videoStreams) &&
+          _listEquals(audioStreams, other.audioStreams) &&
+          _listEquals(textStreams, other.textStreams);
+
+  @override
+  int get hashCode => Object.hash(format, bitrate, attachments.length, videoStreams.length, audioStreams.length, textStreams.length);
+
+  static bool _listEquals<T>(List<T> a, List<T> b) {
+    if (identical(a, b)) return true;
+    if (a.length != b.length) return false;
+    for (int i = 0; i < a.length; i++) {
+      if (a[i] != b[i]) return false;
+    }
+    return true;
+  }
+
   // Helper method for bitrate display
   String get bitrateFormatted => units.fileTransferRate(bitrate);
 
@@ -66,6 +88,14 @@ class Pair {
       'height': height,
     };
   }
+
+  @override
+  bool operator ==(Object other) => //
+      identical(this, other) || //
+      other is Pair && width == other.width && height == other.height;
+
+  @override
+  int get hashCode => Object.hash(width, height);
 
   @override
   String toString() => '$width, $height';
@@ -112,6 +142,20 @@ class VideoStream {
 
   String get bitrateFormatted => units.fileTransferRate(bitrate);
 
+  @override
+  bool operator ==(Object other) => //
+      identical(this, other) || //
+      other is VideoStream && //
+          format == other.format &&
+          size == other.size &&
+          aspectRatio == other.aspectRatio &&
+          fps == other.fps &&
+          bitrate == other.bitrate &&
+          bitDepth == other.bitDepth;
+
+  @override
+  int get hashCode => Object.hash(format, size, aspectRatio, fps, bitrate, bitDepth);
+
   String get aspectRatioFormatted => aspectRatio.width > 0 && aspectRatio.height > 0 ? '${aspectRatio.width}:${aspectRatio.height}' : 'N/A';
 }
 
@@ -147,6 +191,18 @@ class AudioStream {
   }
 
   String get bitrateFormatted => units.fileTransferRate(bitrate);
+
+  @override
+  bool operator ==(Object other) => //
+      identical(this, other) || //
+      other is AudioStream && //
+          format == other.format &&
+          bitrate == other.bitrate &&
+          channels == other.channels &&
+          language == other.language;
+
+  @override
+  int get hashCode => Object.hash(format, bitrate, channels, language);
 }
 
 class TextStream {
@@ -175,4 +231,15 @@ class TextStream {
       'title': title,
     };
   }
+
+  @override
+  bool operator ==(Object other) => //
+      identical(this, other) || //
+      other is TextStream && //
+          format == other.format &&
+          language == other.language &&
+          title == other.title;
+
+  @override
+  int get hashCode => Object.hash(format, language, title);
 }

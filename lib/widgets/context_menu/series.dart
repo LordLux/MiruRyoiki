@@ -19,6 +19,7 @@ import '../../screens/series.dart';
 import '../../utils/logging.dart';
 import '../../utils/shell.dart';
 import '../../utils/icons.dart' as icons;
+import '../../utils/time.dart';
 import 'controller.dart';
 
 typedef LastListChange = ({Series series, String previousListName});
@@ -197,7 +198,7 @@ class SeriesContextMenuState extends State<SeriesContextMenu> {
       action: series.isForcedHidden ? UndoButton(() => _undoToggleHiddenStatus(context)) : null,
     );
 
-    Manager.setState();
+    nextFrame(() => Manager.setState());
   }
 
   void _updateFromAnilist(BuildContext context) {
@@ -219,6 +220,7 @@ class SeriesContextMenuState extends State<SeriesContextMenu> {
 
     library.markSeriesWatched(widget.series, watched: true);
     snackBar('Marked all episodes as watched', severity: InfoBarSeverity.success);
+    nextFrame(() => Manager.setState());
   }
 
   //TODO ask confirmation dialog before marking all as watched/unwatched
@@ -237,6 +239,7 @@ class SeriesContextMenuState extends State<SeriesContextMenu> {
 
     library.markSeriesWatched(widget.series, watched: false);
     snackBar('Marked all episodes as unwatched', severity: InfoBarSeverity.success);
+    nextFrame(() => Manager.setState());
   }
 
   static void _undoChangeCustomList() {

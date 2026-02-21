@@ -85,7 +85,7 @@ class SnackBarManager {
 
     // If there's an existing InfoBar, fade it out gracefully before showing the new one
     if (_currentOverlay != null && _currentOverlay!.mounted) {
-      logTrace('Closing previous InfoBar before showing new one');
+      // logTrace('Closing previous InfoBar before showing new one');
       await _closeCurrentSnackBar();
       // Extra delay to ensure clean transition
       // await Future.delayed(theme.mediumAnimationDuration);

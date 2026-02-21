@@ -231,6 +231,19 @@ extension LibraryScanning on Library {
       // Increment data version to invalidate caches in screens
       _dataVersion++;
 
+      // Mark only new and changed series as dirty
+      // new
+      _markDirtyPaths(newSeriesPaths);
+      if (deletedSeriesPaths.isNotEmpty) _hasPendingDeletions = true;
+      // existing that had changes
+      for (final seriesPath in existingSeriesPathsToCheck) {
+        final newFiles = unresolvedFiles[seriesPath] ?? <PathString>{};
+        final missingEpisodes = unresolvedEpisodes[seriesPath] ?? <Episode>{};
+        if (newFiles.isNotEmpty || missingEpisodes.isNotEmpty) {
+          _dirtySeries.add(seriesPath);
+        }
+      }
+
       await _saveLibrary(); // Save the updated library to database
 
       if (showSnack) {
@@ -717,6 +730,10 @@ extension LibraryScanning on Library {
       // Save and notify when done
       if (anyChanged || forceRecalculate) {
         _dataVersion++; // Invalidate caches when dominant colors updated
+        // Mark all series that had color changes as dirty
+        for (final series in _series) {
+          _markDirty(series);
+        }
         await _saveLibrary();
         notifyListeners();
         logTrace('Finished calculating dominant colors for $successCount series');

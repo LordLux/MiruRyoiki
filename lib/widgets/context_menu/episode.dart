@@ -14,8 +14,10 @@ import '../../services/episode_navigation/episode_navigator.dart';
 import '../../services/library/library_provider.dart';
 import '../../services/lock_manager.dart';
 import '../../services/navigation/show_info.dart';
+import '../../utils/logging.dart';
 import '../../utils/shell.dart';
 import '../../utils/icons.dart' as icons;
+import '../../utils/time.dart';
 import 'controller.dart';
 
 class EpisodeContextMenu extends StatefulWidget {
@@ -182,7 +184,7 @@ class EpisodeContextMenuState extends State<EpisodeContextMenu> {
     library.markEpisodeWatched(widget.episode, watched: newState, overrideProgress: true);
 
     snackBar(newState ? 'Marked as watched' : 'Marked as unwatched', severity: InfoBarSeverity.success);
-    Manager.setState();
+    nextFrame(() => Manager.setState());
   }
 
   void _watchAllPreviousSeasonEpisodes(BuildContext context) {
@@ -199,16 +201,16 @@ class EpisodeContextMenuState extends State<EpisodeContextMenu> {
         previousEpisodes.add(ep);
       }
     }
-    
+
     if (previousEpisodes.isEmpty) {
       snackBar('No previous episodes to mark as watched', severity: InfoBarSeverity.info);
       return;
     }
-    
+
     final library = Provider.of<Library>(context, listen: false);
     library.markEpisodesWatched(previousEpisodes, watched: true, overrideProgress: true);
 
-    Manager.setState();
+    nextFrame(() => Manager.setState());
   }
 
   @override

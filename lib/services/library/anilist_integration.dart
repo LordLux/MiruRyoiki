@@ -268,6 +268,7 @@ extension LibraryAnilistIntegration on Library {
       // TODO calculate anilist colors
     }
 
+    _markDirty(series);
     await seriesDao.syncSeries(series);
     notifyListeners();
   }
@@ -294,6 +295,7 @@ extension LibraryAnilistIntegration on Library {
     // Update hidden series cache in case AniList hidden status changed
     _hiddenSeriesService.updateSeriesHiddenStatus(series);
 
+    _markDirty(series);
     await seriesDao.syncSeries(series);
     notifyListeners();
     Manager.setState();
@@ -351,15 +353,20 @@ extension LibraryAnilistIntegration on Library {
       }
     }
 
-    // Check if metadata changed (optimized: single pass, short-circuit on first change)
+    // Only mark series whose metadata actually changed
     bool metadataChanged = false;
-    final allMappings = linkedSeries.expand((series) => series.anilistMappings).toList();
-    for (final mapping in allMappings) {
-      final oldMetadata = oldMetadataMap[mapping.anilistId];
-      final newMetadata = mapping.anilistData;
-      if (_hasAnimeMetadataChanged(oldMetadata, newMetadata)) {
+    for (final series in linkedSeries) {
+      bool seriesChanged = false;
+      for (final mapping in series.anilistMappings) {
+        final oldMetadata = oldMetadataMap[mapping.anilistId];
+        if (_hasAnimeMetadataChanged(oldMetadata, mapping.anilistData)) {
+          seriesChanged = true;
+          break;
+        }
+      }
+      if (seriesChanged) {
+        _markDirty(series);
         metadataChanged = true;
-        break;
       }
     }
 

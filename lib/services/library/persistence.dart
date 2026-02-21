@@ -39,19 +39,8 @@ extension LibraryPersistence on Library {
     try {
       await _loadSettings();
 
-      // Check for legacy JSON and migrate if it exists
-      // await migrateFromJson();
-
-      final rows = await seriesDao.getAllSeriesRows();
-      final loaded = <Series>[];
-
-      // Using Future.wait for faster loading
-      await Future.wait(rows.map((row) async {
-        final s = await seriesDao.loadFullSeries(row.id);
-        if (s != null) loaded.add(s);
-      }));
-
-      _series = loaded;
+      // Bulk-load all series
+      _series = await seriesDao.loadAllSeries();
 
       logDebug('>> Loaded ${_series.length} series from DB');
 
@@ -68,31 +57,45 @@ extension LibraryPersistence on Library {
   }
 
   /// Perform the actual save operation
-  Future<void> _saveLibrary() async {
-    logDebug('>> Syncing library with database...');
+  Future<void> _saveLibrary({bool forceFull = false}) async {
+    // nothing to do
+    if (!forceFull && _dirtySeries.isEmpty && !_hasPendingDeletions) {
+      logTrace('nothing dirty, skipping...');
+      return;
+    }
+
+    logDebug('>> Syncing library with database (dirty: ${_dirtySeries.length}, deletions: $_hasPendingDeletions, forceFull: $forceFull)...');
 
     // Show indeterminate progress bar
     LibraryScanProgressManager().showIndeterminate(text: 'Saving changes...');
 
     try {
-      final dbSeriesRows = await seriesDao.getAllSeriesRows();
-      final dbSeriesPaths = dbSeriesRows.map((row) => row.path.path).toSet();
-      final modelSeriesPaths = _series.map((s) => s.path.path).toSet();
+      // Deletions
+      if (_hasPendingDeletions || forceFull) {
+        final dbSeriesRows = await seriesDao.getAllSeriesRows();
+        final dbSeriesPaths = dbSeriesRows.map((row) => row.path.path).toSet();
+        final modelSeriesPaths = _series.map((s) => s.path.path).toSet();
 
-      // 1. Delete series that are in the DB but no longer in our library
-      final pathsToDelete = dbSeriesPaths.difference(modelSeriesPaths);
-      for (final path in pathsToDelete) {
-        final row = dbSeriesRows.firstWhere((r) => r.path.path == path);
-        await seriesDao.deleteSeriesRow(row.id);
+        final pathsToDelete = dbSeriesPaths.difference(modelSeriesPaths);
+        for (final path in pathsToDelete) {
+          final row = dbSeriesRows.firstWhere((r) => r.path.path == path);
+          await seriesDao.deleteSeriesRow(row.id);
+        }
+        if (pathsToDelete.isNotEmpty) logTrace('   - Deleted ${pathsToDelete.length} series from DB.');
+        _hasPendingDeletions = false;
       }
-      if (pathsToDelete.isNotEmpty) logTrace('   - Deleted ${pathsToDelete.length} series from DB.');
 
-      // 2. Insert or Update all series from our current library state
-      // The syncSeries function is transactional and handles all nested changes.
-      await Future.wait(_series.map((s) => seriesDao.syncSeries(s)));
+      // Determine series to sync
+      final seriesToSync = forceFull //
+          ? _series
+          : _series.where((s) => _dirtySeries.contains(s.path)).toList();
 
-      logTrace('   - Added ');
-      logTrace('   - Synced ${_series.length} series.');
+      if (seriesToSync.isNotEmpty) {
+        await seriesDao.syncSeriesBatch(seriesToSync);
+        logTrace('   - Synced ${seriesToSync.length} series.');
+      }
+
+      _dirtySeries.clear();
 
       logDebug('>> Library sync with DB complete.');
     } catch (e, st) {
@@ -100,6 +103,36 @@ extension LibraryPersistence on Library {
     } finally {
       LibraryScanProgressManager().hide();
     }
+  }
+
+  /// Mark a single series as needing a DB sync on the next save
+  void _markDirty(Series series) => _dirtySeries.add(series.path);
+
+  /// Mark specific series paths as dirty
+  void _markDirtyPaths(Iterable<PathString> paths) => _dirtySeries.addAll(paths);
+
+  /// Mark all series as dirty
+  void _markAllDirty() => _dirtySeries.addAll(_series.map((s) => s.path));
+
+  /// Save only a specific series immediately (bypasses dirty set).
+  /// Use for targeted single-series saves like episode progress updates.
+  Future<void> _saveSingleSeries(Series series) async {
+    try {
+      await seriesDao.syncSeries(series);
+      // Remove from dirty set since it's now saved
+      _dirtySeries.remove(series.path);
+    } catch (e, st) {
+      handleDatabaseError(e, st, 'saving single series ${series.name}');
+    }
+  }
+
+  /// Debounced save: schedules a save after a short delay
+  /// Multiple calls within the delay window are coalesced into one save
+  void _scheduleDebouncedSave({Duration delay = const Duration(milliseconds: 500)}) {
+    _debouncedSaveTimer?.cancel();
+    _debouncedSaveTimer = Timer(delay, () async {
+      await _saveLibrary();
+    });
   }
 
   Future<void> migrateFromJson() async {
@@ -127,7 +160,7 @@ extension LibraryPersistence on Library {
       }
 
       // Save all migrated series to the DB
-      await Future.wait(legacySeries.map((s) => seriesDao.syncSeries(s)));
+      await seriesDao.syncSeriesBatch(legacySeries);
 
       logDebug('Migration complete: ${legacySeries.length} series imported into DB.');
 
