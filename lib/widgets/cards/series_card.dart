@@ -179,6 +179,9 @@ class _SeriesCardState extends State<SeriesCard> {
         controller: _menuController,
         series: widget.series,
         context: context,
+        onChanged: () {
+          if (mounted) setState(() {});
+        },
         child: MouseRegion(
           onEnter: (_) => setState(() => _isHovering = true),
           onExit: (_) {

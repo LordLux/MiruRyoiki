@@ -163,6 +163,9 @@ class _SeriesListTileState extends State<SeriesListTile> {
           controller: _menuController,
           series: widget.series,
           context: context,
+          onChanged: () {
+            if (mounted) setState(() {});
+          },
           child: MouseRegion(
             onEnter: (_) => setState(() => _isHovering = true),
             onExit: (_) {

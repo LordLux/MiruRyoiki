@@ -26,6 +26,7 @@ class EpisodeContextMenu extends StatefulWidget {
   final Widget child;
   final BuildContext context;
   final DesktopContextMenuController controller;
+  final VoidCallback? onEpisodeChanged;
 
   const EpisodeContextMenu({
     super.key,
@@ -34,6 +35,7 @@ class EpisodeContextMenu extends StatefulWidget {
     required this.series,
     required this.child,
     required this.controller,
+    this.onEpisodeChanged,
   });
 
   @override
@@ -184,6 +186,7 @@ class EpisodeContextMenuState extends State<EpisodeContextMenu> {
     library.markEpisodeWatched(widget.episode, watched: newState, overrideProgress: true);
 
     snackBar(newState ? 'Marked as watched' : 'Marked as unwatched', severity: InfoBarSeverity.success);
+    widget.onEpisodeChanged?.call();
     nextFrame(() => Manager.setState());
   }
 
@@ -210,6 +213,7 @@ class EpisodeContextMenuState extends State<EpisodeContextMenu> {
     final library = Provider.of<Library>(context, listen: false);
     library.markEpisodesWatched(previousEpisodes, watched: true, overrideProgress: true);
 
+    widget.onEpisodeChanged?.call();
     nextFrame(() => Manager.setState());
   }
 

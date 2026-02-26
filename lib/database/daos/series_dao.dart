@@ -433,28 +433,14 @@ class SeriesDao extends DatabaseAccessor<AppDatabase> with _$SeriesDaoMixin {
 
   /// Returns true if the in-memory Episode model differs from the DB row
   bool _hasEpisodeChanged(Episode model, EpisodesTableData db) {
-    return model.name != db.name ||
-        model.path != db.path ||
-        model.watched != db.watched ||
-        model.progress != db.watchedPercentage ||
-        model.thumbnailPath != db.thumbnailPath ||
-        model.thumbnailUnavailable != db.thumbnailUnavailable ||
-        model.anilistTitle != db.anilistTitle ||
-        model.metadata != db.metadata ||
-        model.mkvMetadata != db.mkvMetadata;
+    return model.name != db.name || model.path != db.path || model.watched != db.watched || model.progress != db.watchedPercentage || model.thumbnailPath != db.thumbnailPath || model.thumbnailUnavailable != db.thumbnailUnavailable || model.anilistTitle != db.anilistTitle || model.metadata != db.metadata || model.mkvMetadata != db.mkvMetadata;
   }
 
   /// Returns true if the in-memory AnilistMapping model differs from the DB row
   bool _hasMappingChanged(AnilistMapping model, AnilistMappingsTableData db) {
     final colorConv = const ColorJsonConverter();
     // Compare non-expensive fields first
-    if (model.localPath != db.localPath ||
-        model.anilistId != db.anilistId ||
-        model.title != db.title ||
-        model.lastSynced != db.lastSynced ||
-        colorConv.toSql(model.posterColor) != db.posterColor ||
-        colorConv.toSql(model.bannerColor) != db.bannerColor ||
-        model.viewType?.name_ != db.viewType) {
+    if (model.localPath != db.localPath || model.anilistId != db.anilistId || model.title != db.title || model.lastSynced != db.lastSynced || colorConv.toSql(model.posterColor) != db.posterColor || colorConv.toSql(model.bannerColor) != db.bannerColor || model.viewType?.name_ != db.viewType) {
       return true;
     }
     // Compare anilistData last (requires JSON serialization)
@@ -485,12 +471,48 @@ class SeriesDao extends DatabaseAccessor<AppDatabase> with _$SeriesDaoMixin {
   /// This avoids loading the native Anitomy DLL when constructing episodes from
   /// DB rows, while still preserving episode number derivation.
   static int? _parseEpisodeNumberFromName(String filename) {
-    // Match patterns like "Episode 01", "E01", "Ep01", "- 01", "S01E01"
-    final match = RegExp(r'(?:[Ee](?:pisode)?|[Ss]\d+[Ee])[\s._-]*(\d{1,4})', caseSensitive: false).firstMatch(filename);
-    if (match != null) return int.tryParse(match.group(1)!);
-    // Fallback: last standalone number group in the filename (before extension)
-    final fallback = RegExp(r'(?:^|[\s._\-\[])(\d{1,4})(?=[\s._\-\]]|$)').allMatches(filename.replaceFirst(RegExp(r'\.[^.]+$'), ''));
-    return fallback.isNotEmpty ? int.tryParse(fallback.last.group(1)!) : null;
+    // Strip known release/technical metadata tokens that contain numbers,
+    // so they don't get falsely matched as episode numbers.
+    // Codecs: H.264, H.265, x264, x265, 10bit, Ma10p, 8bit
+    // Audio:  DDP5.1, DDP2.0, AAC2.0, FLAC5.1, AC3, FLAC2.0, EAC3
+    // Resolution: 1080p, 720p, 480p, 2160p
+    // Year-like 4-digit numbers preceded by a dot/space (e.g., ".2025.")
+    final name = filename
+        .replaceAll(RegExp(r'[HhXx][\s._-]?26[45]', caseSensitive: false), '')
+        .replaceAll(RegExp(r'(?:DDP|AAC|FLAC|AC3|EAC3)\d[\s._-]?\d', caseSensitive: false), '')
+        .replaceAll(RegExp(r'Ma\d+p', caseSensitive: false), '')
+        .replaceAll(RegExp(r'\d{1,2}[Bb]it'), '')
+        .replaceAll(RegExp(r'(?<=[\s._\-\[])\d{3,4}[pPiI](?=[\s._\-\]]|$)'), '')
+        .replaceAll(RegExp(r'(?<=[\s._\-\[(])(19|20)\d{2}(?=[\s._\-\])]|$)'), '');
+
+    // S01E02 / S1E2 / SP01E02 / S02.E01 / S02_E01 (including Specials, with optional separator)
+    final sxex = RegExp(r'[Ss][Pp]?\d+[\s._-]*[Ee](\d{1,4})').firstMatch(name);
+    if (sxex != null) return int.tryParse(sxex.group(1)!);
+
+    // S2 - 02 (season number + separator + episode number)
+    final sDash = RegExp(r'[Ss]\d+\s*[-\u2013]\s*(\d{1,4})(?:v\d+)?(?=[\s(\[]|$)').firstMatch(name);
+    if (sDash != null) return int.tryParse(sDash.group(1)!);
+
+    // Episode/Ep/E prefix (must not be inside brackets or preceded by alphanumeric)
+    final ep = RegExp(r'(?<![A-Za-z0-9\[])(?:[Ee](?:pisode|p)?)[\s._-]*(\d{1,4})(?:v\d+)?').firstMatch(name);
+    if (ep != null) return int.tryParse(ep.group(1)!);
+
+    // Leading episode number: filename starts with digits (e.g., "05 - Title", "07v2 - Title", "07b_cut")
+    // Allows optional version suffix (v2) or segment letter (a-e) after the number
+    final leading = RegExp(r'^(\d{1,4})(?:v\d+)?(?:[a-eA-E](?![a-zA-Z]))?(?=[\s._\-]|$)').firstMatch(name);
+    if (leading != null) return int.tryParse(leading.group(1)!);
+
+    // " - 02" standalone (title separator before episode number)
+    final dashNum = RegExp(r'[\s\])][-\u2013]\s*(\d{1,4})(?:v\d+)?(?=[\s(\[]|$)').firstMatch(name);
+    if (dashNum != null) return int.tryParse(dashNum.group(1)!);
+
+    // Fallback: last standalone number group in the filename
+    final fallback = RegExp(r'(?:^|[\s._\-\[])(\d{1,4})(?:v\d+)?(?=[\s._\-\]]|$)').allMatches(name);
+    if (fallback.isNotEmpty) return int.tryParse(fallback.last.group(1)!);
+
+    // Last-resort: number followed by a segment letter a-e (e.g., "01b_cut", "04c_cut")
+    final letterFallback = RegExp(r'(?:^|[\s._\-\[])(\d{1,3})[a-eA-E](?=[\s._\-\]]|$)').allMatches(name);
+    return letterFallback.isNotEmpty ? int.tryParse(letterFallback.last.group(1)!) : null;
   }
 
   Episode _tableToEpisode(EpisodesTableData d) => Episode(

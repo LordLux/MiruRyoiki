@@ -62,6 +62,9 @@ class _HoverableEpisodeTileState extends State<HoverableEpisodeTile> {
       series: widget.series,
       episode: widget.episode,
       context: context,
+      onEpisodeChanged: () {
+        if (mounted) setState(() {});
+      },
       child: MouseRegion(
         onEnter: (_) => setState(() => _isHovering = true),
         onExit: (_) {
@@ -150,6 +153,7 @@ class _HoverableEpisodeTileState extends State<HoverableEpisodeTile> {
                                 final number = widget.episode.episodeNumber;
                                 final title = widget.episode.displayTitle;
                                 final String text;
+                                bool isUnparsed = false;
 
                                 // Show episode title only if it's not a generic "Episode X" title
                                 if (title != null && number != null && !widget.episode.isDisplayTitleSimple) {
@@ -159,7 +163,8 @@ class _HoverableEpisodeTileState extends State<HoverableEpisodeTile> {
                                 } else if (widget.episode.isTitleParsable) {
                                   text = title!;
                                 } else {
-                                  text = "Episode ?";
+                                  text = widget.episode.cleanedName;
+                                  isUnparsed = true;
                                 }
                                 if (widget.isReloadingSeries) {
                                   return Shimmer.fromColors(
@@ -178,9 +183,10 @@ class _HoverableEpisodeTileState extends State<HoverableEpisodeTile> {
                                 }
                                 return Text(
                                   text,
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.w600,
+                                  style: TextStyle(
+                                    color: isUnparsed ? Colors.white.withOpacity(0.7) : Colors.white,
+                                    fontWeight: isUnparsed ? FontWeight.w400 : FontWeight.w600,
+                                    fontStyle: isUnparsed ? FontStyle.italic : FontStyle.normal,
                                     fontSize: 12,
                                   ),
                                   maxLines: 2,

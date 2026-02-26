@@ -21,6 +21,7 @@ class MappingContextMenu extends StatefulWidget {
   final Widget child;
   final BuildContext context;
   final DesktopContextMenuController controller;
+  final VoidCallback? onChanged;
 
   const MappingContextMenu({
     super.key,
@@ -29,6 +30,7 @@ class MappingContextMenu extends StatefulWidget {
     required this.series,
     required this.child,
     required this.controller,
+    this.onChanged,
   });
 
   @override
@@ -80,7 +82,7 @@ class MappingContextMenuState extends State<MappingContextMenu> {
     return Menu(
       items: [
         MenuItem(
-          label: target.watchedPercentage == 0 ? 'Play first Episode':'Play next Episode',
+          label: target.watchedPercentage == 0 ? 'Play first Episode' : 'Play next Episode',
           icon: icons.play,
           shortcutKey: 'p',
           shortcutModifiers: ShortcutModifiers(control: Platform.isWindows, meta: Platform.isMacOS),
@@ -148,6 +150,7 @@ class MappingContextMenuState extends State<MappingContextMenu> {
     library.markTargetWatched(widget.target, watched: newState);
 
     snackBar(newState ? 'Marked as watched' : 'Marked as unwatched', severity: InfoBarSeverity.success);
+    widget.onChanged?.call();
     Manager.setState();
   }
 
@@ -165,6 +168,7 @@ class MappingContextMenuState extends State<MappingContextMenu> {
 
     library.removeMapping(widget.series, widget.target);
     snackBar('Mapping removed', severity: InfoBarSeverity.success);
+    widget.onChanged?.call();
     Manager.setState();
   }
 

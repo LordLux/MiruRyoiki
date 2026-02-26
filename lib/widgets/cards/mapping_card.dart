@@ -197,6 +197,9 @@ class _MappingCardState extends State<MappingCard> {
         series: widget.series,
         target: widget.target,
         context: context,
+        onChanged: () {
+          if (mounted) setState(() {});
+        },
         child: MouseRegion(
           onEnter: (_) => setState(() => _isHovering = true),
           onExit: (_) {

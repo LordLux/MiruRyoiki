@@ -29,6 +29,7 @@ class SeriesContextMenu extends StatefulWidget {
   final Widget child;
   final BuildContext context;
   final DesktopContextMenuController controller;
+  final VoidCallback? onChanged;
 
   static int? lastSeriesId_watched; //
   static LastListChange? lastSeriesList_changeLists;
@@ -39,6 +40,7 @@ class SeriesContextMenu extends StatefulWidget {
     required this.child,
     required this.context,
     required this.controller,
+    this.onChanged,
   });
 
   @override
@@ -220,6 +222,7 @@ class SeriesContextMenuState extends State<SeriesContextMenu> {
 
     library.markSeriesWatched(widget.series, watched: true);
     snackBar('Marked all episodes as watched', severity: InfoBarSeverity.success);
+    widget.onChanged?.call();
     nextFrame(() => Manager.setState());
   }
 
@@ -239,6 +242,7 @@ class SeriesContextMenuState extends State<SeriesContextMenu> {
 
     library.markSeriesWatched(widget.series, watched: false);
     snackBar('Marked all episodes as unwatched', severity: InfoBarSeverity.success);
+    widget.onChanged?.call();
     nextFrame(() => Manager.setState());
   }
 

@@ -178,6 +178,7 @@ class _ContinueEpisodeCardState extends State<ContinueEpisodeCard> {
         controller: _menuController,
         series: widget.series,
         context: context,
+        onChanged: () { if (mounted) setState(() {}); },
         child: MouseRegion(
           onEnter: (_) => setState(() => _isHovering = true),
           onExit: (_) {
@@ -186,7 +187,11 @@ class _ContinueEpisodeCardState extends State<ContinueEpisodeCard> {
           },
           onHover: (_) {
             // print('isDisplayTitleSimple: ${widget.episode.isDisplayTitleSimple}, isTitleParsable: ${widget.episode.isTitleParsable}, displayTitle: "${widget.episode.displayTitle}"');
-            StatusBarManager().showDelayed("Episode ${widget.episode.episodeNumber ?? '?'}${!widget.episode.isDisplayTitleSimple && widget.episode.isTitleParsable && widget.episode.displayTitle != null ? ' - ${widget.episode.displayTitle}' : ''}");
+            StatusBarManager().showDelayed(
+              widget.episode.episodeNumber != null
+                  ? "Episode ${widget.episode.episodeNumber}${!widget.episode.isDisplayTitleSimple && widget.episode.isTitleParsable && widget.episode.displayTitle != null ? ' - ${widget.episode.displayTitle}' : ''}"
+                  : widget.episode.path.fileName ?? widget.episode.name,
+            );
           },
           cursor: SystemMouseCursors.click,
           child: ClipRRect(
@@ -271,9 +276,12 @@ class _ContinueEpisodeCardState extends State<ContinueEpisodeCard> {
                                     const SizedBox.shrink(),
                                     const Spacer(),
                                     Text(
-                                      'Episode ${widget.episode.episodeNumber ?? '?'}',
+                                      widget.episode.episodeNumber != null
+                                          ? 'Episode ${widget.episode.episodeNumber}'
+                                          : widget.episode.cleanedName,
                                       style: Manager.captionStyle.copyWith(
-                                        fontWeight: FontWeight.w600,
+                                        fontWeight: widget.episode.episodeNumber != null ? FontWeight.w600 : FontWeight.w400,
+                                        fontStyle: widget.episode.episodeNumber != null ? FontStyle.normal : FontStyle.italic,
                                         color: lighten(_episodePosterColor ?? FluentTheme.of(context).resources.textFillColorSecondary, .4),
                                       ),
                                       overflow: TextOverflow.ellipsis,

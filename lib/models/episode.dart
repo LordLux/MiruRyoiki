@@ -204,4 +204,21 @@ class Episode {
 
   /// Whether the title was successfully parsed from the filename
   bool get isTitleParsable => _parsedAnime.episodeTitle != null;
+
+  /// A cleaned-up version of the filename for display when episode number
+  /// and title are both unparseable. Strips bracket groups, replaces
+  /// underscores/dots with spaces, collapses whitespace, and trims.
+  String get cleanedName {
+    var s = name;
+    // Remove bracket groups: [SubsPlease], (1080p), [hash], etc.
+    s = s.replaceAll(RegExp(r'\[[^\]]*\]'), '');
+    s = s.replaceAll(RegExp(r'\([^)]*\)'), '');
+    // Replace underscores and dots with spaces (but not leading/trailing)
+    s = s.replaceAll('_', ' ').replaceAll('.', ' ');
+    // Collapse multiple spaces
+    s = s.replaceAll(RegExp(r'\s{2,}'), ' ').trim();
+    // Strip trailing dash left from removed groups (e.g., "Title - ")
+    s = s.replaceFirst(RegExp(r'\s*[-–]\s*$'), '').trim();
+    return s.isEmpty ? name : s;
+  }
 }

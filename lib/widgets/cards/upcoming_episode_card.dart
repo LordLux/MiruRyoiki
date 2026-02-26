@@ -181,6 +181,9 @@ class _UpcomingEpisodeCardState extends State<UpcomingEpisodeCard> {
         controller: _menuController,
         series: widget.series,
         context: context,
+        onChanged: () {
+          if (mounted) setState(() {});
+        },
         child: MouseRegion(
           onEnter: (_) => setState(() => _isHovering = true),
           onExit: (_) {
@@ -299,7 +302,7 @@ class _UpcomingEpisodeCardState extends State<UpcomingEpisodeCard> {
                     child: Material(
                       color: Colors.transparent,
                       child: GestureDetector(
-                        onSecondaryTapDown: (_) =>_menuController.open(),
+                        onSecondaryTapDown: (_) => _menuController.open(),
                         child: InkWell(
                           onTap: null,
                           splashColor: mainColor.withOpacity(0.1),
