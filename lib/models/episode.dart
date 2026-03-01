@@ -20,12 +20,15 @@ class Episode {
   MkvMetadata? mkvMetadata;
   String? _anilistTitle;
   late final ParsedAnime _parsedAnime;
+  /// Episode title extracted by anitomy from the filename
+  String? parsedTitle;
 
   Episode({
     this.id,
     required this.path,
     required this.name,
     int? episodeNumber,
+    this.parsedTitle,
     this.thumbnailPath,
     this.watched = false,
     double progress = 0.0,
@@ -38,6 +41,7 @@ class Episode {
         _progress = progress {
     _parsedAnime = parsedAnime ?? FlutterAnitomy().parse(path.fileName!);
     _episodeNumber ??= int.tryParse(_parsedAnime.episode ?? '');
+    parsedTitle ??= _parsedAnime.episodeTitle;
     this.anilistTitle = anilistTitle;
   }
 
@@ -75,8 +79,8 @@ class Episode {
   int? get episodeNumber => _episodeNumber ?? int.tryParse(_parsedAnime.episode ?? '');
   set episodeNumber(int? value) => _episodeNumber = value;
 
-  /// Returns the display title, prioritizing AniList title over filename
-  String? get displayTitle => (Manager.enableAnilistEpisodeTitles ? anilistTitle : null) ?? _parsedAnime.episodeTitle;
+  /// Returns the display title, prioritizing AniList title over parsed title over filename
+  String? get displayTitle => (Manager.enableAnilistEpisodeTitles ? anilistTitle : null) ?? parsedTitle ?? _parsedAnime.episodeTitle;
 
   @override
   String toString() {
@@ -110,6 +114,7 @@ class Episode {
       'name': name,
       'path': path.path, // not nullable
       'episodeNumber': _episodeNumber, // nullable
+      'parsedTitle': parsedTitle, // nullable
       'thumbnailPath': thumbnailPath?.pathMaybe, // nullable
       'watched': watched,
       'watchedPercentage': progress,
@@ -127,6 +132,7 @@ class Episode {
       name: json['name'],
       path: PathString.fromJson(json['path'])!,
       episodeNumber: json['episodeNumber'],
+      parsedTitle: json['parsedTitle'],
       thumbnailPath: PathString.fromJson(json['thumbnailPath']),
       watched: json['watched'] ?? false,
       progress: json['watchedPercentage'] ?? 0.0,
@@ -171,6 +177,7 @@ class Episode {
     PathString? path,
     String? name,
     int? episodeNumber,
+    String? parsedTitle,
     PathString? thumbnailPath,
     bool? watched,
     double? progress,
@@ -184,6 +191,7 @@ class Episode {
       path: path ?? this.path,
       name: name ?? this.name,
       episodeNumber: episodeNumber ?? _episodeNumber,
+      parsedTitle: parsedTitle ?? this.parsedTitle,
       thumbnailPath: thumbnailPath ?? this.thumbnailPath,
       watched: watched ?? this.watched,
       progress: progress ?? this.progress,
@@ -203,7 +211,7 @@ class Episode {
   bool get isDisplayTitleSimple => RegExp(r'^(Episode|Ep|E) \d{1,3}$', caseSensitive: false).hasMatch(displayTitle ?? '');
 
   /// Whether the title was successfully parsed from the filename
-  bool get isTitleParsable => _parsedAnime.episodeTitle != null;
+  bool get isTitleParsable => parsedTitle != null || _parsedAnime.episodeTitle != null;
 
   /// A cleaned-up version of the filename for display when episode number
   /// and title are both unparseable. Strips bracket groups, replaces

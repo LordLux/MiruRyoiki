@@ -45,7 +45,7 @@ class Manager {
   static bool notificationsPopping = false;
   static bool skipScan = false;
   static bool isHotRestart = true;
-  static bool doSkipDebugHotRestartInitialization = false;
+  static bool doSkipDebugHotRestartInitialization = true;
   static Color? currentDominantColor;
   static Color? seriesDominantColor;
 

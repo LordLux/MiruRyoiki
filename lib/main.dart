@@ -815,8 +815,8 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
       case '/${NavigationManager.TorrentId}':
         page = DownloadsScreen(
           key: torrentScreenKey,
-          controller: TorrentManager.downloadController!,
-          sonarrRepo: TorrentManager.sonarrRepository!,
+          controller: TorrentManager.downloadController,
+          sonarrRepo: TorrentManager.sonarrRepository,
           scrollController: NavigationManager.getScrollController(NavigationManager.TorrentIndex),
         );
       case '/${NavigationManager.AccountsId}':

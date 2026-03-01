@@ -8,6 +8,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart' as mat hide AnimatedSwitcher;
 import 'package:flutter_acrylic/window_effect.dart';
 import 'package:material_symbols_icons/symbols.dart';
+import 'package:miruryoiki/utils/text.dart';
 import 'package:miruryoiki/widgets/buttons/loading_button.dart';
 import 'package:miruryoiki/widgets/page/infobar.dart';
 import 'package:provider/provider.dart';
@@ -22,7 +23,9 @@ import '../manager.dart';
 // import '../models/formatter/action.dart';
 import '../services/anilist/episode_title_service.dart';
 import '../services/data_storage_service.dart';
+import '../services/downloads/torrent_manager.dart';
 import '../services/lock_manager.dart';
+import '../services/sonarr/sonarr_service.dart';
 import '../services/navigation/dialogs.dart';
 import '../services/navigation/shortcuts.dart';
 import '../services/navigation/show_info.dart';
@@ -111,6 +114,16 @@ class SettingsScreenState extends State<SettingsScreen> with AutomaticKeepAliveC
   bool _isSelectingFolder = false;
   bool _isClearingThumbnailCache = false;
 
+  // Sonarr settings state
+  final TextEditingController _sonarrUrlController = TextEditingController();
+  final TextEditingController _sonarrApiKeyController = TextEditingController();
+  bool _isSonarrTesting = false;
+  bool? _sonarrTestResult; // null = not tested, true = ok, false = failed
+  bool _isEditing = false; // Whether we're currently editing Sonarr settings
+  List<Map<String, dynamic>> _sonarrQualityProfiles = [];
+  List<Map<String, dynamic>> _sonarrRootFolders = [];
+  bool _isSonarrLoading = false;
+
   final FocusNode fontSizeFocusNode = FocusNode();
   final FocusNode transitionAnimationFocusNode = FocusNode();
 
@@ -146,6 +159,11 @@ class SettingsScreenState extends State<SettingsScreen> with AutomaticKeepAliveC
           "title": "Advanced",
           "icon": Icon(mat.Icons.settings, color: Manager.accentColor.lighter, size: 23),
           "desc": "Configure logging behavior for debugging and troubleshooting.",
+        },
+        {
+          "title": "Sonarr",
+          "icon": Icon(mat.Icons.download, color: Manager.accentColor.lighter, size: 23),
+          "desc": "Configure Sonarr connection for automated anime downloads.",
         },
         {
           "title": "About ${Manager.appTitle}",
@@ -786,6 +804,15 @@ class SettingsScreenState extends State<SettingsScreen> with AutomaticKeepAliveC
     nextFrame(() {
       final settings = Provider.of<SettingsManager>(context, listen: false);
       tempColor = settings.accentColor;
+      _sonarrUrlController.text = settings.sonarrBaseUrl;
+      _sonarrApiKeyController.text = settings.sonarrApiKey;
+
+      // Restore verified Sonarr connection state
+      if (settings.sonarrConnectionVerified && settings.isSonarrConfigured) {
+        setState(() => _sonarrTestResult = true);
+        TorrentManager.reinitialize();
+        _loadSonarrDropdowns();
+      }
     });
   }
 
@@ -2101,8 +2128,10 @@ class SettingsScreenState extends State<SettingsScreen> with AutomaticKeepAliveC
               isLong: Manager.args.isNotEmpty && Manager.args.join(', ').length > 50,
             )
         ],
+      // Sonarr
+      6 => _buildSonarrSettings(settings),
       // About
-      6 => [
+      7 => [
           MouseButtonWrapper(
             child: (_) => GestureDetector(
               onTap: () => carpaccio(),
@@ -2161,6 +2190,248 @@ class SettingsScreenState extends State<SettingsScreen> with AutomaticKeepAliveC
         children: list,
       ),
     );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Sonarr settings builder
+  // ---------------------------------------------------------------------------
+  List<Widget> _buildSonarrSettings(SettingsManager settings) {
+    return [
+      // Connection header
+      Text('Connection', style: Manager.bodyStrongStyle),
+      VDiv(12),
+
+      // Base URL
+      Row(
+        children: [
+          Text('Base URL', style: Manager.bodyStyle),
+          SizedBox(width: 24),
+          Expanded(
+            child: TextBox(
+              controller: _sonarrUrlController,
+              placeholder: SonarrRepository.defaultUrlPort, // http://localhost:8989
+              placeholderStyle: Manager.bodyStyle.copyWith(color: Colors.white.withValues(alpha: .5), fontStyle: FontStyle.italic),
+              onSubmitted: (value) {
+                settings.sonarrBaseUrl = value.trim();
+                _sonarrTestResult = null;
+              },
+              onChanged: (value) {
+                _isEditing = _isEditing || value.trim() != settings.sonarrBaseUrl; // Mark as editing if value differs from saved URL
+              },
+            ),
+          ),
+        ],
+      ),
+      VDiv(12),
+
+      // API Key
+      Row(
+        children: [
+          Text('API Key', style: Manager.bodyStyle),
+          SizedBox(width: 24),
+          Expanded(
+            child: PasswordBox(
+              controller: _sonarrApiKeyController,
+              placeholder: 'Sonarr API key',
+              onSubmitted: (value) {
+                settings.sonarrApiKey = value.trim();
+                _sonarrTestResult = null;
+              },
+              onChanged: (value) {
+                _isEditing = _isEditing || value.trim() != settings.sonarrApiKey; // Mark as editing if value differs from saved API key
+              },
+            ),
+          ),
+        ],
+      ),
+      VDiv(16),
+
+      // Test Connection button
+      Row(
+        children: [
+          StandardButton(
+            cursor: (settings.isSonarrConfigured && !_isSonarrTesting) ? SystemMouseCursors.click : SystemMouseCursors.forbidden,
+            label: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (_isSonarrTesting)
+                  SizedBox(width: 16, height: 16, child: RepaintBoundary(child: mat.CircularProgressIndicator(strokeWidth: 2)))
+                else
+                  Icon(
+                    _sonarrTestResult == null
+                        ? mat.Icons.wifi_find
+                        : _sonarrTestResult!
+                            ? mat.Icons.check_circle
+                            : mat.Icons.error,
+                    size: 18,
+                    color: _sonarrTestResult == null
+                        ? null
+                        : _sonarrTestResult!
+                            ? Colors.green
+                            : Colors.red,
+                  ),
+                SizedBox(width: 8),
+                Text(
+                  _isSonarrTesting
+                      ? 'Testing...'
+                      : _sonarrTestResult == null || _isEditing
+                          ? 'Test Connection'
+                          : _sonarrTestResult!
+                              ? 'Connected'
+                              : 'Failed',
+                  style: Manager.bodyStyle,
+                ),
+              ],
+            ),
+            onPressed: _isSonarrTesting || !settings.isSonarrConfigured
+                ? null
+                : () async {
+                    setState(() {
+                      _isSonarrTesting = true;
+                      _sonarrTestResult = null;
+                    });
+                    try {
+                      // Create a temporary repo to test
+                      final testRepo = SonarrRepository(
+                        baseUrl: settings.sonarrBaseUrl.fallbackIfEmpty(SonarrRepository.defaultUrlPort),
+                        apiKey: settings.sonarrApiKey,
+                      );
+                      final ok = await testRepo.testConnection();
+                      if (mounted) {
+                        setState(() {
+                          _sonarrTestResult = ok;
+                          _isSonarrTesting = false;
+                        });
+                        if (ok) {
+                          settings.sonarrConnectionVerified = true;
+                          TorrentManager.reinitialize();
+                          _loadSonarrDropdowns();
+                        }
+                      }
+                    } catch (_) {
+                      if (mounted)
+                        setState(() {
+                          _sonarrTestResult = false;
+                          _isSonarrTesting = false;
+                        });
+                    }
+                  },
+            tooltip: () {
+              if (settings.sonarrBaseUrl.isEmpty || settings.sonarrApiKey.isEmpty) return 'Enter both Base URL and API Key to enable testing';
+              return null;
+            }(),
+          ),
+          if (_sonarrTestResult == false) ...[
+            SizedBox(width: 12),
+            Text('Could not reach Sonarr. Check URL and API key.', style: Manager.bodyStyle.copyWith(color: Colors.red)),
+          ],
+        ],
+      ),
+      VDiv(24),
+      Divider(),
+
+      if (settings.isSonarrConfigured && _sonarrTestResult != false) ...[
+        VDiv(16),
+
+        // Defaults header
+        Text('Defaults', style: Manager.bodyStrongStyle),
+        VDiv(4),
+        Text(
+          'These are used when adding new series to Sonarr.',
+          style: Manager.bodyStyle.copyWith(color: Colors.white.withValues(alpha: .5)),
+        ),
+        VDiv(16),
+
+        // Quality Profile dropdown
+        Row(
+          children: [
+            Text('Quality Profile', style: Manager.bodyStyle),
+            SizedBox(width: 24),
+            if (_isSonarrLoading)
+              SizedBox(width: 16, height: 16, child: RepaintBoundary(child: mat.CircularProgressIndicator(strokeWidth: 2)))
+            else if (_sonarrQualityProfiles.isEmpty)
+              Text('Test connection first', style: Manager.bodyStyle.copyWith(color: Colors.white.withValues(alpha: .5)))
+            else
+              ComboBox<int>(
+                value: settings.sonarrQualityProfileId == 0 ? null : settings.sonarrQualityProfileId,
+                placeholder: Text('Select a profile'),
+                items: _sonarrQualityProfiles.map((p) => ComboBoxItem<int>(value: p['id'] as int, child: Text(p['name'] as String))).toList(),
+                onChanged: (value) {
+                  if (value != null) setState(() => settings.sonarrQualityProfileId = value);
+                },
+              ),
+          ],
+        ),
+        VDiv(16),
+
+        // Root Folder dropdown
+        Row(
+          children: [
+            Text('Root Folder', style: Manager.bodyStyle),
+            SizedBox(width: 24),
+            if (_isSonarrLoading)
+              SizedBox(width: 16, height: 16, child: RepaintBoundary(child: mat.CircularProgressIndicator(strokeWidth: 2)))
+            else if (_sonarrRootFolders.isEmpty)
+              Text('Test connection first', style: Manager.bodyStyle.copyWith(color: Colors.white.withValues(alpha: .5)))
+            else
+              ComboBox<String>(
+                value: settings.sonarrRootFolderPath.isEmpty ? null : settings.sonarrRootFolderPath,
+                placeholder: Text('Select root folder'),
+                items: _sonarrRootFolders.map((f) => ComboBoxItem<String>(value: f['path'] as String, child: Text(f['path'] as String))).toList(),
+                onChanged: (value) {
+                  if (value != null) setState(() => settings.sonarrRootFolderPath = value);
+                },
+              ),
+          ],
+        ),
+      ],
+
+      VDiv(24),
+      InfoBar(
+        title: Text('Tip', style: Manager.bodyStrongStyle),
+        content: Row(
+          children: [
+            Text(
+              'You can find your API key in Sonarr under Settings → General → Security, or click',
+              style: Manager.bodyStyle,
+            ),
+            SizedBox(width: 12),
+            Transform.translate(
+              offset: Offset(0, 1),
+              child: WrappedHyperlinkButton(
+                text: 'here',
+                url: '${settings.sonarrBaseUrl.fallbackIfEmpty(SonarrRepository.defaultUrlPort)}/settings/general',
+                style: Manager.bodyStyle.copyWith(color: getPrimaryColorBasedOnAccent()),
+                icon: Icon(mat.Icons.open_in_new, size: 16, color: getPrimaryColorBasedOnAccent()),
+              ),
+            ),
+          ],
+        ),
+        severity: InfoBarSeverity.info,
+      ),
+    ];
+  }
+
+  void _loadSonarrDropdowns() async {
+    if (TorrentManager.sonarrRepository == null) return;
+    setState(() => _isSonarrLoading = true);
+    try {
+      final repo = TorrentManager.sonarrRepository!;
+      final profiles = await repo.getQualityProfiles();
+      final folders = await repo.getRootFolders();
+      if (mounted) {
+        setState(() {
+          _sonarrQualityProfiles = profiles.map((p) => {'id': p.id, 'name': p.name}).toList();
+          _sonarrRootFolders = folders.map((f) => {'id': f.id, 'path': f.path}).toList();
+          _isSonarrLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isSonarrLoading = false);
+        snackBar('Failed to load Sonarr data: $e', severity: InfoBarSeverity.error);
+      }
+    }
   }
 
   Expanded ReadonlyTextBoxWithShiftAltButton(

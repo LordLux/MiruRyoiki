@@ -1,7 +1,9 @@
+import 'package:miruryoiki/utils/text.dart';
+
+import '../../settings.dart';
 import '../mapping/plex_anibridge_service.dart';
 import '../sonarr/sonarr_service.dart';
 import 'download_controller.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class TorrentManager {
   static PlexAniBridgeService? plexBridge;
@@ -11,11 +13,23 @@ class TorrentManager {
   static void initialize() {
     plexBridge = PlexAniBridgeService();
 
+    final settings = SettingsManager();
+    if (!settings.isSonarrConfigured) return; // Not configured yet
+
+    final baseUrl = settings.sonarrBaseUrl.fallbackIfEmpty(SonarrRepository.defaultUrlPort);
+
     sonarrRepository = SonarrRepository(
-      baseUrl: 'http://localhost:8989', // TODO load from user preferences
-      apiKey: dotenv.env['SONARR_API_KEY']!,
+      baseUrl: baseUrl,
+      apiKey: settings.sonarrApiKey,
     );
 
     downloadController = DownloadController(sonarrRepository!, plexBridge!);
+  }
+
+  /// Re-create the Sonarr client after settings change
+  static void reinitialize() {
+    sonarrRepository = null;
+    downloadController = null;
+    initialize();
   }
 }

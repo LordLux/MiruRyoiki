@@ -16,6 +16,11 @@ class SeriesLinkService {
     return await _anilistService.searchAnimeMatch(searchQuery);
   }
 
+  /// Search for anime by a raw query string
+  Future<List<AnilistAnime>> searchByQuery(String query, {int limit = 10}) async {
+    return await _anilistService.searchAnimeMatch(query, limit: limit);
+  }
+
   Future<AnilistAnime?> fetchAnimeDetails(int anilistId) async {
     return await _anilistService.getAnimeDetails(anilistId);
   }

@@ -45,7 +45,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? db]) : super(db ?? _openConnection());
 
   @override
-  int get schemaVersion => 12;
+  int get schemaVersion => 13;
 
   @override
   Future<void> close() async {
@@ -171,6 +171,19 @@ class AppDatabase extends _$AppDatabase {
               await m.addColumn(anilistMappingsTable, anilistMappingsTable.viewType);
             } catch (e) {
               // Column might already exist if migration was interrupted, ignore error
+              if (!e.toString().contains('duplicate column name')) rethrow;
+            }
+          }
+          if (from < 13) {
+            // Add episodeNumber and parsedTitle columns to episodes_table
+            try {
+              await m.issueCustomQuery('ALTER TABLE episodes_table ADD COLUMN episode_number INTEGER;');
+            } catch (e) {
+              if (!e.toString().contains('duplicate column name')) rethrow;
+            }
+            try {
+              await m.issueCustomQuery('ALTER TABLE episodes_table ADD COLUMN parsed_title TEXT;');
+            } catch (e) {
               if (!e.toString().contains('duplicate column name')) rethrow;
             }
           }

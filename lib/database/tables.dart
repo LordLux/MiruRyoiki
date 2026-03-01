@@ -70,6 +70,11 @@ class EpisodesTable extends Table {
   TextColumn get mkvMetadata => text().map(const MkvMetadataConverter()).nullable()();
   TextColumn get anilistTitle => text().nullable()();
 
+  /// Episode number extracted by Anitomy at scan time
+  IntColumn get episodeNumber => integer().nullable()();
+  /// Episode title extracted by Anitomy from the filename
+  TextColumn get parsedTitle => text().nullable()();
+
   @override
   List<String> get customConstraints => [
         'UNIQUE (season_id, path)'

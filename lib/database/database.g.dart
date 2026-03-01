@@ -1223,6 +1223,18 @@ class $EpisodesTableTable extends EpisodesTable
   late final GeneratedColumn<String> anilistTitle = GeneratedColumn<String>(
       'anilist_title', aliasedName, true,
       type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _episodeNumberMeta =
+      const VerificationMeta('episodeNumber');
+  @override
+  late final GeneratedColumn<int> episodeNumber = GeneratedColumn<int>(
+      'episode_number', aliasedName, true,
+      type: DriftSqlType.int, requiredDuringInsert: false);
+  static const VerificationMeta _parsedTitleMeta =
+      const VerificationMeta('parsedTitle');
+  @override
+  late final GeneratedColumn<String> parsedTitle = GeneratedColumn<String>(
+      'parsed_title', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
   @override
   List<GeneratedColumn> get $columns => [
         id,
@@ -1235,7 +1247,9 @@ class $EpisodesTableTable extends EpisodesTable
         thumbnailUnavailable,
         metadata,
         mkvMetadata,
-        anilistTitle
+        anilistTitle,
+        episodeNumber,
+        parsedTitle
       ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -1284,6 +1298,18 @@ class $EpisodesTableTable extends EpisodesTable
           anilistTitle.isAcceptableOrUnknown(
               data['anilist_title']!, _anilistTitleMeta));
     }
+    if (data.containsKey('episode_number')) {
+      context.handle(
+          _episodeNumberMeta,
+          episodeNumber.isAcceptableOrUnknown(
+              data['episode_number']!, _episodeNumberMeta));
+    }
+    if (data.containsKey('parsed_title')) {
+      context.handle(
+          _parsedTitleMeta,
+          parsedTitle.isAcceptableOrUnknown(
+              data['parsed_title']!, _parsedTitleMeta));
+    }
     return context;
   }
 
@@ -1319,6 +1345,10 @@ class $EpisodesTableTable extends EpisodesTable
               DriftSqlType.string, data['${effectivePrefix}mkv_metadata'])),
       anilistTitle: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}anilist_title']),
+      episodeNumber: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}episode_number']),
+      parsedTitle: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}parsed_title']),
     );
   }
 
@@ -1352,6 +1382,12 @@ class EpisodesTableData extends DataClass
   final Metadata? metadata;
   final MkvMetadata? mkvMetadata;
   final String? anilistTitle;
+
+  /// Episode number extracted by anitomy at scan time (persisted to avoid re-parsing)
+  final int? episodeNumber;
+
+  /// Episode title extracted by anitomy from the filename
+  final String? parsedTitle;
   const EpisodesTableData(
       {required this.id,
       required this.seasonId,
@@ -1363,7 +1399,9 @@ class EpisodesTableData extends DataClass
       required this.thumbnailUnavailable,
       this.metadata,
       this.mkvMetadata,
-      this.anilistTitle});
+      this.anilistTitle,
+      this.episodeNumber,
+      this.parsedTitle});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -1392,6 +1430,12 @@ class EpisodesTableData extends DataClass
     if (!nullToAbsent || anilistTitle != null) {
       map['anilist_title'] = Variable<String>(anilistTitle);
     }
+    if (!nullToAbsent || episodeNumber != null) {
+      map['episode_number'] = Variable<int>(episodeNumber);
+    }
+    if (!nullToAbsent || parsedTitle != null) {
+      map['parsed_title'] = Variable<String>(parsedTitle);
+    }
     return map;
   }
 
@@ -1416,6 +1460,12 @@ class EpisodesTableData extends DataClass
       anilistTitle: anilistTitle == null && nullToAbsent
           ? const Value.absent()
           : Value(anilistTitle),
+      episodeNumber: episodeNumber == null && nullToAbsent
+          ? const Value.absent()
+          : Value(episodeNumber),
+      parsedTitle: parsedTitle == null && nullToAbsent
+          ? const Value.absent()
+          : Value(parsedTitle),
     );
   }
 
@@ -1435,6 +1485,8 @@ class EpisodesTableData extends DataClass
       metadata: serializer.fromJson<Metadata?>(json['metadata']),
       mkvMetadata: serializer.fromJson<MkvMetadata?>(json['mkvMetadata']),
       anilistTitle: serializer.fromJson<String?>(json['anilistTitle']),
+      episodeNumber: serializer.fromJson<int?>(json['episodeNumber']),
+      parsedTitle: serializer.fromJson<String?>(json['parsedTitle']),
     );
   }
   @override
@@ -1452,6 +1504,8 @@ class EpisodesTableData extends DataClass
       'metadata': serializer.toJson<Metadata?>(metadata),
       'mkvMetadata': serializer.toJson<MkvMetadata?>(mkvMetadata),
       'anilistTitle': serializer.toJson<String?>(anilistTitle),
+      'episodeNumber': serializer.toJson<int?>(episodeNumber),
+      'parsedTitle': serializer.toJson<String?>(parsedTitle),
     };
   }
 
@@ -1466,7 +1520,9 @@ class EpisodesTableData extends DataClass
           bool? thumbnailUnavailable,
           Value<Metadata?> metadata = const Value.absent(),
           Value<MkvMetadata?> mkvMetadata = const Value.absent(),
-          Value<String?> anilistTitle = const Value.absent()}) =>
+          Value<String?> anilistTitle = const Value.absent(),
+          Value<int?> episodeNumber = const Value.absent(),
+          Value<String?> parsedTitle = const Value.absent()}) =>
       EpisodesTableData(
         id: id ?? this.id,
         seasonId: seasonId ?? this.seasonId,
@@ -1481,6 +1537,9 @@ class EpisodesTableData extends DataClass
         mkvMetadata: mkvMetadata.present ? mkvMetadata.value : this.mkvMetadata,
         anilistTitle:
             anilistTitle.present ? anilistTitle.value : this.anilistTitle,
+        episodeNumber:
+            episodeNumber.present ? episodeNumber.value : this.episodeNumber,
+        parsedTitle: parsedTitle.present ? parsedTitle.value : this.parsedTitle,
       );
   EpisodesTableData copyWithCompanion(EpisodesTableCompanion data) {
     return EpisodesTableData(
@@ -1504,6 +1563,11 @@ class EpisodesTableData extends DataClass
       anilistTitle: data.anilistTitle.present
           ? data.anilistTitle.value
           : this.anilistTitle,
+      episodeNumber: data.episodeNumber.present
+          ? data.episodeNumber.value
+          : this.episodeNumber,
+      parsedTitle:
+          data.parsedTitle.present ? data.parsedTitle.value : this.parsedTitle,
     );
   }
 
@@ -1520,7 +1584,9 @@ class EpisodesTableData extends DataClass
           ..write('thumbnailUnavailable: $thumbnailUnavailable, ')
           ..write('metadata: $metadata, ')
           ..write('mkvMetadata: $mkvMetadata, ')
-          ..write('anilistTitle: $anilistTitle')
+          ..write('anilistTitle: $anilistTitle, ')
+          ..write('episodeNumber: $episodeNumber, ')
+          ..write('parsedTitle: $parsedTitle')
           ..write(')'))
         .toString();
   }
@@ -1537,7 +1603,9 @@ class EpisodesTableData extends DataClass
       thumbnailUnavailable,
       metadata,
       mkvMetadata,
-      anilistTitle);
+      anilistTitle,
+      episodeNumber,
+      parsedTitle);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -1552,7 +1620,9 @@ class EpisodesTableData extends DataClass
           other.thumbnailUnavailable == this.thumbnailUnavailable &&
           other.metadata == this.metadata &&
           other.mkvMetadata == this.mkvMetadata &&
-          other.anilistTitle == this.anilistTitle);
+          other.anilistTitle == this.anilistTitle &&
+          other.episodeNumber == this.episodeNumber &&
+          other.parsedTitle == this.parsedTitle);
 }
 
 class EpisodesTableCompanion extends UpdateCompanion<EpisodesTableData> {
@@ -1567,6 +1637,8 @@ class EpisodesTableCompanion extends UpdateCompanion<EpisodesTableData> {
   final Value<Metadata?> metadata;
   final Value<MkvMetadata?> mkvMetadata;
   final Value<String?> anilistTitle;
+  final Value<int?> episodeNumber;
+  final Value<String?> parsedTitle;
   const EpisodesTableCompanion({
     this.id = const Value.absent(),
     this.seasonId = const Value.absent(),
@@ -1579,6 +1651,8 @@ class EpisodesTableCompanion extends UpdateCompanion<EpisodesTableData> {
     this.metadata = const Value.absent(),
     this.mkvMetadata = const Value.absent(),
     this.anilistTitle = const Value.absent(),
+    this.episodeNumber = const Value.absent(),
+    this.parsedTitle = const Value.absent(),
   });
   EpisodesTableCompanion.insert({
     this.id = const Value.absent(),
@@ -1592,6 +1666,8 @@ class EpisodesTableCompanion extends UpdateCompanion<EpisodesTableData> {
     this.metadata = const Value.absent(),
     this.mkvMetadata = const Value.absent(),
     this.anilistTitle = const Value.absent(),
+    this.episodeNumber = const Value.absent(),
+    this.parsedTitle = const Value.absent(),
   })  : seasonId = Value(seasonId),
         name = Value(name),
         path = Value(path);
@@ -1607,6 +1683,8 @@ class EpisodesTableCompanion extends UpdateCompanion<EpisodesTableData> {
     Expression<String>? metadata,
     Expression<String>? mkvMetadata,
     Expression<String>? anilistTitle,
+    Expression<int>? episodeNumber,
+    Expression<String>? parsedTitle,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -1621,6 +1699,8 @@ class EpisodesTableCompanion extends UpdateCompanion<EpisodesTableData> {
       if (metadata != null) 'metadata': metadata,
       if (mkvMetadata != null) 'mkv_metadata': mkvMetadata,
       if (anilistTitle != null) 'anilist_title': anilistTitle,
+      if (episodeNumber != null) 'episode_number': episodeNumber,
+      if (parsedTitle != null) 'parsed_title': parsedTitle,
     });
   }
 
@@ -1635,7 +1715,9 @@ class EpisodesTableCompanion extends UpdateCompanion<EpisodesTableData> {
       Value<bool>? thumbnailUnavailable,
       Value<Metadata?>? metadata,
       Value<MkvMetadata?>? mkvMetadata,
-      Value<String?>? anilistTitle}) {
+      Value<String?>? anilistTitle,
+      Value<int?>? episodeNumber,
+      Value<String?>? parsedTitle}) {
     return EpisodesTableCompanion(
       id: id ?? this.id,
       seasonId: seasonId ?? this.seasonId,
@@ -1648,6 +1730,8 @@ class EpisodesTableCompanion extends UpdateCompanion<EpisodesTableData> {
       metadata: metadata ?? this.metadata,
       mkvMetadata: mkvMetadata ?? this.mkvMetadata,
       anilistTitle: anilistTitle ?? this.anilistTitle,
+      episodeNumber: episodeNumber ?? this.episodeNumber,
+      parsedTitle: parsedTitle ?? this.parsedTitle,
     );
   }
 
@@ -1692,6 +1776,12 @@ class EpisodesTableCompanion extends UpdateCompanion<EpisodesTableData> {
     if (anilistTitle.present) {
       map['anilist_title'] = Variable<String>(anilistTitle.value);
     }
+    if (episodeNumber.present) {
+      map['episode_number'] = Variable<int>(episodeNumber.value);
+    }
+    if (parsedTitle.present) {
+      map['parsed_title'] = Variable<String>(parsedTitle.value);
+    }
     return map;
   }
 
@@ -1708,7 +1798,9 @@ class EpisodesTableCompanion extends UpdateCompanion<EpisodesTableData> {
           ..write('thumbnailUnavailable: $thumbnailUnavailable, ')
           ..write('metadata: $metadata, ')
           ..write('mkvMetadata: $mkvMetadata, ')
-          ..write('anilistTitle: $anilistTitle')
+          ..write('anilistTitle: $anilistTitle, ')
+          ..write('episodeNumber: $episodeNumber, ')
+          ..write('parsedTitle: $parsedTitle')
           ..write(')'))
         .toString();
   }
@@ -5138,6 +5230,8 @@ typedef $$EpisodesTableTableCreateCompanionBuilder = EpisodesTableCompanion
   Value<Metadata?> metadata,
   Value<MkvMetadata?> mkvMetadata,
   Value<String?> anilistTitle,
+  Value<int?> episodeNumber,
+  Value<String?> parsedTitle,
 });
 typedef $$EpisodesTableTableUpdateCompanionBuilder = EpisodesTableCompanion
     Function({
@@ -5152,6 +5246,8 @@ typedef $$EpisodesTableTableUpdateCompanionBuilder = EpisodesTableCompanion
   Value<Metadata?> metadata,
   Value<MkvMetadata?> mkvMetadata,
   Value<String?> anilistTitle,
+  Value<int?> episodeNumber,
+  Value<String?> parsedTitle,
 });
 
 final class $$EpisodesTableTableReferences extends BaseReferences<_$AppDatabase,
@@ -5224,6 +5320,12 @@ class $$EpisodesTableTableFilterComposer
   ColumnFilters<String> get anilistTitle => $composableBuilder(
       column: $table.anilistTitle, builder: (column) => ColumnFilters(column));
 
+  ColumnFilters<int> get episodeNumber => $composableBuilder(
+      column: $table.episodeNumber, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get parsedTitle => $composableBuilder(
+      column: $table.parsedTitle, builder: (column) => ColumnFilters(column));
+
   $$SeasonsTableTableFilterComposer get seasonId {
     final $$SeasonsTableTableFilterComposer composer = $composerBuilder(
         composer: this,
@@ -5288,6 +5390,13 @@ class $$EpisodesTableTableOrderingComposer
       column: $table.anilistTitle,
       builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<int> get episodeNumber => $composableBuilder(
+      column: $table.episodeNumber,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get parsedTitle => $composableBuilder(
+      column: $table.parsedTitle, builder: (column) => ColumnOrderings(column));
+
   $$SeasonsTableTableOrderingComposer get seasonId {
     final $$SeasonsTableTableOrderingComposer composer = $composerBuilder(
         composer: this,
@@ -5350,6 +5459,12 @@ class $$EpisodesTableTableAnnotationComposer
   GeneratedColumn<String> get anilistTitle => $composableBuilder(
       column: $table.anilistTitle, builder: (column) => column);
 
+  GeneratedColumn<int> get episodeNumber => $composableBuilder(
+      column: $table.episodeNumber, builder: (column) => column);
+
+  GeneratedColumn<String> get parsedTitle => $composableBuilder(
+      column: $table.parsedTitle, builder: (column) => column);
+
   $$SeasonsTableTableAnnotationComposer get seasonId {
     final $$SeasonsTableTableAnnotationComposer composer = $composerBuilder(
         composer: this,
@@ -5405,6 +5520,8 @@ class $$EpisodesTableTableTableManager extends RootTableManager<
             Value<Metadata?> metadata = const Value.absent(),
             Value<MkvMetadata?> mkvMetadata = const Value.absent(),
             Value<String?> anilistTitle = const Value.absent(),
+            Value<int?> episodeNumber = const Value.absent(),
+            Value<String?> parsedTitle = const Value.absent(),
           }) =>
               EpisodesTableCompanion(
             id: id,
@@ -5418,6 +5535,8 @@ class $$EpisodesTableTableTableManager extends RootTableManager<
             metadata: metadata,
             mkvMetadata: mkvMetadata,
             anilistTitle: anilistTitle,
+            episodeNumber: episodeNumber,
+            parsedTitle: parsedTitle,
           ),
           createCompanionCallback: ({
             Value<int> id = const Value.absent(),
@@ -5431,6 +5550,8 @@ class $$EpisodesTableTableTableManager extends RootTableManager<
             Value<Metadata?> metadata = const Value.absent(),
             Value<MkvMetadata?> mkvMetadata = const Value.absent(),
             Value<String?> anilistTitle = const Value.absent(),
+            Value<int?> episodeNumber = const Value.absent(),
+            Value<String?> parsedTitle = const Value.absent(),
           }) =>
               EpisodesTableCompanion.insert(
             id: id,
@@ -5444,6 +5565,8 @@ class $$EpisodesTableTableTableManager extends RootTableManager<
             metadata: metadata,
             mkvMetadata: mkvMetadata,
             anilistTitle: anilistTitle,
+            episodeNumber: episodeNumber,
+            parsedTitle: parsedTitle,
           ),
           withReferenceMapper: (p0) => p0
               .map((e) => (

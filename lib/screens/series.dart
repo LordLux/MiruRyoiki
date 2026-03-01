@@ -9,9 +9,11 @@ import 'package:defer_pointer/defer_pointer.dart';
 import '../main.dart';
 import '../models/anilist/anime.dart';
 import '../services/connectivity/connectivity_service.dart';
+import '../services/downloads/torrent_manager.dart';
 import '../services/library/library_provider.dart';
 import '../services/lock_manager.dart';
 import '../services/navigation/dialogs2.dart';
+import '../services/navigation/navigation.dart';
 import '../services/navigation/show_info.dart';
 import '../services/navigation/statusbar.dart';
 import '../utils/color.dart';
@@ -822,6 +824,34 @@ class SeriesScreenState extends State<SeriesScreen> {
         if (!isMapping) ...[
           SizedBox(height: 6.0),
           _buildManageLinksButton(anilistProvider, series),
+          if (series.isLinked && series.anilistData != null) ...[
+            SizedBox(height: 6.0),
+            StandardButton(
+              label: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(mat.Icons.download),
+                  HDiv(4),
+                  Text(
+                    'Download Episodes',
+                    style: getStyleBasedOnAccent(false),
+                  ),
+                ],
+              ),
+              expand: true,
+              tooltip: TorrentManager.sonarrRepository == null
+                  ? 'Configure Sonarr in Settings first'
+                  : 'Search and download episodes via Sonarr',
+              onPressed: TorrentManager.sonarrRepository == null
+                  ? null
+                  : () async {
+                      final anilistAnime = series.anilistData!;
+                      Manager.navigation.pushPaneIndex(NavigationManager.TorrentIndex);
+                      await Future.delayed(const Duration(milliseconds: 100));
+                      torrentScreenKey.currentState?.loadAnime(anilistAnime);
+                    },
+            ),
+          ],
         ],
       ],
       poster: ({required imageProvider, required width, required height, required squareness, required offset}) {

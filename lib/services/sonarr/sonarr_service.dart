@@ -1,6 +1,10 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import '../../models/sonarr/sonarr_episode.dart';
+import '../../models/sonarr/sonarr_quality_profile.dart';
 import '../../models/sonarr/sonarr_release.dart';
+import '../../models/sonarr/sonarr_root_folder.dart';
+import '../../models/sonarr/sonarr_series.dart';
 
 class SonarrRepository {
   final String _baseUrl; // e.g., http://localhost:8989
@@ -95,14 +99,62 @@ class SonarrRepository {
     throw Exception('Failed to search episode releases');
   }
   
-  Future<List<dynamic>> getEpisodes(int sonarrSeriesId) async {
+  Future<List<SonarrEpisode>> getEpisodes(int sonarrSeriesId) async {
     final uri = Uri.parse('$_baseUrl/api/v3/episode?seriesId=$sonarrSeriesId&apikey=$_apiKey');
     final response = await _client.get(uri);
 
     if (response.statusCode == 200) {
-      return json.decode(response.body);
+      final List<dynamic> data = json.decode(response.body);
+      return data.map((e) => SonarrEpisode.fromJson(e)).toList();
     }
     throw Exception('Failed to load episodes');
+  }
+
+  // QUALITY PROFILES
+  Future<List<SonarrQualityProfile>> getQualityProfiles() async {
+    final uri = Uri.parse('$_baseUrl/api/v3/qualityprofile?apikey=$_apiKey');
+    final response = await _client.get(uri);
+
+    if (response.statusCode == 200) {
+      final List<dynamic> data = json.decode(response.body);
+      return data.map((e) => SonarrQualityProfile.fromJson(e)).toList();
+    }
+    throw Exception('Failed to load quality profiles');
+  }
+
+  // ROOT FOLDERS
+  Future<List<SonarrRootFolder>> getRootFolders() async {
+    final uri = Uri.parse('$_baseUrl/api/v3/rootfolder?apikey=$_apiKey');
+    final response = await _client.get(uri);
+
+    if (response.statusCode == 200) {
+      final List<dynamic> data = json.decode(response.body);
+      return data.map((e) => SonarrRootFolder.fromJson(e)).toList();
+    }
+    throw Exception('Failed to load root folders');
+  }
+
+  // ALL SERIES (for Torrent landing page)
+  Future<List<SonarrSeries>> getSeries() async {
+    final uri = Uri.parse('$_baseUrl/api/v3/series?apikey=$_apiKey');
+    final response = await _client.get(uri);
+
+    if (response.statusCode == 200) {
+      final List<dynamic> data = json.decode(response.body);
+      return data.map((e) => SonarrSeries.fromJson(e)).toList();
+    }
+    throw Exception('Failed to load series');
+  }
+
+  // CONNECTION TEST
+  Future<bool> testConnection() async {
+    try {
+      final uri = Uri.parse('$_baseUrl/api/v3/system/status?apikey=$_apiKey');
+      final response = await _client.get(uri);
+      return response.statusCode == 200;
+    } catch (_) {
+      return false;
+    }
   }
 
   // 3. GRAB (Download)
@@ -119,4 +171,5 @@ class SonarrRepository {
       body: json.encode(payload),
     );
   }
+  static String get defaultUrlPort => 'http://localhost:8989';
 }

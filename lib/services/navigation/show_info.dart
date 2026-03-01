@@ -72,7 +72,7 @@ class SnackBarManager {
     bool autoHide = true,
     bool showErrorDetails = true,
   }) async {
-    if (severity == fluent.InfoBarSeverity.error && exception != null) {
+    if (severity == fluent.InfoBarSeverity.error) {
       if (showErrorDetails) longMessage ??= exception.toString();
       logErr("Error: $message", exception, stackTrace);
     }

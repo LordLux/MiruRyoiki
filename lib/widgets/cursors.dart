@@ -5,14 +5,22 @@ import 'package:flutter_custom_cursor/cursor_manager.dart';
 import 'package:path/path.dart';
 import 'package:image/image.dart' as img2;
 
+import '../utils/logging.dart';
+
 const String cursorAssetsPath = 'assets/system/cursors';
 
 late String systemMouseCursorGrab;
 late String systemMouseCursorGrabbing;
 
 Future<void> initSystemMouseCursor() async {
-  systemMouseCursorGrab = await _loadCustomMouseCursor("$cursorAssetsPath/grab.png");
-  systemMouseCursorGrabbing = await _loadCustomMouseCursor("$cursorAssetsPath/grabbing.png");
+  try {
+    systemMouseCursorGrab = await _loadCustomMouseCursor("$cursorAssetsPath/grab.png");
+    systemMouseCursorGrabbing = await _loadCustomMouseCursor("$cursorAssetsPath/grabbing.png");
+  } catch (e) {
+    logErr("Failed to load custom mouse cursors", e);
+    systemMouseCursorGrab = "";
+    systemMouseCursorGrabbing = "";
+  }
 }
 
 Future<void> disposeSystemMouseCursor() async {

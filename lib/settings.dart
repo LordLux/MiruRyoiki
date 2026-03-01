@@ -1,6 +1,8 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter_acrylic/window_effect.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:miruryoiki/main.dart';
+import 'package:miruryoiki/utils/text.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -8,6 +10,7 @@ import 'database/database.dart';
 import 'database/daos/settings_dao.dart';
 import 'enums.dart';
 import 'manager.dart';
+import 'services/sonarr/sonarr_service.dart' show SonarrRepository;
 import 'theme.dart';
 import 'utils/time.dart';
 import 'utils/logging.dart';
@@ -22,6 +25,8 @@ class SettingsManager extends ChangeNotifier {
   Map<String, dynamic> _settings = {};
   SettingsDao? _settingsDao;
   SharedPreferences? _prefs;
+  final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
+  String _sonarrApiKey = '';
   bool _initialized = false;
 
   // // Typed getters/setters for settings
@@ -162,6 +167,34 @@ class SettingsManager extends ChangeNotifier {
   bool get enableAnilistEpisodeTitles => _getBool('enableAnilistEpisodeTitles', defaultValue: false);
   set enableAnilistEpisodeTitles(bool value) => _setBool('enableAnilistEpisodeTitles', value);
 
+  // Sonarr
+  String get sonarrBaseUrl => _getString('sonarrBaseUrl', defaultValue: 'http://localhost:8989');
+  set sonarrBaseUrl(String value) {
+    if (sonarrBaseUrl != value) sonarrConnectionVerified = false;
+    _setString('sonarrBaseUrl', value);
+  }
+
+  String get sonarrApiKey => _sonarrApiKey;
+  set sonarrApiKey(String value) {
+    if (_sonarrApiKey == value) return;
+    _sonarrApiKey = value;
+    sonarrConnectionVerified = false;
+    _secureStorage.write(key: 'sonarrApiKey', value: value);
+    notifyListeners();
+  }
+
+  int get sonarrQualityProfileId => _getInt('sonarrQualityProfileId', defaultValue: 0);
+  set sonarrQualityProfileId(int value) => _setInt('sonarrQualityProfileId', value);
+
+  String get sonarrRootFolderPath => _getString('sonarrRootFolderPath', defaultValue: '');
+  set sonarrRootFolderPath(String value) => _setString('sonarrRootFolderPath', value);
+
+  /// Whether the last Sonarr connection test succeeded with the current credentials
+  bool get sonarrConnectionVerified => _getBool('sonarrConnectionVerified', defaultValue: false);
+  set sonarrConnectionVerified(bool value) => _setBool('sonarrConnectionVerified', value);
+
+  bool get isSonarrConfigured => sonarrApiKey.isNotEmpty;
+
   // Genres
   List<String> get genres => _getStringList('genres', defaultValue: []);
   set genres(List<String> value) => _setStringList('genres', value);
@@ -289,6 +322,7 @@ class SettingsManager extends ChangeNotifier {
     _settingsDao = SettingsDao(db);
     _prefs = await SharedPreferences.getInstance();
     await loadSettings();
+    await _loadSecureSettings();
     _initialized = true;
   }
 
@@ -298,6 +332,11 @@ class SettingsManager extends ChangeNotifier {
     final settingsMap = await _settingsDao!.getAll();
     _settings.addAll(settingsMap);
     notifyListeners();
+  }
+
+  /// Load secrets from encrypted storage
+  Future<void> _loadSecureSettings() async {
+    _sonarrApiKey = await _secureStorage.read(key: 'sonarrApiKey') ?? '';
   }
 
   // Save a single setting to DB

@@ -24,4 +24,8 @@ class SettingsDao extends DatabaseAccessor<AppDatabase> with _$SettingsDaoMixin 
     final rows = await select(settingsTable).get();
     return {for (var row in rows) row.key: row.value};
   }
+
+  Future<void> deleteKey(String key) async {
+    await (delete(settingsTable)..where((t) => t.key.equals(key))).go();
+  }
 }

@@ -94,3 +94,8 @@ String parseCountryOfOrigin(String? country) {
     _ => '',
   };
 }
+
+extension StringX on String {
+  // ignore: unnecessary_this
+  String fallbackIfEmpty(String other) => this.isNotEmpty ? this : other;
+}
