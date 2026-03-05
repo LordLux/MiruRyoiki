@@ -26,7 +26,6 @@ part 'series_dao.g.dart';
 class SeriesDao extends DatabaseAccessor<AppDatabase> with _$SeriesDaoMixin {
   SeriesDao(super.db);
 
-  // ---------- BASIC CRUD ----------
   Future<List<SeriesTableData>> getAllSeriesRows() => select(seriesTable).get();
 
   Future<SeriesTableData?> getSeriesRowById(int id) => (select(seriesTable)..where((tbl) => tbl.id.equals(id))).getSingleOrNull();
@@ -306,7 +305,6 @@ class SeriesDao extends DatabaseAccessor<AppDatabase> with _$SeriesDaoMixin {
         .write(AnilistMappingsTableCompanion(viewType: Value(viewType.name_)));
   }
 
-  // ---------- HELPERS ----------
   AnilistMappingsTableCompanion _mappingToCompanion(AnilistMapping m, int seriesId) {
     return AnilistMappingsTableCompanion(
       seriesId: Value(seriesId),
@@ -321,7 +319,6 @@ class SeriesDao extends DatabaseAccessor<AppDatabase> with _$SeriesDaoMixin {
     );
   }
 
-  // ---------- UPDATE HELPERS ----------
   Future<bool> updateSingleEpisode(Episode episode, int seasonId) async {
     final row = await (select(episodesTable) //
           ..where((t) => t.path.equals(episode.path.path))) //
@@ -390,7 +387,6 @@ class SeriesDao extends DatabaseAccessor<AppDatabase> with _$SeriesDaoMixin {
     return (await (update(seriesTable)..where((t) => t.id.equals(seriesId))).write(comp)) > 0;
   }
 
-  // ---------- MAPPERS ----------
   SeriesTableCompanion _modelToSeriesCompanion(Series s) {
     return SeriesTableCompanion(
       name: Value(s.name),
@@ -411,7 +407,6 @@ class SeriesDao extends DatabaseAccessor<AppDatabase> with _$SeriesDaoMixin {
     );
   }
 
-  // ---------- CHANGE DETECTION ----------
   /// Returns true if the in-memory Series model differs from the DB row
   bool _hasSeriesChanged(Series model, SeriesTableData db) {
     final colorConv = const ColorJsonConverter();

@@ -461,6 +461,8 @@ class _ImageSelectionContentState extends State<ImageSelectionContent> {
                               itemCount: _localImageFiles.length,
                               itemBuilder: (context, index) {
                                 final file = _localImageFiles[index];
+                                // check if this file exists and is a valid image before trying to load it
+                                // if the file doesn't exist invalidate the cache and show an error widget
                                 final fileName = file.path.split(Platform.pathSeparator).last;
 
                                 return TooltipTheme(

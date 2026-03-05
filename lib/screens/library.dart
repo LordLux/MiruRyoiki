@@ -573,6 +573,16 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
     super.initState();
     _loadUserPreferences();
     _loadColors();
+    NavigationManager.registerActiveScrollController('library', _controller);
+    NavigationManager.restoreScrollOffset('library', _controller);
+  }
+
+  @override
+  void activate() {
+    super.activate();
+    // Reregister and restore on GlobalKey reparent
+    NavigationManager.registerActiveScrollController('library', _controller);
+    NavigationManager.restoreScrollOffset('library', _controller);
   }
 
   void _selectLibraryFolder() async {

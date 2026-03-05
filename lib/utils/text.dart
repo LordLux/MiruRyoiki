@@ -76,14 +76,17 @@ String parseFormat(String? format) {
     'OVA' => 'OVA',
     'ONA' => 'ONA',
     'MUSIC' => 'Music',
-    // 'MANGA' => 'Manga',
-    // 'NOVEL' => 'Novel',
-    // 'ONE_SHOT' => 'One Shot',
+    'MANGA' => 'Manga',
+    'NOVEL' => 'Novel',
+    'ONE_SHOT' => 'One Shot',
     _ => '',
   };
 }
 
 const formatEpisodic = ['TV', 'TV_SHORT', 'OVA', 'ONA'];
+
+/// Formats that represent anime (watchable) media types
+const formatAnime = ['TV', 'TV_SHORT', 'MOVIE', 'SPECIAL', 'OVA', 'ONA', 'MUSIC'];
 
 String parseCountryOfOrigin(String? country) {
   return switch (country?.toUpperCase()) {

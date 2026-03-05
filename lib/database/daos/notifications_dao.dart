@@ -56,13 +56,12 @@ class NotificationsDao extends DatabaseAccessor<AppDatabase> with _$Notification
         }
       }
 
-  // --- Repair local_created_at / local_updated_at (DateTime columns expected as millis since epoch) ---
-  // Convert text timestamps to millis
-  await customStatement("UPDATE notifications SET local_created_at = (strftime('%s', local_created_at)*1000) WHERE typeof(local_created_at)='text' AND local_created_at LIKE '____-__-__ __:__:__';");
-  await customStatement("UPDATE notifications SET local_updated_at = (strftime('%s', local_updated_at)*1000) WHERE typeof(local_updated_at)='text' AND local_updated_at LIKE '____-__-__ __:__:__';");
-  // Convert seconds (too small) to millis
-  await customStatement("UPDATE notifications SET local_created_at = local_created_at*1000 WHERE typeof(local_created_at)='integer' AND local_created_at > 0 AND local_created_at < 100000000000;\n");
-  await customStatement("UPDATE notifications SET local_updated_at = local_updated_at*1000 WHERE typeof(local_updated_at)='integer' AND local_updated_at > 0 AND local_updated_at < 100000000000;\n");
+      // Convert text timestamps to millis
+      await customStatement("UPDATE notifications SET local_created_at = (strftime('%s', local_created_at)*1000) WHERE typeof(local_created_at)='text' AND local_created_at LIKE '____-__-__ __:__:__';");
+      await customStatement("UPDATE notifications SET local_updated_at = (strftime('%s', local_updated_at)*1000) WHERE typeof(local_updated_at)='text' AND local_updated_at LIKE '____-__-__ __:__:__';");
+      // Convert seconds (too small) to millis
+      await customStatement("UPDATE notifications SET local_created_at = local_created_at*1000 WHERE typeof(local_created_at)='integer' AND local_created_at > 0 AND local_created_at < 100000000000;\n");
+      await customStatement("UPDATE notifications SET local_updated_at = local_updated_at*1000 WHERE typeof(local_updated_at)='integer' AND local_updated_at > 0 AND local_updated_at < 100000000000;\n");
     } catch (_) {
       // Ignore repair errors; continue.
     } finally {
@@ -72,8 +71,8 @@ class NotificationsDao extends DatabaseAccessor<AppDatabase> with _$Notification
 
   // Get all notifications, ordered by creation time (newest first)
   Future<List<NotificationsTableData>> getAllNotifications() async {
-  await _repairLegacyCreatedAtIfNeeded();
-  return (select(notificationsTable)
+    await _repairLegacyCreatedAtIfNeeded();
+    return (select(notificationsTable)
           ..orderBy([
             (t) => OrderingTerm(expression: t.createdAt, mode: OrderingMode.desc),
           ]))
@@ -82,8 +81,8 @@ class NotificationsDao extends DatabaseAccessor<AppDatabase> with _$Notification
 
   // Get recent notifications (last N notifications)
   Future<List<NotificationsTableData>> getRecentNotifications({int limit = 5}) async {
-  await _repairLegacyCreatedAtIfNeeded();
-  return (select(notificationsTable)
+    await _repairLegacyCreatedAtIfNeeded();
+    return (select(notificationsTable)
           ..orderBy([
             (t) => OrderingTerm(expression: t.createdAt, mode: OrderingMode.desc),
           ])
@@ -93,11 +92,11 @@ class NotificationsDao extends DatabaseAccessor<AppDatabase> with _$Notification
 
   // Get unread notifications count
   Future<int> getUnreadCount() async {
-  await _repairLegacyCreatedAtIfNeeded();
+    await _repairLegacyCreatedAtIfNeeded();
     final countQuery = selectOnly(notificationsTable)
       ..addColumns([notificationsTable.id.count()])
       ..where(notificationsTable.isRead.equals(false));
-    
+
     final result = await countQuery.getSingle();
     return result.read(notificationsTable.id.count()) ?? 0;
   }
@@ -123,9 +122,7 @@ class NotificationsDao extends DatabaseAccessor<AppDatabase> with _$Notification
 
   // Mark notification as read
   Future<int> markAsRead(int notificationId) {
-    return (update(notificationsTable)
-          ..where((t) => t.id.equals(notificationId)))
-        .write(NotificationsTableCompanion(
+    return (update(notificationsTable)..where((t) => t.id.equals(notificationId))).write(NotificationsTableCompanion(
       isRead: const Value(true),
       localUpdatedAt: Value(now),
     ));
@@ -133,8 +130,7 @@ class NotificationsDao extends DatabaseAccessor<AppDatabase> with _$Notification
 
   // Mark all notifications as read
   Future<int> markAllAsRead() {
-    return (update(notificationsTable)..where((t) => t.isRead.equals(false)))
-        .write(NotificationsTableCompanion(
+    return (update(notificationsTable)..where((t) => t.isRead.equals(false))).write(NotificationsTableCompanion(
       isRead: const Value(true),
       localUpdatedAt: Value(now),
     ));
@@ -143,7 +139,7 @@ class NotificationsDao extends DatabaseAccessor<AppDatabase> with _$Notification
   // Insert or update notification (upsert based on Anilist notification ID)
   Future<void> upsertNotification(AnilistNotification notification) async {
     final companion = _notificationToCompanion(notification);
-    
+
     await into(notificationsTable).insertOnConflictUpdate(companion);
   }
 
@@ -157,21 +153,21 @@ class NotificationsDao extends DatabaseAccessor<AppDatabase> with _$Notification
           'INSERT OR REPLACE INTO notifications (id, type, created_at, is_read, anime_id, episode, contexts, format, media_id, context, reason, deleted_media_titles, deleted_media_title, media_info, local_created_at, local_updated_at) '
           'VALUES (?, ?, ?, COALESCE((SELECT is_read FROM notifications WHERE id = ?), ?), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, (strftime(\'%s\',\'now\')*1000), (strftime(\'%s\',\'now\')*1000))',
           [
-            notification.id,                      // 1 id
-            notification.type.index,              // 2 type
-            notification.createdAt,               // 3 created_at (unix seconds)
-            notification.id,                      // 4 id again for COALESCE subquery
-            notification.isRead ? 1 : 0,          // 5 preserve existing is_read else default
-            _getAnimeId(notification),            // 6 anime_id
-            _getEpisode(notification),            // 7 episode
-            _getContexts(notification),           // 8 contexts (JSON string or null)
-            _getFormat(notification),             // 9 format
-            _getMediaId(notification),            // 10 media_id
-            _getContext(notification),            // 11 context
-            _getReason(notification),             // 12 reason
+            notification.id, // 1 id
+            notification.type.index, // 2 type
+            notification.createdAt, // 3 created_at (unix seconds)
+            notification.id, // 4 id again for COALESCE subquery
+            notification.isRead ? 1 : 0, // 5 preserve existing is_read else default
+            _getAnimeId(notification), // 6 anime_id
+            _getEpisode(notification), // 7 episode
+            _getContexts(notification), // 8 contexts (JSON string or null)
+            _getFormat(notification), // 9 format
+            _getMediaId(notification), // 10 media_id
+            _getContext(notification), // 11 context
+            _getReason(notification), // 12 reason
             _getDeletedMediaTitles(notification), // 13 deleted_media_titles (JSON string)
-            _getDeletedMediaTitle(notification),  // 14 deleted_media_title
-            _getMediaInfo(notification),          // 15 media_info (JSON string)
+            _getDeletedMediaTitle(notification), // 14 deleted_media_title
+            _getMediaInfo(notification), // 15 media_info (JSON string)
           ],
         );
       }

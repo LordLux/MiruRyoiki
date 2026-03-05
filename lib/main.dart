@@ -449,8 +449,6 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
       _isCompactView = false;
       Manager.currentDominantColor = null;
 
-      _resetScrollPosition(index);
-
       Manager.navigation.pushPaneIndex(index);
     });
   }
@@ -497,7 +495,6 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
         if (index != -1 && _selectedIndex != index) {
           setState(() {
             _selectedIndex = index;
-            _resetScrollPosition(index);
           });
         }
       }
@@ -1005,7 +1002,6 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
                                   if (isSeriesView) Manager.navigation.resetCurrentPane();
 
                                   _selectedIndex = NavigationManager.CalendarIndex;
-                                  _resetScrollPosition(NavigationManager.CalendarIndex);
                                   Manager.currentDominantColor = null;
 
                                   Manager.navigation.pushPaneIndex(NavigationManager.CalendarIndex);

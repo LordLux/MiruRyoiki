@@ -1,7 +1,5 @@
-import 'dart:io';
 import 'dart:math';
 
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/material.dart' show InkWell, Material;
 import 'package:miruryoiki/models/anilist/mapping.dart';
@@ -97,27 +95,9 @@ class _MappingCardState extends State<MappingCard> {
 
   Future<ImageProvider?> _getPosterImage() async {
     final posterUrl = widget.mapping.anilistData?.posterImage;
+    if (posterUrl == null || posterUrl.isEmpty) return null;
 
-    if (posterUrl != null) {
-      // Try to get cached image
-      final imageCache = ImageCacheService();
-      final File? cachedFile = await imageCache.getCachedImageFile(posterUrl);
-
-      if (cachedFile != null && await cachedFile.exists()) {
-        return FileImage(cachedFile);
-      }
-
-      // Start caching in background
-      imageCache.cacheImage(posterUrl);
-
-      // Return network image provider
-      return CachedNetworkImageProvider(
-        posterUrl,
-        errorListener: (error) => logWarn('Failed to load poster from network: $error'),
-      );
-    }
-
-    return null;
+    return await ImageCacheService().getImageProvider(posterUrl);
   }
 
   Widget _getPosterWidget() {

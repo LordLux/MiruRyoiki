@@ -1,5 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:flutter/material.dart' as mat;
 import '../../manager.dart';
 
 class DualInfoCard extends StatelessWidget {
@@ -9,6 +10,7 @@ class DualInfoCard extends StatelessWidget {
   final String? nameRight;
   final String? descRight;
   final String? imageRight;
+  final VoidCallback? onTap;
 
   const DualInfoCard({
     super.key,
@@ -18,11 +20,12 @@ class DualInfoCard extends StatelessWidget {
     this.nameRight,
     this.descRight,
     this.imageRight,
+    this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    Widget card = Container(
       decoration: BoxDecoration(
         color: FluentTheme.of(context).cardColor,
         borderRadius: BorderRadius.circular(4),
@@ -31,19 +34,26 @@ class DualInfoCard extends StatelessWidget {
       child: Row(
         children: [
           // Left Image
-          CachedNetworkImage(
-            imageUrl: imageLeft,
-            width: 60,
-            memCacheHeight: 150,
-            height: double.infinity,
-            fit: BoxFit.cover,
-            errorWidget: (context, url, error) => Container(
-              width: 60,
-              color: Colors.grey,
-              child: const Center(child: Icon(FluentIcons.error)),
-            ),
-          ),
-          
+          imageLeft.isNotEmpty
+              ? CachedNetworkImage(
+                  key: ValueKey(imageLeft),
+                  imageUrl: imageLeft,
+                  width: 60,
+                  memCacheHeight: 150,
+                  height: double.infinity,
+                  fit: BoxFit.cover,
+                  errorWidget: (context, url, error) => Container(
+                    width: 60,
+                    color: Colors.grey,
+                    child: const Center(child: Icon(FluentIcons.error)),
+                  ),
+                )
+              : Container(
+                  width: 60,
+                  color: Colors.grey,
+                  child: const Center(child: Icon(FluentIcons.error)),
+                ),
+
           Expanded(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
@@ -70,7 +80,7 @@ class DualInfoCard extends StatelessWidget {
                       ],
                     ),
                   ),
-                  
+
                   // Right Info
                   if (nameRight != null) ...[
                     const SizedBox(width: 8),
@@ -102,10 +112,11 @@ class DualInfoCard extends StatelessWidget {
               ),
             ),
           ),
-          
+
           // Right Image
-          if (imageRight != null)
+          if (imageRight != null && imageRight!.isNotEmpty)
             CachedNetworkImage(
+              key: ValueKey(imageRight),
               imageUrl: imageRight!,
               width: 60,
               memCacheHeight: 150,
@@ -120,5 +131,16 @@ class DualInfoCard extends StatelessWidget {
         ],
       ),
     );
+
+    if (onTap != null) {
+      return mat.InkWell(
+        onTap: onTap,
+        child: MouseRegion(
+          cursor: SystemMouseCursors.click,
+          child: card,
+        ),
+      );
+    }
+    return card;
   }
 }

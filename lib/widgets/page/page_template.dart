@@ -5,6 +5,7 @@ import 'package:smooth_scroll_multiplatform/smooth_scroll_multiplatform.dart';
 
 import '../../manager.dart';
 import '../../screens/settings.dart';
+import '../../services/navigation/navigation.dart';
 import '../../services/navigation/shortcuts.dart';
 import '../../utils/screen.dart';
 import '../../utils/time.dart';
@@ -33,6 +34,7 @@ class MiruRyoikiTemplatePage extends StatefulWidget {
   final Widget? floatingButton;
   final double? contentRightPadding;
   final Widget? stickyHeader;
+  final String? scrollRestorationId;
 
   const MiruRyoikiTemplatePage({
     super.key,
@@ -56,6 +58,7 @@ class MiruRyoikiTemplatePage extends StatefulWidget {
     this.cardPadding,
     this.floatingButton,
     this.stickyHeader,
+    this.scrollRestorationId,
   }) : assert(
           (scrollableContent || (!scrollableContent && stickyHeader == null)) ,
           'stickyHeader can only be used when scrollableContent is true',
@@ -70,6 +73,7 @@ class _MiruRyoikiTemplatePageState extends State<MiruRyoikiTemplatePage> {
   late double _maxHeaderHeight;
   late double _minHeaderHeight;
   ScrollController? _scrollController;
+  bool _scrollRestored = false;
 
   @override
   void initState() {
@@ -183,6 +187,31 @@ class _MiruRyoikiTemplatePageState extends State<MiruRyoikiTemplatePage> {
                                                     // Skip if we want a static header
                                                     _scrollController = controller;
                                                     if (_scrollController != null) _setupScrollListener();
+
+                                                    // Register with NavigationManager for scroll offset persistence
+                                                    if (widget.scrollRestorationId != null) {
+                                                      NavigationManager.registerActiveScrollController(
+                                                        widget.scrollRestorationId!,
+                                                        controller,
+                                                      );
+
+                                                      // Restore saved offset once after the route is created
+                                                      if (!_scrollRestored) {
+                                                        _scrollRestored = true;
+                                                        final savedOffset = NavigationManager.getSavedScrollOffset(widget.scrollRestorationId!);
+                                                        
+                                                        if (savedOffset != null && savedOffset > 0) {
+                                                          nextFrame(() {
+                                                            if (!mounted) return;
+                                                            
+                                                            if (controller.hasClients) {
+                                                              final maxExtent = controller.position.maxScrollExtent;
+                                                              controller.jumpTo(savedOffset.clamp(0.0, maxExtent));
+                                                            }
+                                                          });
+                                                        }
+                                                      }
+                                                    }
 
                                                     // Then use the controller for your scrollable content
                                                     return CustomScrollView(

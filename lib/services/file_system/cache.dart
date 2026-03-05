@@ -17,6 +17,10 @@ class ImageCacheService {
   Directory? _cacheDir;
   bool _initialized = false;
 
+  /// Track in-flight downloads to prevent duplicate concurrent requests
+  /// for the same URL (which can cause partial-write / corrupt-file issues).
+  final Map<String, Future<File?>> _inFlightDownloads = {};
+
   // Initialize cache directory
   Future<void> init() async {
     if (_initialized) return;
@@ -49,20 +53,30 @@ class ImageCacheService {
     return await file.exists();
   }
 
-  // Get cached image as file
+  // Get cached image as file (validates non-empty)
   Future<File?> getCachedImageFile(String url) async {
     if (!_initialized) await init();
+    if (url.isEmpty) return null;
 
     final filename = _getFilenameFromUrl(url);
     final file = File('${_cacheDir!.path}/$filename');
 
-    if (await file.exists()) return file;
+    if (await file.exists()) {
+      // Validate the cached file is not empty / corrupt stub
+      final length = await file.length();
+      if (length == 0) {
+        await file.delete().catchError((_) => file);
+        return null;
+      }
+      return file;
+    }
 
     return null;
   }
 
   // Get image from cache or download it
   Future<File?> getImage(String url) async {
+    if (url.isEmpty) return null;
     final cachedFile = await getCachedImageFile(url);
 
     if (cachedFile != null) return cachedFile;
@@ -71,18 +85,38 @@ class ImageCacheService {
     return await cacheImage(url);
   }
 
-  // Download and cache an image
+  // Download and cache an image (deduplicates concurrent requests for the same URL)
   Future<File?> cacheImage(String url) async {
     if (!_initialized) await init();
+    if (url.isEmpty) return null;
+
+    // If a download for this URL is already in-flight, await it instead of
+    // starting a second concurrent write to the same file.
+    if (_inFlightDownloads.containsKey(url)) return _inFlightDownloads[url];
+
+    final future = _doCacheImage(url);
+    _inFlightDownloads[url] = future;
 
     try {
-      final response = await http.get(Uri.parse(url));
-      if (response.statusCode == 200) {
-        final filename = _getFilenameFromUrl(url);
-        final file = File('${_cacheDir!.path}/$filename');
+      return await future;
+    } finally {
+      _inFlightDownloads.remove(url);
+    }
+  }
 
-        await file.writeAsBytes(response.bodyBytes);
-        return file;
+  Future<File?> _doCacheImage(String url) async {
+    try {
+      final response = await http.get(Uri.parse(url));
+      if (response.statusCode == 200 && response.bodyBytes.isNotEmpty) {
+        final filename = _getFilenameFromUrl(url);
+        final targetFile = File('${_cacheDir!.path}/$filename');
+
+        // Write to a temporary file first, then rename – ensures we never
+        // expose a partially-written file to concurrent readers.
+        final tmpFile = File('${targetFile.path}.tmp');
+        await tmpFile.writeAsBytes(response.bodyBytes, flush: true);
+        await tmpFile.rename(targetFile.path);
+        return targetFile;
       }
     } catch (e) {
       logErr('Failed to cache image', e);
@@ -99,7 +133,9 @@ class ImageCacheService {
   }
 
   // Get image provider (either from cache or network)
-  Future<ImageProvider> getImageProvider(String url) async {
+  Future<ImageProvider?> getImageProvider(String url) async {
+    if (url.isEmpty) return null;
+
     final cachedFile = await getCachedImageFile(url);
 
     if (cachedFile != null) return FileImage(cachedFile);

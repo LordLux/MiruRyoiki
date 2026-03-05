@@ -1,3 +1,4 @@
+import 'package:miruryoiki/enums.dart';
 import 'package:miruryoiki/models/anilist/anime.dart';
 import 'package:miruryoiki/models/anilist/anime_card.dart';
 import 'package:miruryoiki/services/anilist/queries/graphql/anime/details.graphql.dart';
@@ -370,6 +371,20 @@ class CharacterEdge {
           [],
     );
   }
+
+  factory CharacterEdge.fromFullQuery(Query$GetAnimeCharacters$Media$characters$edges fragment) {
+    return CharacterEdge(
+      id: fragment.id ?? 0,
+      role: fragment.role?.name,
+      name: fragment.name,
+      node: fragment.node != null ? CharacterCard.fromFragment(fragment.node!) : null,
+      voiceActors: fragment.voiceActors //
+              ?.whereType<Fragment$StaffCard>()
+              .map((e) => StaffCard.fromFragment(e))
+              .toList() ??
+          [],
+    );
+  }
 }
 
 class StaffEdge {
@@ -384,6 +399,14 @@ class StaffEdge {
   });
 
   factory StaffEdge.fromFragment(Query$GetAnimeOverview$Media$staffPreview$edges fragment) {
+    return StaffEdge(
+      id: fragment.id ?? 0,
+      role: fragment.role,
+      node: fragment.node != null ? StaffCard.fromFragment(fragment.node!) : null,
+    );
+  }
+
+  factory StaffEdge.fromFullQuery(Query$GetAnimeStaff$Media$staff$edges fragment) {
     return StaffEdge(
       id: fragment.id ?? 0,
       role: fragment.role,
@@ -655,19 +678,19 @@ class UserAvatar {
 
 class RelationEdge {
   final int id;
-  final String? relationType;
+  final MediaRelationType relationType;
   final AnimeCard? node;
 
   const RelationEdge({
     required this.id,
-    this.relationType,
+    this.relationType = MediaRelationType.unknown,
     this.node,
   });
 
   factory RelationEdge.fromFragment(Query$GetAnimeOverview$Media$relations$edges fragment) {
     return RelationEdge(
       id: fragment.id ?? 0,
-      relationType: fragment.relationType?.name,
+      relationType: MediaRelationTypeX.fromString(fragment.relationType?.name),
       node: fragment.node != null ? AnimeCard.fromFragment(fragment.node!) : null,
     );
   }
@@ -701,6 +724,109 @@ class MediaListFollowing {
               avatar: fragment.user!.avatar?.large,
             )
           : null,
+    );
+  }
+}
+
+/// Social tab entry, representing another user's activity related to this anime
+class MediaListSocial {
+  final int id;
+  final String? status;
+  final double? score;
+  final int? updatedAt;
+  final UserAvatar? user;
+
+  const MediaListSocial({
+    required this.id,
+    this.status,
+    this.score,
+    this.updatedAt,
+    this.user,
+  });
+
+  factory MediaListSocial.fromFragment(Query$GetAnimeSocial$Page$mediaList fragment) {
+    return MediaListSocial(
+      id: fragment.id,
+      status: fragment.status?.name,
+      score: fragment.score,
+      updatedAt: fragment.updatedAt,
+      user: fragment.user != null
+          ? UserAvatar(
+              id: fragment.user!.id,
+              name: fragment.user!.name,
+              avatar: fragment.user!.avatar?.large,
+              donatorTier: fragment.user!.donatorTier,
+              donatorBadge: fragment.user!.donatorBadge,
+            )
+          : null,
+    );
+  }
+}
+
+/// A single data point from the media trend timeline
+class AnimeTrend {
+  final int date;
+  final int? episode;
+  final int? averageScore;
+  final int? inProgress;
+  final int trending;
+  final int? popularity;
+
+  const AnimeTrend({
+    required this.date,
+    this.episode,
+    this.averageScore,
+    this.inProgress,
+    required this.trending,
+    this.popularity,
+  });
+
+  factory AnimeTrend.fromFragment(Query$GetAnimeStats$Media$trends$nodes fragment) {
+    return AnimeTrend(
+      date: fragment.date,
+      episode: fragment.episode,
+      averageScore: fragment.averageScore,
+      inProgress: fragment.inProgress,
+      trending: fragment.trending,
+      popularity: fragment.popularity,
+    );
+  }
+}
+
+/// Full stats data including trends
+class AnimeStatsFull extends AnimeStats {
+  final List<AnimeTrend> trends;
+
+  const AnimeStatsFull({
+    required super.statusDistribution,
+    required super.scoreDistribution,
+    required this.trends,
+  });
+
+  factory AnimeStatsFull.fromQuery(Query$GetAnimeStats$Media media) {
+    final stats = media.stats;
+    return AnimeStatsFull(
+      statusDistribution: stats?.statusDistribution //
+              ?.whereType<Query$GetAnimeStats$Media$stats$statusDistribution>()
+              .map((e) => StatusDistribution(
+                    status: e.status?.name ?? 'Unknown',
+                    amount: e.amount ?? 0,
+                  ))
+              .toList() ??
+          [],
+      scoreDistribution: stats?.scoreDistribution //
+              ?.whereType<Query$GetAnimeStats$Media$stats$scoreDistribution>()
+              .map((e) => ScoreDistribution(
+                    score: e.score ?? 0,
+                    amount: e.amount ?? 0,
+                  ))
+              .toList() ??
+          [],
+      trends: media.trends?.nodes //
+              ?.whereType<Query$GetAnimeStats$Media$trends$nodes>()
+              .map((e) => AnimeTrend.fromFragment(e))
+              .toList() ??
+          [],
     );
   }
 }

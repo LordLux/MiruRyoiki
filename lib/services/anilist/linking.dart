@@ -1,11 +1,47 @@
+import 'package:miruryoiki/utils/time.dart';
+
 import '../../models/anilist/anime_overview.dart';
-import '../../models/series.dart';
 import '../../models/anilist/anime.dart';
+import '../../models/anilist/page_info.dart';
+import '../../models/series.dart';
 import '../../utils/logging.dart';
 import 'queries/anilist_service.dart';
 
+class _CachedOverview {
+  final AnimeOverview data;
+  final DateTime fetchedAt;
+  _CachedOverview(this.data) : fetchedAt = now;
+  bool get isStale => now.difference(fetchedAt) > const Duration(hours: 1);
+}
+
+class _CachedTabPage<T> {
+  final List<T> items;
+  final AnilistPageInfo pageInfo;
+  final DateTime fetchedAt;
+  _CachedTabPage(this.items, this.pageInfo) : fetchedAt = now;
+  bool get isStale => now.difference(fetchedAt) > const Duration(hours: 1);
+}
+
+class _CachedStats {
+  final AnimeStatsFull data;
+  final DateTime fetchedAt;
+  _CachedStats(this.data) : fetchedAt = now;
+  bool get isStale => now.difference(fetchedAt) > const Duration(hours: 1);
+}
+
 class SeriesLinkService {
   final AnilistService _anilistService;
+
+  /// In-memory cache for AnimeOverview to avoid redundant API calls
+  /// when navigating between related series / recommendations.
+  static final Map<int, _CachedOverview> _overviewCache = {};
+  static const int _maxOverviewCacheSize = 50;
+
+  // Per-tab paginated caches: mediaId -> page -> cached page
+  static final Map<int, Map<int, _CachedTabPage<CharacterEdge>>> _characterCache = {};
+  static final Map<int, Map<int, _CachedTabPage<StaffEdge>>> _staffCache = {};
+  static final Map<int, Map<int, _CachedTabPage<MediaListSocial>>> _socialCache = {};
+  static final Map<int, _CachedStats> _statsCache = {};
 
   SeriesLinkService({AnilistService? anilistService}) : _anilistService = anilistService ?? AnilistService();
 
@@ -26,11 +62,80 @@ class SeriesLinkService {
   }
 
   Future<AnimeOverview?> fetchDetailedAnimeDetails(int anilistId) async {
-    return await _anilistService.getDetailedAnimeDetails(anilistId);
+    // Check in-memory cache first
+    final cached = _overviewCache[anilistId];
+    if (cached != null && !cached.isStale) {
+      return cached.data;
+    }
+
+    final result = await _anilistService.getDetailedAnimeDetails(anilistId);
+    if (result != null) {
+      // Evict oldest entries if cache is full
+      if (_overviewCache.length >= _maxOverviewCacheSize) {
+        final oldest = _overviewCache.entries
+            .reduce((a, b) => a.value.fetchedAt.isBefore(b.value.fetchedAt) ? a : b);
+        _overviewCache.remove(oldest.key);
+      }
+      _overviewCache[anilistId] = _CachedOverview(result);
+    }
+    return result;
   }
 
   Future<Map<int, AnilistAnime?>> fetchMultipleAnimeDetails(List<int> anilistIds) async {
     return await _anilistService.getMultipleAnimesDetails(anilistIds);
+  }
+
+  Future<({List<CharacterEdge> characters, AnilistPageInfo pageInfo})?> fetchAnimeCharacters(
+    int id, {
+    int page = 1,
+  }) async {
+    final cached = _characterCache[id]?[page];
+    if (cached != null && !cached.isStale) {
+      return (characters: cached.items, pageInfo: cached.pageInfo);
+    }
+    final result = await _anilistService.getAnimeCharacters(id, page: page);
+    if (result != null) {
+      _characterCache.putIfAbsent(id, () => {})[page] = _CachedTabPage(result.characters, result.pageInfo);
+    }
+    return result;
+  }
+
+  Future<({List<StaffEdge> staff, AnilistPageInfo pageInfo})?> fetchAnimeStaff(
+    int id, {
+    int page = 1,
+  }) async {
+    final cached = _staffCache[id]?[page];
+    if (cached != null && !cached.isStale) {
+      return (staff: cached.items, pageInfo: cached.pageInfo);
+    }
+    final result = await _anilistService.getAnimeStaff(id, page: page);
+    if (result != null) {
+      _staffCache.putIfAbsent(id, () => {})[page] = _CachedTabPage(result.staff, result.pageInfo);
+    }
+    return result;
+  }
+
+  Future<({List<MediaListSocial> social, AnilistPageInfo pageInfo})?> fetchAnimeSocial(
+    int id, {
+    int page = 1,
+  }) async {
+    final cached = _socialCache[id]?[page];
+    if (cached != null && !cached.isStale) {
+      return (social: cached.items, pageInfo: cached.pageInfo);
+    }
+    final result = await _anilistService.getAnimeSocial(id, page: page);
+    if (result != null) {
+      _socialCache.putIfAbsent(id, () => {})[page] = _CachedTabPage(result.social, result.pageInfo);
+    }
+    return result;
+  }
+
+  Future<AnimeStatsFull?> fetchAnimeStats(int id) async {
+    final cached = _statsCache[id];
+    if (cached != null && !cached.isStale) return cached.data;
+    final result = await _anilistService.getAnimeStats(id);
+    if (result != null) _statsCache[id] = _CachedStats(result);
+    return result;
   }
 
   /// Link a series to a specific Anilist ID

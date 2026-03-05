@@ -36,6 +36,7 @@ part 'auth.dart';
 part 'search.dart';
 part 'user.dart';
 part 'anime_details.dart';
+part 'anime_tabs.dart';
 part 'genres.dart';
 part 'mutations.dart';
 part 'browse.dart';

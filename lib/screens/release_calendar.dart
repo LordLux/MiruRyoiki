@@ -5,7 +5,8 @@ import 'package:miruryoiki/widgets/buttons/wrapper.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:smooth_scroll_multiplatform/smooth_scroll_multiplatform.dart';
-import 'package:url_launcher/url_launcher.dart';
+
+import '../utils/anilist_utils.dart';
 
 import '../services/library/library_provider.dart';
 import '../models/series.dart';
@@ -13,6 +14,7 @@ import '../models/anilist/anime.dart';
 import '../models/notification.dart';
 import '../services/anilist/provider/anilist_provider.dart';
 import '../services/anilist/queries/anilist_service.dart';
+import '../services/navigation/navigation.dart';
 import '../services/navigation/shortcuts.dart';
 import '../services/navigation/show_info.dart';
 import '../utils/color.dart';
@@ -69,10 +71,20 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> with Autom
   bool get wantKeepAlive => true;
 
   @override
+  void activate() {
+    super.activate();
+    // Reregister and restore on GlobalKey reparent
+    NavigationManager.registerActiveScrollController('calendar', widget.scrollController);
+    NavigationManager.restoreScrollOffset('calendar', widget.scrollController);
+  }
+
+  @override
   void initState() {
     super.initState();
     // Initial load
     nextFrame(() => loadReleaseData());
+    NavigationManager.registerActiveScrollController('calendar', widget.scrollController);
+    NavigationManager.restoreScrollOffset('calendar', widget.scrollController);
 
     widget.scrollController.addListener(() {
       if (widget.scrollController.hasClients && mounted && !_isDisposed) {
@@ -1280,14 +1292,12 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> with Autom
               snackBar('Add to list feature not implemented yet', severity: InfoBarSeverity.warning);
             },
             onRelatedMediaAdditionNotificationTapped: (animeId) {
-              final url = 'https://anilist.co/anime/$animeId';
-              logTrace('Opening related media addition notification URL: $url');
-              launchUrl(Uri.parse(url));
+              logTrace('Opening related media addition notification URL: $kAnilistBaseUrl/anime/$animeId');
+              openAnilistAnime(animeId);
             },
             onMediaDataChangeNotificationTapped: (animeId) async {
-              final url = 'https://anilist.co/anime/$animeId';
-              logTrace('Opening media data change notification URL: $url');
-              launchUrl(Uri.parse(url));
+              logTrace('Opening media data change notification URL: $kAnilistBaseUrl/anime/$animeId');
+              openAnilistAnime(animeId);
             },
             onNotificationRead: (notificationId) async {
               // check if the notification is already marked as read and if so, do nothing

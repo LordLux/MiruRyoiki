@@ -57,8 +57,18 @@ class DownloadsScreenState extends State<DownloadsScreen> {
   bool _isLoadingProfiles = false;
 
   @override
+  void activate() {
+    super.activate();
+    // Reregister and restore on GlobalKey reparent
+    NavigationManager.registerActiveScrollController('torrent', widget.scrollController);
+    NavigationManager.restoreScrollOffset('torrent', widget.scrollController);
+  }
+
+  @override
   void initState() {
     super.initState();
+    NavigationManager.registerActiveScrollController('torrent', widget.scrollController);
+    NavigationManager.restoreScrollOffset('torrent', widget.scrollController);
     _selectedQualityProfileId = SettingsManager().sonarrQualityProfileId;
     if (_selectedQualityProfileId == 0) _selectedQualityProfileId = null;
     if (widget.sonarrRepo != null) {
@@ -73,10 +83,10 @@ class DownloadsScreenState extends State<DownloadsScreen> {
     _fetchData();
   }
 
-  // ---------------------------------------------------------------------------
   // Quality Profiles
-  // ---------------------------------------------------------------------------
 
+  /// Load quality profiles from Sonarr and cache them
+  /// If a profile is already selected in settings, it will be pre-selected in the dropdown
   void _loadQualityProfiles() async {
     if (widget.sonarrRepo == null) return;
     setState(() => _isLoadingProfiles = true);
@@ -99,15 +109,13 @@ class DownloadsScreenState extends State<DownloadsScreen> {
     }
   }
 
+  /// Called when user selects a quality profile from the dropdown
+  /// Updates local state and saves selection to settings
   void _onQualityProfileChanged(int? profileId) {
     if (profileId == null) return;
     setState(() => _selectedQualityProfileId = profileId);
     SettingsManager().sonarrQualityProfileId = profileId;
   }
-
-  // ---------------------------------------------------------------------------
-  // Phase 1: Series list
-  // ---------------------------------------------------------------------------
 
   void _loadSeriesList() async {
     if (widget.sonarrRepo == null) return;

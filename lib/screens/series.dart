@@ -47,13 +47,11 @@ import '../widgets/simple_html_parser.dart';
 import '../widgets/transparency_shadow_image.dart';
 import '../models/mapping_target.dart';
 import 'package:recase/recase.dart';
-import 'dart:io';
 import '../services/file_system/cache.dart';
 import '../widgets/viewtype_switcher.dart';
 import 'anilist_settings.dart';
 import '../models/episode.dart';
 import '../widgets/episode_grid.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 
 /// Duration for which AniList data is considered fresh and doesn't need refetching
 const Duration kAnilistCacheDuration = Duration(days: 1);
@@ -385,15 +383,9 @@ class SeriesScreenState extends State<SeriesScreen> {
     if (mapping == null) return null;
 
     final imageUrl = banner ? mapping.anilistData?.bannerImage : mapping.anilistData?.posterImage;
-    if (imageUrl == null) return null;
+    if (imageUrl == null || imageUrl.isEmpty) return null;
 
-    final imageCache = ImageCacheService();
-    final File? cachedFile = await imageCache.getCachedImageFile(imageUrl);
-    if (cachedFile != null) return FileImage(cachedFile);
-
-    // Start caching in background but return network image for immediate display
-    imageCache.cacheImage(imageUrl); // no await
-    return CachedNetworkImageProvider(imageUrl, errorListener: (error) => logWarn('Failed to load image from network: $error'));
+    return await ImageCacheService().getImageProvider(imageUrl);
   }
 
   void _playEpisode(Episode episode) {

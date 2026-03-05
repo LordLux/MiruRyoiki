@@ -100,6 +100,7 @@ class _HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMi
     final settings = Provider.of<SettingsManager>(context);
 
     return MiruRyoikiTemplatePage(
+      scrollRestorationId: 'home',
       headerWidget: HeaderWidget(
         title: (_, __) => PageHeader(title: WelcomeWidget()),
         titleLeftAligned: true,

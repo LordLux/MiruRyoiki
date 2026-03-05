@@ -13,16 +13,26 @@ enum AnilistListApiStatus {
   REPEATING,
   CUSTOM,
 }
+
+const String CurrentString = "CURRENT";
+const String PlanningString = "PLANNING";
+const String CompletedString = "COMPLETED";
+const String DroppedString = "DROPPED";
+const String PausedString = "PAUSED";
+const String RepeatingString = "REPEATING";
+const String CustomString = "CUSTOM";
+
 extension AnilistListStatusX on AnilistListApiStatus {
+  
   String get name_ {
     return switch (this) {
-      AnilistListApiStatus.CURRENT => 'CURRENT',
-      AnilistListApiStatus.PLANNING => 'PLANNING',
-      AnilistListApiStatus.COMPLETED => 'COMPLETED',
-      AnilistListApiStatus.DROPPED => 'DROPPED',
-      AnilistListApiStatus.PAUSED => 'PAUSED',
-      AnilistListApiStatus.REPEATING => 'REPEATING',
-      AnilistListApiStatus.CUSTOM => 'CUSTOM',
+      AnilistListApiStatus.CURRENT => CurrentString,
+      AnilistListApiStatus.PLANNING => PlanningString,
+      AnilistListApiStatus.COMPLETED => CompletedString,
+      AnilistListApiStatus.DROPPED => DroppedString,
+      AnilistListApiStatus.PAUSED => PausedString,
+      AnilistListApiStatus.REPEATING => RepeatingString,
+      AnilistListApiStatus.CUSTOM => CustomString,
     };
   }
 }
@@ -30,12 +40,13 @@ extension AnilistListStatusX on AnilistListApiStatus {
 extension AnilistListStatusExtension on String {
   AnilistListApiStatus? toListStatus() {
     return switch (this) {
-      'CURRENT' => AnilistListApiStatus.CURRENT,
-      'PLANNING' => AnilistListApiStatus.PLANNING,
-      'COMPLETED' => AnilistListApiStatus.COMPLETED,
-      'DROPPED' => AnilistListApiStatus.DROPPED,
-      'PAUSED' => AnilistListApiStatus.PAUSED,
-      'REPEATING' => AnilistListApiStatus.REPEATING,
+      CurrentString => AnilistListApiStatus.CURRENT,
+      PlanningString => AnilistListApiStatus.PLANNING,
+      CompletedString => AnilistListApiStatus.COMPLETED,
+      DroppedString => AnilistListApiStatus.DROPPED,
+      PausedString => AnilistListApiStatus.PAUSED,
+      RepeatingString => AnilistListApiStatus.REPEATING,
+      CustomString => AnilistListApiStatus.CUSTOM,
       _ => null,
     };
   }

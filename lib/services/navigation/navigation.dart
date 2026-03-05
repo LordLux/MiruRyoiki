@@ -115,6 +115,65 @@ class NavigationManager extends ChangeNotifier {
   static ScrollController getScrollController(int index) => _navigationMap[index]?['controller'] as ScrollController;
   static void setScrollController(int index, ScrollController controller) => _navigationMap[index]?['controller'] = controller;
 
+  // Scroll offset persistence
+  /// Saved scroll offsets keyed by navigation item id
+  static final Map<String, double> _savedScrollOffsets = {};
+
+  /// The scroll controller that is currently driving the visible pane's scrollable content
+  static ScrollController? _activeScrollController;
+  static String? _activePaneId;
+
+  /// Called by [MiruRyoikiTemplatePage] or any screen when its scroll controller becomes available so we can read its offset later
+  static void registerActiveScrollController(String paneId, ScrollController controller) {
+    _activePaneId = paneId;
+    _activeScrollController = controller;
+  }
+
+  /// Snapshots the current pane's scroll offset so it can be restored later
+  static void saveActiveScrollOffset() {
+    if (_activePaneId == null) return;
+
+    // Try the DynMouseScroll-created controller first (template-based screens)
+    if (_activeScrollController != null) {
+      try {
+        if (_activeScrollController!.hasClients) {
+          _savedScrollOffsets[_activePaneId!] = _activeScrollController!.offset;
+          return;
+        }
+      } catch (_) {}
+    }
+
+    // Fallback: try the main-app-registered controller (Browse, Downloads)
+    final paneIndex = getIndexById(_activePaneId!);
+    if (paneIndex != null) {
+      try {
+        final ctrl = getScrollController(paneIndex);
+        if (ctrl.hasClients) {
+          _savedScrollOffsets[_activePaneId!] = ctrl.offset;
+        }
+      } catch (_) {}
+    }
+  }
+
+  /// Returns the saved offset for [paneId], or `null` if none was saved
+  static double? getSavedScrollOffset(String paneId) => _savedScrollOffsets[paneId];
+
+  /// Clears a saved offset after a navigation item is popped and we no longer need to restore it
+  static void clearSavedScrollOffset(String paneId) => _savedScrollOffsets.remove(paneId);
+
+  /// Restores the scroll offset for the [paneId] on [controller]
+  /// Call this from `initState()` in screens that manage their own scroll controller (not via [MiruRyoikiTemplatePage])
+  static void restoreScrollOffset(String paneId, ScrollController controller) {
+    final saved = getSavedScrollOffset(paneId);
+    if (saved == null || saved <= 0) return;
+    nextFrame(() {
+      if (controller.hasClients) {
+        final max = controller.position.maxScrollExtent;
+        controller.jumpTo(saved.clamp(0.0, max));
+      }
+    });
+  }
+
   // State Management
   final List<NavigationItem> _stack = [];
   final List<NavigationItem> _forwardStack = [];
@@ -162,6 +221,9 @@ class NavigationManager extends ChangeNotifier {
 
     // If we are already at this pane at the top of the stack, don't duplicate
     if (currentView?.level == NavigationLevel.pane && currentView?.id == item['id']) return;
+
+    // Snapshot the current pane's scroll position before replacing the route
+    saveActiveScrollOffset();
 
     // Clear Future History
     _forwardStack.clear();
@@ -249,6 +311,9 @@ class NavigationManager extends ChangeNotifier {
     // If we are only popping dialogs, but the top is not a dialog, do nothing
     if (onlyDialogs) return false;
 
+    // Snapshot scroll position of the current view before navigating away
+    saveActiveScrollOffset();
+
     // Move from Stack to Forward Stack
     final poppedItem = _stack.removeLast();
     _forwardStack.add(poppedItem);
@@ -294,6 +359,9 @@ class NavigationManager extends ChangeNotifier {
   /// Goes forward one step (Re-does the last Back action)
   bool goForward() {
     if (!canGoForward) return false;
+
+    // Snapshot scroll position of the current view before navigating away
+    saveActiveScrollOffset();
 
     // 1. Move from ForwardStack -> Stack
     final itemToRestore = _forwardStack.removeLast();

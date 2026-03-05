@@ -4,8 +4,8 @@ import 'dart:io';
 
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter_desktop_context_menu/flutter_desktop_context_menu.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../../models/anilist/anime_card.dart';
+import '../../utils/anilist_utils.dart';
 import '../../utils/icons.dart' as icons;
 import 'controller.dart';
 
@@ -79,7 +79,7 @@ class SearchedSeriesContextMenuState extends State<SearchedSeriesContextMenu> {
     );
   }
 
-  void _openInAnilist(BuildContext context) => launchUrl(Uri.parse('https://anilist.co/anime/${widget.series.id}'));
+  void _openInAnilist(BuildContext context) => openAnilistAnime(widget.series.id);
 
   @override
   Widget build(BuildContext context) => widget.child;

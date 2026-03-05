@@ -854,6 +854,7 @@ class SettingsScreenState extends State<SettingsScreen> with AutomaticKeepAliveC
     final settings = Provider.of<SettingsManager>(context);
 
     return MiruRyoikiTemplatePage(
+      scrollRestorationId: 'settings',
       headerWidget: HeaderWidget(
         titleLeftAligned: true,
         title: (_, __) => Padding(

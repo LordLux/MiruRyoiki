@@ -2,6 +2,7 @@
 
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter_acrylic/window_effect.dart';
+import 'package:material_symbols_icons/material_symbols_icons.dart';
 import 'package:recase/recase.dart';
 import 'package:intl/intl.dart';
 
@@ -370,7 +371,7 @@ extension DateTimeX on DateTime? {
     final timeFormat = DateFormat('HH:mm${seconds ? ':ss' : ''}', 'en');
     return '${dateFormat.format(this!)}${time ? ' ${timeFormat.format(this!)}' : ''}';
   }
-  
+
   String get prettyMs {
     if (this == null) return 'null';
     final timeFormat = DateFormat('HH:mm:ss.SSS', 'en');
@@ -425,4 +426,134 @@ extension PageTransitionModeX on PageTransitionMode {
         PageTransitionMode.values,
         defaultValue,
       );
+}
+
+/// AniList media format types
+enum MediaFormat {
+  TV,
+  TV_SHORT,
+  MOVIE,
+  SPECIAL,
+  OVA,
+  ONA,
+  MUSIC,
+  MANGA,
+  NOVEL,
+  ONE_SHOT,
+  unknown,
+}
+
+extension MediaFormatX on MediaFormat {
+  String get name_ => switch (this) {
+        MediaFormat.TV => 'TV',
+        MediaFormat.TV_SHORT => 'TV Short',
+        MediaFormat.MOVIE => 'Movie',
+        MediaFormat.SPECIAL => 'Special',
+        MediaFormat.OVA => 'OVA',
+        MediaFormat.ONA => 'ONA',
+        MediaFormat.MUSIC => 'Music',
+        MediaFormat.MANGA => 'Manga',
+        MediaFormat.NOVEL => 'Novel',
+        MediaFormat.ONE_SHOT => 'One Shot',
+        MediaFormat.unknown => '',
+      };
+
+  IconData? get icon => switch (this) {
+        MediaFormat.TV => Symbols.tv,
+        MediaFormat.TV_SHORT => Symbols.tv,
+        MediaFormat.MOVIE => Symbols.theaters,
+        MediaFormat.SPECIAL => Symbols.auto_awesome,
+        MediaFormat.OVA => Symbols.video_library,
+        MediaFormat.ONA => Symbols.language,
+        MediaFormat.MUSIC => Symbols.music_note,
+        MediaFormat.MANGA => Symbols.auto_stories,
+        MediaFormat.NOVEL => Symbols.book,
+        MediaFormat.ONE_SHOT => Symbols.article,
+        MediaFormat.unknown => null,
+      };
+
+  static MediaFormat fromString(String? value) => switch (value?.toUpperCase()) {
+        'TV' => MediaFormat.TV,
+        'TV_SHORT' => MediaFormat.TV_SHORT,
+        'MOVIE' => MediaFormat.MOVIE,
+        'SPECIAL' => MediaFormat.SPECIAL,
+        'OVA' => MediaFormat.OVA,
+        'ONA' => MediaFormat.ONA,
+        'MUSIC' => MediaFormat.MUSIC,
+        'MANGA' => MediaFormat.MANGA,
+        'NOVEL' => MediaFormat.NOVEL,
+        'ONE_SHOT' => MediaFormat.ONE_SHOT,
+        _ => MediaFormat.unknown,
+      };
+}
+
+/// AniList MediaRelation enum values
+enum MediaRelationType {
+  SOURCE,
+  ADAPTATION,
+  PREQUEL,
+  SEQUEL,
+  PARENT,
+  SIDE_STORY,
+  CHARACTER,
+  SUMMARY,
+  ALTERNATIVE,
+  SPIN_OFF,
+  OTHER,
+  COMPILATION,
+  CONTAINS,
+  unknown,
+}
+
+extension MediaRelationTypeX on MediaRelationType {
+  String get name_ => switch (this) {
+        MediaRelationType.SOURCE => 'Source',
+        MediaRelationType.ADAPTATION => 'Adaptation',
+        MediaRelationType.PREQUEL => 'Prequel',
+        MediaRelationType.SEQUEL => 'Sequel',
+        MediaRelationType.PARENT => 'Parent',
+        MediaRelationType.SIDE_STORY => 'Side Story',
+        MediaRelationType.CHARACTER => 'Character',
+        MediaRelationType.SUMMARY => 'Summary',
+        MediaRelationType.ALTERNATIVE => 'Alternative',
+        MediaRelationType.SPIN_OFF => 'Spin-off',
+        MediaRelationType.OTHER => 'Other',
+        MediaRelationType.COMPILATION => 'Compilation',
+        MediaRelationType.CONTAINS => 'Contains',
+        MediaRelationType.unknown => '',
+      };
+
+  IconData? get icon => switch (this) {
+        MediaRelationType.SOURCE => FluentIcons.document,
+        MediaRelationType.ADAPTATION => FluentIcons.video,
+        MediaRelationType.PREQUEL => FluentIcons.chevron_left,
+        MediaRelationType.SEQUEL => FluentIcons.chevron_right,
+        MediaRelationType.PARENT => FluentIcons.folder,
+        MediaRelationType.SIDE_STORY => FluentIcons.branch_fork,
+        MediaRelationType.CHARACTER => FluentIcons.contact,
+        MediaRelationType.SUMMARY => FluentIcons.list,
+        MediaRelationType.ALTERNATIVE => FluentIcons.switch_widget,
+        MediaRelationType.SPIN_OFF => FluentIcons.rotate,
+        MediaRelationType.OTHER => FluentIcons.unknown,
+        MediaRelationType.COMPILATION => FluentIcons.folder,
+        MediaRelationType.CONTAINS => FluentIcons.folder_open,
+        MediaRelationType.unknown => null,
+      };
+
+  static MediaRelationType fromString(String? value) => switch (value?.toUpperCase()) {
+        'SOURCE' => MediaRelationType.SOURCE,
+        'ADAPTATION' => MediaRelationType.ADAPTATION,
+        'PREQUEL' => MediaRelationType.PREQUEL,
+        'SEQUEL' => MediaRelationType.SEQUEL,
+        'PARENT' => MediaRelationType.PARENT,
+        'SIDE_STORY' => MediaRelationType.SIDE_STORY,
+        'CHARACTER' => MediaRelationType.CHARACTER,
+        'SUMMARY' => MediaRelationType.SUMMARY,
+        'ALTERNATIVE' => MediaRelationType.ALTERNATIVE,
+        'SPIN_OFF' => MediaRelationType.SPIN_OFF,
+        'OTHER' => MediaRelationType.OTHER,
+        'COMPILATION' => MediaRelationType.COMPILATION,
+        'CONTAINS' => MediaRelationType.CONTAINS,
+        _ => MediaRelationType.unknown,
+      };
 }

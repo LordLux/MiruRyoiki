@@ -4,12 +4,13 @@ import 'package:collection/collection.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/material.dart' as mat;
 import 'package:miruryoiki/models/anilist/anime_overview.dart';
+import 'package:miruryoiki/models/anilist/page_info.dart';
 import 'package:miruryoiki/widgets/acrylic_header.dart';
 import 'package:defer_pointer/defer_pointer.dart';
 import 'package:smooth_scroll_multiplatform/smooth_scroll_multiplatform.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../models/anilist/anime.dart';
+import '../models/anilist/user_list.dart';
 import '../services/connectivity/connectivity_service.dart';
 import '../services/navigation/shortcuts.dart';
 import '../services/navigation/show_info.dart';
@@ -33,10 +34,10 @@ import '../widgets/shrinker.dart';
 import '../widgets/simple_html_parser.dart';
 import '../widgets/transparency_shadow_image.dart';
 import 'package:recase/recase.dart';
-import 'dart:io';
 import '../services/file_system/cache.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
+import '../utils/anilist_utils.dart';
 import '../widgets/cards/dual_info_card.dart';
 import 'settings.dart';
 
@@ -72,6 +73,26 @@ class SearchedSeriesScreenState extends State<SearchedSeriesScreen> {
 
   /// Cached reference to the current series, updated via Selector in build()
   AnimeOverview? _cachedSeries;
+
+  // Per-tab data state
+  final List<CharacterEdge> _allCharacters = [];
+  AnilistPageInfo? _characterPageInfo;
+  bool _loadingMoreCharacters = false;
+  bool _charactersLoaded = false;
+
+  final List<StaffEdge> _allStaff = [];
+  AnilistPageInfo? _staffPageInfo;
+  bool _loadingMoreStaff = false;
+  bool _staffLoaded = false;
+
+  final List<MediaListSocial> _allSocial = [];
+  AnilistPageInfo? _socialPageInfo;
+  bool _loadingMoreSocial = false;
+  bool _socialLoaded = false;
+
+  AnimeStatsFull? _statsData;
+  bool _loadingStats = false;
+  bool _statsLoaded = false;
 
   // Widget: whether to allocate a full row or divide it in 2 columns [true = full row, false = 2 columns]
   Map<InfoLabel, bool> getInfos(AnimeOverview? series) {
@@ -212,6 +233,111 @@ class SearchedSeriesScreenState extends State<SearchedSeriesScreen> {
     _pages.addAll(pages);
   }
 
+  /// Called whenever the user selects a tab. Triggers lazy data loading
+  void _onTabChanged(int index) {
+    if (!mounted) return;
+    setState(() => currentTabIndex = index);
+    if (index >= _tabNames.length) return;
+    switch (_tabNames[index]) {
+      case 'Characters':
+        if (!_charactersLoaded && !_loadingMoreCharacters) _loadCharactersTab();
+      case 'Staff':
+        if (!_staffLoaded && !_loadingMoreStaff) _loadStaffTab();
+      case 'Social':
+        if (!_socialLoaded && !_loadingMoreSocial) _loadSocialTab();
+      case 'Statistics':
+        if (!_statsLoaded && !_loadingStats) _loadStatsTab();
+    }
+  }
+
+  /// Resets all per-tab state when navigating to a new series
+  void _resetTabState() {
+    currentTabIndex = 0;
+    _tabNames.clear();
+    _pages.clear();
+    _allCharacters.clear();
+    _characterPageInfo = null;
+    _loadingMoreCharacters = false;
+    _charactersLoaded = false;
+    _allStaff.clear();
+    _staffPageInfo = null;
+    _loadingMoreStaff = false;
+    _staffLoaded = false;
+    _allSocial.clear();
+    _socialPageInfo = null;
+    _loadingMoreSocial = false;
+    _socialLoaded = false;
+    _statsData = null;
+    _loadingStats = false;
+    _statsLoaded = false;
+  }
+
+  //Tab data loaders
+  Future<void> _loadCharactersTab({int page = 1}) async {
+    if (!mounted || _cachedSeries == null) return;
+    setState(() => _loadingMoreCharacters = true);
+
+    final result = await SeriesLinkService().fetchAnimeCharacters(_cachedSeries!.id, page: page);
+    if (!mounted) return;
+
+    setState(() {
+      _loadingMoreCharacters = false;
+      _charactersLoaded = true;
+      if (result != null) {
+        _allCharacters.addAll(result.characters);
+        _characterPageInfo = result.pageInfo;
+      }
+    });
+  }
+
+  Future<void> _loadStaffTab({int page = 1}) async {
+    if (!mounted || _cachedSeries == null) return;
+    setState(() => _loadingMoreStaff = true);
+
+    final result = await SeriesLinkService().fetchAnimeStaff(_cachedSeries!.id, page: page);
+    if (!mounted) return;
+
+    setState(() {
+      _loadingMoreStaff = false;
+      _staffLoaded = true;
+      if (result != null) {
+        _allStaff.addAll(result.staff);
+        _staffPageInfo = result.pageInfo;
+      }
+    });
+  }
+
+  Future<void> _loadSocialTab({int page = 1}) async {
+    if (!mounted || _cachedSeries == null) return;
+    setState(() => _loadingMoreSocial = true);
+
+    final result = await SeriesLinkService().fetchAnimeSocial(_cachedSeries!.id, page: page);
+    if (!mounted) return;
+
+    setState(() {
+      _loadingMoreSocial = false;
+      _socialLoaded = true;
+      if (result != null) {
+        _allSocial.addAll(result.social);
+        _socialPageInfo = result.pageInfo;
+      }
+    });
+  }
+
+  Future<void> _loadStatsTab() async {
+    if (!mounted || _cachedSeries == null) return;
+    setState(() => _loadingStats = true);
+
+    final result = await SeriesLinkService().fetchAnimeStats(_cachedSeries!.id);
+    if (!mounted) return;
+
+    setState(() {
+      _loadingStats = false;
+      _statsLoaded = true;
+      _statsData = result;
+    });
+  }
+
   @override
   didUpdateWidget(covariant SearchedSeriesScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
@@ -250,15 +376,9 @@ class SearchedSeriesScreenState extends State<SearchedSeriesScreen> {
     if (series == null) return null;
 
     final imageUrl = banner ? series.bannerImage : series.coverImage;
-    if (imageUrl == null) return null;
+    if (imageUrl == null || imageUrl.isEmpty) return null;
 
-    final imageCache = ImageCacheService();
-    final File? cachedFile = await imageCache.getCachedImageFile(imageUrl);
-    if (cachedFile != null) return FileImage(cachedFile);
-
-    // Start caching in background but return network image for immediate display
-    imageCache.cacheImage(imageUrl); // no await
-    return CachedNetworkImageProvider(imageUrl, errorListener: (error) => logWarn('Failed to load image from network: $error'));
+    return await ImageCacheService().getImageProvider(imageUrl);
   }
 
   Future<void> _loadAnilistData() async {
@@ -279,6 +399,7 @@ class SearchedSeriesScreenState extends State<SearchedSeriesScreen> {
 
       Manager.currentDominantColor = anilistAnime.dominantColor?.fromHex();
 
+      _resetTabState();
       _cachedSeries = anilistAnime;
 
       // Finalize UI
@@ -437,9 +558,8 @@ class SearchedSeriesScreenState extends State<SearchedSeriesScreen> {
             onPressed: animeId == null
                 ? null
                 : () {
-                    final url = 'https://anilist.co/anime/$animeId';
-                    logTrace('Opening anime in browser: $url');
-                    launchUrl(Uri.parse(url));
+                    logTrace('Opening anime in browser: $kAnilistBaseUrl/anime/$animeId');
+                    openAnilistAnime(animeId);
                   },
           );
         }),
@@ -543,6 +663,48 @@ class SearchedSeriesScreenState extends State<SearchedSeriesScreen> {
   }
 
   Widget _buildContent(BuildContext context, AnimeOverview? series) {
+    if (_tabNames.isEmpty || currentTabIndex >= _tabNames.length) {
+      return _buildOverviewContent(context, series);
+    }
+    return switch (_tabNames[currentTabIndex]) {
+      'Characters' => _buildCharactersTabContent(context),
+      'Staff' => _buildStaffTabContent(context),
+      'Statistics' => _buildStatsTabContent(context),
+      'Social' => _buildSocialTabContent(context),
+      _ => _buildOverviewContent(context, series),
+    };
+  }
+
+  /// Shared smooth-scroll wrapper used by every tab
+  Widget _buildScrollWrapper(List<Widget> children) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(ScreenUtils.kStatCardBorderRadius),
+      child: ScrollConfiguration(
+        behavior: ScrollConfiguration.of(context).copyWith(overscroll: true, platform: TargetPlatform.windows, scrollbars: false),
+        child: DynMouseScroll(
+          stopScroll: KeyboardState.ctrlPressedNotifier,
+          scrollSpeed: 1.0,
+          enableSmoothScroll: Manager.animationsEnabled,
+          durationMS: 350,
+          animationCurve: Curves.easeOutQuint,
+          builder: (context, controller, physics) {
+            return ValueListenableBuilder(
+              valueListenable: KeyboardState.ctrlPressedNotifier,
+              builder: (context, isCtrlPressed, _) {
+                return SingleChildScrollView(
+                  controller: controller,
+                  physics: isCtrlPressed ? const NeverScrollableScrollPhysics() : physics,
+                  child: Column(children: children),
+                );
+              },
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildOverviewContent(BuildContext context, AnimeOverview? series) {
     int? getTabIndex(String name) {
       final index = _tabNames.indexOf(name);
       return index != -1 ? index : null;
@@ -612,6 +774,424 @@ class SearchedSeriesScreenState extends State<SearchedSeriesScreen> {
     );
   }
 
+  // Full tab content builders
+  Widget _buildCharactersTabContent(BuildContext context) {
+    return _buildScrollWrapper([
+      Padding(
+        padding: const EdgeInsets.only(bottom: 16.0),
+        child: SettingsCard(
+          padding: const EdgeInsets.only(top: 24.0, left: 32.0, right: 32.0, bottom: 32.0),
+          children: [
+            Text('Characters', style: Manager.subtitleStyle),
+            VDiv(16),
+            if (_allCharacters.isEmpty && _loadingMoreCharacters)
+              const Center(child: ProgressRing())
+            else if (_allCharacters.isEmpty)
+              Text('No characters found.', style: Manager.bodyStyle)
+            else
+              LayoutBuilder(builder: (context, constraints) {
+                final double itemWidth = 300;
+                final int crossAxisCount = (constraints.maxWidth / itemWidth).floor().clamp(1, 3);
+                final double spacing = 12;
+                final double itemHeight = 80;
+                return GridView.builder(
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: crossAxisCount,
+                    mainAxisSpacing: spacing,
+                    crossAxisSpacing: spacing,
+                    mainAxisExtent: itemHeight,
+                  ),
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: _allCharacters.length,
+                  itemBuilder: (context, index) {
+                    final edge = _allCharacters[index];
+                    final character = edge.node;
+                    final va = edge.voiceActors.isNotEmpty ? edge.voiceActors.first : null;
+                    return DualInfoCard(
+                      nameLeft: character?.name ?? 'Unknown',
+                      descLeft: edge.role?.titleCase ?? '',
+                      imageLeft: character?.image ?? '',
+                      nameRight: va?.name,
+                      descRight: va?.language,
+                      imageRight: va?.image,
+                      onTap: character != null ? () => openAnilistCharacter(character.id) : null,
+                    );
+                  },
+                );
+              }),
+            if (_characterPageInfo?.hasNextPage == true) ...[
+              VDiv(16),
+              if (_loadingMoreCharacters)
+                const Center(child: ProgressRing())
+              else
+                Center(
+                  child: StandardButton(
+                    label: Text('Load more', style: Manager.bodyStyle),
+                    onPressed: () => _loadCharactersTab(page: (_characterPageInfo!.currentPage) + 1),
+                  ),
+                ),
+            ]
+          ],
+        ),
+      ),
+    ]);
+  }
+
+  Widget _buildStaffTabContent(BuildContext context) {
+    return _buildScrollWrapper([
+      Padding(
+        padding: const EdgeInsets.only(bottom: 16.0),
+        child: SettingsCard(
+          padding: const EdgeInsets.only(top: 24.0, left: 32.0, right: 32.0, bottom: 32.0),
+          children: [
+            Text('Staff', style: Manager.subtitleStyle),
+            VDiv(16),
+            if (_allStaff.isEmpty && _loadingMoreStaff)
+              const Center(child: ProgressRing())
+            else if (_allStaff.isEmpty)
+              Text('No staff found.', style: Manager.bodyStyle)
+            else
+              LayoutBuilder(builder: (context, constraints) {
+                final double itemWidth = 300;
+                final int crossAxisCount = (constraints.maxWidth / itemWidth).floor().clamp(1, 3);
+                final double spacing = 12;
+                final double itemHeight = 80;
+                return GridView.builder(
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: crossAxisCount,
+                    mainAxisSpacing: spacing,
+                    crossAxisSpacing: spacing,
+                    mainAxisExtent: itemHeight,
+                  ),
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: _allStaff.length,
+                  itemBuilder: (context, index) {
+                    final edge = _allStaff[index];
+                    final member = edge.node;
+                    return DualInfoCard(
+                      nameLeft: member?.name ?? 'Unknown',
+                      descLeft: edge.role?.titleCase ?? '',
+                      imageLeft: member?.image ?? '',
+                      onTap: member != null ? () => openAnilistStaff(member.id) : null,
+                    );
+                  },
+                );
+              }),
+            if (_staffPageInfo?.hasNextPage == true) ...[
+              VDiv(16),
+              if (_loadingMoreStaff)
+                const Center(child: ProgressRing())
+              else
+                Center(
+                  child: StandardButton(
+                    label: Text('Load more', style: Manager.bodyStyle),
+                    onPressed: () => _loadStaffTab(page: (_staffPageInfo!.currentPage) + 1),
+                  ),
+                ),
+            ],
+          ],
+        ),
+      ),
+    ]);
+  }
+
+  Widget _buildSocialTabContent(BuildContext context) {
+    return _buildScrollWrapper([
+      Padding(
+        padding: const EdgeInsets.only(bottom: 16.0),
+        child: SettingsCard(
+          padding: const EdgeInsets.only(top: 24.0, left: 32.0, right: 32.0, bottom: 32.0),
+          children: [
+            Text('Social', style: Manager.subtitleStyle),
+            VDiv(16),
+            if (_allSocial.isEmpty && _loadingMoreSocial)
+              const Center(child: ProgressRing())
+            else if (_allSocial.isEmpty)
+              Text('No activity found.', style: Manager.bodyStyle)
+            else
+              LayoutBuilder(builder: (context, constraints) {
+                final double itemWidth = 300;
+                final int crossAxisCount = (constraints.maxWidth / itemWidth).floor().clamp(1, 3);
+                final double spacing = 12;
+                final double itemHeight = 72;
+                return GridView.builder(
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: crossAxisCount,
+                    mainAxisSpacing: spacing,
+                    crossAxisSpacing: spacing,
+                    mainAxisExtent: itemHeight,
+                  ),
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: _allSocial.length,
+                  itemBuilder: (context, index) {
+                    final entry = _allSocial[index];
+                    final user = entry.user;
+                    return GestureDetector(
+                      onTap: user != null ? () => openAnilistUser(user.name) : null,
+                      child: MouseRegion(
+                        cursor: user != null ? SystemMouseCursors.click : SystemMouseCursors.basic,
+                        child: Container(
+                          height: itemHeight,
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.05),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Row(
+                            children: [
+                              // Avatar
+                              ClipOval(
+                                child: user?.avatar != null && user!.avatar!.isNotEmpty
+                                    ? CachedNetworkImage(
+                                        key: ValueKey('social_avatar_${user.id}'),
+                                        imageUrl: user.avatar!,
+                                        width: 40,
+                                        height: 40,
+                                        fit: BoxFit.cover,
+                                        errorWidget: (_, __, ___) => const SizedBox(width: 40, height: 40, child: Icon(FluentIcons.contact, size: 20)),
+                                      )
+                                    : const SizedBox(width: 40, height: 40, child: Icon(FluentIcons.contact, size: 20)),
+                              ),
+                              const SizedBox(width: 10),
+                              // Name + status
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Text(user?.name ?? 'Unknown', style: Manager.bodyStrongStyle, overflow: TextOverflow.ellipsis),
+                                    if (entry.status != null) Text(entry.status!.replaceAll('_', ' ').titleCase, style: Manager.captionStyle, overflow: TextOverflow.ellipsis),
+                                  ],
+                                ),
+                              ),
+                              // Score + time
+                              Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                children: [
+                                  if (entry.score != null && entry.score! > 0) Text('${entry.score!.toInt()}/10', style: Manager.bodyStyle),
+                                  if (entry.updatedAt != null) Text(_timeAgo(entry.updatedAt), style: Manager.captionStyle),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                );
+              }),
+            if (_socialPageInfo?.hasNextPage == true) ...[
+              VDiv(16),
+              if (_loadingMoreSocial)
+                const Center(child: ProgressRing())
+              else
+                Center(
+                  child: StandardButton(
+                    label: Text('Load more', style: Manager.bodyStyle),
+                    onPressed: () => _loadSocialTab(page: (_socialPageInfo!.currentPage) + 1),
+                  ),
+                ),
+            ],
+          ],
+        ),
+      ),
+    ]);
+  }
+
+  Widget _buildStatsTabContent(BuildContext context) {
+    // Show overview stats immediately because they're already loaded
+    // trends come after the tab fetch
+    final AnimeStats? displayStats = _statsData ?? _cachedSeries?.stats;
+    return _buildScrollWrapper([
+      Padding(
+        padding: const EdgeInsets.only(bottom: 16.0),
+        child: SettingsCard(
+          padding: const EdgeInsets.only(top: 24.0, left: 32.0, right: 32.0, bottom: 32.0),
+          children: [
+            Text('Statistics', style: Manager.subtitleStyle),
+            if (displayStats == null && _loadingStats) ...[
+              VDiv(16),
+              const Center(child: ProgressRing())
+            ] else if (displayStats != null) ...[
+              VDiv(24),
+              Text('Score Distribution', style: Manager.bodyStrongStyle),
+              VDiv(12),
+              _buildScoreBarChart(displayStats.scoreDistribution),
+              VDiv(24),
+              Text('Status Distribution', style: Manager.bodyStrongStyle),
+              VDiv(12),
+              _buildStatusDistribution(displayStats.statusDistribution),
+              if (_statsData != null && _statsData!.trends.isNotEmpty) ...[
+                VDiv(24),
+                Text('Score Trend', style: Manager.bodyStrongStyle),
+                VDiv(12),
+                _buildTrendsTable(_statsData!.trends),
+              ] else if (_loadingStats) ...[
+                VDiv(24),
+                const Center(child: ProgressRing()),
+              ],
+            ]
+          ],
+        ),
+      ),
+    ]);
+  }
+
+  // Stats visualisation helpers
+  Widget _buildScoreBarChart(List<ScoreDistribution> data) {
+    if (data.isEmpty) return const SizedBox.shrink();
+    final sorted = [...data]..sort((a, b) => a.score.compareTo(b.score));
+    final maxAmount = sorted.map((e) => e.amount).reduce(max);
+    return SizedBox(
+      height: 160,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: sorted.map((point) {
+          final barHeight = maxAmount > 0 ? (point.amount / maxAmount) * 120.0 : 0.0;
+          final accent = (Manager.currentDominantAccentColor ?? Manager.accentColor).light;
+          return Expanded(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                Text(
+                  point.amount > 0 ? point.amount.toString() : '',
+                  style: Manager.captionStyle,
+                  textAlign: TextAlign.center,
+                ),
+                Container(
+                  height: barHeight,
+                  margin: const EdgeInsets.symmetric(horizontal: 1.5),
+                  decoration: BoxDecoration(
+                    color: accent.withOpacity(0.4 + 0.6 * (maxAmount > 0 ? point.amount / maxAmount : 0)),
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(3)),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(point.score.toString(), style: Manager.captionStyle, textAlign: TextAlign.center),
+              ],
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  Widget _buildStatusDistribution(List<StatusDistribution> data) {
+    if (data.isEmpty) return const SizedBox.shrink();
+    final sorted = [...data]..sort((a, b) => b.amount.compareTo(a.amount));
+    final total = sorted.fold(0, (sum, e) => sum + e.amount);
+    if (total == 0) return const SizedBox.shrink();
+    
+    const statusColors = {
+      CurrentString: Color(0xFF3DB4F2),
+      CompletedString: Color(0xFF4CAF50),
+      DroppedString: Color(0xFFE53935),
+      PausedString: Color(0xFFF6A623),
+      PlanningString: Color(0xFF9E9E9E),
+      RepeatingString: Color(0xFFAB47BC),
+    };
+    
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(4),
+          child: SizedBox(
+            height: 16,
+            child: Row(
+              children: sorted.map((item) {
+                return Flexible(
+                  flex: item.amount,
+                  child: Container(color: statusColors[item.status] ?? Colors.grey),
+                );
+              }).toList(),
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        Wrap(
+          spacing: 16,
+          runSpacing: 6,
+          children: sorted.map((item) {
+            return Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 10,
+                  height: 10,
+                  decoration: BoxDecoration(
+                    color: statusColors[item.status] ?? Colors.grey,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                const SizedBox(width: 5),
+                Text(
+                  '${item.status.replaceAll('_', ' ').titleCase}: ${item.amount}',
+                  style: Manager.captionStyle,
+                ),
+              ],
+            );
+          }).toList(),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTrendsTable(List<AnimeTrend> trends) {
+    final sorted = [...trends]..sort((a, b) => a.date.compareTo(b.date));
+    return Table(
+      columnWidths: const {
+        0: FlexColumnWidth(2),
+        1: FlexColumnWidth(1),
+        2: FlexColumnWidth(1),
+        3: FlexColumnWidth(1),
+      },
+      defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+      children: [
+        TableRow(
+          decoration: BoxDecoration(color: Colors.white.withOpacity(0.07)),
+          children: [
+            Padding(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6), child: Text('Date', style: Manager.bodyStrongStyle)),
+            Text('Episode', style: Manager.bodyStrongStyle, textAlign: TextAlign.center),
+            Text('Avg Score', style: Manager.bodyStrongStyle, textAlign: TextAlign.center),
+            Text('Watching', style: Manager.bodyStrongStyle, textAlign: TextAlign.center),
+          ],
+        ),
+        ...sorted.map((t) {
+          final date = DateTime.fromMillisecondsSinceEpoch(t.date * 1000);
+          final dateStr = '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+          return TableRow(
+            children: [
+              Padding(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5), child: Text(dateStr, style: Manager.captionStyle)),
+              Text(t.episode?.toString() ?? '–', style: Manager.captionStyle, textAlign: TextAlign.center),
+              Text(t.averageScore != null ? '${t.averageScore}%' : '–', style: Manager.captionStyle, textAlign: TextAlign.center),
+              Text(t.inProgress?.toString() ?? '–', style: Manager.captionStyle, textAlign: TextAlign.center),
+            ],
+          );
+        }),
+      ],
+    );
+  }
+
+  /// Human-readable relative time
+  String _timeAgo(int? epochSeconds) {
+    if (epochSeconds == null) return '';
+    
+    final dt = DateTime.fromMillisecondsSinceEpoch(epochSeconds * 1000);
+    final diff = now.difference(dt);
+    
+    if (diff.inDays >= 365) return '${(diff.inDays / 365).floor()}y ago';
+    if (diff.inDays >= 30) return '${(diff.inDays / 30).floor()}mo ago';
+    if (diff.inDays >= 1) return '${diff.inDays}d ago';
+    if (diff.inHours >= 1) return '${diff.inHours}h ago';
+    if (diff.inMinutes >= 1) return '${diff.inMinutes}m ago';
+    return 'just now';
+  }
+
   List<Widget> buildRelationsSection(int _, List<RelationEdge> relations) {
     return [
       Text('Relations', style: Manager.subtitleStyle),
@@ -640,36 +1220,87 @@ class SearchedSeriesScreenState extends State<SearchedSeriesScreen> {
               itemCount: relations.length,
               itemBuilder: (context, index) {
                 final relation = relations[index];
+                final node = relation.node;
+                final bool isAnime = node != null && formatAnime.contains(node.format);
+                final MediaFormat mediaFormat = MediaFormatX.fromString(node?.format); // TODO extract this into standalone widget + custom appearance based on media format -> manga volumes should have a book icon; anime should have a tv, movies shouldh ave a clapperboard
+
                 return ClipRRect(
                   borderRadius: BorderRadius.circular(ScreenUtils.kEpisodeCardBorderRadius),
-                  child: Stack(
-                    children: [
-                      // Cover Image
-                      CachedNetworkImage(
-                        imageUrl: relation.node?.coverImage ?? '',
-                        width: itemWidth,
-                        height: totalHeight,
-                        fit: BoxFit.cover,
-                      ),
-                      // Title
-                      Positioned(
-                        bottom: 0,
-                        child: Container(
-                          color: Colors.black.withOpacity(.5),
-                          height: 35,
-                          width: itemWidth,
-                          child: Center(
-                            child: Text(
-                              relation.relationType?.titleCase ?? '',
-                              style: Manager.bodyStyle,
-                              textAlign: TextAlign.center,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
+                  child: MouseRegion(
+                    cursor: node != null ? SystemMouseCursors.click : SystemMouseCursors.basic,
+                    child: Stack(
+                      children: [
+                        // Cover Image
+                        mat.Ink(
+                          color: Colors.transparent,
+                          child: node?.coverImage != null && node!.coverImage!.isNotEmpty
+                              ? CachedNetworkImage(
+                                  key: ValueKey('relation_${node.id}'),
+                                  imageUrl: node.coverImage!,
+                                  width: itemWidth,
+                                  height: totalHeight,
+                                  fit: BoxFit.cover,
+                                  errorWidget: (_, __, ___) => Container(
+                                    width: itemWidth,
+                                    height: totalHeight,
+                                    color: Colors.grey[130],
+                                    child: const Center(child: Icon(FluentIcons.photo2, size: 24)),
+                                  ),
+                                )
+                              : Container(
+                                  width: itemWidth,
+                                  height: totalHeight,
+                                  color: Colors.grey[130],
+                                  child: const Center(child: Icon(FluentIcons.photo2, size: 24)),
+                                ),
+                        ),
+                        // Relation type + format label
+                        Positioned(
+                          bottom: 0,
+                          child: Container(
+                            color: Colors.black.withOpacity(.5),
+                            height: 35,
+                            width: itemWidth,
+                            child: Center(
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  if (mediaFormat.icon != null) ...[
+                                    Icon(
+                                      mediaFormat.icon,
+                                      size: 14,
+                                      color: Colors.white,
+                                    ),
+                                    HDiv(4),
+                                  ],
+                                  Flexible(
+                                    child: Text(
+                                      relation.relationType.name_,
+                                      style: Manager.bodyStyle,
+                                      textAlign: TextAlign.center,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                    ],
+                        Positioned.fill(
+                          child: mat.Material(
+                            color: Colors.transparent,
+                            child: mat.InkWell(
+                              onTap: node != null
+                                  ? isAnime
+                                      ? () => navigateToSeries(node)
+                                      : () => openAnilistManga(node.id)
+                                  : null,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 );
               },
@@ -718,7 +1349,7 @@ class SearchedSeriesScreenState extends State<SearchedSeriesScreen> {
     return _buildGridSection(
       title: 'Characters',
       items: characters.take(6).toList(),
-      onHeaderPressed: () => setState(() => currentTabIndex = index),
+      onHeaderPressed: () => _onTabChanged(index),
       itemBuilder: (context, characterEdge) {
         final character = characterEdge.node;
         final voiceActor = characterEdge.voiceActors.isNotEmpty ? characterEdge.voiceActors.first : null;
@@ -730,6 +1361,7 @@ class SearchedSeriesScreenState extends State<SearchedSeriesScreen> {
           nameRight: voiceActor?.name,
           descRight: voiceActor?.language,
           imageRight: voiceActor?.image,
+          onTap: character != null ? () => openAnilistCharacter(character.id) : null,
         );
       },
     );
@@ -739,13 +1371,14 @@ class SearchedSeriesScreenState extends State<SearchedSeriesScreen> {
     return _buildGridSection(
       title: 'Staff',
       items: staff.take(3).toList(),
-      onHeaderPressed: () => setState(() => currentTabIndex = index),
+      onHeaderPressed: () => _onTabChanged(index),
       itemBuilder: (context, staffEdge) {
         final staffMember = staffEdge.node;
         return DualInfoCard(
           nameLeft: staffMember?.name ?? 'Unknown',
           descLeft: staffEdge.role?.titleCase ?? '',
           imageLeft: staffMember?.image ?? '',
+          onTap: staffMember != null ? () => openAnilistStaff(staffMember.id) : null,
         );
       },
     );
@@ -755,15 +1388,35 @@ class SearchedSeriesScreenState extends State<SearchedSeriesScreen> {
     return [
       HighlightedButton(
         title: Text('Statistics', style: Manager.subtitleStyle),
-        onPressed: () => setState(() => currentTabIndex = index),
+        onPressed: () => _onTabChanged(index),
       ),
       VDiv(16),
       Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(child: Text("Status Distribution Placeholder")),
-          Expanded(child: Text("Score Distribution Placeholder")),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Score Distribution', style: Manager.bodyStrongStyle),
+                VDiv(8),
+                _buildScoreBarChart(stats.scoreDistribution),
+              ],
+            ),
+          ),
+          const SizedBox(width: 24),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Status Distribution', style: Manager.bodyStrongStyle),
+                VDiv(8),
+                _buildStatusDistribution(stats.statusDistribution),
+              ],
+            ),
+          ),
         ],
-      )
+      ),
     ];
   }
 
@@ -771,12 +1424,13 @@ class SearchedSeriesScreenState extends State<SearchedSeriesScreen> {
     return _buildGridSection(
       title: 'Social',
       items: following.take(6).toList(),
-      onHeaderPressed: () => setState(() => currentTabIndex = index),
+      onHeaderPressed: () => _onTabChanged(index),
       itemBuilder: (context, user) {
         return DualInfoCard(
           nameLeft: user.user?.name ?? 'Unknown',
           descLeft: '',
           imageLeft: user.user?.avatar ?? '',
+          onTap: user.user != null ? () => openAnilistUser(user.user!.name) : null,
         );
       },
     );
@@ -790,25 +1444,45 @@ class SearchedSeriesScreenState extends State<SearchedSeriesScreen> {
         spacing: 12,
         runSpacing: 12,
         children: recommendations.take(6).map((rec) {
-          return SizedBox(
-            width: 120,
-            child: Column(
-              children: [
-                CachedNetworkImage(
-                  imageUrl: rec.mediaRecommendation?.coverImage ?? '',
-                  width: 100,
-                  height: 150,
-                  fit: BoxFit.cover,
+          return GestureDetector(
+            onTap: rec.mediaRecommendation != null ? () => navigateToSeries(rec.mediaRecommendation!) : null,
+            child: MouseRegion(
+              cursor: rec.mediaRecommendation != null ? SystemMouseCursors.click : SystemMouseCursors.basic,
+              child: SizedBox(
+                width: 120,
+                child: Column(
+                  children: [
+                    rec.mediaRecommendation?.coverImage != null && rec.mediaRecommendation!.coverImage!.isNotEmpty
+                        ? CachedNetworkImage(
+                            key: ValueKey('rec_${rec.mediaRecommendation!.id}'),
+                            imageUrl: rec.mediaRecommendation!.coverImage!,
+                            width: 100,
+                            height: 150,
+                            fit: BoxFit.cover,
+                            errorWidget: (_, __, ___) => Container(
+                              width: 100,
+                              height: 150,
+                              color: Colors.grey[130],
+                              child: const Center(child: Icon(FluentIcons.photo2, size: 24)),
+                            ),
+                          )
+                        : Container(
+                            width: 100,
+                            height: 150,
+                            color: Colors.grey[130],
+                            child: const Center(child: Icon(FluentIcons.photo2, size: 24)),
+                          ),
+                    VDiv(8),
+                    Text(
+                      rec.mediaRecommendation?.title.userPreferred ?? '',
+                      style: Manager.bodyStyle,
+                      textAlign: TextAlign.center,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
                 ),
-                VDiv(8),
-                Text(
-                  rec.mediaRecommendation?.title.userPreferred ?? '',
-                  style: Manager.bodyStyle,
-                  textAlign: TextAlign.center,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
+              ),
             ),
           );
         }).toList(),
@@ -847,7 +1521,7 @@ class SearchedSeriesScreenState extends State<SearchedSeriesScreen> {
                           onTap: () {
                             logTrace('Clicked on tab: $page');
                             final pageIndex = _tabNames.indexOf(page);
-                            if (pageIndex != -1) setState(() => currentTabIndex = pageIndex);
+                            if (pageIndex != -1) _onTabChanged(pageIndex);
                           },
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -890,40 +1564,41 @@ class SearchedSeriesScreenState extends State<SearchedSeriesScreen> {
                 }),
               ),
               // Tab Indicator
-              if (_cachedSeries != null) Positioned.fill(
-                bottom: 0,
-                child: Align(
-                  alignment: Alignment.bottomLeft,
-                  child: Builder(builder: (context) {
-                    final tabWidth = (max(constraints.maxWidth, threshold)) / (pages.length);
-                    // final tabIndicatorWidth = min(tabWidth - 32, measureTextWidth(pages[currentTabIndex]!.values.first, style: Manager.captionStyle) + 16);
-                    var sidePadding = 32;
-                    final tempWidth = tabWidth - (sidePadding * 2);
-                    var tabIndicatorWidth = tempWidth;
-                    if (tempWidth < 30) {
-                      tabIndicatorWidth = 30;
-                      sidePadding = max((tabWidth - tabIndicatorWidth) ~/ 2, 0);
-                    }
-                    return AnimatedContainer(
-                      duration: const Duration(milliseconds: 150),
-                      curve: Curves.easeInOut,
-                      height: 3,
-                      width: tabIndicatorWidth,
-                      margin: EdgeInsets.only(
-                        // left: currentTabIndex * tabWidth + (tabWidth / 2) - (tabIndicatorWidth / 2) - (((pages.length / 2) - currentTabIndex) * 2),
-                        left: (currentTabIndex * tabWidth) + sidePadding,
-                      ),
-                      decoration: BoxDecoration(
-                        color: (Manager.currentDominantAccentColor ?? Manager.accentColor).light.withOpacity(0.5),
-                        borderRadius: BorderRadius.only(
-                          topLeft: Radius.circular(10),
-                          topRight: Radius.circular(10),
+              if (_cachedSeries != null)
+                Positioned.fill(
+                  bottom: 0,
+                  child: Align(
+                    alignment: Alignment.bottomLeft,
+                    child: Builder(builder: (context) {
+                      final tabWidth = (max(constraints.maxWidth, threshold)) / (pages.length);
+                      // final tabIndicatorWidth = min(tabWidth - 32, measureTextWidth(pages[currentTabIndex]!.values.first, style: Manager.captionStyle) + 16);
+                      var sidePadding = 32;
+                      final tempWidth = tabWidth - (sidePadding * 2);
+                      var tabIndicatorWidth = tempWidth;
+                      if (tempWidth < 30) {
+                        tabIndicatorWidth = 30;
+                        sidePadding = max((tabWidth - tabIndicatorWidth) ~/ 2, 0);
+                      }
+                      return AnimatedContainer(
+                        duration: const Duration(milliseconds: 150),
+                        curve: Curves.easeInOut,
+                        height: 3,
+                        width: tabIndicatorWidth,
+                        margin: EdgeInsets.only(
+                          // left: currentTabIndex * tabWidth + (tabWidth / 2) - (tabIndicatorWidth / 2) - (((pages.length / 2) - currentTabIndex) * 2),
+                          left: (currentTabIndex * tabWidth) + sidePadding,
                         ),
-                      ),
-                    );
-                  }),
+                        decoration: BoxDecoration(
+                          color: (Manager.currentDominantAccentColor ?? Manager.accentColor).light.withOpacity(0.5),
+                          borderRadius: BorderRadius.only(
+                            topLeft: Radius.circular(10),
+                            topRight: Radius.circular(10),
+                          ),
+                        ),
+                      );
+                    }),
+                  ),
                 ),
-              ),
             ],
           );
         }),

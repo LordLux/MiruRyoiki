@@ -11,6 +11,7 @@ import 'package:provider/provider.dart';
 
 import '../../manager.dart';
 import '../../models/anilist/page_info.dart';
+import '../../services/navigation/navigation.dart';
 import '../../settings.dart';
 import '../../utils/screen.dart';
 import '../../utils/time.dart';
@@ -27,6 +28,7 @@ import '../../widgets/section_grid_view.dart';
 import '../services/anilist/queries/anilist_service.dart';
 import '../services/library/library_provider.dart';
 import '../utils/logging.dart';
+import '../utils/anilist_utils.dart';
 import '../widgets/animated_hider.dart';
 import 'searched_series.dart';
 
@@ -150,6 +152,8 @@ class SearchScreenState extends State<BrowseScreen> with AutomaticKeepAliveClien
     super.initState();
     _searchController.addListener(_onSearchTextChanged);
     widget.scrollController.addListener(_onScroll);
+    NavigationManager.registerActiveScrollController('search', widget.scrollController);
+    NavigationManager.restoreScrollOffset('search', widget.scrollController);
 
     _sectionManagers = {
       1: SectionDataManager(id: 1, type: 'trending'),
@@ -330,13 +334,7 @@ class SearchScreenState extends State<BrowseScreen> with AutomaticKeepAliveClien
     }
   }
 
-  void _onSeriesOpen(AnimeCard anime) {
-    Manager.navigation.pushPage(
-      '/searched_series:${anime.id}',
-      anime.title.userPreferred ?? 'Anime Details',
-      data: anime,
-    );
-  }
+  void _onSeriesOpen(AnimeCard anime) => navigateToSeries(anime);
 
   Future<List<String>> _aggregateImages() async {
     final service = AnilistService();
