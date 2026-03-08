@@ -9,7 +9,7 @@ enum EpisodeState {
   downloaded,
 
   /// Episode was released but not downloaded yet (available for download)
-  available,
+  released,
 
   /// Episode exists in AniList but hasn't been released yet
   future,
@@ -64,7 +64,7 @@ class UIEpisode {
   }
 
   /// Create a UIEpisode for an available but not downloaded episode
-  factory UIEpisode.available({
+  factory UIEpisode.released({
     /// Episode numbert from AniList
     required int episodeNumber,
 
@@ -77,7 +77,7 @@ class UIEpisode {
     return UIEpisode(
       episodeNumber: episodeNumber,
       anilistTitle: anilistTitle,
-      state: EpisodeState.available,
+      state: EpisodeState.released,
       airDate: airDate,
     );
   }
@@ -128,7 +128,7 @@ class UIEpisode {
   bool get canPlay => state == EpisodeState.downloaded && localEpisode != null;
 
   /// Whether this episode can be downloaded
-  bool get canDownload => state == EpisodeState.available;
+  bool get isReleased => state == EpisodeState.released;
 
   /// Whether this episode is a future episode
   bool get isFuture => state == EpisodeState.future;
@@ -141,7 +141,7 @@ class UIEpisode {
     switch (state) {
       case EpisodeState.downloaded:
         return watched ? const Color(0xFF4CAF50) : const Color(0xFF2196F3); // Green if watched, blue if not
-      case EpisodeState.available:
+      case EpisodeState.released:
         return const Color(0xFFFF9800); // Orange for available
       case EpisodeState.future:
         return const Color(0xFF9E9E9E); // Gray for future
@@ -155,7 +155,7 @@ class UIEpisode {
     switch (state) {
       case EpisodeState.downloaded:
         return watched ? FluentIcons.check_mark : FluentIcons.play;
-      case EpisodeState.available:
+      case EpisodeState.released:
         return FluentIcons.download;
       case EpisodeState.future:
         return FluentIcons.clock;
@@ -169,7 +169,7 @@ class UIEpisode {
     switch (state) {
       case EpisodeState.downloaded:
         return watched ? 'Watched' : 'Downloaded';
-      case EpisodeState.available:
+      case EpisodeState.released:
         return 'Available for download';
       case EpisodeState.future:
         return airDate != null ? 'Airs ${_formatDate(airDate!)}' : 'Not yet aired';

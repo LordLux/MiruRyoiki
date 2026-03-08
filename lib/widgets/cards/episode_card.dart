@@ -232,7 +232,7 @@ class _HoverableEpisodeTileState extends State<HoverableEpisodeTile> {
                                     duration: shortStickyHeaderDuration,
                                     decoration: BoxDecoration(
                                       borderRadius: BorderRadius.only(bottomLeft: Radius.circular(ScreenUtils.kEpisodeCardBorderRadius), bottomRight: Radius.circular(ScreenUtils.kEpisodeCardBorderRadius)),
-                                      color: widget.series.localPosterColor,
+                                      color: Manager.currentDominantColor,
                                     ),
                                     height: 3.5,
                                     width: (progressValue > Library.progressThreshold ? 1 : progressValue) * constraints.maxWidth,

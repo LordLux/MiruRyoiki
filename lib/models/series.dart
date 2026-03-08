@@ -1,7 +1,5 @@
 // ignore_for_file: library_prefixes, unnecessary_this
 
-import 'dart:io';
-
 import 'package:flutter/widgets.dart' hide Image;
 import 'package:miruryoiki/models/metadata.dart';
 import 'package:collection/collection.dart';
@@ -11,8 +9,6 @@ import 'package:recase/recase.dart';
 import '../manager.dart';
 import '../services/anilist/provider/anilist_provider.dart';
 import '../services/anilist/queries/anilist_service.dart';
-import '../services/file_system/cache.dart';
-import '../utils/color.dart' as colorUtils;
 import '../utils/logging.dart';
 import '../utils/path.dart';
 import '../utils/text.dart';
@@ -22,6 +18,7 @@ import 'anilist/user_list.dart';
 import 'episode.dart';
 import '../enums.dart';
 import 'season.dart';
+import 'series_presenter.dart';
 import 'mapping_target.dart';
 
 class Series {
@@ -46,29 +43,8 @@ class Series {
   /// The currently selected Anilist ID for display purposes
   int? _primaryAnilistId;
 
-  /// Cached dominant color from poster image
-  Color? _localPosterDominantColor;
-
-  /// Cached dominant color from banner image
-  Color? _localBannerDominantColor;
-
-  /// Preferred source for the Poster
-  ImageSource? preferredPosterSource;
-
-  /// Preferred source for the Banner
-  ImageSource? preferredBannerSource;
-
-  /// Cached URL for Anilist Poster
-  String? _anilistPosterUrl;
-
-  /// Cached URL for Anilist Banner
-  String? _anilistBannerUrl;
-
-  /// Poster path for the series from the File System
-  PathString? localPosterPath;
-
-  /// Poster path for the series from the File System
-  PathString? localBannerPath;
+  /// Handles all image resolution, color computation, and display logic
+  late final SeriesPresenter presenter;
 
   /// Whether the series is hidden from the library (only when not linked to Anilist)
   bool isForcedHidden;
@@ -107,16 +83,16 @@ class Series {
     this.id,
     required this.name,
     required this.path,
-    this.localPosterPath,
-    this.localBannerPath,
+    PathString? localPosterPath,
+    PathString? localBannerPath,
     required this.seasons,
     this.relatedMedia = const [],
     this.anilistMappings = const [],
     AnilistAnime? anilistData,
     Color? posterColor,
     Color? bannerColor,
-    this.preferredPosterSource,
-    this.preferredBannerSource,
+    ImageSource? preferredPosterSource,
+    ImageSource? preferredBannerSource,
     String? anilistPoster,
     String? anilistBanner,
     int? primaryAnilistId,
@@ -125,12 +101,20 @@ class Series {
     this.customGridOrder,
     Metadata? metadata,
   })  : isForcedHidden = isHidden,
-        _localPosterDominantColor = posterColor,
-        _localBannerDominantColor = bannerColor,
-        _anilistPosterUrl = anilistPoster,
-        _anilistBannerUrl = anilistBanner,
         _primaryAnilistId = primaryAnilistId ?? anilistMappings.firstOrNull?.anilistId,
-        _metadata = metadata;
+        _metadata = metadata {
+    presenter = SeriesPresenter(
+      this,
+      posterColor: posterColor,
+      bannerColor: bannerColor,
+      preferredPosterSource: preferredPosterSource,
+      preferredBannerSource: preferredBannerSource,
+      anilistPosterUrl: anilistPoster,
+      anilistBannerUrl: anilistBanner,
+      localPosterPath: localPosterPath,
+      localBannerPath: localBannerPath,
+    );
+  }
 
   /// Create a copy of the series with modified fields
   Series copyWith({
@@ -159,19 +143,19 @@ class Series {
       id: id ?? this.id,
       name: name ?? this.name,
       path: path ?? this.path,
-      localPosterPath: folderPosterPath ?? this.localPosterPath,
-      localBannerPath: folderBannerPath ?? this.localBannerPath,
+      localPosterPath: folderPosterPath ?? presenter.localPosterPath,
+      localBannerPath: folderBannerPath ?? presenter.localBannerPath,
       seasons: seasons ?? this.seasons,
       relatedMedia: relatedMedia ?? this.relatedMedia,
       anilistMappings: anilistMappings ?? this.anilistMappings,
       anilistData: anilistData ?? anilistData,
-      posterColor: posterColor ?? _localPosterDominantColor,
-      bannerColor: bannerColor ?? _localBannerDominantColor,
-      preferredPosterSource: preferredPosterSource ?? this.preferredPosterSource,
-      preferredBannerSource: preferredBannerSource ?? this.preferredBannerSource,
+      posterColor: posterColor ?? presenter.rawPosterColor,
+      bannerColor: bannerColor ?? presenter.rawBannerColor,
+      preferredPosterSource: preferredPosterSource ?? presenter.preferredPosterSource,
+      preferredBannerSource: preferredBannerSource ?? presenter.preferredBannerSource,
       primaryAnilistId: primaryAnilistId ?? _primaryAnilistId,
-      anilistPoster: anilistPoster ?? _anilistPosterUrl,
-      anilistBanner: anilistBanner ?? _anilistBannerUrl,
+      anilistPoster: anilistPoster ?? presenter.rawAnilistPosterUrl,
+      anilistBanner: anilistBanner ?? presenter.rawAnilistBannerUrl,
       isHidden: isHidden ?? this.isForcedHidden,
       customListName: customListName ?? this.customListName,
       customGridOrder: customGridOrder ?? this.customGridOrder,
@@ -185,22 +169,15 @@ class Series {
       'id': id,
       'name': name,
       'path': path.path, //not nullable
-      'posterPath': localPosterPath?.pathMaybe, // nullable
-      'bannerPath': localBannerPath?.pathMaybe, // nullable
       'seasons': seasons.map((s) => s.toJson()).toList(),
       'relatedMedia': relatedMedia.map((e) => e.toJson()).toList(),
       'anilistMappings': anilistMappings.map((m) => m.toJson()).toList(),
-      'posterColor': _localPosterDominantColor?.value, // nullable
-      'bannerColor': _localBannerDominantColor?.value, // nullable
       'primaryAnilistId': _primaryAnilistId,
-      'anilistPosterUrl': _anilistPosterUrl ?? anilistData?.posterImage, // nullable
-      'anilistBannerUrl': _anilistBannerUrl ?? anilistData?.bannerImage, // nullable
-      'preferredPosterSource': preferredPosterSource?.name_, // nullable
-      'preferredBannerSource': preferredBannerSource?.name_, // nullable
       'isHidden': isForcedHidden,
       'customListName': customListName, // nullable
       'customGridOrder': customGridOrder, // nullable
       'metadata': _metadata?.toJson(), // nullable
+      ...presenter.toJson(),
     };
   }
 
@@ -432,14 +409,7 @@ class Series {
         listEquality(other.relatedMedia, relatedMedia) &&
         listEquality(other.anilistMappings, anilistMappings) &&
         other._primaryAnilistId == _primaryAnilistId &&
-        other._localPosterDominantColor == _localPosterDominantColor &&
-        other._localBannerDominantColor == _localBannerDominantColor &&
-        other.preferredPosterSource == preferredPosterSource &&
-        other.preferredBannerSource == preferredBannerSource &&
-        other._anilistPosterUrl == _anilistPosterUrl &&
-        other._anilistBannerUrl == _anilistBannerUrl &&
-        other.localPosterPath == localPosterPath &&
-        other.localBannerPath == localBannerPath &&
+        other.presenter == presenter &&
         other.isForcedHidden == isForcedHidden &&
         other.customListName == customListName;
   }
@@ -453,14 +423,7 @@ class Series {
         Object.hashAll(relatedMedia),
         Object.hashAll(anilistMappings),
         _primaryAnilistId,
-        _localPosterDominantColor,
-        _localBannerDominantColor,
-        preferredPosterSource,
-        preferredBannerSource,
-        _anilistPosterUrl,
-        _anilistBannerUrl,
-        localPosterPath,
-        localBannerPath,
+        presenter,
         isForcedHidden,
         customListName,
       );
@@ -487,56 +450,35 @@ class Series {
     final mapping = anilistMappings.firstWhereOrNull((m) => m.anilistId == _primaryAnilistId);
     if (mapping != null) mapping.anilistData = value;
 
-    _anilistPosterUrl = value?.posterImage;
-    _anilistBannerUrl = value?.bannerImage;
+    presenter.updateAnilistUrls(poster: value?.posterImage, banner: value?.bannerImage);
   }
 
-  /// Get primary color from the series poster image
-  Color? get localPosterColor {
-    // Always prioritize locally calculated color which respects DominantColorSource
-    if (_localPosterDominantColor != null) return _localPosterDominantColor;
+  // ==================== Forwarding to SeriesPresenter ====================
 
-    // Fall back to Anilist color if locally calculated color is not available
-    return anilistData?.dominantColor?.fromHex();
-  }
+  // Data field accessors
+  PathString? get localPosterPath => presenter.localPosterPath;
+  set localPosterPath(PathString? value) => presenter.localPosterPath = value;
 
-  /// Get primary color from the series poster image
-  Color? get localBannerColor {
-    // Always prioritize locally calculated color which respects DominantColorSource
-    if (_localBannerDominantColor != null) return _localBannerDominantColor;
+  PathString? get localBannerPath => presenter.localBannerPath;
+  set localBannerPath(PathString? value) => presenter.localBannerPath = value;
 
-    // Fall back to Anilist color if locally calculated color is not available
-    return anilistData?.dominantColor?.fromHex();
-  }
+  ImageSource? get preferredPosterSource => presenter.preferredPosterSource;
+  set preferredPosterSource(ImageSource? value) => presenter.preferredPosterSource = value;
 
-  Future<void> calculateLocalPosterDominantColor({bool forceRecalculate = false}) async {
-    final result = await colorUtils.calculateLocalDominantColors(this, forceRecalculate: forceRecalculate);
-    if (result.$2 == true) _localPosterDominantColor = result.$1?.$1 ?? _localPosterDominantColor; // override if new, othewise keep old
-  }
+  ImageSource? get preferredBannerSource => presenter.preferredBannerSource;
+  set preferredBannerSource(ImageSource? value) => presenter.preferredBannerSource = value;
 
-  Future<void> calculateLocalBannerDominantColor({bool forceRecalculate = false}) async {
-    final result = await colorUtils.calculateLocalDominantColors(this, forceRecalculate: forceRecalculate);
-    if (result.$2 == true) _localBannerDominantColor = result.$1?.$2 ?? _localBannerDominantColor; // override if new, othewise keep old
-  }
+  // Color
+  Color? get localPosterColor => presenter.localPosterColor;
+  Color? get localBannerColor => presenter.localBannerColor;
+  Future<void> calculateLocalPosterDominantColor({bool forceRecalculate = false}) => presenter.calculateLocalPosterDominantColor(forceRecalculate: forceRecalculate);
+  Future<void> calculateLocalBannerDominantColor({bool forceRecalculate = false}) => presenter.calculateLocalBannerDominantColor(forceRecalculate: forceRecalculate);
+  Future<void> calculateLocalDominantColors({bool forceRecalculate = false}) => presenter.calculateLocalDominantColors(forceRecalculate: forceRecalculate);
+  Future<void> clearCachedDominantColors() => presenter.clearCachedDominantColors();
 
-  Future<void> calculateLocalDominantColors({bool forceRecalculate = false}) async {
-    final result = await colorUtils.calculateLocalDominantColors(this, forceRecalculate: forceRecalculate);
-    if (result.$2 == true) {
-      _localPosterDominantColor = result.$1?.$1 ?? _localPosterDominantColor; // override if new, othewise keep old
-      _localBannerDominantColor = result.$1?.$2 ?? _localBannerDominantColor; // override if new, othewise keep old
-    }
-  }
-
-  Future<void> clearCachedDominantColors() async {
-    _localPosterDominantColor = null;
-    _localBannerDominantColor = null;
-  }
-
-  /// Get the Anilist poster URL
-  String? get anilistPosterUrl => _anilistPosterUrl ?? anilistData?.posterImage;
-
-  /// Get the Anilist banner URL
-  String? get anilistBannerUrl => _anilistBannerUrl ?? anilistData?.bannerImage;
+  // Image URLs
+  String? get anilistPosterUrl => presenter.anilistPosterUrl;
+  String? get anilistBannerUrl => presenter.anilistBannerUrl;
 
   /// Media list entries for the series
   Map<int, AnilistMediaListEntry?>? _mediaListEntries;
@@ -900,40 +842,10 @@ class Series {
   /// Check if the series is linked to Anilist
   bool get isLinked => anilistMappings.isNotEmpty;
 
-  /// Banner image from Anilist
-  String? get bannerImage => currentAnilistData?.bannerImage;
-
-  /// Poster image from Anilist
-  String? get posterImage => currentAnilistData?.posterImage;
-
-  /// Official title from Anilist
-  String get displayTitle {
-    // Helper: Remove season indicators in various languages/scripts
-    String removeSeasonIndicators(String input) {
-      // Patterns for season indicators in English, Japanese, Romaji, etc.
-      final patterns = [
-        RegExp(r'(?:Season|S|Seasons?|Part|Cour|Vol(?:ume)?|Chapter|Ch)\s*\d+', caseSensitive: false),
-        RegExp(r'(?:第\s*\d+\s*(?:期|シーズン|部|章|クール|巻))'), // Japanese: 第1期, 第2部, etc.
-        RegExp(r'(?:シーズン|クール|パート|章|巻)\s*\d+'), // Japanese: シーズン2, クール1, etc.
-        RegExp(r'(?:kikaku|ki|bu|shou|kuru|kan)\s*\d+', caseSensitive: false), // Romaji
-        RegExp(r'(?:\d+\s*(?:期|シーズン|部|章|クール|巻))'), // Japanese: 2期, 3部, etc.
-        RegExp(r'[\(\[]\s*(?:Season|S|Seasons?|Part|Cour|Vol(?:ume)?|Chapter|Ch|第\d+期|シーズン\d+|クール\d+|パート\d+|章\d+|巻\d+)\s*[\)\]]', caseSensitive: false),
-      ];
-
-      String result = input;
-      for (final pattern in patterns) {
-        result = result.replaceAll(pattern, '');
-      }
-      // Remove extra whitespace and trailing punctuation
-      result = result.replaceAll(RegExp(r'\s+'), ' ').trim();
-      result = result.replaceAll(RegExp(r'[\-–—:：,;]+$'), '').trim();
-      return result;
-    }
-
-    final title = (currentAnilistData?.title.userPreferred ?? currentAnilistData?.title.english ?? currentAnilistData?.title.romaji ?? name);
-
-    return removeSeasonIndicators(title);
-  }
+  // Display, image, and source detection forwarding
+  String? get bannerImage => presenter.bannerImage;
+  String? get posterImage => presenter.posterImage;
+  String get displayTitle => presenter.displayTitle;
 
   /// Description from Anilist
   String? get description => currentAnilistData?.description;
@@ -1002,256 +914,23 @@ class Series {
   /// Checks if any Anilist mapping has the "hide from status lists" flag set
   bool get isAnilistHidden => isLinked && mediaListEntries.values.any((entry) => entry?.hiddenFromStatusLists == true);
 
-  /// Getter to check if the poster is from Anilist
-  String? get effectivePosterPath {
-    final ImageSource effectiveSource = preferredPosterSource ?? Manager.defaultPosterSource;
-
-    // Determine available options
-    final bool hasLocalPoster = localPosterPath != null;
-    final bool hasAnilistPoster = anilistPosterUrl != null;
-
-    // Apply fallback logic based on source preference
-    switch (effectiveSource) {
-      case ImageSource.autoLocal:
-      case ImageSource.local:
-        return hasLocalPoster ? localPosterPath?.pathMaybe : (hasAnilistPoster ? anilistPosterUrl : null);
-
-      case ImageSource.autoAnilist:
-      case ImageSource.anilist:
-        return hasAnilistPoster ? anilistPosterUrl : (hasLocalPoster ? localPosterPath?.pathMaybe : null);
-    }
-  }
-
-  /// Get the effective poster image as an ImageProvider
-  Future<ImageProvider?> getPosterImage() async {
-    final path = effectivePosterPath;
-    if (path == null) return null;
-    if (isLocalPosterBeingUsed) return FileImage(File(path));
-    if (isAnilistPosterBeingUsed) return await ImageCacheService().getImageProvider(path);
-    return null;
-  }
-
-  /// Get the effective poster path for a specific episode
-  String? getEffectivePosterPathForEpisode(Episode episode) {
-    final mapping = getMappingForEpisode(episode);
-    if (mapping == null) {
-      logWarn('No mapping found for episode ${episode.episodeNumber} in series $name');
-      return effectivePosterPath;
-    } // Fallback to primary mapping
-
-    final ImageSource effectiveSource = preferredPosterSource ?? Manager.defaultPosterSource;
-    final bool hasLocalPoster = localPosterPath != null;
-    final bool hasAnilistPoster = mapping.anilistData?.posterImage != null;
-
-    switch (effectiveSource) {
-      case ImageSource.autoLocal:
-      case ImageSource.local:
-        return hasLocalPoster ? localPosterPath?.pathMaybe : (hasAnilistPoster ? mapping.anilistData!.posterImage : null);
-
-      case ImageSource.autoAnilist:
-      case ImageSource.anilist:
-        return hasAnilistPoster ? mapping.anilistData!.posterImage : (hasLocalPoster ? localPosterPath?.pathMaybe : null);
-    }
-  }
-
-  /// Get the effective poster image for a specific episode
-  Future<ImageProvider?> getPosterImageForEpisode(Episode episode) async {
-    final path = getEffectivePosterPathForEpisode(episode);
-    if (path == null) return null;
-
-    // Check if it's a local path or URL
-    if (path.startsWith('http://') || path.startsWith('https://')) //
-      return await ImageCacheService().getImageProvider(path);
-    // Local file
-    return FileImage(File(path));
-  }
-
-  /// Get the effective poster color for a specific episode
-  /// Uses the episode's corresponding AniList mapping if available
-  Color? getEffectivePosterColorForEpisode(Episode episode) {
-    final mapping = getMappingForEpisode(episode);
-    if (mapping == null) return localPosterColor; // Fallback to primary mapping
-
-    final ImageSource effectiveSource = preferredPosterSource ?? Manager.defaultPosterSource;
-
-    switch (effectiveSource) {
-      case ImageSource.autoLocal:
-      case ImageSource.local:
-        return _localPosterDominantColor ?? mapping.posterColor ?? mapping.anilistData?.dominantColor?.fromHex();
-
-      case ImageSource.autoAnilist:
-      case ImageSource.anilist:
-        return mapping.posterColor ?? mapping.anilistData?.dominantColor?.fromHex() ?? _localPosterDominantColor;
-    }
-  }
-
-  /// Get the effective poster path for a specific AniList ID
-  String? getEffectivePosterPathForAnilistId(int anilistId) {
-    final mapping = anilistMappings.firstWhereOrNull((m) => m.anilistId == anilistId);
-    if (mapping == null) return effectivePosterPath; // Fallback to primary mapping
-
-    final ImageSource effectiveSource = preferredPosterSource ?? Manager.defaultPosterSource;
-    final bool hasLocalPoster = localPosterPath != null;
-    final bool hasAnilistPoster = mapping.anilistData?.posterImage != null;
-
-    switch (effectiveSource) {
-      case ImageSource.autoLocal:
-      case ImageSource.local:
-        return hasLocalPoster ? localPosterPath?.pathMaybe : (hasAnilistPoster ? mapping.anilistData!.posterImage : null);
-
-      case ImageSource.autoAnilist:
-      case ImageSource.anilist:
-        return hasAnilistPoster ? mapping.anilistData!.posterImage : (hasLocalPoster ? localPosterPath?.pathMaybe : null);
-    }
-  }
-
-  /// Get the effective poster image for a specific AniList ID
-  Future<ImageProvider?> getPosterImageForAnilistId(int anilistId) async {
-    final path = getEffectivePosterPathForAnilistId(anilistId);
-    if (path == null) return null;
-
-    // Check if it's a local path or URL
-    if (path.startsWith('http://') || path.startsWith('https://')) {
-      return await ImageCacheService().getImageProvider(path);
-    } else {
-      return FileImage(File(path));
-    }
-  }
-
-  /// Get the effective poster color for a specific AniList ID
-  Color? getEffectivePosterColorForAnilistId(int anilistId) {
-    final mapping = anilistMappings.firstWhereOrNull((m) => m.anilistId == anilistId);
-    if (mapping == null) return localPosterColor; // Fallback to primary mapping
-
-    final ImageSource effectiveSource = preferredPosterSource ?? Manager.defaultPosterSource;
-
-    switch (effectiveSource) {
-      case ImageSource.autoLocal:
-      case ImageSource.local:
-        return _localPosterDominantColor ?? mapping.posterColor ?? mapping.anilistData?.dominantColor?.fromHex();
-
-      case ImageSource.autoAnilist:
-      case ImageSource.anilist:
-        return mapping.posterColor ?? mapping.anilistData?.dominantColor?.fromHex() ?? _localPosterDominantColor;
-    }
-  }
-
-  //
-  //
-  /// Getter to check if the banner is from Anilist or local file
-  String? get effectiveBannerPath {
-    final ImageSource effectiveSource = preferredBannerSource ?? Manager.defaultBannerSource;
-
-    // Determine available options
-    final bool hasLocalBanner = localBannerPath != null;
-    final bool hasAnilistBanner = anilistBannerUrl != null;
-
-    // Apply fallback logic based on source preference
-    switch (effectiveSource) {
-      case ImageSource.autoLocal:
-      case ImageSource.local:
-        return hasLocalBanner ? localBannerPath?.pathMaybe : (hasAnilistBanner ? anilistBannerUrl : null);
-
-      case ImageSource.autoAnilist:
-      case ImageSource.anilist:
-        return hasAnilistBanner ? anilistBannerUrl : (hasLocalBanner ? localBannerPath?.pathMaybe : null);
-    }
-  }
-
-  /// Get the effective primary color based on settings and available images
-  Future<Color?> effectivePrimaryColor({int? anilistId, bool forceRecalculate = false, bool? overrideIsPoster}) async {
-    // Determine available options
-    final bool hasLocalBanner = localBannerPath != null;
-    final bool hasAnilistBanner = anilistBannerUrl != null;
-
-    // Apply fallback logic based on source preference
-    if (overrideIsPoster ?? (Manager.settings.dominantColorSource == DominantColorSource.poster)) {
-      switch (preferredPosterSource ?? Manager.defaultPosterSource) {
-        case ImageSource.autoLocal:
-        case ImageSource.local:
-          return hasLocalBanner ? _localPosterDominantColor : (hasAnilistBanner ? anilistData?.dominantColor?.fromHex() : null);
-
-        case ImageSource.autoAnilist:
-        case ImageSource.anilist:
-          final res = anilistMappings.firstWhereOrNull((m) => m.anilistId == (anilistId ?? primaryAnilistId));
-          if (forceRecalculate) return await res?.calculatePosterColor();
-          return await res?.posterColorFuture;
-      }
-    } else {
-      switch (preferredBannerSource ?? Manager.defaultBannerSource) {
-        case ImageSource.autoLocal:
-        case ImageSource.local:
-          return hasLocalBanner ? _localBannerDominantColor : (hasAnilistBanner ? anilistData?.dominantColor?.fromHex() : null);
-        case ImageSource.autoAnilist:
-        case ImageSource.anilist:
-          final a = anilistMappings.firstWhereOrNull((m) => m.anilistId == (anilistId ?? primaryAnilistId));
-          if (forceRecalculate) return await a?.calculateBannerColor();
-          return await a?.bannerColorFuture;
-      }
-    }
-  }
-
-  /// Get the effective primary color based on settings and available images
-  Color? effectivePrimaryColorSync([int? anilistId]) {
-    // Determine available options
-    final bool hasLocalBanner = localBannerPath != null;
-    final bool hasAnilistBanner = anilistBannerUrl != null;
-
-    // Apply fallback logic based on source preference
-    if (Manager.settings.dominantColorSource == DominantColorSource.poster) {
-      switch (preferredPosterSource ?? Manager.defaultPosterSource) {
-        case ImageSource.autoLocal:
-        case ImageSource.local:
-          return hasLocalBanner ? _localPosterDominantColor : (hasAnilistBanner ? anilistData?.dominantColor?.fromHex() : null);
-
-        case ImageSource.autoAnilist:
-        case ImageSource.anilist:
-          return anilistMappings.firstWhereOrNull((m) => m.anilistId == anilistId)?.posterColor;
-      }
-    } else {
-      switch (preferredBannerSource ?? Manager.defaultBannerSource) {
-        case ImageSource.autoLocal:
-        case ImageSource.local:
-          return hasLocalBanner ? _localBannerDominantColor : (hasAnilistBanner ? anilistData?.dominantColor?.fromHex() : null);
-        case ImageSource.autoAnilist:
-        case ImageSource.anilist:
-          return anilistMappings.firstWhereOrNull((m) => m.anilistId == anilistId)?.bannerColor;
-      }
-    }
-  }
-
-  /// Getter to check if the banner actually being used is from Anilist
-  bool get isAnilistBannerBeingUsed {
-    if (effectiveBannerPath == null) return false;
-    return effectiveBannerPath == anilistBannerUrl;
-  }
-
-  /// Getter to check if the banner actually being used is from a local file
-  bool get isLocalBannerBeingUsed {
-    if (effectiveBannerPath == null) return false;
-    return effectiveBannerPath == localBannerPath?.pathMaybe;
-  }
-
-  /// Getter to check if the poster actually being used is from Anilist
-  bool get isAnilistPosterBeingUsed {
-    if (effectivePosterPath == null) return false;
-    return effectivePosterPath == anilistPosterUrl;
-  }
-
-  /// Getter to check if the poster actually being used is from a local file
-  bool get isLocalPosterBeingUsed {
-    if (effectivePosterPath == null) return false;
-    return effectivePosterPath == localPosterPath?.pathMaybe;
-  }
-
-  /// Get the effective banner image as an ImageProvider
-  Future<ImageProvider?> getBannerImage() async {
-    final path = effectiveBannerPath;
-    if (path == null) return null;
-    if (isLocalBannerBeingUsed) return FileImage(File(path));
-    if (isAnilistBannerBeingUsed) return await ImageCacheService().getImageProvider(path);
-    return null;
-  }
+  // Image resolution forwarding
+  String? get effectivePosterPath => presenter.effectivePosterPath;
+  String? get effectiveBannerPath => presenter.effectiveBannerPath;
+  Future<ImageProvider?> getPosterImage() => presenter.getPosterImage();
+  Future<ImageProvider?> getBannerImage() => presenter.getBannerImage();
+  String? getEffectivePosterPathForEpisode(Episode episode) => presenter.getEffectivePosterPathForEpisode(episode);
+  Future<ImageProvider?> getPosterImageForEpisode(Episode episode) => presenter.getEffectivePosterImageForEpisode(episode);
+  Color? getEffectivePosterColorForEpisode(Episode episode) => presenter.getEffectivePosterColorForEpisode(episode);
+  String? getEffectivePosterPathForAnilistId(int anilistId) => presenter.getEffectivePosterPathForAnilistId(anilistId);
+  Future<ImageProvider?> getPosterImageForAnilistId(int anilistId) => presenter.getEffectivePosterImageForAnilistId(anilistId);
+  Color? getEffectivePosterColorForAnilistId(int anilistId) => presenter.getEffectivePosterColorForAnilistId(anilistId);
+  Future<Color?> effectivePrimaryColor({int? anilistId, bool forceRecalculate = false, bool? overrideIsPoster}) => presenter.effectivePrimaryColor(anilistId: anilistId, forceRecalculate: forceRecalculate, overrideIsPoster: overrideIsPoster);
+  Color? effectivePrimaryColorSync([int? anilistId]) => presenter.effectivePrimaryColorSync(anilistId);
+  bool get isAnilistBannerBeingUsed => presenter.isAnilistBannerBeingUsed;
+  bool get isLocalBannerBeingUsed => presenter.isLocalBannerBeingUsed;
+  bool get isAnilistPosterBeingUsed => presenter.isAnilistPosterBeingUsed;
+  bool get isLocalPosterBeingUsed => presenter.isLocalPosterBeingUsed;
 
   Metadata? get metadata => _metadata ?? _getMetadata();
 

@@ -39,7 +39,7 @@ class UIEpisodeService {
       } else {
         // Episode is not downloaded - determine if it's available or future
         // For now, we'll assume episodes are available (this could be enhanced with airing data)
-        uiEpisodes.add(UIEpisode.available(
+        uiEpisodes.add(UIEpisode.released(
           episodeNumber: episodeNumber,
           anilistTitle: _getEpisodeTitleFromCache(episodeNumber), // Could come from episode title service cache
         ));
@@ -76,7 +76,7 @@ class UIEpisodeService {
       
       // Check if we should mark as available or future based on airing data
       // For now, we'll assume they're available (could be enhanced with AniList airing data)
-      futureEpisodes.add(UIEpisode.available(
+      futureEpisodes.add(UIEpisode.released(
         episodeNumber: episodeNumber,
         anilistTitle: _getEpisodeTitleFromCache(episodeNumber),
       ));
@@ -171,7 +171,7 @@ class UIEpisodeService {
         case EpisodeState.downloaded:
           categories['downloaded']!.add(episode);
           break;
-        case EpisodeState.available:
+        case EpisodeState.released:
           categories['available']!.add(episode);
           break;
         case EpisodeState.future:
