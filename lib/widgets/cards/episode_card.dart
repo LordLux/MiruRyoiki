@@ -3,7 +3,9 @@ import 'dart:ui';
 
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/material.dart' show InkWell, Material;
+import 'package:miruryoiki/services/anilist/provider/anilist_provider.dart';
 import 'package:miruryoiki/services/navigation/statusbar.dart';
+import 'package:provider/provider.dart';
 import 'package:shimmer/shimmer.dart';
 
 import '../../manager.dart';
@@ -17,6 +19,7 @@ import '../../utils/screen.dart';
 import '../../utils/time.dart';
 import '../context_menu/episode.dart';
 import '../context_menu/controller.dart';
+import '../play_button.dart';
 import '../watched_badge.dart';
 
 class HoverableEpisodeTile extends StatefulWidget {
@@ -57,6 +60,8 @@ class _HoverableEpisodeTileState extends State<HoverableEpisodeTile> {
 
   @override
   Widget build(BuildContext context) {
+    final anilistProivder = Provider.of<AnilistProvider>(context, listen: false);
+
     return EpisodeContextMenu(
       controller: _menuController,
       series: widget.series,
@@ -199,40 +204,45 @@ class _HoverableEpisodeTileState extends State<HoverableEpisodeTile> {
                       ),
 
                       // Watched indicator
-                      Positioned(
-                        top: 8,
-                        right: 8,
-                        child: WatchedBadge(isWatched: widget.episode.watched),
-                      ),
+                      // Positioned(
+                      //   top: 8,
+                      //   right: 8,
+                      //   child: WatchedBadge(isWatched: widget.episode.watched),
+                      // ),
 
                       // Progress indicator
-                      if (widget.episode.progress > 0)
-                        Positioned(
-                          left: 0,
-                          right: 0,
-                          bottom: 0,
-                          child: LayoutBuilder(builder: (context, constraints) {
-                            return Container(
-                              decoration: BoxDecoration(
-                                color: Colors.grey.withOpacity(0.3),
-                                borderRadius: BorderRadius.only(bottomLeft: Radius.circular(ScreenUtils.kEpisodeCardBorderRadius), bottomRight: Radius.circular(ScreenUtils.kEpisodeCardBorderRadius)),
-                              ),
-                              height: 3.5,
-                              child: Align(
-                                alignment: Alignment.centerLeft,
-                                child: AnimatedContainer(
-                                  duration: shortStickyHeaderDuration,
-                                  decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.only(bottomLeft: Radius.circular(ScreenUtils.kEpisodeCardBorderRadius), bottomRight: Radius.circular(ScreenUtils.kEpisodeCardBorderRadius)),
-                                    color: widget.series.localPosterColor,
-                                  ),
-                                  height: 3.5,
-                                  width: (widget.episode.progress > Library.progressThreshold ? 1 : widget.episode.progress) * constraints.maxWidth,
+                      ValueListenableBuilder<double>(
+                        valueListenable: widget.episode.progressNotifier,
+                        builder: (context, progressValue, _) {
+                          if (progressValue <= 0) return const SizedBox.shrink();
+                          return Positioned(
+                            left: 0,
+                            right: 0,
+                            bottom: 0,
+                            child: LayoutBuilder(builder: (context, constraints) {
+                              return Container(
+                                decoration: BoxDecoration(
+                                  color: Colors.grey.withOpacity(0.3),
+                                  borderRadius: BorderRadius.only(bottomLeft: Radius.circular(ScreenUtils.kEpisodeCardBorderRadius), bottomRight: Radius.circular(ScreenUtils.kEpisodeCardBorderRadius)),
                                 ),
-                              ),
-                            );
-                          }),
-                        ),
+                                height: 3.5,
+                                child: Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: AnimatedContainer(
+                                    duration: shortStickyHeaderDuration,
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.only(bottomLeft: Radius.circular(ScreenUtils.kEpisodeCardBorderRadius), bottomRight: Radius.circular(ScreenUtils.kEpisodeCardBorderRadius)),
+                                      color: widget.series.localPosterColor,
+                                    ),
+                                    height: 3.5,
+                                    width: (progressValue > Library.progressThreshold ? 1 : progressValue) * constraints.maxWidth,
+                                  ),
+                                ),
+                              );
+                            }),
+                          );
+                        },
+                      ),
                     ],
                   ),
                 ),
@@ -256,6 +266,21 @@ class _HoverableEpisodeTileState extends State<HoverableEpisodeTile> {
                         ),
                       ),
                     ),
+                  ),
+                ),
+
+                // Play button
+                Positioned(
+                  bottom: 8,
+                  right: 8,
+                  child: PlayButton(
+                    key: ValueKey('play_${widget.episode.path.path}'),
+                    episode: widget.episode,
+                    forceExpand: _isHovering,
+                    isNextEpisodeToPlay: widget.episode ==
+                        Manager.anilistProgress //
+                            .getNextEpisodeToWatch(widget.series, anilistProivder) //
+                    ,
                   ),
                 ),
               ],

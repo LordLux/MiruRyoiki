@@ -77,7 +77,7 @@ class _HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMi
     final randomSeries = series[now.millisecondsSinceEpoch % series.length];
 
     final anilistProvider = Provider.of<AnilistProvider>(context, listen: false);
-    final nextEpisode = Manager.anilistProgress.getNextEpisodeToWatchEpisode(randomSeries, anilistProvider);
+    final nextEpisode = Manager.anilistProgress.getNextEpisodeToWatch(randomSeries, anilistProvider);
 
     // Trigger the onSeriesSelected callback with the selected series path
     _openEpisode(randomSeries, nextEpisode!);
@@ -268,7 +268,7 @@ class _HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMi
 
     for (final s in watchingSeries) {
       // Use the new progress manager to check if series has next episode
-      final nextEpisode = Manager.anilistProgress.getNextEpisodeToWatchEpisode(s, anilistProvider);
+      final nextEpisode = Manager.anilistProgress.getNextEpisodeToWatch(s, anilistProvider);
       if (nextEpisode == null) continue; // Skip series with no next episode
 
       // Filter based on onlyStarted parameter
@@ -320,7 +320,7 @@ class _HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMi
                         final currentSeries = series[index];
                         final bool isLast = index == series.length - 1;
                         // Use the new progress manager to get next episode
-                        final nextEpisode = Manager.anilistProgress.getNextEpisodeToWatchEpisode(currentSeries, anilistProvider);
+                        final nextEpisode = Manager.anilistProgress.getNextEpisodeToWatch(currentSeries, anilistProvider);
                         if (nextEpisode == null) return const SizedBox.shrink();
 
                         return Padding(

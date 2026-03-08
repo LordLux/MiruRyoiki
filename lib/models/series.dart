@@ -1314,41 +1314,6 @@ class Series {
     return _metadata;
   }
 
-  /// DEPRECATED: Use Manager.episodeNavigator.getEpisodeInSeries instead
-  @Deprecated('Use Manager.episodeNavigator.getEpisodeInSeries')
-  Episode? getEpisode(int episodeNumber, {int season = 1}) => getEpisodeByNumber(episodeNumber, seasonNumber: season);
-
-  /// DEPRECATED: Use Manager.anilistProgress.getNextEpisodeToWatch instead
-  @Deprecated('Use Manager.anilistProgress.getNextEpisodeToWatch')
-  (int, int)? get getNextEpisodeNumber {
-    final provider = Provider.of<AnilistProvider>(Manager.context, listen: false);
-    final nextNumber = Manager.anilistProgress.getNextEpisodeToWatch(this, provider);
-    if (nextNumber == null) return null;
-
-    // Find which season this episode belongs to
-    final episode = Manager.episodeNavigator.getEpisodeInSeries(this, nextNumber);
-    if (episode == null) return null;
-
-    final season = Manager.episodeNavigator.findSeasonForEpisode(episode, this);
-    final seasonIndex = seasons.indexOf(season!);
-
-    return (seasonIndex + 1, nextNumber);
-  }
-
-  /// DEPRECATED: Use Manager.anilistProgress.getLastWatchedEpisode instead
-  @Deprecated('Use Manager.anilistProgress.getLastWatchedEpisode')
-  Episode? get getLastWatchedEpisode {
-    final provider = Provider.of<AnilistProvider>(Manager.context, listen: false);
-    return Manager.anilistProgress.getLastWatchedEpisode(this, provider);
-  }
-
-  /// DEPRECATED: Use Manager.anilistProgress.getNextEpisodeToWatchEpisode instead
-  @Deprecated('Use Manager.anilistProgress.getNextEpisodeToWatchEpisode')
-  Episode? get getNextEpisode {
-    final provider = Provider.of<AnilistProvider>(Manager.context, listen: false);
-    return Manager.anilistProgress.getNextEpisodeToWatchEpisode(this, provider);
-  }
-
   // Update existing progress getters to use Anilist data
   int get totalEpisodes {
     if (isLinked) {

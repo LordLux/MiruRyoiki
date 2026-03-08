@@ -47,8 +47,8 @@ class AnilistProgressManager {
     return (watched / total).clamp(0.0, 1.0); // Ensure within bounds
   }
 
-  /// Get the episode number the user should watch next
-  int? getNextEpisodeToWatch(Series series, AnilistProvider provider) {
+  /// Get the next episode number after the last watched (returns next episode even if last one isn't fully watched)
+  int? getNextEpisodeNumber(Series series, AnilistProvider provider) {
     final lastWatched = getWatchedEpisodesFromAnilist(series, provider);
     final total = getTotalEpisodesFromAnilist(series);
 
@@ -64,12 +64,31 @@ class AnilistProgressManager {
     return EpisodeNavigator.instance.getEpisodeInSeries(series, lastWatchedNumber);
   }
 
-  /// Get next episode to watch based on Anilist progress
-  Episode? getNextEpisodeToWatchEpisode(Series series, AnilistProvider provider) {
-    final nextNumber = getNextEpisodeToWatch(series, provider);
+  /// Get the next episode after the last watched, regardless of progress percentage (returns next episode even if last one isn't fully watched)
+  Episode? getNextEpisode(Series series, AnilistProvider provider) {
+    final nextNumber = getNextEpisodeNumber(series, provider);
     if (nextNumber == null) return null;
 
     return EpisodeNavigator.instance.getEpisodeInSeries(series, nextNumber);
+  }
+
+  /// Get next episode to watch considering local watch progress
+  /// If the last Anilist-tracked episode has local progress but isn't fully watched, returns it (so the user can continue where they left off)
+  /// Otherwise returns the next episode after the last watched one
+  Episode? getNextEpisodeToWatch(Series series, AnilistProvider provider) {
+    final lastWatchedNumber = getWatchedEpisodesFromAnilist(series, provider);
+    final total = getTotalEpisodesFromAnilist(series);
+
+    // Check if the last Anilist-tracked episode has incomplete local progress
+    if (lastWatchedNumber > 0) {
+      final lastWatchedEpisode = EpisodeNavigator.instance.getEpisodeInSeries(series, lastWatchedNumber);
+      if (lastWatchedEpisode != null && !lastWatchedEpisode.watched && lastWatchedEpisode.progress > 0) //
+        return lastWatchedEpisode;
+    }
+
+    // Last watched is fully done or has no local progress; return next episode
+    if (lastWatchedNumber >= total) return null;
+    return EpisodeNavigator.instance.getEpisodeInSeries(series, lastWatchedNumber + 1);
   }
 
   /// Get progress for specific mapping
@@ -131,7 +150,7 @@ class AnilistProgressManager {
       'progressPercentage': percentage,
       'isCompleted': isSeriesCompleted(series, provider),
       'mappingsCount': series.anilistMappings.length,
-      'nextEpisodeNumber': getNextEpisodeToWatch(series, provider),
+      'nextEpisodeNumber': getNextEpisodeNumber(series, provider),
     };
   }
 }

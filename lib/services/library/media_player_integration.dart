@@ -307,71 +307,65 @@ extension LibraryMediaPlayerIntegration on Library {
     if (shouldSaveImmediately) {
       _saveImmediately(
         currentStatus: status,
+        episode: currentEpisode,
         forceFileChange: fileChanged,
         forcePlayerClosed: playerClosed,
       );
     }
+
+    // Notify UI of progress update
+    notifyListeners();
+    Manager.setState();
 
     // Update state tracking for next comparison
     _updateStateTracking(status, currentEpisode);
   }
 
   /// Find an episode by file path across all series
-  /// Tries to optimize search by inferring series from path structure
+  /// Uses a cached reference when the file path hasn't changed
   Episode? findEpisodeByPath(String filePath) {
-    // Extract the series name from the file path relative to library path
+    // Fast path: return cached episode if file hasn't changed
+    if (_lastFilePath != null && _lastFilePath == filePath && _lastEpisode != null) //
+      return _lastEpisode;
+
+    final normalizedFilePath = PathString(filePath).path;
+
+    // Try library-relative inference
     final libraryPath = _libraryPath;
-    if (libraryPath == null) return null;
+    if (libraryPath != null && normalizedFilePath.startsWith(libraryPath)) {
+      try {
+        final relativePath = path.relative(normalizedFilePath, from: libraryPath);
+        final pathSegments = path.split(relativePath);
 
-    // Get relative path from library root
-    String relativePath;
-    try {
-      relativePath = path.relative(filePath, from: libraryPath);
-    } catch (e) {
-      // If path.relative fails, fall back to original search
-      return _findEpisodeByPathFallback(filePath);
-    }
+        if (pathSegments.isNotEmpty) {
+          final seriesFolderName = pathSegments.first;
 
-    // Extract the first directory (series folder name)
-    final pathSegments = path.split(relativePath);
-    if (pathSegments.isEmpty) return null;
+          final targetSeries = _series.where((series) {
+            final seriesPath = path.relative(series.path.path, from: libraryPath);
+            return path.basename(seriesPath) == seriesFolderName;
+          }).firstOrNull;
 
-    final seriesFolderName = pathSegments.first;
-
-    // Find the series with matching folder name
-    final targetSeries = _series.where((series) {
-      final seriesPath = path.relative(series.path.path, from: libraryPath);
-      return path.basename(seriesPath) == seriesFolderName;
-    }).firstOrNull;
-
-    if (targetSeries == null) return null;
-
-    // Search only within this specific series
-    for (final episode in targetSeries.seasons.expand((s) => s.episodes)) {
-      if (episode.path.path == filePath) {
-        return episode;
+          if (targetSeries != null) {
+            for (final episode in targetSeries.seasons.expand((s) => s.episodes)) {
+              if (episode.path.path == normalizedFilePath) return episode;
+            }
+            for (final episode in targetSeries.relatedMedia) {
+              if (episode.path.path == normalizedFilePath) return episode;
+            }
+          }
+        }
+      } catch (_) {
+        // path.relative failed, fall through to brute-force
       }
     }
 
-    // Also search related media for this series
-    for (final episode in targetSeries.relatedMedia) {
-      if (episode.path.path == filePath) return episode;
-    }
-
-    return null;
-  }
-
-  /// Fallback method iterating through all series and episodes
-  Episode? _findEpisodeByPathFallback(String filePath) {
-    final String path = PathString(filePath).path;
+    // Brute-force: file is outside the library path (symlink target) or inference failed
     for (final series in _series) {
       for (final episode in series.seasons.expand((s) => s.episodes)) {
-        if (episode.path.path == path) {
-          return episode;
-        }
+        if (episode.path.path == normalizedFilePath) return episode;
       }
       for (final episode in series.relatedMedia) {
-        if (episode.path.path == path) return episode;
+        if (episode.path.path == normalizedFilePath) return episode;
       }
     }
     return null;
@@ -408,16 +402,10 @@ extension LibraryMediaPlayerIntegration on Library {
           _updateEpisodeFromPlayerStatus(currentEpisode, currentStatus);
           logTrace('Updated episode progress during periodic check: ${currentEpisode.progressPercentage}');
 
-          // Find parent series and save directly instead of marking dirty and waiting for next full save
-          final parentSeries = _series.firstWhereOrNull((s) => //
-              s.seasons.any((season) => season.episodes.contains(currentEpisode)) || //
-              s.relatedMedia.contains(currentEpisode));
-          if (parentSeries != null) {
-            await _saveSingleSeries(parentSeries);
-          }
+          // Save episode progress directly (efficient single-row UPDATE)
+          await _saveEpisodeProgress(currentEpisode);
           notifyListeners();
           Manager.setState();
-          // logTrace('Auto-saved episode progress from media player monitoring (periodic)');
 
           // Update tracking after successful save
           _updateStateTracking(currentStatus, currentEpisode);
@@ -452,7 +440,7 @@ extension LibraryMediaPlayerIntegration on Library {
   }
 
   /// Immediately save the library and cancel any pending saves
-  Future<void> _saveImmediately({MediaStatus? currentStatus, bool forceFileChange = false, bool forcePlayerClosed = false}) async {
+  Future<void> _saveImmediately({MediaStatus? currentStatus, Episode? episode, bool forceFileChange = false, bool forcePlayerClosed = false}) async {
     // Don't save during library indexing to prevent conflicts
     if (_lockManager.shouldDisableAction(UserAction.markEpisodeWatched)) {
       logTrace('Skipping immediate save from player - library is indexing');
@@ -487,23 +475,21 @@ extension LibraryMediaPlayerIntegration on Library {
     _progressSaveTimer?.cancel();
     _progressSaveTimer = null;
 
-    // Find parent series of current episode and save it directly
-    Series? parentSeries;
-    if (currentStatus != null && currentStatus.filePath.isNotEmpty) {
-      final currentEpisode = findEpisodeByPath(currentStatus.filePath);
-      if (currentEpisode != null) {
-        parentSeries = _series.firstWhereOrNull((s) => //
-            s.seasons.any((season) => season.episodes.contains(currentEpisode)) || //
-            s.relatedMedia.contains(currentEpisode));
-      }
-    }
+    // Use targeted episode progress save when possible to avoid full library sync
+    episode ??= currentStatus != null && currentStatus.filePath.isNotEmpty //
+        ? findEpisodeByPath(currentStatus.filePath)
+        : null;
 
-    // Save only the affected series
-    if (parentSeries != null) {
-      await _saveSingleSeries(parentSeries);
+    if (episode != null && await _saveEpisodeProgress(episode)) {
+      // Targeted save succeeded
     } else {
-      // Fallback to full save if we couldn't identify the series
-      await _saveLibrary();
+      // Fallback to full save if episode is unavailable or has no ID
+      if (episode == null) {
+        logWarn('No episode found for save, filePath: "${currentStatus?.filePath}"');
+      } else {
+        logWarn('Targeted episode save failed (id: ${episode.id}, progress: ${episode.progress}), falling back to full save');
+      }
+      await _saveLibrary(forceFull: true);
     }
     notifyListeners();
     Manager.setState();

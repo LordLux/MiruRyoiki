@@ -116,6 +116,7 @@ extension LibraryPersistence on Library {
 
   /// Save only a specific series immediately (bypasses dirty set).
   /// Use for targeted single-series saves like episode progress updates.
+  // ignore: unused_element
   Future<void> _saveSingleSeries(Series series) async {
     try {
       await seriesDao.syncSeries(series);
@@ -123,6 +124,22 @@ extension LibraryPersistence on Library {
       _dirtySeries.remove(series.path);
     } catch (e, st) {
       handleDatabaseError(e, st, 'saving single series ${series.name}');
+    }
+  }
+
+  /// Save only an episode's progress and watched status directly by ID
+  Future<bool> _saveEpisodeProgress(Episode episode) async {
+    if (episode.id == null) return false;
+    try {
+      await seriesDao.updateEpisodeProgress(
+        episode.id!,
+        progress: episode.progress,
+        watched: episode.watched,
+      );
+      return true;
+    } catch (e, st) {
+      handleDatabaseError(e, st, 'saving episode progress for "${episode.displayTitle}"');
+      return false;
     }
   }
 

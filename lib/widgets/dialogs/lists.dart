@@ -19,6 +19,8 @@ import '../animated_order_tile.dart';
 import '../buttons/wrapper.dart';
 import '../tooltip_wrapper.dart';
 
+
+/// UI for managing Anilist list order and visibility in the library dialog
 class ListsContent extends StatefulWidget {
   final BoxConstraints constraints;
   final LibraryView currentView;

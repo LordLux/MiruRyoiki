@@ -178,7 +178,7 @@ class PlayerManager {
 
   /// Start periodic connection checking
   void _startConnectionCheck() {
-    _connectionCheckTimer = Timer.periodic(const Duration(seconds: 10), (_) {
+    _connectionCheckTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       _checkConnection();
     });
   }

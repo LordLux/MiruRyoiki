@@ -38,6 +38,16 @@ class SeriesDao extends DatabaseAccessor<AppDatabase> with _$SeriesDaoMixin {
 
   Future<int> deleteSeriesRow(int id) => (delete(seriesTable)..where((t) => t.id.equals(id))).go();
 
+  /// Directly update an episode's progress and watched status by ID without loading the full series into memory
+  Future<void> updateEpisodeProgress(int episodeId, {required double progress, required bool watched}) async {
+    await (update(episodesTable)..where((t) => t.id.equals(episodeId))).write(
+      EpisodesTableCompanion(
+        watchedPercentage: Value(progress),
+        watched: Value(watched),
+      ),
+    );
+  }
+
   Future<int> getIdByPath(PathString path) async {
     final row = await getSeriesRowByPath(path);
     return row?.id ?? -1; // Return -1 if not found

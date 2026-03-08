@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_anitomy/flutter_anitomy.dart';
 
 import '../manager.dart';
@@ -15,6 +16,7 @@ class Episode {
   PathString? thumbnailPath;
   bool watched;
   double _progress;
+  late final ValueNotifier<double> progressNotifier;
   bool thumbnailUnavailable;
   Metadata? metadata;
   MkvMetadata? mkvMetadata;
@@ -39,6 +41,7 @@ class Episode {
     ParsedAnime? parsedAnime,
   })  : _episodeNumber = episodeNumber,
         _progress = progress {
+    progressNotifier = ValueNotifier<double>(progress);
     _parsedAnime = parsedAnime ?? FlutterAnitomy().parse(path.fileName!);
     _episodeNumber ??= int.tryParse(_parsedAnime.episode ?? '');
     parsedTitle ??= _parsedAnime.episodeTitle;
@@ -66,14 +69,15 @@ class Episode {
   }
 
   /// Returns progress as a value between 0.0 and 1.0
-  double get progress => double.parse(_progress.toStringAsFixed(2));
+  double get progress => double.parse((_progress).toString());
   set progress(double value) {
     if (value < 0.0 || value > 1.0) throw ArgumentError('Progress must be between 0.0 and 1.0');
     _progress = value;
+    progressNotifier.value = progress; // use the rounded getter
   }
 
   /// Returns progress as a percentage string like "75%"
-  String get progressPercentage => '${(progress * 100).toStringAsFixed(0)}%';
+  String get progressPercentage => '${(progress * 100).toStringAsFixed(2)}%';
 
   /// Returns the episode number, either from metadata or parsed from the name
   int? get episodeNumber => _episodeNumber ?? int.tryParse(_parsedAnime.episode ?? '');
