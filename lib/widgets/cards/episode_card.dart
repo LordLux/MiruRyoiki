@@ -10,6 +10,7 @@ import 'package:shimmer/shimmer.dart';
 
 import '../../manager.dart';
 import '../../models/anilist/mapping.dart';
+import '../../models/ui_episode.dart';
 import '../../models/episode.dart';
 import '../../models/series.dart';
 import '../../services/library/library_provider.dart';
@@ -20,18 +21,17 @@ import '../../utils/time.dart';
 import '../context_menu/episode.dart';
 import '../context_menu/controller.dart';
 import '../play_button.dart';
-import '../watched_badge.dart';
 
 class HoverableEpisodeTile extends StatefulWidget {
-  final Episode episode;
+  final UIEpisode uiEpisode;
   final VoidCallback onTap;
-  final Series series;
+  final Series? series;
   final bool isReloadingSeries;
   final AnilistMapping? mapping;
 
   const HoverableEpisodeTile({
     super.key,
-    required this.episode,
+    required this.uiEpisode,
     required this.onTap,
     required this.series,
     required this.mapping,
@@ -62,157 +62,124 @@ class _HoverableEpisodeTileState extends State<HoverableEpisodeTile> {
   Widget build(BuildContext context) {
     final anilistProivder = Provider.of<AnilistProvider>(context, listen: false);
 
-    return EpisodeContextMenu(
-      controller: _menuController,
-      series: widget.series,
-      episode: widget.episode,
-      context: context,
-      onEpisodeChanged: () {
-        if (mounted) setState(() {});
+    final childWidget = MouseRegion(
+      onEnter: (_) => setState(() => _isHovering = true),
+      onExit: (_) {
+        StatusBarManager().hide();
+        setState(() => _isHovering = false);
       },
-      child: MouseRegion(
-        onEnter: (_) => setState(() => _isHovering = true),
-        onExit: (_) {
-          StatusBarManager().hide();
-          setState(() => _isHovering = false);
-        },
-        onHover: (_) {
-          final number = widget.episode.episodeNumber;
-          final title = widget.episode.displayTitle;
-          final String text;
-          // if (widget.isReloadingSeries) {
-          //   text = "Reloading series, please wait...";
-          // } else if (title != null && number != null && !widget.episode.isDisplayTitleSimple) {
-          //   text = "$number - $title";
-          // } else if (title == null && number != null) {
-          //   text = "Episode $number";
-          // } else if (widget.episode.isDisplayTitleSimple) {
-          //   text = title!;
-          // } else {
-          //   text = widget.episode.name; // show original file name
-          // }
+      onHover: (_) {
+        final String text;
+        if (widget.isReloadingSeries) {
+          text = "Reloading series, please wait...";
+        } else if (widget.uiEpisode.localEpisode != null) {
+          text = widget.uiEpisode.localEpisode!.path.fileName ?? widget.uiEpisode.localEpisode!.name;
+        } else {
+          text = widget.uiEpisode.displayTitle;
+        }
+        StatusBarManager().showDelayed(text);
+      },
+      cursor: SystemMouseCursors.click,
+      child: AnimatedContainer(
+        duration: shortDuration,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(ScreenUtils.kEpisodeCardBorderRadius),
+          boxShadow: _isHovering
+              ? [
+                  BoxShadow(
+                    color: widget.series?.localPosterColor?.withOpacity(0.05) ?? Colors.black.withOpacity(0.1),
+                    blurRadius: 8,
+                    spreadRadius: 1,
+                  )
+                ]
+              : null,
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(ScreenUtils.kEpisodeCardBorderRadius),
+          child: Stack(
+            children: [
+              // Episode card content
+              Card(
+                padding: EdgeInsets.zero,
+                child: Stack(
+                  fit: StackFit.expand,
+                  alignment: Alignment.center,
+                  children: [
+                    // Thumbnail or icon
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(ScreenUtils.kEpisodeCardBorderRadius),
+                      child: _buildEpisodeThumbnail(widget.uiEpisode.localEpisode),
+                    ),
 
-          if (widget.isReloadingSeries) {
-            text = "Reloading series, please wait...";
-          } else {
-            text = widget.episode.path.fileName ?? widget.episode.name;
-          }
-          StatusBarManager().showDelayed(text);
-        },
-        cursor: SystemMouseCursors.click,
-        child: AnimatedContainer(
-          duration: shortDuration,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(ScreenUtils.kEpisodeCardBorderRadius),
-            boxShadow: _isHovering
-                ? [
-                    BoxShadow(
-                      color: widget.series.localPosterColor?.withOpacity(0.05) ?? Colors.black.withOpacity(0.1),
-                      blurRadius: 8,
-                      spreadRadius: 1,
-                    )
-                  ]
-                : null,
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(ScreenUtils.kEpisodeCardBorderRadius),
-            child: Stack(
-              children: [
-                // Episode card content
-                Card(
-                  padding: EdgeInsets.zero,
-                  child: Stack(
-                    fit: StackFit.expand,
-                    alignment: Alignment.center,
-                    children: [
-                      // Thumbnail or icon
-                      ClipRRect(
+                    // Bottom text overlay
+                    Positioned(
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      child: ClipRRect(
                         borderRadius: BorderRadius.circular(ScreenUtils.kEpisodeCardBorderRadius),
-                        child: _buildEpisodeThumbnail(widget.episode),
-                      ),
-
-                      // Bottom text overlay
-                      Positioned(
-                        left: 0,
-                        right: 0,
-                        bottom: 0,
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(ScreenUtils.kEpisodeCardBorderRadius),
-                          child: Container(
-                            padding: const EdgeInsets.all(8.0),
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(ScreenUtils.kEpisodeCardBorderRadius),
-                              gradient: LinearGradient(
-                                begin: Alignment.bottomCenter,
-                                end: Alignment.topCenter,
-                                colors: [
-                                  Colors.black.withOpacity(0.85),
-                                  Colors.black.withOpacity(0.7),
-                                  Colors.black.withOpacity(0),
-                                ],
-                              ),
+                        child: Container(
+                          padding: const EdgeInsets.all(8.0),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(ScreenUtils.kEpisodeCardBorderRadius),
+                            gradient: LinearGradient(
+                              begin: Alignment.bottomCenter,
+                              end: Alignment.topCenter,
+                              colors: [
+                                Colors.black.withOpacity(0.85),
+                                Colors.black.withOpacity(0.7),
+                                Colors.black.withOpacity(0),
+                              ],
                             ),
-                            child: Padding(
-                              padding: const EdgeInsets.only(top: 8.0),
-                              child: Builder(builder: (context) {
-                                final number = widget.episode.episodeNumber;
-                                final title = widget.episode.displayTitle;
-                                final String text;
-                                bool isUnparsed = false;
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.only(top: 8.0),
+                            child: Builder(builder: (context) {
+                              var text = widget.uiEpisode.displayTitle;
 
-                                // Show episode title only if it's not a generic "Episode X" title
-                                if (title != null && number != null && !widget.episode.isDisplayTitleSimple) {
-                                  text = "$number - $title";
-                                } else if (title == null && number != null) {
-                                  text = "Episode $number";
-                                } else if (widget.episode.isTitleParsable) {
-                                  text = title!;
-                                } else {
-                                  text = widget.episode.cleanedName;
-                                  isUnparsed = true;
-                                }
-                                if (widget.isReloadingSeries) {
-                                  return Shimmer.fromColors(
-                                    baseColor: Colors.white.withOpacity(0.3),
-                                    highlightColor: Colors.white.withOpacity(0.7),
-                                    child: Container(
-                                      margin: EdgeInsets.only(bottom: 2),
-                                      width: double.infinity,
-                                      height: 10,
-                                      decoration: BoxDecoration(
-                                        borderRadius: BorderRadius.circular(4),
-                                        color: Colors.white,
-                                      ),
+                              bool isUnparsed = false;
+                              if (widget.uiEpisode.localEpisode != null && !widget.uiEpisode.localEpisode!.isTitleParsable) {
+                                isUnparsed = true;
+                              } else {
+                                text = "${widget.uiEpisode.episodeNumber} - $text";
+                              }
+
+                              if (widget.isReloadingSeries) {
+                                return Shimmer.fromColors(
+                                  baseColor: Colors.white.withOpacity(0.3),
+                                  highlightColor: Colors.white.withOpacity(0.7),
+                                  child: Container(
+                                    margin: EdgeInsets.only(bottom: 2),
+                                    width: double.infinity,
+                                    height: 10,
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(4),
+                                      color: Colors.white,
                                     ),
-                                  );
-                                }
-                                return Text(
-                                  text,
-                                  style: TextStyle(
-                                    color: isUnparsed ? Colors.white.withOpacity(0.7) : Colors.white,
-                                    fontWeight: isUnparsed ? FontWeight.w400 : FontWeight.w600,
-                                    fontStyle: isUnparsed ? FontStyle.italic : FontStyle.normal,
-                                    fontSize: 12,
                                   ),
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
                                 );
-                              }),
-                            ),
+                              }
+                              return Text(
+                                text,
+                                style: TextStyle(
+                                  color: isUnparsed ? Colors.white.withOpacity(0.7) : Colors.white,
+                                  fontWeight: isUnparsed ? FontWeight.w400 : FontWeight.w600,
+                                  fontStyle: isUnparsed ? FontStyle.italic : FontStyle.normal,
+                                  fontSize: 12,
+                                ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              );
+                            }),
                           ),
                         ),
                       ),
+                    ),
 
-                      // Watched indicator
-                      // Positioned(
-                      //   top: 8,
-                      //   right: 8,
-                      //   child: WatchedBadge(isWatched: widget.episode.watched),
-                      // ),
-
-                      // Progress indicator
+                    // Progress indicator
+                    if (widget.uiEpisode.localEpisode != null)
                       ValueListenableBuilder<double>(
-                        valueListenable: widget.episode.progressNotifier,
+                        valueListenable: widget.uiEpisode.localEpisode!.progressNotifier,
                         builder: (context, progressValue, _) {
                           if (progressValue <= 0) return const SizedBox.shrink();
                           return Positioned(
@@ -243,58 +210,101 @@ class _HoverableEpisodeTileState extends State<HoverableEpisodeTile> {
                           );
                         },
                       ),
-                    ],
-                  ),
+                  ],
                 ),
-                // Hover and splash overlay
-                Positioned.fill(
-                  child: Material(
-                    color: Colors.transparent,
-                    child: GestureDetector(
-                      onSecondaryTapDown: (_) => _menuController.open(),
-                      child: InkWell(
-                        onTap: widget.onTap,
-                        splashColor: widget.series.localPosterColor?.withOpacity(0.3),
-                        highlightColor: Colors.white.withOpacity(0.05),
-                        borderRadius: BorderRadius.circular(ScreenUtils.kEpisodeCardBorderRadius),
-                        child: AnimatedContainer(
-                          duration: shortDuration,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(ScreenUtils.kEpisodeCardBorderRadius),
-                            color: _isHovering ? Colors.white.withOpacity(0.03) : Colors.transparent,
-                          ),
+              ),
+              // Hover and splash overlay
+              Positioned.fill(
+                child: Material(
+                  color: Colors.transparent,
+                  child: GestureDetector(
+                    onSecondaryTapDown: widget.uiEpisode.localEpisode != null ? (_) => _menuController.open() : null,
+                    child: InkWell(
+                      onTap: widget.onTap,
+                      splashColor: widget.series?.localPosterColor?.withOpacity(0.3),
+                      highlightColor: Colors.white.withOpacity(0.05),
+                      borderRadius: BorderRadius.circular(ScreenUtils.kEpisodeCardBorderRadius),
+                      child: AnimatedContainer(
+                        duration: shortDuration,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(ScreenUtils.kEpisodeCardBorderRadius),
+                          color: _isHovering ? Colors.white.withOpacity(0.03) : Colors.transparent,
+                        ),
+                        child: Center(
+                          child: widget.uiEpisode.isReleased && widget.uiEpisode.localEpisode == null
+                              ? AnimatedOpacity(
+                                  duration: const Duration(milliseconds: 200),
+                                  opacity: _isHovering ? 1.0 : 0.0,
+                                  child: Container(
+                                    padding: const EdgeInsets.all(12),
+                                    decoration: BoxDecoration(
+                                      color: Colors.black.withOpacity(0.5),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: Icon(
+                                      FluentIcons.download,
+                                      color: Colors.white,
+                                      size: 24,
+                                    ),
+                                  ),
+                                )
+                              : const SizedBox.shrink(),
                         ),
                       ),
                     ),
                   ),
                 ),
+              ),
 
-                // Play button
+              // Play button
+              if (widget.uiEpisode.localEpisode != null)
                 Positioned(
                   bottom: 8,
                   right: 8,
                   child: PlayButton(
-                    key: ValueKey('play_${widget.episode.path.path}'),
-                    episode: widget.episode,
+                    key: ValueKey('play_${widget.uiEpisode.localEpisode!.path.path}'),
+                    episode: widget.uiEpisode.localEpisode!,
                     forceExpand: _isHovering,
-                    isNextEpisodeToPlay: widget.episode ==
-                        Manager.anilistProgress //
-                            .getNextEpisodeToWatch(widget.series, anilistProivder) //
-                    ,
+                    isNextEpisodeToPlay: widget.series != null && widget.uiEpisode.localEpisode == Manager.anilistProgress.getNextEpisodeToWatch(widget.series!, anilistProivder),
                   ),
                 ),
-              ],
-            ),
+            ],
           ),
         ),
       ),
     );
+
+    if (widget.uiEpisode.localEpisode != null && widget.series != null) {
+      return EpisodeContextMenu(
+        controller: _menuController,
+        series: widget.series!,
+        episode: widget.uiEpisode.localEpisode!,
+        context: context,
+        onEpisodeChanged: () {
+          if (mounted) setState(() {});
+        },
+        child: childWidget,
+      );
+    }
+    return childWidget;
   }
 
-  bool thumbnailExists(PathString? thumbnailPath) => //
-      thumbnailPath != null && thumbnailPath.pathMaybe != null && File(thumbnailPath.path).existsSync();
+  bool thumbnailExists(PathString? thumbnailPath) => thumbnailPath != null && thumbnailPath.pathMaybe != null && File(thumbnailPath.path).existsSync();
 
-  Widget _buildEpisodeThumbnail(Episode episode, {Widget? child}) {
+  Widget _buildEpisodeThumbnail(Episode? episode, {Widget? child}) {
+    if (episode == null) {
+      return Container(
+        color: Colors.black.withOpacity(0.2),
+        child: Center(
+          child: Icon(
+            widget.uiEpisode.isFuture ? FluentIcons.clock : FluentIcons.calendar,
+            size: 32,
+            color: Colors.white.withOpacity(0.5),
+          ),
+        ),
+      );
+    }
+
     // Prefer cached thumbnail if available
     if (thumbnailExists(episode.thumbnailPath)) {
       final thumbnailWidget = Container(
@@ -309,8 +319,8 @@ class _HoverableEpisodeTileState extends State<HoverableEpisodeTile> {
       // Always blur when thumbnail exists
       return ImageFiltered(
         imageFilter: ImageFilter.blur(
-          sigmaX: widget.episode.watched ? 0 : 15,
-          sigmaY: widget.episode.watched ? 0 : 15,
+          sigmaX: widget.uiEpisode.watched ? 0 : 15,
+          sigmaY: widget.uiEpisode.watched ? 0 : 15,
           tileMode: TileMode.mirror,
         ),
         child: thumbnailWidget,
@@ -327,6 +337,7 @@ class _HoverableEpisodeTileState extends State<HoverableEpisodeTile> {
         final PathString? thumbnailPath = snapshot.data;
         final bool isLoading = snapshot.connectionState == ConnectionState.waiting;
         final bool hasThumbnail = thumbnailPath != null && thumbnailPath.pathMaybe != null && File(thumbnailPath.path).existsSync();
+
         Widget builder(BuildContext context) {
           if (isLoading) {
             // Loading: show spinner, no blur
@@ -360,8 +371,8 @@ class _HoverableEpisodeTileState extends State<HoverableEpisodeTile> {
             );
             return ImageFiltered(
               imageFilter: ImageFilter.blur(
-                sigmaX: widget.episode.watched ? 0 : 15,
-                sigmaY: widget.episode.watched ? 0 : 15,
+                sigmaX: widget.uiEpisode.watched ? 0 : 15,
+                sigmaY: widget.uiEpisode.watched ? 0 : 15,
                 tileMode: TileMode.mirror,
               ),
               child: thumbnailWidget,

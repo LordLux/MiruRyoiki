@@ -27,7 +27,7 @@ class SonarrSeries {
   factory SonarrSeries.fromJson(Map<String, dynamic> json) {
     final statistics = json['statistics'] as Map<String, dynamic>? ?? {};
     return SonarrSeries(
-      id: json['id'] as int,
+      id: json['id'] as int? ?? 0,
       title: json['title'] as String? ?? 'Unknown',
       tvdbId: json['tvdbId'] as int? ?? 0,
       seasonCount: statistics['seasonCount'] as int? ?? json['seasonCount'] as int? ?? 0,

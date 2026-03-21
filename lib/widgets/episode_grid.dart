@@ -2,16 +2,16 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:smooth_scroll_multiplatform/smooth_scroll_multiplatform.dart';
 import '../manager.dart';
 import '../models/anilist/mapping.dart';
-import '../models/episode.dart';
+import '../models/ui_episode.dart';
 import '../models/series.dart';
 import '../services/navigation/shortcuts.dart';
 import 'cards/episode_card.dart';
 
 class EpisodeGrid extends StatelessWidget {
-  final List<Episode> episodes;
-  final Series series;
+  final List<UIEpisode> episodes;
+  final Series? series;
   final String? title;
-  final Function(Episode) onTap;
+  final Function(UIEpisode) onTap;
   final AnilistMapping? mapping;
   final bool collapsable;
   final bool initiallyExpanded;
@@ -72,9 +72,9 @@ class EpisodeGrid extends StatelessWidget {
     );
   }
 
-  Widget _buildEpisodeTile(BuildContext context, Episode episode, Series series, AnilistMapping? mapping) {
+  Widget _buildEpisodeTile(BuildContext context, UIEpisode episode, Series? series, AnilistMapping? mapping) {
     return HoverableEpisodeTile(
-      episode: episode,
+      uiEpisode: episode,
       onTap: () => onTap(episode),
       series: series,
       isReloadingSeries: isReloadingSeries,

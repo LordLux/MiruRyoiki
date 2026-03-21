@@ -178,7 +178,7 @@ class PaddedDialog extends StatefulWidget {
   final _PaddedDialogType _type;
 
   /// Creates a [PaddedDialog].
-  PaddedDialog({
+  const PaddedDialog({
     super.key,
     required this.title,
     required this.contentBuilder,

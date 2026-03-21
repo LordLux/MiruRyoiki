@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:miruryoiki/utils/text.dart';
 import '../../models/sonarr/sonarr_episode.dart';
 import '../../models/sonarr/sonarr_quality_profile.dart';
 import '../../models/sonarr/sonarr_release.dart';
@@ -15,28 +16,37 @@ class SonarrRepository {
     required String baseUrl,
     required String apiKey,
     http.Client? client,
-  })  : _baseUrl = baseUrl,
+  })  : _baseUrl = baseUrl.fallbackIfEmpty(defaultUrlPort),
         _apiKey = apiKey,
         _client = client ?? http.Client();
 
-  // 1. CHECK & ADD SERIES
-  // Returns the internal Sonarr Series ID
+  /// Lookups up Series in Sonarr Skyhook
+  Future<List<SonarrSeries>> lookupSeries(String term) async {
+    final uri = Uri.parse('$_baseUrl/api/v3/series/lookup?term=${Uri.encodeComponent(term)}&apikey=$_apiKey');
+    final response = await _client.get(uri);
+
+    if (response.statusCode == 200) {
+      final List<dynamic> data = json.decode(response.body);
+      return data.map((json) => SonarrSeries.fromJson(json)).toList();
+    }
+    throw Exception('Failed to lookup series');
+  }
+
+  /// Returns the internal Sonarr series ID, adding the series if it doesn't exist yet
   Future<int?> ensureSeriesExists({
     required int tvdbId,
     required String title,
-    required String rootFolderPath, // You need to store this in user prefs
-    required int qualityProfileId, // You need to store this in user prefs
+    required String rootFolderPath,
+    required int qualityProfileId,
   }) async {
-    // A. Check if exists
     final checkUri = Uri.parse('$_baseUrl/api/v3/series?tvdbId=$tvdbId&apikey=$_apiKey');
     final checkResponse = await _client.get(checkUri);
 
     if (checkResponse.statusCode == 200) {
       final List<dynamic> data = json.decode(checkResponse.body);
-      if (data.isNotEmpty) return data.first['id']; // Series exists, return its ID
+      if (data.isNotEmpty) return data.first['id'];
     }
 
-    // B. If not, Add it (The "Implicit" Step)
     final addUri = Uri.parse('$_baseUrl/api/v3/series?apikey=$_apiKey');
     final payload = {
       "title": title,
@@ -44,10 +54,10 @@ class SonarrRepository {
       "qualityProfileId": qualityProfileId,
       "rootFolderPath": rootFolderPath,
       "monitored": true,
-      "seriesType": "anime", // Critical for Prowlarr/Anime matching
+      "seriesType": "anime",
       "seasonFolder": true,
       "addOptions": {
-        "searchForMissingEpisodes": false // Don't auto-search everything yet
+        "searchForMissingEpisodes": false
       }
     };
 
@@ -62,12 +72,13 @@ class SonarrRepository {
       return data['id'];
     }
 
-    throw Exception('Failed to add series to Sonarr: ${addResponse.body}'); //TODO try to match via title, otherwise ask user to add manually
+    throw Exception('Failed to add series to Sonarr: ${addResponse.body}'); // TODO try to match via title, otherwise ask user to add manually
   }
 
+  /// Searches for available releases matching a series, optionally filtered by season/episode
   Future<List<SonarrRelease>> searchReleases({
-    required int sonarrSeriesId, // Returned from ensureSeriesExists
-    int? seasonNumber, // If null, searches whole series? usually need context
+    required int sonarrSeriesId,
+    int? seasonNumber,
     int? episodeNumber,
   }) async {
     String endpoint = '/api/v3/release';
@@ -88,7 +99,6 @@ class SonarrRepository {
   }
 
   Future<List<SonarrRelease>> searchEpisodeReleases(int episodeId) async {
-     // The endpoint is the same, but we pass episodeId instead of seasonNumber
     final uri = Uri.parse('$_baseUrl/api/v3/release?episodeId=$episodeId&apikey=$_apiKey');
     final response = await _client.get(uri);
 
@@ -110,7 +120,6 @@ class SonarrRepository {
     throw Exception('Failed to load episodes');
   }
 
-  // QUALITY PROFILES
   Future<List<SonarrQualityProfile>> getQualityProfiles() async {
     final uri = Uri.parse('$_baseUrl/api/v3/qualityprofile?apikey=$_apiKey');
     final response = await _client.get(uri);
@@ -122,7 +131,6 @@ class SonarrRepository {
     throw Exception('Failed to load quality profiles');
   }
 
-  // ROOT FOLDERS
   Future<List<SonarrRootFolder>> getRootFolders() async {
     final uri = Uri.parse('$_baseUrl/api/v3/rootfolder?apikey=$_apiKey');
     final response = await _client.get(uri);
@@ -134,7 +142,6 @@ class SonarrRepository {
     throw Exception('Failed to load root folders');
   }
 
-  // ALL SERIES (for Torrent landing page)
   Future<List<SonarrSeries>> getSeries() async {
     final uri = Uri.parse('$_baseUrl/api/v3/series?apikey=$_apiKey');
     final response = await _client.get(uri);
@@ -146,7 +153,6 @@ class SonarrRepository {
     throw Exception('Failed to load series');
   }
 
-  // CONNECTION TEST
   Future<bool> testConnection() async {
     try {
       final uri = Uri.parse('$_baseUrl/api/v3/system/status?apikey=$_apiKey');
@@ -157,7 +163,6 @@ class SonarrRepository {
     }
   }
 
-  // 3. GRAB (Download)
   Future<void> grabRelease(String guid, int indexerId) async {
     final uri = Uri.parse('$_baseUrl/api/v3/release?apikey=$_apiKey');
     final payload = {

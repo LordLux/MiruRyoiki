@@ -2,7 +2,6 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter_acrylic/window_effect.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:miruryoiki/main.dart';
-import 'package:miruryoiki/utils/text.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -10,7 +9,6 @@ import 'database/database.dart';
 import 'database/daos/settings_dao.dart';
 import 'enums.dart';
 import 'manager.dart';
-import 'services/sonarr/sonarr_service.dart' show SonarrRepository;
 import 'theme.dart';
 import 'utils/time.dart';
 import 'utils/logging.dart';
@@ -168,7 +166,7 @@ class SettingsManager extends ChangeNotifier {
   set enableAnilistEpisodeTitles(bool value) => _setBool('enableAnilistEpisodeTitles', value);
 
   // Sonarr
-  String get sonarrBaseUrl => _getString('sonarrBaseUrl', defaultValue: 'http://localhost:8989');
+  String get sonarrBaseUrl => _getString('sonarrBaseUrl', defaultValue: '');
   set sonarrBaseUrl(String value) {
     if (sonarrBaseUrl != value) sonarrConnectionVerified = false;
     _setString('sonarrBaseUrl', value);
@@ -194,6 +192,47 @@ class SettingsManager extends ChangeNotifier {
   set sonarrConnectionVerified(bool value) => _setBool('sonarrConnectionVerified', value);
 
   bool get isSonarrConfigured => sonarrApiKey.isNotEmpty;
+
+  // qBittorrent
+  String get qbitBaseUrl => _getString('qbitBaseUrl', defaultValue: '');
+  set qbitBaseUrl(String value) {
+    if (qbitBaseUrl != value) qbitConnectionVerified = false;
+    _setString('qbitBaseUrl', value);
+  }
+
+  String get qbitUsername => _getString('qbitUsername', defaultValue: '');
+  set qbitUsername(String value) {
+    if (qbitUsername != value) qbitConnectionVerified = false;
+    _setString('qbitUsername', value);
+  }
+
+  String _qbitPassword = '';
+  String get qbitPassword => _qbitPassword;
+  set qbitPassword(String value) {
+    if (_qbitPassword == value) return;
+    _qbitPassword = value;
+    qbitConnectionVerified = false;
+    _secureStorage.write(key: 'qbitPassword', value: value);
+    notifyListeners();
+  }
+
+  bool get qbitConnectionVerified => _getBool('qbitConnectionVerified', defaultValue: false);
+  set qbitConnectionVerified(bool value) => _setBool('qbitConnectionVerified', value);
+
+  bool get isQbitConfigured => qbitPassword.isNotEmpty;
+
+  /// Whether any torrent client is configured
+  bool get isTorrentClientConfigured => isQbitConfigured; // Expand when adding more clients
+
+  /// Whether all download services (Sonarr + a torrent client) are configured
+  bool get isDownloadsFullyConfigured => isSonarrConfigured && isTorrentClientConfigured;
+
+  // Knaben
+  bool get knabenUseAnimeCategories => _getBool('knabenUseAnimeCategories', defaultValue: true);
+  set knabenUseAnimeCategories(bool value) => _setBool('knabenUseAnimeCategories', value);
+
+  bool get knabenLiveSearch => _getBool('knabenLiveSearch', defaultValue: false);
+  set knabenLiveSearch(bool value) => _setBool('knabenLiveSearch', value);
 
   // Genres
   List<String> get genres => _getStringList('genres', defaultValue: []);
@@ -337,6 +376,7 @@ class SettingsManager extends ChangeNotifier {
   /// Load secrets from encrypted storage
   Future<void> _loadSecureSettings() async {
     _sonarrApiKey = await _secureStorage.read(key: 'sonarrApiKey') ?? '';
+    _qbitPassword = await _secureStorage.read(key: 'qbitPassword') ?? '';
   }
 
   // Save a single setting to DB
@@ -354,7 +394,7 @@ class SettingsManager extends ChangeNotifier {
       logErr('Attempted to save all settings before SettingsDao was initialized.');
       return;
     }
-    
+
     for (var entry in _settings.entries) {
       await _settingsDao!.set(entry.key, entry.value.toString());
     }
@@ -372,6 +412,26 @@ class SettingsManager extends ChangeNotifier {
   Future<void> clearSettings() async {
     _settings.clear();
     // TODO: Implement clear in DAO if needed
+    notifyListeners();
+  }
+
+  /// Reset all torrent/download config (qBit, Sonarr, Knaben) but preserve episode link mappings
+  Future<void> resetTorrentConfig() async {
+    const keys = [
+      'qbitBaseUrl', 'qbitUsername', 'qbitConnectionVerified',
+      'sonarrBaseUrl', 'sonarrConnectionVerified',
+      'sonarrQualityProfileId', 'sonarrRootFolderPath',
+      'knabenUseAnimeCategories', 'knabenLiveSearch',
+    ];
+    for (final key in keys) {
+      _settings.remove(key);
+      _settingsDao?.deleteKey(key);
+    }
+    // Clear secure storage secrets
+    await _secureStorage.delete(key: 'qbitPassword');
+    await _secureStorage.delete(key: 'sonarrApiKey');
+    _qbitPassword = '';
+    _sonarrApiKey = '';
     notifyListeners();
   }
 

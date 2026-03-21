@@ -52,6 +52,8 @@ String _fileXUnit(int value, List<FileUnit> units, [FileUnit? unit]) {
   return formatWithUnit(value, units.last);
 }
 
+/// Format a file size in bytes into a human-readable string with an appropriate unit (KB, MB, etc.)
 String fileSize(int size, [FileSizeUnit? unit]) => _fileXUnit(size, FileSizeUnit.values, unit);
 
+/// Format a file transfer rate in bytes per second into a human-readable string with an appropriate unit (KB/s, MB/s, etc.)
 String fileTransferRate(int rate, [FileTransferRateUnit? unit]) => _fileXUnit(rate, FileTransferRateUnit.values, unit);

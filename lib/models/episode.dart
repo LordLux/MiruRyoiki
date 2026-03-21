@@ -11,7 +11,8 @@ import 'mkv_metadata.dart';
 class Episode {
   final int? id;
   final PathString path;
-  final String name; // filename
+  /// Filename
+  final String name;
   int? _episodeNumber;
   PathString? thumbnailPath;
   bool watched;

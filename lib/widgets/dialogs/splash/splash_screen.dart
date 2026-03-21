@@ -93,7 +93,7 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
   @override
   void initState() {
     super.initState();
-    
+
     // Logo fade in and fade out
     _splashOpacityController = AnimationController(
       duration: splashScreenFadeAnimationIn,
@@ -149,7 +149,7 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
       logTrace('Initializing library provider');
       await libraryProvider.initialize(context);
       await anilistProvider.initialize();
-      
+
       await Future.delayed(const Duration(milliseconds: 1000)); // otherwise splash screen will be too short
       //
 
@@ -237,6 +237,7 @@ Future<void> initializeAndMorphWindow() async {
   await windowManager.maximize();
   await Future.delayed(Duration(milliseconds: 20));
   await windowManager.unmaximize();
+  logDebug('Window initialized and morphed to saved state');
   await Future.delayed(Duration(milliseconds: 20));
 
   // First set the basic window properties
@@ -258,6 +259,8 @@ Future<void> initializeAndMorphWindow() async {
   await windowManager.setIgnoreMouseEvents(false);
   await windowManager.setAlwaysOnTop(false);
   await windowManager.setResizable(true);
+  // Explicitly exit fullscreen so restored size/position constraints apply correctly, and to avoid inheriting a fullscreen state from a previous session or the OS
+  await windowManager.setFullScreen(false);
 }
 
 Future<void> setToSavedWindowStateWithoutAnimation() async {

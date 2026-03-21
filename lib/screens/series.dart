@@ -13,7 +13,6 @@ import '../services/downloads/torrent_manager.dart';
 import '../services/library/library_provider.dart';
 import '../services/lock_manager.dart';
 import '../services/navigation/dialogs2.dart';
-import '../services/navigation/navigation.dart';
 import '../services/navigation/show_info.dart';
 import '../services/navigation/statusbar.dart';
 import '../utils/color.dart';
@@ -51,6 +50,9 @@ import '../services/file_system/cache.dart';
 import '../widgets/viewtype_switcher.dart';
 import 'anilist_settings.dart';
 import '../models/episode.dart';
+import '../models/ui_episode.dart';
+import '../models/sonarr/sonarr_episode.dart';
+import '../widgets/dialogs/episode_search.dart';
 import '../widgets/episode_grid.dart';
 
 /// Duration for which AniList data is considered fresh and doesn't need refetching
@@ -83,6 +85,8 @@ class SeriesScreenState extends State<SeriesScreen> {
   bool bannerChangeDisabled = false;
 
   bool isReloadingSeries = false;
+
+  List<SonarrEpisode>? _sonarrEpisodes;
 
   bool _isPosterHovering = false;
   bool _isBannerHovering = false;
@@ -375,6 +379,32 @@ class SeriesScreenState extends State<SeriesScreen> {
       }
     } catch (e) {
       logErr('Error fetching episode titles', e);
+    }
+
+    _fetchSonarrEpisodes();
+  }
+
+  Future<void> _fetchSonarrEpisodes() async {
+    final torrentController = TorrentManager.downloadController;
+    if (torrentController == null) return;
+
+    final anilistId = _cachedMapping?.anilistId;
+    if (anilistId == null) return;
+
+    final titleObj = _cachedMapping?.anilistData?.title;
+    final fallbackTitle = titleObj?.userPreferred ?? titleObj?.english ?? titleObj?.romaji ?? "";
+
+    if (!mounted) return;
+
+    try {
+      final result = await torrentController.syncAndFetchEpisodes(animeId: anilistId, altTitle: fallbackTitle);
+      if (mounted) {
+        setState(() {
+          _sonarrEpisodes = result.$2;
+        });
+      }
+    } catch (e, stack) {
+      logErr('Failed to fetch sonarr episodes in SeriesScreen', e, stack);
     }
   }
 
@@ -831,16 +861,13 @@ class SeriesScreenState extends State<SeriesScreen> {
                 ],
               ),
               expand: true,
-              tooltip: TorrentManager.sonarrRepository == null
-                  ? 'Configure Sonarr in Settings first'
+              tooltip: !TorrentManager.isEnabled
+                  ? 'Configure Sonarr & qBittorrent in Settings first'
                   : 'Search and download episodes via Sonarr',
-              onPressed: TorrentManager.sonarrRepository == null
+              onPressed: !TorrentManager.isEnabled
                   ? null
                   : () async {
-                      final anilistAnime = series.anilistData!;
-                      Manager.navigation.pushPaneIndex(NavigationManager.TorrentIndex);
-                      await Future.delayed(const Duration(milliseconds: 100));
-                      torrentScreenKey.currentState?.loadAnime(anilistAnime);
+                      // Handled inline via EpisodeGrid now
                     },
             ),
           ],
@@ -1167,8 +1194,32 @@ class SeriesScreenState extends State<SeriesScreen> {
                   padding: EdgeInsets.only(right: 2),
                   child: EpisodeGrid(
                     collapsable: false,
-                    episodes: _cachedTarget!.episodes,
-                    onTap: (episode) => _playEpisode(episode),
+                    episodes: UIEpisode.merge(_cachedTarget!.episodes, _sonarrEpisodes),
+                    onTap: (uiEpisode) {
+                      // If the episode can be played, play it
+                      if (uiEpisode.canPlay) {
+                        _playEpisode(uiEpisode.localEpisode!);
+                        return;
+                      }
+                      
+                      // If the episode is released or in the future, allow searching for it in Sonarr
+                      if (uiEpisode.state == EpisodeState.released || uiEpisode.state == EpisodeState.future) {
+                        final sonarrEp = uiEpisode.sonarrEpisode;
+                        final repo = TorrentManager.sonarrRepository;
+
+                        if (sonarrEp != null && repo != null) {
+                          showDialog(
+                            context: context,
+                            builder: (context) {
+                              return EpisodeSearchDialog(
+                                episodeId: sonarrEp.id,
+                                sonarrRepo: repo,
+                              );
+                            },
+                          );
+                        }
+                      }
+                    },
                     series: series,
                     mapping: _cachedMapping,
                     padding: EdgeInsets.only(right: 14),

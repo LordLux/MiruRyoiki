@@ -24,6 +24,8 @@ import '../manager.dart';
 import '../services/anilist/episode_title_service.dart';
 import '../services/data_storage_service.dart';
 import '../services/downloads/torrent_manager.dart';
+import '../models/sonarr/sonarr_quality_profile.dart';
+import '../services/qbittorrent/qbittorrent.dart';
 import '../services/lock_manager.dart';
 import '../services/sonarr/sonarr_service.dart';
 import '../services/navigation/dialogs.dart';
@@ -123,6 +125,15 @@ class SettingsScreenState extends State<SettingsScreen> with AutomaticKeepAliveC
   List<Map<String, dynamic>> _sonarrQualityProfiles = [];
   List<Map<String, dynamic>> _sonarrRootFolders = [];
   bool _isSonarrLoading = false;
+  bool _sonarrDropdownsLoaded = false;
+
+  // qBittorrent settings state
+  final TextEditingController _qbitUrlController = TextEditingController();
+  final TextEditingController _qbitUsernameController = TextEditingController();
+  final TextEditingController _qbitPasswordController = TextEditingController();
+  bool _isQbitTesting = false;
+  bool? _qbitTestResult;
+  bool _isQbitEditing = false;
 
   final FocusNode fontSizeFocusNode = FocusNode();
   final FocusNode transitionAnimationFocusNode = FocusNode();
@@ -161,9 +172,9 @@ class SettingsScreenState extends State<SettingsScreen> with AutomaticKeepAliveC
           "desc": "Configure logging behavior for debugging and troubleshooting.",
         },
         {
-          "title": "Sonarr",
+          "title": "Torrents",
           "icon": Icon(mat.Icons.download, color: Manager.accentColor.lighter, size: 23),
-          "desc": "Configure Sonarr connection for automated anime downloads.",
+          "desc": "Configure Sonarr and torrent client connections for automated downloads.",
         },
         {
           "title": "About ${Manager.appTitle}",
@@ -804,14 +815,22 @@ class SettingsScreenState extends State<SettingsScreen> with AutomaticKeepAliveC
     nextFrame(() {
       final settings = Provider.of<SettingsManager>(context, listen: false);
       tempColor = settings.accentColor;
-      _sonarrUrlController.text = settings.sonarrBaseUrl;
+      _sonarrUrlController.text = settings.sonarrBaseUrl; // empty = placeholder shown
       _sonarrApiKeyController.text = settings.sonarrApiKey;
+      _qbitUrlController.text = settings.qbitBaseUrl; // empty = placeholder shown
+      _qbitUsernameController.text = settings.qbitUsername; // empty = placeholder shown
+      _qbitPasswordController.text = settings.qbitPassword;
 
       // Restore verified Sonarr connection state
       if (settings.sonarrConnectionVerified && settings.isSonarrConfigured) {
         setState(() => _sonarrTestResult = true);
         TorrentManager.reinitialize();
         _loadSonarrDropdowns();
+      }
+
+      // Restore verified qBittorrent connection state
+      if (settings.qbitConnectionVerified && settings.isQbitConfigured) {
+        setState(() => _qbitTestResult = true);
       }
     });
   }
@@ -2129,8 +2148,14 @@ class SettingsScreenState extends State<SettingsScreen> with AutomaticKeepAliveC
               isLong: Manager.args.isNotEmpty && Manager.args.join(', ').length > 50,
             )
         ],
-      // Sonarr
-      6 => _buildSonarrSettings(settings),
+      // Torrents (Sonarr + Torrent Client)
+      6 => [
+          ..._buildSonarrSettings(settings),
+          VDiv(32),
+          Divider(),
+          VDiv(24),
+          ..._buildTorrentClientSettings(settings),
+        ],
       // About
       7 => [
           MouseButtonWrapper(
@@ -2180,6 +2205,58 @@ class SettingsScreenState extends State<SettingsScreen> with AutomaticKeepAliveC
             ),
             severity: InfoBarSeverity.info,
           ),
+          if (kDebugMode) ...[
+            VDiv(32),
+            Divider(),
+            VDiv(24),
+            Text('Debug', style: Manager.smallSubtitleStyle),
+            VDiv(12),
+            StandardButton.label(
+              label: 'Reset Torrent/Download Config',
+              filledColor: mat.Colors.red,
+              onPressed: () async {
+                final confirmed = await showDialog<bool>(
+                  context: context,
+                  builder: (ctx) => ContentDialog(
+                    title: const Text('Reset Torrent Config'),
+                    content: const Text(
+                      'This will clear all qBittorrent, Sonarr, and Knaben settings '
+                      '(URLs, credentials, connection status).\n\n'
+                      'Sonarr episode link mappings will NOT be affected.',
+                    ),
+                    actions: [
+                      Button(child: const Text('Cancel'), onPressed: () => Navigator.of(ctx).pop(false)),
+                      FilledButton(
+                        style: ButtonStyle(backgroundColor: WidgetStatePropertyAll(mat.Colors.red)),
+                        child: const Text('Reset'),
+                        onPressed: () => Navigator.of(ctx).pop(true),
+                      ),
+                    ],
+                  ),
+                );
+                if (confirmed == true) {
+                  final settings = SettingsManager();
+                  await settings.resetTorrentConfig();
+                  TorrentManager.reinitialize();
+                  if (mounted) {
+                    setState(() {
+                      _sonarrTestResult = null;
+                      _qbitTestResult = null;
+                      _sonarrQualityProfiles = [];
+                      _sonarrRootFolders = [];
+                      _sonarrDropdownsLoaded = false;
+                      _sonarrUrlController.clear();
+                      _sonarrApiKeyController.clear();
+                      _qbitUrlController.clear();
+                      _qbitUsernameController.clear();
+                      _qbitPasswordController.clear();
+                    });
+                    snackBar('Torrent config reset', severity: InfoBarSeverity.success);
+                  }
+                }
+              },
+            ),
+          ],
         ],
       _ => <Widget>[],
     };
@@ -2193,9 +2270,7 @@ class SettingsScreenState extends State<SettingsScreen> with AutomaticKeepAliveC
     );
   }
 
-  // ---------------------------------------------------------------------------
-  // Sonarr settings builder
-  // ---------------------------------------------------------------------------
+  // Sonarr settings
   List<Widget> _buildSonarrSettings(SettingsManager settings) {
     return [
       // Connection header
@@ -2217,7 +2292,9 @@ class SettingsScreenState extends State<SettingsScreen> with AutomaticKeepAliveC
                 _sonarrTestResult = null;
               },
               onChanged: (value) {
-                _isEditing = _isEditing || value.trim() != settings.sonarrBaseUrl; // Mark as editing if value differs from saved URL
+                setState(() {
+                  _isEditing = _isEditing || value.trim() != settings.sonarrBaseUrl;
+                });
               },
             ),
           ),
@@ -2239,7 +2316,9 @@ class SettingsScreenState extends State<SettingsScreen> with AutomaticKeepAliveC
                 _sonarrTestResult = null;
               },
               onChanged: (value) {
-                _isEditing = _isEditing || value.trim() != settings.sonarrApiKey; // Mark as editing if value differs from saved API key
+                setState(() {
+                  _isEditing = _isEditing || value.trim() != settings.sonarrApiKey;
+                });
               },
             ),
           ),
@@ -2251,7 +2330,7 @@ class SettingsScreenState extends State<SettingsScreen> with AutomaticKeepAliveC
       Row(
         children: [
           StandardButton(
-            cursor: (settings.isSonarrConfigured && !_isSonarrTesting) ? SystemMouseCursors.click : SystemMouseCursors.forbidden,
+            cursor: (_sonarrApiKeyController.text.trim().isNotEmpty && !_isSonarrTesting) ? SystemMouseCursors.click : SystemMouseCursors.forbidden,
             label: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -2284,17 +2363,22 @@ class SettingsScreenState extends State<SettingsScreen> with AutomaticKeepAliveC
                 ),
               ],
             ),
-            onPressed: _isSonarrTesting || !settings.isSonarrConfigured
+            onPressed: _isSonarrTesting || _sonarrApiKeyController.text.trim().isEmpty
                 ? null
                 : () async {
+                    // Save current values before testing
+                    settings.sonarrBaseUrl = _sonarrUrlController.text.trim();
+                    settings.sonarrApiKey = _sonarrApiKeyController.text.trim();
+
                     setState(() {
                       _isSonarrTesting = true;
                       _sonarrTestResult = null;
+                      _isEditing = false;
                     });
                     try {
                       // Create a temporary repo to test
                       final testRepo = SonarrRepository(
-                        baseUrl: settings.sonarrBaseUrl.fallbackIfEmpty(SonarrRepository.defaultUrlPort),
+                        baseUrl: settings.sonarrBaseUrl,
                         apiKey: settings.sonarrApiKey,
                       );
                       final ok = await testRepo.testConnection();
@@ -2318,7 +2402,7 @@ class SettingsScreenState extends State<SettingsScreen> with AutomaticKeepAliveC
                     }
                   },
             tooltip: () {
-              if (settings.sonarrBaseUrl.isEmpty || settings.sonarrApiKey.isEmpty) return 'Enter both Base URL and API Key to enable testing';
+              if (_sonarrApiKeyController.text.trim().isEmpty) return 'Enter an API Key to enable testing';
               return null;
             }(),
           ),
@@ -2351,7 +2435,19 @@ class SettingsScreenState extends State<SettingsScreen> with AutomaticKeepAliveC
             if (_isSonarrLoading)
               SizedBox(width: 16, height: 16, child: RepaintBoundary(child: mat.CircularProgressIndicator(strokeWidth: 2)))
             else if (_sonarrQualityProfiles.isEmpty)
-              Text('Test connection first', style: Manager.bodyStyle.copyWith(color: Colors.white.withValues(alpha: .5)))
+              _sonarrDropdownsLoaded
+                  ? Tooltip(
+                      message: 'Add at least one quality profile in Sonarr under Settings → Profiles before continuing.',
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(mat.Icons.error_outline, size: 16, color: Colors.red),
+                          SizedBox(width: 6),
+                          Text('No profiles found in Sonarr', style: Manager.bodyStyle.copyWith(color: Colors.red)),
+                        ],
+                      ),
+                    )
+                  : Text('Test connection first', style: Manager.bodyStyle.copyWith(color: Colors.white.withValues(alpha: .5)))
             else
               ComboBox<int>(
                 value: settings.sonarrQualityProfileId == 0 ? null : settings.sonarrQualityProfileId,
@@ -2373,7 +2469,19 @@ class SettingsScreenState extends State<SettingsScreen> with AutomaticKeepAliveC
             if (_isSonarrLoading)
               SizedBox(width: 16, height: 16, child: RepaintBoundary(child: mat.CircularProgressIndicator(strokeWidth: 2)))
             else if (_sonarrRootFolders.isEmpty)
-              Text('Test connection first', style: Manager.bodyStyle.copyWith(color: Colors.white.withValues(alpha: .5)))
+              _sonarrDropdownsLoaded
+                  ? Tooltip(
+                      message: 'Add at least one root folder in Sonarr under Settings → Media Management → Root Folders before continuing.',
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(mat.Icons.error_outline, size: 16, color: Colors.red),
+                          SizedBox(width: 6),
+                          Text('No root folders found in Sonarr', style: Manager.bodyStyle.copyWith(color: Colors.red)),
+                        ],
+                      ),
+                    )
+                  : Text('Test connection first', style: Manager.bodyStyle.copyWith(color: Colors.white.withValues(alpha: .5)))
             else
               ComboBox<String>(
                 value: settings.sonarrRootFolderPath.isEmpty ? null : settings.sonarrRootFolderPath,
@@ -2414,10 +2522,15 @@ class SettingsScreenState extends State<SettingsScreen> with AutomaticKeepAliveC
   }
 
   void _loadSonarrDropdowns() async {
-    if (TorrentManager.sonarrRepository == null) return;
+    final settings = SettingsManager();
+    if (!settings.isSonarrConfigured) return;
     setState(() => _isSonarrLoading = true);
     try {
-      final repo = TorrentManager.sonarrRepository!;
+      // Use TorrentManager repo if available, otherwise create a temporary one
+      final repo = TorrentManager.sonarrRepository ?? SonarrRepository(
+        baseUrl: settings.sonarrBaseUrl,
+        apiKey: settings.sonarrApiKey,
+      );
       final profiles = await repo.getQualityProfiles();
       final folders = await repo.getRootFolders();
       if (mounted) {
@@ -2425,6 +2538,22 @@ class SettingsScreenState extends State<SettingsScreen> with AutomaticKeepAliveC
           _sonarrQualityProfiles = profiles.map((p) => {'id': p.id, 'name': p.name}).toList();
           _sonarrRootFolders = folders.map((f) => {'id': f.id, 'path': f.path}).toList();
           _isSonarrLoading = false;
+          _sonarrDropdownsLoaded = true;
+
+          // Auto-select quality profile if not yet chosen
+          if (settings.sonarrQualityProfileId == 0 && profiles.isNotEmpty) {
+            // Prefer a profile containing "1080" in the name
+            final match = profiles.cast<SonarrQualityProfile?>().firstWhere(
+              (p) => p!.name.contains('1080'),
+              orElse: () => null,
+            );
+            settings.sonarrQualityProfileId = match?.id ?? profiles.first.id;
+          }
+
+          // Auto-select root folder if not yet chosen
+          if (settings.sonarrRootFolderPath.isEmpty && folders.isNotEmpty) {
+            settings.sonarrRootFolderPath = folders.first.path;
+          }
         });
       }
     } catch (e) {
@@ -2433,6 +2562,201 @@ class SettingsScreenState extends State<SettingsScreen> with AutomaticKeepAliveC
         snackBar('Failed to load Sonarr data: $e', severity: InfoBarSeverity.error);
       }
     }
+  }
+
+  // Torrent client settings
+  List<Widget> _buildTorrentClientSettings(SettingsManager settings) {
+    return [
+      Text('Torrent Client', style: Manager.bodyStrongStyle),
+      VDiv(4),
+      Text(
+        'Configure your torrent client for downloading. Currently qBittorrent is supported.',
+        style: Manager.bodyStyle.copyWith(color: Colors.white.withValues(alpha: .5)),
+      ),
+      VDiv(16),
+
+      // Base URL
+      Row(
+        children: [
+          Text('Base URL', style: Manager.bodyStyle),
+          SizedBox(width: 24),
+          Expanded(
+            child: TextBox(
+              controller: _qbitUrlController,
+              placeholder: 'http://localhost:8080',
+              placeholderStyle: Manager.bodyStyle.copyWith(color: Colors.white.withValues(alpha: .5), fontStyle: FontStyle.italic),
+              onSubmitted: (value) {
+                settings.qbitBaseUrl = value.trim();
+                _qbitTestResult = null;
+              },
+              onChanged: (value) {
+                setState(() {
+                  _isQbitEditing = _isQbitEditing || value.trim() != settings.qbitBaseUrl;
+                });
+              },
+            ),
+          ),
+        ],
+      ),
+      VDiv(12),
+
+      // Username
+      Row(
+        children: [
+          Text('Username', style: Manager.bodyStyle),
+          SizedBox(width: 24),
+          Expanded(
+            child: TextBox(
+              controller: _qbitUsernameController,
+              placeholder: 'admin',
+              placeholderStyle: Manager.bodyStyle.copyWith(color: Colors.white.withValues(alpha: .5), fontStyle: FontStyle.italic),
+              onSubmitted: (value) {
+                settings.qbitUsername = value.trim();
+                _qbitTestResult = null;
+              },
+              onChanged: (value) {
+                setState(() {
+                  _isQbitEditing = _isQbitEditing || value.trim() != settings.qbitUsername;
+                });
+              },
+            ),
+          ),
+        ],
+      ),
+      VDiv(12),
+
+      // Password
+      Row(
+        children: [
+          Text('Password', style: Manager.bodyStyle),
+          SizedBox(width: 24),
+          Expanded(
+            child: PasswordBox(
+              controller: _qbitPasswordController,
+              placeholder: 'qBittorrent password',
+              onSubmitted: (value) {
+                settings.qbitPassword = value.trim();
+                _qbitTestResult = null;
+              },
+              onChanged: (value) {
+                setState(() {
+                  _isQbitEditing = _isQbitEditing || value.trim() != settings.qbitPassword;
+                });
+              },
+            ),
+          ),
+        ],
+      ),
+      VDiv(16),
+
+      // Test Connection button
+      Row(
+        children: [
+          StandardButton(
+            cursor: (_qbitPasswordController.text.isNotEmpty && !_isQbitTesting) ? SystemMouseCursors.click : SystemMouseCursors.forbidden,
+            label: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (_isQbitTesting)
+                  SizedBox(width: 16, height: 16, child: RepaintBoundary(child: mat.CircularProgressIndicator(strokeWidth: 2)))
+                else
+                  Icon(
+                    _qbitTestResult == null
+                        ? mat.Icons.wifi_find
+                        : _qbitTestResult!
+                            ? mat.Icons.check_circle
+                            : mat.Icons.error,
+                    size: 18,
+                    color: _qbitTestResult == null
+                        ? null
+                        : _qbitTestResult!
+                            ? Colors.green
+                            : Colors.red,
+                  ),
+                SizedBox(width: 8),
+                Text(
+                  _isQbitTesting
+                      ? 'Testing...'
+                      : _qbitTestResult == null || _isQbitEditing
+                          ? 'Test Connection'
+                          : _qbitTestResult!
+                              ? 'Connected'
+                              : 'Failed',
+                  style: Manager.bodyStyle,
+                ),
+              ],
+            ),
+            onPressed: _isQbitTesting || _qbitPasswordController.text.isEmpty
+                ? null
+                : () async {
+                    // Save current values before testing
+                    settings.qbitBaseUrl = _qbitUrlController.text.trim();
+                    settings.qbitUsername = _qbitUsernameController.text.trim();
+                    settings.qbitPassword = _qbitPasswordController.text.trim();
+
+                    setState(() {
+                      _isQbitTesting = true;
+                      _qbitTestResult = null;
+                      _isQbitEditing = false;
+                    });
+                    try {
+                      final testClient = QBittorrentRepository(
+                        baseUrl: settings.qbitBaseUrl,
+                        username: settings.qbitUsername,
+                        password: settings.qbitPassword,
+                      );
+                      final ok = await testClient.testConnection();
+                      if (mounted) {
+                        setState(() {
+                          _qbitTestResult = ok;
+                          _isQbitTesting = false;
+                        });
+                        if (ok) {
+                          settings.qbitConnectionVerified = true;
+                          TorrentManager.reinitialize();
+                        }
+                      }
+                    } catch (_) {
+                      if (mounted)
+                        setState(() {
+                          _qbitTestResult = false;
+                          _isQbitTesting = false;
+                        });
+                    }
+                  },
+            tooltip: _qbitPasswordController.text.isEmpty ? 'Enter a password to enable testing' : null,
+          ),
+          if (_qbitTestResult == false) ...[
+            SizedBox(width: 12),
+            Text('Could not reach qBittorrent. Check URL and credentials.', style: Manager.bodyStyle.copyWith(color: Colors.red)),
+          ],
+        ],
+      ),
+
+      VDiv(24),
+      InfoBar(
+        title: Text('Tip', style: Manager.bodyStrongStyle),
+        content: Row(
+          children: [
+            Text(
+              'You can find your Username and Password in qBittorrent under Settings → Download Clients → qBittorrent, or click',
+              style: Manager.bodyStyle,
+            ),
+            SizedBox(width: 12),
+            Transform.translate(
+              offset: Offset(0, 1),
+              child: WrappedHyperlinkButton(
+                text: 'here',
+                url: '${settings.qbitBaseUrl.fallbackIfEmpty(QBittorrentRepository.defaultUrlPort)}/settings/general',
+                style: Manager.bodyStyle.copyWith(color: getPrimaryColorBasedOnAccent()),
+                icon: Icon(mat.Icons.open_in_new, size: 16, color: getPrimaryColorBasedOnAccent()),
+              ),
+            ),
+          ],
+        ),
+        severity: InfoBarSeverity.info,
+      ),
+    ];
   }
 
   Expanded ReadonlyTextBoxWithShiftAltButton(

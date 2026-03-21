@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:miruryoiki/enums.dart';
 import 'package:miruryoiki/manager.dart';
 import 'package:miruryoiki/utils/screen.dart';
 import '../models/anilist/user_data.dart';

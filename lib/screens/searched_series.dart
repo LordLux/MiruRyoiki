@@ -34,6 +34,7 @@ import '../widgets/shrinker.dart';
 import '../widgets/simple_html_parser.dart';
 import '../widgets/transparency_shadow_image.dart';
 import 'package:recase/recase.dart';
+import '../widgets/series_download_view.dart';
 import '../services/file_system/cache.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
@@ -667,12 +668,19 @@ class SearchedSeriesScreenState extends State<SearchedSeriesScreen> {
       return _buildOverviewContent(context, series);
     }
     return switch (_tabNames[currentTabIndex]) {
+      'Watch' => _buildWatchTabContent(context, series),
       'Characters' => _buildCharactersTabContent(context),
       'Staff' => _buildStaffTabContent(context),
       'Statistics' => _buildStatsTabContent(context),
       'Social' => _buildSocialTabContent(context),
       _ => _buildOverviewContent(context, series),
     };
+  }
+
+  Widget _buildWatchTabContent(BuildContext context, AnimeOverview? series) {
+    if (series == null) return const Center(child: RepaintBoundary(child: mat.CircularProgressIndicator()));
+
+    return SeriesDownloadView(animeId: series.id, animeTitle: series.title);
   }
 
   /// Shared smooth-scroll wrapper used by every tab
@@ -1085,7 +1093,7 @@ class SearchedSeriesScreenState extends State<SearchedSeriesScreen> {
     final sorted = [...data]..sort((a, b) => b.amount.compareTo(a.amount));
     final total = sorted.fold(0, (sum, e) => sum + e.amount);
     if (total == 0) return const SizedBox.shrink();
-    
+
     const statusColors = {
       CurrentString: Color(0xFF3DB4F2),
       CompletedString: Color(0xFF4CAF50),
@@ -1094,7 +1102,7 @@ class SearchedSeriesScreenState extends State<SearchedSeriesScreen> {
       PlanningString: Color(0xFF9E9E9E),
       RepeatingString: Color(0xFFAB47BC),
     };
-    
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1180,10 +1188,10 @@ class SearchedSeriesScreenState extends State<SearchedSeriesScreen> {
   /// Human-readable relative time
   String _timeAgo(int? epochSeconds) {
     if (epochSeconds == null) return '';
-    
+
     final dt = DateTime.fromMillisecondsSinceEpoch(epochSeconds * 1000);
     final diff = now.difference(dt);
-    
+
     if (diff.inDays >= 365) return '${(diff.inDays / 365).floor()}y ago';
     if (diff.inDays >= 30) return '${(diff.inDays / 30).floor()}mo ago';
     if (diff.inDays >= 1) return '${diff.inDays}d ago';

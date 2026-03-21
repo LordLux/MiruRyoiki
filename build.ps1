@@ -11,6 +11,6 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 Write-Host "Building Flutter Windows app in release mode..."
-flutter build windows --release --no-pub
+fvm flutter build windows --release --no-pub
 
 exit $LASTEXITCODE

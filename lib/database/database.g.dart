@@ -1383,10 +1383,10 @@ class EpisodesTableData extends DataClass
   final MkvMetadata? mkvMetadata;
   final String? anilistTitle;
 
-  /// Episode number extracted by anitomy at scan time (persisted to avoid re-parsing)
+  /// Episode number extracted by Anitomy at scan time
   final int? episodeNumber;
 
-  /// Episode title extracted by anitomy from the filename
+  /// Episode title extracted by Anitomy from the filename
   final String? parsedTitle;
   const EpisodesTableData(
       {required this.id,

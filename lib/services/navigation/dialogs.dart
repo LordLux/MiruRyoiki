@@ -1,12 +1,9 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/material.dart' show Material, MaterialState;
-import 'package:glossy/glossy.dart';
 
-import '../../utils/screen.dart';
 import '../../manager.dart';
 import '../../widgets/buttons/wrapper.dart';
 import '../../widgets/dialogs/show_dialog.dart';
-import '../../widgets/frosted_noise.dart';
 import 'debug.dart';
 import 'dialogs2.dart';
 import 'navigation.dart';

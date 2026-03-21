@@ -2,6 +2,7 @@ import 'package:fluent_ui/fluent_ui.dart';
 import '../manager.dart';
 import '../utils/time.dart';
 import 'episode.dart';
+import 'sonarr/sonarr_episode.dart';
 
 /// Represents the different states an episode can have
 enum EpisodeState {
@@ -22,6 +23,9 @@ enum EpisodeState {
 class UIEpisode {
   /// The local episode file (null for future episodes)
   final Episode? localEpisode;
+
+  /// The remote episode metadata from Sonarr (null if not found or if Sonarr series is not linked)
+  final SonarrEpisode? sonarrEpisode;
 
   /// Episode number
   final int episodeNumber;
@@ -44,6 +48,7 @@ class UIEpisode {
   const UIEpisode({
     required this.episodeNumber,
     this.localEpisode,
+    this.sonarrEpisode,
     this.anilistTitle,
     required this.state,
     this.airDate,
@@ -52,9 +57,10 @@ class UIEpisode {
   });
 
   /// Create a UIEpisode from a local episode file
-  factory UIEpisode.fromLocalEpisode(Episode episode) {
+  factory UIEpisode.fromLocalEpisode(Episode episode, {SonarrEpisode? sonarrEpisode}) {
     return UIEpisode(
       localEpisode: episode,
+      sonarrEpisode: sonarrEpisode,
       episodeNumber: episode.episodeNumber ?? 0,
       anilistTitle: episode.anilistTitle,
       state: EpisodeState.downloaded,
@@ -65,8 +71,11 @@ class UIEpisode {
 
   /// Create a UIEpisode for an available but not downloaded episode
   factory UIEpisode.released({
-    /// Episode numbert from AniList
+    /// Episode number from AniList
     required int episodeNumber,
+
+    /// Sonarr episode
+    SonarrEpisode? sonarrEpisode,
 
     /// Episode title from AniList
     String? anilistTitle,
@@ -76,6 +85,7 @@ class UIEpisode {
   }) {
     return UIEpisode(
       episodeNumber: episodeNumber,
+      sonarrEpisode: sonarrEpisode,
       anilistTitle: anilistTitle,
       state: EpisodeState.released,
       airDate: airDate,
@@ -87,6 +97,9 @@ class UIEpisode {
     /// Episode number from AniList
     required int episodeNumber,
 
+    /// Sonarr episode
+    SonarrEpisode? sonarrEpisode,
+
     /// Episode title from AniList
     String? anilistTitle,
 
@@ -95,6 +108,7 @@ class UIEpisode {
   }) {
     return UIEpisode(
       episodeNumber: episodeNumber,
+      sonarrEpisode: sonarrEpisode,
       anilistTitle: anilistTitle,
       state: EpisodeState.future,
       airDate: airDate,
@@ -107,11 +121,11 @@ class UIEpisode {
       // Parse episode name from AniList format "Episode DD - EpisodeName"
       final match = RegExp(r'^Episode\s+\d+\s*-\s*(.+)$').firstMatch(anilistTitle!);
       if (match != null && match.group(1) != null) return match.group(1)!.trim();
-
       return anilistTitle!;
     }
 
     if (localEpisode != null && localEpisode!.displayTitle != null) return localEpisode!.displayTitle!;
+    if (sonarrEpisode != null && sonarrEpisode!.title.isNotEmpty && sonarrEpisode!.title != "Unknown") return sonarrEpisode!.title;
 
     return 'Episode $episodeNumber';
   }
@@ -138,62 +152,43 @@ class UIEpisode {
 
   /// Color indicator for episode state
   Color get stateColor {
-    switch (state) {
-      case EpisodeState.downloaded:
-        return watched ? const Color(0xFF4CAF50) : const Color(0xFF2196F3); // Green if watched, blue if not
-      case EpisodeState.released:
-        return const Color(0xFFFF9800); // Orange for available
-      case EpisodeState.future:
-        return const Color(0xFF9E9E9E); // Gray for future
-      case EpisodeState.unknown:
-        return const Color(0xFFF44336); // Red for unknown/error
-    }
+    return switch (state) {
+      EpisodeState.downloaded => watched ? const Color(0xFF4CAF50) : const Color(0xFF2196F3), // Green if watched, blue if not
+      EpisodeState.released => const Color(0xFFFF9800), // Orange for available
+      EpisodeState.future => const Color(0xFF9E9E9E), // Gray for future
+      EpisodeState.unknown => const Color(0xFFF44336) // Red for unknown/error
+    };
   }
 
   /// Icon for episode state
   IconData get stateIcon {
-    switch (state) {
-      case EpisodeState.downloaded:
-        return watched ? FluentIcons.check_mark : FluentIcons.play;
-      case EpisodeState.released:
-        return FluentIcons.download;
-      case EpisodeState.future:
-        return FluentIcons.clock;
-      case EpisodeState.unknown:
-        return FluentIcons.unknown;
-    }
+    return switch (state) {
+      EpisodeState.downloaded => watched ? FluentIcons.check_mark : FluentIcons.play,
+      EpisodeState.released => FluentIcons.download,
+      EpisodeState.future => FluentIcons.clock,
+      EpisodeState.unknown => FluentIcons.unknown
+    };
   }
 
   /// Human-readable state description
   String get stateDescription {
-    switch (state) {
-      case EpisodeState.downloaded:
-        return watched ? 'Watched' : 'Downloaded';
-      case EpisodeState.released:
-        return 'Available for download';
-      case EpisodeState.future:
-        return airDate != null ? 'Airs ${_formatDate(airDate!)}' : 'Not yet aired';
-      case EpisodeState.unknown:
-        return 'Unknown';
-    }
+    return switch (state) {
+      EpisodeState.downloaded => watched ? 'Watched' : 'Downloaded',
+      EpisodeState.released => 'Available for download',
+      EpisodeState.future => airDate != null ? 'Airs ${_formatDate(airDate!)}' : 'Not yet aired',
+      EpisodeState.unknown => 'Unknown'
+    };
   }
 
   String _formatDate(DateTime date) {
     final difference = date.difference(now);
 
-    if (difference.inDays > 7) {
-      return '${date.day}/${date.month}/${date.year}';
-    } else if (difference.inDays > 0) {
-      return 'in ${difference.inDays} days';
-    } else if (difference.inHours > 0) {
-      return 'in ${difference.inHours} hours';
-    } else if (difference.inMinutes > 0) {
-      return 'in ${difference.inMinutes} minutes';
-    } else if (difference.inSeconds > -60) {
-      return 'now';
-    } else {
-      return 'aired';
-    }
+    if (difference.inDays > 7) return '${date.day}/${date.month}/${date.year}';
+    if (difference.inDays > 0) return 'in ${difference.inDays} days';
+    if (difference.inHours > 0) return 'in ${difference.inHours} hours';
+    if (difference.inMinutes > 0) return 'in ${difference.inMinutes} minutes';
+    if (difference.inSeconds > -60) return 'now';
+    return 'aired';
   }
 
   @override
@@ -206,7 +201,66 @@ class UIEpisode {
   int get hashCode => Object.hash(episodeNumber, state, localEpisode);
 
   @override
-  String toString() {
-    return 'UIEpisode(episodeNumber: $episodeNumber, state: $state, title: $displayTitle)';
+  String toString() => 'UIEpisode(episodeNumber: $episodeNumber, state: $state, title: $displayTitle)';
+
+  static List<UIEpisode> merge(List<Episode>? localEpisodes, List<SonarrEpisode>? sonarrEpisodes) {
+    final sonarrMap = {
+      if (sonarrEpisodes != null)
+        for (var e in sonarrEpisodes) e.episodeNumber: e
+    };
+
+    final result = <UIEpisode>[];
+    final addedNumbers = <int>{};
+
+    // First, add all local episodes
+    if (localEpisodes != null) {
+      for (final local in localEpisodes) {
+        final num = local.episodeNumber ?? -1;
+
+        result.add(UIEpisode.fromLocalEpisode(local, sonarrEpisode: sonarrMap[num]));
+        if (num != -1) addedNumbers.add(num);
+      }
+    }
+
+    // Next, add remaining sonarr episodes
+    if (sonarrEpisodes != null) {
+      for (final sonarr in sonarrEpisodes) {
+        if (!addedNumbers.contains(sonarr.episodeNumber)) {
+          // Find if it's released or future
+          final hasFile = sonarr.hasFile;
+          final airDateStr = sonarr.airDateUtc;
+          DateTime? airDate;
+
+          if (airDateStr != null && airDateStr.isNotEmpty) //
+            airDate = DateTime.tryParse(airDateStr);
+
+          bool isReleased = airDate != null ? airDate.isBefore(now) : hasFile;
+
+          if (isReleased) {
+            result.add(UIEpisode.released(
+              episodeNumber: sonarr.episodeNumber,
+              sonarrEpisode: sonarr,
+              anilistTitle: sonarr.title,
+              airDate: airDate,
+            ));
+          } else {
+            result.add(UIEpisode.future(
+              episodeNumber: sonarr.episodeNumber,
+              sonarrEpisode: sonarr,
+              anilistTitle: sonarr.title,
+              airDate: airDate,
+            ));
+          }
+        }
+      }
+    }
+
+    // sort by episode number
+    result.sort((a, b) {
+      if (a.episodeNumber <= 0 && b.episodeNumber > 0) return 1;
+      if (b.episodeNumber <= 0 && a.episodeNumber > 0) return -1;
+      return a.episodeNumber.compareTo(b.episodeNumber);
+    });
+    return result;
   }
 }

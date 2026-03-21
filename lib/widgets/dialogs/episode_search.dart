@@ -1,10 +1,10 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/material.dart' as mat;
 
-import '../../screens/downloads_screen.dart';
 import '../../models/sonarr/sonarr_release.dart';
 import '../../services/sonarr/sonarr_service.dart';
 import '../../manager.dart';
+import '../../utils/units.dart';
 import '../buttons/button.dart';
 
 class EpisodeSearchDialog extends StatefulWidget {
@@ -97,7 +97,7 @@ class _EpisodeSearchDialogState extends State<EpisodeSearchDialog> {
                       shrinkWrap: true,
                       itemCount: releases.length,
                       itemBuilder: (context, index) {
-                        return ReleaseTile(release: releases[index], sonarrRepo: widget.sonarrRepo);
+                        return _SonarrReleaseTile(release: releases[index], sonarrRepo: widget.sonarrRepo);
                       },
                     );
                   },
@@ -106,6 +106,86 @@ class _EpisodeSearchDialogState extends State<EpisodeSearchDialog> {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _SonarrReleaseTile extends StatefulWidget {
+  final SonarrRelease release;
+  final SonarrRepository sonarrRepo;
+
+  const _SonarrReleaseTile({required this.release, required this.sonarrRepo});
+
+  @override
+  State<_SonarrReleaseTile> createState() => _SonarrReleaseTileState();
+}
+
+class _SonarrReleaseTileState extends State<_SonarrReleaseTile> {
+  bool _isDownloading = false;
+  bool _downloaded = false;
+
+  Future<void> _handleDownload() async {
+    if (_isDownloading || _downloaded) return;
+    setState(() {
+      _isDownloading = true;
+    });
+
+    try {
+      await widget.sonarrRepo.grabRelease(widget.release.guid, widget.release.indexerId);
+      if (mounted) {
+        setState(() {
+          _downloaded = true;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        showDialog(
+          context: context,
+          builder: (context) => ContentDialog(
+            title: const Text("Download Error"),
+            content: Text(e.toString()),
+            actions: [
+              Button(
+                child: const Text("OK"),
+                onPressed: () => Navigator.of(context).pop(),
+              )
+            ],
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isDownloading = false;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return mat.Card(
+      margin: const EdgeInsets.only(bottom: 8.0),
+      color: widget.release.rejected ? mat.Colors.red.withOpacity(0.1) : null,
+      child: mat.ListTile(
+        title: Text(widget.release.title, style: const TextStyle(fontWeight: FontWeight.bold)),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text("Quality: ${widget.release.quality} | Size: ${fileSize(widget.release.size)} | Seeders: ${widget.release.seeders}"),
+            if (widget.release.rejected)
+              Text("Rejected: ${widget.release.rejections.join(', ')}", style: const TextStyle(color: mat.Colors.red)),
+          ],
+        ),
+        trailing: _downloaded
+            ? const Icon(mat.Icons.check_circle, color: mat.Colors.green)
+            : _isDownloading
+                ? const ProgressRing()
+                : StandardButton.icon(
+                    icon: const Icon(mat.Icons.download),
+                    onPressed: widget.release.rejected ? null : _handleDownload, // Disable button if rejected
+                  ),
       ),
     );
   }

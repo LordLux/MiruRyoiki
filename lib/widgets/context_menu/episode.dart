@@ -14,7 +14,6 @@ import '../../services/episode_navigation/episode_navigator.dart';
 import '../../services/library/library_provider.dart';
 import '../../services/lock_manager.dart';
 import '../../services/navigation/show_info.dart';
-import '../../utils/logging.dart';
 import '../../utils/shell.dart';
 import '../../utils/icons.dart' as icons;
 import '../../utils/time.dart';

@@ -255,52 +255,52 @@ void main() {
   // displayTitle - season indicator removal
   // =========================================================================
   group('displayTitle season indicator removal', () {
-    Series _seriesWithTitle(String title) {
+    Series seriesWithTitle(String title) {
       final anime = _makeAnime(userPreferred: title);
       final mapping = _makeMapping(anilistId: 1, anilistData: anime);
       return _makeSeries(anilistMappings: [mapping], primaryAnilistId: 1);
     }
 
     test('plain title unchanged', () {
-      expect(_seriesWithTitle('Attack on Titan').displayTitle, 'Attack on Titan');
+      expect(seriesWithTitle('Attack on Titan').displayTitle, 'Attack on Titan');
     });
 
     test('removes English "Season N"', () {
-      expect(_seriesWithTitle('Attack on Titan Season 2').displayTitle, 'Attack on Titan');
+      expect(seriesWithTitle('Attack on Titan Season 2').displayTitle, 'Attack on Titan');
     });
 
     test('removes English "Part N"', () {
-      expect(_seriesWithTitle('Attack on Titan Part 3').displayTitle, 'Attack on Titan');
+      expect(seriesWithTitle('Attack on Titan Part 3').displayTitle, 'Attack on Titan');
     });
 
     test('removes case-insensitive "season"', () {
-      expect(_seriesWithTitle('My Anime SEASON 4').displayTitle, 'My Anime');
+      expect(seriesWithTitle('My Anime SEASON 4').displayTitle, 'My Anime');
     });
 
     test('removes Japanese 第N期', () {
-      expect(_seriesWithTitle('進撃の巨人 第2期').displayTitle, '進撃の巨人');
+      expect(seriesWithTitle('進撃の巨人 第2期').displayTitle, '進撃の巨人');
     });
 
     test('removes Japanese シーズンN', () {
-      expect(_seriesWithTitle('Test シーズン3').displayTitle, 'Test');
+      expect(seriesWithTitle('Test シーズン3').displayTitle, 'Test');
     });
 
     test('removes Japanese N期', () {
-      expect(_seriesWithTitle('Test 2期').displayTitle, 'Test');
+      expect(seriesWithTitle('Test 2期').displayTitle, 'Test');
     });
 
     test('removes bracketed season indicators', () {
       // The bracket content is removed by the general season pattern first,
       // leaving empty brackets which remain (pre-existing behavior).
-      expect(_seriesWithTitle('My Anime [Season 2]').displayTitle, 'My Anime []');
+      expect(seriesWithTitle('My Anime [Season 2]').displayTitle, 'My Anime []');
     });
 
     test('removes Volume indicators', () {
-      expect(_seriesWithTitle('My Anime Volume 3').displayTitle, 'My Anime');
+      expect(seriesWithTitle('My Anime Volume 3').displayTitle, 'My Anime');
     });
 
     test('removes trailing punctuation after removal', () {
-      expect(_seriesWithTitle('My Anime: Season 2').displayTitle, 'My Anime');
+      expect(seriesWithTitle('My Anime: Season 2').displayTitle, 'My Anime');
     });
 
     test('falls back to series name when no anilist data', () {

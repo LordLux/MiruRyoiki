@@ -1665,86 +1665,86 @@ void main() {
   // SeriesPresenter – displayTitle extra coverage
   // =========================================================================
   group('displayTitle additional patterns', () {
-    Series _seriesWithTitle(String title) {
+    Series seriesWithTitle(String title) {
       final anime = _makeAnime(userPreferred: title);
       final mapping = _makeMapping(anilistId: 1, anilistData: anime);
       return _makeSeries(anilistMappings: [mapping], primaryAnilistId: 1);
     }
 
     test('removes Romaji season indicators', () {
-      expect(_seriesWithTitle('Test ki 2').displayTitle, 'Test');
-      expect(_seriesWithTitle('Test bu 1').displayTitle, 'Test');
+      expect(seriesWithTitle('Test ki 2').displayTitle, 'Test');
+      expect(seriesWithTitle('Test bu 1').displayTitle, 'Test');
     });
 
     test('removes Chapter indicator', () {
-      expect(_seriesWithTitle('My Anime Chapter 5').displayTitle, 'My Anime');
-      expect(_seriesWithTitle('My Anime Ch 3').displayTitle, 'My Anime');
+      expect(seriesWithTitle('My Anime Chapter 5').displayTitle, 'My Anime');
+      expect(seriesWithTitle('My Anime Ch 3').displayTitle, 'My Anime');
     });
 
     test('removes Cour indicator', () {
-      expect(_seriesWithTitle('My Anime Cour 2').displayTitle, 'My Anime');
+      expect(seriesWithTitle('My Anime Cour 2').displayTitle, 'My Anime');
     });
 
     test('removes 第Nシーズン', () {
-      expect(_seriesWithTitle('Test 第2シーズン').displayTitle, 'Test');
+      expect(seriesWithTitle('Test 第2シーズン').displayTitle, 'Test');
     });
 
     test('removes 第N章', () {
-      expect(_seriesWithTitle('Test 第3章').displayTitle, 'Test');
+      expect(seriesWithTitle('Test 第3章').displayTitle, 'Test');
     });
 
     test('removes 第Nクール', () {
-      expect(_seriesWithTitle('Test 第1クール').displayTitle, 'Test');
+      expect(seriesWithTitle('Test 第1クール').displayTitle, 'Test');
     });
 
     test('removes 第N巻', () {
-      expect(_seriesWithTitle('Test 第4巻').displayTitle, 'Test');
+      expect(seriesWithTitle('Test 第4巻').displayTitle, 'Test');
     });
 
     test('removes パートN', () {
-      expect(_seriesWithTitle('Test パート2').displayTitle, 'Test');
+      expect(seriesWithTitle('Test パート2').displayTitle, 'Test');
     });
 
     test('removes N章', () {
-      expect(_seriesWithTitle('Test 3章').displayTitle, 'Test');
+      expect(seriesWithTitle('Test 3章').displayTitle, 'Test');
     });
 
     test('removes Nクール', () {
-      expect(_seriesWithTitle('Test 2クール').displayTitle, 'Test');
+      expect(seriesWithTitle('Test 2クール').displayTitle, 'Test');
     });
 
     test('removes N巻', () {
-      expect(_seriesWithTitle('Test 5巻').displayTitle, 'Test');
+      expect(seriesWithTitle('Test 5巻').displayTitle, 'Test');
     });
 
     test('removes Nシーズン', () {
-      expect(_seriesWithTitle('Test 2シーズン').displayTitle, 'Test');
+      expect(seriesWithTitle('Test 2シーズン').displayTitle, 'Test');
     });
 
     test('removes S followed by number', () {
       // "S" is in the season pattern
-      expect(_seriesWithTitle('My Anime S2').displayTitle, 'My Anime');
+      expect(seriesWithTitle('My Anime S2').displayTitle, 'My Anime');
     });
 
     test('removes trailing dash after removal', () {
-      expect(_seriesWithTitle('My Anime - Season 2').displayTitle, 'My Anime');
+      expect(seriesWithTitle('My Anime - Season 2').displayTitle, 'My Anime');
     });
 
     test('removes trailing colon after removal', () {
-      expect(_seriesWithTitle('My Anime: Part 3').displayTitle, 'My Anime');
+      expect(seriesWithTitle('My Anime: Part 3').displayTitle, 'My Anime');
     });
 
     test('handles multiple season indicators', () {
       // Both "Season 2" and "Part 1" should be removed
-      expect(_seriesWithTitle('My Anime Season 2 Part 1').displayTitle, 'My Anime');
+      expect(seriesWithTitle('My Anime Season 2 Part 1').displayTitle, 'My Anime');
     });
 
     test('handles fully bracketed season in square brackets', () {
-      expect(_seriesWithTitle('My Anime [Season 3]').displayTitle, 'My Anime []');
+      expect(seriesWithTitle('My Anime [Season 3]').displayTitle, 'My Anime []');
     });
 
     test('handles fully bracketed season in round brackets', () {
-      expect(_seriesWithTitle('My Anime (Season 3)').displayTitle, 'My Anime ()');
+      expect(seriesWithTitle('My Anime (Season 3)').displayTitle, 'My Anime ()');
     });
   });
 
