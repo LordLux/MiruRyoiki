@@ -10,6 +10,7 @@ import 'package:flutter_desktop_context_menu/flutter_desktop_context_menu.dart';
 import '../../manager.dart';
 import '../../models/episode.dart';
 import '../../models/series.dart';
+import '../../models/ui_episode.dart';
 import '../../services/episode_navigation/episode_navigator.dart';
 import '../../services/library/library_provider.dart';
 import '../../services/lock_manager.dart';
@@ -27,6 +28,12 @@ class EpisodeContextMenu extends StatefulWidget {
   final DesktopContextMenuController controller;
   final VoidCallback? onEpisodeChanged;
 
+  /// Optional Sonarr episode for link management
+  final UIEpisode? uiEpisode;
+
+  /// Called when the user wants to change the Sonarr episode link
+  final void Function(UIEpisode uiEpisode)? onChangeSonarrLink;
+
   const EpisodeContextMenu({
     super.key,
     required this.context,
@@ -35,6 +42,8 @@ class EpisodeContextMenu extends StatefulWidget {
     required this.child,
     required this.controller,
     this.onEpisodeChanged,
+    this.uiEpisode,
+    this.onChangeSonarrLink,
   });
 
   @override
@@ -113,6 +122,23 @@ class EpisodeContextMenuState extends State<EpisodeContextMenu> {
           shortcutModifiers: ShortcutModifiers(control: Platform.isWindows, meta: Platform.isMacOS),
           onClick: (_) => _copyFilename(context),
         ),
+        if (widget.uiEpisode != null && widget.onChangeSonarrLink != null) ...[
+          MenuItem.separator(),
+          MenuItem(
+            label: widget.uiEpisode!.sonarrEpisode != null
+                ? 'Change Sonarr Link (S${widget.uiEpisode!.sonarrEpisode!.seasonNumber.toString().padLeft(2, '0')}E${widget.uiEpisode!.sonarrEpisode!.episodeNumber.toString().padLeft(2, '0')})'
+                : 'Link to Sonarr Episode...',
+            onClick: (_) => widget.onChangeSonarrLink!(widget.uiEpisode!),
+          ),
+          if (widget.uiEpisode!.sonarrEpisode != null)
+            MenuItem(
+              label: 'Remove Sonarr Link',
+              icon: icons.remove_link,
+              onClick: (_) {
+                // TODO: implement removing the override/link
+              },
+            ),
+        ],
         MenuItem.separator(),
         if (arePreviousWatched == false)
           MenuItem(

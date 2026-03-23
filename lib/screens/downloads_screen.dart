@@ -14,6 +14,20 @@ import '../utils/units.dart';
 import '../utils/screen.dart';
 import '../widgets/buttons/button.dart';
 
+String _stateLabel(TorrentState state) {
+  return switch (state) {
+    TorrentState.downloading => 'Downloading',
+    TorrentState.seeding => 'Seeding',
+    TorrentState.paused => 'Paused',
+    TorrentState.queued => 'Queued',
+    TorrentState.checking => 'Checking',
+    TorrentState.stalled => 'Stalled',
+    TorrentState.completed => 'Completed',
+    TorrentState.error => 'Error',
+    TorrentState.unknown => 'Unknown',
+  };
+}
+
 class DownloadsScreen extends StatefulWidget {
   final DownloadController? controller;
   final SonarrRepository? sonarrRepo;
@@ -30,11 +44,16 @@ class DownloadsScreen extends StatefulWidget {
   State<DownloadsScreen> createState() => DownloadsScreenState();
 }
 
+enum _SortMode { status, name, addedOn, progress, size }
+
 class DownloadsScreenState extends State<DownloadsScreen> {
   List<TorrentInfo> _torrents = [];
   bool _isLoading = false;
   String? _error;
   Timer? _refreshTimer;
+  _SortMode _sortMode = _SortMode.status;
+  bool _sortAscending = true;
+  TorrentState? _filterState;
 
   @override
   void activate() {
@@ -118,6 +137,42 @@ class DownloadsScreenState extends State<DownloadsScreen> {
     }
   }
 
+  static const _statusPriority = {
+    TorrentState.downloading: 0,
+    TorrentState.seeding: 1,
+    TorrentState.stalled: 2,
+    TorrentState.error: 3,
+    TorrentState.paused: 4,
+    TorrentState.queued: 5,
+    TorrentState.checking: 6,
+    TorrentState.completed: 7,
+    TorrentState.unknown: 8,
+  };
+
+  List<TorrentInfo> get _sortedTorrents {
+    var list = _filterState != null ? _torrents.where((t) => t.state == _filterState).toList() : List.of(_torrents);
+
+    list.sort((a, b) {
+      int cmp;
+      switch (_sortMode) {
+        case _SortMode.status:
+          cmp = (_statusPriority[a.state] ?? 9).compareTo(_statusPriority[b.state] ?? 9);
+          if (cmp == 0) cmp = (b.addedOn ?? DateTime(0)).compareTo(a.addedOn ?? DateTime(0));
+        case _SortMode.name:
+          cmp = a.name.toLowerCase().compareTo(b.name.toLowerCase());
+        case _SortMode.addedOn:
+          cmp = (b.addedOn ?? DateTime(0)).compareTo(a.addedOn ?? DateTime(0));
+        case _SortMode.progress:
+          cmp = b.progress.compareTo(a.progress);
+        case _SortMode.size:
+          cmp = b.size.compareTo(a.size);
+      }
+      return _sortAscending ? cmp : -cmp;
+    });
+
+    return list;
+  }
+
   @override
   Widget build(BuildContext context) {
     if (!TorrentManager.isEnabled) {
@@ -164,6 +219,46 @@ class DownloadsScreenState extends State<DownloadsScreen> {
             ],
           ),
         ),
+
+        // Sort & filter bar
+        if (_torrents.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            child: Row(
+              children: [
+                // Sort
+                ComboBox<_SortMode>(
+                  value: _sortMode,
+                  items: const [
+                    ComboBoxItem(value: _SortMode.status, child: Text('Status')),
+                    ComboBoxItem(value: _SortMode.name, child: Text('Name')),
+                    ComboBoxItem(value: _SortMode.addedOn, child: Text('Added')),
+                    ComboBoxItem(value: _SortMode.progress, child: Text('Progress')),
+                    ComboBoxItem(value: _SortMode.size, child: Text('Size')),
+                  ],
+                  onChanged: (v) { if (v != null) setState(() => _sortMode = v); },
+                ),
+                const SizedBox(width: 4),
+                IconButton(
+                  icon: Icon(_sortAscending ? Icons.arrow_upward : Icons.arrow_downward, size: 16),
+                  onPressed: () => setState(() => _sortAscending = !_sortAscending),
+                ),
+                const SizedBox(width: 12),
+                // Filter
+                ComboBox<TorrentState?>(
+                  value: _filterState,
+                  placeholder: const Text('All'),
+                  items: [
+                    const ComboBoxItem(value: null, child: Text('All')),
+                    for (final state in TorrentState.values)
+                      if (_torrents.any((t) => t.state == state))
+                        ComboBoxItem(value: state, child: Text(_stateLabel(state))),
+                  ],
+                  onChanged: (v) => setState(() => _filterState = v),
+                ),
+              ],
+            ),
+          ),
 
         const Divider(),
 
@@ -213,12 +308,13 @@ class DownloadsScreenState extends State<DownloadsScreen> {
       );
     }
 
+    final sorted = _sortedTorrents;
     return ListView.builder(
       controller: widget.scrollController,
       padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-      itemCount: _torrents.length,
+      itemCount: sorted.length,
       itemBuilder: (context, index) => _TorrentTile(
-        torrent: _torrents[index],
+        torrent: sorted[index],
         onPause: _pauseTorrent,
         onResume: _resumeTorrent,
         onDelete: _deleteTorrent,
@@ -249,15 +345,15 @@ class _TorrentTileState extends State<_TorrentTile> {
 
   Color _stateColor(TorrentState state) {
     return switch (state) {
-      TorrentState.downloading => const Color(0xFF2196F3), // blue
-      TorrentState.seeding => const Color(0xFF4CAF50), // green
-      TorrentState.paused => const Color(0xFFFF9800), // orange
-      TorrentState.queued => const Color(0xFF9E9E9E), // grey
-      TorrentState.checking => const Color(0xFF9C27B0), // purple
+      TorrentState.downloading => const Color(0xFF4CAF50), // green
+      TorrentState.seeding => const Color(0xFF2196F3), // blue
+      TorrentState.paused => const Color(0xFF9E9E9E), // gray
+      TorrentState.queued => const Color(0xFF9E9E9E), // gray
+      TorrentState.checking => const Color(0xFFFF9800), // orange
       TorrentState.stalled => const Color(0xFFFF9800), // orange
-      TorrentState.completed => const Color(0xFF4CAF50), // green
+      TorrentState.completed => const Color(0xFF9C27B0), // purple
       TorrentState.error => const Color(0xFFF44336), // red
-      TorrentState.unknown => const Color(0xFF9E9E9E), // grey
+      TorrentState.unknown => const Color(0xFF9E9E9E), // gray
     };
   }
 
@@ -275,19 +371,6 @@ class _TorrentTileState extends State<_TorrentTile> {
     };
   }
 
-  String _stateLabel(TorrentState state) {
-    return switch (state) {
-      TorrentState.downloading => 'Downloading',
-      TorrentState.seeding => 'Seeding',
-      TorrentState.paused => 'Paused',
-      TorrentState.queued => 'Queued',
-      TorrentState.checking => 'Checking',
-      TorrentState.stalled => 'Stalled',
-      TorrentState.completed => 'Completed',
-      TorrentState.error => 'Error',
-      TorrentState.unknown => 'Unknown',
-    };
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -400,11 +483,11 @@ class _TorrentTileState extends State<_TorrentTile> {
                     Text(fileSize(t.size)),
                     if (isActive) ...[
                       _dot(),
-                      Icon(Icons.arrow_downward, size: 11, color: const Color(0xFF2196F3)),
+                      Icon(Icons.arrow_downward, size: 11, color: const Color(0xFF4CAF50)),
                       const SizedBox(width: 2),
                       Text(fileTransferRate(t.downloadSpeed)),
                       const SizedBox(width: 8),
-                      Icon(Icons.arrow_upward, size: 11, color: const Color(0xFF4CAF50)),
+                      Icon(Icons.arrow_upward, size: 11, color: const Color(0xFF2196F3)),
                       const SizedBox(width: 2),
                       Text(fileTransferRate(t.uploadSpeed)),
                     ],

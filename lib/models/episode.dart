@@ -26,6 +26,9 @@ class Episode {
   /// Episode title extracted by anitomy from the filename
   String? parsedTitle;
 
+  /// Regex for user-renamed files: "05 - The Hero of the South.mkv"
+  static final _manualRenamePattern = RegExp(r'^(\d{1,3})\s*-\s*(.+)$');
+
   Episode({
     this.id,
     required this.path,
@@ -46,6 +49,16 @@ class Episode {
     _parsedAnime = parsedAnime ?? FlutterAnitomy().parse(path.fileName!);
     _episodeNumber ??= int.tryParse(_parsedAnime.episode ?? '');
     parsedTitle ??= _parsedAnime.episodeTitle;
+
+    // Fallback: try "DD - Title" pattern for manually renamed files
+    if (_episodeNumber == null || parsedTitle == null) {
+      final match = _manualRenamePattern.firstMatch(name);
+      if (match != null) {
+        _episodeNumber ??= int.tryParse(match.group(1)!);
+        parsedTitle ??= match.group(2)!.trim();
+      }
+    }
+
     this.anilistTitle = anilistTitle;
   }
 
@@ -217,6 +230,15 @@ class Episode {
 
   /// Whether the title was successfully parsed from the filename
   bool get isTitleParsable => parsedTitle != null || _parsedAnime.episodeTitle != null;
+
+  /// Detect special episode type from filename (OVA, ONA, Movie)
+  static final _typePattern = RegExp(r'\b(OVA|ONA|Movie)\b', caseSensitive: false);
+
+  /// Returns the special type label if the filename contains OVA/ONA/Movie, else null
+  String? get typeLabel {
+    final match = _typePattern.firstMatch(name);
+    return match?.group(1)?.toUpperCase();
+  }
 
   /// A cleaned-up version of the filename for display when episode number
   /// and title are both unparseable. Strips bracket groups, replaces

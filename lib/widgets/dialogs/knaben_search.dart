@@ -17,6 +17,9 @@ class KnabenSearchDialog extends StatefulWidget {
   final int? episode;
   final bool isSeasonSearch;
 
+  /// For specials/movies: search by title instead of season+episode number
+  final String? episodeTitle;
+
   const KnabenSearchDialog({
     super.key,
     required this.controller,
@@ -24,6 +27,7 @@ class KnabenSearchDialog extends StatefulWidget {
     this.season,
     this.episode,
     this.isSeasonSearch = false,
+    this.episodeTitle,
   });
 
   @override
@@ -39,12 +43,15 @@ class _KnabenSearchDialogState extends State<KnabenSearchDialog> {
   void initState() {
     super.initState();
     String initial = widget.seriesTitles.isNotEmpty ? widget.seriesTitles.first : "Unknown";
-    if (widget.isSeasonSearch && widget.season != null) {
+    if (widget.episodeTitle != null) {
+      initial += ' ${widget.episodeTitle}';
+    } else if (widget.isSeasonSearch && widget.season != null) {
       initial += ' S${widget.season.toString().padLeft(2, '0')}';
     } else if (widget.season != null && widget.episode != null) {
       initial += ' - ${widget.episode}';
     }
     _searchController = TextEditingController(text: initial);
+    _isCustomSearch = widget.episodeTitle != null;
     _startSearch();
   }
 

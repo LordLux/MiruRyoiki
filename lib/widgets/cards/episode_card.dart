@@ -3,8 +3,11 @@ import 'dart:ui';
 
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/material.dart' show InkWell, Material;
+import 'package:flutter_desktop_context_menu/flutter_desktop_context_menu.dart';
 import 'package:miruryoiki/services/anilist/provider/anilist_provider.dart';
+import 'package:miruryoiki/services/navigation/show_info.dart';
 import 'package:miruryoiki/services/navigation/statusbar.dart';
+import 'package:miruryoiki/utils/color.dart';
 import 'package:provider/provider.dart';
 import 'package:shimmer/shimmer.dart';
 
@@ -29,6 +32,12 @@ class HoverableEpisodeTile extends StatefulWidget {
   final bool isReloadingSeries;
   final AnilistMapping? mapping;
 
+  /// Called when the user wants to change the Sonarr episode link via context menu
+  final void Function(UIEpisode)? onChangeSonarrLink;
+
+  /// Called when the user wants to link a released episode to a local file
+  final void Function(UIEpisode)? onLinkLocalFile;
+
   const HoverableEpisodeTile({
     super.key,
     required this.uiEpisode,
@@ -36,6 +45,8 @@ class HoverableEpisodeTile extends StatefulWidget {
     required this.series,
     required this.mapping,
     this.isReloadingSeries = false,
+    this.onChangeSonarrLink,
+    this.onLinkLocalFile,
   });
 
   @override
@@ -87,7 +98,7 @@ class _HoverableEpisodeTileState extends State<HoverableEpisodeTile> {
           boxShadow: _isHovering
               ? [
                   BoxShadow(
-                    color: widget.series?.localPosterColor?.withOpacity(0.05) ?? Colors.black.withOpacity(0.1),
+                    color: Manager.currentDominantColor?.withOpacity(0.05) ?? Colors.black.withOpacity(0.1),
                     blurRadius: 8,
                     spreadRadius: 1,
                   )
@@ -136,13 +147,9 @@ class _HoverableEpisodeTileState extends State<HoverableEpisodeTile> {
                             padding: const EdgeInsets.only(top: 8.0),
                             child: Builder(builder: (context) {
                               var text = widget.uiEpisode.displayTitle;
-
-                              bool isUnparsed = false;
-                              if (widget.uiEpisode.localEpisode != null && !widget.uiEpisode.localEpisode!.isTitleParsable) {
-                                isUnparsed = true;
-                              } else {
-                                text = "${widget.uiEpisode.episodeNumber} - $text";
-                              }
+                              final epNum = widget.uiEpisode.displayEpisodeNumber;
+                              final fallbackTitle = 'Episode $epNum';
+                              final hasKnownTitle = text != fallbackTitle;
 
                               if (widget.isReloadingSeries) {
                                 return Shimmer.fromColors(
@@ -159,12 +166,37 @@ class _HoverableEpisodeTileState extends State<HoverableEpisodeTile> {
                                   ),
                                 );
                               }
+
+                              // Styling based on episode state
+                              final Color textColor;
+                              final FontWeight fontWeight;
+                              final FontStyle fontStyle;
+
+                              if (!hasKnownTitle) {
+                                textColor = Colors.white.withOpacity(0.7);
+                                fontWeight = FontWeight.w400;
+                                fontStyle = FontStyle.italic;
+                              } else if (widget.uiEpisode.localEpisode != null) {
+                                textColor = Colors.white;
+                                fontWeight = FontWeight.w600;
+                                fontStyle = FontStyle.normal;
+                              } else if (widget.uiEpisode.isFuture) {
+                                textColor = Colors.white.withOpacity(0.6);
+                                fontWeight = FontWeight.w400;
+                                fontStyle = FontStyle.italic;
+                              } else {
+                                // Released
+                                textColor = Colors.white.withOpacity(0.85);
+                                fontWeight = FontWeight.w500;
+                                fontStyle = FontStyle.normal;
+                              }
+
                               return Text(
                                 text,
                                 style: TextStyle(
-                                  color: isUnparsed ? Colors.white.withOpacity(0.7) : Colors.white,
-                                  fontWeight: isUnparsed ? FontWeight.w400 : FontWeight.w600,
-                                  fontStyle: isUnparsed ? FontStyle.italic : FontStyle.normal,
+                                  color: textColor,
+                                  fontWeight: fontWeight,
+                                  fontStyle: fontStyle,
                                   fontSize: 12,
                                 ),
                                 maxLines: 2,
@@ -175,6 +207,31 @@ class _HoverableEpisodeTileState extends State<HoverableEpisodeTile> {
                         ),
                       ),
                     ),
+
+                    // Top-left badge
+                    Builder(builder: (context) {
+                      return Positioned(
+                        left: 6,
+                        top: 6,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          constraints: const BoxConstraints(maxWidth: 120),
+                          decoration: BoxDecoration(
+                            color: Manager.currentDominantColor,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Transform.translate(
+                            offset: const Offset(0, -1),
+                            child: Text(
+                              widget.uiEpisode.episodeNumber > 0 ? widget.uiEpisode.badgeLabel : widget.uiEpisode.shortTitle,
+                              style: TextStyle(color: getTextColorBasedOnAccent(darkColor: const Color.fromARGB(255, 14, 14, 14)), fontSize: 12, fontWeight: FontWeight.bold),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ),
+                      );
+                    }),
 
                     // Progress indicator
                     if (widget.uiEpisode.localEpisode != null)
@@ -218,9 +275,17 @@ class _HoverableEpisodeTileState extends State<HoverableEpisodeTile> {
                 child: Material(
                   color: Colors.transparent,
                   child: GestureDetector(
-                    onSecondaryTapDown: widget.uiEpisode.localEpisode != null ? (_) => _menuController.open() : null,
+                    onSecondaryTapDown: (details) {
+                      if (widget.uiEpisode.localEpisode != null) {
+                        _menuController.open();
+                      } else if (widget.uiEpisode.isReleased) {
+                        _showReleasedMenu();
+                      } else if (widget.uiEpisode.isFuture) {
+                        _showFutureMenu();
+                      }
+                    },
                     child: InkWell(
-                      onTap: widget.onTap,
+                      onTap: widget.uiEpisode.isFuture ? null : widget.onTap,
                       splashColor: widget.series?.localPosterColor?.withOpacity(0.3),
                       highlightColor: Colors.white.withOpacity(0.05),
                       borderRadius: BorderRadius.circular(ScreenUtils.kEpisodeCardBorderRadius),
@@ -231,7 +296,7 @@ class _HoverableEpisodeTileState extends State<HoverableEpisodeTile> {
                           color: _isHovering ? Colors.white.withOpacity(0.03) : Colors.transparent,
                         ),
                         child: Center(
-                          child: widget.uiEpisode.isReleased && widget.uiEpisode.localEpisode == null
+                          child: widget.uiEpisode.localEpisode == null
                               ? AnimatedOpacity(
                                   duration: const Duration(milliseconds: 200),
                                   opacity: _isHovering ? 1.0 : 0.0,
@@ -242,7 +307,7 @@ class _HoverableEpisodeTileState extends State<HoverableEpisodeTile> {
                                       shape: BoxShape.circle,
                                     ),
                                     child: Icon(
-                                      FluentIcons.download,
+                                      widget.uiEpisode.isFuture ? FluentIcons.ringer : FluentIcons.download,
                                       color: Colors.white,
                                       size: 24,
                                     ),
@@ -279,6 +344,8 @@ class _HoverableEpisodeTileState extends State<HoverableEpisodeTile> {
         controller: _menuController,
         series: widget.series!,
         episode: widget.uiEpisode.localEpisode!,
+        uiEpisode: widget.uiEpisode,
+        onChangeSonarrLink: widget.onChangeSonarrLink,
         context: context,
         onEpisodeChanged: () {
           if (mounted) setState(() {});
@@ -287,6 +354,33 @@ class _HoverableEpisodeTileState extends State<HoverableEpisodeTile> {
       );
     }
     return childWidget;
+  }
+
+  void _showReleasedMenu() {
+    popUpContextMenu(Menu(items: [
+      MenuItem(
+        label: 'Search for Download',
+        onClick: (_) => widget.onTap(),
+      ),
+      if (widget.onLinkLocalFile != null) ...[
+        MenuItem.separator(),
+        MenuItem(
+          label: 'Link to Local File...',
+          onClick: (_) => widget.onLinkLocalFile!(widget.uiEpisode),
+        ),
+      ],
+    ]));
+  }
+
+  void _showFutureMenu() {
+    final airDate = widget.uiEpisode.airDate;
+    final label = airDate != null ? 'Set Reminder (${widget.uiEpisode.stateDescription})' : 'Set Reminder';
+    popUpContextMenu(Menu(items: [
+      MenuItem(
+        label: label,
+        onClick: (_) => snackBar('Reminders are not yet available.', severity: InfoBarSeverity.warning),
+      ),
+    ]));
   }
 
   bool thumbnailExists(PathString? thumbnailPath) => thumbnailPath != null && thumbnailPath.pathMaybe != null && File(thumbnailPath.path).existsSync();

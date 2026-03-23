@@ -10,6 +10,12 @@ class SonarrEpisode {
   final bool monitored;
   final String? airDateUtc;
   final String? overview;
+  final int? absoluteEpisodeNumber;
+  final int? sceneEpisodeNumber;
+  final int? sceneAbsoluteEpisodeNumber;
+  final int? runtime;
+  final String? finaleType;
+  final int? episodeFileId;
 
   const SonarrEpisode({
     required this.id,
@@ -20,6 +26,12 @@ class SonarrEpisode {
     required this.monitored,
     this.airDateUtc,
     this.overview,
+    this.absoluteEpisodeNumber,
+    this.sceneEpisodeNumber,
+    this.sceneAbsoluteEpisodeNumber,
+    this.runtime,
+    this.finaleType,
+    this.episodeFileId,
   });
 
   factory SonarrEpisode.fromJson(Map<String, dynamic> json) {
@@ -32,6 +44,12 @@ class SonarrEpisode {
       monitored: json['monitored'] as bool? ?? true,
       airDateUtc: json['airDateUtc'] as String?,
       overview: json['overview'] as String?,
+      absoluteEpisodeNumber: json['absoluteEpisodeNumber'] as int?,
+      sceneEpisodeNumber: json['sceneEpisodeNumber'] as int?,
+      sceneAbsoluteEpisodeNumber: json['sceneAbsoluteEpisodeNumber'] as int?,
+      runtime: json['runtime'] as int?,
+      finaleType: json['finaleType'] as String?,
+      episodeFileId: json['episodeFileId'] as int?,
     );
   }
 

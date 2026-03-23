@@ -18,11 +18,11 @@ void copyToClipboard(String text) {
 
 void openFile(PathString path) async {
   if (path.pathMaybe == null || path.path.isEmpty) {
-    snackBar('Nessun file selezionato', severity: InfoBarSeverity.warning);
+    snackBar('No file selected', severity: InfoBarSeverity.warning);
     return;
   }
   if (!File(path.path).existsSync()) {
-    snackBar('Il file selezionato non esiste', severity: InfoBarSeverity.error);
+    snackBar('The selected file does not exist', severity: InfoBarSeverity.error);
     return;
   }
   await Future.microtask(() => OpenFile.open(path.path));

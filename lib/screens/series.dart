@@ -54,6 +54,8 @@ import '../models/ui_episode.dart';
 import '../models/sonarr/sonarr_episode.dart';
 import '../widgets/dialogs/episode_search.dart';
 import '../widgets/episode_grid.dart';
+import '../widgets/series_download_view.dart';
+import '../widgets/dialogs/sonarr_manual_link_dialog.dart';
 
 /// Duration for which AniList data is considered fresh and doesn't need refetching
 const Duration kAnilistCacheDuration = Duration(days: 1);
@@ -87,6 +89,15 @@ class SeriesScreenState extends State<SeriesScreen> {
   bool isReloadingSeries = false;
 
   List<SonarrEpisode>? _sonarrEpisodes;
+  int? _sonarrSeriesId;
+
+  /// Sonarr episodes filtered to the current target season only
+  List<SonarrEpisode>? get _sonarrEpisodesForTarget {
+    if (_sonarrEpisodes == null) return null;
+    final seasonNum = _cachedTarget?.asSeason?.seasonNumber;
+    if (seasonNum == null) return _sonarrEpisodes;
+    return _sonarrEpisodes!.where((e) => e.seasonNumber == seasonNum).toList();
+  }
 
   bool _isPosterHovering = false;
   bool _isBannerHovering = false;
@@ -258,7 +269,10 @@ class SeriesScreenState extends State<SeriesScreen> {
     _cachedTarget = widget.target;
     if (_cachedMapping?.viewType != null) _currentViewType = _cachedMapping!.viewType!;
 
-    if (isMappingMode) nextFrame(() => _initializeMappingData());
+    if (isMappingMode)
+      nextFrame(() => _initializeMappingData());
+    else if (TorrentManager.isEnabled)
+      nextFrame(() => _fetchSonarrEpisodes());
 
     parser = SimpleHtmlParser(context);
   }
@@ -388,24 +402,72 @@ class SeriesScreenState extends State<SeriesScreen> {
     final torrentController = TorrentManager.downloadController;
     if (torrentController == null) return;
 
-    final anilistId = _cachedMapping?.anilistId;
+    final anilistId = _cachedMapping?.anilistId ?? _cachedSeries?.primaryAnilistId;
     if (anilistId == null) return;
 
-    final titleObj = _cachedMapping?.anilistData?.title;
+    final titleObj = _cachedMapping?.anilistData?.title ?? _cachedSeries?.anilistData?.title;
     final fallbackTitle = titleObj?.userPreferred ?? titleObj?.english ?? titleObj?.romaji ?? "";
 
+    logTrace('[SeriesScreen] Fetching Sonarr episodes: anilistId=$anilistId, title="$fallbackTitle"');
     if (!mounted) return;
 
     try {
-      final result = await torrentController.syncAndFetchEpisodes(animeId: anilistId, altTitle: fallbackTitle);
+      var result = await torrentController.syncAndFetchEpisodes(animeId: anilistId, altTitle: fallbackTitle);
+
+      // If Sonarr just added the series, episodes may not be available yet — retry once
+      if (result.$2.isEmpty) {
+        logTrace('[SeriesScreen] No episodes returned, retrying after 3s...');
+        await Future.delayed(const Duration(seconds: 3));
+        if (!mounted) return;
+        result = await torrentController.syncAndFetchEpisodes(animeId: anilistId, altTitle: fallbackTitle);
+      }
+
+      logTrace('[SeriesScreen] Got sonarrSeriesId=${result.$1}, ${result.$2.length} episodes');
       if (mounted) {
         setState(() {
+          _sonarrSeriesId = result.$1;
           _sonarrEpisodes = result.$2;
         });
       }
     } catch (e, stack) {
-      logErr('Failed to fetch sonarr episodes in SeriesScreen', e, stack);
+      logErr('[SeriesScreen] Failed to fetch sonarr episodes', e, stack);
     }
+  }
+
+  void _openManageEpisodesDialog(Series series) {
+    if (_sonarrEpisodes == null) return;
+    logTrace('[SeriesScreen] Opening ManageEpisodes dialog for "${series.name}" (sonarrId=$_sonarrSeriesId, ${_sonarrEpisodes!.length} cached eps)');
+    showDialog(
+      context: context,
+      builder: (context) => ManageEpisodesDialog(
+        sonarrEpisodes: _sonarrEpisodes!,
+        localSeries: series,
+        seriesTitle: series.name,
+        sonarrSeriesId: _sonarrSeriesId,
+      ),
+    );
+  }
+
+  Future<void> _setupSonarrLink(Series series) async {
+    final anilistId = series.primaryAnilistId;
+    if (anilistId == null) return;
+
+    final titleObj = series.anilistData?.title;
+    final title = AnilistTitle(
+      romaji: titleObj?.romaji,
+      english: titleObj?.english,
+      userPreferred: titleObj?.userPreferred,
+    );
+
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => SonarrManualLinkDialog(
+        animeId: anilistId,
+        animeTitle: title,
+      ),
+    );
+
+    if (result == true && mounted) _fetchSonarrEpisodes();
   }
 
   Future<ImageProvider?> _getMappingImage({required bool banner}) async {
@@ -846,30 +908,42 @@ class SeriesScreenState extends State<SeriesScreen> {
         if (!isMapping) ...[
           SizedBox(height: 6.0),
           _buildManageLinksButton(anilistProvider, series),
-          if (series.isLinked && series.anilistData != null) ...[
+          if (series.isLinked && series.anilistData != null && TorrentManager.isEnabled) ...[
             SizedBox(height: 6.0),
-            StandardButton(
-              label: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(mat.Icons.download),
-                  HDiv(4),
-                  Text(
-                    'Download Episodes',
-                    style: getStyleBasedOnAccent(false),
-                  ),
-                ],
+            if (_sonarrSeriesId != null && _sonarrEpisodes != null)
+              StandardButton(
+                label: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(mat.Icons.playlist_add_check),
+                    HDiv(4),
+                    Text(
+                      'Manage Episodes',
+                      style: getStyleBasedOnAccent(false),
+                    ),
+                  ],
+                ),
+                expand: true,
+                tooltip: 'Manage episode file links with Sonarr',
+                onPressed: () => _openManageEpisodesDialog(series),
+              )
+            else
+              StandardButton(
+                label: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(mat.Icons.link),
+                    HDiv(4),
+                    Text(
+                      'Link to Sonarr',
+                      style: getStyleBasedOnAccent(false),
+                    ),
+                  ],
+                ),
+                expand: true,
+                tooltip: 'Set up Sonarr series link for episode management',
+                onPressed: () => _setupSonarrLink(series),
               ),
-              expand: true,
-              tooltip: !TorrentManager.isEnabled
-                  ? 'Configure Sonarr & qBittorrent in Settings first'
-                  : 'Search and download episodes via Sonarr',
-              onPressed: !TorrentManager.isEnabled
-                  ? null
-                  : () async {
-                      // Handled inline via EpisodeGrid now
-                    },
-            ),
           ],
         ],
       ],
@@ -1194,14 +1268,14 @@ class SeriesScreenState extends State<SeriesScreen> {
                   padding: EdgeInsets.only(right: 2),
                   child: EpisodeGrid(
                     collapsable: false,
-                    episodes: UIEpisode.merge(_cachedTarget!.episodes, _sonarrEpisodes),
+                    episodes: UIEpisode.merge(_cachedTarget!.episodes, _sonarrEpisodesForTarget),
                     onTap: (uiEpisode) {
                       // If the episode can be played, play it
                       if (uiEpisode.canPlay) {
                         _playEpisode(uiEpisode.localEpisode!);
                         return;
                       }
-                      
+
                       // If the episode is released or in the future, allow searching for it in Sonarr
                       if (uiEpisode.state == EpisodeState.released || uiEpisode.state == EpisodeState.future) {
                         final sonarrEp = uiEpisode.sonarrEpisode;

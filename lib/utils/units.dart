@@ -38,10 +38,10 @@ enum FileTransferRateUnit implements FileUnit {
 }
 
 extension FileUnitX on FileUnit {
-  String get label => symbol.replaceAll('ps', '/s'); // KB/s or KBps
+  String get label => symbol.replaceAll('ps', '/s');
 }
 
-String formatWithUnit(num value, FileUnit unit) => '${(value / unit.scale).toStringAsFixed(2)} ${unit.symbol}';
+String formatWithUnit(num value, FileUnit unit) => '${(value / unit.scale).toStringAsFixed(2)} ${unit.label}';
 
 String _fileXUnit(int value, List<FileUnit> units, [FileUnit? unit]) {
   if (unit != null) return formatWithUnit(value, unit);
@@ -49,11 +49,14 @@ String _fileXUnit(int value, List<FileUnit> units, [FileUnit? unit]) {
   for (final unit in units.reversed) {
     if (value >= unit.scale) return formatWithUnit(value, unit);
   }
-  return formatWithUnit(value, units.last);
+  return formatWithUnit(value, units.first);
 }
 
 /// Format a file size in bytes into a human-readable string with an appropriate unit (KB, MB, etc.)
 String fileSize(int size, [FileSizeUnit? unit]) => _fileXUnit(size, FileSizeUnit.values, unit);
 
-/// Format a file transfer rate in bytes per second into a human-readable string with an appropriate unit (KB/s, MB/s, etc.)
-String fileTransferRate(int rate, [FileTransferRateUnit? unit]) => _fileXUnit(rate, FileTransferRateUnit.values, unit);
+/// Format a file transfer rate in bytes per second into a human-readable string with an appropriate unit (B/s, KB/s, MB/s, etc.)
+String fileTransferRate(int rate, [FileTransferRateUnit? unit]) {
+  if (rate <= 0) return '0 B/s';
+  return _fileXUnit(rate, FileTransferRateUnit.values, unit);
+}

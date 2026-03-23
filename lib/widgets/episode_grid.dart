@@ -18,6 +18,11 @@ class EpisodeGrid extends StatelessWidget {
   final bool isReloadingSeries;
   final int? crossAxisCount;
   final EdgeInsets padding;
+  final void Function(UIEpisode)? onChangeSonarrLink;
+  final void Function(UIEpisode)? onLinkLocalFile;
+
+  /// When true, disables own scrolling so the grid can be embedded in a parent scrollable
+  final bool nested;
 
   const EpisodeGrid({
     super.key,
@@ -30,6 +35,9 @@ class EpisodeGrid extends StatelessWidget {
     required this.onTap,
     this.isReloadingSeries = false,
     this.crossAxisCount,
+    this.onChangeSonarrLink,
+    this.onLinkLocalFile,
+    this.nested = false,
     EdgeInsets? padding,
   }) : padding = padding ?? const EdgeInsets.only(top: 66.0);
 
@@ -37,6 +45,24 @@ class EpisodeGrid extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
+        final delegate = SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: (crossAxisCount ?? (constraints.maxWidth ~/ 200)).clamp(1, 10),
+          childAspectRatio: 1.78, // 16:9 aspect ratio
+          crossAxisSpacing: 12,
+          mainAxisSpacing: 12,
+        );
+
+        if (nested) {
+          return GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            padding: padding,
+            gridDelegate: delegate,
+            itemCount: episodes.length,
+            itemBuilder: (context, index) => _buildEpisodeTile(context, episodes[index], series, mapping),
+          );
+        }
+
         return DynMouseScroll(
           stopScroll: KeyboardState.ctrlPressedNotifier,
           scrollSpeed: 1.0,
@@ -52,17 +78,9 @@ class EpisodeGrid extends StatelessWidget {
                   physics: physics,
                   padding: padding,
                   controller: controller,
-                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: (crossAxisCount ?? (constraints.maxWidth ~/ 200)).clamp(1, 10),
-                    childAspectRatio: 1.78, // 16:9 aspect ratio
-                    crossAxisSpacing: 12,
-                    mainAxisSpacing: 12,
-                  ),
+                  gridDelegate: delegate,
                   itemCount: episodes.length,
-                  itemBuilder: (context, index) {
-                    final episode = episodes[index];
-                    return _buildEpisodeTile(context, episode, series, mapping);
-                  },
+                  itemBuilder: (context, index) => _buildEpisodeTile(context, episodes[index], series, mapping),
                 );
               },
             );
@@ -79,6 +97,8 @@ class EpisodeGrid extends StatelessWidget {
       series: series,
       isReloadingSeries: isReloadingSeries,
       mapping: mapping,
+      onChangeSonarrLink: onChangeSonarrLink,
+      onLinkLocalFile: onLinkLocalFile,
     );
   }
 }

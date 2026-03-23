@@ -101,6 +101,22 @@ Color getPrimaryColorBasedOnAccent() {
   return brightness > 0.5 ? Colors.black : Colors.white;
 }
 
+Color getTextColorBasedOnAccent({
+  double preferBlack = 0.5,
+  double preferWhite = 0.5,
+  Color lightColor = Colors.white,
+  Color darkColor = Colors.black,
+}) {
+  final Color color = Manager.currentDominantColor ?? Manager.accentColor;
+  return getTextColor(
+    color,
+    preferBlack: preferBlack,
+    preferWhite: preferWhite,
+    lightColor: lightColor,
+    darkColor: darkColor,
+  );
+}
+
 /// Finds the best color for the text based on the background color
 /// works on contrast, not brightness
 Color getTextColor(
@@ -342,7 +358,7 @@ Future<Color?> _extractColor(String? imagePath) async {
         imagePath,
         preferBackground: preferBackground,
       );
-      
+
       final adjustedColor = adjustDominantColor(newColor);
 
       logMulti([
@@ -358,9 +374,10 @@ Future<Color?> _extractColor(String? imagePath) async {
   return null;
 }
 
+/// Adjust the dominant color to ensure it's not too dark for text contrast
 Color? adjustDominantColor(Color? color) {
   if (color == null) return null;
-  
+
   // Make the color lighter, but prevent infinite loop
   int maxIterations = 200;
   int count = 0;

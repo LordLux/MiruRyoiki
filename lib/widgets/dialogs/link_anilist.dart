@@ -25,6 +25,7 @@ import '../../utils/logging.dart';
 import '../../utils/path.dart';
 import '../../utils/shell.dart';
 import '../buttons/button.dart';
+import '../file_explorer.dart';
 import '../buttons/hyperlink.dart';
 import '../buttons/wrapper.dart';
 import '../tooltip_wrapper.dart';
@@ -526,7 +527,28 @@ class AnilistLinkMultiContentState extends State<AnilistLinkMultiContent> {
                   children: [
                     Text('Select the local Folder or File:'),
                     SizedBox(height: 8),
-                    Expanded(child: _buildPathSelector()),
+                    Expanded(
+                      child: FileExplorer(
+                        rootPath: widget.series.path,
+                        initialDirectory: currentDirectory,
+                        allowFiles: true,
+                        allowCurrentFolder: true,
+                        initialSelection: selectedLocalPath != null ? {selectedLocalPath!} : null,
+                        onSelectionChanged: (sel) {
+                          setState(() {
+                            selectedLocalPath = sel.firstOrNull;
+                            if (sel.isNotEmpty) {
+                              // Update currentDirectory for display
+                              final selected = sel.first;
+                              if (Directory(selected.path).existsSync()) {
+                                currentDirectory = selected;
+                              }
+                            }
+                          });
+                          _checkForDuplicates();
+                        },
+                      ),
+                    ),
                     if (selectedLocalPath != null)
                       Padding(
                         padding: const EdgeInsets.only(top: 8.0),
@@ -710,102 +732,6 @@ class AnilistLinkMultiContentState extends State<AnilistLinkMultiContent> {
     if (path == seriesPath) return '(Main Series Folder)';
     if (path.path.startsWith(seriesPath.path)) return path.path.substring(seriesPath.path.length + 1);
     return path.path;
-  }
-
-  Widget _buildPathSelector() {
-    final isSelected = selectedLocalPath == null;
-    return Card(
-      padding: EdgeInsets.all(12),
-      borderRadius: BorderRadius.circular(8),
-      backgroundColor: isSelected ? Manager.accentColor.lighter.withOpacity(0.1) : Colors.transparent,
-      borderColor: isSelected ? Manager.accentColor.lighter : FluentTheme.of(context).resources.controlStrokeColorDefault,
-      child: Column(
-        children: [
-          // Path navigation bar
-          Row(
-            children: [
-              Button(
-                onPressed: currentDirectory == widget.series.path
-                    ? null
-                    : () {
-                        setState(() {
-                          currentDirectory = PathString(Directory(currentDirectory!.path).parent.path);
-                          _loadFolderContents();
-                        });
-                      },
-                child: Icon(FluentIcons.back),
-              ),
-              SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  _getDisplayPath(currentDirectory ?? PathString('')),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
-          ),
-          Divider(),
-          // File/folder list
-          Expanded(
-            child: ValueListenableBuilder(
-                valueListenable: KeyboardState.ctrlPressedNotifier,
-                builder: (context, isCtrlPressed, _) {
-                  return Padding(
-                    padding: EdgeInsets.only(top: 2.0),
-                    child: ListView.builder(
-                      physics: isCtrlPressed ? const NeverScrollableScrollPhysics() : null,
-                      itemCount: folderContents.length + 1, // +1 for current folder option
-                      itemBuilder: (context, index) {
-                        if (index == 0) {
-                          // Option to select the current directory itself
-                          final isSelected = selectedLocalPath == currentDirectory;
-                          // Option to select the current directory itself
-                          return SelectableTile(
-                            icon: FileEntityIcon(context, true, isSelected),
-                            isSelected: isSelected,
-                            title: Text('(This Folder)', style: isSelected ? TextStyle(fontWeight: FontWeight.bold) : null),
-                            onTap: () {
-                              setState(() {
-                                selectedLocalPath = currentDirectory;
-                              });
-                              _checkForDuplicates();
-                            },
-                          );
-                        }
-
-                        final entity = folderContents[index - 1];
-                        final isDir = entity is Directory;
-                        final fileName = entity.path.split(Platform.pathSeparator).last;
-                        final isSelected = selectedLocalPath == PathString(entity.path);
-
-                        return SelectableTile(
-                          title: Text(fileName, style: isSelected ? TextStyle(fontWeight: FontWeight.bold) : null),
-                          icon: FileEntityIcon(context, isDir, isSelected),
-                          isSelected: isSelected,
-                          onTap: () {
-                            if (isDir) {
-                              setState(() {
-                                // Both select and navigate to the folder
-                                selectedLocalPath = PathString(entity.path);
-                                currentDirectory = PathString(entity.path);
-                                _loadFolderContents();
-                              });
-                            } else {
-                              setState(() {
-                                selectedLocalPath = PathString(entity.path);
-                              });
-                            }
-                            _checkForDuplicates();
-                          },
-                        );
-                      },
-                    ),
-                  );
-                }),
-          ),
-        ],
-      ),
-    );
   }
 
   Widget _buildAnilistSearch() {

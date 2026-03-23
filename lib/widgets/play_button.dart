@@ -8,7 +8,7 @@ import 'package:material_shapes/material_shapes.dart';
 
 import '../models/episode.dart';
 import '../services/library/library_provider.dart';
-import '../utils/logging.dart';
+import '../utils/color.dart';
 
 class PlayButton extends StatefulWidget {
   final Episode episode;
@@ -112,7 +112,7 @@ class _PlayButtonState extends State<PlayButton> with TickerProviderStateMixin {
   }
 
   void _onHoverChanged(bool isHovered) {
-    log(isHovered ? 'Play button hovered' : 'Play button unhovered');
+    // log(isHovered ? 'Play button hovered' : 'Play button unhovered');
     setState(() => _isHovered = isHovered);
 
     if (isHovered) {
@@ -221,7 +221,7 @@ class _PlayButtonState extends State<PlayButton> with TickerProviderStateMixin {
           Icon(
             mat.Icons.play_arrow,
             size: size * 0.6,
-            color: Colors.white,
+            color: getTextColorBasedOnAccent(darkColor: const Color.fromARGB(255, 14, 14, 14)),
           )
         ],
       ),
@@ -250,7 +250,7 @@ class _PlayButtonState extends State<PlayButton> with TickerProviderStateMixin {
         Icon(
           mat.Icons.play_arrow,
           size: size * 0.6,
-          color: Colors.white,
+          color: getTextColorBasedOnAccent(darkColor: const Color.fromARGB(255, 24, 24, 24)),
           fill: 1,
         )
       ],

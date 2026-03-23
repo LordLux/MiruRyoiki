@@ -1,5 +1,6 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import '../manager.dart';
+import '../utils/logging.dart';
 import '../utils/time.dart';
 import 'episode.dart';
 import 'sonarr/sonarr_episode.dart';
@@ -127,7 +128,29 @@ class UIEpisode {
     if (localEpisode != null && localEpisode!.displayTitle != null) return localEpisode!.displayTitle!;
     if (sonarrEpisode != null && sonarrEpisode!.title.isNotEmpty && sonarrEpisode!.title != "Unknown") return sonarrEpisode!.title;
 
+    // If no episode number is known, show the cleaned filename instead of "Episode 0"
+    if (episodeNumber <= 0 && localEpisode != null) return localEpisode!.cleanedName;
+
     return 'Episode $episodeNumber';
+  }
+
+  /// The episode number to display — uses absoluteEpisodeNumber for specials (season 0),
+  /// regular episodeNumber for normal seasons
+  int get displayEpisodeNumber =>
+      isSpecial ? (sonarrEpisode?.absoluteEpisodeNumber ?? episodeNumber) : episodeNumber;
+
+  /// Whether this episode is a special (season 0)
+  bool get isSpecial => sonarrEpisode?.seasonNumber == 0;
+
+  /// Label for the top-left badge on the episode card.
+  /// Shows OVA/ONA/Movie when detected, otherwise the episode number (or cleaned name if unknown).
+  String get badgeLabel {
+    final type = localEpisode?.typeLabel;
+    if (type != null) return type;
+    final num = displayEpisodeNumber;
+    if (num > 0) return num.toString();
+    if (localEpisode != null) return localEpisode!.cleanedName;
+    return num.toString();
   }
 
   /// Short display title for UI constraints
@@ -204,6 +227,7 @@ class UIEpisode {
   String toString() => 'UIEpisode(episodeNumber: $episodeNumber, state: $state, title: $displayTitle)';
 
   static List<UIEpisode> merge(List<Episode>? localEpisodes, List<SonarrEpisode>? sonarrEpisodes) {
+    logTrace('[UIEpisode.merge] local=${localEpisodes?.length ?? 0}, sonarr=${sonarrEpisodes?.length ?? 0}');
     final sonarrMap = {
       if (sonarrEpisodes != null)
         for (var e in sonarrEpisodes) e.episodeNumber: e
@@ -226,7 +250,6 @@ class UIEpisode {
     if (sonarrEpisodes != null) {
       for (final sonarr in sonarrEpisodes) {
         if (!addedNumbers.contains(sonarr.episodeNumber)) {
-          // Find if it's released or future
           final hasFile = sonarr.hasFile;
           final airDateStr = sonarr.airDateUtc;
           DateTime? airDate;
@@ -234,22 +257,34 @@ class UIEpisode {
           if (airDateStr != null && airDateStr.isNotEmpty) //
             airDate = DateTime.tryParse(airDateStr);
 
-          bool isReleased = airDate != null ? airDate.isBefore(now) : hasFile;
-
-          if (isReleased) {
-            result.add(UIEpisode.released(
+          // If Sonarr has a file for this episode, treat it as downloaded
+          // even without a local Episode match (e.g. after manual import)
+          if (hasFile) {
+            result.add(UIEpisode(
               episodeNumber: sonarr.episodeNumber,
               sonarrEpisode: sonarr,
               anilistTitle: sonarr.title,
+              state: EpisodeState.downloaded,
               airDate: airDate,
             ));
           } else {
-            result.add(UIEpisode.future(
-              episodeNumber: sonarr.episodeNumber,
-              sonarrEpisode: sonarr,
-              anilistTitle: sonarr.title,
-              airDate: airDate,
-            ));
+            bool isReleased = airDate != null ? airDate.isBefore(now) : false;
+
+            if (isReleased) {
+              result.add(UIEpisode.released(
+                episodeNumber: sonarr.episodeNumber,
+                sonarrEpisode: sonarr,
+                anilistTitle: sonarr.title,
+                airDate: airDate,
+              ));
+            } else {
+              result.add(UIEpisode.future(
+                episodeNumber: sonarr.episodeNumber,
+                sonarrEpisode: sonarr,
+                anilistTitle: sonarr.title,
+                airDate: airDate,
+              ));
+            }
           }
         }
       }
