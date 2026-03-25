@@ -95,6 +95,15 @@ class SearchedSeriesScreenState extends State<SearchedSeriesScreen> {
   bool _loadingStats = false;
   bool _statsLoaded = false;
 
+  // Tab history state
+  final Map<String, ScrollController> _tabScrollControllers = {};
+  bool _restoringFromHistory = false;
+  Map<String, dynamic>? _pendingViewState;
+
+  ScrollController _getOrCreateController(String tabName) {
+    return _tabScrollControllers.putIfAbsent(tabName, () => ScrollController());
+  }
+
   // Widget: whether to allocate a full row or divide it in 2 columns [true = full row, false = 2 columns]
   Map<InfoLabel, bool> getInfos(AnimeOverview? series) {
     return {
@@ -210,6 +219,13 @@ class SearchedSeriesScreenState extends State<SearchedSeriesScreen> {
     deferredPointerLink = DeferredPointerHandlerLink();
     nextFrame(() => _loadAnilistData());
     parser = SimpleHtmlParser(context);
+
+    // Listen for intra-page back/forward restores
+    Manager.navigation.restoreNotifier.addListener(_onRestoreFromHistory);
+
+    // Store pending viewState for deferred resolution after _initTabs
+    final viewState = Manager.navigation.currentView?.viewState;
+    if (viewState != null) _pendingViewState = viewState;
   }
 
   void _initTabs() {
@@ -232,11 +248,52 @@ class SearchedSeriesScreenState extends State<SearchedSeriesScreen> {
 
     _tabNames.addAll(tabNames);
     _pages.addAll(pages);
+
+    // Set initial viewState on the navigation item so the original entry is restorable
+    final currentView = Manager.navigation.currentView;
+    if (currentView != null && currentView.viewState == null) {
+      currentView.viewState = {
+        'tabIndex': 0,
+        'tabName': _tabNames.isNotEmpty ? _tabNames[0] : 'Overview',
+        'mementos': <String, double>{},
+      };
+    }
+
+    // Restore tab from pending viewState (re-entry after full page exit)
+    if (_pendingViewState != null) {
+      _restoringFromHistory = true;
+      final tabName = _pendingViewState!['tabName'] as String?;
+      final tabIndex = _pendingViewState!['tabIndex'] as int?;
+      int targetIndex = 0;
+      if (tabName != null && _tabNames.contains(tabName)) {
+        targetIndex = _tabNames.indexOf(tabName);
+      } else if (tabIndex != null) {
+        targetIndex = tabIndex.clamp(0, _tabNames.length - 1);
+      }
+      if (targetIndex != 0) _onTabChanged(targetIndex);
+      _restoringFromHistory = false;
+      _pendingViewState = null;
+    }
   }
 
   /// Called whenever the user selects a tab. Triggers lazy data loading
   void _onTabChanged(int index) {
     if (!mounted) return;
+    if (index == currentTabIndex) return;
+
+    // Push tab history unless we're restoring from back/forward
+    if (!_restoringFromHistory) {
+      _captureCurrentScrollOffset();
+      final currentMementos = Map<String, double>.from(
+        (Manager.navigation.currentView?.viewState?['mementos'] as Map?)?.cast<String, double>() ?? {},
+      );
+      Manager.navigation.pushTabState({
+        'tabIndex': index,
+        'tabName': _tabNames[index],
+        'mementos': currentMementos,
+      });
+    }
+
     setState(() => currentTabIndex = index);
     if (index >= _tabNames.length) return;
     switch (_tabNames[index]) {
@@ -251,11 +308,74 @@ class SearchedSeriesScreenState extends State<SearchedSeriesScreen> {
     }
   }
 
+  /// Saves the current tab's scroll offset into the current NavigationItem's viewState mementos
+  void _captureCurrentScrollOffset() {
+    if (currentTabIndex >= _tabNames.length) return;
+    final tabName = _tabNames[currentTabIndex];
+    final controller = _tabScrollControllers[tabName];
+    if (controller != null && controller.hasClients) {
+      final viewState = Manager.navigation.currentView?.viewState;
+      if (viewState != null) {
+        final mementos = (viewState['mementos'] as Map?)?.cast<String, double>() ?? <String, double>{};
+        mementos[tabName] = controller.offset;
+        viewState['mementos'] = mementos;
+      }
+    }
+  }
+
+  /// Handles intra-page back/forward restore events
+  void _onRestoreFromHistory() {
+    // Guard: only act if this screen is the current view
+    final currentView = Manager.navigation.currentView;
+    if (currentView == null || !currentView.id.startsWith('/searched_series:')) return;
+
+    final viewState = currentView.viewState;
+    if (viewState == null) return;
+
+    // Capture current tab's scroll before switching
+    _captureCurrentScrollOffset();
+
+    final tabName = viewState['tabName'] as String?;
+    final tabIndex = viewState['tabIndex'] as int?;
+
+    // Resolve target index: prefer by name, fall back to clamped index
+    int targetIndex;
+    if (tabName != null && _tabNames.contains(tabName)) {
+      targetIndex = _tabNames.indexOf(tabName);
+    } else if (tabIndex != null) {
+      targetIndex = tabIndex.clamp(0, _tabNames.length - 1);
+    } else {
+      return;
+    }
+
+    _restoringFromHistory = true;
+    _onTabChanged(targetIndex);
+    _restoringFromHistory = false;
+
+    // Restore scroll offset for the target tab
+    final mementos = (viewState['mementos'] as Map?)?.cast<String, double>();
+    final targetTabName = tabName ?? (targetIndex < _tabNames.length ? _tabNames[targetIndex] : null);
+    if (mementos != null && targetTabName != null) {
+      final savedOffset = mementos[targetTabName];
+      if (savedOffset != null && savedOffset > 0) {
+        final controller = _getOrCreateController(targetTabName);
+        nextFrame(() {
+          if (mounted && controller.hasClients) {
+            final max = controller.position.maxScrollExtent;
+            controller.jumpTo(savedOffset.clamp(0.0, max));
+          }
+        });
+      }
+    }
+  }
+
   /// Resets all per-tab state when navigating to a new series
   void _resetTabState() {
     currentTabIndex = 0;
     _tabNames.clear();
     _pages.clear();
+    for (final c in _tabScrollControllers.values) c.dispose();
+    _tabScrollControllers.clear();
     _allCharacters.clear();
     _characterPageInfo = null;
     _loadingMoreCharacters = false;
@@ -351,6 +471,8 @@ class SearchedSeriesScreenState extends State<SearchedSeriesScreen> {
 
   @override
   void dispose() {
+    Manager.navigation.restoreNotifier.removeListener(_onRestoreFromHistory);
+    for (final c in _tabScrollControllers.values) c.dispose();
     deferredPointerLink?.dispose();
     super.dispose();
   }
@@ -684,12 +806,13 @@ class SearchedSeriesScreenState extends State<SearchedSeriesScreen> {
   }
 
   /// Shared smooth-scroll wrapper used by every tab
-  Widget _buildScrollWrapper(List<Widget> children) {
+  Widget _buildScrollWrapper(String tabName, List<Widget> children) {
     return ClipRRect(
       borderRadius: BorderRadius.circular(ScreenUtils.kStatCardBorderRadius),
       child: ScrollConfiguration(
         behavior: ScrollConfiguration.of(context).copyWith(overscroll: true, platform: TargetPlatform.windows, scrollbars: false),
         child: DynMouseScroll(
+          controller: _getOrCreateController(tabName),
           stopScroll: KeyboardState.ctrlPressedNotifier,
           scrollSpeed: 1.0,
           enableSmoothScroll: Manager.animationsEnabled,
@@ -760,6 +883,7 @@ class SearchedSeriesScreenState extends State<SearchedSeriesScreen> {
       child: ScrollConfiguration(
         behavior: ScrollConfiguration.of(context).copyWith(overscroll: true, platform: TargetPlatform.windows, scrollbars: false),
         child: DynMouseScroll(
+          controller: _getOrCreateController('Overview'),
           stopScroll: KeyboardState.ctrlPressedNotifier,
           scrollSpeed: 1.0,
           enableSmoothScroll: Manager.animationsEnabled,
@@ -784,7 +908,7 @@ class SearchedSeriesScreenState extends State<SearchedSeriesScreen> {
 
   // Full tab content builders
   Widget _buildCharactersTabContent(BuildContext context) {
-    return _buildScrollWrapper([
+    return _buildScrollWrapper('Characters', [
       Padding(
         padding: const EdgeInsets.only(bottom: 16.0),
         child: SettingsCard(
@@ -847,7 +971,7 @@ class SearchedSeriesScreenState extends State<SearchedSeriesScreen> {
   }
 
   Widget _buildStaffTabContent(BuildContext context) {
-    return _buildScrollWrapper([
+    return _buildScrollWrapper('Staff', [
       Padding(
         padding: const EdgeInsets.only(bottom: 16.0),
         child: SettingsCard(
@@ -906,7 +1030,7 @@ class SearchedSeriesScreenState extends State<SearchedSeriesScreen> {
   }
 
   Widget _buildSocialTabContent(BuildContext context) {
-    return _buildScrollWrapper([
+    return _buildScrollWrapper('Social', [
       Padding(
         padding: const EdgeInsets.only(bottom: 16.0),
         child: SettingsCard(
@@ -1014,7 +1138,7 @@ class SearchedSeriesScreenState extends State<SearchedSeriesScreen> {
     // Show overview stats immediately because they're already loaded
     // trends come after the tab fetch
     final AnimeStats? displayStats = _statsData ?? _cachedSeries?.stats;
-    return _buildScrollWrapper([
+    return _buildScrollWrapper('Statistics', [
       Padding(
         padding: const EdgeInsets.only(bottom: 16.0),
         child: SettingsCard(

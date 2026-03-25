@@ -42,11 +42,16 @@ class NavigationItem {
   /// Optional data associated with the navigation item
   final Object? data;
 
+  /// Optional intra-page state (e.g., active tab index, scroll mementos).
+  /// Mutable so pages can update scroll offsets in-place.
+  Map<String, dynamic>? viewState;
+
   NavigationItem({
     required this.id,
     required this.title,
     required this.level,
     this.data,
+    this.viewState,
   });
 
   @override
@@ -187,6 +192,10 @@ class NavigationManager extends ChangeNotifier {
 
   ValueNotifier<bool> stackNotifier = ValueNotifier<bool>(false);
 
+  /// Fires when goBack/goForward resolves to an intra-page transition (same page id).
+  /// Pages should listen to this and restore their state from `currentView.viewState`.
+  final ValueNotifier<int> restoreNotifier = ValueNotifier<int>(0);
+
   // Getters
   /// History Stack
   List<NavigationItem> get stack => List.unmodifiable(_stack);
@@ -280,6 +289,25 @@ class NavigationManager extends ChangeNotifier {
     return true;
   }
 
+  /// Pushes an intra-page view state change (e.g., tab switch).
+  /// Creates a new stack entry with the same id/title/data but different viewState.
+  /// Does NOT create Flutter routes — the page widget stays alive.
+  void pushTabState(Map<String, dynamic> viewState) {
+    if (_stack.isEmpty) return;
+    final current = _stack.last;
+    if (current.level != NavigationLevel.page) return;
+
+    _forwardStack.clear();
+
+    _pushToStack(NavigationItem(
+      id: current.id,
+      title: current.title,
+      level: current.level,
+      data: current.data,
+      viewState: viewState,
+    ));
+  }
+
   void handleDialogPopped(DialogNavigationItem item) {
     // Only remove if it is currently in the stack
     if (_stack.contains(item)) {
@@ -332,6 +360,17 @@ class NavigationManager extends ChangeNotifier {
     final poppedItem = _stack.removeLast();
     _forwardStack.add(poppedItem);
 
+    // Intra-page detection: same page id means tab/view-state change, not a route change
+    final destination = _stack.last;
+    if (poppedItem.level == NavigationLevel.page &&
+        destination.level == NavigationLevel.page &&
+        poppedItem.id == destination.id) {
+      restoreNotifier.value++;
+      _notifyChange();
+      Manager.setState();
+      return true;
+    }
+
     final navigator = _navigatorKey.currentState;
     if (navigator == null) {
       _notifyChange();
@@ -346,7 +385,6 @@ class NavigationManager extends ChangeNotifier {
       // ▼
       navigator.pop();
     } else {
-      final destination = _stack.last;
       if (destination.level == NavigationLevel.pane) {
         // We are at a Pane root
         // (e.g., Settings <- Library).
@@ -378,8 +416,18 @@ class NavigationManager extends ChangeNotifier {
     saveActiveScrollOffset();
 
     // 1. Move from ForwardStack -> Stack
+    final currentItem = _stack.last;
     final itemToRestore = _forwardStack.removeLast();
     _stack.add(itemToRestore);
+
+    // Intra-page detection: same page id means tab/view-state change, not a route change
+    if (currentItem.level == NavigationLevel.page &&
+        itemToRestore.level == NavigationLevel.page &&
+        currentItem.id == itemToRestore.id) {
+      restoreNotifier.value++;
+      _notifyChange();
+      return true;
+    }
 
     // 2. Visual Navigation
     final navigator = _navigatorKey.currentState;
