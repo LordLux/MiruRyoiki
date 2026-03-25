@@ -14,6 +14,7 @@ import '../../widgets/dialogs/notifications.dart';
 import '../library/library_provider.dart';
 import '../../utils/logging.dart';
 import '../../utils/screen.dart';
+import 'navigation.dart';
 import 'statusbar.dart';
 
 class KeyboardState {
@@ -117,7 +118,7 @@ class _CustomKeyboardListenerState extends State<CustomKeyboardListener> {
       if (isCtrlPressed && event.logicalKey == LogicalKeyboardKey.comma) {
         logTrace('Ctrl + , pressed: Open settings');
         if (homeKey.currentState != null && homeKey.currentState!.mounted) {
-          homeKey.currentState!.openSettings();
+          Manager.navigation.pushPaneIndex(NavigationManager.SettingsIndex);
         }
       } else
       //
@@ -247,7 +248,7 @@ class _CustomKeyboardListenerState extends State<CustomKeyboardListener> {
                 // Confirm before clearing all thumbnails if the setting is not enabled
                 await showSimpleTickboxManagedDialog(
                   Manager.context,
-                  id: 'confirm_clear_all_thumbnails',
+                  id: 'system:confirm-clear-caches',
                   title: 'Clear All Caches?',
                   body: 'Are you sure you want to clear ALL caches?\nThis will clear thumbnails and AniList data for all Series in your Library and they will be refetched when needed.',
                   isPositiveButtonPrimary: true,
@@ -294,31 +295,23 @@ class _CustomKeyboardListenerState extends State<CustomKeyboardListener> {
       // Modify path
       if (event.logicalKey == LogicalKeyboardKey.f4) {
         logTrace('F4 pressed: Modify path');
-      } 
+      }
       // else
       //
       // ctrl + N to expand/collapse Nth season
-      // if (isCtrlPressed && event.logicalKey == LogicalKeyboardKey.digit1) {
-      //   _toggleSeason(1);
-      // } else if (isCtrlPressed && event.logicalKey == LogicalKeyboardKey.digit2) {
-      //   _toggleSeason(2);
-      // } else if (isCtrlPressed && event.logicalKey == LogicalKeyboardKey.digit3) {
-      //   _toggleSeason(3);
-      // } else if (isCtrlPressed && event.logicalKey == LogicalKeyboardKey.digit4) {
-      //   _toggleSeason(4);
-      // } else if (isCtrlPressed && event.logicalKey == LogicalKeyboardKey.digit5) {
-      //   _toggleSeason(5);
-      // } else if (isCtrlPressed && event.logicalKey == LogicalKeyboardKey.digit6) {
-      //   _toggleSeason(6);
-      // } else if (isCtrlPressed && event.logicalKey == LogicalKeyboardKey.digit7) {
-      //   _toggleSeason(7);
-      // } else if (isCtrlPressed && event.logicalKey == LogicalKeyboardKey.digit8) {
-      //   _toggleSeason(8);
-      // } else if (isCtrlPressed && event.logicalKey == LogicalKeyboardKey.digit9) {
-      //   _toggleSeason(9);
-      // } else if (isCtrlPressed && event.logicalKey == LogicalKeyboardKey.digit0) {
-      //   _toggleSeason(0);
-      // }
+      if (isCtrlPressed && event.logicalKey == LogicalKeyboardKey.digit1) {
+        Manager.navigation.pushPaneIndex(NavigationManager.HomeIndex);
+      } else if (isCtrlPressed && event.logicalKey == LogicalKeyboardKey.digit2) {
+        Manager.navigation.pushPaneIndex(NavigationManager.LibraryIndex);
+      } else if (isCtrlPressed && event.logicalKey == LogicalKeyboardKey.digit3) {
+        Manager.navigation.pushPaneIndex(NavigationManager.CalendarIndex);
+      } else if (isCtrlPressed && event.logicalKey == LogicalKeyboardKey.digit4) {
+        Manager.navigation.pushPaneIndex(NavigationManager.BrowseIndex);
+      } else if (isCtrlPressed && event.logicalKey == LogicalKeyboardKey.digit5) {
+        Manager.navigation.pushPaneIndex(NavigationManager.TorrentIndex);
+      } else if (isCtrlPressed && event.logicalKey == LogicalKeyboardKey.digit6) {
+        Manager.navigation.pushPaneIndex(NavigationManager.AccountsIndex);
+      }
     } else if (event is RawKeyUpEvent) {
       // Update key states on key release
       if (event.logicalKey == LogicalKeyboardKey.controlLeft || event.logicalKey == LogicalKeyboardKey.controlRight) {
@@ -341,11 +334,11 @@ class _CustomKeyboardListenerState extends State<CustomKeyboardListener> {
   }
 
   void _handleBackNavigation({bool isBackFromEscKey = false}) {
-      if (handleBackNavigation(isBackFromEscKey: isBackFromEscKey)) {
-        logTrace('Back navigation via ${isBackFromEscKey ? "ESC":"mouse button 4"}');
-        // Handled by AppRoot
-        return;
-      }
+    if (handleBackNavigation(isBackFromEscKey: isBackFromEscKey)) {
+      logTrace('Back navigation via ${isBackFromEscKey ? "ESC" : "mouse button 4"}');
+      // Handled by AppRoot
+      return;
+    }
   }
 
   /// Handles back navigation throughout the app
@@ -361,7 +354,7 @@ class _CustomKeyboardListenerState extends State<CustomKeyboardListener> {
 
       // Link Anilist dialog special handling
       if (!Manager.canPopDialog) {
-        if (Manager.navigation.currentView?.id.startsWith('linkAnilist') ?? false) {
+        if (Manager.navigation.currentView?.id.startsWith('anilist:link-series') ?? false) {
           logTrace('Link Anilist dialog is open, switching to view mode');
           nextFrame(() => linkMultiDialogKey.currentState?.switchToViewMode());
         }

@@ -117,9 +117,9 @@ class _ReleaseNotificationWidgetState extends State<ReleaseNotificationWidget> {
       final currentDialog = Manager.navigation.currentView;
       if (Manager.navigation.hasDialog) {
         _isDialogToggling = true;
-        closeDialog(context);
+        closeDialog();
         //get current top dialog id
-        if (currentDialog?.id == "notifications") {
+        if (currentDialog?.id == "system:notifications") {
           _isDialogToggling = false;
           return;
         }
@@ -133,7 +133,7 @@ class _ReleaseNotificationWidgetState extends State<ReleaseNotificationWidget> {
       await showPaddedDialog(
       context,
       navigationItem: DialogNavigationItem(
-        id: 'notifications',
+        id: 'system:notifications',
         title: 'Notifications',
         dialogDoPopCheck: () => Manager.canPopDialog,
         data: {"darkenTitleBar": false},

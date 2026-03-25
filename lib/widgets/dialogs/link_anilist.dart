@@ -652,7 +652,7 @@ class AnilistLinkMultiContentState extends State<AnilistLinkMultiContent> {
                           // Show warning dialog
                           showSimpleManagedDialog(
                             context,
-                            id: 'linkWarning',
+                            id: 'anilist:link-warning',
                             title: 'Warning: Potential Duplicate Link',
                             builder: (context) => Column(
                               mainAxisSize: MainAxisSize.min,
@@ -904,7 +904,7 @@ void linkWithAnilist(BuildContext context, Series? series, Future<void> Function
   await showPaddedDialog(
     context,
     navigationItem: DialogNavigationItem(
-      id: 'linkAnilist:${series.path}',
+      id: 'anilist:link-series:${series.path}',
       title: 'Link to Anilist',
       data: series.path,
       dialogDoPopCheck: () => Manager.canPopDialog, // Allow popping only when in view mode

@@ -1,4 +1,4 @@
-// ignore_for_file: dead_code, constant_identifier_names
+// ignore_for_file: constant_identifier_names
 
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/foundation.dart';
@@ -53,6 +53,14 @@ class NavigationItem {
   String toString() => 'NavigationItem(id: $id, title: $title, level: $level, data: $data)';
 }
 
+/// Typed definition for a navigation pane (top-level screen).
+class PaneDefinition {
+  final String id;
+  final String title;
+  ScrollController? controller;
+  PaneDefinition({required this.id, required this.title});
+}
+
 class NavigationManager extends ChangeNotifier {
   final GlobalKey<NavigatorState> _navigatorKey;
   NavigationManager(this._navigatorKey);
@@ -65,24 +73,6 @@ class NavigationManager extends ChangeNotifier {
   static const String AccountsId = 'accounts';
   static const String SettingsId = 'settings';
 
-  static final Map<int, Map<String, dynamic>> _navigationMap = {
-    HomeIndex: {'id': HomeId, 'title': 'Home', 'controller': null},
-    LibraryIndex: {'id': LibraryId, 'title': 'Library', 'controller': null},
-    CalendarIndex: {'id': CalendarId, 'title': 'Releases', 'controller': null},
-    BrowseIndex: {'id': BrowseId, 'title': 'Search', 'controller': null},
-    TorrentIndex: {'id': TorrentId, 'title': 'Torrent', 'controller': null},
-    AccountsIndex: {'id': AccountsId, 'title': 'Account', 'controller': null},
-    SettingsIndex: {'id': SettingsId, 'title': 'Settings', 'controller': null},
-  };
-
-  static Map<String, dynamic> get HomeMap => _navigationMap[HomeIndex]!;
-  static Map<String, dynamic> get LibraryMap => _navigationMap[LibraryIndex]!;
-  static Map<String, dynamic> get CalendarMap => _navigationMap[CalendarIndex]!;
-  static Map<String, dynamic> get BrowseMap => _navigationMap[BrowseIndex]!;
-  static Map<String, dynamic> get TorrentMap => _navigationMap[TorrentIndex]!;
-  static Map<String, dynamic> get AccountsMap => _navigationMap[AccountsIndex]!;
-  static Map<String, dynamic> get SettingsMap => _navigationMap[SettingsIndex]!;
-
   static const int HomeIndex = 0;
   static const int LibraryIndex = 1;
   static const int CalendarIndex = 2;
@@ -91,29 +81,45 @@ class NavigationManager extends ChangeNotifier {
   static const int AccountsIndex = 5;
   static const int SettingsIndex = 6;
 
-  static String get HomeTitle => HomeMap['title'] as String;
-  static String get LibraryTitle => LibraryMap['title'] as String;
-  static String get CalendarTitle => CalendarMap['title'] as String;
-  static String get SearchTitle => BrowseMap['title'] as String;
-  static String get TorrentTitle => TorrentMap['title'] as String;
-  static String get AccountsTitle => AccountsMap['title'] as String;
-  static String get SettingsTitle => SettingsMap['title'] as String;
+  static final Map<int, PaneDefinition> _panes = {
+    HomeIndex: PaneDefinition(id: HomeId, title: 'Home'),
+    LibraryIndex: PaneDefinition(id: LibraryId, title: 'Library'),
+    CalendarIndex: PaneDefinition(id: CalendarId, title: 'Releases'),
+    BrowseIndex: PaneDefinition(id: BrowseId, title: 'Search'),
+    TorrentIndex: PaneDefinition(id: TorrentId, title: 'Torrent'),
+    AccountsIndex: PaneDefinition(id: AccountsId, title: 'Account'),
+    SettingsIndex: PaneDefinition(id: SettingsId, title: 'Settings'),
+  };
 
-  static Map<String, dynamic>? getPane(int index) => _navigationMap[index];
-  static Map<String, dynamic>? getPaneById(String id) {
-    for (final entry in _navigationMap.entries) if (entry.value['id'] == id) return entry.value;
+  static PaneDefinition get HomePane => _panes[HomeIndex]!;
+  static PaneDefinition get LibraryPane => _panes[LibraryIndex]!;
+  static PaneDefinition get CalendarPane => _panes[CalendarIndex]!;
+  static PaneDefinition get BrowsePane => _panes[BrowseIndex]!;
+  static PaneDefinition get TorrentPane => _panes[TorrentIndex]!;
+  static PaneDefinition get AccountsPane => _panes[AccountsIndex]!;
+  static PaneDefinition get SettingsPane => _panes[SettingsIndex]!;
+
+  static String get HomeTitle => HomePane.title;
+  static String get LibraryTitle => LibraryPane.title;
+  static String get CalendarTitle => CalendarPane.title;
+  static String get SearchTitle => BrowsePane.title;
+  static String get TorrentTitle => TorrentPane.title;
+  static String get AccountsTitle => AccountsPane.title;
+  static String get SettingsTitle => SettingsPane.title;
+
+  static PaneDefinition? getPane(int index) => _panes[index];
+  static PaneDefinition? getPaneById(String id) {
+    for (final pane in _panes.values) if (pane.id == id) return pane;
     return null;
   }
 
   static int? getIndexById(String id) {
-    for (final entry in _navigationMap.entries) {
-      if (entry.value['id'] == id) return entry.key;
-    }
+    for (final entry in _panes.entries) if (entry.value.id == id) return entry.key;
     return null;
   }
 
-  static ScrollController getScrollController(int index) => _navigationMap[index]?['controller'] as ScrollController;
-  static void setScrollController(int index, ScrollController controller) => _navigationMap[index]?['controller'] = controller;
+  static ScrollController getScrollController(int index) => _panes[index]!.controller!;
+  static void setScrollController(int index, ScrollController controller) => _panes[index]?.controller = controller;
 
   // Scroll offset persistence
   /// Saved scroll offsets keyed by navigation item id
@@ -217,10 +223,10 @@ class NavigationManager extends ChangeNotifier {
 
   /// Pushes a Pane. Adds to history
   void pushPaneIndex(int index, {Object? data}) {
-    final item = getPane(index)!;
+    final pane = getPane(index)!;
 
     // If we are already at this pane at the top of the stack, don't duplicate
-    if (currentView?.level == NavigationLevel.pane && currentView?.id == item['id']) return;
+    if (currentView?.level == NavigationLevel.pane && currentView?.id == pane.id) return;
 
     // Snapshot the current pane's scroll position before replacing the route
     saveActiveScrollOffset();
@@ -230,14 +236,14 @@ class NavigationManager extends ChangeNotifier {
 
     // Add to Past History
     _pushToStack(NavigationItem(
-      id: item['id'],
-      title: item['title'],
+      id: pane.id,
+      title: pane.title,
       level: NavigationLevel.pane,
       data: data,
     ));
 
     // Visual Navigation
-    _navigatorKey.currentState?.pushReplacementNamed('/${item['id']}', arguments: data); // push replacement because we keep the stack ourselves
+    _navigatorKey.currentState?.pushReplacementNamed('/${pane.id}', arguments: data); // push replacement because we keep the stack ourselves
 
     // Specific logic for Calendar
     if (index == CalendarIndex) nextFrame(() => releaseCalendarScreenKey.currentState?.loadReleaseData());
@@ -262,6 +268,13 @@ class NavigationManager extends ChangeNotifier {
   bool pushDialog(DialogNavigationItem item) {
     if (isDialogLocked) return false; // Prevent opening new dialog if existing one cannot be closed
 
+    assert(() {
+      if (_stack.any((i) => i.id == item.id && i.level == NavigationLevel.dialog)) {
+        debugPrint('Warning: duplicate dialog ID "${item.id}"');
+      }
+      return true;
+    }());
+
     _lastDialogOpenTime = now;
     _pushToStack(item);
     return true;
@@ -273,6 +286,7 @@ class NavigationManager extends ChangeNotifier {
       _lastPoppedDialog = item;
       _stack.remove(item);
       item.onDismiss?.call();
+      log('[2nd] onDismiss from handleDialogPopped: ${item.id}', color: Colors.white, bgColor: Colors.green);
       item.activeRoute = null; // Cleanup reference
       _notifyChange();
     }
@@ -390,7 +404,6 @@ class NavigationManager extends ChangeNotifier {
   void _notifyChange() {
     nextFrame(delay: 70, () => stackNotifier.value = !stackNotifier.value);
     notifyListeners();
-    // _logCurrentStack();
   }
 
   /// Returns a string representation of the current navigation stack for debugging
@@ -407,26 +420,11 @@ class NavigationManager extends ChangeNotifier {
     return buffer.toString();
   }
 
-  // ignore: unused_element
-  void _logCurrentStack() {
-    if (kDebugMode) {
-      logTrace('----------------------------------------------');
-      logTrace('Navigation Stack');
-      logTrace(currentStackString, splitLines: false);
-      logTrace('----------------------------------------------');
-    }
-  }
-
+  // TODO: Remove, unused
+  @Deprecated('Use pushPaneIndex instead')
   void navigateToPane(String id) {
-    final paneData = getPaneById(id);
-    if (paneData != null) {
-      // Find index
-      int index = -1;
-      _navigationMap.forEach((key, value) {
-        if (value['id'] == id) index = key;
-      });
-      if (index != -1) pushPaneIndex(index);
-    }
+    final index = getIndexById(id);
+    if (index != null) pushPaneIndex(index);
   }
 
   /// Resets the current pane to its root view by popping all pages on top of it.
@@ -470,6 +468,4 @@ class NavigationManager extends ChangeNotifier {
   NavigationItem? get nextView => _forwardStack.isNotEmpty ? _forwardStack.last : null;
 }
 
-bool closeDialog<T>([BuildContext? a]) {
-  return Manager.navigation.popDialog();
-}
+bool closeDialog() => Manager.navigation.popDialog();

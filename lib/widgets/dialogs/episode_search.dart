@@ -3,7 +3,8 @@ import 'package:flutter/material.dart' as mat;
 
 import '../../models/sonarr/sonarr_release.dart';
 import '../../services/sonarr/sonarr_service.dart';
-import '../../manager.dart';
+import '../../services/navigation/dialogs.dart';
+import '../../services/navigation/navigation.dart';
 import '../../utils/units.dart';
 import '../buttons/button.dart';
 
@@ -48,65 +49,45 @@ class _EpisodeSearchDialogState extends State<EpisodeSearchDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return mat.Dialog(
-      // Use a constraint to prevent the dialog from taking up the whole screen
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 800, maxHeight: 600),
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Header
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(widget.isSeasonSearch ? "Season Search" : "Episode Search", style: Manager.subtitleStyle),
-                  StandardButton.icon(
-                    icon: const Icon(mat.Icons.close),
-                    onPressed: () => Navigator.of(context).pop(),
-                  )
-                ],
-              ),
-              const mat.Divider(),
+    return ContentDialog(
+      title: Text(widget.isSeasonSearch ? "Season Search" : "Episode Search"),
+      constraints: const BoxConstraints(maxWidth: 800, maxHeight: 600),
+      content: FutureBuilder<List<SonarrRelease>>(
+        future: _searchFuture,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(
+                child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [ProgressRing(), SizedBox(height: 16), Text("Searching Indexers (this takes a few seconds)...")],
+            ));
+          }
+          if (snapshot.hasError) return Center(child: Text("Error: ${snapshot.error}", style: TextStyle(color: Colors.red)));
+          if (!snapshot.hasData || snapshot.data!.isEmpty) return const Center(child: Text("No releases found via Sonarr/Prowlarr."));
 
-              // Results List
-              Expanded(
-                child: FutureBuilder<List<SonarrRelease>>(
-                  future: _searchFuture,
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const Center(
-                          child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [ProgressRing(), SizedBox(height: 16), Text("Searching Indexers (this takes a few seconds)...")],
-                      ));
-                    }
-                    if (snapshot.hasError) return Center(child: Text("Error: ${snapshot.error}", style: TextStyle(color: Colors.red)));
-                    if (!snapshot.hasData || snapshot.data!.isEmpty) return const Center(child: Text("No releases found via Sonarr/Prowlarr."));
+          // Sort results: Rejections to bottom, then by seeds
+          final releases = snapshot.data!;
+          releases.sort((a, b) {
+            if (a.rejected && !b.rejected) return 1;
+            if (!a.rejected && b.rejected) return -1;
+            return b.seeders.compareTo(a.seeders);
+          });
 
-                    // Sort results: Rejections to bottom, then by seeds
-                    final releases = snapshot.data!;
-                    releases.sort((a, b) {
-                      if (a.rejected && !b.rejected) return 1;
-                      if (!a.rejected && b.rejected) return -1;
-                      return b.seeders.compareTo(a.seeders);
-                    });
-
-                    return ListView.builder(
-                      shrinkWrap: true,
-                      itemCount: releases.length,
-                      itemBuilder: (context, index) {
-                        return _SonarrReleaseTile(release: releases[index], sonarrRepo: widget.sonarrRepo);
-                      },
-                    );
-                  },
-                ),
-              ),
-            ],
-          ),
-        ),
+          return ListView.builder(
+            shrinkWrap: true,
+            itemCount: releases.length,
+            itemBuilder: (context, index) {
+              return _SonarrReleaseTile(release: releases[index], sonarrRepo: widget.sonarrRepo);
+            },
+          );
+        },
       ),
+      actions: [
+        Button(
+          child: const Text("Close"),
+          onPressed: () => closeDialog(),
+        ),
+      ],
     );
   }
 }
@@ -140,18 +121,11 @@ class _SonarrReleaseTileState extends State<_SonarrReleaseTile> {
       }
     } catch (e) {
       if (mounted) {
-        showDialog(
-          context: context,
-          builder: (context) => ContentDialog(
-            title: const Text("Download Error"),
-            content: Text(e.toString()),
-            actions: [
-              Button(
-                child: const Text("OK"),
-                onPressed: () => Navigator.of(context).pop(),
-              )
-            ],
-          ),
+        showSimpleOneButtonManagedDialog(
+          context,
+          id: 'sonarr:download-error',
+          title: 'Download Error',
+          body: e.toString(),
         );
       }
     } finally {

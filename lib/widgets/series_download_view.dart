@@ -20,10 +20,13 @@ import '../settings.dart';
 import 'package:path/path.dart' as p;
 import '../utils/path.dart';
 import '../services/isolates/thumbnail_manager.dart';
+import '../services/navigation/dialogs2.dart';
+import '../services/navigation/navigation.dart';
 import '../utils/logging.dart';
 import '../utils/screen.dart';
 import 'buttons/button.dart';
 import 'dialogs/knaben_search.dart';
+import 'dialogs/show_dialog.dart';
 import 'dialogs/sonarr_manual_link_dialog.dart';
 import '../services/downloads/torrent_manager.dart';
 
@@ -121,17 +124,22 @@ class _SeriesDownloadViewState extends State<SeriesDownloadView> {
     } catch (e) {
       if (mounted) {
         if (e.toString().contains("Mapping not found")) {
-          final result = await showDialog<bool>(
-            context: context,
-            builder: (context) => SonarrManualLinkDialog(
-              animeId: widget.animeId,
-              animeTitle: widget.animeTitle,
-            ),
+          showPaddedDialog(
+            context,
+            navigationItem: DialogNavigationItem(id: 'sonarr:manual-link', title: 'Link to Sonarr Series'),
+            builder: (context, item, options) {
+              return PaddedDialog.custom(
+                navigationItem: item,
+                barrierOptions: options,
+                constraints: const BoxConstraints(maxWidth: 500, maxHeight: 500),
+                contentBuilder: (_, __) => SonarrManualLinkDialog(
+                  animeId: widget.animeId,
+                  animeTitle: widget.animeTitle,
+                  onLinked: () => _fetchData(),
+                ),
+              );
+            },
           );
-          if (result == true) {
-            // Re-fetch after user maps
-            _fetchData();
-          }
         } else {
           snackBar("Failed to fetch Sonarr episodes: $e", severity: InfoBarSeverity.error);
         }
@@ -141,15 +149,23 @@ class _SeriesDownloadViewState extends State<SeriesDownloadView> {
     }
   }
 
-  Future<void> _changeLink() async {
-    final result = await showDialog<bool>(
-      context: context,
-      builder: (context) => SonarrManualLinkDialog(
-        animeId: widget.animeId,
-        animeTitle: widget.animeTitle,
-      ),
+  void _changeLink() {
+    showPaddedDialog(
+      context,
+      navigationItem: DialogNavigationItem(id: 'sonarr:change-link', title: 'Link to Sonarr Series'),
+      builder: (context, item, options) {
+        return PaddedDialog.custom(
+          navigationItem: item,
+          barrierOptions: options,
+          constraints: const BoxConstraints(maxWidth: 500, maxHeight: 500),
+          contentBuilder: (_, __) => SonarrManualLinkDialog(
+            animeId: widget.animeId,
+            animeTitle: widget.animeTitle,
+            onLinked: () => _fetchData(),
+          ),
+        );
+      },
     );
-    if (result == true) _fetchData();
   }
 
   void _searchSeasonPack() {
@@ -170,14 +186,22 @@ class _SeriesDownloadViewState extends State<SeriesDownloadView> {
     final firstEp = _episodesMetadata.isNotEmpty ? _episodesMetadata.first : null;
     final season = firstEp?.seasonNumber ?? 1;
 
-    showDialog(
-      context: context,
-      builder: (context) => KnabenSearchDialog(
-        controller: controller,
-        seriesTitles: titles,
-        season: season,
-        isSeasonSearch: true,
-      ),
+    showPaddedDialog(
+      context,
+      navigationItem: DialogNavigationItem(id: 'knaben:season-search', title: 'Season Search (Knaben)'),
+      builder: (context, item, options) {
+        return PaddedDialog.custom(
+          navigationItem: item,
+          barrierOptions: options,
+          constraints: const BoxConstraints(maxWidth: 850, maxHeight: 650),
+          contentBuilder: (_, __) => KnabenSearchDialog(
+            controller: controller,
+            seriesTitles: titles,
+            season: season,
+            isSeasonSearch: true,
+          ),
+        );
+      },
     );
   }
 
@@ -196,14 +220,22 @@ class _SeriesDownloadViewState extends State<SeriesDownloadView> {
       return;
     }
 
-    showDialog(
-      context: context,
-      builder: (context) => KnabenSearchDialog(
-        controller: controller,
-        seriesTitles: titles,
-        season: ep.seasonNumber,
-        episode: ep.episodeNumber,
-      ),
+    showPaddedDialog(
+      context,
+      navigationItem: DialogNavigationItem(id: 'knaben:episode-search', title: 'Episode Search (Knaben)'),
+      builder: (context, item, options) {
+        return PaddedDialog.custom(
+          navigationItem: item,
+          barrierOptions: options,
+          constraints: const BoxConstraints(maxWidth: 850, maxHeight: 650),
+          contentBuilder: (_, __) => KnabenSearchDialog(
+            controller: controller,
+            seriesTitles: titles,
+            season: ep.seasonNumber,
+            episode: ep.episodeNumber,
+          ),
+        );
+      },
     );
   }
 
@@ -542,7 +574,7 @@ class _ManageEpisodesDialogState extends State<ManageEpisodesDialog> {
     }
 
     if (_userOverrides.isEmpty) {
-      if (mounted) Navigator.of(context).pop(true);
+      if (mounted) closeDialog();
       return;
     }
 
@@ -588,7 +620,7 @@ class _ManageEpisodesDialogState extends State<ManageEpisodesDialog> {
             'Updated $successCount episode${successCount > 1 ? 's' : ''} in Sonarr'
             '${failCount > 0 ? ' ($failCount failed)' : ''}',
             severity: failCount > 0 ? InfoBarSeverity.warning : InfoBarSeverity.success);
-        if (mounted) Navigator.of(context).pop(true);
+        if (mounted) closeDialog();
       } else if (failCount > 0) {
         snackBar('Failed to update $failCount episode${failCount > 1 ? 's' : ''}. Check logs.', severity: InfoBarSeverity.error);
       }
@@ -813,7 +845,7 @@ class _ManageEpisodesDialogState extends State<ManageEpisodesDialog> {
         else
           Row(
             children: [
-              Button(child: const Text("Cancel"), onPressed: () => Navigator.of(context).pop(false)),
+              Button(child: const Text("Cancel"), onPressed: () => closeDialog()),
               const Spacer(),
               Text('$_linkedCount/${_sonarrEpisodes.length} linked', style: TextStyle(fontSize: 12, color: Colors.grey[120])),
               const SizedBox(width: 12),

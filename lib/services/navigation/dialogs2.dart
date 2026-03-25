@@ -194,18 +194,6 @@ class PaddedDialog extends StatefulWidget {
   })  : _type = type,
         padding = padding ?? const EdgeInsets.all(16.0),
         constraints = constraints ?? const BoxConstraints(maxWidth: 500, maxHeight: 300, minWidth: 300),
-        // TODO
-        //theme = (theme ?? ContentDialogThemeData()).merge(
-        //   ContentDialogThemeData(
-        //     actionsDecoration: BoxDecoration(
-        //       border: Border.all(
-        //         color: Colors.transparent,
-        //         width: 0,
-        //       ),
-        //       color: Colors.transparent,
-        //     ),
-        //   ),
-        // ),
         theme = theme,
 
         // [navigationItem] can't be defaulted here

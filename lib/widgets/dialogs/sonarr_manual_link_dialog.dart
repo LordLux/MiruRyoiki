@@ -2,15 +2,18 @@ import 'package:fluent_ui/fluent_ui.dart';
 import '../../models/anilist/anime.dart';
 import '../../models/sonarr/sonarr_series.dart';
 import '../../services/downloads/torrent_manager.dart';
+import '../../services/navigation/navigation.dart';
 
 class SonarrManualLinkDialog extends StatefulWidget {
   final int animeId;
   final AnilistTitle animeTitle;
+  final VoidCallback? onLinked;
 
   const SonarrManualLinkDialog({
     super.key,
     required this.animeId,
     required this.animeTitle,
+    this.onLinked,
   });
 
   @override
@@ -71,7 +74,8 @@ class _SonarrManualLinkDialogState extends State<SonarrManualLinkDialog> {
     if (controller != null) {
       await controller.customMappings.saveCustomTvdbId(widget.animeId, series.tvdbId);
       if (mounted) {
-        Navigator.of(context).pop(true);
+        widget.onLinked?.call();
+        closeDialog();
       }
     }
   }
@@ -136,7 +140,7 @@ class _SonarrManualLinkDialogState extends State<SonarrManualLinkDialog> {
       actions: [
         Button(
           child: const Text("Cancel"),
-          onPressed: () => Navigator.of(context).pop(false),
+          onPressed: () => closeDialog(),
         ),
       ],
     );

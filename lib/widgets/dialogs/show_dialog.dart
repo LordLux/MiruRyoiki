@@ -100,7 +100,6 @@ Future<bool> showPaddedDialog(
   Navigator.of(Manager.context).push(route).then((_) {
     // Cleanup when the dialog is closed
     Manager.navigation.handleDialogPopped(navigationItem);
-    navigationItem.onDismiss?.call();
 
     // Reset the flag when dialog is closed
     Manager.setState(() => Manager.canPopDialog = true);

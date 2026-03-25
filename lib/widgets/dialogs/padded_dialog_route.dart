@@ -4,6 +4,7 @@ import 'package:fluent_ui/fluent_ui.dart';
 
 import '../../services/navigation/dialogs2.dart';
 import '../../services/navigation/navigation.dart';
+import '../../utils/logging.dart';
 
 /// Calculates the barrier color based on the provided [color] and [exactColor] flag.
 ///
@@ -66,7 +67,10 @@ class PaddedDialogRoute extends FluentDialogRoute {
       dismissible: barrierDismissible,
       semanticsLabel: barrierLabel,
       barrierSemanticsDismissible: barrierDismissible,
-      onDismiss: onDismiss,
+      onDismiss: () {
+        onDismiss?.call();
+        log('[1st] onDismiss from ModalBarrier: ${item.id}', color: Colors.white, bgColor: Colors.blue);
+      },
     );
 
     if (!options.transluscentBarrier)

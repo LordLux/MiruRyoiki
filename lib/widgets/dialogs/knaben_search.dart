@@ -4,6 +4,7 @@ import 'package:miruryoiki/utils/logging.dart';
 
 import '../../models/knaben/knaben_release.dart';
 import '../../services/downloads/download_controller.dart';
+import '../../services/navigation/navigation.dart';
 import '../../services/navigation/show_info.dart';
 import '../../manager.dart';
 import '../../utils/units.dart';
@@ -92,109 +93,91 @@ class _KnabenSearchDialogState extends State<KnabenSearchDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return mat.Dialog(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 850, maxHeight: 650),
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Header
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Expanded(
-                    child: Text(
-                      widget.isSeasonSearch ? "Season Search (Knaben)" : "Episode Search (Knaben)",
-                      style: Manager.subtitleStyle,
-                      overflow: TextOverflow.ellipsis,
-                    ),
+    return ContentDialog(
+      title: Text(widget.isSeasonSearch ? "Season Search (Knaben)" : "Episode Search (Knaben)"),
+      constraints: const BoxConstraints(maxWidth: 850, maxHeight: 650),
+      content: Column(
+        children: [
+          // Custom Search Bar
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8.0),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextBox(
+                    controller: _searchController,
+                    placeholder: "Modify search query...",
+                    onSubmitted: (_) {
+                      _isCustomSearch = true;
+                      _startSearch();
+                    },
                   ),
-                  StandardButton.icon(
-                    icon: const Icon(mat.Icons.close),
-                    onPressed: () => Navigator.of(context).pop(),
-                  ),
-                ],
-              ),
-              const mat.Divider(),
-
-              // Custom Search Bar
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8.0),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: TextBox(
-                        controller: _searchController,
-                        placeholder: "Modify search query...",
-                        onSubmitted: (_) {
-                          _isCustomSearch = true;
-                          _startSearch();
-                        },
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    StandardButton(
-                      label: const Text('Search'),
-                      onPressed: () {
-                        _isCustomSearch = true;
-                        _startSearch();
-                      },
-                    ),
-                  ],
                 ),
-              ),
-
-              // Results
-              Expanded(
-                child: FutureBuilder<List<KnabenRelease>>(
-                  future: _searchFuture,
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            ProgressRing(),
-                            SizedBox(height: 16),
-                            Text("Searching Knaben..."),
-                          ],
-                        ),
-                      );
-                    }
-
-                    if (snapshot.hasError) {
-                      return Center(
-                        child: Text("Error: ${snapshot.error}", style: TextStyle(color: Colors.red)),
-                      );
-                    }
-
-                    if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                      return const Center(child: Text("No releases found on Knaben."));
-                    }
-
-                    final releases = snapshot.data!;
-                    // Sort by seeders descending
-                    releases.sort((a, b) => b.seeders.compareTo(a.seeders));
-
-                    return ListView.builder(
-                      shrinkWrap: true,
-                      itemCount: releases.length,
-                      itemBuilder: (context, index) {
-                        return _KnabenReleaseTile(
-                          release: releases[index],
-                          controller: widget.controller,
-                        );
-                      },
-                    );
+                const SizedBox(width: 8),
+                StandardButton(
+                  label: const Text('Search'),
+                  onPressed: () {
+                    _isCustomSearch = true;
+                    _startSearch();
                   },
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
+
+          // Results
+          Expanded(
+            child: FutureBuilder<List<KnabenRelease>>(
+              future: _searchFuture,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        ProgressRing(),
+                        SizedBox(height: 16),
+                        Text("Searching Knaben..."),
+                      ],
+                    ),
+                  );
+                }
+
+                if (snapshot.hasError) {
+                  return Center(
+                    child: Text("Error: ${snapshot.error}", style: TextStyle(color: Colors.red)),
+                  );
+                }
+
+                if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                  return const Center(child: Text("No releases found on Knaben."));
+                }
+
+                final releases = snapshot.data!;
+                // Sort by seeders descending
+                releases.sort((a, b) => b.seeders.compareTo(a.seeders));
+
+                return ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: releases.length,
+                  itemBuilder: (context, index) {
+                    return _KnabenReleaseTile(
+                      release: releases[index],
+                      controller: widget.controller,
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+        ],
       ),
+      actions: [
+        Button(
+          child: const Text("Close"),
+          onPressed: () => closeDialog(),
+        ),
+      ],
     );
   }
 }

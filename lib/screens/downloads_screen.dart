@@ -6,8 +6,10 @@ import '../manager.dart';
 import '../services/downloads/download_controller.dart';
 import '../services/downloads/torrent_client.dart';
 import '../services/downloads/torrent_manager.dart';
+import '../services/navigation/dialogs2.dart';
 import '../services/navigation/navigation.dart';
 import '../services/navigation/show_info.dart';
+import '../widgets/dialogs/show_dialog.dart';
 import '../services/sonarr/sonarr_service.dart';
 import '../utils/logging.dart';
 import '../utils/units.dart';
@@ -432,24 +434,37 @@ class _TorrentTileState extends State<_TorrentTile> {
                         _ActionButton(
                           icon: Icons.delete_outline,
                           tooltip: 'Remove torrent',
-                          onPressed: () async {
-                            final deleteFiles = await showDialog<bool>(
-                              context: context,
-                              builder: (ctx) => ContentDialog(
-                                title: const Text('Remove Torrent'),
-                                content: Text('Remove "${t.name}"?\n\nCheck the box to also delete downloaded files.'),
-                                actions: [
-                                  Button(child: const Text('Cancel'), onPressed: () => Navigator.of(ctx).pop(null)),
-                                  Button(child: const Text('Remove'), onPressed: () => Navigator.of(ctx).pop(false)),
-                                  FilledButton(
-                                    style: ButtonStyle(backgroundColor: WidgetStatePropertyAll(Colors.red)),
-                                    child: const Text('Remove + Delete Files'),
-                                    onPressed: () => Navigator.of(ctx).pop(true),
+                          onPressed: () {
+                            showPaddedDialog(
+                              context,
+                              navigationItem: DialogNavigationItem(id: 'downloads:remove-torrent', title: 'Remove Torrent'),
+                              builder: (context, item, options) {
+                                return PaddedDialog.custom(
+                                  navigationItem: item,
+                                  barrierOptions: options,
+                                  constraints: const BoxConstraints(maxWidth: 500, maxHeight: 300, minWidth: 300),
+                                  contentBuilder: (_, __) => ContentDialog(
+                                    title: const Text('Remove Torrent'),
+                                    content: Text('Remove "${t.name}"?\n\nCheck the box to also delete downloaded files.'),
+                                    actions: [
+                                      Button(child: const Text('Cancel'), onPressed: () => closeDialog()),
+                                      Button(child: const Text('Remove'), onPressed: () {
+                                        closeDialog();
+                                        widget.onDelete(t, deleteFiles: false);
+                                      }),
+                                      FilledButton(
+                                        style: ButtonStyle(backgroundColor: WidgetStatePropertyAll(Colors.red)),
+                                        child: const Text('Remove + Delete Files'),
+                                        onPressed: () {
+                                          closeDialog();
+                                          widget.onDelete(t, deleteFiles: true);
+                                        },
+                                      ),
+                                    ],
                                   ),
-                                ],
-                              ),
+                                );
+                              },
                             );
-                            if (deleteFiles != null) widget.onDelete(t, deleteFiles: deleteFiles);
                           },
                         ),
                       ],

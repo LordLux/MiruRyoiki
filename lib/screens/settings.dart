@@ -29,8 +29,11 @@ import '../services/qbittorrent/qbittorrent.dart';
 import '../services/lock_manager.dart';
 import '../services/sonarr/sonarr_service.dart';
 import '../services/navigation/dialogs.dart';
+import '../services/navigation/dialogs2.dart';
+import '../services/navigation/navigation.dart';
 import '../services/navigation/shortcuts.dart';
 import '../services/navigation/show_info.dart';
+import '../widgets/dialogs/show_dialog.dart';
 import '../services/players/player.dart';
 import '../settings.dart';
 import '../utils/color.dart';
@@ -842,7 +845,7 @@ class SettingsScreenState extends State<SettingsScreen> with AutomaticKeepAliveC
       bool confirmed = false;
       await showSimpleManagedDialog(
         context,
-        id: 'restoreBackup',
+        id: 'settings:restore-backup',
         title: 'Restore Database',
         body: 'This will replace your current database with the selected backup.\n'
             'Your current database will be backed up first. Continue?',
@@ -1363,7 +1366,7 @@ class SettingsScreenState extends State<SettingsScreen> with AutomaticKeepAliveC
                   onChanged: (value) {
                     showSimpleManagedDialog(
                       context,
-                      id: 'dominantColorSource',
+                      id: 'settings:recalculate-colors',
                       title: 'Recalculate Colors?',
                       body: 'Would you like to recalculate all dominant colors using the new source?\n\nThis may take some time depending on the size of your library.',
                       onPositive: () async {
@@ -2214,46 +2217,54 @@ class SettingsScreenState extends State<SettingsScreen> with AutomaticKeepAliveC
             StandardButton.label(
               label: 'Reset Torrent/Download Config',
               filledColor: mat.Colors.red,
-              onPressed: () async {
-                final confirmed = await showDialog<bool>(
-                  context: context,
-                  builder: (ctx) => ContentDialog(
-                    title: const Text('Reset Torrent Config'),
-                    content: const Text(
-                      'This will clear all qBittorrent, Sonarr, and Knaben settings '
-                      '(URLs, credentials, connection status).\n\n'
-                      'Sonarr episode link mappings will NOT be affected.',
-                    ),
-                    actions: [
-                      Button(child: const Text('Cancel'), onPressed: () => Navigator.of(ctx).pop(false)),
-                      FilledButton(
-                        style: ButtonStyle(backgroundColor: WidgetStatePropertyAll(mat.Colors.red)),
-                        child: const Text('Reset'),
-                        onPressed: () => Navigator.of(ctx).pop(true),
+              onPressed: () {
+                showPaddedDialog(
+                  context,
+                  navigationItem: DialogNavigationItem(id: 'settings:reset-torrent-config', title: 'Reset Torrent Config'),
+                  builder: (context, item, options) {
+                    return PaddedDialog.custom(
+                      navigationItem: item,
+                      barrierOptions: options,
+                      constraints: const BoxConstraints(maxWidth: 500, maxHeight: 300, minWidth: 300),
+                      contentBuilder: (_, __) => ContentDialog(
+                        title: const Text('Reset Torrent Config'),
+                        content: const Text(
+                          'This will clear all qBittorrent, Sonarr, and Knaben settings '
+                          '(URLs, credentials, connection status).\n\n'
+                          'Sonarr episode link mappings will NOT be affected.',
+                        ),
+                        actions: [
+                          Button(child: const Text('Cancel'), onPressed: () => closeDialog()),
+                          FilledButton(
+                            style: ButtonStyle(backgroundColor: WidgetStatePropertyAll(mat.Colors.red)),
+                            child: const Text('Reset'),
+                            onPressed: () async {
+                              closeDialog();
+                              final settings = SettingsManager();
+                              await settings.resetTorrentConfig();
+                              TorrentManager.reinitialize();
+                              if (mounted) {
+                                setState(() {
+                                  _sonarrTestResult = null;
+                                  _qbitTestResult = null;
+                                  _sonarrQualityProfiles = [];
+                                  _sonarrRootFolders = [];
+                                  _sonarrDropdownsLoaded = false;
+                                  _sonarrUrlController.clear();
+                                  _sonarrApiKeyController.clear();
+                                  _qbitUrlController.clear();
+                                  _qbitUsernameController.clear();
+                                  _qbitPasswordController.clear();
+                                });
+                                snackBar('Torrent config reset', severity: InfoBarSeverity.success);
+                              }
+                            },
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
+                    );
+                  },
                 );
-                if (confirmed == true) {
-                  final settings = SettingsManager();
-                  await settings.resetTorrentConfig();
-                  TorrentManager.reinitialize();
-                  if (mounted) {
-                    setState(() {
-                      _sonarrTestResult = null;
-                      _qbitTestResult = null;
-                      _sonarrQualityProfiles = [];
-                      _sonarrRootFolders = [];
-                      _sonarrDropdownsLoaded = false;
-                      _sonarrUrlController.clear();
-                      _sonarrApiKeyController.clear();
-                      _qbitUrlController.clear();
-                      _qbitUsernameController.clear();
-                      _qbitPasswordController.clear();
-                    });
-                    snackBar('Torrent config reset', severity: InfoBarSeverity.success);
-                  }
-                }
               },
             ),
           ],

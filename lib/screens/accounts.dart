@@ -361,7 +361,7 @@ class AccountsScreenState extends State<AccountsScreen> with AutomaticKeepAliveC
         onPressed: () async {
           await showSimpleManagedDialog(
             context,
-            id: 'anilist-logout',
+            id: 'accounts:anilist-logout',
             title: 'Logout from Anilist',
             body: 'Are you sure you want to logout from Anilist?',
             onPositive: () async {

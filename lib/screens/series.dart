@@ -437,14 +437,22 @@ class SeriesScreenState extends State<SeriesScreen> {
   void _openManageEpisodesDialog(Series series) {
     if (_sonarrEpisodes == null) return;
     logTrace('[SeriesScreen] Opening ManageEpisodes dialog for "${series.name}" (sonarrId=$_sonarrSeriesId, ${_sonarrEpisodes!.length} cached eps)');
-    showDialog(
-      context: context,
-      builder: (context) => ManageEpisodesDialog(
-        sonarrEpisodes: _sonarrEpisodes!,
-        localSeries: series,
-        seriesTitle: series.name,
-        sonarrSeriesId: _sonarrSeriesId,
-      ),
+    showPaddedDialog(
+      context,
+      navigationItem: DialogNavigationItem(id: 'series:manage-episodes', title: 'Manage Episodes'),
+      builder: (context, item, options) {
+        return PaddedDialog.custom(
+          navigationItem: item,
+          barrierOptions: options,
+          constraints: const BoxConstraints(maxWidth: 900, maxHeight: 700),
+          contentBuilder: (_, __) => ManageEpisodesDialog(
+            sonarrEpisodes: _sonarrEpisodes!,
+            localSeries: series,
+            seriesTitle: series.name,
+            sonarrSeriesId: _sonarrSeriesId,
+          ),
+        );
+      },
     );
   }
 
@@ -459,15 +467,24 @@ class SeriesScreenState extends State<SeriesScreen> {
       userPreferred: titleObj?.userPreferred,
     );
 
-    final result = await showDialog<bool>(
-      context: context,
-      builder: (context) => SonarrManualLinkDialog(
-        animeId: anilistId,
-        animeTitle: title,
-      ),
+    showPaddedDialog(
+      context,
+      navigationItem: DialogNavigationItem(id: 'sonarr:manual-link', title: 'Link to Sonarr Series'),
+      builder: (context, item, options) {
+        return PaddedDialog.custom(
+          navigationItem: item,
+          barrierOptions: options,
+          constraints: const BoxConstraints(maxWidth: 500, maxHeight: 500),
+          contentBuilder: (_, __) => SonarrManualLinkDialog(
+            animeId: anilistId,
+            animeTitle: title,
+            onLinked: () {
+              if (mounted) _fetchSonarrEpisodes();
+            },
+          ),
+        );
+      },
     );
-
-    if (result == true && mounted) _fetchSonarrEpisodes();
   }
 
   Future<ImageProvider?> _getMappingImage({required bool banner}) async {
@@ -1282,12 +1299,18 @@ class SeriesScreenState extends State<SeriesScreen> {
                         final repo = TorrentManager.sonarrRepository;
 
                         if (sonarrEp != null && repo != null) {
-                          showDialog(
-                            context: context,
-                            builder: (context) {
-                              return EpisodeSearchDialog(
-                                episodeId: sonarrEp.id,
-                                sonarrRepo: repo,
+                          showPaddedDialog(
+                            context,
+                            navigationItem: DialogNavigationItem(id: 'sonarr:episode-search', title: 'Episode Search'),
+                            builder: (context, item, options) {
+                              return PaddedDialog.custom(
+                                navigationItem: item,
+                                barrierOptions: options,
+                                constraints: const BoxConstraints(maxWidth: 800, maxHeight: 600),
+                                contentBuilder: (_, __) => EpisodeSearchDialog(
+                                  episodeId: sonarrEp.id,
+                                  sonarrRepo: repo,
+                                ),
                               );
                             },
                           );
@@ -1387,7 +1410,7 @@ void selectSeriesImage(BuildContext context, {required bool isBanner, Series? se
   showPaddedDialog(
     context,
     navigationItem: DialogNavigationItem(
-      id: isBanner ? 'bannerSelection:${series.path}' : 'posterSelection:${series.path}',
+      id: isBanner ? 'series:banner-selection:${series.path}' : 'series:poster-selection:${series.path}',
       title: isBanner ? 'Select Banner' : 'Select Poster',
       dialogDoPopCheck: () => true,
     ),

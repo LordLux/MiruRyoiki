@@ -891,7 +891,7 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
   }) {
     final anilistProvider = Provider.of<AnilistProvider>(context, listen: false);
     final item = NavigationManager.getPane(id)!;
-    final title = item['title'];
+    final title = item.title;
     mouseCursorClick ??= _selectedIndex != id;
 
     if (id == NavigationManager.AccountsIndex && anilistProvider.isOffline) {
@@ -994,7 +994,7 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
                             child: ReleaseNotificationWidget(
                               onMorePressed: (ctx) async {
                                 // Navigate to calendar screen
-                                closeDialog(ctx);
+                                closeDialog();
                                 if (_selectedIndex == NavigationManager.CalendarIndex) return;
 
                                 await Future.delayed(const Duration(milliseconds: 100));

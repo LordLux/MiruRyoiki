@@ -158,12 +158,12 @@ class MyWindowListener extends WindowListener with TrayListener {
       logDebug('Shutdown requested while database is saving, waiting...');
       if (!await windowManager.isVisible()) await windowManager.show();
 
-      if (Manager.context.mounted && Manager.navigation.currentView?.id == 'SavingDatabaseDialog') {
+      if (Manager.context.mounted && Manager.navigation.currentView?.id == 'system:saving-database') {
         final title = 'Saving Database';
         showPaddedDialog(
           Manager.context,
           navigationItem: DialogNavigationItem(
-            id: 'SavingDatabaseDialog',
+            id: 'system:saving-database',
             title: title,
             dialogDoPopCheck: () => false,
           ),
@@ -211,7 +211,7 @@ class MyWindowListener extends WindowListener with TrayListener {
         closeAttempts.clear();
         showSimpleTickboxManagedDialog(
           Manager.context,
-          id: 'close_warning',
+          id: 'system:close-warning',
           title: 'Quit ${Manager.appTitle}?',
           body: 'You have tried to close the application multiple times recently.\n'
               'Do you want to quit the application completely?',
@@ -281,7 +281,7 @@ class MyWindowListener extends WindowListener with TrayListener {
   void onWindowResize() {
     final currentDialogId = Manager.navigation.currentView?.id;
     if (currentDialogId == 'library:filters' || currentDialogId == 'library:lists') {
-      closeDialog(Manager.context);
+      closeDialog();
     }
     super.onWindowResize();
   }

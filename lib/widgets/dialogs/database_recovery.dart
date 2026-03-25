@@ -169,7 +169,7 @@ class _DatabaseRecoveryDialogState extends State<DatabaseRecoveryDialog> {
 void showDatabaseRecoveryDialog(BuildContext context) {
   showSimpleOneButtonManagedDialog(
     context,
-    id: 'database_recovery',
+    id: 'system:database-recovery',
     title: 'Database Recovery',
     constraints: const BoxConstraints(maxWidth: 500, minWidth: 500, maxHeight: 1200),
     builder: (_) => const DatabaseRecoveryDialog(),
