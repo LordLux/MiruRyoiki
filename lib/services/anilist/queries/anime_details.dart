@@ -50,38 +50,38 @@ extension AnilistServiceAnimeDetails on AnilistService {
 
     for (final media in result.Page!.media!) {
       if (media == null) continue;
-      
+
       final anime = AnilistAnime(
-          id: media.id,
-          title: AnilistTitle(
-            romaji: media.title?.romaji,
-            english: media.title?.english,
-            native: media.title?.native,
-            userPreferred: media.title?.userPreferred,
-          ),
-          posterImage: media.coverImage?.extraLarge ?? media.coverImage?.large,
-          dominantColor: media.coverImage?.color,
-          bannerImage: media.bannerImage,
-          description: media.description,
-          status: media.status?.toJson(),
-          format: media.format?.toJson(),
-          episodes: media.episodes,
-          seasonYear: media.seasonYear,
-          season: media.season?.toJson(),
-          genres: media.genres?.whereType<String>().toList() ?? [],
-          averageScore: media.averageScore,
-          meanScore: media.meanScore,
-          popularity: media.popularity,
-          isFavourite: media.isFavourite,
-          startDate: media.startDate != null ? DateValue(year: media.startDate!.year, month: media.startDate!.month, day: media.startDate!.day) : null,
-          endDate: media.endDate != null ? DateValue(year: media.endDate!.year, month: media.endDate!.month, day: media.endDate!.day) : null,
-          updatedAt: media.updatedAt,
-          nextAiringEpisode: media.nextAiringEpisode != null ? AiringEpisode(airingAt: media.nextAiringEpisode!.airingAt, episode: media.nextAiringEpisode!.episode, timeUntilAiring: media.nextAiringEpisode!.timeUntilAiring) : null,
-          siteUrl: media.siteUrl,
-          rankings: media.rankings?.isNotEmpty == true ? media.rankings!.first?.rank : null,
-          trending: media.trending,
+        id: media.id,
+        title: AnilistTitle(
+          romaji: media.title?.romaji,
+          english: media.title?.english,
+          native: media.title?.native,
+          userPreferred: media.title?.userPreferred,
+        ),
+        posterImage: media.coverImage?.extraLarge ?? media.coverImage?.large,
+        dominantColor: media.coverImage?.color,
+        bannerImage: media.bannerImage,
+        description: media.description,
+        status: media.status?.toJson(),
+        format: media.format?.toJson(),
+        episodes: media.episodes,
+        seasonYear: media.seasonYear,
+        season: media.season?.toJson(),
+        genres: media.genres?.whereType<String>().toList() ?? [],
+        averageScore: media.averageScore,
+        meanScore: media.meanScore,
+        popularity: media.popularity,
+        isFavourite: media.isFavourite,
+        startDate: media.startDate != null ? DateValue(year: media.startDate!.year, month: media.startDate!.month, day: media.startDate!.day) : null,
+        endDate: media.endDate != null ? DateValue(year: media.endDate!.year, month: media.endDate!.month, day: media.endDate!.day) : null,
+        updatedAt: media.updatedAt,
+        nextAiringEpisode: media.nextAiringEpisode != null ? AiringEpisode(airingAt: media.nextAiringEpisode!.airingAt, episode: media.nextAiringEpisode!.episode, timeUntilAiring: media.nextAiringEpisode!.timeUntilAiring) : null,
+        siteUrl: media.siteUrl,
+        rankings: media.rankings?.isNotEmpty == true ? media.rankings!.first?.rank : null,
+        trending: media.trending,
       );
-      
+
       animeMap[media.id] = anime;
     }
 
@@ -119,9 +119,11 @@ extension AnilistServiceAnimeDetails on AnilistService {
     // Standard lists
     for (final list in standardLists) {
       if (list == null || list.status == null) continue;
-      
+
       lists[list.status!.name] = AnilistUserList.fromJson(
-        {'lists': [list.toJson()]},
+        {
+          'lists': [list.toJson()]
+        },
         StatusStatistic.statusNameToPretty(list.status!.name),
         isCustomList: false,
       );
@@ -133,24 +135,29 @@ extension AnilistServiceAnimeDetails on AnilistService {
         final entriesForCustomList = [];
         for (final list in standardLists) {
           if (list == null || list.entries == null) continue;
-          
+
           for (final entry in list.entries!) {
             if (entry == null) continue;
-            
+
             final customListsData = entry.customLists;
             Map<String, dynamic>? entryCustomLists;
 
             if (customListsData != null) {
-              try {
-                entryCustomLists = jsonDecode(customListsData) as Map<String, dynamic>?;
-              } catch (e) {
-                // Ignore
+              if (customListsData is Map<String, dynamic>) {
+                entryCustomLists = customListsData;
+              } else if (customListsData is Map) {
+                entryCustomLists = Map<String, dynamic>.from(customListsData);
+              } else if (customListsData is String) {
+                try {
+                  entryCustomLists = jsonDecode(customListsData) as Map<String, dynamic>?;
+                } catch (_) {}
               }
             }
 
             if (entryCustomLists != null && 
-                entryCustomLists.containsKey(customListName) && 
-                entryCustomLists[customListName] == true) {
+                entryCustomLists.containsKey(customListName) &&
+                entryCustomLists[customListName] == true
+            ) {
               entriesForCustomList.add(entry.toJson());
             }
           }
@@ -158,11 +165,7 @@ extension AnilistServiceAnimeDetails on AnilistService {
 
         if (entriesForCustomList.isNotEmpty) {
           lists['custom_$customListName'] = AnilistUserList.fromJson(
-            {
-              'lists': [
-                {'entries': entriesForCustomList}
-              ]
-            },
+            { 'lists': [ { 'entries': entriesForCustomList } ] },
             customListName,
             isCustomList: true,
           );

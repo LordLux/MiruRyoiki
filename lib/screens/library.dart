@@ -2150,7 +2150,6 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
       final double alignmentX = (buttonCenterX / ScreenUtils.width) * 2 - 1;
       final double alignmentY = (buttonCenterY / ScreenUtils.height) * 2 - 1;
 
-      print('buttonCenterX: $buttonCenterX, buttonCenterY: $buttonCenterY');
       alignment = Alignment(alignmentX, alignmentY);
     }
 

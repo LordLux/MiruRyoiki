@@ -67,10 +67,7 @@ class PaddedDialogRoute extends FluentDialogRoute {
       dismissible: barrierDismissible,
       semanticsLabel: barrierLabel,
       barrierSemanticsDismissible: barrierDismissible,
-      onDismiss: () {
-        onDismiss?.call();
-        log('[1st] onDismiss from ModalBarrier: ${item.id}', color: Colors.white, bgColor: Colors.blue);
-      },
+      onDismiss: onDismiss,
     );
 
     if (!options.transluscentBarrier)

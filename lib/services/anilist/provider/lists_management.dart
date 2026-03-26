@@ -152,11 +152,12 @@ extension AnilistProviderListsManagement on AnilistProvider {
 
       cachedLists.forEach((key, value) {
         final entries = (value['entries'] as List).map((e) => AnilistMediaListEntry.fromJson(e)).toList();
+        final isCustomList = value['isCustomList'] == true;
 
         parsedLists[key] = AnilistUserList(
           entries: entries,
           name: value['name'],
-          status: value['status']?.toString().toListStatus(),
+          status: isCustomList ? AnilistListApiStatus.CUSTOM : value['status']?.toString().toListStatus(),
         );
       });
 

@@ -314,7 +314,6 @@ class NavigationManager extends ChangeNotifier {
       _lastPoppedDialog = item;
       _stack.remove(item);
       item.onDismiss?.call();
-      log('[2nd] onDismiss from handleDialogPopped: ${item.id}', color: Colors.white, bgColor: Colors.green);
       item.activeRoute = null; // Cleanup reference
       _notifyChange();
     }
