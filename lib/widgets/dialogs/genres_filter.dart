@@ -186,7 +186,7 @@ class GenresFilterContentState extends State<GenresFilterContent> {
             ),
             VDiv(24),
             InfoLabel(
-              label: 'View',
+              label: 'Display',
               labelStyle: Manager.smallSubtitleStyle.copyWith(color: Manager.pastelDominantColor),
               child: MouseButtonWrapper(
                 tooltip: libraryScreenKey.currentState?.currentView == LibraryView.all ? 'Show all series' : 'Show only series linked to AniList',

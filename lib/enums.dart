@@ -350,6 +350,7 @@ enum SortOrder {
   averageScore,
   releaseDate,
   popularity,
+  custom,
 }
 
 extension SortOrderX on SortOrder {

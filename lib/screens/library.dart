@@ -172,8 +172,13 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
   bool _filtersOpen = false;
   bool _listsOpen = false;
 
+  // Custom series order per userlist group (list API name -> ordered series paths)
+  Map<String, List<String>> _customSeriesOrder = {};
+  bool _isReorderMode = false;
+
   LibraryView get currentView => _currentView;
   bool get showGrouped => _showGrouped;
+  bool get isCustomSort => _sortOrder == SortOrder.custom;
 
   bool get _isGettingFiltered =>
       // _filtersOpen || //
@@ -288,30 +293,27 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
           return aProgress.compareTo(bProgress);
         };
 
-      // Date the List Entry was last modified
+      // Date the user's List Entry was last modified (progress update, status change)
       case SortOrder.lastModified:
         comparator = (a, b) {
-          final aUpdated = a.currentAnilistData?.updatedAt ?? 0;
-          final bUpdated = b.currentAnilistData?.updatedAt ?? 0;
+          final aUpdated = a.latestUpdatedAt ?? 0;
+          final bUpdated = b.latestUpdatedAt ?? 0;
           return aUpdated.compareTo(bUpdated);
         };
 
       // Date the user added the series to their list
       case SortOrder.dateAdded:
         comparator = (a, b) {
-          // For this we'd need the user list entry creation time, which isn't readily available
-          // Fall back to alphabetical for now
-          return a.name.compareTo(b.name);
+          final aCreated = a.earliestCreatedAt ?? 0;
+          final bCreated = b.earliestCreatedAt ?? 0;
+          return aCreated.compareTo(bCreated);
         };
 
-      // Date the user started watching the series
+      // Date the user started watching the series (earliest across all mappings)
       case SortOrder.startDate:
         comparator = (a, b) {
-          final aStarted = a.currentAnilistData?.startedAt;
-          final bStarted = b.currentAnilistData?.startedAt;
-
-          final aDate = aStarted?.toDateTime();
-          final bDate = bStarted?.toDateTime();
+          final aDate = a.earliestStartedAt;
+          final bDate = b.earliestStartedAt;
 
           if (aDate == null && bDate == null) return 0;
           if (aDate == null) return 1;
@@ -320,14 +322,11 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
           return aDate.compareTo(bDate);
         };
 
-      // Date the user completed watching the series
+      // Date the user completed watching the series (latest across all mappings)
       case SortOrder.completedDate:
         comparator = (a, b) {
-          final aCompleted = a.currentAnilistData?.completedAt;
-          final bCompleted = b.currentAnilistData?.completedAt;
-
-          final aDate = aCompleted?.toDateTime();
-          final bDate = bCompleted?.toDateTime();
+          final aDate = a.latestCompletionDate;
+          final bDate = b.latestCompletionDate;
 
           if (aDate == null && bDate == null) return 0;
           if (aDate == null) return 1;
@@ -344,11 +343,11 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
           return aScore.compareTo(bScore);
         };
 
-      // Release date from Anilist
+      // Release date from Anilist (earliest across all mappings)
       case SortOrder.releaseDate:
         comparator = (a, b) {
-          final aDate = a.currentAnilistData?.startDate?.toDateTime();
-          final bDate = b.currentAnilistData?.startDate?.toDateTime();
+          final aDate = a.earliestReleaseDate;
+          final bDate = b.earliestReleaseDate;
 
           if (aDate == null && bDate == null) return 0;
           if (aDate == null) return 1;
@@ -357,13 +356,17 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
           return aDate.compareTo(bDate);
         };
 
-      // Popularity from Anilist
+      // Popularity from Anilist (highest across all mappings)
       case SortOrder.popularity:
         comparator = (a, b) {
-          final aPopularity = a.currentAnilistData?.popularity ?? 0;
-          final bPopularity = b.currentAnilistData?.popularity ?? 0;
+          final aPopularity = a.highestPopularity ?? 0;
+          final bPopularity = b.highestPopularity ?? 0;
           return aPopularity.compareTo(bPopularity);
         };
+
+      // Custom user-defined order (per-group ordering applied after grouping in _buildCache)
+      case SortOrder.custom:
+        comparator = (a, b) => a.name.compareTo(b.name);
     }
 
     // Apply the sorting direction
@@ -388,6 +391,11 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
     // Build grouped cache if needed
     if (_showGrouped && _groupBy != GroupBy.none) {
       _groupedDataCache = _buildGroupedData(sortedSeries);
+
+      // Apply per-group custom ordering when using custom sort
+      if (_sortOrder == SortOrder.custom && _groupedDataCache != null) {
+        _applyCustomGroupOrdering();
+      }
     } else {
       _groupedDataCache = null;
     }
@@ -538,6 +546,30 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
     return groups;
   }
 
+  /// Apply per-group custom ordering from _customSeriesOrder map
+  void _applyCustomGroupOrdering() {
+    if (_groupedDataCache == null) return;
+
+    for (final entry in _groupedDataCache!.entries) {
+      final groupName = entry.key;
+      final groupApiName = StatusStatistic.getApiName(groupName);
+      final customOrder = _customSeriesOrder[groupApiName];
+
+      if (customOrder != null && customOrder.isNotEmpty) {
+        final seriesList = entry.value;
+        seriesList.sort((a, b) {
+          final aIndex = customOrder.indexOf(a.path.path);
+          final bIndex = customOrder.indexOf(b.path.path);
+          // Series not in custom order go to the end, sorted alphabetically
+          if (aIndex == -1 && bIndex == -1) return a.name.compareTo(b.name);
+          if (aIndex == -1) return 1;
+          if (bIndex == -1) return 1;
+          return aIndex.compareTo(bIndex);
+        });
+      }
+    }
+  }
+
   /// Filter the series in Hidden, Linked
   List<Series> _filterSeries(List<Series> series) {
     // Start with basic filtering (existing code)
@@ -610,6 +642,7 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
     settings.set('library_show_grouped', _showGrouped);
     settings.set('library_list_order', json.encode(customListOrder));
     settings.set('library_hidden_lists', json.encode(hiddenLists.toList()));
+    settings.set('library_custom_series_order', json.encode(_customSeriesOrder.map((k, v) => MapEntry(k, v))));
   }
 
   /// Load preferences
@@ -672,6 +705,19 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
       } catch (_) {
         hiddenLists = {};
       }
+
+      // Load custom series order (per-group map)
+      final customSeriesOrderString = manager.get('library_custom_series_order', defaultValue: '{}');
+      try {
+        final decoded = json.decode(customSeriesOrderString);
+        if (decoded is Map) {
+          _customSeriesOrder = (decoded as Map<String, dynamic>).map(
+            (k, v) => MapEntry(k, List<String>.from(v as List)),
+          );
+        }
+      } catch (_) {
+        _customSeriesOrder = {};
+      }
     });
   }
 
@@ -695,7 +741,16 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
   void onSortOrderChanged(SortOrder? value) {
     if (value != null && value != _sortOrder) {
       invalidateSortCache(); // Invalidate cache when sort order changes
-      setState(() => _sortOrder = value);
+      setState(() {
+        _sortOrder = value;
+        // Exit reorder mode when switching away from custom sort
+        if (value != SortOrder.custom) _isReorderMode = false;
+        // Enable grouping when using custom sort (order is per-group)
+        if (value == SortOrder.custom && !_showGrouped) {
+          _showGrouped = true;
+          _groupBy = GroupBy.anilistLists;
+        }
+      });
       _saveUserPreferences();
     }
   }
@@ -704,6 +759,60 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
     invalidateSortCache(); // Invalidate cache when sort direction changes
     setState(() => _sortDescending = !_sortDescending);
     _saveUserPreferences();
+  }
+
+  void _toggleReorderMode() {
+    setState(() {
+      _isReorderMode = !_isReorderMode;
+      if (_isReorderMode) _initCustomOrderForGroups();
+    });
+  }
+
+  /// Initialize custom order for each group from the current grouped display
+  void _initCustomOrderForGroups() {
+    if (_groupedDataCache == null) return;
+
+    for (final entry in _groupedDataCache!.entries) {
+      final groupApiName = StatusStatistic.getApiName(entry.key);
+      // Only initialize if this group doesn't have a custom order yet
+      if (!_customSeriesOrder.containsKey(groupApiName) || _customSeriesOrder[groupApiName]!.isEmpty) //
+        _customSeriesOrder[groupApiName] = entry.value.map((s) => s.path.path).toList();
+    }
+
+    invalidateSortCache();
+    _saveUserPreferences();
+  }
+
+  /// Reorder a series within a specific group
+  void _reorderSeriesInGroup(String groupDisplayName, int oldIndex, int newIndex) {
+    setState(() {
+      if (newIndex > oldIndex) newIndex -= 1;
+      final groupApiName = StatusStatistic.getApiName(groupDisplayName);
+      final groupSeries = _groupedDataCache?[groupDisplayName];
+      if (groupSeries == null) return;
+
+      // Ensure we have a custom order for this group
+      if (!_customSeriesOrder.containsKey(groupApiName)) //
+        _customSeriesOrder[groupApiName] = groupSeries.map((s) => s.path.path).toList();
+
+      final order = _customSeriesOrder[groupApiName]!;
+      final path = groupSeries[oldIndex].path.path;
+
+      order.remove(path);
+      if (newIndex < groupSeries.length) {
+        final targetPath = groupSeries[newIndex].path.path;
+        final targetIdx = order.indexOf(targetPath);
+        if (targetIdx != -1)
+          order.insert(oldIndex < newIndex ? targetIdx + 1 : targetIdx, path);
+        else
+          order.add(path);
+      } else {
+        order.add(path);
+      }
+
+      invalidateSortCache();
+      _saveUserPreferences();
+    });
   }
 
   void invalidateSortCache() {
@@ -1026,6 +1135,24 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
                       onPressed: _listsOpen ? null : _showListDialog,
                     ),
                   ),
+                  if (isCustomSort) ...[
+                    HDiv(8),
+                    SizedBox(
+                      height: ScreenUtils.kDefaultButtonSize + 1,
+                      child: StandardButton.iconLabel(
+                        tooltip: _isReorderMode ? 'Exit Reorder Mode' : 'Reorder Series',
+                        label: Text(_isReorderMode ? "Done" : "Reorder", style: Manager.subtitleStyle.copyWith(fontSize: 12)),
+                        isFilled: _isReorderMode,
+                        filledColor: _isReorderMode ? (Manager.currentDominantAccentColor ?? Manager.accentColor).light : Colors.white.withOpacity(0.1),
+                        icon: Icon(
+                          _isReorderMode ? mat.Icons.check : mat.Icons.swap_vert,
+                          size: 16,
+                          color: getViewTypeColor(_isReorderMode),
+                        ),
+                        onPressed: _toggleReorderMode,
+                      ),
+                    ),
+                  ],
                 ],
               ),
               Flexible(
@@ -1263,7 +1390,7 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
   }
 
   Widget _buildGridView(List<Series> series, double maxWidth, {Map<String, List<Series>>? groupedData, bool shimmer = false}) {
-    Widget episodesGrid(List list, ScrollController? controller, ScrollPhysics? physics, bool includePadding, {bool allowMeasurement = false, bool shimmer = false, bool isNestedInScrollable = false}) {
+    Widget episodesGrid(List list, ScrollController? controller, ScrollPhysics? physics, bool includePadding, {bool allowMeasurement = false, bool shimmer = false, bool isNestedInScrollable = false, String? groupName}) {
       assert(shimmer || (controller != null && physics != null));
       return ValueListenableBuilder(
         valueListenable: previousGridColumnCount,
@@ -1282,15 +1409,18 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
 
             final Series series_ = (list as List<Series>)[index % list.length];
 
-            if (index == 0) {
-              // Measure the first card to determine the number of columns
-              measureCardSize();
-            }
-            return SeriesCard(
+            // Measure the first card to determine the number of columns
+            if (index == 0) measureCardSize();
+
+            Widget card = SeriesCard(
               key: (index == 0 && allowMeasurement) ? firstCardKey : ValueKey('${series_.path}:${series_.effectivePosterPath ?? 'none'}'),
               series: series_,
               onTap: () => _navigateToSeries(series_),
             );
+
+            if (_isReorderMode && groupName != null) card = _buildDraggableGridItem(card, index, list, groupName);
+
+            return card;
           });
 
           return ScrollConfiguration(
@@ -1359,13 +1489,11 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
                   itemCount: series.length,
                   itemBuilder: (context, index) {
                     final serieItem = series[index];
-                    Widget seriesCard = SeriesCard(
+                    return SeriesCard(
                       key: (index == 0) ? firstCardKey : ValueKey('${serieItem.path}:${serieItem.effectivePosterPath ?? 'none'}'),
                       series: serieItem,
                       onTap: () => _navigateToSeries(serieItem),
                     );
-
-                    return seriesCard;
                   },
                 );
               },
@@ -1381,8 +1509,136 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
     return buildStyledScrollbar(scrollContent, _controller);
   }
 
+  int? _dragFromIndex;
+  int? _dragOverIndex;
+  String? _dragFromGroup;
+
+  /// Defers setState to avoid mutations during layout (drag lifecycle callbacks can fire during layout)
+  void _deferSetState(VoidCallback fn) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) setState(fn);
+    });
+  }
+
+  Widget _buildDraggableGridItem(Widget child, int index, List<Series> seriesList, String groupName) {
+    final series = seriesList[index];
+
+    // Build a separate card for the feedback overlay to avoid duplicate GlobalKey errors
+    final feedbackCard = SeriesCard(
+      key: ValueKey('feedback_${series.path}'),
+      series: series,
+      onTap: () {},
+    );
+
+    return DragTarget<(int, String)>(
+      onWillAcceptWithDetails: (details) {
+        // Only accept drops from the same group
+        if (details.data.$2 != groupName) return false;
+        if (details.data.$1 != index) _deferSetState(() => _dragOverIndex = index);
+
+        return details.data.$1 != index;
+      },
+      onLeave: (_) {
+        if (_dragOverIndex == index) _deferSetState(() => _dragOverIndex = null);
+      },
+      onAcceptWithDetails: (details) {
+        final oldIndex = details.data.$1;
+        _deferSetState(() {
+          _dragOverIndex = null;
+          _dragFromIndex = null;
+          _dragFromGroup = null;
+        });
+        _reorderSeriesInGroup(groupName, oldIndex, oldIndex < index ? index + 1 : index);
+      },
+      builder: (context, candidateData, rejectedData) {
+        final isOver = _dragOverIndex == index && _dragFromIndex != index && _dragFromGroup == groupName;
+        final isDragging = _dragFromIndex != null && _dragFromGroup != null;
+        return Draggable<(int, String)>(
+          data: (index, groupName),
+          onDragStarted: () => _deferSetState(() {
+            _dragFromIndex = index;
+            _dragFromGroup = groupName;
+          }),
+          onDragEnd: (_) => _deferSetState(() {
+            _dragFromIndex = null;
+            _dragOverIndex = null;
+            _dragFromGroup = null;
+          }),
+          onDraggableCanceled: (_, __) => _deferSetState(() {
+            _dragFromIndex = null;
+            _dragOverIndex = null;
+            _dragFromGroup = null;
+          }),
+          // The item being dragged — uses a separate SeriesCard to avoid duplicate GlobalKey
+          feedback: mat.Material(
+            color: Colors.transparent,
+            child: AnimatedRotation(
+              duration: const Duration(milliseconds: 200),
+              turns: isDragging ? 0.02 : 0,
+              child: SizedBox(
+                width: ScreenUtils.libraryCardSize.width - 20,
+                height: ScreenUtils.libraryCardSize.height - 20,
+                child: Transform.translate(
+                  offset: const Offset(10, 10),
+                  child: AnimatedScale(
+                    duration: const Duration(milliseconds: 200),
+                    scale: isDragging ? 0.5 : 1,
+                    child: feedbackCard,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          // Original position of the dragged item
+          childWhenDragging: IgnorePointer(child: Opacity(opacity: 0.25, child: child)),
+          // The rest of the items, with visual feedback when another item is dragged over one of them
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(ScreenUtils.kStatCardBorderRadius),
+              border: isOver ? Border.all(color: (Manager.currentDominantAccentColor ?? Manager.accentColor).light, width: 2) : null,
+            ),
+            child: Stack(
+              children: [
+                AnimatedRotation(
+                  duration: const Duration(milliseconds: 200),
+                  turns: isOver ? 0.01 : 0,
+                  child: AnimatedOpacity(
+                    duration: const Duration(milliseconds: 200),
+                    opacity: isOver ? 0.5 : 1,
+                    child: AnimatedScale(
+                      duration: const Duration(milliseconds: 200),
+                      scale: isOver ? 0.95 : 1,
+                      child: child,
+                    ),
+                  ),
+                ),
+                // Reorder index badge
+                Positioned(
+                  top: 4,
+                  left: 4,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.6),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      '${index + 1}',
+                      style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   Widget _buildListView(List<Series> series, double maxWidth, {Map<String, List<Series>>? groupedData, bool shimmer = false}) {
-    Widget buildListContent(List list, ScrollController? controller, ScrollPhysics? physics, bool includePadding) {
+    Widget buildListContent(List list, ScrollController? controller, ScrollPhysics? physics, bool includePadding, {String? groupName}) {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1431,23 +1687,67 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
           // Series list
           Expanded(
             child: shimmer
+                // Show shimmer placeholders while loading
                 ? _buildShimmerList()
-                : ListView.builder(
-                    controller: controller,
-                    physics: physics,
-                    padding: includePadding ? const EdgeInsets.all(12) : EdgeInsets.zero,
-                    itemCount: list.length,
-                    itemBuilder: (context, index) {
-                      final series = (list as List<Series>)[index];
-                      return Padding(
-                        padding: EdgeInsets.only(bottom: 2.5, top: index == 0 ? 2.5 : 0),
-                        child: SeriesListTile(
-                          series: series,
-                          onTap: () => _navigateToSeries(series),
-                        ),
-                      );
-                    },
-                  ),
+                : (_isReorderMode && groupName != null)
+                    // Allow reordering within groups in list view
+                    ? mat.ReorderableListView.builder(
+                        scrollController: controller,
+                        padding: includePadding ? const EdgeInsets.all(12) : EdgeInsets.zero,
+                        itemCount: list.length,
+                        buildDefaultDragHandles: false,
+                        proxyDecorator: (child, index, animation) {
+                          return mat.Material(
+                            color: Colors.transparent,
+                            elevation: 4,
+                            child: child,
+                          );
+                        },
+                        onReorder: (oldIndex, newIndex) => _reorderSeriesInGroup(groupName, oldIndex, newIndex),
+                        itemBuilder: (context, index) {
+                          final series = (list as List<Series>)[index];
+                          return Padding(
+                            key: ValueKey(series.path.path),
+                            padding: EdgeInsets.only(bottom: 2.5, top: index == 0 ? 2.5 : 0),
+                            child: Row(
+                              children: [
+                                mat.ReorderableDragStartListener(
+                                  index: index,
+                                  child: MouseRegion(
+                                    cursor: SystemMouseCursors.grab,
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                                      child: Icon(mat.Icons.drag_handle, size: 18, color: Colors.white.withOpacity(0.5)),
+                                    ),
+                                  ),
+                                ),
+                                Expanded(
+                                  child: SeriesListTile(
+                                    series: series,
+                                    onTap: () => _navigateToSeries(series),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      )
+                    : ListView.builder(
+                        controller: controller,
+                        physics: physics,
+                        padding: includePadding ? const EdgeInsets.all(12) : EdgeInsets.zero,
+                        itemCount: list.length,
+                        itemBuilder: (context, index) {
+                          final series = (list as List<Series>)[index];
+                          return Padding(
+                            padding: EdgeInsets.only(bottom: 2.5, top: index == 0 ? 2.5 : 0),
+                            child: SeriesListTile(
+                              series: series,
+                              onTap: () => _navigateToSeries(series),
+                            ),
+                          );
+                        },
+                      ),
           ),
         ],
       );
@@ -1541,7 +1841,7 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
                               ),
                               child: SizedBox(
                                 height: ScreenUtils.kDefaultListViewItemHeight * seriesList.length + 33 + 2, // +33 for header
-                                child: buildListContent(seriesList, null, const NeverScrollableScrollPhysics(), false),
+                                child: buildListContent(seriesList, null, const NeverScrollableScrollPhysics(), false, groupName: groupName),
                               ),
                             ),
                           ),
@@ -1621,7 +1921,7 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
   Widget _buildGroupedViewFromCache(
     Map<String, List<Series>> groupedData,
     double maxWidth,
-    Widget Function(List<Series>, ScrollController, ScrollPhysics, bool, {bool allowMeasurement, bool isNestedInScrollable}) episodesGrid,
+    Widget Function(List<Series>, ScrollController, ScrollPhysics, bool, {bool allowMeasurement, bool isNestedInScrollable, String? groupName}) episodesGrid,
   ) {
     // Use the _customListOrder to determine display order
     final displayOrder = groupedData.keys.toList();
@@ -1696,7 +1996,7 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
                           ),
                           content: Padding(
                             padding: const EdgeInsets.only(top: ScreenUtils.kLibraryHeaderContentSeparatorHeight),
-                            child: episodesGrid(seriesInGroup, controller, physics, false, allowMeasurement: index == 0, isNestedInScrollable: true),
+                            child: episodesGrid(seriesInGroup, controller, physics, false, allowMeasurement: index == 0, isNestedInScrollable: true, groupName: groupName),
                           ),
                         ),
                       ),
@@ -1737,6 +2037,8 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
         return 'Release Date';
       case SortOrder.popularity:
         return 'Popularity';
+      case SortOrder.custom:
+        return 'Custom Order';
     }
   }
 
@@ -1847,7 +2149,7 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
       // Convert to Alignment coordinates (-1.0 to 1.0)
       final double alignmentX = (buttonCenterX / ScreenUtils.width) * 2 - 1;
       final double alignmentY = (buttonCenterY / ScreenUtils.height) * 2 - 1;
-      
+
       print('buttonCenterX: $buttonCenterX, buttonCenterY: $buttonCenterY');
       alignment = Alignment(alignmentX, alignmentY);
     }
