@@ -1145,7 +1145,6 @@ Future<void> _registerWindowsUrlScheme(String scheme) async {
 // TODO cache images smaller to be displayed without using too much memory
 // TODO add NonMapping for series that are not to be linked with Anilist
 // TODO create widget for Smooth scrolling scroll controllers
-// TODO fix homescreen 'next episode' returns S1 episode number + 1 instead of S2 episode 1 when moving to next season
 // TODO create superclass for series type cards (continue watching, library series, search results, etc.) to share code between them and avoid duplication
 // TODO add 'notify me' button to upcoming episodes on home screen
 // TODO change text 'wait while library is getting indexed' to 'scanning' when library scan is in progress
