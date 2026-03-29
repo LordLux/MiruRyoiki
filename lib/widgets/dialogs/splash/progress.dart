@@ -5,6 +5,7 @@ import 'package:miruryoiki/utils/screen.dart';
 import '../../../utils/time.dart';
 import '../../../manager.dart';
 import '../../../services/lock_manager.dart';
+import '../../connectivity_indicator.dart';
 
 /// Manages the global status bar
 class LibraryScanProgressManager {
@@ -169,10 +170,10 @@ class _AnimatedProgressIndicatorState extends State<AnimatedProgressIndicator> {
         builder: (context, progress, _) {
           // If progress is null, show indeterminate indicator immediately.
           if (progress == null) return _indicator(null);
-      
+
           final beginValue = _previousValue ?? 0.0;
           _previousValue = progress;
-      
+
           return TweenAnimationBuilder<double>(
             tween: Tween(begin: progress == 0.0 ? 0.0 : beginValue, end: progress),
             duration: progress == 0.0 ? Duration.zero : const Duration(milliseconds: 600),

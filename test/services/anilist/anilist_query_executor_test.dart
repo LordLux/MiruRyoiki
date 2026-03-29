@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:graphql/client.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:miruryoiki/services/anilist/anilist_availability.dart';
 import 'package:miruryoiki/services/connectivity/connectivity_service.dart';
 import 'package:miruryoiki/services/anilist/queries/anilist_query_executor.dart';
 
@@ -65,6 +66,9 @@ void main() {
     ConnectivityService().setStrategy(mockConnectivity);
     // Initialize ConnectivityService (mocking the initial check)
     await ConnectivityService().initialize();
+
+    // Reset availability state
+    AnilistAvailabilityService().reset();
 
     mockClient = FakeGraphQLClient();
     executor = TestExecutor(mockClient);
@@ -233,6 +237,190 @@ void main() {
       expect(attempts, 2);
       // Should have waited at least 1 second
       expect(stopwatch.elapsedMilliseconds, greaterThanOrEqualTo(1000));
+    });
+  });
+
+  group('AniList service outage detection', () {
+    test('detects "temporarily disabled" and marks unavailable', () async {
+      mockConnectivity.setOnline(true);
+      await Future.delayed(const Duration(milliseconds: 50));
+
+      mockClient.queryHandler = <T>(options) async {
+        return QueryResult(
+          options: options,
+          source: QueryResultSource.network,
+          exception: OperationException(
+            linkException: ServerException(
+              originalException: null,
+              parsedResponse: Response(
+                data: null,
+                errors: [
+                  GraphQLError(
+                    message: 'The AniList API has been temporarily disabled due to severe stability issues.',
+                  ),
+                ],
+                response: {},
+                context: const Context(),
+              ),
+            ),
+          ),
+        );
+      };
+
+      final result = await executor.executeQuery(
+        options: QueryOptions(document: gql('query { test }')),
+        operationName: 'testQuery',
+        parser: (data) => data['test'] as String,
+      );
+
+      expect(result, isNull);
+      expect(AnilistAvailabilityService().isUnavailable, true);
+    });
+
+    test('skips request when already marked unavailable', () async {
+      mockConnectivity.setOnline(true);
+      await Future.delayed(const Duration(milliseconds: 50));
+
+      AnilistAvailabilityService().markUnavailable();
+
+      int attempts = 0;
+      mockClient.queryHandler = <T>(options) async {
+        attempts++;
+        return QueryResult(
+          options: options,
+          source: QueryResultSource.network,
+          data: {'test': 'should_not_reach'},
+        );
+      };
+
+      final result = await executor.executeQuery(
+        options: QueryOptions(document: gql('query { test }')),
+        operationName: 'testQuery',
+        parser: (data) => data['test'] as String,
+      );
+
+      expect(result, isNull);
+      expect(attempts, 0, reason: 'Should not have made any network calls');
+    });
+
+    test('resumes requests after reset', () async {
+      mockConnectivity.setOnline(true);
+      await Future.delayed(const Duration(milliseconds: 50));
+
+      // Mark unavailable then reset
+      AnilistAvailabilityService().markUnavailable();
+      AnilistAvailabilityService().reset();
+
+      mockClient.queryHandler = <T>(options) async {
+        return QueryResult(
+          options: options,
+          source: QueryResultSource.network,
+          data: {'test': 'back_online'},
+        );
+      };
+
+      final result = await executor.executeQuery(
+        options: QueryOptions(document: gql('query { test }')),
+        operationName: 'testQuery',
+        parser: (data) => data['test'] as String,
+      );
+
+      expect(result, 'back_online');
+    });
+
+    test('detects "temporarily unavailable" variant', () async {
+      mockConnectivity.setOnline(true);
+      await Future.delayed(const Duration(milliseconds: 50));
+
+      mockClient.queryHandler = <T>(options) async {
+        return QueryResult(
+          options: options,
+          source: QueryResultSource.network,
+          exception: OperationException(
+            linkException: ServerException(
+              originalException: null,
+              parsedResponse: Response(
+                data: null,
+                errors: [
+                  GraphQLError(message: 'Service temporarily unavailable'),
+                ],
+                response: {},
+                context: const Context(),
+              ),
+            ),
+          ),
+        );
+      };
+
+      final result = await executor.executeQuery(
+        options: QueryOptions(document: gql('query { test }')),
+        operationName: 'testQuery',
+        parser: (data) => data['test'] as String,
+      );
+
+      expect(result, isNull);
+      expect(AnilistAvailabilityService().isUnavailable, true);
+    });
+
+    test('normal errors do NOT mark unavailable', () async {
+      mockConnectivity.setOnline(true);
+      await Future.delayed(const Duration(milliseconds: 50));
+
+      mockClient.queryHandler = <T>(options) async {
+        return QueryResult(
+          options: options,
+          source: QueryResultSource.network,
+          exception: OperationException(
+            graphqlErrors: [GraphQLError(message: 'Some other error')],
+          ),
+        );
+      };
+
+      final result = await executor.executeQuery(
+        options: QueryOptions(document: gql('query { test }')),
+        operationName: 'testQuery',
+        parser: (data) => data['test'] as String,
+      );
+
+      expect(result, isNull);
+      expect(AnilistAvailabilityService().isUnavailable, false,
+          reason: 'Regular errors should not trigger the outage flag');
+    });
+
+    test('mutation also detects outage', () async {
+      mockConnectivity.setOnline(true);
+      await Future.delayed(const Duration(milliseconds: 50));
+
+      mockClient.mutationHandler = <T>(options) async {
+        return QueryResult(
+          options: QueryOptions(document: options.document),
+          source: QueryResultSource.network,
+          exception: OperationException(
+            linkException: ServerException(
+              originalException: null,
+              parsedResponse: Response(
+                data: null,
+                errors: [
+                  GraphQLError(
+                    message: 'The AniList API has been temporarily disabled due to severe stability issues.',
+                  ),
+                ],
+                response: {},
+                context: const Context(),
+              ),
+            ),
+          ),
+        );
+      };
+
+      final result = await executor.executeMutation(
+        options: MutationOptions(document: gql('mutation { test }')),
+        operationName: 'testMutation',
+        parser: (data) => data['test'] as String,
+      );
+
+      expect(result, isNull);
+      expect(AnilistAvailabilityService().isUnavailable, true);
     });
   });
 }

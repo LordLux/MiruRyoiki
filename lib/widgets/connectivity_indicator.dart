@@ -117,10 +117,31 @@ class _OfflineBannerState extends State<OfflineBanner> {
     return ValueListenableBuilder<bool>(
       valueListenable: connectivityService.isOnlineNotifier,
       builder: (context, isOnline, child) {
-        final Widget res = Container(
-          width: double.infinity,
-          color: isOnline ? Colors.green : Colors.orange.shade600,
-          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+        final Widget res = AnimatedContainer(
+          duration: const Duration(milliseconds: 300),
+          width: 500,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: isOnline
+                  ? [
+                      Colors.green.withOpacity(0.95),
+                      Colors.green.withOpacity(0.7),
+                      Colors.green.withOpacity(0.3),
+                      Colors.green.withOpacity(0.1),
+                      Colors.green.withOpacity(0),
+                    ]
+                  : [
+                      Colors.orange.shade600.withOpacity(0.95),
+                      Colors.orange.shade600.withOpacity(0.7),
+                      Colors.orange.shade600.withOpacity(0.3),
+                      Colors.orange.shade600.withOpacity(0.1),
+                      Colors.orange.shade600.withOpacity(0),
+                    ],
+              begin: Alignment.centerLeft,
+              end: Alignment.centerRight,
+            ),
+          ),
+          padding: const EdgeInsets.symmetric(vertical: 2, horizontal: 16),
           child: Row(
             children: [
               Icon(
@@ -139,35 +160,36 @@ class _OfflineBannerState extends State<OfflineBanner> {
                   ),
                 ),
               ),
-              if (!isOnline) Consumer<ConnectivityService>(
-                builder: (context, connectivityService, _) {
-                  return AnimatedBuilder(
-                    animation: connectivityService.isCheckingConnectivity ? const AlwaysStoppedAnimation(0.0) : const AlwaysStoppedAnimation(1.0),
-                    builder: (context, child) {
-                      return TweenAnimationBuilder<double>(
-                        tween: Tween<double>(
-                          begin: 0.0,
-                          end: connectivityService.isCheckingConnectivity ? double.infinity : 1.0,
-                        ),
-                        duration: connectivityService.isCheckingConnectivity ? const Duration(seconds: 1) : const Duration(milliseconds: 500),
-                        builder: (context, value, child) {
-                          return Transform.rotate(
-                            angle: (value % 1.0) * 2 * 3.14159,
-                            child: fluent.IconButton(
-                              onPressed: connectivityService.isCheckingConnectivity ? null : () => connectivityService.checkConnectivity(),
-                              icon: const Icon(
-                                fluent.FluentIcons.refresh,
-                                color: Colors.white,
-                                size: 16,
+              if (!isOnline)
+                Consumer<ConnectivityService>(
+                  builder: (context, connectivityService, _) {
+                    return AnimatedBuilder(
+                      animation: connectivityService.isCheckingConnectivity ? const AlwaysStoppedAnimation(0.0) : const AlwaysStoppedAnimation(1.0),
+                      builder: (context, child) {
+                        return TweenAnimationBuilder<double>(
+                          tween: Tween<double>(
+                            begin: 0.0,
+                            end: connectivityService.isCheckingConnectivity ? double.infinity : 1.0,
+                          ),
+                          duration: connectivityService.isCheckingConnectivity ? const Duration(seconds: 1) : const Duration(milliseconds: 500),
+                          builder: (context, value, child) {
+                            return Transform.rotate(
+                              angle: (value % 1.0) * 2 * 3.14159,
+                              child: fluent.IconButton(
+                                onPressed: connectivityService.isCheckingConnectivity ? null : () => connectivityService.checkConnectivity(),
+                                icon: const Icon(
+                                  fluent.FluentIcons.refresh,
+                                  color: Colors.white,
+                                  size: 16,
+                                ),
                               ),
-                            ),
-                          );
-                        },
-                      );
-                    },
-                  );
-                },
-              ),
+                            );
+                          },
+                        );
+                      },
+                    );
+                  },
+                ),
             ],
           ),
         );

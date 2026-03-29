@@ -4,6 +4,7 @@ import 'dart:math';
 import 'package:graphql/client.dart';
 
 import '../../connectivity/connectivity_service.dart';
+import '../anilist_availability.dart';
 import '../../../utils/logging.dart';
 import '../../../utils/error_handling.dart';
 
@@ -66,6 +67,13 @@ mixin AnilistQueryExecutor {
     required T Function(Map<String, dynamic>) parser,
     bool isOfflineAware = true,
   }) async* {
+    // Short-circuit if AniList API is known to be down
+    if (AnilistAvailabilityService().isUnavailable) {
+      logTrace('$operationName: AniList API is unavailable — skipping watch.');
+      yield null;
+      return;
+    }
+
     // Connectivity Check
     bool isOffline = false;
     if (isOfflineAware) {
@@ -118,7 +126,10 @@ mixin AnilistQueryExecutor {
           // TODO : Implement better rate limit handling in streams if needed
         }
 
-        if (isOffline && isExpectedOfflineError(exception)) {
+        if (_isAnilistServiceOutage(exception)) {
+          AnilistAvailabilityService().markUnavailable();
+          logErr('$operationName: AniList API temporarily disabled (stream).', exception);
+        } else if (isOffline && isExpectedOfflineError(exception)) {
           // Expected offline error, ignore
         } else if (shouldRetryAnilistError(exception)) {
           logWarn('$operationName: Stream error: $exception');
@@ -146,6 +157,13 @@ mixin AnilistQueryExecutor {
     required T Function(Map<String, dynamic>) parser,
     required bool isOfflineAware,
   }) async {
+    // Short-circuit if AniList API is known to be down
+    final availability = AnilistAvailabilityService();
+    if (availability.isUnavailable) {
+      logTrace('$operationName: AniList API is unavailable — skipping request.');
+      return null;
+    }
+
     int attempt = 1;
     const int maxRetries = 3;
     const int baseDelay = 1000;
@@ -246,6 +264,13 @@ mixin AnilistQueryExecutor {
           continue;
         }
 
+        // Check for AniList service outage (temporarily disabled)
+        if (_isAnilistServiceOutage(exception)) {
+          availability.markUnavailable();
+          logErr('$operationName: AniList API temporarily disabled.', exception);
+          return null;
+        }
+
         // Not retryable
         logErr('$operationName: Non-retryable error.', exception);
         return null;
@@ -263,5 +288,11 @@ mixin AnilistQueryExecutor {
     }
 
     return null;
+  }
+
+  /// Detects AniList service-level outage responses (API temporarily disabled).
+  static bool _isAnilistServiceOutage(dynamic exception) {
+    final msg = exception.toString().toLowerCase();
+    return msg.contains('temporarily disabled') || msg.contains('temporarily unavailable');
   }
 }

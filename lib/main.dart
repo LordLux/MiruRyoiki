@@ -34,14 +34,13 @@ import 'screens/home.dart';
 import 'screens/release_calendar.dart';
 import 'services/isolates/thumbnail_manager.dart';
 import 'widgets/dialogs/padded_dialog_route.dart';
-import 'widgets/dialogs/splash/progress.dart';
+import 'widgets/dialogs/splash/status.dart';
 import 'widgets/reassemble_widget.dart';
 import 'widgets/route_transition_builders.dart';
 import 'widgets/sidebar_opener_detector.dart';
 import 'widgets/player.dart';
 import 'widgets/release_notification.dart';
 import 'widgets/svg.dart';
-import 'widgets/connectivity_indicator.dart';
 import 'services/anilist/provider/anilist_provider.dart';
 import 'services/connectivity/connectivity_service.dart';
 import 'services/navigation/statusbar.dart';
@@ -569,6 +568,7 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
                     paneBodyBuilder: (item, _) {
                       return Column(
                         children: [
+                          // Page Content
                           Expanded(
                             child: Navigator(
                               key: navigatorKey,
@@ -576,18 +576,8 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
                               onGenerateRoute: _onGenerateRoute,
                             ),
                           ),
-                          // Offline banner
-                          const OfflineBanner(),
-                          ValueListenableBuilder(
-                            valueListenable: LibraryScanProgressManager().showingNotifier,
-                            builder: (context, isShowing, child) {
-                              return AnimatedContainer(
-                                duration: mediumDuration,
-                                color: getDimmableWhite(context),
-                                height: isShowing ? ScreenUtils.kStatusBarHeight : 0,
-                              );
-                            },
-                          )
+                          // Status Bar
+                          StatusBar()
                         ],
                       );
                     },
@@ -714,17 +704,6 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
               ),
             ),
             const StatusBarWidget(), // ep/series name, zoom, etc.
-            ValueListenableBuilder(
-              valueListenable: LibraryScanProgressManager().showingNotifier,
-              builder: (context, isShowing, _) {
-                return AnimatedPositioned(
-                  duration: mediumDuration,
-                  bottom: 0,
-                  right: 8,
-                  child: LibraryScanProgressIndicator(), // Bottom right library scan progress indicator
-                );
-              },
-            ),
             Player(),
             SidebarOpenerDetector(
               onHover: () => setCompactView = false,

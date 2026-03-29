@@ -1,6 +1,8 @@
 import 'dart:async';
 
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:miruryoiki/services/anilist/anilist_availability.dart';
+import 'package:miruryoiki/services/connectivity/connectivity_service.dart';
 import 'package:miruryoiki/utils/time.dart';
 import 'package:miruryoiki/widgets/dialogs/splash/progress.dart';
 
@@ -230,6 +232,14 @@ class StatusBarManager {
 class StatusBarWidget extends StatelessWidget {
   const StatusBarWidget({super.key});
 
+  /// Whether the bottom status bar strip is visible (scan progress, offline, or AniList unavailable)
+  static bool get _isBottomBarVisible {
+    if (LibraryScanProgressManager().isShowing) return true;
+    if (ConnectivityService().isInitialized && ConnectivityService().isOffline) return true;
+    if (AnilistAvailabilityService().isUnavailable) return true;
+    return false;
+  }
+
   @override
   Widget build(BuildContext context) {
     final statusBarManager = StatusBarManager();
@@ -239,7 +249,7 @@ class StatusBarWidget extends StatelessWidget {
       builder: (context, isShowing, _) {
         return Positioned(
           right: 8,
-          bottom: LibraryScanProgressManager().isShowing ? 28 : 8,
+          bottom: _isBottomBarVisible ? 28 : 8,
           child: AnimatedSwitcher(
             duration: dimDuration,
             switchInCurve: Curves.easeOut,
