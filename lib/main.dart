@@ -1145,9 +1145,7 @@ Future<void> _registerWindowsUrlScheme(String scheme) async {
 // TODO cache images smaller to be displayed without using too much memory
 // TODO add NonMapping for series that are not to be linked with Anilist
 // TODO create widget for Smooth scrolling scroll controllers
-// TODO reload inner series screen after reloading library if the series is open
 // TODO fix homescreen 'next episode' returns S1 episode number + 1 instead of S2 episode 1 when moving to next season
-// TODO check that notifications are only for anime and not for manga
 // TODO create superclass for series type cards (continue watching, library series, search results, etc.) to share code between them and avoid duplication
 // TODO add 'notify me' button to upcoming episodes on home screen
 // TODO change text 'wait while library is getting indexed' to 'scanning' when library scan is in progress
@@ -1167,11 +1165,7 @@ Future<void> _registerWindowsUrlScheme(String scheme) async {
 // TODO change scanning: any folders [names] will remain as is and only loose files will be moved to 'Related Media'
 
 // beta
-// TODO after linking anilist, fetch episode titles for neolinked series
-// TODO add indicator of which episodes have anilist titles
-// TODO add per-episode/season/series toggle to use anilist titles or local titles
-// TODO sometimes anilist episode numbering for seasons > 1 continue from previous season, need to handle that
-// TODO add watch log with timestamps and episode names, and ability to export it to a file
+// TODO add 'see log' dialog with timestamps and episode names, and ability to export it to a file
 
 // TODO add marquee to notification titles
 // TODO add 'state' and 'stateString' to MediaStatus
@@ -1186,3 +1180,4 @@ Future<void> _registerWindowsUrlScheme(String scheme) async {
 
 // would be nice
 // TODO 'video player process monitoring failed to start' because already open, after a hot restart -> detect with ReassembleListener
+// TODO show 'downloading' status on UIEpisode cards when episode is being downloaded by qbittorrent

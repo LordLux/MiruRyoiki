@@ -383,19 +383,37 @@ class PaddedDialogState extends State<PaddedDialog> {
     );
   }
 
+  Alignment _fromPosition(Position? position) {
+    if (position == null) return Alignment.center;
+    if (position.top == 0 && position.left == 0) return Alignment.topLeft;
+    if (position.top == 0 && position.right == 0) return Alignment.topRight;
+    if (position.bottom == 0 && position.left == 0) return Alignment.bottomLeft;
+    if (position.bottom == 0 && position.right == 0) return Alignment.bottomRight;
+    if (position.top == 0) return Alignment.topCenter;
+    if (position.bottom == 0) return Alignment.bottomCenter;
+    if (position.left == 0) return Alignment.centerLeft;
+    if (position.right == 0) return Alignment.centerRight;
+    return Alignment(
+      (position.left ?? 0) - (position.right ?? 0), // +0.5 to convert from 0..1 to -1..1
+      (position.top ?? 0) - (position.bottom ?? 0),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: widget.barrierOptions.barrierPadding,
       child: Stack(
+        alignment: _fromPosition(alignment),
         children: [
-          _AlignmentWidget(
-            child: Padding(
-              padding: widget.padding,
-              child: Builder(builder: (context) {
-                currentConstraints = PaddedDialog._fixConstraints(currentConstraints);
-                return switch (widget._type) {
-                  _PaddedDialogType.simple => ContentDialog(
+          Padding(
+            padding: widget.padding,
+            child: Builder(builder: (context) {
+              currentConstraints = PaddedDialog._fixConstraints(currentConstraints);
+              switch (widget._type) {
+                case _PaddedDialogType.simple:
+                  if (widget.actions == null || widget.actions!(null).isEmpty)
+                    return ContentActionlessDialog(
                       constraints: currentConstraints,
                       style: widget.theme,
                       title: widget.title,
@@ -406,20 +424,103 @@ class PaddedDialogState extends State<PaddedDialog> {
                           child: widget.contentBuilder(context, currentConstraints),
                         ),
                       ),
-                      actions: widget.actions != null ? widget.actions!(null) : null,
-                    ),
-                  _PaddedDialogType.custom => mat.Material(
+                    );
+                  return ContentDialog(
+                    constraints: currentConstraints,
+                    style: widget.theme,
+                    title: widget.title,
+                    content: mat.Material(
                       color: Colors.transparent,
                       child: Container(
                         constraints: currentConstraints,
                         child: widget.contentBuilder(context, currentConstraints),
                       ),
                     ),
-                };
-              }),
-            ),
+                    actions: [
+                      ...?widget.actions?.call(widget.navigationItem?.data),
+                    ],
+                  );
+                case _PaddedDialogType.custom:
+                  return mat.Material(
+                    color: Colors.transparent,
+                    child: Container(
+                      constraints: currentConstraints,
+                      child: widget.contentBuilder(context, currentConstraints),
+                    ),
+                  );
+              }
+            }),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class ContentActionlessDialog extends StatelessWidget {
+  /// Creates a content dialog without actions.
+  const ContentActionlessDialog({
+    super.key,
+    this.title,
+    this.content,
+    this.style,
+    this.constraints = kDefaultContentDialogConstraints,
+  });
+
+  /// The title of the dialog. Usually, a [Text] widget
+  final Widget? title;
+
+  /// The content of the dialog. Usually, a [Text] widget
+  final Widget? content;
+
+  /// The style used by this dialog. If non-null, it's merged with
+  /// [FluentThemeData.dialogTheme]
+  final ContentDialogThemeData? style;
+
+  /// The constraints of the dialog. It defaults to `BoxConstraints(maxWidth: 368)`
+  final BoxConstraints constraints;
+
+  @override
+  Widget build(BuildContext context) {
+    assert(debugCheckHasFluentTheme(context));
+    final style = ContentDialogThemeData.standard(FluentTheme.of(
+      context,
+    )).merge(FluentTheme.of(context).dialogTheme.merge(this.style));
+
+    return Align(
+      alignment: AlignmentDirectional.center,
+      child: Container(
+        constraints: constraints,
+        decoration: style.decoration,
+        child: Flexible(
+          child: Padding(
+            padding: style.padding ?? EdgeInsets.zero,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (title != null)
+                  Padding(
+                    padding: style.titlePadding ?? EdgeInsets.zero,
+                    child: DefaultTextStyle.merge(
+                      style: style.titleStyle,
+                      child: title!,
+                    ),
+                  ),
+                if (content != null)
+                  Flexible(
+                    child: Padding(
+                      padding: style.bodyPadding ?? EdgeInsets.zero,
+                      child: DefaultTextStyle.merge(
+                        style: style.bodyStyle,
+                        child: content!,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

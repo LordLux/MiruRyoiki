@@ -52,7 +52,7 @@ import 'anilist_settings.dart';
 import '../models/episode.dart';
 import '../models/ui_episode.dart';
 import '../models/sonarr/sonarr_episode.dart';
-import '../widgets/dialogs/episode_search.dart';
+import '../widgets/dialogs/knaben_search.dart';
 import '../widgets/episode_grid.dart';
 import '../widgets/series_download_view.dart';
 import '../widgets/dialogs/sonarr_manual_link_dialog.dart';
@@ -91,11 +91,15 @@ class SeriesScreenState extends State<SeriesScreen> {
   List<SonarrEpisode>? _sonarrEpisodes;
   int? _sonarrSeriesId;
 
-  /// Sonarr episodes filtered to the current target season only
+  /// Sonarr episodes filtered to the current target season only.
+  /// Returns null for EpisodeTargets as single-episode mappings don't use Sonarr
   List<SonarrEpisode>? get _sonarrEpisodesForTarget {
     if (_sonarrEpisodes == null) return null;
-    final seasonNum = _cachedTarget?.asSeason?.seasonNumber;
+    if (_cachedTarget == null || _cachedTarget!.isEpisode) return null;
+
+    final seasonNum = _cachedTarget!.asSeason?.seasonNumber;
     if (seasonNum == null) return _sonarrEpisodes;
+
     return _sonarrEpisodes!.where((e) => e.seasonNumber == seasonNum).toList();
   }
 
@@ -107,6 +111,34 @@ class SeriesScreenState extends State<SeriesScreen> {
   Series? _cachedSeries;
   AnilistMapping? _cachedMapping;
   MappingTarget? _cachedTarget;
+
+  /// Cached merged episodes list to avoid recomputing on every build
+  List<UIEpisode>? _cachedMergedEpisodes;
+  MappingTarget? _lastMergeTarget;
+  int _lastMergeLocalCount = -1;
+  int _lastMergeSonarrCount = -1;
+
+  List<UIEpisode> get _mergedEpisodes {
+    final localEps = _cachedTarget?.episodes;
+    final sonarrEps = _sonarrEpisodesForTarget;
+    final localCount = localEps?.length ?? -1;
+    final sonarrCount = sonarrEps?.length ?? -1;
+
+    if (_cachedMergedEpisodes != null && //
+        identical(_lastMergeTarget, _cachedTarget) &&
+        _lastMergeLocalCount == localCount &&
+        _lastMergeSonarrCount == sonarrCount) {
+      return _cachedMergedEpisodes!;
+    }
+
+    _lastMergeTarget = _cachedTarget;
+    _lastMergeLocalCount = localCount;
+    _lastMergeSonarrCount = sonarrCount;
+    _cachedMergedEpisodes = UIEpisode.merge(localEps, sonarrEps);
+    return _cachedMergedEpisodes!;
+  }
+
+  void _invalidateMergedEpisodes() => _cachedMergedEpisodes = null;
 
   ViewType _currentViewType = ViewType.grid;
 
@@ -267,6 +299,7 @@ class SeriesScreenState extends State<SeriesScreen> {
     // Initialize the cached mapping and target from the widget
     _cachedMapping = widget.mapping;
     _cachedTarget = widget.target;
+    _invalidateMergedEpisodes();
     if (_cachedMapping?.viewType != null) _currentViewType = _cachedMapping!.viewType!;
 
     if (isMappingMode)
@@ -292,6 +325,7 @@ class SeriesScreenState extends State<SeriesScreen> {
     if (widget.target != oldWidget.target || widget.mapping != oldWidget.mapping) {
       _cachedMapping = widget.mapping;
       _cachedTarget = widget.target;
+      _invalidateMergedEpisodes();
       if (_cachedMapping?.viewType != null) _currentViewType = _cachedMapping!.viewType!;
 
       if (isMappingMode)
@@ -329,6 +363,7 @@ class SeriesScreenState extends State<SeriesScreen> {
       if (freshMapping != null) {
         _cachedMapping = freshMapping;
         _cachedTarget = series.getTargetForMapping(freshMapping);
+        _invalidateMergedEpisodes();
       } else {
         // Mapping path no longer exists
         logWarn('Mapping path no longer found after library reload: $localPath');
@@ -427,6 +462,7 @@ class SeriesScreenState extends State<SeriesScreen> {
         setState(() {
           _sonarrSeriesId = result.$1;
           _sonarrEpisodes = result.$2;
+          _invalidateMergedEpisodes();
         });
       }
     } catch (e, stack) {
@@ -1285,7 +1321,7 @@ class SeriesScreenState extends State<SeriesScreen> {
                   padding: EdgeInsets.only(right: 2),
                   child: EpisodeGrid(
                     collapsable: false,
-                    episodes: UIEpisode.merge(_cachedTarget!.episodes, _sonarrEpisodesForTarget),
+                    episodes: _mergedEpisodes,
                     onTap: (uiEpisode) {
                       // If the episode can be played, play it
                       if (uiEpisode.canPlay) {
@@ -1293,28 +1329,46 @@ class SeriesScreenState extends State<SeriesScreen> {
                         return;
                       }
 
-                      // If the episode is released or in the future, allow searching for it in Sonarr
+                      // If the episode is released or in the future, open search dialog
                       if (uiEpisode.state == EpisodeState.released || uiEpisode.state == EpisodeState.future) {
-                        final sonarrEp = uiEpisode.sonarrEpisode;
-                        final repo = TorrentManager.sonarrRepository;
-
-                        if (sonarrEp != null && repo != null) {
-                          showPaddedDialog(
-                            context,
-                            navigationItem: DialogNavigationItem(id: 'sonarr:episode-search', title: 'Episode Search'),
-                            builder: (context, item, options) {
-                              return PaddedDialog.custom(
-                                navigationItem: item,
-                                barrierOptions: options,
-                                constraints: const BoxConstraints(maxWidth: 800, maxHeight: 600),
-                                contentBuilder: (_, __) => EpisodeSearchDialog(
-                                  episodeId: sonarrEp.id,
-                                  sonarrRepo: repo,
-                                ),
-                              );
-                            },
-                          );
+                        final controller = TorrentManager.downloadController;
+                        if (controller == null) {
+                          snackBar('Download client not configured. Set up qBittorrent in Settings.', severity: InfoBarSeverity.warning);
+                          return;
                         }
+
+                        final titleObj = _cachedMapping?.anilistData?.title ?? _cachedSeries?.anilistData?.title; // TODO get name from Sonarr, as it's "simpler" and more likely to be correct for the episode search than the AniList title which is not guaranteed to be accurate for the series as a whole (especially for mappings that are not the first season)
+                        final titles = <String>{
+                          if (titleObj?.userPreferred != null) titleObj!.userPreferred!,
+                          if (titleObj?.romaji != null) titleObj!.romaji!,
+                          if (titleObj?.english != null) titleObj!.english!,
+                        }.where((t) => t.trim().isNotEmpty).toList();
+
+                        if (titles.isEmpty) titles.add(series.displayTitle);
+
+                        final sonarrEp = uiEpisode.sonarrEpisode;
+                        final seasonNum = sonarrEp?.seasonNumber ?? _cachedTarget?.asSeason?.seasonNumber;
+
+                        showPaddedDialog(
+                          context,
+                          navigationItem: DialogNavigationItem(id: 'episode-search', title: 'Episode Search'),
+                          builder: (context, item, options) {
+                            return PaddedDialog.custom(
+                              navigationItem: item,
+                              barrierOptions: options,
+                              constraints: const BoxConstraints(maxWidth: 900, maxHeight: 900),
+                              contentBuilder: (_, __) => KnabenSearchDialog(
+                                controller: controller,
+                                seriesTitles: titles,
+                                season: seasonNum,
+                                episode: sonarrEp?.episodeNumber ?? uiEpisode.episodeNumber,
+                                episodeTitle: uiEpisode.isSpecial ? uiEpisode.displayTitle : null,
+                                sonarrEpisodeId: sonarrEp?.id,
+                                sonarrSeriesId: _sonarrSeriesId,
+                              ),
+                            );
+                          },
+                        );
                       }
                     },
                     series: series,

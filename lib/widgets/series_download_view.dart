@@ -5,10 +5,12 @@ import 'package:fluent_ui/fluent_ui.dart' hide Colors;
 import 'package:flutter/material.dart' hide Card, Divider, Tooltip, ListTile, IconButton, showDialog, FilledButton;
 import 'package:miruryoiki/widgets/tooltip_wrapper.dart';
 import 'package:sticky_headers/sticky_headers.dart';
+import 'package:provider/provider.dart';
 import '../manager.dart';
 import '../models/episode.dart';
 import '../models/series.dart';
 import '../models/ui_episode.dart';
+import '../services/library/library_provider.dart';
 import 'episode_grid.dart';
 import 'file_explorer.dart';
 import 'package:miruryoiki/services/navigation/show_info.dart';
@@ -30,6 +32,7 @@ import 'dialogs/show_dialog.dart';
 import 'dialogs/sonarr_manual_link_dialog.dart';
 import '../services/downloads/torrent_manager.dart';
 
+/// Watch tab for Searched Series with Sonarr integration
 class SeriesDownloadView extends StatefulWidget {
   final int animeId;
   final AnilistTitle animeTitle;
@@ -49,6 +52,7 @@ class _SeriesDownloadViewState extends State<SeriesDownloadView> {
   List<SonarrEpisode> _episodesMetadata = [];
   int? _sonarrSeriesId;
   String? _sonarrSeriesTitle;
+  String? _sonarrSeriesPath;
 
   List<SonarrQualityProfile> _qualityProfiles = [];
   bool _isLoadingProfiles = false;
@@ -110,9 +114,22 @@ class _SeriesDownloadViewState extends State<SeriesDownloadView> {
     try {
       final (id, eps) = await TorrentManager.downloadController!.syncAndFetchEpisodes(animeId: widget.animeId, altTitle: widget.animeTitle.romaji ?? "Unknown");
       if (!mounted) return;
+
+      // Resolve the Sonarr series filesystem path for local library fallback
+      String? seriesPath;
+      try {
+        final sonarr = TorrentManager.sonarrRepository;
+        if (sonarr != null) {
+          final seriesData = await sonarr.getSeriesById(id);
+          seriesPath = seriesData['path'] as String?;
+        }
+      } catch (_) {}
+
+      if (!mounted) return;
       setState(() {
         _sonarrSeriesId = id;
         _sonarrSeriesTitle = widget.animeTitle.romaji ?? "Unknown";
+        _sonarrSeriesPath = seriesPath;
         _episodesMetadata = eps;
         // Sort descending
         _episodesMetadata.sort((a, b) {
@@ -188,7 +205,7 @@ class _SeriesDownloadViewState extends State<SeriesDownloadView> {
 
     showPaddedDialog(
       context,
-      navigationItem: DialogNavigationItem(id: 'knaben:season-search', title: 'Season Search (Knaben)'),
+      navigationItem: DialogNavigationItem(id: 'knaben:season-search', title: 'Season Search'),
       builder: (context, item, options) {
         return PaddedDialog.custom(
           navigationItem: item,
@@ -199,6 +216,7 @@ class _SeriesDownloadViewState extends State<SeriesDownloadView> {
             seriesTitles: titles,
             season: season,
             isSeasonSearch: true,
+            sonarrSeriesId: _sonarrSeriesId,
           ),
         );
       },
@@ -222,17 +240,19 @@ class _SeriesDownloadViewState extends State<SeriesDownloadView> {
 
     showPaddedDialog(
       context,
-      navigationItem: DialogNavigationItem(id: 'knaben:episode-search', title: 'Episode Search (Knaben)'),
+      navigationItem: DialogNavigationItem(id: 'knaben:episode-search', title: 'Episode Search'),
       builder: (context, item, options) {
         return PaddedDialog.custom(
           navigationItem: item,
           barrierOptions: options,
-          constraints: const BoxConstraints(maxWidth: 850, maxHeight: 650),
+          constraints: const BoxConstraints(maxWidth: 900, maxHeight: 900),
           contentBuilder: (_, __) => KnabenSearchDialog(
             controller: controller,
             seriesTitles: titles,
             season: ep.seasonNumber,
             episode: ep.episodeNumber,
+            sonarrEpisodeId: ep.id,
+            sonarrSeriesId: _sonarrSeriesId,
           ),
         );
       },
@@ -338,11 +358,71 @@ class _SeriesDownloadViewState extends State<SeriesDownloadView> {
     );
   }
 
+  /// Find the local Series that corresponds to this Sonarr series.
+  /// Tries AniList ID first, then falls back to matching the Sonarr series path.
+  Series? _findLocalSeries() {
+    final library = Provider.of<Library>(context, listen: false);
+
+    // Primary: match by AniList ID
+    final byAnilist = library.getSeriesByAnilistId(widget.animeId);
+    if (byAnilist != null) return byAnilist;
+
+    // Fallback: match by Sonarr series filesystem path
+    // (e.g. Frieren S3's AniList ID isn't in the library, but S1/S2 are,
+    // and they all share the same Sonarr series root folder)
+    if (_sonarrSeriesPath != null) {
+      final localPath = _sonarrPathToLocal(_sonarrSeriesPath!, library);
+      if (localPath != null) {
+        return library.getSeriesByPath(PathString(localPath));
+      }
+    }
+    return null;
+  }
+
+  /// Converts a Sonarr/Docker path back to a local Windows path using the
+  /// known sonarrRoot ↔ libraryPath mapping.
+  ///
+  /// e.g. "/data/Videos/Series/Frieren/" → "M:\Videos\Series\Frieren\"
+  String? _sonarrPathToLocal(String sonarrPath, Library library) {
+    final localLibraryPath = library.libraryPath;
+    if (localLibraryPath == null) return null;
+
+    final settings = SettingsManager();
+    final sonarrRoot = settings.sonarrRootFolderPath.isNotEmpty
+        ? settings.sonarrRootFolderPath
+        : library.libraryDockerPath;
+    if (sonarrRoot == null) return null;
+
+    final normalizedSonarr = sonarrPath.replaceAll('\\', '/');
+    final normalizedRoot = sonarrRoot.endsWith('/')
+        ? sonarrRoot.substring(0, sonarrRoot.length - 1)
+        : sonarrRoot;
+
+    if (normalizedSonarr.toLowerCase().startsWith(normalizedRoot.toLowerCase())) {
+      final relativePath = normalizedSonarr.substring(normalizedRoot.length);
+      final localBase = localLibraryPath.replaceAll('/', '\\');
+      final result = '$localBase${relativePath.replaceAll('/', '\\')}';
+      logTrace('[SeriesDownloadView] Sonarr path "$sonarrPath" → local "$result"');
+      return result;
+    }
+
+    logTrace('[SeriesDownloadView] Could not translate Sonarr path "$sonarrPath" (root=$sonarrRoot, library=$localLibraryPath)');
+    return null;
+  }
+
   List<Widget> _buildSeasonSections() {
     // Group episodes by season
     final grouped = groupBy(_episodesMetadata, (SonarrEpisode e) => e.seasonNumber);
-    // Sort seasons ascending
-    final sortedSeasons = grouped.keys.toList()..sort();
+    // Sort seasons descending, specials (season 0) last
+    final sortedSeasons = grouped.keys.toList()
+      ..sort((a, b) {
+        if (a == 0) return 1;
+        if (b == 0) return -1;
+        return b.compareTo(a);
+      });
+
+    // Look up the local series once for passing to EpisodeGrid
+    final localSeries = _findLocalSeries();
 
     return [
       for (final season in sortedSeasons) ...[
@@ -355,15 +435,23 @@ class _SeriesDownloadViewState extends State<SeriesDownloadView> {
         ),
         EpisodeGrid(
           collapsable: false,
-          episodes: UIEpisode.merge(null, grouped[season]!),
-          series: null,
+          episodes: UIEpisode.merge(
+            localSeries?.seasons.firstWhereOrNull((s) => s.seasonNumber == season)?.episodes,
+            grouped[season]!,
+          ),
+          series: localSeries,
           mapping: null,
           padding: const EdgeInsets.only(left: 16.0, right: 16.0, bottom: 8.0),
           onTap: (uiEpisode) {
-            if (uiEpisode.state == EpisodeState.released || uiEpisode.state == EpisodeState.future) {
-              if (uiEpisode.sonarrEpisode != null) {
-                _showKnabenSearchDialog(uiEpisode.sonarrEpisode!);
-              }
+            // If the episode can be played locally, play it
+            if (uiEpisode.canPlay) {
+              final lib = Provider.of<Library>(context, listen: false);
+              lib.playEpisode(uiEpisode.localEpisode!);
+              return;
+            }
+            // Otherwise open search dialog for released/future episodes
+            if (uiEpisode.sonarrEpisode != null) {
+              _showKnabenSearchDialog(uiEpisode.sonarrEpisode!);
             }
           },
         ),

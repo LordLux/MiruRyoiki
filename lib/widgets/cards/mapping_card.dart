@@ -63,7 +63,8 @@ class _MappingCardState extends State<MappingCard> {
   @override
   void didUpdateWidget(MappingCard oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.mapping != widget.mapping || oldWidget.target != widget.target) {
+    final posterChanged = oldWidget.mapping.anilistData?.posterImage != widget.mapping.anilistData?.posterImage;
+    if (oldWidget.mapping != widget.mapping || oldWidget.target != widget.target || posterChanged) {
       _loadImage();
       _loadDominantColor();
     }
@@ -333,19 +334,17 @@ class _MappingCardState extends State<MappingCard> {
                   Positioned.fill(
                     child: Material(
                       color: Colors.transparent,
-                      child: GestureDetector(
-                        onSecondaryTapDown: (_) => _menuController.open(),
-                        child: InkWell(
-                          onTap: widget.onTap,
-                          splashColor: mainColor.withOpacity(0.1),
-                          highlightColor: mainColor.withOpacity(0.05),
-                          borderRadius: widget.borderRadius,
-                          child: AnimatedContainer(
-                            duration: shortDuration,
-                            decoration: BoxDecoration(
-                              borderRadius: widget.borderRadius,
-                              color: _isHovering ? mainColor.withOpacity(0.1) : Colors.transparent,
-                            ),
+                      child: InkWell(
+                        onTap: widget.onTap,
+                        onSecondaryTapDown: (details) => _menuController.open(),
+                        splashColor: mainColor.withOpacity(0.1),
+                        highlightColor: mainColor.withOpacity(0.05),
+                        borderRadius: widget.borderRadius,
+                        child: AnimatedContainer(
+                          duration: shortDuration,
+                          decoration: BoxDecoration(
+                            borderRadius: widget.borderRadius,
+                            color: _isHovering ? mainColor.withOpacity(0.1) : Colors.transparent,
                           ),
                         ),
                       ),

@@ -17,12 +17,15 @@ extension AnilistServiceSearch on AnilistService {
       }
     }
 
+    if (query.trim().isEmpty) return [];
+
     logTrace('Searching Anilist for "$query"...');
 
     final result = await executeQuery<Query$SearchAnime>(
       options: QueryOptions(
         document: documentNodeQuerySearchAnime,
         variables: Variables$Query$SearchAnime(
+          page: 1,
           search: query,
           perPage: limit,
         ).toJson(),

@@ -356,7 +356,9 @@ extension LibrarySeriesManagement on Library {
     if (index != -1) success = _series[index].removeMapping(target);
 
     if (success) {
-      snackBar('Mapping removed', severity: InfoBarSeverity.success);
+      _markDirty(series);
+      seriesDao.syncSeries(series);
+      notifyListeners();
     } else {
       snackBar('Failed to remove mapping', severity: InfoBarSeverity.error);
     }

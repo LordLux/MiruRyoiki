@@ -119,7 +119,12 @@ class _HoverableEpisodeTileState extends State<HoverableEpisodeTile> {
                     // Thumbnail or icon
                     ClipRRect(
                       borderRadius: BorderRadius.circular(ScreenUtils.kEpisodeCardBorderRadius),
-                      child: _buildEpisodeThumbnail(widget.uiEpisode.localEpisode),
+                      child: widget.uiEpisode.localEpisode != null
+                          ? ValueListenableBuilder<double>(
+                              valueListenable: widget.uiEpisode.localEpisode!.progressNotifier,
+                              builder: (context, _, __) => _buildEpisodeThumbnail(widget.uiEpisode.localEpisode),
+                            )
+                          : _buildEpisodeThumbnail(widget.uiEpisode.localEpisode),
                     ),
 
                     // Bottom text overlay
@@ -274,7 +279,7 @@ class _HoverableEpisodeTileState extends State<HoverableEpisodeTile> {
               Positioned.fill(
                 child: Material(
                   color: Colors.transparent,
-                  child: GestureDetector(
+                  child: InkWell(
                     onSecondaryTapDown: (details) {
                       if (widget.uiEpisode.localEpisode != null) {
                         _menuController.open();
@@ -282,39 +287,40 @@ class _HoverableEpisodeTileState extends State<HoverableEpisodeTile> {
                         _showReleasedMenu();
                       } else if (widget.uiEpisode.isFuture) {
                         _showFutureMenu();
+                      } else {
+                        // shouldn't happen
+                        logWarn("Episode state: '${widget.uiEpisode.stateDescription}' does not match any expected context menu conditions");
                       }
                     },
-                    child: InkWell(
-                      onTap: widget.uiEpisode.isFuture ? null : widget.onTap,
-                      splashColor: widget.series?.localPosterColor?.withOpacity(0.3),
-                      highlightColor: Colors.white.withOpacity(0.05),
-                      borderRadius: BorderRadius.circular(ScreenUtils.kEpisodeCardBorderRadius),
-                      child: AnimatedContainer(
-                        duration: shortDuration,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(ScreenUtils.kEpisodeCardBorderRadius),
-                          color: _isHovering ? Colors.white.withOpacity(0.03) : Colors.transparent,
-                        ),
-                        child: Center(
-                          child: widget.uiEpisode.localEpisode == null
-                              ? AnimatedOpacity(
-                                  duration: const Duration(milliseconds: 200),
-                                  opacity: _isHovering ? 1.0 : 0.0,
-                                  child: Container(
-                                    padding: const EdgeInsets.all(12),
-                                    decoration: BoxDecoration(
-                                      color: Colors.black.withOpacity(0.5),
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: Icon(
-                                      widget.uiEpisode.isFuture ? FluentIcons.ringer : FluentIcons.download,
-                                      color: Colors.white,
-                                      size: 24,
-                                    ),
+                    onTap: widget.uiEpisode.isFuture ? null : widget.onTap,
+                    splashColor: widget.series?.localPosterColor?.withOpacity(0.3),
+                    highlightColor: Colors.white.withOpacity(0.05),
+                    borderRadius: BorderRadius.circular(ScreenUtils.kEpisodeCardBorderRadius),
+                    child: AnimatedContainer(
+                      duration: shortDuration,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(ScreenUtils.kEpisodeCardBorderRadius),
+                        color: _isHovering ? Colors.white.withOpacity(0.03) : Colors.transparent,
+                      ),
+                      child: Center(
+                        child: widget.uiEpisode.localEpisode == null
+                            ? AnimatedOpacity(
+                                duration: const Duration(milliseconds: 200),
+                                opacity: _isHovering ? 1.0 : 0.0,
+                                child: Container(
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: Colors.black.withOpacity(0.5),
+                                    shape: BoxShape.circle,
                                   ),
-                                )
-                              : const SizedBox.shrink(),
-                        ),
+                                  child: Icon(
+                                    widget.uiEpisode.isFuture ? FluentIcons.ringer : FluentIcons.download,
+                                    color: Colors.white,
+                                    size: 24,
+                                  ),
+                                ),
+                              )
+                            : const SizedBox.shrink(),
                       ),
                     ),
                   ),
@@ -410,11 +416,14 @@ class _HoverableEpisodeTileState extends State<HoverableEpisodeTile> {
         ),
         child: child,
       );
+      
       // Always blur when thumbnail exists
+      final isWatched = episode.watched;
+      
       return ImageFiltered(
         imageFilter: ImageFilter.blur(
-          sigmaX: widget.uiEpisode.watched ? 0 : 15,
-          sigmaY: widget.uiEpisode.watched ? 0 : 15,
+          sigmaX: isWatched ? 0 : 15,
+          sigmaY: isWatched ? 0 : 15,
           tileMode: TileMode.mirror,
         ),
         child: thumbnailWidget,
@@ -463,10 +472,12 @@ class _HoverableEpisodeTileState extends State<HoverableEpisodeTile> {
               ),
               child: child,
             );
+            final isWatched = episode.watched;
+            
             return ImageFiltered(
               imageFilter: ImageFilter.blur(
-                sigmaX: widget.uiEpisode.watched ? 0 : 15,
-                sigmaY: widget.uiEpisode.watched ? 0 : 15,
+                sigmaX: isWatched ? 0 : 15,
+                sigmaY: isWatched ? 0 : 15,
                 tileMode: TileMode.mirror,
               ),
               child: thumbnailWidget,

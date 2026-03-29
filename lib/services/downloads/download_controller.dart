@@ -96,10 +96,11 @@ class DownloadController {
     required List<String> titles,
     required int season,
     required int episode,
+    KnabenSearchMode? modeOverride,
   }) async {
     final settings = SettingsManager();
     final categories = settings.knabenUseAnimeCategories ? KnabenAnimeCategory.all : null;
-    final mode = settings.knabenLiveSearch ? KnabenSearchMode.live : KnabenSearchMode.fast;
+    final mode = modeOverride ?? (settings.knabenLiveSearch ? KnabenSearchMode.live : KnabenSearchMode.fast);
 
     final allResults = <KnabenRelease>[];
     final seenMagnets = <String>{};
@@ -128,10 +129,11 @@ class DownloadController {
   Future<List<KnabenRelease>> searchSeason({
     required List<String> titles,
     required int season,
+    KnabenSearchMode? modeOverride,
   }) async {
     final settings = SettingsManager();
     final categories = settings.knabenUseAnimeCategories ? KnabenAnimeCategory.all : null;
-    final mode = settings.knabenLiveSearch ? KnabenSearchMode.live : KnabenSearchMode.fast;
+    final mode = modeOverride ?? (settings.knabenLiveSearch ? KnabenSearchMode.live : KnabenSearchMode.fast);
 
     final allResults = <KnabenRelease>[];
     final seenMagnets = <String>{};
@@ -157,10 +159,10 @@ class DownloadController {
   }
 
   /// Free-text Knaben search
-  Future<List<KnabenRelease>> searchKnaben(String query) {
+  Future<List<KnabenRelease>> searchKnaben(String query, {KnabenSearchMode? modeOverride}) {
     final settings = SettingsManager();
     final categories = settings.knabenUseAnimeCategories ? KnabenAnimeCategory.all : null;
-    final mode = settings.knabenLiveSearch ? KnabenSearchMode.live : KnabenSearchMode.fast;
+    final mode = modeOverride ?? (settings.knabenLiveSearch ? KnabenSearchMode.live : KnabenSearchMode.fast);
 
     return _knaben.search(query, categories: categories, mode: mode);
   }
@@ -182,9 +184,7 @@ class DownloadController {
     final settings = SettingsManager();
 
     final localLibraryPath = library.libraryPath;
-    final sonarrRoot = settings.sonarrRootFolderPath.isNotEmpty
-        ? settings.sonarrRootFolderPath
-        : library.libraryDockerPath;
+    final sonarrRoot = settings.sonarrRootFolderPath.isNotEmpty ? settings.sonarrRootFolderPath : library.libraryDockerPath;
 
     if (localLibraryPath != null && sonarrRoot != null) {
       final normalizedLocal = localPath.replaceAll('\\', '/').toLowerCase();

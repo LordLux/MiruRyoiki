@@ -136,8 +136,7 @@ class UIEpisode {
 
   /// The episode number to display — uses absoluteEpisodeNumber for specials (season 0),
   /// regular episodeNumber for normal seasons
-  int get displayEpisodeNumber =>
-      isSpecial ? (sonarrEpisode?.absoluteEpisodeNumber ?? episodeNumber) : episodeNumber;
+  int get displayEpisodeNumber => isSpecial ? (sonarrEpisode?.absoluteEpisodeNumber ?? episodeNumber) : episodeNumber;
 
   /// Whether this episode is a special (season 0)
   bool get isSpecial => sonarrEpisode?.seasonNumber == 0;
@@ -189,7 +188,7 @@ class UIEpisode {
       EpisodeState.downloaded => watched ? FluentIcons.check_mark : FluentIcons.play,
       EpisodeState.released => FluentIcons.download,
       EpisodeState.future => FluentIcons.clock,
-      EpisodeState.unknown => FluentIcons.unknown
+      EpisodeState.unknown => FluentIcons.unknown,
     };
   }
 
@@ -199,7 +198,7 @@ class UIEpisode {
       EpisodeState.downloaded => watched ? 'Watched' : 'Downloaded',
       EpisodeState.released => 'Available for download',
       EpisodeState.future => airDate != null ? 'Airs ${_formatDate(airDate!)}' : 'Not yet aired',
-      EpisodeState.unknown => 'Unknown'
+      EpisodeState.unknown => 'Unknown',
     };
   }
 
@@ -257,34 +256,23 @@ class UIEpisode {
           if (airDateStr != null && airDateStr.isNotEmpty) //
             airDate = DateTime.tryParse(airDateStr);
 
-          // If Sonarr has a file for this episode, treat it as downloaded
-          // even without a local Episode match (e.g. after manual import)
-          if (hasFile) {
-            result.add(UIEpisode(
+          // Without a local Episode match we can't play the file, so treat it based on air date regardless of Sonarr's hasFile flag.
+          final bool isReleased = hasFile || (airDate != null && airDate.isBefore(now));
+
+          if (isReleased) {
+            result.add(UIEpisode.released(
               episodeNumber: sonarr.episodeNumber,
               sonarrEpisode: sonarr,
               anilistTitle: sonarr.title,
-              state: EpisodeState.downloaded,
               airDate: airDate,
             ));
           } else {
-            bool isReleased = airDate != null ? airDate.isBefore(now) : false;
-
-            if (isReleased) {
-              result.add(UIEpisode.released(
-                episodeNumber: sonarr.episodeNumber,
-                sonarrEpisode: sonarr,
-                anilistTitle: sonarr.title,
-                airDate: airDate,
-              ));
-            } else {
-              result.add(UIEpisode.future(
-                episodeNumber: sonarr.episodeNumber,
-                sonarrEpisode: sonarr,
-                anilistTitle: sonarr.title,
-                airDate: airDate,
-              ));
-            }
+            result.add(UIEpisode.future(
+              episodeNumber: sonarr.episodeNumber,
+              sonarrEpisode: sonarr,
+              anilistTitle: sonarr.title,
+              airDate: airDate,
+            ));
           }
         }
       }
