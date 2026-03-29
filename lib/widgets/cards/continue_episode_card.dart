@@ -22,6 +22,7 @@ class ContinueEpisodeCard extends StatefulWidget {
   final Alignment posterAlignment;
   final VoidCallback? onTap;
   final double? progress;
+  final String? sonarrTitle;
 
   const ContinueEpisodeCard({
     super.key,
@@ -29,6 +30,7 @@ class ContinueEpisodeCard extends StatefulWidget {
     required this.episode,
     this.onTap,
     this.progress,
+    this.sonarrTitle,
     this.posterAlignment = Alignment.center,
   });
 
@@ -186,10 +188,11 @@ class _ContinueEpisodeCardState extends State<ContinueEpisodeCard> {
             setState(() => _isHovering = false);
           },
           onHover: (_) {
-            // print('isDisplayTitleSimple: ${widget.episode.isDisplayTitleSimple}, isTitleParsable: ${widget.episode.isTitleParsable}, displayTitle: "${widget.episode.displayTitle}"');
+            final effectiveTitle = widget.sonarrTitle ?? widget.episode.displayTitle;
+            final hasTitle = effectiveTitle != null && !RegExp(r'^(Episode|Ep|E) \d{1,3}$', caseSensitive: false).hasMatch(effectiveTitle);
             StatusBarManager().showDelayed(
               widget.episode.episodeNumber != null
-                  ? "Episode ${widget.episode.episodeNumber}${!widget.episode.isDisplayTitleSimple && widget.episode.isTitleParsable && widget.episode.displayTitle != null ? ' - ${widget.episode.displayTitle}' : ''}"
+                  ? "Episode ${widget.episode.episodeNumber}${hasTitle ? ' - $effectiveTitle' : ''}"
                   : widget.episode.path.fileName ?? widget.episode.name,
             );
           },
@@ -254,12 +257,15 @@ class _ContinueEpisodeCardState extends State<ContinueEpisodeCard> {
                                   overflow: TextOverflow.ellipsis,
                                 ),
                                 // Show episode title only if it's not a generic "Episode X" title
-                                if (!widget.episode.isDisplayTitleSimple && widget.episode.isTitleParsable && widget.episode.displayTitle != null) ...[
+                                if (() {
+                                  final t = widget.sonarrTitle ?? widget.episode.displayTitle;
+                                  return t != null && !RegExp(r'^(Episode|Ep|E) \d{1,3}$', caseSensitive: false).hasMatch(t);
+                                }()) ...[
                                   SizedBox(height: 4),
                                   Opacity(
                                     opacity: 0.8,
                                     child: Text(
-                                      widget.episode.displayTitle!,
+                                      widget.sonarrTitle ?? widget.episode.displayTitle!,
                                       maxLines: 3,
                                       style: Manager.miniBodyStyle.copyWith(
                                         fontWeight: FontWeight.w400,

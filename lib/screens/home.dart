@@ -9,6 +9,9 @@ import '../services/library/library_provider.dart';
 import '../models/series.dart';
 import '../models/anilist/anime.dart';
 import '../services/anilist/provider/anilist_provider.dart';
+import '../services/downloads/torrent_manager.dart';
+import '../services/episode_navigation/episode_navigator.dart';
+import '../services/mapping/custom_sonarr_mapping_service.dart';
 import '../services/navigation/shortcuts.dart';
 import '../settings.dart';
 import '../utils/color.dart';
@@ -45,6 +48,11 @@ class _HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMi
   List<int>? _lastRequestedAnimeIds;
   int? _lastLibraryDataVersion;
 
+  /// Sonarr episode titles keyed by episode path
+  final Map<PathString, String> _sonarrTitles = {};
+  /// Tracks which series paths we last fetched Sonarr titles for
+  Set<String>? _lastSonarrFetchSeriesPaths;
+
   @override
   bool get wantKeepAlive => true;
 
@@ -68,6 +76,96 @@ class _HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMi
       if (a[i] != b[i]) return false;
     }
     return true;
+  }
+
+  /// Fetches Sonarr episode titles for the given watching series
+  /// Only refetches when the set of series changes
+  void _fetchSonarrTitles(List<Series> watchingSeries, AnilistProvider anilistProvider) {
+    final sonarr = TorrentManager.sonarrRepository;
+    if (sonarr == null || !TorrentManager.isEnabled) return;
+
+    final seriesPaths = watchingSeries.map((s) => s.path.path).toSet();
+    if (_lastSonarrFetchSeriesPaths != null && _lastSonarrFetchSeriesPaths!.length == seriesPaths.length && _lastSonarrFetchSeriesPaths!.containsAll(seriesPaths)) {
+      return; // Already fetched for this set
+    }
+    _lastSonarrFetchSeriesPaths = seriesPaths;
+
+    _fetchSonarrTitlesAsync(watchingSeries, anilistProvider, sonarr);
+  }
+
+  Future<void> _fetchSonarrTitlesAsync(List<Series> watchingSeries, AnilistProvider anilistProvider, dynamic sonarr) async {
+    final customMappings = CustomSonarrMappingService();
+    final newTitles = <PathString, String>{};
+
+    for (final series in watchingSeries) {
+      final nextEpisode = Manager.anilistProgress.getNextEpisodeToWatch(series, anilistProvider);
+      if (nextEpisode == null) continue;
+
+      // Already have a title for this episode
+      if (_sonarrTitles.containsKey(nextEpisode.path)) {
+        newTitles[nextEpisode.path] = _sonarrTitles[nextEpisode.path]!;
+        continue;
+      }
+
+      try {
+        // Resolve TVDB ID from any of the series' anilist mappings
+        int? tvdbId;
+        for (final mapping in series.anilistMappings) {
+          tvdbId = await customMappings.getCustomTvdbId(mapping.anilistId);
+          if (tvdbId != null) break;
+          final plexMapping = await TorrentManager.plexBridge?.getMapping(mapping.anilistId);
+          if (plexMapping != null) {
+            tvdbId = plexMapping.tvdbId;
+            break;
+          }
+        }
+        if (tvdbId == null || tvdbId == 0) continue;
+
+        // Fetch all episodes from Sonarr
+        final sonarrSeriesId = await sonarr.getSeriesIdByTvdbId(tvdbId);
+        if (sonarrSeriesId == null) continue;
+        final sonarrEpisodes = await sonarr.getEpisodes(sonarrSeriesId);
+
+        // Find the season for this episode
+        final season = EpisodeNavigator.instance.findSeasonForEpisode(nextEpisode, series);
+        final seasonNumber = season?.seasonNumber;
+        final epNumber = nextEpisode.episodeNumber;
+        if (epNumber == null) continue;
+
+        // Per-season match
+        String? matchedTitle;
+        if (seasonNumber != null) {
+          for (final sonarrEp in sonarrEpisodes) {
+            if (sonarrEp.seasonNumber == seasonNumber && sonarrEp.episodeNumber == epNumber) {
+              matchedTitle = sonarrEp.title;
+              break;
+            }
+          }
+        }
+
+        // Absolute numbering fallback
+        if (matchedTitle == null) {
+          for (final sonarrEp in sonarrEpisodes) {
+            if (sonarrEp.absoluteEpisodeNumber == epNumber) {
+              matchedTitle = sonarrEp.title;
+              break;
+            }
+          }
+        }
+
+        if (matchedTitle != null) {
+          newTitles[nextEpisode.path] = matchedTitle;
+        }
+      } catch (e) {
+        logDebug('Failed to fetch Sonarr title for ${series.name}: $e');
+      }
+    }
+
+    if (newTitles.isNotEmpty && mounted) {
+      setState(() {
+        _sonarrTitles.addAll(newTitles);
+      });
+    }
   }
 
   void _selectRandomEntry(List<Series> series) {
@@ -148,6 +246,9 @@ class _HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMi
             ],
           );
         }
+
+        // Start async Sonarr title fetch if needed
+        _fetchSonarrTitles(watchingSeries, anilistProvider);
 
         // Get series for each section
         final (continueWatchingSeries, nextUpSeries) = _getSeriesForSection(watchingSeries, anilistProvider); // $1: started, $2: not started
@@ -330,6 +431,7 @@ class _HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMi
                             child: ContinueEpisodeCard(
                               series: currentSeries,
                               episode: nextEpisode,
+                              sonarrTitle: _sonarrTitles[nextEpisode.path],
                               onTap: () => _openEpisode(currentSeries, nextEpisode),
                               progress: onlyStarted ? nextEpisode.progress : null, // Show progress only if this is "Continue Watching"
                             ),

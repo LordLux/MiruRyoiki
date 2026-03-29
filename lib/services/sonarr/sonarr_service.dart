@@ -22,6 +22,17 @@ class SonarrRepository {
         _apiKey = apiKey,
         _client = client ?? http.Client();
 
+  /// Returns the internal Sonarr series ID for a given TVDB ID, or null if not found
+  Future<int?> getSeriesIdByTvdbId(int tvdbId) async {
+    final uri = Uri.parse('$_baseUrl/api/v3/series?tvdbId=$tvdbId&apikey=$_apiKey');
+    final response = await _client.get(uri);
+    if (response.statusCode == 200) {
+      final List<dynamic> data = json.decode(response.body);
+      if (data.isNotEmpty) return data.first['id'] as int;
+    }
+    return null;
+  }
+
   /// Lookups up Series in Sonarr Skyhook
   Future<List<SonarrSeries>> lookupSeries(String term) async {
     final uri = Uri.parse('$_baseUrl/api/v3/series/lookup?term=${Uri.encodeComponent(term)}&apikey=$_apiKey');

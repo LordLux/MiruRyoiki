@@ -228,8 +228,8 @@ class Episode {
   /// Whether the display title is in a simple format (e.g., "Episode 1")
   bool get isDisplayTitleSimple => RegExp(r'^(Episode|Ep|E) \d{1,3}$', caseSensitive: false).hasMatch(displayTitle ?? '');
 
-  /// Whether the title was successfully parsed from the filename
-  bool get isTitleParsable => parsedTitle != null || _parsedAnime.episodeTitle != null;
+  /// Whether a meaningful title is available (from AniList, parsed from filename, or extracted by anitomy)
+  bool get isTitleParsable => _anilistTitle != null || parsedTitle != null || _parsedAnime.episodeTitle != null;
 
   /// Detect special episode type from filename (OVA, ONA, Movie)
   static final _typePattern = RegExp(r'\b(OVA|ONA|Movie)\b', caseSensitive: false);
