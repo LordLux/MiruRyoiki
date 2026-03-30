@@ -48,10 +48,10 @@ class _HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMi
   List<int>? _lastRequestedAnimeIds;
   int? _lastLibraryDataVersion;
 
-  /// Sonarr episode titles keyed by episode path
-  final Map<PathString, String> _sonarrTitles = {};
-  /// Tracks which series paths we last fetched Sonarr titles for
-  Set<String>? _lastSonarrFetchSeriesPaths;
+  /// Persistent Sonarr episode title cache: series path → (episode path, title).
+  /// Static so it survives page navigation. Invalidated per-series when the
+  /// next episode to watch changes.
+  static final Map<String, (PathString, String)> _sonarrTitleCache = {};
 
   @override
   bool get wantKeepAlive => true;
@@ -78,35 +78,40 @@ class _HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMi
     return true;
   }
 
-  /// Fetches Sonarr episode titles for the given watching series
-  /// Only refetches when the set of series changes
+  /// Returns the cached Sonarr title for a series' next episode, or null if not yet fetched.
+  String? _getSonarrTitle(Series series, Episode nextEpisode) {
+    final cached = _sonarrTitleCache[series.path.path];
+    if (cached != null && cached.$1 == nextEpisode.path) return cached.$2;
+    return null;
+  }
+
+  /// Fetches Sonarr episode titles for series that aren't already cached.
+  /// Only fetches for series whose next episode changed or has no cached title.
   void _fetchSonarrTitles(List<Series> watchingSeries, AnilistProvider anilistProvider) {
     final sonarr = TorrentManager.sonarrRepository;
     if (sonarr == null || !TorrentManager.isEnabled) return;
 
-    final seriesPaths = watchingSeries.map((s) => s.path.path).toSet();
-    if (_lastSonarrFetchSeriesPaths != null && _lastSonarrFetchSeriesPaths!.length == seriesPaths.length && _lastSonarrFetchSeriesPaths!.containsAll(seriesPaths)) {
-      return; // Already fetched for this set
-    }
-    _lastSonarrFetchSeriesPaths = seriesPaths;
-
-    _fetchSonarrTitlesAsync(watchingSeries, anilistProvider, sonarr);
-  }
-
-  Future<void> _fetchSonarrTitlesAsync(List<Series> watchingSeries, AnilistProvider anilistProvider, dynamic sonarr) async {
-    final customMappings = CustomSonarrMappingService();
-    final newTitles = <PathString, String>{};
-
+    // Collect series that need fetching (cache miss or stale entry)
+    final seriesToFetch = <(Series, Episode)>[];
     for (final series in watchingSeries) {
       final nextEpisode = Manager.anilistProgress.getNextEpisodeToWatch(series, anilistProvider);
       if (nextEpisode == null) continue;
 
-      // Already have a title for this episode
-      if (_sonarrTitles.containsKey(nextEpisode.path)) {
-        newTitles[nextEpisode.path] = _sonarrTitles[nextEpisode.path]!;
-        continue;
-      }
+      final cached = _sonarrTitleCache[series.path.path];
+      if (cached != null && cached.$1 == nextEpisode.path) continue; // Cache hit
 
+      seriesToFetch.add((series, nextEpisode));
+    }
+
+    if (seriesToFetch.isEmpty) return;
+    _fetchSonarrTitlesAsync(seriesToFetch, sonarr);
+  }
+
+  Future<void> _fetchSonarrTitlesAsync(List<(Series, Episode)> seriesToFetch, dynamic sonarr) async {
+    final customMappings = CustomSonarrMappingService();
+    bool anyNew = false;
+
+    for (final (series, nextEpisode) in seriesToFetch) {
       try {
         // Resolve TVDB ID from any of the series' anilist mappings
         int? tvdbId;
@@ -132,7 +137,7 @@ class _HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMi
         final epNumber = nextEpisode.episodeNumber;
         if (epNumber == null) continue;
 
-        // Per-season match
+        // Per-season match first
         String? matchedTitle;
         if (seasonNumber != null) {
           for (final sonarrEp in sonarrEpisodes) {
@@ -154,18 +159,15 @@ class _HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMi
         }
 
         if (matchedTitle != null) {
-          newTitles[nextEpisode.path] = matchedTitle;
+          _sonarrTitleCache[series.path.path] = (nextEpisode.path, matchedTitle);
+          anyNew = true;
         }
       } catch (e) {
         logDebug('Failed to fetch Sonarr title for ${series.name}: $e');
       }
     }
 
-    if (newTitles.isNotEmpty && mounted) {
-      setState(() {
-        _sonarrTitles.addAll(newTitles);
-      });
-    }
+    if (anyNew && mounted) setState(() {});
   }
 
   void _selectRandomEntry(List<Series> series) {
@@ -431,7 +433,7 @@ class _HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMi
                             child: ContinueEpisodeCard(
                               series: currentSeries,
                               episode: nextEpisode,
-                              sonarrTitle: _sonarrTitles[nextEpisode.path],
+                              sonarrTitle: _getSonarrTitle(currentSeries, nextEpisode),
                               onTap: () => _openEpisode(currentSeries, nextEpisode),
                               progress: onlyStarted ? nextEpisode.progress : null, // Show progress only if this is "Continue Watching"
                             ),
