@@ -8,11 +8,29 @@ extension AnilistServiceInitialize on AnilistService {
     if (authenticated) {
       logTrace('2 | Setting up GraphQL client...');
       _setupGraphQLClient();
+      _registerAvailabilityProbe();
       return true;
     }
 
     logTrace('2 | AnilistService initialization failed, not authenticated');
     return false;
+  }
+
+  /// Register a lightweight probe that the availability service can call
+  /// to check if AniList is back online without clearing the UI flag.
+  void _registerAvailabilityProbe() {
+    AnilistAvailabilityService().probeCallback = () async {
+      if (_client == null) return false;
+      try {
+        final result = await _client!.query(QueryOptions(
+          document: gql('{ Viewer { id } }'),
+          fetchPolicy: FetchPolicy.networkOnly,
+        ));
+        return !result.hasException && result.data != null;
+      } catch (_) {
+        return false;
+      }
+    };
   }
 
   /// Set up the GraphQL client

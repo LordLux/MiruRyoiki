@@ -38,9 +38,11 @@ class WrappedHyperlinkButton extends StatelessWidget {
       title: title,
       icon: icon,
       onPressed: () async {
-        final uri = Uri.parse(url);
-        if (await canLaunchUrl(uri)) await launchUrl(uri);
-        
+        if (url.isNotEmpty) {
+          final uri = Uri.parse(url);
+          if (await canLaunchUrl(uri)) await launchUrl(uri);
+        }
+
         if (onPressed != null) onPressed!();
       },
       style: style,

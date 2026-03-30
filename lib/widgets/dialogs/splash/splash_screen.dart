@@ -145,10 +145,12 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
       // Initialize settings
       settings.applySettings(context);
 
-      // Initialize library
+      // Initialize AniList first so auth is ready before library's background loading starts
+      await anilistProvider.initialize();
+
+      // Initialize library (schedules background loading in next frame)
       logTrace('Initializing library provider');
       await libraryProvider.initialize(context);
-      await anilistProvider.initialize();
 
       await Future.delayed(const Duration(milliseconds: 1000)); // otherwise splash screen will be too short
       //

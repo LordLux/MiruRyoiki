@@ -11,12 +11,15 @@ import 'package:provider/provider.dart';
 
 import '../../manager.dart';
 import '../../models/anilist/page_info.dart';
+import '../../services/anilist/anilist_availability.dart';
+import '../../services/connectivity/connectivity_service.dart';
 import '../../services/navigation/navigation.dart';
 import '../../settings.dart';
 import '../../utils/screen.dart';
 import '../../utils/time.dart';
 import '../../widgets/buttons/back_button.dart';
 import '../../widgets/buttons/button.dart';
+import '../../widgets/service_unavailable_banner.dart';
 import '../models/anilist/anime_card.dart';
 import '../widgets/cards/search_series_card.dart';
 import '../../widgets/fading_edge_scrollview.dart';
@@ -365,6 +368,8 @@ class SearchScreenState extends State<BrowseScreen> with AutomaticKeepAliveClien
 
   double _animationValue = 0.0;
 
+  bool get _isServiceUnavailable => ConnectivityService().isOffline || AnilistAvailabilityService().isUnavailable;
+
   @override
   Widget build(BuildContext context) {
     super.build(context);
@@ -516,9 +521,10 @@ class SearchScreenState extends State<BrowseScreen> with AutomaticKeepAliveClien
                                   ),
                                 ),
                               ),
-                              placeholder: 'Search...',
+                              enabled: !_isServiceUnavailable,
+                              placeholder: _isServiceUnavailable ? 'Search unavailable...' : 'Search...',
                               onSubmitted: (value) {
-                                if (value.isNotEmpty) _performTextSearch(value);
+                                if (value.isNotEmpty && !_isServiceUnavailable) _performTextSearch(value);
                               },
                               onChanged: (value) {
                                 if (value.isEmpty && _isShowingSearchQuery) _handleBack();
@@ -628,12 +634,18 @@ class SearchScreenState extends State<BrowseScreen> with AutomaticKeepAliveClien
                   )
                 : KeyedSubtree(
                     key: const ValueKey('Dashboard'),
-                    child: AnimeContentDashboard(
-                      sectionManagers: _sectionManagers,
-                      onExpandSection: _expandSection,
-                      onSeriesOpen: _onSeriesOpen,
-                      onRetry: _fetchInitialData,
-                      expandedSectionId: _expandedSectionId,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        ServiceUnavailableBanner(onRetry: _fetchInitialData),
+                        AnimeContentDashboard(
+                          sectionManagers: _sectionManagers,
+                          onExpandSection: _expandSection,
+                          onSeriesOpen: _onSeriesOpen,
+                          onRetry: _fetchInitialData,
+                          expandedSectionId: _expandedSectionId,
+                        ),
+                      ],
                     ),
                   ),
       ),
@@ -641,7 +653,11 @@ class SearchScreenState extends State<BrowseScreen> with AutomaticKeepAliveClien
   }
 
   Widget _buildResultsView() {
+    // Show service unavailability or offline banner when there's an error
     if (_resultsErrorMessage != null && _resultsList.isEmpty) {
+      if (ConnectivityService().isOffline || AnilistAvailabilityService().isUnavailable) {
+        return ServiceUnavailableBanner(onRetry: _fetchTextSearchResults);
+      }
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,

@@ -5,8 +5,8 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   setUp(() {
-    // Reset state before each test
     AnilistAvailabilityService().reset();
+    AnilistAvailabilityService().probeCallback = null;
   });
 
   group('AnilistAvailabilityService', () {
@@ -18,7 +18,7 @@ void main() {
 
     test('markUnavailable sets the flag', () {
       final service = AnilistAvailabilityService();
-      service.markUnavailable(recheckDelay: const Duration(minutes: 5));
+      service.markUnavailable();
 
       expect(service.isUnavailable, true);
       expect(service.isAvailable, false);
@@ -29,7 +29,7 @@ void main() {
       bool notified = false;
       service.unavailableNotifier.addListener(() => notified = true);
 
-      service.markUnavailable(recheckDelay: const Duration(minutes: 5));
+      service.markUnavailable();
 
       expect(notified, true);
     });
@@ -39,16 +39,26 @@ void main() {
       int notifyCount = 0;
       service.unavailableNotifier.addListener(() => notifyCount++);
 
-      service.markUnavailable(recheckDelay: const Duration(minutes: 5));
-      service.markUnavailable(recheckDelay: const Duration(minutes: 5)); // should no-op
+      service.markUnavailable();
+      service.markUnavailable(); // should no-op
 
       expect(notifyCount, 1);
       expect(service.isUnavailable, true);
     });
 
+    test('flag stays set indefinitely (no auto-clear)', () async {
+      final service = AnilistAvailabilityService();
+      service.markUnavailable();
+
+      // Wait well past any timer — flag should NOT clear on its own
+      // (probe callback is null, so probe is a no-op)
+      await Future.delayed(const Duration(milliseconds: 200));
+      expect(service.isUnavailable, true);
+    });
+
     test('reset clears the flag immediately', () {
       final service = AnilistAvailabilityService();
-      service.markUnavailable(recheckDelay: const Duration(minutes: 5));
+      service.markUnavailable();
       expect(service.isUnavailable, true);
 
       service.reset();
@@ -58,7 +68,7 @@ void main() {
 
     test('reset notifies listeners', () {
       final service = AnilistAvailabilityService();
-      service.markUnavailable(recheckDelay: const Duration(minutes: 5));
+      service.markUnavailable();
 
       bool notified = false;
       service.unavailableNotifier.addListener(() => notified = true);
@@ -67,52 +77,23 @@ void main() {
       expect(notified, true);
     });
 
-    test('auto-clears after recheckDelay', () async {
+    test('markAvailable clears the flag', () {
       final service = AnilistAvailabilityService();
-      service.markUnavailable(recheckDelay: const Duration(milliseconds: 100));
-
+      service.markUnavailable();
       expect(service.isUnavailable, true);
 
-      // Wait for the timer to fire
-      await Future.delayed(const Duration(milliseconds: 200));
-
-      expect(service.isAvailable, true);
-    });
-
-    test('reset cancels the auto-clear timer', () async {
-      final service = AnilistAvailabilityService();
-      service.markUnavailable(recheckDelay: const Duration(milliseconds: 100));
-      service.reset();
-
-      // The flag is already cleared by reset
-      expect(service.isAvailable, true);
-
-      // Wait past the original timer — should stay available (timer was cancelled)
-      await Future.delayed(const Duration(milliseconds: 200));
+      service.markAvailable();
       expect(service.isAvailable, true);
     });
 
     test('can be marked unavailable again after reset', () {
       final service = AnilistAvailabilityService();
-      service.markUnavailable(recheckDelay: const Duration(minutes: 5));
+      service.markUnavailable();
       service.reset();
       expect(service.isAvailable, true);
 
-      service.markUnavailable(recheckDelay: const Duration(minutes: 5));
+      service.markUnavailable();
       expect(service.isUnavailable, true);
-    });
-
-    test('can be marked unavailable again after auto-clear', () async {
-      final service = AnilistAvailabilityService();
-      service.markUnavailable(recheckDelay: const Duration(milliseconds: 50));
-
-      await Future.delayed(const Duration(milliseconds: 100));
-      expect(service.isAvailable, true);
-
-      service.markUnavailable(recheckDelay: const Duration(minutes: 5));
-      expect(service.isUnavailable, true);
-
-      service.reset(); // cleanup
     });
   });
 }

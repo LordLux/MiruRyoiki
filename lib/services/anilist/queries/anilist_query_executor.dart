@@ -67,13 +67,6 @@ mixin AnilistQueryExecutor {
     required T Function(Map<String, dynamic>) parser,
     bool isOfflineAware = true,
   }) async* {
-    // Short-circuit if AniList API is known to be down
-    if (AnilistAvailabilityService().isUnavailable) {
-      logTrace('$operationName: AniList API is unavailable — skipping watch.');
-      yield null;
-      return;
-    }
-
     // Connectivity Check
     bool isOffline = false;
     if (isOfflineAware) {
@@ -128,7 +121,7 @@ mixin AnilistQueryExecutor {
 
         if (_isAnilistServiceOutage(exception)) {
           AnilistAvailabilityService().markUnavailable();
-          logErr('$operationName: AniList API temporarily disabled (stream).', exception);
+          logWarn('$operationName: AniList API temporarily disabled (stream).');
         } else if (isOffline && isExpectedOfflineError(exception)) {
           // Expected offline error, ignore
         } else if (shouldRetryAnilistError(exception)) {
@@ -157,15 +150,14 @@ mixin AnilistQueryExecutor {
     required T Function(Map<String, dynamic>) parser,
     required bool isOfflineAware,
   }) async {
-    // Short-circuit if AniList API is known to be down
     final availability = AnilistAvailabilityService();
-    if (availability.isUnavailable) {
-      logTrace('$operationName: AniList API is unavailable — skipping request.');
-      return null;
-    }
+
+    // If AniList is known to be down, still attempt (it may have recovered)
+    // but don't waste time on retries.
+    final bool knownUnavailable = availability.isUnavailable;
 
     int attempt = 1;
-    const int maxRetries = 3;
+    final int maxRetries = knownUnavailable ? 1 : 3;
     const int baseDelay = 1000;
 
     while (attempt <= maxRetries) {
@@ -201,6 +193,8 @@ mixin AnilistQueryExecutor {
 
         // Handle Success
         if (!result.hasException) {
+          // If we were in outage state and a request just succeeded, clear it
+          if (availability.isUnavailable) availability.markAvailable();
           if (result.data == null) return null;
           return parser(result.data!);
         }
@@ -267,7 +261,7 @@ mixin AnilistQueryExecutor {
         // Check for AniList service outage (temporarily disabled)
         if (_isAnilistServiceOutage(exception)) {
           availability.markUnavailable();
-          logErr('$operationName: AniList API temporarily disabled.', exception);
+          logWarn('$operationName: AniList API temporarily disabled.');
           return null;
         }
 

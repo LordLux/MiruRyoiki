@@ -277,7 +277,7 @@ void main() {
       expect(AnilistAvailabilityService().isUnavailable, true);
     });
 
-    test('skips request when already marked unavailable', () async {
+    test('still attempts request when unavailable (no retries)', () async {
       mockConnectivity.setOnline(true);
       await Future.delayed(const Duration(milliseconds: 50));
 
@@ -286,10 +286,21 @@ void main() {
       int attempts = 0;
       mockClient.queryHandler = <T>(options) async {
         attempts++;
+        // Simulate the outage response again
         return QueryResult(
           options: options,
           source: QueryResultSource.network,
-          data: {'test': 'should_not_reach'},
+          exception: OperationException(
+            linkException: ServerException(
+              originalException: null,
+              parsedResponse: Response(
+                data: null,
+                errors: [GraphQLError(message: 'The AniList API has been temporarily disabled.')],
+                response: {},
+                context: const Context(),
+              ),
+            ),
+          ),
         );
       };
 
@@ -300,7 +311,33 @@ void main() {
       );
 
       expect(result, isNull);
-      expect(attempts, 0, reason: 'Should not have made any network calls');
+      expect(attempts, 1, reason: 'Should attempt once but not retry');
+    });
+
+    test('clears unavailable flag when request succeeds', () async {
+      mockConnectivity.setOnline(true);
+      await Future.delayed(const Duration(milliseconds: 50));
+
+      AnilistAvailabilityService().markUnavailable();
+      expect(AnilistAvailabilityService().isUnavailable, true);
+
+      mockClient.queryHandler = <T>(options) async {
+        return QueryResult(
+          options: options,
+          source: QueryResultSource.network,
+          data: {'test': 'recovered'},
+        );
+      };
+
+      final result = await executor.executeQuery(
+        options: QueryOptions(document: gql('query { test }')),
+        operationName: 'testQuery',
+        parser: (data) => data['test'] as String,
+      );
+
+      expect(result, 'recovered');
+      expect(AnilistAvailabilityService().isUnavailable, false,
+          reason: 'Successful request should clear the unavailable flag');
     });
 
     test('resumes requests after reset', () async {

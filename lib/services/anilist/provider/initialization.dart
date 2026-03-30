@@ -72,21 +72,8 @@ extension AnilistProviderInitialization on AnilistProvider {
       _anilistService.getGenres().then((_) => logTrace('Genres fetched')).catchError((e) => logErr('Failed to fetch genres', e));
 
       await _loadCurrentUserFromCache();
-      int retryCount = 0;
-      const maxRetries = 3;
-      bool success = false;
-
-      while (retryCount < maxRetries && !success) {
-        success = await _loadListsFromCache();
-        if (!success) {
-          retryCount++;
-          if (retryCount < maxRetries) {
-            logWarn('   2 | Failed to load Anilist lists from cache (attempt $retryCount/$maxRetries). Retrying...');
-            await Future.delayed(Duration(milliseconds: 500 * retryCount)); // Exponential backoff
-          } else {
-            logWarn('   2 | Could not load Anilist lists from cache after $maxRetries attempts.');
-          }
-        }
+      if (!await _loadListsFromCache()) {
+        logWarn('   2 | Could not load Anilist lists from cache, will fetch from network.');
       }
     }
 

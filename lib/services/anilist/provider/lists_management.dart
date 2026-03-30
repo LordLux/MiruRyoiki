@@ -139,9 +139,14 @@ extension AnilistProviderListsManagement on AnilistProvider {
       final cacheJson = await file.readAsString();
       final cache = jsonDecode(cacheJson) as Map<String, dynamic>;
 
-      // Check if cache is for current user
-      if (cache['userId'] != _currentUser?.id) {
-        logDebug('Cached lists belong to different user: cached user ${cache['userId']} vs current user ${_currentUser?.id}');
+      // Check if cache belongs to a different user (only reject on real mismatch —
+      // null on either side means offline/unavailable, assume same user)
+      final cachedUserId = cache['userId'];
+      final currentUserId = _currentUser?.id;
+      if (cachedUserId != null && currentUserId != null && cachedUserId != currentUserId) {
+        logDebug('Cached lists belong to different user: cached user $cachedUserId vs current user $currentUserId');
+        // Delete stale cache so we don't retry on next startup
+        try { await file.delete(); } catch (_) {}
         return false;
       }
 

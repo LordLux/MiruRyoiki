@@ -4,7 +4,9 @@ import 'package:smooth_scroll_multiplatform/smooth_scroll_multiplatform.dart';
 import '../main.dart';
 import '../manager.dart';
 import '../models/anilist/anime_card.dart';
+import '../services/anilist/anilist_availability.dart';
 import '../services/anilist/queries/anilist_service.dart';
+import '../services/connectivity/connectivity_service.dart';
 import '../models/anilist/page_info.dart';
 import '../services/navigation/shortcuts.dart';
 import '../utils/logging.dart';
@@ -14,6 +16,7 @@ import '../widgets/context_menu/context_menu.dart';
 import '../widgets/page/page_template.dart';
 import '../widgets/page/header_widget.dart';
 import '../widgets/buttons/button.dart';
+import '../widgets/service_unavailable_banner.dart';
 
 class SearchResultsScreen extends StatefulWidget {
   final String queryType; // 'trending', 'popular', 'upcoming', 'top100', 'search'
@@ -176,6 +179,9 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
 
   Widget _buildContent() {
     if (_errorMessage != null && _animeList.isEmpty) {
+      if (ConnectivityService().isOffline || AnilistAvailabilityService().isUnavailable) {
+        return ServiceUnavailableBanner(onRetry: _fetchData);
+      }
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,

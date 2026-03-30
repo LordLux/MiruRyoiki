@@ -39,12 +39,14 @@ extension AnilistProviderAuthentication on AnilistProvider {
 
   /// Load user data and lists
   Future<bool> _loadUserData() async {
-    _currentUser = await _anilistService.getCurrentUser();
+    final basicUser = await _anilistService.getCurrentUser();
 
-    // Also load detailed user data
-    if (_currentUser != null) {
+    // Only update if we got a valid response — preserve cached data when API is unavailable
+    if (basicUser != null) {
+      _currentUser = basicUser;
+
+      // Also load detailed user data
       final userData = await _anilistService.getCurrentUserData();
-      // Update the current user with the detailed data
       if (userData != null) {
         _currentUser = AnilistUser(
           id: _currentUser!.id,

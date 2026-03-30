@@ -66,7 +66,7 @@ class _StatusBarState extends State<StatusBar> {
     super.dispose();
   }
 
-  /// Resolves the highest-priority left-side info to display.
+  /// Resolves the left-side info to display
   ///
   /// Priority: offline > "back online" transient > AniList unavailable > null
   StatusBarInfo? _resolveLeftInfo(bool isOnline, bool isAnilistUnavailable) {
@@ -169,7 +169,7 @@ class _LeftStatusInfo extends StatelessWidget {
           end: Alignment.centerRight,
         ),
       ),
-      padding: const EdgeInsets.symmetric(vertical: 2, horizontal: 16),
+      padding: const EdgeInsets.symmetric(vertical: 2, horizontal: 8),
       child: Row(
         children: [
           Icon(info.icon, color: Colors.white, size: 16),

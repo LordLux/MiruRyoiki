@@ -19,6 +19,7 @@ import '../../../utils/logging.dart';
 import '../../../utils/time.dart';
 import '../../connectivity/connectivity_service.dart';
 import '../../library/library_provider.dart';
+import '../anilist_availability.dart';
 import '../auth.dart';
 import '../provider/anilist_provider.dart';
 import 'anilist_query_executor.dart';
