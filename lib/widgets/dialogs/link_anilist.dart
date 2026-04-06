@@ -988,6 +988,10 @@ void linkWithAnilist(BuildContext context, Series? series, Future<void> Function
 
             closeDialog();
 
+            // Adding a mapping can introduce folder-only targets (for example, with 0 episodes)
+            // Force a scan reload so collections are rebuilt immediately
+            if (anilistIdsToLoad.isNotEmpty) await library.reloadLibrary(force: true, showSnackBar: false);
+
             // Load Anilist data
             if (anilistIdsToLoad.isNotEmpty) await loadData(anilistIdsToLoad);
 

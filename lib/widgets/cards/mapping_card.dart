@@ -43,6 +43,7 @@ class _MappingCardState extends State<MappingCard> {
   bool _loading = true;
   bool _hasError = false;
   ImageProvider? _posterImageProvider;
+  String? _loadedPosterUrl;
   late final DesktopContextMenuController _menuController;
   Color? _dominantColor;
 
@@ -63,11 +64,15 @@ class _MappingCardState extends State<MappingCard> {
   @override
   void didUpdateWidget(MappingCard oldWidget) {
     super.didUpdateWidget(oldWidget);
-    final posterChanged = oldWidget.mapping.anilistData?.posterImage != widget.mapping.anilistData?.posterImage;
-    if (oldWidget.mapping != widget.mapping || oldWidget.target != widget.target || posterChanged) {
-      _loadImage();
-      _loadDominantColor();
-    }
+    final currentPosterUrl = widget.mapping.anilistData?.posterImage;
+    final shouldReloadImage = _loadedPosterUrl != currentPosterUrl;
+
+    final currentDominant = widget.mapping.effectivePrimaryColorSync();
+    final shouldReloadColor = oldWidget.mapping != widget.mapping || oldWidget.target != widget.target || _dominantColor?.value != currentDominant?.value;
+
+    if (shouldReloadImage) _loadImage();
+
+    if (shouldReloadColor) _loadDominantColor();
   }
 
   Future<void> _loadDominantColor() async {
@@ -78,24 +83,29 @@ class _MappingCardState extends State<MappingCard> {
   Future<void> _loadImage() async {
     if (!mounted) return;
 
+    final posterUrl = widget.mapping.anilistData?.posterImage;
+    _loadedPosterUrl = posterUrl;
+
     setState(() {
       _loading = true;
       _hasError = false;
     });
 
     try {
-      _posterImageProvider = await _getPosterImage();
+      _posterImageProvider = await _getPosterImageForUrl(posterUrl);
     } catch (e, stackTrace) {
       logErr('Failed to load mapping poster image', e, stackTrace);
       _posterImageProvider = null;
       _hasError = true;
     }
 
+    // If another reload started while this one was in-flight, drop stale result
+    if (_loadedPosterUrl != posterUrl) return;
+
     if (mounted) setState(() => _loading = false);
   }
 
-  Future<ImageProvider?> _getPosterImage() async {
-    final posterUrl = widget.mapping.anilistData?.posterImage;
+  Future<ImageProvider?> _getPosterImageForUrl(String? posterUrl) async {
     if (posterUrl == null || posterUrl.isEmpty) return null;
 
     return await ImageCacheService().getImageProvider(posterUrl);
@@ -146,9 +156,9 @@ class _MappingCardState extends State<MappingCard> {
   String get _displayTitle {
     return widget.mapping.preferredTitle ??
         widget.target.when(
-      episode: (ep) => ep.displayTitle ?? ep.name,
-      collection: (collection) => collection.prettyName,
-    );
+          episode: (ep) => ep.displayTitle ?? ep.name,
+          collection: (collection) => collection.prettyName,
+        );
   }
 
   @override

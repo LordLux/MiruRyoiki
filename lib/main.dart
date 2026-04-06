@@ -1122,7 +1122,6 @@ Future<void> _registerWindowsUrlScheme(String scheme) async {
 // TODO add 'random entry' button to top right corner of library
 // TODO add 'play episode' button on continue watching series card -> click on card simply opens series
 // TODO cache images smaller to be displayed without using too much memory
-// TODO add NonMapping for series that are not to be linked with Anilist
 // TODO create widget for Smooth scrolling scroll controllers
 // TODO create superclass for series type cards (continue watching, library series, search results, etc.) to share code between them and avoid duplication
 // TODO add 'notify me' button to upcoming episodes on home screen
@@ -1137,10 +1136,7 @@ Future<void> _registerWindowsUrlScheme(String scheme) async {
 // TODO fix settings players order not actually changing + add cursor to reordering handles
 // TODO add dialog after clicking random entry to choose between confirm or pick another random entry
 
-// TODO fix image cache not working (es when changing primary id)
 // TODO cache Anilist lists to be able to work offline
-
-// TODO change scanning: any folders [names] will remain as is and only loose files will be moved to 'Related Media'
 
 // beta
 // TODO add 'see log' dialog with timestamps and episode names, and ability to export it to a file
