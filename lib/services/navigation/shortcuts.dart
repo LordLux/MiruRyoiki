@@ -125,6 +125,7 @@ class _CustomKeyboardListenerState extends State<CustomKeyboardListener> {
       // Open search Palette
       if (isCtrlPressed && event.logicalKey == LogicalKeyboardKey.keyF) {
         logTrace('Ctrl + f pressed: Search');
+        libraryScreenKey.currentState?.focusSearchBar();
       } else
       //
       // Zoom in

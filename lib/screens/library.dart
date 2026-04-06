@@ -6,6 +6,7 @@ import 'dart:math' as math;
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart' as mat;
+import 'package:flutter/services.dart';
 import 'package:miruryoiki/manager.dart';
 import 'package:miruryoiki/screens/settings.dart';
 import 'package:miruryoiki/utils/color.dart';
@@ -600,6 +601,10 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
     return filteredSeries;
   }
 
+  void focusSearchBar() {
+    _searchFocusNode.requestFocus();
+  }
+
   @override
   void initState() {
     super.initState();
@@ -607,6 +612,22 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
     _loadColors();
     NavigationManager.registerActiveScrollController('library', _controller);
     NavigationManager.restoreScrollOffset('library', _controller);
+
+    _searchFocusNode.onKeyEvent = (node, event) {
+      if (event is KeyDownEvent && event.logicalKey == LogicalKeyboardKey.escape) {
+        if (_searchQuery.isNotEmpty) {
+          setState(() {
+            _searchQuery = '';
+            _searchController.clear();
+          });
+          return KeyEventResult.handled;
+        } else {
+          _searchFocusNode.unfocus();
+          return KeyEventResult.handled;
+        }
+      }
+      return KeyEventResult.ignored;
+    };
   }
 
   @override
