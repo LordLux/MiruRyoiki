@@ -71,7 +71,7 @@ void main() {
         id: 1,
         name: 'Test Series',
         path: PathString('path/to/series'),
-        seasons: [],
+        collections: [],
         anilistMappings: [mapping1, mapping2],
       );
 
@@ -125,7 +125,7 @@ void main() {
         id: 2,
         name: 'Unlinked',
         path: PathString('path'),
-        seasons: [],
+        collections: [],
         anilistMappings: [],
       );
       expect(manager.getTotalEpisodesFromAnilist(unlinkedSeries), 0);
@@ -150,8 +150,8 @@ void main() {
                 path: 'path/2/ep${i + 1}.mkv',
               ));
 
-      final season1 = Season(name: 'Season 1', path: PathString('path/1'), episodes: season1Episodes);
-      final season2 = Season(name: 'Season 2', path: PathString('path/2'), episodes: season2Episodes);
+      final season1 = Season(name: 'Season 1', path: PathString('path/1'), episodes: season1Episodes, seasonNumber: 1);
+      final season2 = Season(name: 'Season 2', path: PathString('path/2'), episodes: season2Episodes, seasonNumber: 2);
 
       final s1Mapping = AnilistMapping(
         localPath: PathString('path/1'),
@@ -168,7 +168,7 @@ void main() {
         id: 1,
         name: 'Multi-Season',
         path: PathString('path/to/series'),
-        seasons: [season1, season2],
+        collections: [season1, season2],
         anilistMappings: [s1Mapping, s2Mapping],
       );
 
@@ -214,8 +214,8 @@ void main() {
                 path: 'path/2/ep${13 + i}.mkv',
               ));
 
-      final season1 = Season(name: 'Season 1', path: PathString('path/1'), episodes: season1Episodes);
-      final season2 = Season(name: 'Season 2', path: PathString('path/2'), episodes: season2Episodes);
+      final season1 = Season(name: 'Season 1', path: PathString('path/1'), episodes: season1Episodes, seasonNumber: 1);
+      final season2 = Season(name: 'Season 2', path: PathString('path/2'), episodes: season2Episodes, seasonNumber: 2);
 
       final s1Mapping = AnilistMapping(
         localPath: PathString('path/1'),
@@ -232,7 +232,7 @@ void main() {
         id: 1,
         name: 'Absolute Numbering',
         path: PathString('path/to/series'),
-        seasons: [season1, season2],
+        collections: [season1, season2],
         anilistMappings: [s1Mapping, s2Mapping],
       );
 
@@ -272,7 +272,7 @@ void main() {
                 watched: i < 7,
               ));
 
-      final season1 = Season(name: 'Season 1', path: PathString('path/1'), episodes: season1Episodes);
+      final season1 = Season(name: 'Season 1', path: PathString('path/1'), episodes: season1Episodes, seasonNumber: 1);
 
       final s1Mapping = AnilistMapping(
         localPath: PathString('path/1'),
@@ -284,7 +284,7 @@ void main() {
         id: 1,
         name: 'Single Season',
         path: PathString('path/to/series'),
-        seasons: [season1],
+        collections: [season1],
         anilistMappings: [s1Mapping],
       );
 
@@ -314,7 +314,7 @@ void main() {
                 watched: true,
               ));
 
-      final season1 = Season(name: 'Season 1', path: PathString('path/1'), episodes: season1Episodes);
+      final season1 = Season(name: 'Season 1', path: PathString('path/1'), episodes: season1Episodes, seasonNumber: 1);
 
       final s1Mapping = AnilistMapping(
         localPath: PathString('path/1'),
@@ -326,7 +326,7 @@ void main() {
         id: 1,
         name: 'Completed',
         path: PathString('path/to/series'),
-        seasons: [season1],
+        collections: [season1],
         anilistMappings: [s1Mapping],
       );
 
@@ -357,7 +357,7 @@ void main() {
                 progress: i == 4 ? 0.5 : (i < 4 ? 1.0 : 0.0), // ep5 is half-watched
               ));
 
-      final season1 = Season(name: 'Season 1', path: PathString('path/1'), episodes: season1Episodes);
+      final season1 = Season(name: 'Season 1', path: PathString('path/1'), episodes: season1Episodes, seasonNumber: 1);
 
       final s1Mapping = AnilistMapping(
         localPath: PathString('path/1'),
@@ -369,7 +369,7 @@ void main() {
         id: 1,
         name: 'In Progress',
         path: PathString('path/to/series'),
-        seasons: [season1],
+        collections: [season1],
         anilistMappings: [s1Mapping],
       );
 
@@ -401,8 +401,8 @@ void main() {
                 watched: true,
               ));
 
-      final season1 = Season(name: 'Season 1', path: PathString('path/1'), episodes: season1Episodes);
-      final season2 = Season(name: 'Season 2', path: PathString('path/2'), episodes: []); // empty
+      final season1 = Season(name: 'Season 1', path: PathString('path/1'), episodes: season1Episodes, seasonNumber: 1);
+      final season2 = Season(name: 'Season 2', path: PathString('path/2'), episodes: [], seasonNumber: 2); // empty
 
       final s1Mapping = AnilistMapping(
         localPath: PathString('path/1'),
@@ -419,7 +419,7 @@ void main() {
         id: 1,
         name: 'Missing S2',
         path: PathString('path/to/series'),
-        seasons: [season1, season2],
+        collections: [season1, season2],
         anilistMappings: [s1Mapping, s2Mapping],
       );
 
@@ -463,7 +463,7 @@ void main() {
         id: 1,
         name: 'Multi-Season',
         path: PathString('path/to/series'),
-        seasons: [],
+        collections: [],
         anilistMappings: [s1Mapping, s2Mapping],
       );
 

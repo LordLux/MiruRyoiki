@@ -49,13 +49,14 @@ void main() {
       name: 'Season 1',
       path: PathString(r"M:\Videos\Series\Happy Sugar Life\S01"),
       episodes: [testEpisode1, testEpisode2],
+      seasonNumber: 1,
     );
 
     testSeries = Series(
       id: 1,
       name: 'Test Series',
       path: PathString(r"M:\Videos\Series\Happy Sugar Life"),
-      seasons: [testSeason],
+      collections: [testSeason],
     );
   });
 
@@ -81,8 +82,8 @@ void main() {
       expect(result, equals(testEpisode1));
     });
 
-    test('findSeasonForEpisode finds correct season', () {
-      final result = navigator.findSeasonForEpisode(testEpisode1, testSeries);
+    test('findCollectionForEpisode finds correct season', () {
+      final result = navigator.findCollectionForEpisode(testEpisode1, testSeries);
       expect(result, equals(testSeason));
     });
   });

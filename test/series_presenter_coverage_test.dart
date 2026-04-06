@@ -22,8 +22,7 @@ Series _makeSeries({
   String path = r'M:\Series\Test Series',
   PathString? localPosterPath,
   PathString? localBannerPath,
-  List<Season>? seasons,
-  List<Episode>? relatedMedia,
+  List<EpisodeCollection>? collections,
   List<AnilistMapping> anilistMappings = const [],
   AnilistAnime? anilistData,
   Color? posterColor,
@@ -44,8 +43,7 @@ Series _makeSeries({
     path: PathString(path),
     localPosterPath: localPosterPath,
     localBannerPath: localBannerPath,
-    seasons: seasons ?? [],
-    relatedMedia: relatedMedia ?? [],
+    collections: collections ?? [],
     anilistMappings: anilistMappings,
     anilistData: anilistData,
     posterColor: posterColor,
@@ -151,6 +149,7 @@ Season _makeSeason({
   String path = r'M:\Series\Test\S01',
   List<Episode>? episodes,
   Metadata? metadata,
+  int seasonNumber = 1,
 }) {
   return Season(
     id: id,
@@ -158,6 +157,7 @@ Season _makeSeason({
     path: PathString(path),
     episodes: episodes ?? [],
     metadata: metadata,
+    seasonNumber: seasonNumber,
   );
 }
 
@@ -294,7 +294,7 @@ void main() {
         localPath: r'M:\Series\Test\S01',
       );
       final series = _makeSeries(
-        seasons: [season],
+        collections: [season],
         anilistMappings: [mapping],
         primaryAnilistId: 1,
         preferredPosterSource: ImageSource.autoAnilist,
@@ -316,7 +316,7 @@ void main() {
         localPath: r'M:\Series\Test\S01',
       );
       final series = _makeSeries(
-        seasons: [season],
+        collections: [season],
         anilistMappings: [mapping],
         primaryAnilistId: 1,
         localPosterPath: PathString(r'M:\local_poster.jpg'),
@@ -339,7 +339,7 @@ void main() {
         localPath: r'M:\Series\Test\S01',
       );
       final series = _makeSeries(
-        seasons: [season],
+        collections: [season],
         anilistMappings: [mapping],
         primaryAnilistId: 1,
         localPosterPath: PathString(r'M:\local_poster.jpg'),
@@ -371,7 +371,7 @@ void main() {
       final season = _makeSeason(path: r'M:\Series\Test\S01', episodes: [ep]);
       final mapping = _makeMapping(anilistId: 1, anilistData: anime, localPath: r'M:\Series\Test\S01');
       final series = _makeSeries(
-        seasons: [season],
+        collections: [season],
         anilistMappings: [mapping],
         primaryAnilistId: 1,
         posterColor: localCol,
@@ -391,7 +391,7 @@ void main() {
         posterColor: mappingCol,
       );
       final series = _makeSeries(
-        seasons: [season],
+        collections: [season],
         anilistMappings: [mapping],
         primaryAnilistId: 1,
         preferredPosterSource: ImageSource.local,
@@ -411,7 +411,7 @@ void main() {
         posterColor: mappingCol,
       );
       final series = _makeSeries(
-        seasons: [season],
+        collections: [season],
         anilistMappings: [mapping],
         primaryAnilistId: 1,
         posterColor: localCol,
@@ -431,7 +431,7 @@ void main() {
         localPath: r'M:\Series\Test\S01',
       );
       final series = _makeSeries(
-        seasons: [season],
+        collections: [season],
         anilistMappings: [mapping],
         primaryAnilistId: 1,
         preferredPosterSource: ImageSource.anilist,
@@ -446,7 +446,7 @@ void main() {
       final season = _makeSeason(path: r'M:\Series\Test\S01', episodes: [ep]);
       final mapping = _makeMapping(anilistId: 1, localPath: r'M:\Series\Test\S01');
       final series = _makeSeries(
-        seasons: [season],
+        collections: [season],
         anilistMappings: [mapping],
         primaryAnilistId: 1,
         posterColor: localCol,
@@ -731,7 +731,7 @@ void main() {
       // The fromJson gracefully catches errors so season is created but episodes empty.
       final ep = _makeEpisode(name: 'Ep1', episodeNumber: 1);
       final season = _makeSeason(name: 'Season 1', episodes: [ep]);
-      final original = _makeSeries(seasons: [season]);
+      final original = _makeSeries(collections: [season]);
 
       final json = original.toJson();
       final restored = Series.fromJson(json);
@@ -740,16 +740,17 @@ void main() {
       expect(restored.seasons.length, 0);
     });
 
-    test('round-trip handles related media gracefully (no native lib)', () {
-      // Episode.fromJson requires native lib; related media episodes skipped
+    test('round-trip handles folder collections gracefully (no native lib)', () {
+      // Episode.fromJson requires native lib; folder episodes skipped
       final ep = _makeEpisode(name: 'OVA 1', path: r'M:\Series\Test\OVA\OVA1.mkv');
-      final original = _makeSeries(relatedMedia: [ep]);
+      final folder = Folder(name: Folder.uncategorizedName, path: PathString(r'M:\Series\Test Series'), episodes: [ep]);
+      final original = _makeSeries(collections: [folder]);
 
       final json = original.toJson();
       final restored = Series.fromJson(json);
 
-      // relatedMedia episodes are skipped because Episode.fromJson fails
-      expect(restored.relatedMedia.length, 0);
+      // Folder episodes are skipped because Episode.fromJson fails
+      expect(restored.collections.whereType<Folder>().expand((f) => f.episodes).length, 0);
     });
 
     test('round-trip preserves anilist mappings', () {
@@ -1136,12 +1137,12 @@ void main() {
       relEp = _makeEpisode(id: 20, name: 'OVA', path: r'M:\S\OVA\OVA1.mkv', episodeNumber: 1);
 
       final s1 = _makeSeason(name: 'Season 1', path: r'M:\S\S01', episodes: [ep1, ep2]);
-      final s2 = _makeSeason(name: 'Season 2', path: r'M:\S\S02', episodes: [ep3]);
+      final s2 = _makeSeason(name: 'Season 2', path: r'M:\S\S02', episodes: [ep3], seasonNumber: 2);
 
+      final ovaFolder = Folder(name: 'OVA', path: PathString(r'M:\S\OVA'), episodes: [relEp]);
       series = _makeSeries(
         path: r'M:\S',
-        seasons: [s1, s2],
-        relatedMedia: [relEp],
+        collections: [s1, s2, ovaFolder],
       );
     });
 
@@ -1150,7 +1151,7 @@ void main() {
       expect(series.getEpisodeById(12)?.name, 'Ep3');
     });
 
-    test('getEpisodeById finds in related media', () {
+    test('getEpisodeById finds in folder collection', () {
       expect(series.getEpisodeById(20)?.name, 'OVA');
     });
 
@@ -1166,11 +1167,12 @@ void main() {
       expect(series.getEpisodeByNumber(2)?.name, 'Ep2');
     });
 
-    test('getEpisodeByNumber finds in related media', () {
-      // Create a series where the episode number is unique to relatedMedia
+    test('getEpisodeByNumber finds in folder collection', () {
+      // Create a series where the episode number is unique to a Folder
       final uniqueRelEp = _makeEpisode(id: 30, name: 'OVA99', path: r'M:\S\OVA\ova99.mkv', episodeNumber: 99);
+      final folder = Folder(name: 'OVA', path: PathString(r'M:\S\OVA'), episodes: [uniqueRelEp]);
       final s = _makeSeries(
-        relatedMedia: [uniqueRelEp],
+        collections: [folder],
       );
 
       expect(s.getEpisodeByNumber(99)?.name, 'OVA99');
@@ -1184,7 +1186,7 @@ void main() {
       expect(series.getEpisodeByPath(PathString(r'M:\S\S01\E02.mkv'))?.name, 'Ep2');
     });
 
-    test('getEpisodeByPath finds in related media', () {
+    test('getEpisodeByPath finds in folder collection', () {
       expect(series.getEpisodeByPath(PathString(r'M:\S\OVA\OVA1.mkv'))?.name, 'OVA');
     });
 
@@ -1202,12 +1204,12 @@ void main() {
       expect(series.getEpisodesForSeason(99), isEmpty);
     });
 
-    test('getSeasonFromPath returns matching season', () {
-      expect(series.getSeasonFromPath(PathString(r'M:\S\S01'))?.name, 'Season 1');
+    test('getCollectionFromPath returns matching season', () {
+      expect(series.getCollectionFromPath(PathString(r'M:\S\S01'))?.name, 'Season 1');
     });
 
-    test('getSeasonFromPath returns null for unknown path', () {
-      expect(series.getSeasonFromPath(PathString(r'M:\Unknown')), isNull);
+    test('getCollectionFromPath returns null for unknown path', () {
+      expect(series.getCollectionFromPath(PathString(r'M:\Unknown')), isNull);
     });
   });
 
@@ -1221,26 +1223,26 @@ void main() {
       expect(Series.getGridIdentifier(5), 'season_5');
     });
 
-    test('parseSeasonNumber', () {
-      expect(Series.parseSeasonNumber('special_uncategorized'), 0);
-      expect(Series.parseSeasonNumber('season_1'), 1);
-      expect(Series.parseSeasonNumber('season_5'), 5);
-      expect(Series.parseSeasonNumber('invalid'), isNull);
+    test('parseGridSeasonNumber', () {
+      expect(Series.parseGridSeasonNumber('special_uncategorized'), 0);
+      expect(Series.parseGridSeasonNumber('season_1'), 1);
+      expect(Series.parseGridSeasonNumber('season_5'), 5);
+      expect(Series.parseGridSeasonNumber('invalid'), isNull);
     });
 
     test('getGridDisplayOrder default order', () {
       final s1 = _makeSeason(path: r'M:\S\S01', episodes: [_makeEpisode()]);
-      final s2 = _makeSeason(path: r'M:\S\S02', episodes: [_makeEpisode(path: r'M:\S\S02\E01.mkv')]);
-      final series = _makeSeries(seasons: [s1, s2]);
+      final s2 = _makeSeason(path: r'M:\S\S02', episodes: [_makeEpisode(path: r'M:\S\S02\E01.mkv')], seasonNumber: 2);
+      final series = _makeSeries(collections: [s1, s2]);
 
       expect(series.getGridDisplayOrder(), ['season_1', 'season_2']);
     });
 
     test('getGridDisplayOrder respects custom order', () {
       final s1 = _makeSeason(path: r'M:\S\S01', episodes: [_makeEpisode()]);
-      final s2 = _makeSeason(path: r'M:\S\S02', episodes: [_makeEpisode(path: r'M:\S\S02\E01.mkv')]);
+      final s2 = _makeSeason(path: r'M:\S\S02', episodes: [_makeEpisode(path: r'M:\S\S02\E01.mkv')], seasonNumber: 2);
       final series = _makeSeries(
-        seasons: [s1, s2],
+        collections: [s1, s2],
         customGridOrder: ['season_2', 'season_1'],
       );
 
@@ -1249,9 +1251,9 @@ void main() {
 
     test('getGridDisplayOrder adds new grids not in custom order', () {
       final s1 = _makeSeason(path: r'M:\S\S01', episodes: [_makeEpisode()]);
-      final s2 = _makeSeason(path: r'M:\S\S02', episodes: [_makeEpisode(path: r'M:\S\S02\E01.mkv')]);
+      final s2 = _makeSeason(path: r'M:\S\S02', episodes: [_makeEpisode(path: r'M:\S\S02\E01.mkv')], seasonNumber: 2);
       final series = _makeSeries(
-        seasons: [s1, s2],
+        collections: [s1, s2],
         customGridOrder: ['season_1'], // missing season_2
       );
 
@@ -1274,7 +1276,7 @@ void main() {
 
     test('isValidGridId', () {
       final s1 = _makeSeason(path: r'M:\S\S01', episodes: [_makeEpisode()]);
-      final series = _makeSeries(seasons: [s1]);
+      final series = _makeSeries(collections: [s1]);
 
       expect(series.isValidGridId('season_1'), isTrue);
       expect(series.isValidGridId('season_2'), isFalse);
@@ -1293,8 +1295,8 @@ void main() {
 
     test('returns count for simple seasons', () {
       final s1 = _makeSeason(name: 'S1');
-      final s2 = _makeSeason(name: 'S2', path: r'M:\S\S02');
-      final series = _makeSeries(seasons: [s1, s2]);
+      final s2 = _makeSeason(name: 'S2', path: r'M:\S\S02', seasonNumber: 2);
+      final series = _makeSeries(collections: [s1, s2]);
 
       expect(series.numberOfSeasons, 2);
     });
@@ -1308,8 +1310,8 @@ void main() {
       final m1 = Metadata(size: 100, duration: const Duration(minutes: 24));
       final m2 = Metadata(size: 200, duration: const Duration(minutes: 24));
       final s1 = _makeSeason(metadata: m1);
-      final s2 = _makeSeason(path: r'M:\S\S02', metadata: m2);
-      final series = _makeSeries(seasons: [s1, s2]);
+      final s2 = _makeSeason(path: r'M:\S\S02', metadata: m2, seasonNumber: 2);
+      final series = _makeSeries(collections: [s1, s2]);
 
       final meta = series.metadata;
       expect(meta, isNotNull);
@@ -1359,7 +1361,7 @@ void main() {
       final ep = _makeEpisode(path: r'M:\S\S01\E01.mkv');
       final season = _makeSeason(path: r'M:\S\S01', episodes: [ep]);
       final mapping = _makeMapping(anilistId: 1, localPath: r'M:\S\S01');
-      final series = _makeSeries(seasons: [season], anilistMappings: [mapping]);
+      final series = _makeSeries(collections: [season], anilistMappings: [mapping]);
 
       expect(series.getMappingForEpisode(ep)?.anilistId, 1);
     });
@@ -1378,16 +1380,17 @@ void main() {
     test('returns season target when mapping path matches season', () {
       final season = _makeSeason(path: r'M:\S\S01');
       final mapping = _makeMapping(anilistId: 1, localPath: r'M:\S\S01');
-      final series = _makeSeries(seasons: [season], anilistMappings: [mapping]);
+      final series = _makeSeries(collections: [season], anilistMappings: [mapping]);
 
       final target = series.getTargetForMapping(mapping);
       expect(target, isNotNull);
     });
 
-    test('returns episode target for related media', () {
+    test('returns episode target for folder collection', () {
       final ep = _makeEpisode(path: r'M:\S\OVA\OVA1.mkv');
+      final folder = Folder(name: 'OVA', path: PathString(r'M:\S\OVA'), episodes: [ep]);
       final mapping = _makeMapping(anilistId: 1, localPath: r'M:\S\OVA\OVA1.mkv');
-      final series = _makeSeries(relatedMedia: [ep], anilistMappings: [mapping]);
+      final series = _makeSeries(collections: [folder], anilistMappings: [mapping]);
 
       final target = series.getTargetForMapping(mapping);
       expect(target, isNotNull);
@@ -1397,7 +1400,7 @@ void main() {
       final ep = _makeEpisode(path: r'M:\S\S01\E01.mkv');
       final season = _makeSeason(path: r'M:\S\S01', episodes: [ep]);
       final mapping = _makeMapping(anilistId: 1, localPath: r'M:\S\S01\E01.mkv');
-      final series = _makeSeries(seasons: [season], anilistMappings: [mapping]);
+      final series = _makeSeries(collections: [season], anilistMappings: [mapping]);
 
       final target = series.getTargetForMapping(mapping);
       expect(target, isNotNull);
@@ -1419,7 +1422,7 @@ void main() {
       final season = _makeSeason(path: r'M:\S\S01');
       final mapping = _makeMapping(anilistId: 1, localPath: r'M:\S\S01');
       final series = _makeSeries(
-        seasons: [season],
+        collections: [season],
         anilistMappings: [mapping],
       );
 
@@ -1432,7 +1435,7 @@ void main() {
       final season = _makeSeason(path: r'M:\S\S01');
       final mapping = _makeMapping(anilistId: 1, localPath: r'M:\S\S01');
       final series = _makeSeries(
-        seasons: [season],
+        collections: [season],
         anilistMappings: [mapping],
       );
 
@@ -1441,7 +1444,7 @@ void main() {
       final otherMapping = _makeMapping(anilistId: 2, localPath: r'M:\S\S99');
       // The otherMapping target won't be found in series.anilistMappings
       final otherTarget = _makeSeries(
-        seasons: [otherSeason],
+        collections: [otherSeason],
         anilistMappings: [otherMapping],
       ).getTargetForMapping(otherMapping);
 
@@ -1456,7 +1459,7 @@ void main() {
     test('replaces episodes with matching paths', () {
       final ep1 = _makeEpisode(id: 1, name: 'Old', path: r'M:\S\S01\E01.mkv', watched: false);
       final season = _makeSeason(path: r'M:\S\S01', episodes: [ep1]);
-      final series = _makeSeries(seasons: [season]);
+      final series = _makeSeries(collections: [season]);
 
       final newEp1 = _makeEpisode(id: 1, name: 'New', path: r'M:\S\S01\E01.mkv', watched: true);
       final updated = series.updateEpisodes([newEp1]);
@@ -1466,21 +1469,22 @@ void main() {
       expect(series.seasons.first.episodes.first.watched, isTrue);
     });
 
-    test('replaces related media episodes', () {
+    test('replaces folder collection episodes', () {
       final relEp = _makeEpisode(id: 10, name: 'Old OVA', path: r'M:\S\OVA\1.mkv');
-      final series = _makeSeries(relatedMedia: [relEp]);
+      final folder = Folder(name: 'OVA', path: PathString(r'M:\S\OVA'), episodes: [relEp]);
+      final series = _makeSeries(collections: [folder]);
 
       final newRelEp = _makeEpisode(id: 10, name: 'New OVA', path: r'M:\S\OVA\1.mkv');
       final updated = series.updateEpisodes([newRelEp]);
 
       expect(updated, isTrue);
-      expect(series.relatedMedia.first.name, 'New OVA');
+      expect(series.collections.whereType<Folder>().first.episodes.first.name, 'New OVA');
     });
 
     test('returns false when no matches', () {
       final ep1 = _makeEpisode(path: r'M:\S\S01\E01.mkv');
       final season = _makeSeason(episodes: [ep1]);
-      final series = _makeSeries(seasons: [season]);
+      final series = _makeSeries(collections: [season]);
 
       final unrelatedEp = _makeEpisode(path: r'M:\Other\E01.mkv');
       expect(series.updateEpisodes([unrelatedEp]), isFalse);
@@ -1518,9 +1522,9 @@ void main() {
     });
 
     test('copies with new seasons', () {
-      final original = _makeSeries(seasons: [_makeSeason()]);
+      final original = _makeSeries(collections: [_makeSeason()]);
       final newSeason = _makeSeason(name: 'New Season', path: r'M:\S\S99');
-      final copy = original.copyWith(seasons: [newSeason]);
+      final copy = original.copyWith(collections: [newSeason]);
 
       expect(copy.seasons.length, 1);
       expect(copy.seasons.first.name, 'New Season');
@@ -1576,9 +1580,9 @@ void main() {
 
     test('series with different seasons are not equal', () {
       final s1 = _makeSeason(name: 'S1');
-      final s2 = _makeSeason(name: 'S2', path: r'M:\S\S02');
-      final a = _makeSeries(id: 1, seasons: [s1]);
-      final b = _makeSeries(id: 1, seasons: [s2]);
+      final s2 = _makeSeason(name: 'S2', path: r'M:\S\S02', seasonNumber: 2);
+      final a = _makeSeries(id: 1, collections: [s1]);
+      final b = _makeSeries(id: 1, collections: [s2]);
       expect(a, isNot(equals(b)));
     });
 
@@ -1610,16 +1614,17 @@ void main() {
   // Series – totalEpisodes / numberOfSeasons with data
   // =========================================================================
   group('Series totalEpisodes', () {
-    test('counts episodes from all seasons and related media', () {
+    test('counts episodes from all collections', () {
       final ep1 = _makeEpisode(path: r'M:\S\S01\E01.mkv');
       final ep2 = _makeEpisode(path: r'M:\S\S01\E02.mkv');
       final ep3 = _makeEpisode(path: r'M:\S\S02\E01.mkv');
       final relEp = _makeEpisode(path: r'M:\S\OVA\OVA1.mkv');
 
       final s1 = _makeSeason(episodes: [ep1, ep2]);
-      final s2 = _makeSeason(path: r'M:\S\S02', episodes: [ep3]);
+      final s2 = _makeSeason(path: r'M:\S\S02', episodes: [ep3], seasonNumber: 2);
+      final ovaFolder = Folder(name: 'OVA', path: PathString(r'M:\S\OVA'), episodes: [relEp]);
 
-      final series = _makeSeries(seasons: [s1, s2], relatedMedia: [relEp]);
+      final series = _makeSeries(collections: [s1, s2, ovaFolder]);
 
       expect(series.totalEpisodes, 4);
     });
@@ -1851,21 +1856,21 @@ void main() {
   // =========================================================================
   group('Series numberOfSeasons advanced', () {
     test('returns highest parsed season number', () {
-      final s1 = _makeSeason(name: 'Season 1', path: r'M:\S\S01');
-      final s2 = _makeSeason(name: 'Season 3', path: r'M:\S\S03');
-      final series = _makeSeries(seasons: [s1, s2]);
+      final s1 = _makeSeason(name: 'Season 1', path: r'M:\S\S01', seasonNumber: 1);
+      final s2 = _makeSeason(name: 'Season 3', path: r'M:\S\S03', seasonNumber: 3);
+      final series = _makeSeries(collections: [s1, s2]);
 
       // Season 3 is the max → returns 3
       expect(series.numberOfSeasons, 3);
     });
 
-    test('falls back to count when no parseable season names', () {
-      final s1 = _makeSeason(name: 'Specials', path: r'M:\S\Specials');
-      final s2 = _makeSeason(name: 'OVA', path: r'M:\S\OVA');
-      final series = _makeSeries(seasons: [s1, s2]);
+    test('returns 0 when only folder collections (no seasons)', () {
+      final f1 = Folder(name: 'Specials', path: PathString(r'M:\S\Specials'), episodes: []);
+      final f2 = Folder(name: 'OVA', path: PathString(r'M:\S\OVA'), episodes: []);
+      final series = _makeSeries(collections: [f1, f2]);
 
-      // Neither name is "Season N" → falls back to count (2)
-      expect(series.numberOfSeasons, 2);
+      // No Season objects → returns 0
+      expect(series.numberOfSeasons, 0);
     });
   });
 
@@ -1893,8 +1898,8 @@ void main() {
         lastAccessed: later,
       );
       final s1 = _makeSeason(metadata: m1);
-      final s2 = _makeSeason(path: r'M:\S\S02', metadata: m2);
-      final series = _makeSeries(seasons: [s1, s2]);
+      final s2 = _makeSeason(path: r'M:\S\S02', metadata: m2, seasonNumber: 2);
+      final series = _makeSeries(collections: [s1, s2]);
 
       final meta = series.metadata!;
       expect(meta.size, 300);
@@ -1906,7 +1911,7 @@ void main() {
 
     test('returns metadata with zeros when seasons have no metadata', () {
       final s1 = _makeSeason();
-      final series = _makeSeries(seasons: [s1]);
+      final series = _makeSeries(collections: [s1]);
 
       final meta = series.metadata!;
       expect(meta.size, 0);
@@ -1918,11 +1923,12 @@ void main() {
   // Series – getUncategorizedEpisodes
   // =========================================================================
   group('Series getUncategorizedEpisodes', () {
-    test('returns episodes in relatedMedia not in seasons', () {
+    test('returns episodes in uncategorized folder', () {
       final ep1 = _makeEpisode(path: r'M:\S\S01\E01.mkv');
       final relEp = _makeEpisode(path: r'M:\S\OVA\OVA1.mkv');
       final season = _makeSeason(episodes: [ep1]);
-      final series = _makeSeries(seasons: [season], relatedMedia: [relEp]);
+      final uncatFolder = Folder(name: Folder.uncategorizedName, path: PathString(r'M:\S'), episodes: [relEp]);
+      final series = _makeSeries(collections: [season, uncatFolder]);
 
       final uncategorized = series.getUncategorizedEpisodes();
       expect(uncategorized.length, 1);
@@ -2046,7 +2052,7 @@ void main() {
       final anime = _makeAnime(posterImage: 'https://ep.poster');
       final season = _makeSeason(path: r'M:\S\S01', episodes: [ep]);
       final mapping = _makeMapping(anilistId: 1, anilistData: anime, localPath: r'M:\S\S01');
-      final series = _makeSeries(seasons: [season], anilistMappings: [mapping], primaryAnilistId: 1);
+      final series = _makeSeries(collections: [season], anilistMappings: [mapping], primaryAnilistId: 1);
 
       expect(series.getEffectivePosterPathForEpisode(ep), 'https://ep.poster');
     });
@@ -2056,7 +2062,7 @@ void main() {
       final ep = _makeEpisode(path: r'M:\S\S01\E01.mkv');
       final season = _makeSeason(path: r'M:\S\S01', episodes: [ep]);
       final mapping = _makeMapping(anilistId: 1, posterColor: col, localPath: r'M:\S\S01');
-      final series = _makeSeries(seasons: [season], anilistMappings: [mapping], primaryAnilistId: 1);
+      final series = _makeSeries(collections: [season], anilistMappings: [mapping], primaryAnilistId: 1);
 
       expect(series.getEffectivePosterColorForEpisode(ep), col);
     });
@@ -2138,7 +2144,8 @@ void main() {
       ];
       final relEp = _makeEpisode(path: r'M:\S\OVA\OVA1.mkv');
       final s1 = _makeSeason(episodes: eps1);
-      final series = _makeSeries(seasons: [s1], relatedMedia: [relEp]);
+      final ovaFolder = Folder(name: 'OVA', path: PathString(r'M:\S\OVA'), episodes: [relEp]);
+      final series = _makeSeries(collections: [s1, ovaFolder]);
 
       expect(series.totalEpisodes, 3);
     });
@@ -2218,7 +2225,7 @@ void main() {
       final season = _makeSeason(path: r'M:\S\S01', episodes: [ep]);
       final mapping = _makeMapping(anilistId: 1, anilistData: anime, localPath: r'M:\S\S01');
       final series = _makeSeries(
-        seasons: [season],
+        collections: [season],
         anilistMappings: [mapping],
         primaryAnilistId: 1,
         localPosterPath: PathString(r'M:\local.jpg'),
@@ -2234,7 +2241,7 @@ void main() {
       final season = _makeSeason(path: r'M:\S\S01', episodes: [ep]);
       final mapping = _makeMapping(anilistId: 1, anilistData: anime, localPath: r'M:\S\S01');
       final series = _makeSeries(
-        seasons: [season],
+        collections: [season],
         anilistMappings: [mapping],
         primaryAnilistId: 1,
         preferredPosterSource: ImageSource.autoLocal,
@@ -2262,7 +2269,7 @@ void main() {
       final season = _makeSeason(path: r'M:\S\S01', episodes: [ep]);
       final mapping = _makeMapping(anilistId: 1, localPath: r'M:\S\S01');
       final series = _makeSeries(
-        seasons: [season],
+        collections: [season],
         anilistMappings: [mapping],
         primaryAnilistId: 1,
         posterColor: localCol,

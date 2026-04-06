@@ -116,7 +116,7 @@ class _AnilistSearchPanelState extends State<AnilistSearchPanel> {
           Series(
             name: _searchController.text,
             path: widget.series.path,
-            seasons: widget.series.seasons,
+            collections: widget.series.collections,
           ),
         );
 

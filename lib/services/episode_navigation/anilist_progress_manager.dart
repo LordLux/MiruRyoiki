@@ -74,7 +74,7 @@ class AnilistProgressManager {
       if (progress > 0) {
         Episode? ep;
         if (season != null) {
-          ep = _findEpisodeInSeason(season, progress, absoluteOffset);
+          ep = _findEpisodeInCollection(season, progress, absoluteOffset);
         } else {
           ep = _findEpisodeForFileMapping(mapping, series);
         }
@@ -102,7 +102,7 @@ class AnilistProgressManager {
       // If this mapping is not complete, return next episode
       if (totalEpisodes == 0 || progress < totalEpisodes) {
         if (season != null) {
-          final nextEp = _findEpisodeInSeason(season, progress + 1, absoluteOffset);
+          final nextEp = _findEpisodeInCollection(season, progress + 1, absoluteOffset);
           if (nextEp != null) return nextEp;
         } else if (progress == 0) {
           final ep = _findEpisodeForFileMapping(mapping, series);
@@ -134,7 +134,7 @@ class AnilistProgressManager {
       if (progress > 0) {
         Episode? lastWatchedEp;
         if (season != null) {
-          lastWatchedEp = _findEpisodeInSeason(season, progress, absoluteOffset);
+          lastWatchedEp = _findEpisodeInCollection(season, progress, absoluteOffset);
         } else {
           lastWatchedEp = _findEpisodeForFileMapping(mapping, series);
         }
@@ -147,7 +147,7 @@ class AnilistProgressManager {
       // If this mapping is not complete, return next episode
       if (totalEpisodes == 0 || progress < totalEpisodes) {
         if (season != null) {
-          final nextEp = _findEpisodeInSeason(season, progress + 1, absoluteOffset);
+          final nextEp = _findEpisodeInCollection(season, progress + 1, absoluteOffset);
           if (nextEp != null) return nextEp;
         } else if (progress == 0) {
           final ep = _findEpisodeForFileMapping(mapping, series);
@@ -275,23 +275,24 @@ class AnilistProgressManager {
   /// Build an ordered list of (mapping, season?) pairs, sorted by season number
   /// 
   /// Season-matched mappings come first (sorted by season number), then file-based (unmapped) mappings at the end.
-  List<(AnilistMapping, Season?)> _getOrderedMappings(Series series) {
-    final matched = <(AnilistMapping, Season, int?)>[];
+  List<(AnilistMapping, EpisodeCollection?)> _getOrderedMappings(Series series) {
+    final matched = <(AnilistMapping, EpisodeCollection, int?)>[];
     final unmatched = <AnilistMapping>[];
 
     for (final mapping in series.anilistMappings) {
-      final season = series.seasons.firstWhereOrNull(
-        (s) => s.path.path == mapping.localPath.path,
+      final collection = series.collections.firstWhereOrNull(
+        (c) => c.path.path == mapping.localPath.path,
       );
 
-      if (season != null) {
-        matched.add((mapping, season, season.seasonNumber));
+      if (collection != null) {
+        final seasonNum = collection is Season ? collection.seasonNumber : null;
+        matched.add((mapping, collection, seasonNum));
       } else {
         unmatched.add(mapping);
       }
     }
 
-    // Sort season-matched mappings by season number (nulls at end)
+    // Sort matched mappings by season number (nulls at end)
     matched.sort((a, b) {
       final aNum = a.$3;
       final bNum = b.$3;
@@ -301,9 +302,9 @@ class AnilistProgressManager {
       return aNum.compareTo(bNum);
     });
 
-    final result = <(AnilistMapping, Season?)>[];
-    for (final (mapping, season, _) in matched) {
-      result.add((mapping, season));
+    final result = <(AnilistMapping, EpisodeCollection?)>[];
+    for (final (mapping, collection, _) in matched) {
+      result.add((mapping, collection));
     }
     for (final mapping in unmatched) {
       result.add((mapping, null));
@@ -311,17 +312,17 @@ class AnilistProgressManager {
     return result;
   }
 
-  /// Try to find an episode by number within a season
-  /// 
+  /// Try to find an episode by number within a collection
+  ///
   /// Handles both per-season and absolute numbering schemes
-  Episode? _findEpisodeInSeason(Season season, int episodeNumber, int absoluteOffset) {
-    // Try per-season numbering first
-    final perSeason = season.getEpisodeByNumber(episodeNumber);
-    if (perSeason != null) return perSeason;
+  Episode? _findEpisodeInCollection(EpisodeCollection collection, int episodeNumber, int absoluteOffset) {
+    // Try per-collection numbering first
+    final perCollection = collection.getEpisodeByNumber(episodeNumber);
+    if (perCollection != null) return perCollection;
 
     // Fallback: try absolute numbering
     if (absoluteOffset > 0) {
-      return season.getEpisodeByNumber(absoluteOffset + episodeNumber);
+      return collection.getEpisodeByNumber(absoluteOffset + episodeNumber);
     }
 
     return null;
@@ -329,13 +330,8 @@ class AnilistProgressManager {
 
   /// Find an episode for a file-based mapping (movies/OVAs) by matching path
   Episode? _findEpisodeForFileMapping(AnilistMapping mapping, Series series) {
-    // Search relatedMedia first
-    for (final episode in series.relatedMedia) {
-      if (episode.path.path == mapping.localPath.path) return episode;
-    }
-    // Also search season episodes
-    for (final season in series.seasons) {
-      for (final episode in season.episodes) {
+    for (final collection in series.collections) {
+      for (final episode in collection.episodes) {
         if (episode.path.path == mapping.localPath.path) return episode;
       }
     }

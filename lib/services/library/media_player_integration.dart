@@ -346,10 +346,7 @@ extension LibraryMediaPlayerIntegration on Library {
           }).firstOrNull;
 
           if (targetSeries != null) {
-            for (final episode in targetSeries.seasons.expand((s) => s.episodes)) {
-              if (episode.path.path == normalizedFilePath) return episode;
-            }
-            for (final episode in targetSeries.relatedMedia) {
+            for (final episode in targetSeries.collections.expand((c) => c.episodes)) {
               if (episode.path.path == normalizedFilePath) return episode;
             }
           }
@@ -361,10 +358,7 @@ extension LibraryMediaPlayerIntegration on Library {
 
     // Brute-force: file is outside the library path (symlink target) or inference failed
     for (final series in _series) {
-      for (final episode in series.seasons.expand((s) => s.episodes)) {
-        if (episode.path.path == normalizedFilePath) return episode;
-      }
-      for (final episode in series.relatedMedia) {
+      for (final episode in series.collections.expand((c) => c.episodes)) {
         if (episode.path.path == normalizedFilePath) return episode;
       }
     }

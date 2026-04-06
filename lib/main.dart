@@ -763,8 +763,8 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
                 target = MappingTarget.episode(episode);
               }
             } else if (Directory(mappingPath.path).existsSync()) {
-              final season = series.getSeasonFromPath(mappingPath);
-              if (season != null) target = MappingTarget.season(season);
+              final collection = series.getCollectionFromPath(mappingPath);
+              if (collection != null) target = MappingTarget.collection(collection);
             }
           }
         } else {

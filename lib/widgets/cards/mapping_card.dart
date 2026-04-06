@@ -146,7 +146,7 @@ class _MappingCardState extends State<MappingCard> {
   String get _displayTitle {
     return widget.target.when(
       episode: (ep) => ep.displayTitle ?? ep.name,
-      season: (season) => season.prettyName,
+      collection: (collection) => collection.prettyName,
     );
   }
 

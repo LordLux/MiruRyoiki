@@ -70,7 +70,7 @@ extension LibraryScanning on Library {
       for (final seriesPath in existingSeriesPathsToCheck) {
         final series = existingSeriesMap[seriesPath]!;
         final filesInSeriesDir = seriesDirsOnDisk[seriesPath]!;
-        final episodesInSeries = series.seasons.expand((s) => s.episodes).toList()..addAll(series.relatedMedia);
+        final episodesInSeries = series.collections.expand((c) => c.episodes).toList();
         final episodePaths = episodesInSeries.map((e) => e.path).toSet();
 
         logTrace('SCAN Checking series: ${series.name}');
@@ -371,8 +371,8 @@ extension LibraryScanning on Library {
         .whereNotNull()
         .toList();
 
-    final series = Series(name: name, path: seriesPath, seasons: [], localPosterPath: posterPath, localBannerPath: bannerPath);
-    return await _organizeEpisodesIntoSeasons(series, episodes);
+    final series = Series(name: name, path: seriesPath, collections: [], localPosterPath: posterPath, localBannerPath: bannerPath);
+    return await _organizeEpisodesIntoCollections(series, episodes);
   }
 
   /// Creates a single Episode object.
@@ -389,7 +389,7 @@ extension LibraryScanning on Library {
 
   /// Rebuilds an existing series with add/delete/update changes.
   Future<Series> _rebuildSeries(Series original, Set<Episode> toAdd, Set<Episode> toDelete, Map<Episode, Episode> toUpdate) async {
-    List<Episode> currentEpisodes = original.seasons.expand((s) => s.episodes).toList()..addAll(original.relatedMedia);
+    List<Episode> currentEpisodes = original.collections.expand((c) => c.episodes).toList();
 
     logTrace('  Rebuilding series: ${original.name}');
     logTrace('    Current episodes: ${currentEpisodes.length}');
@@ -416,16 +416,16 @@ extension LibraryScanning on Library {
       }
     });
 
-    final rebuilt = await _organizeEpisodesIntoSeasons(original, currentEpisodes);
-    logTrace('    After organization - Seasons: ${rebuilt.seasons.length}, Related: ${rebuilt.relatedMedia.length}');
+    final rebuilt = await _organizeEpisodesIntoCollections(original, currentEpisodes);
+    logTrace('    After organization - Collections: ${rebuilt.collections.length}');
     return rebuilt;
   }
 
-  /// Organizes a flat list of episodes into the correct Season/Related Media structure.
-  /// This logic scans all subdirectories and creates seasons even if they're empty.
-  Future<Series> _organizeEpisodesIntoSeasons(Series series, List<Episode> allEpisodes) async {
-    final seasons = <Season>[];
-    final relatedMedia = <Episode>[];
+  /// Organizes a flat list of episodes into EpisodeCollection objects (Season and Folder)
+  /// 
+  /// Scans all subdirectories and creates collections even for empty season folders.
+  Future<Series> _organizeEpisodesIntoCollections(Series series, List<Episode> allEpisodes) async {
+    final collections = <EpisodeCollection>[];
 
     // Group episodes by their parent directory path
     final episodesByParentDir = groupBy(allEpisodes, (ep) => p.dirname(ep.path.path));
@@ -442,7 +442,7 @@ extension LibraryScanning on Library {
           final dirPath = entity.path;
           final dirName = p.basename(dirPath);
 
-          if (_isSeasonDirectory(dirName)) {
+          if (isSeasonName(dirName)) {
             seasonDirPaths.add(dirPath);
           } else {
             // Only add to other directories if it contains episodes
@@ -457,7 +457,7 @@ extension LibraryScanning on Library {
     for (final dirPath in episodesByParentDir.keys) {
       if (dirPath == seriesRootPath) continue; // Skip the root, handle it separately
       if (!seasonDirPaths.contains(dirPath) && !otherDirPaths.contains(dirPath)) {
-        if (_isSeasonDirectory(p.basename(dirPath))) {
+        if (isSeasonName(p.basename(dirPath))) {
           seasonDirPaths.add(dirPath);
         } else {
           otherDirPaths.add(dirPath);
@@ -466,62 +466,79 @@ extension LibraryScanning on Library {
     }
 
     final rootVideoFiles = episodesByParentDir[seriesRootPath] ?? [];
+    final hasSubfolders = seasonDirPaths.isNotEmpty || otherDirPaths.isNotEmpty;
 
-    // Case 1: No season folders found, treat root videos as "Season 01"
-    if (seasonDirPaths.isEmpty && rootVideoFiles.isNotEmpty) {
-      seasons.add(Season(
+    // Case 1: No subfolders found at all, treat root videos as "Season 01"
+    if (!hasSubfolders && rootVideoFiles.isNotEmpty) {
+      collections.add(Season(
         name: 'Season 01',
         path: series.path,
         episodes: rootVideoFiles,
+        seasonNumber: 1,
       ));
     } else {
-      // Case 2: Season folders exist, process them (including empty ones)
+      // Case 2: Subfolders exist — create Season objects for season-pattern folders
       for (final seasonPath in seasonDirPaths) {
         final seasonName = p.basename(seasonPath);
         final episodesInSeason = episodesByParentDir[seasonPath] ?? <Episode>[];
+        final seasonNum = parseSeasonNumber(seasonName)!;
 
-        seasons.add(Season(
-          name: _formatSeasonName(seasonName),
+        collections.add(Season(
+          name: 'Season ${seasonNum.toString().padLeft(2, '0')}',
           path: PathString(seasonPath),
           episodes: episodesInSeason,
+          seasonNumber: seasonNum,
         ));
       }
-      // Any videos in the root folder are now related media
-      relatedMedia.addAll(rootVideoFiles);
-    }
 
-    // Process "other" directories (OVAs, Specials, etc.) as related media
-    for (final otherPath in otherDirPaths) {
-      relatedMedia.addAll(episodesByParentDir[otherPath]!);
-    }
+      // Create Folder objects for non-season subfolders
+      for (final otherPath in otherDirPaths) {
+        final folderName = p.basename(otherPath);
+        final episodesInFolder = episodesByParentDir[otherPath] ?? <Episode>[];
 
-    // Sort episodes within each season by episode number, then by filename
-    for (final season in seasons) {
-      season.episodes.sort(_compareEpisodes);
-    }
-    relatedMedia.sort(_compareEpisodes);
-
-    // Sort seasons by season number (preserve original numbering)
-    seasons.sort((a, b) {
-      final aNum = a.seasonNumber;
-      final bNum = b.seasonNumber;
-
-      // If both have valid season numbers, sort by number
-      if (aNum != null && bNum != null) {
-        return aNum.compareTo(bNum);
+        collections.add(Folder(
+          name: folderName,
+          path: PathString(otherPath),
+          episodes: episodesInFolder,
+        ));
       }
 
-      // If only one has a valid season number, it comes first
-      if (aNum != null) return -1;
-      if (bNum != null) return 1;
+      // Root-level loose files go into a synthetic Uncategorized folder
+      if (rootVideoFiles.isNotEmpty) {
+        collections.add(Folder(
+          name: Folder.uncategorizedName,
+          path: series.path,
+          episodes: rootVideoFiles,
+        ));
+      }
+    }
 
-      // If neither has a valid season number, sort alphabetically
+    // Sort episodes within each collection by episode number, then by filename
+    for (final collection in collections) {
+      collection.episodes.sort(_compareEpisodes);
+    }
+
+    // Sort collections: Seasons first (by number), then Folders alphabetically
+    collections.sort((a, b) {
+      // Seasons come before Folders
+      if (a is Season && b is! Season) return -1;
+      if (a is! Season && b is Season) return 1;
+
+      // Both Seasons — sort by season number
+      if (a is Season && b is Season) {
+        return a.seasonNumber.compareTo(b.seasonNumber);
+      }
+
+      // Both Folders — sort alphabetically, but Uncategorized last
+      final aIsUncat = a is Folder && a.isUncategorized;
+      final bIsUncat = b is Folder && b.isUncategorized;
+      if (aIsUncat && !bIsUncat) return 1;
+      if (!aIsUncat && bIsUncat) return -1;
       return a.name.compareTo(b.name);
     });
 
     return series.copyWith(
-      seasons: seasons,
-      relatedMedia: relatedMedia,
+      collections: collections,
     );
   }
 
@@ -539,26 +556,6 @@ extension LibraryScanning on Library {
 
     // Neither has an episode number — fall back to filename
     return a.name.compareTo(b.name);
-  }
-
-  /// Check if a directory name matches the season pattern ([S or s]eason (\d){1+} or [S or s](\s){0 or 1}(\d){1+})
-  bool _isSeasonDirectory(String name) {
-    // Match "[S or s]eason (\d){1+}" - e.g., "Season 1", "season 12", etc.
-    final seasonPattern = RegExp(r'^[Ss]eason\s+\d+$');
-    // Match "[S or s](\s){0 or 1}(\d){1+}" - e.g., "S1", "s1", "S 12", "s 12", etc.
-    final shortPattern = RegExp(r'^[Ss]\s?\d+$');
-
-    return seasonPattern.hasMatch(name.trim()) || shortPattern.hasMatch(name.trim());
-  }
-
-  /// Format season name to be consistent
-  String _formatSeasonName(String name) {
-    final match = RegExp(r'(\d+)').firstMatch(name);
-    if (match != null) {
-      final num = int.parse(match.group(1)!).toString().padLeft(2, '0');
-      return 'Season $num';
-    }
-    return name;
   }
 
   /// Find a poster image in the directory

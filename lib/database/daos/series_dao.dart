@@ -89,54 +89,50 @@ class SeriesDao extends DatabaseAccessor<AppDatabase> with _$SeriesDaoMixin {
       }
     }
 
-    // Sync Seasons
-    await _syncSeasons(seriesId, series.seasons, series.relatedMedia);
+    // Sync Collections (Seasons + Folders)
+    await _syncCollections(seriesId, series.collections);
 
     // Sync Anilist Mappings
     await _syncMappings(seriesId, series.anilistMappings);
   }
 
-  /// Synchronizes the seasons for a given seriesId.
-  Future<void> _syncSeasons(int seriesId, List<Season> modelSeasons, List<Episode> modelRelatedMedia) async {
+  /// Synchronizes all episode collections (seasons and folders) for a given seriesId.
+  Future<void> _syncCollections(int seriesId, List<EpisodeCollection> modelCollections) async {
     final dbSeasons = await (select(seasonsTable)..where((t) => t.seriesId.equals(seriesId))).get();
 
-    // Use path as the unique key for seasons
-    final modelSeasonsMap = {for (var s in modelSeasons) s.path.path: s};
+    // Use path as the unique key for collections
+    final modelCollectionsMap = {for (var c in modelCollections) c.path.path: c};
     final dbSeasonsMap = {for (var s in dbSeasons) s.path.path: s};
 
-    // Delete seasons that are in DB but not in model
-    for (final dbSeasonPath in dbSeasonsMap.keys) {
-      if (!modelSeasonsMap.containsKey(dbSeasonPath)) {
-        await (delete(seasonsTable)..where((t) => t.id.equals(dbSeasonsMap[dbSeasonPath]!.id))).go();
+    // Delete collections that are in DB but not in model
+    for (final dbPath in dbSeasonsMap.keys) {
+      if (!modelCollectionsMap.containsKey(dbPath)) {
+        await (delete(seasonsTable)..where((t) => t.id.equals(dbSeasonsMap[dbPath]!.id))).go();
       }
     }
 
-    // Insert or Update seasons
-    for (final modelSeason in modelSeasons) {
-      final seasonCompanion = SeasonsTableCompanion(
+    // Insert or Update collections
+    for (final modelCollection in modelCollections) {
+      final companion = SeasonsTableCompanion(
         seriesId: Value(seriesId),
-        name: Value(modelSeason.name),
-        path: Value(modelSeason.path),
+        name: Value(modelCollection.name),
+        path: Value(modelCollection.path),
       );
-      int seasonId;
-      final existingSeason = dbSeasonsMap[modelSeason.path.path];
+      int collectionId;
+      final existing = dbSeasonsMap[modelCollection.path.path];
 
-      if (existingSeason == null) {
-        seasonId = await into(seasonsTable).insert(seasonCompanion);
+      if (existing == null) {
+        collectionId = await into(seasonsTable).insert(companion);
       } else {
-        seasonId = existingSeason.id;
-        // Optionally update if name can change, otherwise skip
-        if (existingSeason.name != modelSeason.name) {
-          await (update(seasonsTable)..where((t) => t.id.equals(seasonId))).write(seasonCompanion);
+        collectionId = existing.id;
+        if (existing.name != modelCollection.name) {
+          await (update(seasonsTable)..where((t) => t.id.equals(collectionId))).write(companion);
         }
       }
 
-      // Sync episodes for this season
-      await _syncEpisodes(seasonId, modelSeason.episodes);
+      // Sync episodes for this collection
+      await _syncEpisodes(collectionId, modelCollection.episodes);
     }
-
-    // TODO Handle related media (as a special season with a known ID or name, e.g., ID -1)
-    // For simplicity, let's assume related media doesn't have a season. We could adapt this if needed.
   }
 
   /// Synchronizes the episodes for a given seasonId.
@@ -217,7 +213,7 @@ class SeriesDao extends DatabaseAccessor<AppDatabase> with _$SeriesDaoMixin {
           ..where((t) => t.seriesId.equals(seriesId))) //
         .get();
 
-    final List<Season> seasons = [];
+    final List<EpisodeCollection> collections = [];
     for (final s in seasonRows) {
       final epRows = await (select(episodesTable)..where((t) => t.seasonId.equals(s.id))) //
           .get();
@@ -230,7 +226,7 @@ class SeriesDao extends DatabaseAccessor<AppDatabase> with _$SeriesDaoMixin {
           if (bNum != null) return 1;
           return a.name.compareTo(b.name);
         });
-      seasons.add(Season(name: s.name, path: s.path, episodes: eps));
+      collections.add(_buildCollection(s.name, s.path, eps));
     }
 
     // Mappings
@@ -240,14 +236,12 @@ class SeriesDao extends DatabaseAccessor<AppDatabase> with _$SeriesDaoMixin {
 
     final mappings = mappingRows.map(_tableToMapping).toList();
 
-    return _rowToSeries(row, seasons, mappings);
+    return _rowToSeries(row, collections, mappings);
   }
 
   /// Load ALL series from the database in bulk using 4 queries
   ///
   /// This is vastly faster than calling [loadFullSeries] per series, which generates N+M queries (1 per series + 1 per season for episodes)
-  ///
-  /// Note: [relatedMedia] (movies/specials not attached to a season) are not yet persisted in the DB, so they will be `const []` until the related media TODO is addressed
   Future<List<Series>> loadAllSeries() async {
     // 4 bulk queries
     final allSeriesRows = await select(seriesTable).get();
@@ -260,7 +254,7 @@ class SeriesDao extends DatabaseAccessor<AppDatabase> with _$SeriesDaoMixin {
     for (final ep in allEpisodeRows) {
       (episodesBySeasonId[ep.seasonId] ??= []).add(_tableToEpisode(ep));
     }
-    // Sort each season's episodes
+    // Sort each collection's episodes
     for (final episodes in episodesBySeasonId.values) {
       episodes.sort((a, b) {
         final aNum = a.episodeNumber;
@@ -272,12 +266,12 @@ class SeriesDao extends DatabaseAccessor<AppDatabase> with _$SeriesDaoMixin {
       });
     }
 
-    // Group seasons by seriesId
-    final seasonsBySeriesId = <int, List<Season>>{};
+    // Group collections by seriesId
+    final collectionsBySeriesId = <int, List<EpisodeCollection>>{};
     for (final s in allSeasonRows) {
       final episodes = episodesBySeasonId[s.id] ?? const [];
-      (seasonsBySeriesId[s.seriesId] ??= []).add(
-        Season(name: s.name, path: s.path, episodes: episodes),
+      (collectionsBySeriesId[s.seriesId] ??= []).add(
+        _buildCollection(s.name, s.path, episodes),
       );
     }
 
@@ -289,9 +283,9 @@ class SeriesDao extends DatabaseAccessor<AppDatabase> with _$SeriesDaoMixin {
 
     // Assemble Series objects
     return allSeriesRows.map((row) {
-      final seasons = seasonsBySeriesId[row.id] ?? const [];
+      final collections = collectionsBySeriesId[row.id] ?? const [];
       final mappings = mappingsBySeriesId[row.id] ?? const [];
-      return _rowToSeries(row, seasons, mappings);
+      return _rowToSeries(row, collections, mappings);
     }).toList();
   }
 
@@ -541,15 +535,21 @@ class SeriesDao extends DatabaseAccessor<AppDatabase> with _$SeriesDaoMixin {
         viewType: d.viewType != null ? ViewTypeX.fromString(d.viewType!) : null,
       );
 
-  Series _rowToSeries(SeriesTableData row, List<Season> seasons, List<AnilistMapping> mappings) {
+  /// Constructs the appropriate EpisodeCollection subtype based on the name
+  EpisodeCollection _buildCollection(String name, PathString path, List<Episode> episodes) {
+    final seasonNum = parseSeasonNumber(name);
+    if (seasonNum != null) return Season(name: name, path: path, episodes: episodes, seasonNumber: seasonNum);
+    return Folder(name: name, path: path, episodes: episodes);
+  }
+
+  Series _rowToSeries(SeriesTableData row, List<EpisodeCollection> collections, List<AnilistMapping> mappings) {
     return Series(
       id: row.id,
       name: row.name,
       path: row.path,
-      localPosterPath: row.folderPosterPath, // TODO rename
+      localPosterPath: row.folderPosterPath,
       localBannerPath: row.folderBannerPath,
-      seasons: seasons.map((season) => season.copyWith(seriesId: row.id)).toList(),
-      relatedMedia: const [],
+      collections: collections.map((c) => c.copyWith(seriesId: row.id)).toList(),
       anilistMappings: mappings,
       posterColor: const ColorJsonConverter().fromSql(row.localPosterColor),
       bannerColor: const ColorJsonConverter().fromSql(row.localBannerColor),

@@ -28,6 +28,7 @@ import '../widgets/dialogs/image_select.dart';
 import '../enums.dart';
 import '../manager.dart';
 import '../models/anilist/mapping.dart';
+import '../models/season.dart';
 import '../models/series.dart';
 import '../services/anilist/linking.dart';
 import '../services/navigation/shortcuts.dart';
@@ -97,7 +98,7 @@ class SeriesScreenState extends State<SeriesScreen> {
     if (_sonarrEpisodes == null) return null;
     if (_cachedTarget == null || _cachedTarget!.isEpisode) return null;
 
-    final seasonNum = _cachedTarget!.asSeason?.seasonNumber;
+    final seasonNum = (_cachedTarget!.asCollection is Season) ? (_cachedTarget!.asCollection as Season).seasonNumber : null;
     if (seasonNum == null) return _sonarrEpisodes;
 
     return _sonarrEpisodes!.where((e) => e.seasonNumber == seasonNum).toList();
@@ -167,7 +168,7 @@ class SeriesScreenState extends State<SeriesScreen> {
   Map<InfoLabel, bool> infos(Series series) {
     if (isMappingMode && _cachedTarget != null) {
       return {
-        if (_cachedTarget!.isSeason)
+        if (_cachedTarget!.isCollection)
           InfoLabel(
             label: 'Episodes',
             labelStyle: Manager.bodyStrongStyle,
@@ -241,11 +242,11 @@ class SeriesScreenState extends State<SeriesScreen> {
         labelStyle: Manager.bodyStrongStyle,
         child: Text('${series.totalEpisodes}'),
       ): false,
-      if (series.relatedMedia.isNotEmpty)
+      if (series.folders.isNotEmpty)
         InfoLabel(
-          label: 'Related Media',
+          label: 'Folders',
           labelStyle: Manager.bodyStrongStyle,
-          child: Text('${series.relatedMedia.length}'),
+          child: Text('${series.folders.length}'),
         ): false,
       if (series.effectiveStatus != null)
         InfoLabel(
@@ -1347,7 +1348,7 @@ class SeriesScreenState extends State<SeriesScreen> {
                         if (titles.isEmpty) titles.add(series.displayTitle);
 
                         final sonarrEp = uiEpisode.sonarrEpisode;
-                        final seasonNum = sonarrEp?.seasonNumber ?? _cachedTarget?.asSeason?.seasonNumber;
+                        final seasonNum = sonarrEp?.seasonNumber ?? ((_cachedTarget?.asCollection is Season) ? (_cachedTarget!.asCollection as Season).seasonNumber : null);
 
                         showPaddedDialog(
                           context,

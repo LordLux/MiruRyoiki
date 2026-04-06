@@ -40,11 +40,12 @@ Episode _ep(String name, {bool watched = false, double progress = 0.0, Metadata?
   );
 }
 
-Season _season(String name, List<Episode> episodes) {
+Season _season(String name, List<Episode> episodes, {int seasonNumber = 1}) {
   return Season(
     name: name,
     path: PathString('M:\\Series\\TestSeries\\$name'),
     episodes: episodes,
+    seasonNumber: seasonNumber,
   );
 }
 
@@ -52,14 +53,12 @@ Series _series({
   String name = 'TestSeries',
   String path = 'M:\\Series\\TestSeries',
   List<Season>? seasons,
-  List<Episode>? relatedMedia,
   List<AnilistMapping>? anilistMappings,
 }) {
   return Series(
     name: name,
     path: PathString(path),
-    seasons: seasons ?? [],
-    relatedMedia: relatedMedia ?? [],
+    collections: seasons ?? [],
     anilistMappings: anilistMappings ?? [],
   );
 }
@@ -207,14 +206,14 @@ void main() {
       final series = _series(
         seasons: [
           _season('Season 1', [_ep('Episode 01')]),
-          _season('Season 2', [_ep('Episode 01')]),
+          _season('Season 2', [_ep('Episode 01')], seasonNumber: 2),
         ],
       );
 
       await dao.syncSeries(series);
 
       // Remove Season 2
-      series.seasons.removeAt(1);
+      series.collections.removeAt(1);
       await dao.syncSeries(series);
 
       final loaded = await dao.loadFullSeries((await dao.getAllSeriesRows()).first.id);
@@ -312,7 +311,7 @@ void main() {
             ]),
             _season('Season 2', [
               _ep('Episode 01', anilistTitle: 'The Beginning'),
-            ]),
+            ], seasonNumber: 2),
           ],
           anilistMappings: [_mapping(111, title: 'Anime A')],
         ),

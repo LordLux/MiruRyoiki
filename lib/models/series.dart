@@ -31,11 +31,8 @@ class Series {
   /// Path for the series from the File System
   final PathString path;
 
-  /// List of seasons for the series from the File System
-  final List<Season> seasons;
-
-  /// List of related media (ONA/OVA) for the series from the File System
-  final List<Episode> relatedMedia;
+  /// List of episode collections (seasons and folders) for the series from the File System
+  final List<EpisodeCollection> collections;
 
   /// Anilist IDs for the series
   List<AnilistMapping> anilistMappings;
@@ -85,8 +82,7 @@ class Series {
     required this.path,
     PathString? localPosterPath,
     PathString? localBannerPath,
-    required this.seasons,
-    this.relatedMedia = const [],
+    required this.collections,
     this.anilistMappings = const [],
     AnilistAnime? anilistData,
     Color? posterColor,
@@ -123,8 +119,7 @@ class Series {
     PathString? path,
     PathString? folderPosterPath,
     PathString? folderBannerPath,
-    List<Season>? seasons,
-    List<Episode>? relatedMedia,
+    List<EpisodeCollection>? collections,
     List<AnilistMapping>? anilistMappings,
     AnilistAnime? anilistData,
     Color? posterColor,
@@ -145,8 +140,7 @@ class Series {
       path: path ?? this.path,
       localPosterPath: folderPosterPath ?? presenter.localPosterPath,
       localBannerPath: folderBannerPath ?? presenter.localBannerPath,
-      seasons: seasons ?? this.seasons,
-      relatedMedia: relatedMedia ?? this.relatedMedia,
+      collections: collections ?? this.collections,
       anilistMappings: anilistMappings ?? this.anilistMappings,
       anilistData: anilistData ?? anilistData,
       posterColor: posterColor ?? presenter.rawPosterColor,
@@ -169,8 +163,7 @@ class Series {
       'id': id,
       'name': name,
       'path': path.path, //not nullable
-      'seasons': seasons.map((s) => s.toJson()).toList(),
-      'relatedMedia': relatedMedia.map((e) => e.toJson()).toList(),
+      'collections': collections.map((c) => c.toJson()).toList(),
       'anilistMappings': anilistMappings.map((m) => m.toJson()).toList(),
       'primaryAnilistId': _primaryAnilistId,
       'isHidden': isForcedHidden,
@@ -219,16 +212,32 @@ class Series {
       return mappings;
     }
 
-    List<Season> extractSeasons(Map<String, dynamic> json, PathString path) {
-      List<Season> seasons = [];
+    List<EpisodeCollection> extractCollections(Map<String, dynamic> json, PathString path) {
+      List<EpisodeCollection> collections = [];
       try {
-        if (json.containsKey('seasons') && json['seasons'] != null) {
+        // Handle newer format with 'collections' key
+        if (json.containsKey('collections') && json['collections'] != null) {
+          final collectionsJson = json['collections'] as List?;
+          if (collectionsJson != null) {
+            for (final item in collectionsJson) {
+              if (item is Map<String, dynamic>) {
+                try {
+                  collections.add(EpisodeCollection.fromJson(item));
+                } catch (e, st) {
+                  logErr('Error parsing collection', e, st);
+                }
+              }
+            }
+          }
+        }
+        // Handle legacy format with 'seasons' key
+        else if (json.containsKey('seasons') && json['seasons'] != null) {
           final seasonsJson = json['seasons'] as List?;
           if (seasonsJson != null) {
-            for (final season in seasonsJson) {
-              if (season is Map<String, dynamic>) {
+            for (final item in seasonsJson) {
+              if (item is Map<String, dynamic>) {
                 try {
-                  seasons.add(Season.fromJson(season));
+                  collections.add(EpisodeCollection.fromJson(item));
                 } catch (e, st) {
                   logErr('Error parsing season', e, st);
                 }
@@ -236,36 +245,35 @@ class Series {
             }
           }
         }
-      } catch (e, st) {
-        logErr('Error processing seasons', e, st);
-        // Create empty season if none parsed successfully (required field)
-        if (seasons.isEmpty) //
-          seasons = [Season(name: 'Season 1', path: path, episodes: [])];
-      }
-      return seasons;
-    }
-
-    List<Episode> extractRelatedMedia(Map<String, dynamic> json, PathString path) {
-      List<Episode> relatedMedia = [];
-      try {
+        // Handle legacy 'relatedMedia' by converting to Folder collections
         if (json.containsKey('relatedMedia') && json['relatedMedia'] != null) {
           final mediaJson = json['relatedMedia'] as List?;
-          if (mediaJson != null) {
+          if (mediaJson != null && mediaJson.isNotEmpty) {
+            final episodes = <Episode>[];
             for (final episode in mediaJson) {
               if (episode is Map<String, dynamic>) {
                 try {
-                  relatedMedia.add(Episode.fromJson(episode));
+                  episodes.add(Episode.fromJson(episode));
                 } catch (e, st) {
                   logErr('Error parsing related media episode', e, st);
                 }
               }
             }
+            if (episodes.isNotEmpty) {
+              collections.add(Folder(
+                name: Folder.uncategorizedName,
+                path: path,
+                episodes: episodes,
+              ));
+            }
           }
         }
       } catch (e, st) {
-        logErr('Error processing related media', e, st);
+        logErr('Error processing collections', e, st);
+        if (collections.isEmpty) //
+          collections = [Season(name: 'Season 1', path: path, episodes: [], seasonNumber: 1)];
       }
-      return relatedMedia;
+      return collections;
     }
 
     try {
@@ -282,11 +290,8 @@ class Series {
       // Process anilist mappings with validation
       List<AnilistMapping> mappings = extractAnilistMapping(json, path);
 
-      // Process seasons with validation
-      List<Season> seasons = extractSeasons(json, path);
-
-      // Process related media with validation
-      List<Episode> relatedMedia = extractRelatedMedia(json, path);
+      // Process collections (seasons + folders) with validation
+      List<EpisodeCollection> collections = extractCollections(json, path);
 
       // Create the Series instance
       final series = Series(
@@ -295,8 +300,7 @@ class Series {
         path: path,
         localPosterPath: PathString.fromJson(json['posterPath']),
         localBannerPath: PathString.fromJson(json['bannerPath']),
-        seasons: seasons,
-        relatedMedia: relatedMedia,
+        collections: collections,
         anilistMappings: mappings,
         posterColor: dominantColor,
         anilistPoster: json['anilistPosterUrl'] as String?,
@@ -374,7 +378,7 @@ class Series {
         id: json['id'] as int?,
         name: json['name'] as String? ?? 'Unknown Series',
         path: PathString.fromJson(json['path'])!,
-        seasons: [],
+        collections: [],
       );
     }
   }
@@ -405,8 +409,7 @@ class Series {
     return other.id == id &&
         other.name == name &&
         other.path == path &&
-        listEquality(other.seasons, seasons) &&
-        listEquality(other.relatedMedia, relatedMedia) &&
+        listEquality(other.collections, collections) &&
         listEquality(other.anilistMappings, anilistMappings) &&
         other._primaryAnilistId == _primaryAnilistId &&
         other.presenter == presenter &&
@@ -419,8 +422,7 @@ class Series {
         id,
         name,
         path,
-        Object.hashAll(seasons),
-        Object.hashAll(relatedMedia),
+        Object.hashAll(collections),
         Object.hashAll(anilistMappings),
         _primaryAnilistId,
         presenter,
@@ -697,63 +699,59 @@ class Series {
     return null;
   }
 
-  // Getters for seasons and episodes
+  // Convenience getters
 
-  /// Get episode by database ID (searches all seasons and related media)
+  /// Get only the Season collections
+  List<Season> get seasons => collections.whereType<Season>().toList();
+
+  /// Get only the Folder collections
+  List<Folder> get folders => collections.whereType<Folder>().toList();
+
+  // Getters for episodes
+
+  /// Get episode by database ID (searches all collections)
   Episode? getEpisodeById(int episodeId) {
-    // Search seasons
-    for (final season in seasons) {
-      final episode = season.getEpisodeById(episodeId);
+    for (final collection in collections) {
+      final episode = collection.getEpisodeById(episodeId);
       if (episode != null) return episode;
     }
-
-    // Search related media
-    return relatedMedia.firstWhereOrNull((episode) => episode.id == episodeId);
+    return null;
   }
 
-  /// Get episode by number (searches all seasons and related media)
+  /// Get episode by number (searches all collections)
   Episode? getEpisodeByNumber(int episodeNumber, {int? seasonNumber}) {
     if (seasonNumber != null) {
-      // Search specific season
-      return seasons.elementAtOrNull(seasonNumber - 1)?.getEpisodeByNumber(episodeNumber);
+      final season = seasons.firstWhereOrNull((s) => s.seasonNumber == seasonNumber);
+      return season?.getEpisodeByNumber(episodeNumber);
     }
 
-    // Search all seasons
-    for (final season in seasons) {
-      final episode = season.getEpisodeByNumber(episodeNumber);
+    for (final collection in collections) {
+      final episode = collection.getEpisodeByNumber(episodeNumber);
       if (episode != null) return episode;
     }
-
-    // Search related media
-    return relatedMedia.firstWhereOrNull((e) => e.episodeNumber == episodeNumber);
+    return null;
   }
 
   Episode? getEpisodeByPath(PathString episodePath) {
-    // Search seasons
-    for (final season in seasons) {
-      final episode = season.getEpisodeByPath(episodePath);
+    for (final collection in collections) {
+      final episode = collection.getEpisodeByPath(episodePath);
       if (episode != null) return episode;
     }
-
-    // Search related media
-    return relatedMedia.firstWhereOrNull((episode) => episode.path == episodePath);
+    return null;
   }
 
   List<Episode> getEpisodesForSeason([int i = 1]) {
-    // TODO check if series has global episodes numbering or not
-    if (i < 1 || i > seasons.length) //
-      return <Episode>[];
-
-    return seasons[i - 1].episodes;
+    final season = seasons.firstWhereOrNull((s) => s.seasonNumber == i);
+    return season?.episodes ?? <Episode>[];
   }
 
-  Season? getSeasonFromPath(PathString seasonPath) => //
-      seasons.firstWhereOrNull((season) => season.path == seasonPath);
+  EpisodeCollection? getCollectionFromPath(PathString collectionPath) => //
+      collections.firstWhereOrNull((c) => c.path == collectionPath);
 
-  /// Get ONA/OVA
+  /// Get uncategorized episodes (from the synthetic Folder, if any)
   List<Episode> getUncategorizedEpisodes() {
-    final categorizedEpisodes = seasons.expand((s) => s.episodes).toSet();
-    return relatedMedia.where((e) => !categorizedEpisodes.contains(e)).toList();
+    final uncategorized = collections.whereType<Folder>().where((f) => f.isUncategorized);
+    return uncategorized.expand((f) => f.episodes).toList();
   }
 
   // Grid Ordering Methods
@@ -767,7 +765,7 @@ class Series {
 
   /// Parse a season number from a grid identifier
   /// Returns null if not a valid season identifier
-  static int? parseSeasonNumber(String gridId) {
+  static int? parseGridSeasonNumber(String gridId) {
     if (gridId == 'special_uncategorized') return 0;
     if (gridId.startsWith('season_')) return int.tryParse(gridId.substring(7));
 
@@ -802,7 +800,7 @@ class Series {
     final grids = <String>[];
 
     // Add regular seasons
-    for (int i = 1; i <= seasons.length; i++) grids.add(getGridIdentifier(i));
+    for (final season in seasons) grids.add(getGridIdentifier(season.seasonNumber));
 
     // Add uncategorized if it has episodes
     if (getUncategorizedEpisodes().isNotEmpty) grids.add(getGridIdentifier(0));
@@ -816,12 +814,12 @@ class Series {
 
   /// Check if a grid identifier is valid for this series
   bool isValidGridId(String gridId) {
-    final seasonNum = parseSeasonNumber(gridId);
+    final seasonNum = parseGridSeasonNumber(gridId);
     if (seasonNum == null) return false;
 
     if (seasonNum == 0) return getUncategorizedEpisodes().isNotEmpty;
 
-    return seasonNum > 0 && seasonNum <= seasons.length;
+    return seasonNum > 0 && seasons.any((s) => s.seasonNumber == seasonNum);
   }
 
   /// Get the current Anilist data based on the primary Anilist ID
@@ -973,13 +971,13 @@ class Series {
     DateTime? lastAccessedDate; // latest access date among all seasons
 
     // Populate the variables
-    for (final season in seasons) {
-      totSize += season.metadata?.size ?? 0;
-      totDuration += season.metadata?.duration ?? Duration.zero;
+    for (final collection in collections) {
+      totSize += collection.metadata?.size ?? 0;
+      totDuration += collection.metadata?.duration ?? Duration.zero;
 
-      creationDate = DateTimeX.isBeforeMaybe(creationDate, season.metadata?.creationTime);
-      lastModifiedDate = DateTimeX.isAfterMaybe(lastModifiedDate, season.metadata?.lastModified);
-      lastAccessedDate = DateTimeX.isAfterMaybe(lastAccessedDate, season.metadata?.lastAccessed);
+      creationDate = DateTimeX.isBeforeMaybe(creationDate, collection.metadata?.creationTime);
+      lastModifiedDate = DateTimeX.isAfterMaybe(lastModifiedDate, collection.metadata?.lastModified);
+      lastAccessedDate = DateTimeX.isAfterMaybe(lastAccessedDate, collection.metadata?.lastAccessed);
     }
 
     _metadata = Metadata(
@@ -999,7 +997,7 @@ class Series {
       return Manager.anilistProgress.getTotalEpisodesFromAnilist(this);
     }
     // Fallback to local count
-    return seasons.fold(0, (sum, season) => sum + season.episodes.length) + relatedMedia.length;
+    return collections.fold(0, (sum, c) => sum + c.episodes.length);
   }
 
   int get watchedEpisodes {
@@ -1009,11 +1007,11 @@ class Series {
         return Manager.anilistProgress.getWatchedEpisodesFromAnilist(this, provider);
       } catch (e) {
         // Context not available in isolate
-        return seasons.fold(0, (sum, season) => sum + season.watchedCount) + relatedMedia.where((e) => e.watched).length;
+        return collections.fold(0, (sum, c) => sum + c.watchedCount);
       }
     }
     // Fallback to local count
-    return seasons.fold(0, (sum, season) => sum + season.watchedCount) + relatedMedia.where((e) => e.watched).length;
+    return collections.fold(0, (sum, c) => sum + c.watchedCount);
   }
 
   double get watchedPercentage {
@@ -1031,21 +1029,17 @@ class Series {
   }
 
   int get numberOfSeasons {
-    if (seasons.isEmpty) return 0;
+    final seasonList = seasons;
+    if (seasonList.isEmpty) return 0;
 
-    // Get all valid season numbers
-    final seasonNumbers = seasons //
-        .map((season) => season.seasonNumber)
-        .where((number) => number != null)
-        .cast<int>()
-        .toList();
+    // Get all season numbers
+    final seasonNumbers = seasonList.map((s) => s.seasonNumber).toList();
 
-    // If we have actual seasons with numbers, return the highest number
+    // Return the highest season number
     if (seasonNumbers.isNotEmpty) //
       return seasonNumbers.reduce((a, b) => a > b ? a : b);
 
-    // Otherwise, return the total count of all seasons
-    return seasons.length;
+    return seasonList.length;
   }
 
   /// Get the effective status of the series based on Anilist mappings
@@ -1053,6 +1047,7 @@ class Series {
     if (!isLinked) return null;
 
     final priority = [
+      // TODO revisit the priority order if needed, currently based on what seems most useful for sorting and display purposes
       AnilistAnimeStatus.CANCELLED, // if any mapping is cancelled, take that
       AnilistAnimeStatus.HIATUS, // if there are no cancelled, and any mapping is on hiatus, take that
       AnilistAnimeStatus.RELEASING, // if there are no cancelled or on hiatus, and any mapping is releasing, take that
@@ -1079,25 +1074,15 @@ class Series {
     // Map new episodes by their path string for quick lookup
     final Map<String, Episode> newByPath = {for (final e in newEpisodes) e.path.path: e};
 
-    // Replace episodes inside seasons
-    for (final season in seasons) {
-      for (int i = 0; i < season.episodes.length; i++) {
-        final existing = season.episodes[i];
+    // Replace episodes inside collections
+    for (final collection in collections) {
+      for (int i = 0; i < collection.episodes.length; i++) {
+        final existing = collection.episodes[i];
         final replacement = newByPath[existing.path.path];
         if (replacement != null && !identical(replacement, existing)) {
-          season.episodes[i] = replacement;
+          collection.episodes[i] = replacement;
           updated = true;
         }
-      }
-    }
-
-    // Replace episodes inside relatedMedia
-    for (int i = 0; i < relatedMedia.length; i++) {
-      final existing = relatedMedia[i];
-      final replacement = newByPath[existing.path.path];
-      if (replacement != null && !identical(replacement, existing)) {
-        relatedMedia[i] = replacement;
-        updated = true;
       }
     }
 
@@ -1105,20 +1090,17 @@ class Series {
   }
 
   /// Get MappingTarget for a given AnilistMapping
+  /// 
   /// Returns null if the mapping path doesn't correspond to any season or episode
   MappingTarget? getTargetForMapping(AnilistMapping mapping) {
-    // Check if mapping points to a season folder
-    for (final season in seasons) {
-      if (season.path == mapping.localPath) return MappingTarget.season(season);
+    // Check if mapping points to a collection folder
+    for (final collection in collections) {
+      if (collection.path == mapping.localPath) return MappingTarget.collection(collection);
     }
 
-    // Check if mapping points to a related media episode
-    for (final episode in relatedMedia) {
-      if (episode.path == mapping.localPath) return MappingTarget.episode(episode);
-    }
-    // Check if mapping points to an episode within a season
-    for (final season in seasons) {
-      for (final episode in season.episodes) {
+    // Check if mapping points to an episode within a collection
+    for (final collection in collections) {
+      for (final episode in collection.episodes) {
         if (episode.path == mapping.localPath) return MappingTarget.episode(episode);
       }
     }
@@ -1134,12 +1116,12 @@ class Series {
       if (mapping.localPath == episode.path) return mapping;
     }
 
-    // If not, check if the episode is within a season that has a mapping
-    for (final season in seasons) {
-      if (season.episodes.contains(episode)) {
-        // Found the season containing this episode, check if season path matches a mapping
+    // If not, check if the episode is within a collection that has a mapping
+    for (final collection in collections) {
+      if (collection.episodes.contains(episode)) {
+        // Found the collection containing this episode, check if collection path matches a mapping
         for (final mapping in anilistMappings) {
-          if (mapping.localPath == season.path) return mapping;
+          if (mapping.localPath == collection.path) return mapping;
         }
       }
     }

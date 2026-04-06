@@ -72,7 +72,7 @@ void main() {
     final testSeries = Series(
       name: 'Test Series',
       path: PathString(r'M:\Videos\Series\Test Series'),
-      seasons: [],
+      collections: [],
       anilistBanner: bannerUrl,
       anilistPoster: posterUrl,
       anilistMappings: [

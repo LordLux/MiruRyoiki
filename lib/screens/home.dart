@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 
 import '../models/episode.dart';
 import '../services/library/library_provider.dart';
+import '../models/season.dart';
 import '../models/series.dart';
 import '../models/anilist/anime.dart';
 import '../services/anilist/provider/anilist_provider.dart';
@@ -131,9 +132,9 @@ class _HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMi
         if (sonarrSeriesId == null) continue;
         final sonarrEpisodes = await sonarr.getEpisodes(sonarrSeriesId);
 
-        // Find the season for this episode
-        final season = EpisodeNavigator.instance.findSeasonForEpisode(nextEpisode, series);
-        final seasonNumber = season?.seasonNumber;
+        // Find the collection for this episode
+        final collection = EpisodeNavigator.instance.findCollectionForEpisode(nextEpisode, series);
+        final seasonNumber = (collection is Season) ? collection.seasonNumber : null;
         final epNumber = nextEpisode.episodeNumber;
         if (epNumber == null) continue;
 

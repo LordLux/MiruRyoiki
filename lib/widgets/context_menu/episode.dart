@@ -217,14 +217,14 @@ class EpisodeContextMenuState extends State<EpisodeContextMenu> {
 
   void _watchAllPreviousSeasonEpisodes(BuildContext context) {
     List<Episode> previousEpisodes = [];
-    final season = EpisodeNavigator.instance.findSeasonForEpisode(widget.episode, widget.series);
-    if (season == null) {
+    final collection = EpisodeNavigator.instance.findCollectionForEpisode(widget.episode, widget.series);
+    if (collection == null) {
       snackBar('Could not find the season for this episode', severity: InfoBarSeverity.error);
       return;
     }
 
     final currentEpisodeNumber = widget.episode.episodeNumber;
-    for (final ep in season.episodes) {
+    for (final ep in collection.episodes) {
       if (ep.episodeNumber != null && currentEpisodeNumber != null && ep.episodeNumber! < currentEpisodeNumber && !ep.watched) {
         previousEpisodes.add(ep);
       }

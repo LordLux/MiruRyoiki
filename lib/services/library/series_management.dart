@@ -229,8 +229,7 @@ extension LibrarySeriesManagement on Library {
 
       // Find the series containing this episode and mark it dirty
       final series = _series.firstWhereOrNull((s) => //
-          s.seasons.any((season) => season.episodes.contains(episode)) || //
-          s.relatedMedia.contains(episode));
+          s.collections.any((c) => c.episodes.contains(episode)));
       if (series != null) _markDirty(series);
       _scheduleDebouncedSave();
       notifyListeners();
@@ -258,7 +257,7 @@ extension LibrarySeriesManagement on Library {
 
       // Find series containing these episodes and mark dirty
       for (final episode in episodes) {
-        final series = _series.firstWhereOrNull((s) => s.seasons.any((season) => season.episodes.contains(episode)) || s.relatedMedia.contains(episode));
+        final series = _series.firstWhereOrNull((s) => s.collections.any((c) => c.episodes.contains(episode)));
         if (series != null) _markDirty(series);
       }
       _scheduleDebouncedSave();
@@ -266,7 +265,7 @@ extension LibrarySeriesManagement on Library {
     }
   }
 
-  void markSeasonWatched(Season season, {bool watched = true, bool save = true}) {
+  void markSeasonWatched(EpisodeCollection season, {bool watched = true, bool save = true}) {
     // Check if user actions are disabled
     if (_lockManager.shouldDisableAction(UserAction.markSeriesWatched)) {
       snackBar(
@@ -281,7 +280,7 @@ extension LibrarySeriesManagement on Library {
 
     if (save) {
       // Find the series containing this season and mark dirty
-      final parentSeries = _series.firstWhereOrNull((s) => s.seasons.contains(season));
+      final parentSeries = _series.firstWhereOrNull((s) => s.collections.contains(season));
       if (parentSeries != null) _markDirty(parentSeries);
       _scheduleDebouncedSave();
       notifyListeners();
@@ -298,11 +297,8 @@ extension LibrarySeriesManagement on Library {
       return;
     }
 
-    for (final season in series.seasons) //
-      markSeasonWatched(season, watched: watched, save: false);
-
-    for (final episode in series.relatedMedia) //
-      markEpisodeWatched(episode, watched: watched, save: false, overrideProgress: true);
+    for (final collection in series.collections) //
+      markSeasonWatched(collection, watched: watched, save: false);
 
     // Set the flag indicating a series was modified
     if (homeKey.currentState != null) homeKey.currentState!.seriesWasModified = true;
@@ -322,9 +318,9 @@ extension LibrarySeriesManagement on Library {
       return;
     }
 
-    if (target.isSeason) {
-      final season = target.asSeason;
-      if (season != null) markSeasonWatched(season, watched: watched, save: false);
+    if (target.isCollection) {
+      final collection = target.asCollection;
+      if (collection != null) markSeasonWatched(collection, watched: watched, save: false);
     } else {
       final episode = target.asEpisode;
       if (episode != null) markEpisodeWatched(episode, watched: watched, save: false, overrideProgress: true);
@@ -334,7 +330,7 @@ extension LibrarySeriesManagement on Library {
     if (homeKey.currentState != null) homeKey.currentState!.seriesWasModified = true;
 
     // Mark the series that owns this target as dirty
-    final parentSeries = _series.firstWhereOrNull((s) => s.seasons.any((season) => season.episodes.any((e) => target.episodes.contains(e))) || s.relatedMedia.any((e) => target.episodes.contains(e)));
+    final parentSeries = _series.firstWhereOrNull((s) => s.collections.any((c) => c.episodes.any((e) => target.episodes.contains(e))));
     if (parentSeries != null) _markDirty(parentSeries);
     _scheduleDebouncedSave();
     notifyListeners();
@@ -381,17 +377,11 @@ extension LibrarySeriesManagement on Library {
     Manager.setState();
 
     // Reset thumbnail statuses for all episodes in this series
-    for (final season in series.seasons) {
-      for (final episode in season.episodes) {
+    for (final collection in series.collections) {
+      for (final episode in collection.episodes) {
         episode.resetThumbnailStatus();
         episode.thumbnailPath = null; // Clear the cached path so it will be regenerated
       }
-    }
-
-    // Also reset for related media episodes
-    for (final episode in series.relatedMedia) {
-      episode.resetThumbnailStatus();
-      episode.thumbnailPath = null;
     }
 
     _markDirty(series);
@@ -411,15 +401,11 @@ extension LibrarySeriesManagement on Library {
 
     // Reset all episode thumbnail statuses
     for (final series in _series) {
-      for (final season in series.seasons) {
-        for (final episode in season.episodes) {
+      for (final collection in series.collections) {
+        for (final episode in collection.episodes) {
           episode.resetThumbnailStatus();
           episode.thumbnailPath = null;
         }
-      }
-      for (final episode in series.relatedMedia) {
-        episode.resetThumbnailStatus();
-        episode.thumbnailPath = null;
       }
     }
 

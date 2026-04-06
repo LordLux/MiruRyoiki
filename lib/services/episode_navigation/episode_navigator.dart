@@ -20,12 +20,9 @@ class EpisodeNavigator {
 
     // Fallback to contains check (episodes without ID)
     for (final series in allSeries) {
-      // seasons
-      for (final season in series.seasons) {
-        if (season.episodes.contains(episode)) return series;
+      for (final collection in series.collections) {
+        if (collection.episodes.contains(episode)) return series;
       }
-      // related media
-      if (series.relatedMedia.contains(episode)) return series;
     }
     return null;
   }
@@ -39,19 +36,19 @@ class EpisodeNavigator {
     return null;
   }
 
-  /// Find the season that contains this episode
-  Season? findSeasonForEpisode(Episode episode, Series series) {
+  /// Find the collection that contains this episode
+  EpisodeCollection? findCollectionForEpisode(Episode episode, Series series) {
     // ID-based lookup
     if (episode.id != null) {
-      for (final season in series.seasons) {
-        final found = season.getEpisodeById(episode.id!);
-        if (found != null) return season;
+      for (final collection in series.collections) {
+        final found = collection.getEpisodeById(episode.id!);
+        if (found != null) return collection;
       }
     }
 
     // Fallback to contains check
-    for (final season in series.seasons) {
-      if (season.episodes.contains(episode)) return season;
+    for (final collection in series.collections) {
+      if (collection.episodes.contains(episode)) return collection;
     }
     return null;
   }
@@ -80,8 +77,7 @@ class EpisodeNavigator {
   /// Get all episodes in series (ordered by episode number)
   List<Episode> getAllEpisodesInSeries(Series series) {
     final allEpisodes = <Episode>[
-      ...series.seasons.expand((s) => s.episodes),
-      ...series.relatedMedia,
+      ...series.collections.expand((c) => c.episodes),
     ];
 
     allEpisodes.sort((a, b) {
@@ -93,18 +89,18 @@ class EpisodeNavigator {
     return allEpisodes;
   }
 
-  /// Get season index (1-based) for an episode
+  /// Get collection index (1-based) for an episode
   int? getSeasonIndexForEpisode(Episode episode, Series series) {
-    final season = findSeasonForEpisode(episode, series);
-    if (season == null) return null;
+    final collection = findCollectionForEpisode(episode, series);
+    if (collection == null) return null;
 
-    final index = series.seasons.indexOf(season);
+    final index = series.collections.indexOf(collection);
     return index == -1 ? null : index + 1;
   }
 
   /// Get episode position within its season (1-based)
   int? getEpisodePositionInSeason(Episode episode, Series series) {
-    final season = findSeasonForEpisode(episode, series);
+    final season = findCollectionForEpisode(episode, series);
     if (season == null) return null;
 
     final index = season.episodes.indexOf(episode);
@@ -133,37 +129,22 @@ class EpisodeNavigator {
 
   /// Find episode by file path within a series
   Episode? findEpisodeByPath(PathString path, Series series) {
-    // Search in all seasons
-    for (final season in series.seasons) {
-      for (final episode in season.episodes) {
+    for (final collection in series.collections) {
+      for (final episode in collection.episodes) {
         if (episode.path.path == path.path) return episode;
       }
     }
-
-    // Search in related media
-    for (final episode in series.relatedMedia) {
-      if (episode.path.path == path.path) return episode;
-    }
-
     return null;
   }
-  
-  /// Find episode by file path within a series
+
+  /// Find episodes by file paths within a series
   List<Episode> findEpisodesByPath(List<PathString> paths, Series series) {
     final foundEpisodes = <Episode>[];
-    
-    // Search in all seasons
-    for (final season in series.seasons) {
-      for (final episode in season.episodes) {
+    for (final collection in series.collections) {
+      for (final episode in collection.episodes) {
         if (paths.any((path) => episode.path.path == path.path)) foundEpisodes.add(episode);
       }
     }
-
-    // Search in related media
-    for (final episode in series.relatedMedia) {
-      if (paths.any((path) => episode.path.path == path.path)) foundEpisodes.add(episode);
-    }
-
     return foundEpisodes;
   }
 
@@ -178,7 +159,7 @@ class EpisodeNavigator {
     final episodeNumber = episode.episodeNumber;
     if (episodeNumber == null || episodeNumber <= 1) return null;
 
-    final season = EpisodeNavigator.instance.findSeasonForEpisode(episode, series);
+    final season = EpisodeNavigator.instance.findCollectionForEpisode(episode, series);
     for (final ep in season?.episodes ?? []) {
       if (ep.episodeNumber != null && ep.episodeNumber! < episodeNumber) {
         if (!ep.watched) return false;

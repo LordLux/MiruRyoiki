@@ -90,16 +90,11 @@ class UIEpisodeService {
   List<UIEpisode> _getLocalEpisodesAsUI(Series series) {
     final List<UIEpisode> uiEpisodes = [];
     
-    // Add episodes from all seasons
-    for (final season in series.seasons) {
-      for (final episode in season.episodes) {
+    // Add episodes from all collections
+    for (final collection in series.collections) {
+      for (final episode in collection.episodes) {
         uiEpisodes.add(UIEpisode.fromLocalEpisode(episode));
       }
-    }
-    
-    // Add related media (OVAs, ONAs, etc.)
-    for (final episode in series.relatedMedia) {
-      uiEpisodes.add(UIEpisode.fromLocalEpisode(episode));
     }
     
     // Sort by episode number
@@ -112,21 +107,13 @@ class UIEpisodeService {
   Map<int, Episode> _getLocalEpisodeMap(Series series) {
     final Map<int, Episode> episodeMap = {};
     
-    // Add episodes from all seasons
-    for (final season in series.seasons) {
-      for (final episode in season.episodes) {
+    // Add episodes from all collections
+    for (final collection in series.collections) {
+      for (final episode in collection.episodes) {
         final episodeNumber = episode.episodeNumber;
         if (episodeNumber != null) {
           episodeMap[episodeNumber] = episode;
         }
-      }
-    }
-    
-    // Add related media
-    for (final episode in series.relatedMedia) {
-      final episodeNumber = episode.episodeNumber;
-      if (episodeNumber != null) {
-        episodeMap[episodeNumber] = episode;
       }
     }
     
