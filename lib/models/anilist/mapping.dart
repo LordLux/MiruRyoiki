@@ -140,6 +140,24 @@ class AnilistMapping {
 
   bool get isLinked => anilistData != null;
 
+  /// Preferred display title for this mapping
+  ///
+  /// Uses AniList title fields first, then falls back to the stored mapping title
+  String? get preferredTitle {
+    final candidates = <String?>[
+      anilistData?.title.userPreferred,
+      anilistData?.title.english,
+      anilistData?.title.romaji,
+      title,
+    ];
+
+    for (final candidate in candidates) {
+      final trimmed = candidate?.trim();
+      if (trimmed != null && trimmed.isNotEmpty) return trimmed;
+    }
+    return null;
+  }
+
   // For easier debugging and logging
   String toJsonString() => jsonEncode(toJson());
 

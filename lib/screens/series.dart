@@ -148,10 +148,14 @@ class SeriesScreenState extends State<SeriesScreen> {
 
   bool get isMappingMode => widget.target != null;
 
+  String _mappingDisplayTitle({AnilistMapping? mapping, MappingTarget? target}) {
+    return mapping?.preferredTitle ?? target?.displayName ?? 'Mapping';
+  }
+
   void navigateToMapping(AnilistMapping mapping, MappingTarget target) {
     if (!mounted) return;
 
-    final mappingName = target.displayName;
+    final mappingName = _mappingDisplayTitle(mapping: mapping, target: target);
 
     // Push the inner mapping page to navigation stack
     Manager.navigation.pushPage(
@@ -784,7 +788,7 @@ class SeriesScreenState extends State<SeriesScreen> {
 
   HeaderWidget _buildHeader(BuildContext context, Series series) {
     final isMapping = isMappingMode;
-    final title = isMapping ? _cachedTarget!.displayName : series.displayTitle;
+    final title = isMapping ? _mappingDisplayTitle(mapping: _cachedMapping, target: _cachedTarget) : series.displayTitle;
     final description = isMapping ? _cachedMapping?.anilistData?.description : series.description;
     final imageFuture = isMapping ? _getMappingImage(banner: true) : series.getBannerImage();
 

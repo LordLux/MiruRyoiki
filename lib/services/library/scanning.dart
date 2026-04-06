@@ -58,6 +58,7 @@ extension LibraryScanning on Library {
       final filesToProcess = <PathString>{};
       final unresolvedFiles = <PathString, Set<PathString>>{}; // Files that are new or renamed
       final unresolvedEpisodes = <PathString, Set<Episode>>{}; // Episodes that are deleted or renamed
+      final seriesNeedingCollectionRebuild = <PathString>{};
 
       logTrace("SCAN  New series found: ${newSeriesPaths.length}");
       logTrace("SCAN  Deleted series found: ${deletedSeriesPaths.length}");
@@ -95,6 +96,28 @@ extension LibraryScanning on Library {
           }
           unresolvedEpisodes[seriesPath] = episodesInSeries.where((e) => missingEpisodePaths.contains(e.path)).toSet();
         }
+
+        // Folder-only changes do not show up in file diffs.
+        // If a mapped directory exists on disk but is missing from collections, force a rebuild
+        bool mappedDirMissingFromCollections = false;
+        for (final mapping in series.anilistMappings) {
+          final mappedPath = mapping.localPath.path;
+          if (mappedPath == series.path.path) continue;
+          if (!p.isWithin(series.path.path, mappedPath)) continue;
+
+          final mappedDir = Directory(mappedPath);
+          if (!await mappedDir.exists()) continue;
+
+          final inCollections = series.collections.any((c) => c.path.path == mappedPath);
+          if (!inCollections) {
+            mappedDirMissingFromCollections = true;
+            logTrace('SCAN  Collection rebuild needed (mapped empty folder): ${p.basename(mappedPath)}');
+            break;
+          }
+        }
+
+        if (mappedDirMissingFromCollections) //
+          seriesNeedingCollectionRebuild.add(seriesPath);
       }
 
       // ============================
@@ -213,8 +236,11 @@ extension LibraryScanning on Library {
         logTrace('  Episodes to delete: ${episodesToDelete.length}');
         logTrace('  Episodes to update: ${episodesToUpdate.length}');
 
+        final needsCollectionRebuild = seriesNeedingCollectionRebuild.contains(seriesPath);
+        if (needsCollectionRebuild) logTrace('  Collection rebuild requested for mapped empty folder changes');
+
         // Rebuild the series with all the collected changes
-        if (episodesToAdd.isNotEmpty || episodesToDelete.isNotEmpty || episodesToUpdate.isNotEmpty) {
+        if (episodesToAdd.isNotEmpty || episodesToDelete.isNotEmpty || episodesToUpdate.isNotEmpty || needsCollectionRebuild) {
           logTrace('  Rebuilding series due to changes...');
           final rebuiltSeries = await _rebuildSeries(originalSeries, episodesToAdd, episodesToDelete, episodesToUpdate);
           updatedSeriesList[seriesIndex] = rebuiltSeries;
@@ -239,7 +265,7 @@ extension LibraryScanning on Library {
       for (final seriesPath in existingSeriesPathsToCheck) {
         final newFiles = unresolvedFiles[seriesPath] ?? <PathString>{};
         final missingEpisodes = unresolvedEpisodes[seriesPath] ?? <Episode>{};
-        if (newFiles.isNotEmpty || missingEpisodes.isNotEmpty) {
+        if (newFiles.isNotEmpty || missingEpisodes.isNotEmpty || seriesNeedingCollectionRebuild.contains(seriesPath)) {
           _dirtySeries.add(seriesPath);
         }
       }
@@ -422,8 +448,11 @@ extension LibraryScanning on Library {
   }
 
   /// Organizes a flat list of episodes into EpisodeCollection objects (Season and Folder)
-  /// 
-  /// Scans all subdirectories and creates collections even for empty season folders.
+  ///
+  /// Scans all subdirectories and creates collections even for empty season folders
+  ///
+  /// For non-season folders, empty directories are only included when they are
+  /// explicitly mapped to AniList, so pre-created folders keep their mapping cards
   Future<Series> _organizeEpisodesIntoCollections(Series series, List<Episode> allEpisodes) async {
     final collections = <EpisodeCollection>[];
 
@@ -433,6 +462,17 @@ extension LibraryScanning on Library {
     final seriesRootPath = series.path.path;
     final seasonDirPaths = <String>[];
     final otherDirPaths = <String>[];
+    final mappedDirectoryPaths = <String>{};
+
+    // Keep mapped empty directories so they can still resolve MappingTarget.collection
+    for (final mapping in series.anilistMappings) {
+      final mappedPath = mapping.localPath.path;
+      if (mappedPath == seriesRootPath) continue;
+      if (!p.isWithin(seriesRootPath, mappedPath)) continue;
+
+      final mappedDir = Directory(mappedPath);
+      if (await mappedDir.exists()) mappedDirectoryPaths.add(mappedPath);
+    }
 
     // Scan ALL subdirectories in the series folder, not just those with episodes
     final seriesDir = Directory(seriesRootPath);
@@ -445,10 +485,24 @@ extension LibraryScanning on Library {
           if (isSeasonName(dirName)) {
             seasonDirPaths.add(dirPath);
           } else {
-            // Only add to other directories if it contains episodes
-            if (episodesByParentDir.containsKey(dirPath)) otherDirPaths.add(dirPath);
+            // Keep directories that contain episodes, plus mapped empty folders
+            if (episodesByParentDir.containsKey(dirPath) || mappedDirectoryPaths.contains(dirPath)) {
+              otherDirPaths.add(dirPath);
+            }
           }
         }
+      }
+    }
+
+    // Include mapped directories not returned by top-level scan (for nested mapped folders)
+    for (final mappedDirPath in mappedDirectoryPaths) {
+      if (seasonDirPaths.contains(mappedDirPath) || otherDirPaths.contains(mappedDirPath)) continue;
+
+      final mappedDirName = p.basename(mappedDirPath);
+      if (isSeasonName(mappedDirName)) {
+        seasonDirPaths.add(mappedDirPath);
+      } else {
+        otherDirPaths.add(mappedDirPath);
       }
     }
 
