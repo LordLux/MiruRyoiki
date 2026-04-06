@@ -492,33 +492,31 @@ class ContentActionlessDialog extends StatelessWidget {
       child: Container(
         constraints: constraints,
         decoration: style.decoration,
-        child: Flexible(
-          child: Padding(
-            padding: style.padding ?? EdgeInsets.zero,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (title != null)
-                  Padding(
-                    padding: style.titlePadding ?? EdgeInsets.zero,
+        child: Padding(
+          padding: style.padding ?? EdgeInsets.zero,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (title != null)
+                Padding(
+                  padding: style.titlePadding ?? EdgeInsets.zero,
+                  child: DefaultTextStyle.merge(
+                    style: style.titleStyle,
+                    child: title!,
+                  ),
+                ),
+              if (content != null)
+                Flexible(
+                  child: Padding(
+                    padding: style.bodyPadding ?? EdgeInsets.zero,
                     child: DefaultTextStyle.merge(
-                      style: style.titleStyle,
-                      child: title!,
+                      style: style.bodyStyle,
+                      child: content!,
                     ),
                   ),
-                if (content != null)
-                  Flexible(
-                    child: Padding(
-                      padding: style.bodyPadding ?? EdgeInsets.zero,
-                      child: DefaultTextStyle.merge(
-                        style: style.bodyStyle,
-                        child: content!,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
+                ),
+            ],
           ),
         ),
       ),
