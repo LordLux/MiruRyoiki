@@ -224,22 +224,9 @@ class _NotificationCalendarEntryWidgetState extends State<NotificationCalendarEn
 }
 
 String formatTimeAgo(AnilistNotification? notification, DateTime notificationDate, bool isDense) {
-  String str = "";
-  final compareNowDate = now;
-  final compareTodayDate = DateTime(compareNowDate.year, compareNowDate.month, compareNowDate.day);
-  final difference = (compareNowDate).difference(notificationDate);
-  final duration = (difference.inDays > 7 ? difference : compareTodayDate.difference(notificationDate)).abs();
-
-  if (duration.inDays > 0)
-    str = '${duration.inDays} day${duration.inDays > 1 ? 's' : ''} ago';
-  else if (duration.inHours > 0)
-    str = '${duration.inHours} hour${duration.inHours > 1 ? 's' : ''} ago';
-  else
-    str = '${duration.inMinutes} minute${duration.inMinutes > 1 ? 's' : ''} ago';
-
+  final relative = formatRelativeTime(notificationDate, style: TimeUnitStyle.long);
   final verb = notification?.actionVerb ?? 'Aired';
-  if (verb.isNotEmpty) str = '$verb $str';
-  return str;
+  return verb.isEmpty ? relative : '$verb $relative';
 }
 
 Widget buildNotificationImage(String? imageUrl, Series? series) {

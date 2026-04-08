@@ -1105,7 +1105,7 @@ class SearchedSeriesScreenState extends State<SearchedSeriesScreen> {
                                 crossAxisAlignment: CrossAxisAlignment.end,
                                 children: [
                                   if (entry.score != null && entry.score! > 0) Text('${entry.score!.toInt()}/10', style: Manager.bodyStyle),
-                                  if (entry.updatedAt != null) Text(_timeAgo(entry.updatedAt), style: Manager.captionStyle),
+                                  if (entry.updatedAt != null) Text(formatRelativeTime(DateTime.fromMillisecondsSinceEpoch(entry.updatedAt! * 1000)), style: Manager.captionStyle),
                                 ],
                               ),
                             ],

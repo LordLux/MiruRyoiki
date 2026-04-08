@@ -335,16 +335,8 @@ class _UpcomingEpisodeCardState extends State<UpcomingEpisodeCard> {
     final airingDate = DateTime.fromMillisecondsSinceEpoch(airingAt * 1000);
     final difference = airingDate.difference(now);
 
-    if (difference.isNegative) {
-      return 'Aired';
-    } else if (difference.inDays > 0) {
-      return 'Airs in ${difference.inDays}d${difference.inHours % 24 > 0 ? ' ${difference.inHours % 24}h' : ''}'.replaceAll(" 0d", "").replaceAll(" 0h", "");
-    } else if (difference.inHours > 0) {
-      return 'Airs in ${difference.inHours}h${difference.inMinutes % 60 > 0 ? ' ${difference.inMinutes % 60}m' : ''}'.replaceAll(" 0h", "");
-    } else if (difference.inMinutes > 0) {
-      return 'Airs in ${difference.inMinutes}m';
-    } else {
-      return 'Soon';
-    }
+    if (difference.isNegative) return 'Aired';
+    if (difference.inMinutes < 1) return 'Soon';
+    return 'Airs in ${formatTimeMagnitude(difference, maxUnits: 2)}';
   }
 }

@@ -43,10 +43,8 @@ class _NotificationItemState2 extends State<ScheduledEpisodeCalendarEntryWidget>
   }
 
   String _formatDuration(Duration duration) {
-    if (duration.inDays > 0) return 'Airs in ${duration.inDays}d${duration.inHours % 24 > 0 ? ' ${duration.inHours % 24}h' : duration.inMinutes % 60 > 0 ? ' ${duration.inMinutes % 60}m' : ''}';
-    if (duration.inHours > 0) return 'Airs in ${duration.inHours}h${duration.inMinutes % 60 > 0 ? ' ${duration.inMinutes % 60}m' : ''}';
-    if (duration.inMinutes > 0) return 'Airs in ${duration.inMinutes}m';
-    return 'Airs soon'; // Within an hour of the release time
+    if (duration.inMinutes < 1) return 'Airs soon';
+    return 'Airs in ${formatTimeMagnitude(duration, maxUnits: 2)}';
   }
 
   @override
