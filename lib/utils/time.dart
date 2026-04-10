@@ -55,3 +55,87 @@ extension DurationArithmetic on Duration {
   Duration operator *(double factor) => Duration(milliseconds: (inMilliseconds * factor).round());
   Duration operator /(double divisor) => Duration(milliseconds: (inMilliseconds / divisor).round());
 }
+
+/// Display style for relative time formatters.
+///
+/// `short` produces compact unit suffixes (`5m`, `3h`, `2d`).
+/// `long` produces full unit names with pluralization (`5 minutes`, `3 hours`, `2 days`).
+enum TimeUnitStyle { short, long }
+
+const _shortUnits = <String>['y', 'mo', 'w', 'd', 'h', 'm', 's'];
+const _longUnitsSingular = <String>['year', 'month', 'week', 'day', 'hour', 'minute', 'second'];
+
+/// Returns a human-readable representation of [duration] as one or more
+/// magnitude/unit pairs, in descending order from largest non-zero unit.
+///
+/// `formatTimeMagnitude(Duration(days: 2, hours: 3))` → `"2d"` (default `maxUnits: 1`)
+/// `formatTimeMagnitude(Duration(days: 2, hours: 3), maxUnits: 2)` → `"2d 3h"`
+/// `formatTimeMagnitude(Duration(minutes: 5), style: TimeUnitStyle.long)` → `"5 minutes"`
+///
+/// Negative durations are treated as their absolute value — direction is the
+/// caller's concern. Returns an empty string when the duration rounds to zero
+/// in every supported unit.
+String formatTimeMagnitude(
+  Duration duration, {
+  TimeUnitStyle style = TimeUnitStyle.short,
+  int maxUnits = 1,
+}) {
+  assert(maxUnits >= 1);
+  final abs = duration.abs();
+  final totalSeconds = abs.inSeconds;
+
+  // Decompose into [years, months, weeks, days, hours, minutes, seconds]
+  // using the same approximations the existing call sites used.
+  final years = totalSeconds ~/ (365 * 86400);
+  var rem = totalSeconds - years * 365 * 86400;
+  final months = rem ~/ (30 * 86400);
+  rem -= months * 30 * 86400;
+  final weeks = rem ~/ (7 * 86400);
+  rem -= weeks * 7 * 86400;
+  final days = rem ~/ 86400;
+  rem -= days * 86400;
+  final hours = rem ~/ 3600;
+  rem -= hours * 3600;
+  final minutes = rem ~/ 60;
+  final seconds = rem - minutes * 60;
+
+  final parts = <int>[years, months, weeks, days, hours, minutes, seconds];
+
+  // Find the first non-zero unit and emit up to [maxUnits] consecutive units.
+  final pieces = <String>[];
+  var startedAt = -1;
+  for (var i = 0; i < parts.length && pieces.length < maxUnits; i++) {
+    if (parts[i] == 0 && startedAt == -1) continue;
+    if (startedAt == -1) startedAt = i;
+    pieces.add(_renderUnit(parts[i], i, style));
+  }
+  return pieces.join(' ');
+}
+
+String _renderUnit(int value, int index, TimeUnitStyle style) {
+  if (style == TimeUnitStyle.short) return '$value${_shortUnits[index]}';
+  final base = _longUnitsSingular[index];
+  return '$value $base${value == 1 ? '' : 's'}';
+}
+
+/// Returns a human-readable relative time string for [when] compared to
+/// [reference] (defaults to [now]).
+///
+/// Past:    `"5m ago"`  / `"5 minutes ago"`
+/// Future:  `"in 5m"`   / `"in 5 minutes"`
+/// Within ~1 minute either side: `"just now"`
+///
+/// Pass [maxUnits] > 1 to combine units (e.g. `"2d 3h"` / `"in 2d 3h"`).
+String formatRelativeTime(
+  DateTime when, {
+  DateTime? reference,
+  TimeUnitStyle style = TimeUnitStyle.short,
+  int maxUnits = 1,
+}) {
+  final ref = reference ?? now;
+  final diff = ref.difference(when);
+  if (diff.inSeconds.abs() < 60) return 'just now';
+
+  final magnitude = formatTimeMagnitude(diff, style: style, maxUnits: maxUnits);
+  return diff.isNegative ? 'in $magnitude' : '$magnitude ago';
+}

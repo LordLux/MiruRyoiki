@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import 'package:miruryoiki/utils/text.dart';
 import '../downloads/torrent_client.dart';
@@ -162,6 +163,75 @@ class QBittorrentRepository implements TorrentClient {
   }
 
   @override
+  Future<bool> forceStartTorrent(String hash, {bool value = true}) async {
+    final uri = Uri.parse('$_baseUrl/api/v2/torrents/setForceStart');
+    final response = await _authedPost(uri,
+      extraHeaders: {'Content-Type': 'application/x-www-form-urlencoded'},
+      body: 'hashes=$hash&value=$value',
+    );
+    return response.statusCode == 200;
+  }
+
+  @override
+  Future<bool> setLocation(String hash, String newLocation) async {
+    final uri = Uri.parse('$_baseUrl/api/v2/torrents/setLocation');
+    final response = await _authedPost(uri,
+      extraHeaders: {'Content-Type': 'application/x-www-form-urlencoded'},
+      body: 'hashes=$hash&location=${Uri.encodeQueryComponent(newLocation)}',
+    );
+    return response.statusCode == 200;
+  }
+
+  @override
+  Future<bool> renameTorrent(String hash, String newName) async {
+    final uri = Uri.parse('$_baseUrl/api/v2/torrents/rename');
+    final response = await _authedPost(uri,
+      extraHeaders: {'Content-Type': 'application/x-www-form-urlencoded'},
+      body: 'hash=$hash&name=${Uri.encodeQueryComponent(newName)}',
+    );
+    return response.statusCode == 200;
+  }
+
+  @override
+  Future<bool> moveQueue(String hash, QueueDirection direction) async {
+    final endpoint = switch (direction) {
+      QueueDirection.top => 'topPrio',
+      QueueDirection.up => 'increasePrio',
+      QueueDirection.down => 'decreasePrio',
+      QueueDirection.bottom => 'bottomPrio',
+    };
+    final uri = Uri.parse('$_baseUrl/api/v2/torrents/$endpoint');
+    final response = await _authedPost(uri,
+      extraHeaders: {'Content-Type': 'application/x-www-form-urlencoded'},
+      body: 'hashes=$hash',
+    );
+    return response.statusCode == 200;
+  }
+
+  @override
+  Future<String?> getComment(String hash) async {
+    final uri = Uri.parse('$_baseUrl/api/v2/torrents/properties').replace(queryParameters: {'hash': hash});
+    final response = await _authedGet(uri);
+    if (response.statusCode != 200) return null;
+    try {
+      final Map<String, dynamic> data = json.decode(response.body) as Map<String, dynamic>;
+      final comment = data['comment'];
+      if (comment is String && comment.isNotEmpty) return comment;
+      return null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  @override
+  Future<Uint8List?> exportTorrent(String hash) async {
+    final uri = Uri.parse('$_baseUrl/api/v2/torrents/export').replace(queryParameters: {'hash': hash});
+    final response = await _authedGet(uri);
+    if (response.statusCode != 200) return null;
+    return response.bodyBytes;
+  }
+
+  @override
   Future<bool> testConnection() async {
     try {
       if (!isAuthenticated) {
@@ -259,6 +329,7 @@ class QBittorrentRepository implements TorrentClient {
       savePath: t['save_path'] as String? ?? t['content_path'] as String?,
       category: t['category'] as String?,
       addedOn: t['added_on'] != null ? DateTime.fromMillisecondsSinceEpoch((t['added_on'] as int) * 1000) : null,
+      magnetUri: t['magnet_uri'] as String?,
     );
   }
 }

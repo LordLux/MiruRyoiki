@@ -1,4 +1,5 @@
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:miruryoiki/services/navigation/dialogs.dart';
@@ -126,6 +127,14 @@ class _CustomKeyboardListenerState extends State<CustomKeyboardListener> {
       if (isCtrlPressed && event.logicalKey == LogicalKeyboardKey.keyF) {
         logTrace('Ctrl + f pressed: Search');
         libraryScreenKey.currentState?.focusSearchBar();
+      } else
+      //
+      // Toggle debug green accent color for screenshots (Debug Mode only)
+      if (kDebugMode && isCtrlPressed && isShiftPressed && event.logicalKey == LogicalKeyboardKey.keyD) {
+        logTrace('Ctrl + Shift + D pressed: Toggle debug green color');
+        Manager.debugGreenEnabled = !Manager.debugGreenEnabled;
+        Manager.appTheme.notify();
+        Manager.setState();
       } else
       //
       // Zoom in

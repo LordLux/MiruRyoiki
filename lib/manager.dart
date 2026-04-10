@@ -124,7 +124,9 @@ class Manager {
     return _cachedAppTheme ?? (_cachedAppTheme = AppTheme());
   }
 
-  static AccentColor get accentColor => (kDebugMode //
+  static bool debugGreenEnabled = true;
+
+  static AccentColor get accentColor => (kDebugMode && debugGreenEnabled //
           ? Colors.green
           // ? settings.accentColor
           : settings.accentColor)

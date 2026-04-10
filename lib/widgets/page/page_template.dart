@@ -1,12 +1,16 @@
 import 'dart:math' show min;
 
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:flutter/gestures.dart';
+import 'package:provider/provider.dart';
 import 'package:smooth_scroll_multiplatform/smooth_scroll_multiplatform.dart';
 
 import '../../manager.dart';
+import '../../theme.dart';
 import '../../screens/settings.dart';
 import '../../services/navigation/navigation.dart';
 import '../../services/navigation/shortcuts.dart';
+import '../../utils/logging.dart';
 import '../../utils/screen.dart';
 import '../../utils/time.dart';
 import '../frosted_noise.dart';
@@ -35,6 +39,7 @@ class MiruRyoikiTemplatePage extends StatefulWidget {
   final double? contentRightPadding;
   final Widget? stickyHeader;
   final String? scrollRestorationId;
+  final ScrollController? scrollController;
 
   const MiruRyoikiTemplatePage({
     super.key,
@@ -59,8 +64,9 @@ class MiruRyoikiTemplatePage extends StatefulWidget {
     this.floatingButton,
     this.stickyHeader,
     this.scrollRestorationId,
+    this.scrollController,
   }) : assert(
-          (scrollableContent || (!scrollableContent && stickyHeader == null)) ,
+          (scrollableContent || (!scrollableContent && stickyHeader == null)),
           'stickyHeader can only be used when scrollableContent is true',
         );
 
@@ -74,44 +80,115 @@ class _MiruRyoikiTemplatePageState extends State<MiruRyoikiTemplatePage> {
   late double _minHeaderHeight;
   ScrollController? _scrollController;
   bool _scrollRestored = false;
+  bool _isHoveringContent = false;
+  double _futurePosition = 0;
+  bool _prevDeltaPositive = false;
+
+  void _handleExternalScroll(PointerScrollEvent event) {
+    if (_scrollController == null || !_scrollController!.hasClients) return;
+    if (!Manager.animationsEnabled) {
+      final position = _scrollController!.position;
+      final newOffset = (position.pixels + event.scrollDelta.dy).clamp(position.minScrollExtent, position.maxScrollExtent);
+      position.jumpTo(newOffset);
+      return;
+    }
+
+    final double scrollSpeed = 1.8;
+    final bool currentDeltaPositive = event.scrollDelta.dy > 0;
+    final position = _scrollController!.position;
+
+    if (position.pixels == position.minScrollExtent || position.pixels == position.maxScrollExtent) {
+      _futurePosition = position.pixels;
+    }
+
+    if (currentDeltaPositive == _prevDeltaPositive) {
+      _futurePosition += event.scrollDelta.dy * scrollSpeed;
+    } else {
+      _futurePosition = position.pixels + event.scrollDelta.dy * scrollSpeed;
+    }
+    _prevDeltaPositive = currentDeltaPositive;
+
+    _futurePosition = _futurePosition.clamp(position.minScrollExtent, position.maxScrollExtent);
+
+    if (_futurePosition != position.pixels) {
+      _scrollController!.animateTo(
+        _futurePosition,
+        duration: const Duration(milliseconds: 350),
+        curve: Curves.easeOut,
+      );
+    }
+  }
 
   @override
   void initState() {
     _headerHeight = widget.headerMaxHeight ?? ScreenUtils.kMaxHeaderHeight;
     _maxHeaderHeight = _headerHeight;
     _minHeaderHeight = widget.headerMinHeight ?? ScreenUtils.kMinHeaderHeight;
+    if (widget.scrollableContent && widget.scrollController == null)
+      _scrollController = ScrollController();
+    else
+      _scrollController = widget.scrollController;
+
+    _scrollController?.addListener(_onScroll);
     super.initState();
-    _setupScrollListener();
   }
 
-  void _setupScrollListener() {
+  @override
+  void dispose() {
+    if (_scrollController != null) {
+      _scrollController!.removeListener(_onScroll);
+      if (widget.scrollController == null) _scrollController!.dispose();
+    }
+    super.dispose();
+  }
+
+  @override
+  void didUpdateWidget(MiruRyoikiTemplatePage oldWidget) {
+    if (oldWidget.scrollController != widget.scrollController) {
+      _scrollController?.removeListener(_onScroll);
+      if (oldWidget.scrollController == null) _scrollController?.dispose();
+
+      if (widget.scrollableContent && widget.scrollController == null)
+        _scrollController = ScrollController();
+      else
+        _scrollController = widget.scrollController;
+
+      _scrollController?.addListener(_onScroll);
+    }
+    super.didUpdateWidget(oldWidget);
+  }
+
+  void _onScroll() {
     if (_maxHeaderHeight != _minHeaderHeight && _scrollController != null) {
-      _scrollController!.addListener(() {
-        final offset = _scrollController!.offset;
-        final double newHeight;
-        if (offset > 0) {
-          newHeight = _minHeaderHeight;
-          widget.onHeaderCollapse?.call();
-        } else {
-          newHeight = _maxHeaderHeight;
-          widget.onHeaderExpand?.call();
-        }
+      final offset = _scrollController!.offset;
+      final double newHeight;
 
-        if (!mounted) return;
+      if (offset > 0) {
+        newHeight = _minHeaderHeight;
+        widget.onHeaderCollapse?.call();
+      } else {
+        newHeight = _maxHeaderHeight;
+        widget.onHeaderExpand?.call();
+      }
 
-        try {
-          setState(() => _headerHeight = newHeight);
-        } catch (e) {
-          nextFrame(() {
-            if (mounted) setState(() => _headerHeight = newHeight);
-          });
-        }
-      });
+      if (!mounted) return;
+      if (_headerHeight == newHeight) return;
+
+      try {
+        setState(() => _headerHeight = newHeight);
+      } catch (e) {
+        nextFrame(() {
+          if (mounted) setState(() => _headerHeight = newHeight);
+        });
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    // Watch AppTheme so this rebuilds if theme colors change (like turning debug green on/off)
+    Provider.of<AppTheme>(context);
+
     assert(widget.hideInfoBar || widget.infobar != null, 'infobar must not be null if hideInfoBar is false');
     return AnimatedContainer(
       duration: gradientChangeDuration,
@@ -142,127 +219,150 @@ class _MiruRyoikiTemplatePageState extends State<MiruRyoikiTemplatePage> {
               ),
               Expanded(
                 child: LayoutBuilder(builder: (context, constraints) {
-                  return SizedBox(
-                    width: double.infinity,
-                    height: double.infinity,
-                    child: Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        SizedBox(
-                          width: ScreenUtils.kMaxContentWidth,
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              // Info bar on the left
-                              if (!widget.hideInfoBar)
-                                SizedBox(
-                                  height: widget.infobarHeight ?? double.infinity,
-                                  width: ScreenUtils.kInfoBarWidth,
-                                  child: widget.infobar!(widget.noHeaderBanner),
-                                ),
-                              // Content area on the right
-                              Expanded(
-                                child: Align(
-                                  alignment: Alignment.topCenter,
-                                  child: Padding(
-                                    padding: EdgeInsets.only(left: 16.0 * Manager.fontSizeMultiplier, top: widget.noHeaderBanner && !widget.enableContentExtraHeaderPadding ? 0.0 : widget.contentExtraHeaderPadding, right: widget.contentRightPadding ?? 16.0),
-                                    child: ClipRRect(
-                                      borderRadius: BorderRadius.circular(ScreenUtils.kStatCardBorderRadius),
-                                      child: SizedBox(
-                                        height: widget.contentHeight ?? double.infinity,
-                                        child: Builder(builder: (context) {
-                                          if (!widget.scrollableContent) return widget.content;
+                  Widget buildStack(ScrollController? controller, ScrollPhysics? physics) {
+                    return Container(
+                      color: Colors.transparent,
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          // Actual page with optional infobar
+                          SizedBox(
+                            width: ScreenUtils.kMaxContentWidth, // Limit max width for better readability on large screens
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                // Info bar on the left
+                                if (!widget.hideInfoBar)
+                                  SizedBox(
+                                    height: widget.infobarHeight ?? double.infinity,
+                                    width: ScreenUtils.kInfoBarWidth,
+                                    child: widget.infobar!(widget.noHeaderBanner),
+                                  ),
+                                // Content area on the right
+                                Expanded(
+                                  child: Align(
+                                    alignment: Alignment.topCenter,
+                                    child: Padding(
+                                      padding: EdgeInsets.only(left: 16.0 * Manager.fontSizeMultiplier, top: widget.noHeaderBanner && !widget.enableContentExtraHeaderPadding ? 0.0 : widget.contentExtraHeaderPadding, right: widget.contentRightPadding ?? 16.0),
+                                      child: ClipRRect(
+                                        borderRadius: BorderRadius.circular(ScreenUtils.kStatCardBorderRadius),
+                                        child: SizedBox(
+                                          height: widget.contentHeight ?? double.infinity,
+                                          child: Builder(builder: (context) {
+                                            if (!widget.scrollableContent || controller == null) return widget.content;
 
-                                          final scrollableContent = Builder(
-                                            builder: (context) {
-                                              final child = ScrollConfiguration(
-                                                behavior: ScrollConfiguration.of(context).copyWith(overscroll: true, platform: TargetPlatform.windows, scrollbars: false),
-                                                child: DynMouseScroll(
-                                                  stopScroll: KeyboardState.ctrlPressedNotifier,
-                                                  scrollSpeed: 1.8,
-                                                  enableSmoothScroll: Manager.animationsEnabled,
-                                                  durationMS: 350,
-                                                  animationCurve: Curves.easeOut,
-                                                  builder: (context, controller, physics) {
-                                                    // Skip if we want a static header
-                                                    _scrollController = controller;
-                                                    if (_scrollController != null) _setupScrollListener();
+                                            final scrollableContent = Builder(
+                                              builder: (context) {
+                                                final child = ScrollConfiguration(
+                                                  behavior: ScrollConfiguration.of(context).copyWith(overscroll: true, platform: TargetPlatform.windows, scrollbars: false),
+                                                  child: MouseRegion(
+                                                    onEnter: (_) => _isHoveringContent = true,
+                                                    onExit: (_) => _isHoveringContent = false,
+                                                    child: DynMouseScroll(
+                                                      controller: _scrollController,
+                                                      stopScroll: KeyboardState.ctrlPressedNotifier,
+                                                      scrollSpeed: 1.8,
+                                                      enableSmoothScroll: Manager.animationsEnabled,
+                                                      durationMS: 350,
+                                                      animationCurve: Curves.easeOut,
+                                                      builder: (context, controller, physics) {
+                                                        // Register with NavigationManager for scroll offset persistence
+                                                        if (widget.scrollRestorationId != null) {
+                                                          NavigationManager.registerActiveScrollController(
+                                                            widget.scrollRestorationId!,
+                                                            controller,
+                                                          );
 
-                                                    // Register with NavigationManager for scroll offset persistence
-                                                    if (widget.scrollRestorationId != null) {
-                                                      NavigationManager.registerActiveScrollController(
-                                                        widget.scrollRestorationId!,
-                                                        controller,
-                                                      );
+                                                          // Restore saved offset once after the route is created
+                                                          if (!_scrollRestored) {
+                                                            _scrollRestored = true;
+                                                            final savedOffset = NavigationManager.getSavedScrollOffset(widget.scrollRestorationId!);
 
-                                                      // Restore saved offset once after the route is created
-                                                      if (!_scrollRestored) {
-                                                        _scrollRestored = true;
-                                                        final savedOffset = NavigationManager.getSavedScrollOffset(widget.scrollRestorationId!);
-                                                        
-                                                        if (savedOffset != null && savedOffset > 0) {
-                                                          nextFrame(() {
-                                                            if (!mounted) return;
-                                                            
-                                                            if (controller.hasClients) {
-                                                              final maxExtent = controller.position.maxScrollExtent;
-                                                              controller.jumpTo(savedOffset.clamp(0.0, maxExtent));
+                                                            if (savedOffset != null && savedOffset > 0) {
+                                                              nextFrame(() {
+                                                                if (!mounted) return;
+
+                                                                if (controller.hasClients) {
+                                                                  final maxExtent = controller.position.maxScrollExtent;
+                                                                  controller.jumpTo(savedOffset.clamp(0.0, maxExtent));
+                                                                }
+                                                              });
                                                             }
-                                                          });
+                                                          }
                                                         }
-                                                      }
-                                                    }
 
-                                                    // Then use the controller for your scrollable content
-                                                    return CustomScrollView(
-                                                      controller: controller,
-                                                      physics: physics,
-                                                      slivers: [SliverToBoxAdapter(child: widget.content)],
-                                                    );
-                                                  },
-                                                ),
-                                              );
-                                              if (widget.wrapContentWithCard)
-                                                return SettingsCard(
-                                                  children: [Expanded(child: child)],
-                                                  padding: widget.cardPadding,
+                                                        // Then use the controller for your scrollable content
+                                                        return CustomScrollView(
+                                                          controller: controller,
+                                                          physics: physics,
+                                                          slivers: [SliverToBoxAdapter(child: widget.content)],
+                                                        );
+                                                      },
+                                                    ),
+                                                  ),
                                                 );
-                                              return child;
-                                            },
-                                          );
-
-                                          if (widget.stickyHeader != null) {
-                                            return Column(
-                                              children: [
-                                                widget.stickyHeader!,
-                                                VDiv(16.0),
-                                                Expanded(child: scrollableContent),
-                                              ],
+                                                if (widget.wrapContentWithCard) {
+                                                  return SettingsCard(
+                                                    children: [Expanded(child: child)],
+                                                    padding: widget.cardPadding,
+                                                  );
+                                                }
+                                                return child;
+                                              },
                                             );
-                                          }
-                                          return scrollableContent;
-                                        }),
+
+                                            if (widget.stickyHeader != null) {
+                                              return Column(
+                                                children: [
+                                                  widget.stickyHeader!,
+                                                  VDiv(16.0),
+                                                  Expanded(child: scrollableContent),
+                                                ],
+                                              );
+                                            }
+                                            return scrollableContent;
+                                          }),
+                                        ),
                                       ),
                                     ),
                                   ),
                                 ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        if (widget.floatingButton != null)
-                          Positioned(
-                            bottom: 0,
-                            child: Container(
-                              width: min(ScreenUtils.kMaxContentWidth + 100, constraints.maxWidth),
-                              alignment: Alignment.bottomRight,
-                              child: Padding(
-                                padding: const EdgeInsets.only(right: 16.0), // to always keep some space from the right edge when the screen is smaller than max content width
-                                child: widget.floatingButton!,
-                              ),
+                              ],
                             ),
                           ),
-                      ],
+                          if (widget.floatingButton != null)
+                            Positioned(
+                              bottom: 0,
+                              child: Container(
+                                width: min(ScreenUtils.kMaxContentWidth + 100, constraints.maxWidth),
+                                alignment: Alignment.bottomRight,
+                                child: Padding(
+                                  padding: const EdgeInsets.only(right: 16.0), // to always keep some space from the right edge when the screen is smaller than max content width
+                                  child: widget.floatingButton!,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    );
+                  }
+
+                  return SizedBox(
+                    width: double.infinity,
+                    height: double.infinity,
+                    child: Listener(
+                      behavior: HitTestBehavior.translucent,
+                      onPointerSignal: (event) {
+                        if (widget.scrollableContent && event is PointerScrollEvent && !_isHoveringContent) {
+                          _handleExternalScroll(event);
+                        }
+                      },
+                      child: widget.scrollableContent && _scrollController != null
+                          ? Scrollbar(
+                              controller: _scrollController,
+                              child: buildStack(_scrollController, null),
+                            )
+                          : buildStack(_scrollController, null),
                     ),
                   );
                 }),

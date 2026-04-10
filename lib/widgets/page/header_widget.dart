@@ -1,8 +1,10 @@
 import 'dart:math' as math show max, min;
 
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:provider/provider.dart';
 
 import '../../manager.dart';
+import '../../theme.dart';
 import '../../utils/screen.dart';
 import '../../utils/time.dart';
 
@@ -41,6 +43,9 @@ class HeaderWidget extends StatefulWidget {
 class _HeaderWidgetState extends State<HeaderWidget> {
   @override
   Widget build(BuildContext context) {
+    // Watch AppTheme so this rebuilds if theme colors change (like turning debug green on/off)
+    Provider.of<AppTheme>(context);
+
     return LayoutBuilder(builder: (context, constraints) {
       return Stack(
         children: [
@@ -50,14 +55,16 @@ class _HeaderWidgetState extends State<HeaderWidget> {
             width: double.infinity,
             // Background image
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  Manager.accentColor.withOpacity(0.27),
-                  Colors.transparent,
-                ],
-              ),
+              gradient: widget.image_widget == null
+                  ? LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        (Manager.currentDominantColor ?? Manager.accentColor).withOpacity(0.27),
+                        Colors.transparent,
+                      ],
+                    )
+                  : null,
               image: widget.image_widget == null
                   ? () {
                       final imageProvider = widget.image;

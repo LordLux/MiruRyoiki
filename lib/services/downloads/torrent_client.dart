@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 /// Abstract interface for torrent clients (qBittorrent, Deluge, Transmission, etc.)
 ///
 /// Implementations handle authentication and client-specific API details internally.
@@ -34,9 +36,29 @@ abstract class TorrentClient {
   /// When [deleteFiles] is true, the downloaded data is also removed from disk.
   Future<bool> deleteTorrent(String hash, {bool deleteFiles = false});
 
+  /// Toggle force-start on a torrent (bypass queue limits)
+  Future<bool> forceStartTorrent(String hash, {bool value = true});
+
+  /// Move the torrent's downloaded data to a new location
+  Future<bool> setLocation(String hash, String newLocation);
+
+  /// Rename the torrent (display name only — does not rename files on disk)
+  Future<bool> renameTorrent(String hash, String newName);
+
+  /// Move the torrent within the queue
+  Future<bool> moveQueue(String hash, QueueDirection direction);
+
+  /// Fetch the user-facing comment field associated with a torrent
+  Future<String?> getComment(String hash);
+
+  /// Export the `.torrent` file as raw bytes for the given hash
+  Future<Uint8List?> exportTorrent(String hash);
+
   /// Quick health-check — returns `true` if the client is reachable and authenticated
   Future<bool> testConnection();
 }
+
+enum QueueDirection { top, up, down, bottom }
 
 /// Normalized torrent info that all client implementations must produce
 class TorrentInfo {
@@ -55,6 +77,7 @@ class TorrentInfo {
   final String? savePath;
   final String? category;
   final DateTime? addedOn;
+  final String? magnetUri;
 
   const TorrentInfo({
     required this.hash,
@@ -72,6 +95,7 @@ class TorrentInfo {
     this.savePath,
     this.category,
     this.addedOn,
+    this.magnetUri,
   });
 }
 

@@ -108,7 +108,9 @@ class _SquircleCutoutBuilderState extends State<_SquircleCutoutBuilder> {
   Future<void> _captureChildImage() async {
     try {
       final RenderRepaintBoundary boundary = _repaintKey.currentContext!.findRenderObject() as RenderRepaintBoundary;
-      final ui.Image image = await boundary.toImage(pixelRatio: MediaQuery.of(context).devicePixelRatio);
+      // Multiply the pixel ratio to increase the resolution of the captured image
+      // rendering it sharp when scaled or drawn.
+      final ui.Image image = await boundary.toImage(pixelRatio: MediaQuery.of(context).devicePixelRatio * 4.0);
       setState(() {
         _childImage = image;
       });

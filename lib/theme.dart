@@ -88,6 +88,8 @@ class AppTheme extends ChangeNotifier {
     _locale = locale;
     notifyListeners();
   }
+
+  void notify() => notifyListeners();
 }
 
 AccentColor get systemAccentColor {

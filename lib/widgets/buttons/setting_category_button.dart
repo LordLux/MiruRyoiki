@@ -1,12 +1,8 @@
 import 'package:fluent_ui/fluent_ui.dart';
-import 'package:miruryoiki/widgets/buttons/button.dart';
-
-import '../../manager.dart';
 import '../../screens/settings.dart';
-import '../../utils/color.dart';
-import '../cutout.dart';
+import 'category_tile_button.dart';
 
-class SettingCategoryButton extends StatefulWidget {
+class SettingCategoryButton extends StatelessWidget {
   final int index;
   final bool isSelected;
   final void Function(int index) onCategoryPressed;
@@ -19,54 +15,18 @@ class SettingCategoryButton extends StatefulWidget {
   });
 
   @override
-  State<SettingCategoryButton> createState() => _SettingCategoryButtonState();
-}
-
-class _SettingCategoryButtonState extends State<SettingCategoryButton> {
-  @override
   Widget build(BuildContext context) {
-    final thisButton = SettingsScreenState.settingsList[widget.index];
+    final thisButton = SettingsScreenState.settingsList[index];
     final Icon icon = thisButton["icon"];
     final Color col = icon.color!;
-    return Padding(
-      padding: SettingsScreenState.settingsList.length - 1 != widget.index ? EdgeInsets.only(bottom: 8.0) : EdgeInsets.zero,
-      child: StandardButton(
-        isFilled: widget.isSelected,
-        filledColor: col.withOpacity(.15),
-        hoverFillColor: col.withOpacity(.2),
-        label: Row(
-          mainAxisAlignment: MainAxisAlignment.start,
-          children: [
-            const SizedBox(width: 1.5),
-            widget.isSelected
-                ? Container(
-                    width: 35,
-                    height: 35,
-                    decoration: BoxDecoration(
-                      color: col.withOpacity(.25),
-                      borderRadius: BorderRadius.circular(8.0),
-                    ),
-                    child: Center(child: icon),
-                  )
-                : SquircleCutoutWidget(
-                    borderRadius: 8.0,
-                    size: const Size(35, 35),
-                    color: Colors.white.withOpacity(0.15),
-                    child: Center(child: icon),
-                  ),
-            const SizedBox(width: 10),
-            Text(
-              thisButton["title"] ?? "",
-              style: widget.isSelected ? Manager.bodyStrongStyle.copyWith(color: lighten(col, 0.4)) : Manager.bodyStyle.copyWith(color: Colors.white.withOpacity(.75)),
-            ),
-          ],
-        ),
-        onPressed: () => widget.onCategoryPressed(widget.index),
-        expand: true,
-        isWide: true,
-        padding: const EdgeInsets.all(6),
-        isSmall: false,
-      ),
+
+    return CategoryTileButton(
+      title: thisButton["title"] ?? "",
+      icon: icon.icon!,
+      color: col,
+      isSelected: isSelected,
+      onPressed: () => onCategoryPressed(index),
+      bottomPadding: SettingsScreenState.settingsList.length - 1 != index ? 8.0 : 0.0,
     );
   }
 }

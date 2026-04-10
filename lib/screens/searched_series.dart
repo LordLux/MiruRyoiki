@@ -1309,21 +1309,6 @@ class SearchedSeriesScreenState extends State<SearchedSeriesScreen> {
     );
   }
 
-  /// Human-readable relative time
-  String _timeAgo(int? epochSeconds) {
-    if (epochSeconds == null) return '';
-
-    final dt = DateTime.fromMillisecondsSinceEpoch(epochSeconds * 1000);
-    final diff = now.difference(dt);
-
-    if (diff.inDays >= 365) return '${(diff.inDays / 365).floor()}y ago';
-    if (diff.inDays >= 30) return '${(diff.inDays / 30).floor()}mo ago';
-    if (diff.inDays >= 1) return '${diff.inDays}d ago';
-    if (diff.inHours >= 1) return '${diff.inHours}h ago';
-    if (diff.inMinutes >= 1) return '${diff.inMinutes}m ago';
-    return 'just now';
-  }
-
   List<Widget> buildRelationsSection(int _, List<RelationEdge> relations) {
     return [
       Text('Relations', style: Manager.subtitleStyle),
