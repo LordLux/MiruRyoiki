@@ -128,8 +128,8 @@ flutter:
     - assets/icons/anilist/offline_logo.si
 
     # Faces:
+    - assets/icons/
     - assets/icons/faces/
-    - assets/icons/stars/
     
   ### System Icons:
     - assets/system/icon.ico

@@ -22,6 +22,8 @@ enum LogLevel { none, error, warning, info, debug, trace }
 
 enum FirstDayOfWeek { sunday, monday, tuesday, wednesday, thursday, friday, saturday }
 
+enum DatePickerType { spinner, calendar }
+
 // EXTENSIONS
 extension ThemeX on ThemeMode {
   String get name_ => enumToString(this);
@@ -359,6 +361,16 @@ extension SortOrderX on SortOrder {
   static SortOrder fromString(String value, {SortOrder? defaultValue}) => fromStringX<SortOrder>(
         value,
         SortOrder.values,
+        defaultValue,
+      );
+}
+
+extension DatePickerTypeX on DatePickerType {
+  String get name_ => enumToString(this);
+
+  static DatePickerType fromString(String value, {DatePickerType? defaultValue}) => fromStringX<DatePickerType>(
+        value,
+        DatePickerType.values,
         defaultValue,
       );
 }

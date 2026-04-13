@@ -11,6 +11,7 @@ import 'package:material_symbols_icons/symbols.dart';
 import 'package:miruryoiki/utils/text.dart';
 import 'package:miruryoiki/widgets/buttons/loading_button.dart';
 import 'package:miruryoiki/widgets/page/infobar.dart';
+import 'package:miruryoiki/widgets/svg.dart';
 import 'package:provider/provider.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:toggle_switch/toggle_switch.dart' as toggle;
@@ -1608,6 +1609,32 @@ class SettingsScreenState extends State<SettingsScreen> with AutomaticKeepAliveC
               ),
             ],
           ),
+
+          // TODO when upgrading to fluent_ui 4.15+:
+          // VDiv(24),
+          // Row(
+          //   children: [
+          //     Text('Date Picker Type', style: Manager.bodyStyle),
+          //     const SizedBox(width: 12),
+          //     TooltipWrapper(
+          //       tooltip: 'Select the style of date picker (Calendar or Spinner).',
+          //       child: (_) {
+          //         return ComboBox<DatePickerType>(
+          //           value: settings.datePickerType,
+          //           items: DatePickerType.values.map((DatePickerType value) {
+          //             return ComboBoxItem<DatePickerType>(
+          //               value: value,
+          //               child: Text(value.name_),
+          //             );
+          //           }).toList(),
+          //           onChanged: (DatePickerType? newValue) {
+          //             if (newValue != null) setState(() => settings.datePickerType = newValue);
+          //           },
+          //         );
+          //       },
+          //     ),
+          //   ],
+          // ),
           VDiv(24),
           Text(
             'Suppress Close Warning',
@@ -2285,6 +2312,11 @@ class SettingsScreenState extends State<SettingsScreen> with AutomaticKeepAliveC
   List<Widget> _buildSonarrSettings(SettingsManager settings) {
     return [
       // Connection header
+      Row(
+        children: [
+          Text('Sonarr', style: Manager.titleStyle),
+        ],
+      ),
       Text('Connection', style: Manager.bodyStrongStyle),
       VDiv(12),
 
@@ -2423,6 +2455,30 @@ class SettingsScreenState extends State<SettingsScreen> with AutomaticKeepAliveC
           ],
         ],
       ),
+
+      VDiv(24),
+      InfoBar(
+        title: Text('Tip', style: Manager.bodyStrongStyle),
+        content: Row(
+          children: [
+            Text(
+              'You can find your API key in Sonarr under Settings → General → Security, or click',
+              style: Manager.bodyStyle,
+            ),
+            SizedBox(width: 12),
+            Transform.translate(
+              offset: Offset(0, 1),
+              child: WrappedHyperlinkButton(
+                text: 'here',
+                url: '${settings.sonarrBaseUrl.fallbackIfEmpty(SonarrRepository.defaultUrlPort)}/settings/general',
+                style: Manager.bodyStyle,
+                icon: Icon(mat.Icons.open_in_new, size: 16, color: getPrimaryColorBasedOnAccent()),
+              ),
+            ),
+          ],
+        ),
+        severity: InfoBarSeverity.info,
+      ),
       VDiv(24),
       Divider(),
 
@@ -2512,7 +2568,7 @@ class SettingsScreenState extends State<SettingsScreen> with AutomaticKeepAliveC
         content: Row(
           children: [
             Text(
-              'You can find your API key in Sonarr under Settings → General → Security, or click',
+              'You can find your Quality Profiles in Sonarr under Settings → Profiles, or click',
               style: Manager.bodyStyle,
             ),
             SizedBox(width: 12),
@@ -2520,8 +2576,8 @@ class SettingsScreenState extends State<SettingsScreen> with AutomaticKeepAliveC
               offset: Offset(0, 1),
               child: WrappedHyperlinkButton(
                 text: 'here',
-                url: '${settings.sonarrBaseUrl.fallbackIfEmpty(SonarrRepository.defaultUrlPort)}/settings/general',
-                style: Manager.bodyStyle.copyWith(color: getPrimaryColorBasedOnAccent()),
+                url: '${settings.sonarrBaseUrl.fallbackIfEmpty(SonarrRepository.defaultUrlPort)}/settings/profiles',
+                style: Manager.bodyStyle,
                 icon: Icon(mat.Icons.open_in_new, size: 16, color: getPrimaryColorBasedOnAccent()),
               ),
             ),
@@ -2538,10 +2594,11 @@ class SettingsScreenState extends State<SettingsScreen> with AutomaticKeepAliveC
     setState(() => _isSonarrLoading = true);
     try {
       // Use TorrentManager repo if available, otherwise create a temporary one
-      final repo = TorrentManager.sonarrRepository ?? SonarrRepository(
-        baseUrl: settings.sonarrBaseUrl,
-        apiKey: settings.sonarrApiKey,
-      );
+      final repo = TorrentManager.sonarrRepository ??
+          SonarrRepository(
+            baseUrl: settings.sonarrBaseUrl,
+            apiKey: settings.sonarrApiKey,
+          );
       final profiles = await repo.getQualityProfiles();
       final folders = await repo.getRootFolders();
       if (mounted) {
@@ -2555,9 +2612,9 @@ class SettingsScreenState extends State<SettingsScreen> with AutomaticKeepAliveC
           if (settings.sonarrQualityProfileId == 0 && profiles.isNotEmpty) {
             // Prefer a profile containing "1080" in the name
             final match = profiles.cast<SonarrQualityProfile?>().firstWhere(
-              (p) => p!.name.contains('1080'),
-              orElse: () => null,
-            );
+                  (p) => p!.name.contains('1080'),
+                  orElse: () => null,
+                );
             settings.sonarrQualityProfileId = match?.id ?? profiles.first.id;
           }
 
@@ -2589,8 +2646,8 @@ class SettingsScreenState extends State<SettingsScreen> with AutomaticKeepAliveC
       // Base URL
       Row(
         children: [
-          Text('Base URL', style: Manager.bodyStyle),
-          SizedBox(width: 24),
+          SizedBox(width: 100, child: Text('Base URL', style: Manager.bodyStyle)),
+          SizedBox(width: 12),
           Expanded(
             child: TextBox(
               controller: _qbitUrlController,
@@ -2614,8 +2671,8 @@ class SettingsScreenState extends State<SettingsScreen> with AutomaticKeepAliveC
       // Username
       Row(
         children: [
-          Text('Username', style: Manager.bodyStyle),
-          SizedBox(width: 24),
+          SizedBox(width: 100, child: Text('Username', style: Manager.bodyStyle)),
+          SizedBox(width: 12),
           Expanded(
             child: TextBox(
               controller: _qbitUsernameController,
@@ -2639,12 +2696,11 @@ class SettingsScreenState extends State<SettingsScreen> with AutomaticKeepAliveC
       // Password
       Row(
         children: [
-          Text('Password', style: Manager.bodyStyle),
-          SizedBox(width: 24),
+          SizedBox(width: 100, child: Text('Password', style: Manager.bodyStyle)),
+          SizedBox(width: 12),
           Expanded(
             child: PasswordBox(
               controller: _qbitPasswordController,
-              placeholder: 'qBittorrent password',
               onSubmitted: (value) {
                 settings.qbitPassword = value.trim();
                 _qbitTestResult = null;
@@ -2750,18 +2806,8 @@ class SettingsScreenState extends State<SettingsScreen> with AutomaticKeepAliveC
         content: Row(
           children: [
             Text(
-              'You can find your Username and Password in qBittorrent under Settings → Download Clients → qBittorrent, or click',
+              'You can find your Username and Password in qBittorrent under Settings → WebUI → Authentication',
               style: Manager.bodyStyle,
-            ),
-            SizedBox(width: 12),
-            Transform.translate(
-              offset: Offset(0, 1),
-              child: WrappedHyperlinkButton(
-                text: 'here',
-                url: '${settings.qbitBaseUrl.fallbackIfEmpty(QBittorrentRepository.defaultUrlPort)}/settings/general',
-                style: Manager.bodyStyle.copyWith(color: getPrimaryColorBasedOnAccent()),
-                icon: Icon(mat.Icons.open_in_new, size: 16, color: getPrimaryColorBasedOnAccent()),
-              ),
             ),
           ],
         ),

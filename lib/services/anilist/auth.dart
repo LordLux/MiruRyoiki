@@ -7,6 +7,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../utils/logging.dart';
+import '../../utils/storage.dart';
 import '../../utils/time.dart';
 
 const String mRyoikiAnilistScheme = 'mryoiki';
@@ -34,7 +35,7 @@ class AnilistAuthService {
   /// Initialize auth state from stored credentials
   Future<bool> init() async {
     try {
-      final credentialsJson = await _secureStorage.read(key: 'anilist_credentials');
+      final credentialsJson = await _secureStorage.read(key: secureKey('anilist_credentials'));
       if (credentialsJson != null) {
         final credentials = oauth2.Credentials.fromJson(credentialsJson);
 
@@ -98,7 +99,7 @@ class AnilistAuthService {
 
         // Save credentials
         await _secureStorage.write(
-          key: 'anilist_credentials',
+          key: secureKey('anilist_credentials'),
           value: credentials.toJson(),
         );
 
@@ -134,7 +135,7 @@ class AnilistAuthService {
 
         // Save new credentials
         await _secureStorage.write(
-          key: 'anilist_credentials',
+          key: secureKey('anilist_credentials'),
           value: newCredentials.toJson(),
         );
 
@@ -150,7 +151,7 @@ class AnilistAuthService {
 
   /// Log out by clearing stored credentials
   Future<void> logout() async {
-    await _secureStorage.delete(key: 'anilist_credentials');
+    await _secureStorage.delete(key: secureKey('anilist_credentials'));
     _client = null;
   }
 

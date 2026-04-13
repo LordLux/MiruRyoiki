@@ -2,6 +2,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:defer_pointer/defer_pointer.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/material.dart' as mat;
+import 'package:flutter_animated_fluent_emoji/flutter_animated_fluent_emoji.dart';
 import 'package:miruryoiki/enums.dart';
 import 'package:miruryoiki/utils/color.dart';
 import 'package:miruryoiki/utils/logging.dart';
@@ -233,8 +234,7 @@ class _EntryEditorShellState extends State<_EntryEditorShell> {
     super.dispose();
   }
 
-
-// Helpers
+  // Helpers
 
   String _stripCustomPrefix(String key) {
     if (key.startsWith(AnilistService.statusListPrefixCustom)) {
@@ -367,8 +367,7 @@ class _EntryEditorShellState extends State<_EntryEditorShell> {
     }
   }
 
-
-// Build
+  // Build
 
   @override
   Widget build(BuildContext context) {
@@ -778,7 +777,7 @@ class _EntryEditorShellState extends State<_EntryEditorShell> {
         MouseButtonWrapper(
           tooltip: 'Exit without saving',
           child: (_) => StandardButton(
-            onPressed: _isDeleting ? null : _confirmDelete,
+            onPressed: closeDialog,
             label: _isDeleting
                 ? const SizedBox(width: 14, height: 14, child: ProgressRing(strokeWidth: 2))
                 : const Padding(
@@ -820,8 +819,7 @@ class _EntryEditorShellState extends State<_EntryEditorShell> {
     );
   }
 
-
-// Field builders
+  // Field builders
 
   Widget _field(String label, Widget child) {
     return Column(
@@ -836,51 +834,81 @@ class _EntryEditorShellState extends State<_EntryEditorShell> {
   }
 
   Widget _dateField(String label, DateValue? value, ValueChanged<DateValue?> onChanged) {
-    final theme = FluentTheme.of(context);
-    final hasValue = value != null && !value.isEmpty;
-    final displayText = hasValue ? value.toString() : '';
-
+    // if (Manager.settings.datePickerType == DatePickerType.spinner) {
     return _field(
       label,
-      MouseButtonWrapper(
-        child: (_) => Button(
-          onPressed: () async {
-            final initial = value?.toDateTime();
-            final picked = await showDatePickerDialog(context, initial: initial);
-            if (picked != null) {
-              onChanged(DateValue.fromDateTime(picked));
-            }
-          },
-          style: ButtonStyle(
-            padding: const WidgetStatePropertyAll(EdgeInsets.symmetric(horizontal: 10, vertical: 6)),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(FluentIcons.calendar, size: 12, color: theme.typography.body?.color),
-              const SizedBox(width: 6),
-              Expanded(
-                child: Text(
-                  displayText,
-                  style: theme.typography.body?.copyWith(
-                    color: hasValue ? null : theme.typography.caption?.color,
-                  ),
-                  overflow: TextOverflow.ellipsis,
+      SizedBox(
+        height: 32,
+        child: Row(
+          children: [
+            Expanded(
+              child: DatePicker(
+                selected: value?.toDateTime(),
+                onChanged: (DateTime picked) {
+                  onChanged(DateValue.fromDateTime(picked));
+                },
+              ),
+            ),
+            if (value != null && !value.isEmpty)
+              Padding(
+                padding: const EdgeInsets.only(left: 8.0),
+                child: IconButton(
+                  icon: const Icon(FluentIcons.clear, size: 10),
+                  onPressed: () => onChanged(null),
                 ),
               ),
-              if (hasValue)
-                GestureDetector(
-                  onTap: () => onChanged(null),
-                  child: Padding(
-                    padding: const EdgeInsets.only(left: 4),
-                    child: Icon(FluentIcons.clear, size: 10, color: theme.typography.caption?.color),
-                  ),
-                ),
-            ],
-          ),
+          ],
         ),
       ),
     );
+    // }
+
+    // TODO when upgrading to fluent_ui 4.15+:
+    // final theme = FluentTheme.of(context);
+    // final hasValue = value != null && !value.isEmpty;
+    // final displayText = hasValue ? value.toString() : '';
+
+    // return _field(
+    //   label,
+    //   MouseButtonWrapper(
+    //     child: (_) => SizedBox(
+    //       height: 32,
+    //       child: Button(
+    //         onPressed: () async {
+    //           final initial = value?.toDateTime();
+    //           await showDatePickerDialog(context, initial: initial, onDateSelected: (date) => onChanged(DateValue.fromDateTime(date)));
+    //         },
+    //         style: ButtonStyle(padding: const WidgetStatePropertyAll(EdgeInsets.only(bottom: 4.3, top: 4.3, left: 11.5, right: 7))),
+    //         child: Row(
+    //           mainAxisSize: MainAxisSize.min,
+    //           children: [
+    //             FluentAnimatedIcon.image(
+    //               staticIcon: FluentAnimationStaticIcon.png('assets/icons/spiral_calendar_3d.png'),
+    //               animatedIcon: FluentAnimationAnimatedIcon.gif('assets/icons/spiral_calendar_animated.gif'),
+    //               playMode: FluentAnimationPlayMode.once,
+    //               size: 20,
+    //             ),
+    //             const SizedBox(width: 6),
+    //             Expanded(
+    //               child: Text(
+    //                 displayText,
+    //                 style: theme.typography.body?.copyWith(
+    //                   color: hasValue ? null : theme.typography.caption?.color,
+    //                 ),
+    //                 overflow: TextOverflow.ellipsis,
+    //               ),
+    //             ),
+    //             if (hasValue)
+    //               GestureDetector(
+    //                 onTap: () => onChanged(null),
+    //                 child: Padding(padding: const EdgeInsets.all(8.0), child: Icon(FluentIcons.clear, size: 10, color: theme.typography.caption?.color)),
+    //               ),
+    //           ],
+    //         ),
+    //       ),
+    //     ),
+    //   ),
+    // );
   }
 
   Widget _checkbox({required String label, required bool checked, required ValueChanged<bool?> onChanged}) {
@@ -904,15 +932,54 @@ class _EntryEditorShellState extends State<_EntryEditorShell> {
   }
 }
 
+// TODO when upgrading to fluent_ui 4.15+:
 /// Show a simple date picker dialog and return the selected date.
 ///
 /// Uses Flutter's native date picker (via showDatePicker) to avoid flyout
 /// issues when nested inside a managed dialog.
-Future<DateTime?> showDatePickerDialog(BuildContext context, {DateTime? initial}) async {
-  return mat.showDatePicker(
-    context: context,
-    initialDate: initial ?? DateTime.now(),
-    firstDate: DateTime(1970),
-    lastDate: DateTime.now().add(const Duration(days: 365)),
-  );
-}
+// Future<void> showDatePickerDialog(BuildContext context, {DateTime? initial, required void Function(DateTime)? onDateSelected}) async {
+//   DateTime selectedDate = initial ?? now;
+
+//   await showPaddedDialog(
+//     context,
+//     navigationItem: DialogNavigationItem(id: 'date-picker', title: 'Select Date'),
+//     builder: (context, item, options) {
+//       return PaddedDialog.simple(
+//         navigationItem: item,
+//         barrierOptions: options,
+//         title: Text('Select Date', style: Manager.titleStyle),
+//         constraints: BoxConstraints(
+//           maxWidth: 400,
+//           minWidth: 300,
+//           maxHeight: 450,
+//           minHeight: 350,
+//         ),
+//         content: StatefulBuilder(builder: (context, setState) {
+//           return CalendarView(
+//             initialStart: selectedDate,
+//             selectionMode: CalendarViewSelectionMode.single,
+//             isOutOfScopeEnabled: false,
+//             isGroupLabelVisible: false,
+//             onSelectionChanged: (value) {
+//               if (value.selectedDates.isNotEmpty) onDateSelected?.call(value.selectedDates.first);
+//             },
+//           );
+//         }),
+//         actions: [
+//           StandardButton.label(
+//             onPressed: closeDialog,
+//             label: 'Cancel',
+//           ),
+//           StandardButton.label(
+//             onPressed: () {
+//               onDateSelected?.call(selectedDate);
+//               closeDialog();
+//             },
+//             label: 'Save',
+//             isFilled: true,
+//           ),
+//         ],
+//       );
+//     },
+//   );
+// }

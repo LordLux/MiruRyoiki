@@ -12,6 +12,7 @@ import 'manager.dart';
 import 'theme.dart';
 import 'utils/time.dart';
 import 'utils/logging.dart';
+import 'utils/storage.dart';
 
 class SettingsManager extends ChangeNotifier {
   static final SettingsManager _instance = SettingsManager._internal();
@@ -89,6 +90,9 @@ class SettingsManager extends ChangeNotifier {
 
   FirstDayOfWeek get firstDayOfWeek => FirstDayOfWeekX.fromString(_getString('firstDayOfWeek', defaultValue: FirstDayOfWeek.monday.name_));
   set firstDayOfWeek(FirstDayOfWeek value) => _setString('firstDayOfWeek', value.name_);
+
+  DatePickerType get datePickerType => DatePickerTypeX.fromString(_getString('datePickerType', defaultValue: DatePickerType.calendar.name_));
+  set datePickerType(DatePickerType value) => _setString('datePickerType', value.name_);
 
   // Logging
   LogLevel get fileLogLevel => LogLevelX.fromString(_getString('fileLogLevel', defaultValue: LogLevel.error.name_));
@@ -177,7 +181,7 @@ class SettingsManager extends ChangeNotifier {
     if (_sonarrApiKey == value) return;
     _sonarrApiKey = value;
     sonarrConnectionVerified = false;
-    _secureStorage.write(key: 'sonarrApiKey', value: value);
+    _secureStorage.write(key: secureKey('sonarrApiKey'), value: value);
     notifyListeners();
   }
 
@@ -212,7 +216,7 @@ class SettingsManager extends ChangeNotifier {
     if (_qbitPassword == value) return;
     _qbitPassword = value;
     qbitConnectionVerified = false;
-    _secureStorage.write(key: 'qbitPassword', value: value);
+    _secureStorage.write(key: secureKey('qbitPassword'), value: value);
     notifyListeners();
   }
 
@@ -375,8 +379,8 @@ class SettingsManager extends ChangeNotifier {
 
   /// Load secrets from encrypted storage
   Future<void> _loadSecureSettings() async {
-    _sonarrApiKey = await _secureStorage.read(key: 'sonarrApiKey') ?? '';
-    _qbitPassword = await _secureStorage.read(key: 'qbitPassword') ?? '';
+    _sonarrApiKey = await _secureStorage.read(key: secureKey('sonarrApiKey')) ?? '';
+    _qbitPassword = await _secureStorage.read(key: secureKey('qbitPassword')) ?? '';
   }
 
   // Save a single setting to DB
@@ -428,8 +432,8 @@ class SettingsManager extends ChangeNotifier {
       _settingsDao?.deleteKey(key);
     }
     // Clear secure storage secrets
-    await _secureStorage.delete(key: 'qbitPassword');
-    await _secureStorage.delete(key: 'sonarrApiKey');
+    await _secureStorage.delete(key: secureKey('qbitPassword'));
+    await _secureStorage.delete(key: secureKey('sonarrApiKey'));
     _qbitPassword = '';
     _sonarrApiKey = '';
     notifyListeners();
