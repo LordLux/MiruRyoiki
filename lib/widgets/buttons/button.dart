@@ -6,7 +6,14 @@ import '../../utils/color.dart';
 import '../../utils/text.dart';
 import 'wrapper.dart';
 
+const _kDefaultBuilder = _defaultBuilder;
+Widget _defaultBuilder(Widget child) => child;
+
 /// A customizable button widget with loading and tooltip capabilities.
+///
+/// When [onPressed] is null, the button acts as a styled display container:
+/// no pointer interaction, cursor defaults to [SystemMouseCursors.basic],
+/// and hover color is still shown via the surrounding [MouseRegion].
 class StandardButton extends StatefulWidget {
   final Widget label;
   final VoidCallback? onPressed;
@@ -15,18 +22,39 @@ class StandardButton extends StatefulWidget {
   final bool isWide;
   final bool isLoading;
   final bool isFilled;
+
+  /// When true, always shows the filled background color regardless of hover
+  /// state. Useful for "selected" display-only containers.
+  final bool isSelected;
+
   final String? tooltip;
   final Widget? tooltipWidget;
   final bool expand;
   final bool expandY;
   final Duration? tooltipWaitDuration;
   final EdgeInsets? padding;
-  final Color filledColor;
-  final Color hoverFillColor;
-  final double? forcedHeight;
-  final MouseCursor cursor;
 
-  StandardButton({
+  /// Override for the rest/pressed background color.
+  ///   - Filled:     defaults to [Manager.accentColor.lighter]
+  ///   - Non-filled: defaults to [FluentTheme.of(context).resources.controlFillColorDefault]
+  final Color? backgroundColor;
+
+  /// Override for the hover background color.
+  ///   - Filled:     defaults to [Manager.accentColor.lightest]
+  ///   - Non-filled: defaults to [FluentTheme.of(context).resources.controlFillColorSecondary]
+  final Color? hoverColor;
+
+  final double? forcedHeight;
+
+  /// Override for the mouse cursor. When null:
+  ///   - [onPressed] is null → [SystemMouseCursors.basic]
+  ///   - Otherwise           → [SystemMouseCursors.click]
+  final MouseCursor? cursor;
+
+  final Widget Function(Widget child) builder;
+  final Widget? background;
+
+  const StandardButton({
     super.key,
     required this.label,
     required this.onPressed,
@@ -34,6 +62,7 @@ class StandardButton extends StatefulWidget {
     this.isSmall = true,
     this.isWide = true,
     this.isFilled = false,
+    this.isSelected = false,
     this.isLoading = false,
     this.tooltip,
     this.tooltipWidget,
@@ -42,12 +71,12 @@ class StandardButton extends StatefulWidget {
     this.tooltipWaitDuration,
     this.padding,
     this.forcedHeight,
-    MouseCursor? cursor,
-    Color? filledColor,
-    Color? hoverFillColor,
-  })  : filledColor = filledColor ?? Manager.accentColor.lighter,
-        cursor = cursor ?? SystemMouseCursors.click,
-        hoverFillColor = hoverFillColor ?? Manager.accentColor.lightest;
+    this.cursor,
+    this.backgroundColor,
+    this.hoverColor,
+    this.builder = _kDefaultBuilder,
+    this.background,
+  });
 
   factory StandardButton.iconLabel({
     GlobalKey? key,
@@ -59,6 +88,7 @@ class StandardButton extends StatefulWidget {
     bool isWide = true,
     bool switchIconWithLabel = false,
     bool isFilled = false,
+    bool isSelected = false,
     bool isLoading = false,
     String? tooltip,
     Widget? tooltipWidget,
@@ -67,9 +97,11 @@ class StandardButton extends StatefulWidget {
     Duration? tooltipWaitDuration,
     EdgeInsets? padding,
     TextStyle? textStyle,
-    Color? filledColor,
-    Color? hoverFillColor,
+    Color? backgroundColor,
+    Color? hoverColor,
     MouseCursor? cursor,
+    Widget Function(Widget child) builder = _kDefaultBuilder,
+    Widget? background,
   }) {
     final leftPad = const EdgeInsets.only(left: 4);
     final rightPad = const EdgeInsets.only(right: 4);
@@ -94,6 +126,7 @@ class StandardButton extends StatefulWidget {
       isSmall: isSmall,
       isWide: isWide,
       isFilled: isFilled,
+      isSelected: isSelected,
       isLoading: isLoading,
       tooltip: tooltip,
       tooltipWidget: tooltipWidget,
@@ -101,9 +134,11 @@ class StandardButton extends StatefulWidget {
       expandY: expandY,
       tooltipWaitDuration: tooltipWaitDuration,
       padding: padding,
-      filledColor: filledColor,
-      hoverFillColor: hoverFillColor,
+      backgroundColor: backgroundColor,
+      hoverColor: hoverColor,
       cursor: cursor,
+      builder: builder,
+      background: background,
     );
   }
 
@@ -115,6 +150,7 @@ class StandardButton extends StatefulWidget {
     bool isSmall = true,
     bool isWide = true,
     bool isFilled = false,
+    bool isSelected = false,
     bool isLoading = false,
     String? tooltip,
     Widget? tooltipWidget,
@@ -122,10 +158,11 @@ class StandardButton extends StatefulWidget {
     bool expandY = false,
     Duration? tooltipWaitDuration,
     EdgeInsets? padding,
-    TextStyle? textStyle,
-    Color? filledColor,
-    Color? hoverFillColor,
+    Color? backgroundColor,
+    Color? hoverColor,
     MouseCursor? cursor,
+    Widget Function(Widget child) builder = _kDefaultBuilder,
+    Widget? background,
   }) {
     return StandardButton(
       key: key,
@@ -135,18 +172,22 @@ class StandardButton extends StatefulWidget {
       isSmall: isSmall,
       isWide: isWide,
       isFilled: isFilled,
+      isSelected: isSelected,
       isLoading: isLoading,
       tooltip: tooltip,
       tooltipWidget: tooltipWidget,
       expand: expand,
       expandY: expandY,
       tooltipWaitDuration: tooltipWaitDuration,
-      padding: padding ?? (isSmall ? EdgeInsets.symmetric(horizontal: 6, vertical: 4) : null),
-      filledColor: filledColor,
-      hoverFillColor: hoverFillColor,
+      padding: padding ?? (isSmall ? const EdgeInsets.symmetric(horizontal: 6, vertical: 4) : null),
+      backgroundColor: backgroundColor,
+      hoverColor: hoverColor,
       cursor: cursor,
+      builder: builder,
+      background: background,
     );
   }
+
   factory StandardButton.label({
     GlobalKey? key,
     required String label,
@@ -155,6 +196,7 @@ class StandardButton extends StatefulWidget {
     bool isSmall = true,
     bool isWide = true,
     bool isFilled = false,
+    bool isSelected = false,
     bool isLoading = false,
     String? tooltip,
     Widget? tooltipWidget,
@@ -163,9 +205,11 @@ class StandardButton extends StatefulWidget {
     Duration? tooltipWaitDuration,
     EdgeInsets? padding,
     TextStyle? textStyle,
-    Color? filledColor,
-    Color? hoverFillColor,
+    Color? backgroundColor,
+    Color? hoverColor,
     MouseCursor? cursor,
+    Widget Function(Widget child) builder = _kDefaultBuilder,
+    Widget? background,
   }) {
     return StandardButton(
       key: key,
@@ -175,6 +219,7 @@ class StandardButton extends StatefulWidget {
       isSmall: isSmall,
       isWide: isWide,
       isFilled: isFilled,
+      isSelected: isSelected,
       expand: expand,
       expandY: expandY,
       tooltip: tooltip,
@@ -182,9 +227,11 @@ class StandardButton extends StatefulWidget {
       isLoading: isLoading,
       tooltipWaitDuration: tooltipWaitDuration,
       padding: padding,
-      filledColor: filledColor,
-      hoverFillColor: hoverFillColor,
+      backgroundColor: backgroundColor,
+      hoverColor: hoverColor,
       cursor: cursor,
+      builder: builder,
+      background: background,
     );
   }
 
@@ -193,100 +240,114 @@ class StandardButton extends StatefulWidget {
 }
 
 class _StandardButtonState extends State<StandardButton> {
-  late Color _previousFilledColor;
-  late Color? _previousHoverFillColor;
-  late bool _previousIsFilled;
+  /// Last resolved background color (rest state), used as the animation start
+  /// for the next color transition.
+  Color? _prevBg;
 
-  @override
-  void initState() {
-    super.initState();
-    _previousFilledColor = widget.filledColor;
-    _previousHoverFillColor = widget.hoverFillColor;
-    _previousIsFilled = widget.isFilled;
+  /// Last resolved hover color, used as the animation start for the next
+  /// color transition.
+  Color? _prevHover;
+
+  Color _resolveBg(BuildContext ctx) {
+    if (widget.backgroundColor != null) return widget.backgroundColor!;
+    final resources = FluentTheme.of(ctx).resources;
+    return widget.isFilled ? Manager.accentColor.lighter : resources.controlFillColorDefault;
   }
 
-  @override
-  void didUpdateWidget(StandardButton oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.filledColor != widget.filledColor) {
-      _previousFilledColor = oldWidget.filledColor;
-    }
-    if (oldWidget.hoverFillColor != widget.hoverFillColor) {
-      _previousHoverFillColor = oldWidget.hoverFillColor;
-    }
-    if (oldWidget.isFilled != widget.isFilled) {
-      _previousIsFilled = oldWidget.isFilled;
-    }
+  Color _resolveHover(BuildContext ctx) {
+    if (widget.hoverColor != null) return widget.hoverColor!;
+    final resources = FluentTheme.of(ctx).resources;
+    return widget.isFilled ? Manager.accentColor.lightest : resources.controlFillColorSecondary;
+  }
+
+  Color _resolvePressed(BuildContext ctx) {
+    // For filled: same as rest (accent lighter).
+    // For non-filled: use the theme's "tertiary" fill (darker than secondary).
+    // If the caller provided a backgroundColor override, keep that for pressed too.
+    if (widget.backgroundColor != null) return widget.backgroundColor!;
+    final resources = FluentTheme.of(ctx).resources;
+    return widget.isFilled ? Manager.accentColor.lighter : resources.controlFillColorTertiary;
   }
 
   @override
   Widget build(BuildContext context) {
+    final bg = _resolveBg(context);
+    final hover = _resolveHover(context);
+    final pressed = _resolvePressed(context);
+
+    // Capture previous values for the animation start, then update stored
+    // values so the NEXT change animates from where we currently are.
+    final fromBg = _prevBg ?? bg;
+    final fromHover = _prevHover ?? hover;
+    _prevBg = bg;
+    _prevHover = hover;
+
+    final foregroundColor = getPrimaryColorBasedOnAccent();
+
+    final effectiveCursor = widget.cursor ?? (widget.onPressed == null && !widget.isLoading && !widget.isButtonDisabled ? SystemMouseCursors.basic : SystemMouseCursors.click);
+
     Widget buttonWidget = MouseButtonWrapper(
       isButtonDisabled: widget.isButtonDisabled,
       isLoading: widget.isLoading,
-      cursor: widget.cursor,
+      cursor: effectiveCursor,
       tooltip: widget.tooltip,
       tooltipWaitDuration: widget.tooltipWaitDuration,
       tooltipWidget: widget.tooltipWidget,
-      child: (isHovered) {
-        // Get foreground color based on accent
-        final foregroundColor = getPrimaryColorBasedOnAccent();
-
-        return TweenAnimationBuilder<Color?>(
-          tween: ColorTween(
-            begin: _previousIsFilled != widget.isFilled ? (widget.isFilled ? Colors.transparent : _previousFilledColor) : _previousFilledColor,
-            end: widget.filledColor,
-          ),
+      child: (isHovered) => TweenAnimationBuilder<Color?>(
+        tween: ColorTween(begin: fromBg, end: bg),
+        duration: dimDuration,
+        builder: (context, animBg, _) => TweenAnimationBuilder<Color?>(
+          tween: ColorTween(begin: fromHover, end: hover),
           duration: dimDuration,
-          builder: (context, animatedFilledColor, _) {
-            return TweenAnimationBuilder<Color?>(
-              tween: ColorTween(
-                begin: _previousHoverFillColor,
-                end: widget.hoverFillColor,
+          builder: (context, animHover, _) => AbsorbPointer(
+            absorbing: widget.isButtonDisabled || widget.isLoading || widget.onPressed == null,
+            child: Button(
+              onPressed: widget.isButtonDisabled ? null : widget.onPressed,
+              style: ButtonStyle(
+                backgroundColor: WidgetStateProperty.resolveWith((states) {
+                  if (widget.isSelected) return animBg;
+                  if (states.isPressed) return pressed;
+                  // Use isHovered from MouseRegion so hover works even when
+                  // onPressed == null (Button is disabled, states.isHovered won't fire).
+                  if (isHovered) return animHover;
+                  return animBg;
+                }),
+                foregroundColor: WidgetStatePropertyAll(foregroundColor),
+                padding: WidgetStatePropertyAll(EdgeInsets.zero),
               ),
-              duration: dimDuration,
-              builder: (context, animatedHoverColor, _) {
-                return Button(
-                  onPressed: widget.isButtonDisabled ? null : widget.onPressed,
-                  style: (widget.isFilled
-                          ? FluentTheme.of(context).buttonTheme.filledButtonStyle!.copyWith(
-                                backgroundColor: WidgetStateProperty.all<Color?>(isHovered ? animatedHoverColor : animatedFilledColor),
-                                foregroundColor: WidgetStatePropertyAll(foregroundColor),
-                              )
-                          : ButtonStyle())
-                      .copyWith(padding: WidgetStatePropertyAll(EdgeInsets.zero)),
-                  child: SizedBox(
-                    height: widget.forcedHeight ?? (widget.isSmall ? 32 : 48),
-                    child: Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        AnimatedContainer(
-                          duration: dimDuration,
-                          curve: Curves.easeInOut,
-                          color: widget.isFilled ? (isHovered ? animatedHoverColor : animatedFilledColor) : Colors.transparent,
-                          child: AnimatedSlide(
-                            offset: Offset.zero,
-                            duration: shortStickyHeaderDuration,
-                            curve: Curves.easeInOut,
-                            child: Padding(
-                              padding: widget.padding ?? EdgeInsets.symmetric(horizontal: widget.isWide ? 16 : 12),
-                              child: AnimatedDefaultTextStyle(
-                                duration: dimDuration,
-                                style: getStyleBasedOnAccent(widget.isFilled),
-                                child: widget.label,
-                              ),
+              child: SizedBox(
+                height: widget.forcedHeight ?? (widget.isSmall ? 32 : 48),
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    if (widget.background != null) Positioned.fill(child: widget.background!),
+                    widget.builder(
+                      AnimatedSlide(
+                        offset: Offset.zero,
+                        duration: shortStickyHeaderDuration,
+                        curve: Curves.easeInOut,
+                        child: Padding(
+                          padding: widget.padding ?? EdgeInsets.symmetric(horizontal: widget.isWide ? 16 : 12),
+                          child: FluentTheme(
+                            data: FluentTheme.of(context).copyWith(
+                              iconTheme: FluentTheme.of(context).iconTheme.copyWith(color: getIconColorBasedOnAccent(widget.isFilled)),
+                            ),
+                            child: AnimatedDefaultTextStyle(
+                              duration: dimDuration,
+                              style: getStyleBasedOnAccent(widget.isFilled),
+                              child: widget.label,
                             ),
                           ),
                         ),
-                      ],
+                      ),
                     ),
-                  ),
-                );
-              },
-            );
-          },
-        );
-      },
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
     );
 
     if (widget.expand || widget.expandY) {

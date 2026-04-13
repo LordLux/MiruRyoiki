@@ -101,11 +101,15 @@ String formatTimeMagnitude(
 
   final parts = <int>[years, months, weeks, days, hours, minutes, seconds];
 
-  // Find the first non-zero unit and emit up to [maxUnits] consecutive units.
+  // Find the first non-zero unit and emit up to [maxUnits] consecutive non-zero units.
+  // Find the first non-zero unit and emit up to [maxUnits] non-zero units,
+  // skipping zero-valued units that may appear between them.
   final pieces = <String>[];
   var startedAt = -1;
   for (var i = 0; i < parts.length && pieces.length < maxUnits; i++) {
-    if (parts[i] == 0 && startedAt == -1) continue;
+    if (parts[i] == 0) {
+      continue;
+    }
     if (startedAt == -1) startedAt = i;
     pieces.add(_renderUnit(parts[i], i, style));
   }

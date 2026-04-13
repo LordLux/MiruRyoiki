@@ -13,6 +13,8 @@ class AnimatedIconLabelButton extends StatefulWidget {
   final VoidCallback onPressed;
   final Duration tooltipWaitDuration;
   final String? tooltip;
+  final double height;
+  final AlignmentGeometry buttonAlignment;
 
   const AnimatedIconLabelButton({
     super.key,
@@ -21,6 +23,8 @@ class AnimatedIconLabelButton extends StatefulWidget {
     required this.onPressed,
     this.tooltipWaitDuration = const Duration(milliseconds: 400),
     this.tooltip,
+    this.height = 35,
+    this.buttonAlignment = Alignment.centerRight,
   });
 
   @override
@@ -32,67 +36,72 @@ class _AnimatedIconLabelButtonState extends State<AnimatedIconLabelButton> with 
 
   @override
   Widget build(BuildContext context) {
-    // final Duration shortDuration = mediumDuration * 3;
     final textWidth = measureTextWidth(widget.label) + 10;
-    return AnimatedContainer(
-      height: 30,
-      duration: shortDuration,
-      width: _isHovered ? textWidth + 24 : 30,
-      curve: Curves.easeInOutQuad,
-      child: TooltipWrapper(
-        tooltip: widget.tooltip ?? '',
-        child: (_) => MouseRegion(
-          onEnter: (_) => setState(() => _isHovered = true),
-          onExit: (_) => setState(() => _isHovered = false),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(4),
-            child: StandardButton.icon(
-              onPressed: widget.onPressed,
-              icon: Stack(
-                clipBehavior: Clip.antiAlias,
-                alignment: Alignment.centerRight,
-                children: [
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: Transform.translate(
-                      offset: const Offset(-1, 0),
-                      child: Padding(
-                        padding: const EdgeInsets.only(right: 6.0),
-                        child: AnimatedRotation(
-                          turns: _isHovered ? 0 : 0,
-                          duration: shortDuration,
-                          child: widget.icon(_isHovered),
-                        ),
-                      ),
-                    ),
-                  ),
-                  ClipRRect(
-                    child: AnimatedOpacity(
-                      opacity: _isHovered ? 1.0 : 0.0,
-                      duration: shortDuration,
-                      child: AnimatedTranslate(
-                        offset: Offset(0, -0.5),
-                        duration: shortDuration,
-                        curve: Curves.easeInOutQuad,
-                        child: Padding(
-                          padding: const EdgeInsets.only(left: 22.0, right: 8.0),
-                          child: Text(
-                            widget.label,
-                            overflow: TextOverflow.visible,
-                            softWrap: false,
-                            maxLines: 1,
-                            style: Manager.bodyStyle.copyWith(fontSize: 12),
+    
+    return Stack(
+      alignment: widget.buttonAlignment,
+      children: [
+        AnimatedContainer(
+          height: widget.height,
+          duration: shortDuration,
+          width: _isHovered ? textWidth + 29 : widget.height,
+          curve: Curves.easeInOutQuad,
+          child: TooltipWrapper(
+            tooltip: widget.tooltip ?? '',
+            child: (_) => MouseRegion(
+              onEnter: (_) => setState(() => _isHovered = true),
+              onExit: (_) => setState(() => _isHovered = false),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(4),
+                child: StandardButton.icon(
+                  onPressed: widget.onPressed,
+                  icon: Stack(
+                    clipBehavior: Clip.antiAlias,
+                    alignment: Alignment.centerRight,
+                    children: [
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: Transform.translate(
+                          offset: const Offset(-1, 0),
+                          child: Padding(
+                            padding: const EdgeInsets.only(left: 2.5),
+                            child: AnimatedRotation(
+                              turns: _isHovered ? 0 : 0,
+                              duration: shortDuration,
+                              child: widget.icon(_isHovered),
+                            ),
                           ),
                         ),
                       ),
-                    ),
+                      ClipRRect(
+                        child: AnimatedOpacity(
+                          opacity: _isHovered ? 1.0 : 0.0,
+                          duration: shortDuration,
+                          child: AnimatedTranslate(
+                            offset: Offset(0, -0.5),
+                            duration: shortDuration,
+                            curve: Curves.easeInOutQuad,
+                            child: Padding(
+                              padding: const EdgeInsets.only(left: 22.0, right: 6.0),
+                              child: Text(
+                                widget.label,
+                                overflow: TextOverflow.visible,
+                                softWrap: false,
+                                maxLines: 1,
+                                style: Manager.bodyStyle.copyWith(fontSize: 12),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
             ),
           ),
         ),
-      ),
+      ],
     );
   }
 }

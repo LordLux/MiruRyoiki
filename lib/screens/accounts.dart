@@ -36,6 +36,7 @@ import '../utils/logging.dart';
 import '../utils/screen.dart';
 import '../widgets/activity_graph.dart';
 import '../widgets/animated_stats_counter.dart';
+import '../widgets/buttons/button.dart';
 import '../widgets/buttons/highlighted_button.dart';
 import '../widgets/buttons/hyperlink.dart';
 import '../widgets/buttons/loading_button.dart';
@@ -351,28 +352,31 @@ class AccountsScreenState extends State<AccountsScreen> with AutomaticKeepAliveC
         },
       ),
       VDiv(8),
-      LoadingButton(
-        expand: true,
-        tooltip: 'Logout from Anilist',
-        hoverFillColor: Color.fromARGB(176, 94, 26, 26),
-        label: 'Logout',
-        isLoading: false,
-        isBigEvenWithoutLoading: true,
-        onPressed: () async {
-          await showSimpleManagedDialog(
-            context,
-            id: 'accounts:anilist-logout',
-            title: 'Logout from Anilist',
-            body: 'Are you sure you want to logout from Anilist?',
-            onPositive: () async {
-              await anilistProvider.logout();
-              Manager.setState(() => isLocalLoading = false);
-              logInfo('User logged out of Anilist');
-            },
-            positiveButtonText: 'Yes, Log Out',
-            onNegative: () => logInfo('User cancelled Anilist logout'),
-          );
-        },
+      SizedBox(
+        height: 60,
+        child: StandardButton.label(
+          label: 'Logout',
+          expand: true,
+          expandY: true,
+          tooltip: 'Logout from Anilist',
+          hoverColor: Color.fromARGB(176, 94, 26, 26),
+          isLoading: false,
+          onPressed: () async {
+            await showSimpleManagedDialog(
+              context,
+              id: 'accounts:anilist-logout',
+              title: 'Logout from Anilist',
+              body: 'Are you sure you want to logout from Anilist?',
+              onPositive: () async {
+                await anilistProvider.logout();
+                Manager.setState(() => isLocalLoading = false);
+                logInfo('User logged out of Anilist');
+              },
+              positiveButtonText: 'Yes, Log Out',
+              onNegative: () => logInfo('User cancelled Anilist logout'),
+            );
+          },
+        ),
       ),
     ];
   }
@@ -415,8 +419,8 @@ class AccountsScreenState extends State<AccountsScreen> with AutomaticKeepAliveC
                           ? 'Cancel the Log in Attempt'
                           : 'Click to Log into Anilist, this will open your web browser and direct you to the Anilist login page',
                       isBigEvenWithoutLoading: true,
-                      filledColor: isLoadHovering ? Colors.red.toAccentColor().lighter : null,
-                      hoverFillColor: isLoadHovering ? Colors.red.toAccentColor().lightest : null,
+                      backgroundColor: isLoadHovering ? Colors.red.toAccentColor().lighter : null,
+                      hoverColor: isLoadHovering ? Colors.red.toAccentColor().lightest : null,
                       isFilled: true,
                       onPressed: () async {
                         if (isLoadHovering) {

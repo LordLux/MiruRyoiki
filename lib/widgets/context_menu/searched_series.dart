@@ -7,6 +7,7 @@ import 'package:flutter_desktop_context_menu/flutter_desktop_context_menu.dart';
 import '../../models/anilist/anime_card.dart';
 import '../../utils/anilist_utils.dart';
 import '../../utils/icons.dart' as icons;
+import '../dialogs/entry_editor.dart';
 import 'controller.dart';
 
 class SearchedSeriesContextMenu extends StatefulWidget {
@@ -69,6 +70,12 @@ class SearchedSeriesContextMenuState extends State<SearchedSeriesContextMenu> {
     return Menu(
       items: [
         MenuItem(
+          label: 'Add to Library',
+          icon: icons.list,
+          onClick: (_) => _openEntryEditor(context),
+        ),
+        MenuItem.separator(),
+        MenuItem(
           label: 'Open in Anilist',
           shortcutKey: 'a',
           icon: icons.anilist,
@@ -80,6 +87,19 @@ class SearchedSeriesContextMenuState extends State<SearchedSeriesContextMenu> {
   }
 
   void _openInAnilist(BuildContext context) => openAnilistAnime(widget.series.id);
+
+  void _openEntryEditor(BuildContext context) {
+    final s = widget.series;
+    final displayTitle = s.title.userPreferred ?? s.title.romaji ?? s.title.english ?? 'Unknown';
+    showEntryEditorDialog(
+      context,
+      mediaId: s.id,
+      title: displayTitle,
+      totalEpisodes: s.episodes,
+      coverImage: s.coverImage,
+      isFavourite: s.isFavourite,
+    );
+  }
 
   @override
   Widget build(BuildContext context) => widget.child;

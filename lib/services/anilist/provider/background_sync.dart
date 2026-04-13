@@ -82,33 +82,48 @@ extension AnilistProviderBackgroundSync on AnilistProvider {
     for (final mutation in mutations) {
       try {
         bool success = false;
+        final changes = mutation.changes;
 
         switch (mutation.type) {
-          // TODO use enum for mutation types
           case 'progress':
-            final progress = mutation.changes['progress'] as int?;
-            if (progress != null) //
+            final progress = changes['progress'] as int?;
+            if (progress != null)
               success = await _anilistService.updateProgress(mutation.mediaId, progress);
 
-            break;
-
           case 'status':
-            final statusStr = mutation.changes['status'] as String?;
+            final statusStr = changes['status'] as String?;
             if (statusStr != null) {
               final status = statusStr.toListStatus();
-              if (status != null) //
+              if (status != null)
                 success = await _anilistService.updateStatus(mutation.mediaId, status);
             }
-            break;
 
           case 'score':
-            final score = mutation.changes['score'] as int?;
-            if (score != null) //
+            final score = changes['score'] as int?;
+            if (score != null)
               success = await _anilistService.updateScore(mutation.mediaId, score);
 
-            break;
+          case 'save_entry':
+            final entry = await _anilistService.saveMediaListEntry(
+              mediaId: mutation.mediaId,
+              status: (changes['status'] as String?)?.toListStatus(),
+              scoreRaw: changes['score'] as int?,
+              progress: changes['progress'] as int?,
+              repeat: changes['repeat'] as int?,
+              priority: changes['priority'] as int?,
+              private: changes['private'] as bool?,
+              notes: changes['notes'] as String?,
+              hiddenFromStatusLists: changes['hiddenFromStatusLists'] as bool?,
+              customLists: (changes['customLists'] as List?)?.cast<String>(),
+              startedAt: changes['startedAt'] != null ? DateValue.fromJson(Map<String, dynamic>.from(changes['startedAt'])) : null,
+              completedAt: changes['completedAt'] != null ? DateValue.fromJson(Map<String, dynamic>.from(changes['completedAt'])) : null,
+            );
+            success = entry != null;
 
-          // TODO Handle other mutation types
+          case 'delete_entry':
+            final entryId = changes['entryId'] as int?;
+            if (entryId != null)
+              success = await _anilistService.deleteMediaListEntry(entryId);
         }
 
         if (success) {

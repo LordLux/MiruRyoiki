@@ -1,3 +1,5 @@
+// ignore_for_file: constant_identifier_names
+
 import 'package:miruryoiki/enums.dart';
 import 'package:provider/provider.dart';
 import 'package:recase/recase.dart';
@@ -7,10 +9,33 @@ import '../../services/anilist/provider/anilist_provider.dart';
 import '../../services/anilist/queries/anilist_service.dart';
 import 'anime.dart';
 
+/// AniList score format — mirrors the values of the GraphQL enum.
+enum AnilistScoreFormat {
+  /// 0-100, integer.
+  POINT_100,
+  /// 0-10 with 1 decimal place.
+  POINT_10_DECIMAL,
+  /// 0-10, integer.
+  POINT_10,
+  /// 0-5 stars.
+  POINT_5,
+  /// :( / :| / :) smileys (internally 1/2/3 or 0 unrated).
+  POINT_3;
+
+  static AnilistScoreFormat? fromString(String? s) {
+    if (s == null) return null;
+    for (final v in AnilistScoreFormat.values) {
+      if (v.name == s) return v;
+    }
+    return null;
+  }
+}
+
 class AnilistUserData {
   final String? about;
   final String? siteUrl;
   final Options? options;
+  final AnilistScoreFormat? scoreFormat;
   final MediaStatistics? mediaStatistics;
   final Favourites? favourites;
   final Statistics? statistics;
@@ -24,6 +49,7 @@ class AnilistUserData {
     this.about,
     this.siteUrl,
     this.options,
+    this.scoreFormat,
     this.mediaStatistics,
     this.favourites,
     this.statistics,
@@ -35,10 +61,19 @@ class AnilistUserData {
   });
 
   factory AnilistUserData.fromJson(Map<String, dynamic> json) {
+    AnilistScoreFormat? parsedScoreFormat;
+    final mlo = json['mediaListOptions'];
+    if (mlo is Map) {
+      parsedScoreFormat = AnilistScoreFormat.fromString(mlo['scoreFormat']?.toString());
+    }
+    // Also support flat 'scoreFormat' (e.g. cached JSON)
+    parsedScoreFormat ??= AnilistScoreFormat.fromString(json['scoreFormat']?.toString());
+
     return AnilistUserData(
       about: json['about'],
       siteUrl: json['siteUrl'],
       options: json['options'] != null ? Options.fromJson(json['options']) : null,
+      scoreFormat: parsedScoreFormat,
       mediaStatistics: json['mediaStatistics'] != null ? MediaStatistics.fromJson(json['mediaStatistics']) : null,
       favourites: json['favourites'] != null ? Favourites.fromJson(json['favourites']) : null,
       statistics: json['statistics'] != null ? Statistics.fromJson(json['statistics']) : null,
@@ -55,6 +90,7 @@ class AnilistUserData {
       'about': about,
       'siteUrl': siteUrl,
       'options': options?.toJson(),
+      'scoreFormat': scoreFormat?.name,
       'mediaStatistics': mediaStatistics?.toJson(),
       'favourites': favourites?.toJson(),
       'statistics': statistics?.toJson(),
@@ -64,6 +100,36 @@ class AnilistUserData {
       'updatedAt': updatedAt,
       'stats': stats?.toJson(),
     };
+  }
+
+  AnilistUserData copyWith({
+    String? about,
+    String? siteUrl,
+    Options? options,
+    AnilistScoreFormat? scoreFormat,
+    MediaStatistics? mediaStatistics,
+    Favourites? favourites,
+    Statistics? statistics,
+    int? donatorTier,
+    String? donatorBadge,
+    int? createdAt,
+    int? updatedAt,
+    AnilistStats? stats,
+  }) {
+    return AnilistUserData(
+      about: about ?? this.about,
+      siteUrl: siteUrl ?? this.siteUrl,
+      options: options ?? this.options,
+      scoreFormat: scoreFormat ?? this.scoreFormat,
+      mediaStatistics: mediaStatistics ?? this.mediaStatistics,
+      favourites: favourites ?? this.favourites,
+      statistics: statistics ?? this.statistics,
+      donatorTier: donatorTier ?? this.donatorTier,
+      donatorBadge: donatorBadge ?? this.donatorBadge,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      stats: stats ?? this.stats,
+    );
   }
 
   /// Hash code for UI-affecting properties only
@@ -966,7 +1032,7 @@ class AnilistStats {
   });
 
   factory AnilistStats.fromJson(Map<String, dynamic> json) {
-    final activityHistoryJson = json['activityHistory'] as List<dynamic>;
+    final activityHistoryJson = json['activityHistory'] as List<dynamic>? ?? [];
     return AnilistStats(
       activityHistory: activityHistoryJson.map((item) => AnilistActivityHistory.fromJson(item)).toList(),
     );

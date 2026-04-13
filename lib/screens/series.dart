@@ -28,6 +28,9 @@ import '../widgets/dialogs/image_select.dart';
 import '../enums.dart';
 import '../manager.dart';
 import '../models/anilist/mapping.dart';
+import '../models/anilist/user_list.dart';
+import '../widgets/dialogs/entry_editor.dart';
+import '../widgets/score_widget.dart';
 import '../models/season.dart';
 import '../models/series.dart';
 import '../services/anilist/linking.dart';
@@ -274,7 +277,10 @@ class SeriesScreenState extends State<SeriesScreen> {
         InfoLabel(
           label: 'User Score',
           labelStyle: Manager.bodyStrongStyle,
-          child: Text('${series.highestUserScore!.toStringAsFixed(1)}/10'),
+          child: ScoreWidget(
+            score: series.highestUserScore,
+            format: Provider.of<AnilistProvider>(context, listen: false).scoreFormat,
+          ),
         ): false,
       if (series.metadata?.duration != null && series.metadata!.duration.inSeconds > 0)
         InfoLabel(
@@ -912,7 +918,7 @@ class SeriesScreenState extends State<SeriesScreen> {
             maxHeight: 150,
             minHeight: 45,
             controller: _descriptionController,
-            child: parser.parse(description, selectable: true, selectionColor: Manager.currentDominantColor),
+            child: parser.parse(description, selectable: true),
           ),
           VDiv(8),
         ],
@@ -963,6 +969,26 @@ class SeriesScreenState extends State<SeriesScreen> {
           tooltip: 'Open the series folder in your file explorer',
           onPressed: () => ShellUtils.openFolder(isMapping ? (_cachedMapping?.localPath.path ?? series.path.path) : series.path.path),
         ),
+        if (isMapping && _cachedMapping != null && _cachedMapping!.anilistData != null) ...[
+          SizedBox(height: 6.0),
+          StandardButton(
+            label: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(mat.Icons.edit_note),
+                HDiv(4),
+                Text(
+                  'Edit AniList Entry',
+                  style: getStyleBasedOnAccent(false),
+                ),
+              ],
+            ),
+            expand: true,
+            tooltip: 'Edit this entry on AniList',
+            isButtonDisabled: anilistProvider.isOffline || !anilistProvider.isLoggedIn,
+            onPressed: () => _openEntryEditorForMapping(anilistProvider, _cachedMapping!),
+          ),
+        ],
         if (!isMapping) ...[
           SizedBox(height: 6.0),
           _buildManageLinksButton(anilistProvider, series),
@@ -1101,6 +1127,37 @@ class SeriesScreenState extends State<SeriesScreen> {
           ),
         );
       },
+    );
+  }
+
+  void _openEntryEditorForMapping(AnilistProvider anilistProvider, AnilistMapping mapping) {
+    final anime = mapping.anilistData;
+    if (anime == null) {
+      snackBar('No AniList data available for this mapping', severity: InfoBarSeverity.warning);
+      return;
+    }
+
+    final displayTitle = mapping.preferredTitle ?? anime.title.userPreferred ?? anime.title.romaji ?? anime.title.english ?? 'Unknown';
+
+    // Look up existing entry in user's lists
+    AnilistMediaListEntry? existing;
+    for (final list in anilistProvider.userLists.values) {
+      final match = list.entries.firstWhereOrNull((e) => e.mediaId == mapping.anilistId);
+      if (match != null) {
+        existing = match;
+        break;
+      }
+    }
+
+    showEntryEditorDialog(
+      context,
+      mediaId: mapping.anilistId,
+      title: displayTitle,
+      totalEpisodes: anime.episodes,
+      bannerImage: anime.bannerImage,
+      coverImage: anime.posterImage,
+      isFavourite: anime.isFavourite ?? false,
+      entry: existing,
     );
   }
 

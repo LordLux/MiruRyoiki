@@ -17,7 +17,6 @@ extension AnilistProviderMutations on AnilistProvider {
     }
   }
 
-
   /// Reload mutations from database
   Future<void> _reloadMutationsFromDatabase() async {
     try {
@@ -55,112 +54,255 @@ extension AnilistProviderMutations on AnilistProvider {
     }
   }
 
-  /// Apply a mutation to the local cache
-  void _applyMutationToLocalCache(AnilistMutation mutation) {
-    for (final list in _userLists.values) {
-      final entryIndex = list.entries.indexWhere((e) => e.mediaId == mutation.mediaId);
-      if (entryIndex >= 0 && entryIndex < list.entries.length) {
-        final entry = list.entries[entryIndex];
-        final nowDate = now.millisecondsSinceEpoch ~/ 1000;
+  // Helpers
 
-        switch (mutation.type) {
-          // TODO use enum for mutation types
-          case 'progress':
-            final newProgress = mutation.changes['progress'] as int?;
-            if (newProgress != null) {
-              final updatedEntry = entry.copyWith(
-                progress: newProgress,
-                updatedAt: nowDate,
-              );
+  /// Find the list key and entry index for a given mediaId across all user lists
+  (String listKey, int entryIndex)? _findEntryInLists(int mediaId) {
+    for (final entry in _userLists.entries) {
+      final idx = entry.value.entries.indexWhere((e) => e.mediaId == mediaId);
+      if (idx >= 0) return (entry.key, idx);
+    }
+    return null;
+  }
 
-              list.entries[entryIndex] = updatedEntry;
-            }
-            break;
+  /// Fetch a single media list entry from the AniList API and merge it into the local [_userLists] cache.
+  ///
+  /// Returns the merged entry, or `null` when the entry doesn't exist.
+  Future<AnilistMediaListEntry?> fetchMediaListEntry(int mediaId) async {
+    final userId = _currentUser?.id;
+    if (userId == null) return null;
 
-          case 'status':
-            final newStatus = (mutation.changes['status'] as String?)?.toListStatus();
-            if (newStatus != null) {
-              final updatedEntry = entry.copyWith(
-                status: newStatus,
-                updatedAt: nowDate,
-              );
+    try {
+      // Fetch entry and score format in parallel
+      final results = await Future.wait([
+        _anilistService.getMediaListEntry(mediaId, userId),
+        _anilistService.getScoreFormat(),
+      ]);
 
-              list.entries[entryIndex] = updatedEntry;
-            }
-            break;
+      final json = results[0] as Map<String, dynamic>?;
+      final formatStr = results[1] as String?;
 
-          case 'score':
-            final newScore = mutation.changes['score'] as int?;
-            if (newScore != null) {
-              final updatedEntry = entry.copyWith(
-                score: newScore,
-                updatedAt: nowDate,
-              );
-
-              list.entries[entryIndex] = updatedEntry;
-            }
-            break;
-
-          // TODO Handle other mutation types
+      // Update score format if it changed
+      if (formatStr != null) {
+        final newFormat = AnilistScoreFormat.fromString(formatStr);
+        if (newFormat != null && newFormat != scoreFormat && _currentUser?.userData != null) {
+          _currentUser = _currentUser!.copyWith(
+            userData: _currentUser!.userData!.copyWith(scoreFormat: newFormat),
+          );
         }
+      }
 
-        _saveListsToCache();
-        return;
+      if (json == null) return null;
+
+      final entry = AnilistMediaListEntry.fromJson(json);
+      _mergeEntryIntoLists(entry);
+      _saveListsToCache();
+      notifyListeners();
+      return entry;
+    } catch (e) {
+      logErr('Error fetching single media list entry ($mediaId)', e);
+      return null;
+    }
+  }
+
+  /// Merge/upsert a single [entry] into the in-memory [_userLists]
+  void _mergeEntryIntoLists(AnilistMediaListEntry entry) {
+    final targetListKey = entry.status.name_;
+    final found = _findEntryInLists(entry.mediaId);
+
+    if (found != null) {
+      final (oldListKey, idx) = found;
+      if (oldListKey == targetListKey) {
+        // Same list -> just update the entry
+        _userLists[oldListKey]!.entries[idx] = entry;
+      } else {
+        // Status changed -> move to new list
+        _userLists[oldListKey]!.entries.removeAt(idx);
+        if (_userLists.containsKey(targetListKey)) {
+          _userLists[targetListKey]!.entries.insert(0, entry);
+        }
+      }
+    } else {
+      // New entry -> insert into target list
+      if (_userLists.containsKey(targetListKey)) {
+        _userLists[targetListKey]!.entries.insert(0, entry);
+      }
+    }
+
+    // Update custom-list memberships
+    _syncCustomListMembership(entry);
+  }
+
+  /// Remove an entry from the local cache by mediaId
+  void _removeEntryFromLists(int mediaId) {
+    // Remove from standard/status lists
+    final found = _findEntryInLists(mediaId);
+    if (found != null) {
+      final (listKey, idx) = found;
+      _userLists[listKey]!.entries.removeAt(idx);
+    }
+
+    // Also remove from all custom lists
+    for (final list in _userLists.values) {
+      if (!list.isCustomList) continue;
+      list.entries.removeWhere((e) => e.mediaId == mediaId);
+    }
+  }
+
+  /// Synchronise custom-list membership for [entry] based on its customLists field
+  void _syncCustomListMembership(AnilistMediaListEntry entry) {
+    Map<String, dynamic>? customListsMap;
+    if (entry.customLists != null) {
+      try {
+        customListsMap = jsonDecode(entry.customLists!) as Map<String, dynamic>?;
+      } catch (_) {}
+    }
+
+    for (final mapEntry in _userLists.entries) {
+      if (!mapEntry.value.isCustomList) continue;
+      final key = mapEntry.key;
+      final displayName = key.startsWith(AnilistService.statusListPrefixCustom) ? key.substring(AnilistService.statusListPrefixCustom.length) : key;
+
+      final shouldBeInList = customListsMap != null && customListsMap[displayName] == true;
+      final existingIdx = mapEntry.value.entries.indexWhere((e) => e.mediaId == entry.mediaId);
+
+      if (shouldBeInList && existingIdx < 0) {
+        mapEntry.value.entries.insert(0, entry);
+      } else if (shouldBeInList && existingIdx >= 0) {
+        mapEntry.value.entries[existingIdx] = entry;
+      } else if (!shouldBeInList && existingIdx >= 0) {
+        mapEntry.value.entries.removeAt(existingIdx);
       }
     }
   }
 
-  /// Update progress for an anime (works online or offline)
+  /// Apply a mutation to the local cache
+  void _applyMutationToLocalCache(AnilistMutation mutation) {
+    final nowDate = now.millisecondsSinceEpoch ~/ 1000;
+
+    switch (mutation.type) {
+      case 'progress':
+        final found = _findEntryInLists(mutation.mediaId);
+        if (found == null) return;
+
+        final (listKey, idx) = found;
+        final entry = _userLists[listKey]!.entries[idx];
+        final newProgress = mutation.changes['progress'] as int?;
+        if (newProgress != null) _userLists[listKey]!.entries[idx] = entry.copyWith(progress: newProgress, updatedAt: nowDate);
+
+      case 'status':
+        final newStatus = (mutation.changes['status'] as String?)?.toListStatus();
+        if (newStatus == null) return;
+
+        final found = _findEntryInLists(mutation.mediaId);
+        if (found == null) return;
+
+        final (oldListKey, idx) = found;
+        final entry = _userLists[oldListKey]!.entries[idx];
+        final updatedEntry = entry.copyWith(status: newStatus, updatedAt: nowDate);
+
+        // Move entry to the new status list
+        final newListKey = newStatus.name_;
+        _userLists[oldListKey]!.entries.removeAt(idx);
+        if (_userLists.containsKey(newListKey)) _userLists[newListKey]!.entries.insert(0, updatedEntry);
+
+      case 'score':
+        final found = _findEntryInLists(mutation.mediaId);
+        if (found == null) return;
+
+        final (listKey, idx) = found;
+        final entry = _userLists[listKey]!.entries[idx];
+        final newScore = mutation.changes['score'] as int?;
+        if (newScore != null) _userLists[listKey]!.entries[idx] = entry.copyWith(score: newScore, updatedAt: nowDate);
+
+      case 'save_entry':
+        final changes = mutation.changes;
+        final found = _findEntryInLists(mutation.mediaId);
+        if (found == null) return;
+
+        final (oldListKey, idx) = found;
+        final entry = _userLists[oldListKey]!.entries[idx];
+
+        final newStatus = (changes['status'] as String?)?.toListStatus();
+        final updatedEntry = entry.copyWith(
+          status: newStatus,
+          score: changes['score'] as int?,
+          progress: changes['progress'] as int?,
+          repeat: changes['repeat'] as int?,
+          notes: changes['notes'] as String?,
+          private: changes['private'] as bool?,
+          hiddenFromStatusLists: changes['hiddenFromStatusLists'] as bool?,
+          priority: changes['priority'] as int?,
+          startedAt: changes['startedAt'] != null ? DateValue.fromJson(Map<String, dynamic>.from(changes['startedAt'])) : null,
+          completedAt: changes['completedAt'] != null ? DateValue.fromJson(Map<String, dynamic>.from(changes['completedAt'])) : null,
+          updatedAt: nowDate,
+        );
+
+        // Move to new list if status changed
+        final newListKey = (newStatus ?? entry.status).name_;
+        if (newListKey != oldListKey) {
+          _userLists[oldListKey]!.entries.removeAt(idx);
+          if (_userLists.containsKey(newListKey)) _userLists[newListKey]!.entries.insert(0, updatedEntry);
+        } else {
+          _userLists[oldListKey]!.entries[idx] = updatedEntry;
+        }
+
+      case 'delete_entry':
+        final found = _findEntryInLists(mutation.mediaId);
+        if (found == null) return;
+
+        final (listKey, idx) = found;
+        _userLists[listKey]!.entries.removeAt(idx);
+    }
+
+    _saveListsToCache();
+  }
+
+  // Public mutation methods
+
+  /// Update progress for an anime
   Future<bool> updateProgress(int mediaId, int progress) async {
     if (!_isOffline) {
       try {
-        // Try to update online
         final success = await _anilistService.updateProgress(mediaId, progress);
         if (success) {
-          // Update local cache and return
-          await refreshUserLists();
+          await fetchMediaListEntry(mediaId);
           return true;
         }
       } catch (e) {
         logErr('Error updating progress online', e);
-        // Fall through to offline queue
       }
     }
 
-    // Queue for later if offline or online update failed
     await queueMutation('progress', mediaId, {'progress': progress});
-    return true; // Return true since we've queued it
+    return true;
   }
 
-  /// Update status for an anime (works online or offline)
+  /// Update status for an anime
   Future<bool> updateStatus(int mediaId, AnilistListApiStatus status) async {
     if (!_isOffline) {
       try {
-        // Try to update online
         final success = await _anilistService.updateStatus(mediaId, status);
         if (success) {
-          // Update local cache and return
-          await refreshUserLists();
+          await fetchMediaListEntry(mediaId);
           return true;
         }
       } catch (e) {
         logErr('Error updating status online', e);
-        // Fall through to offline queue
       }
     }
 
-    // Queue for later if offline or online update failed
     await queueMutation('status', mediaId, {'status': status.name_});
-    return true; // Return true since we've queued it
+    return true;
   }
 
-  /// Update score for an anime (works online or offline)
+  /// Update score for an anime
   Future<bool> updateScore(int mediaId, int score) async {
     if (!_isOffline) {
       try {
         final success = await _anilistService.updateScore(mediaId, score);
         if (success) {
-          await refreshUserLists();
+          await fetchMediaListEntry(mediaId);
           return true;
         }
       } catch (e) {
@@ -170,5 +312,103 @@ extension AnilistProviderMutations on AnilistProvider {
 
     await queueMutation('score', mediaId, {'score': score});
     return true;
+  }
+
+  /// Comprehensive save of a media list entry.
+  ///
+  /// Only non-null fields are sent. Returns true if the save succeeded or was queued.
+  Future<bool> saveEntry({
+    required int mediaId,
+    AnilistListApiStatus? status,
+    int? score,
+    int? progress,
+    int? repeat,
+    int? priority,
+    bool? private,
+    String? notes,
+    bool? hiddenFromStatusLists,
+    List<String>? customLists,
+    DateValue? startedAt,
+    DateValue? completedAt,
+  }) async {
+    if (!_isOffline) {
+      try {
+        final mutationResult = await _anilistService.saveMediaListEntry(
+          mediaId: mediaId,
+          status: status,
+          scoreRaw: score,
+          progress: progress,
+          repeat: repeat,
+          priority: priority,
+          private: private,
+          notes: notes,
+          hiddenFromStatusLists: hiddenFromStatusLists,
+          customLists: customLists,
+          startedAt: startedAt,
+          completedAt: completedAt,
+        );
+        if (mutationResult != null) {
+          // Fetch single entry and merge into local cache instead of refetching the entire library
+          await fetchMediaListEntry(mediaId);
+          return true;
+        }
+      } catch (e) {
+        logErr('Error saving entry online', e);
+      }
+    }
+
+    // Build changes map with only non-null fields
+    final changes = <String, dynamic>{
+      if (status != null) 'status': status.name_,
+      if (score != null) 'score': score,
+      if (progress != null) 'progress': progress,
+      if (repeat != null) 'repeat': repeat,
+      if (priority != null) 'priority': priority,
+      if (private != null) 'private': private,
+      if (notes != null) 'notes': notes,
+      if (hiddenFromStatusLists != null) 'hiddenFromStatusLists': hiddenFromStatusLists,
+      if (customLists != null) 'customLists': customLists,
+      if (startedAt != null) 'startedAt': startedAt.toJson(),
+      if (completedAt != null) 'completedAt': completedAt.toJson(),
+    };
+
+    await queueMutation('save_entry', mediaId, changes);
+    return true;
+  }
+
+  /// Delete a media list entry.
+  ///
+  /// Requires the list entry ID.
+  Future<bool> deleteEntry({required int mediaId, required int entryId}) async {
+    if (!_isOffline) {
+      try {
+        final success = await _anilistService.deleteMediaListEntry(entryId);
+        if (success) {
+          _removeEntryFromLists(mediaId);
+          _saveListsToCache();
+          notifyListeners();
+          return true;
+        }
+      } catch (e) {
+        logErr('Error deleting entry online', e);
+      }
+    }
+
+    await queueMutation('delete_entry', mediaId, {'entryId': entryId});
+    return true;
+  }
+
+  /// Toggle favourite status for an anime on AniList.
+  ///
+  /// Returns `true` if the API call succeeded.
+  Future<bool> toggleFavourite(int animeId) async {
+    if (_isOffline) return false;
+
+    try {
+      return await _anilistService.toggleFavourite(animeId);
+    } catch (e) {
+      logErr('Error toggling favourite for anime $animeId', e);
+      return false;
+    }
   }
 }

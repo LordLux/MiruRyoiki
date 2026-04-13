@@ -32,8 +32,8 @@ class CategoryTileButton extends StatelessWidget {
       padding: EdgeInsets.only(bottom: bottomPadding),
       child: StandardButton(
         isFilled: isSelected,
-        filledColor: color.withOpacity(.15),
-        hoverFillColor: color.withOpacity(.2),
+        backgroundColor: isSelected ? color.withOpacity(.15) : null,
+        hoverColor: color.withOpacity(.2),
         label: Row(
           mainAxisAlignment: MainAxisAlignment.start,
           children: [

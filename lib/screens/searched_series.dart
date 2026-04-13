@@ -13,7 +13,6 @@ import '../models/anilist/anime.dart';
 import '../models/anilist/user_list.dart';
 import '../services/connectivity/connectivity_service.dart';
 import '../services/navigation/shortcuts.dart';
-import '../services/navigation/show_info.dart';
 import '../utils/text.dart';
 import '../widgets/buttons/back_button.dart';
 import '../widgets/buttons/button.dart';
@@ -40,6 +39,10 @@ import 'package:cached_network_image/cached_network_image.dart';
 
 import '../utils/anilist_utils.dart';
 import '../widgets/cards/dual_info_card.dart';
+import '../widgets/dialogs/entry_editor.dart';
+import '../services/anilist/provider/anilist_provider.dart';
+import '../widgets/score_widget.dart';
+import 'package:provider/provider.dart';
 import 'settings.dart';
 
 /// Duration for which AniList data is considered fresh and doesn't need refetching
@@ -601,7 +604,7 @@ class SearchedSeriesScreenState extends State<SearchedSeriesScreen> {
             maxHeight: 150,
             minHeight: 45,
             controller: _descriptionController,
-            child: parser.parse(description, selectable: true, selectionColor: Manager.currentDominantColor),
+            child: parser.parse(description, selectable: true),
           ),
           VDiv(8),
         ],
@@ -656,7 +659,27 @@ class SearchedSeriesScreenState extends State<SearchedSeriesScreen> {
                 ? null
                 : () {
                     logTrace('Opening Anilist List Editor Dialog');
-                    snackBar('Feature not implemented yet', severity: InfoBarSeverity.warning);
+                    final s = series!;
+                    final displayTitle = s.title.userPreferred ?? s.title.romaji ?? s.title.english ?? 'Unknown';
+                    final anilist = Provider.of<AnilistProvider>(context, listen: false);
+                    AnilistMediaListEntry? existing;
+                    for (final list in anilist.userLists.values) {
+                      final match = list.entries.firstWhereOrNull((e) => e.mediaId == s.id);
+                      if (match != null) {
+                        existing = match;
+                        break;
+                      }
+                    }
+                    showEntryEditorDialog(
+                      context,
+                      mediaId: s.id,
+                      title: displayTitle,
+                      totalEpisodes: s.episodes,
+                      bannerImage: s.bannerImage,
+                      coverImage: s.coverImage,
+                      isFavourite: s.isFavourite,
+                      entry: existing,
+                    );
                   },
           );
         }),
@@ -1104,7 +1127,12 @@ class SearchedSeriesScreenState extends State<SearchedSeriesScreen> {
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 crossAxisAlignment: CrossAxisAlignment.end,
                                 children: [
-                                  if (entry.score != null && entry.score! > 0) Text('${entry.score!.toInt()}/10', style: Manager.bodyStyle),
+                                  if (entry.score != null && entry.score! > 0)
+                                    ScoreWidget(
+                                      score: entry.score!.toInt(),
+                                      format: Provider.of<AnilistProvider>(context, listen: false).scoreFormat,
+                                      textStyle: Manager.bodyStyle,
+                                    ),
                                   if (entry.updatedAt != null) Text(formatRelativeTime(DateTime.fromMillisecondsSinceEpoch(entry.updatedAt! * 1000)), style: Manager.captionStyle),
                                 ],
                               ),

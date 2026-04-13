@@ -5,6 +5,7 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../models/anilist/user_list.dart';
+import '../../../../models/anilist/user_data.dart';
 import '../../../../models/anilist/anime.dart';
 import '../../../main.dart';
 import '../../../manager.dart';
@@ -90,6 +91,9 @@ class AnilistProvider extends ChangeNotifier with WidgetsBindingObserver {
 
   /// Get the current user and their lists
   AnilistUser? get currentUser => _currentUser;
+
+  /// The user's preferred score format, or POINT_10 as a safe default.
+  AnilistScoreFormat get scoreFormat => _currentUser?.userData?.scoreFormat ?? AnilistScoreFormat.POINT_10;
 
   // Connectivity status
   bool get isOffline => _isOffline;

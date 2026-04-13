@@ -1139,7 +1139,7 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
                       tooltip: 'Filter and Sort Options',
                       label: Text("Filter", style: Manager.subtitleStyle.copyWith(fontSize: 12)),
                       isFilled: _isGettingFiltered,
-                      filledColor: _isGettingFiltered ? (Manager.currentDominantAccentColor ?? Manager.accentColor).light : Colors.white.withOpacity(0.1),
+                      backgroundColor: _isGettingFiltered ? (Manager.currentDominantAccentColor ?? Manager.accentColor).light : Colors.white.withOpacity(0.1),
                       key: _filterButtonKey,
                       icon: Icon(_filtersOpen ? mat.Icons.filter_alt : mat.Icons.filter_alt_outlined, size: 16, color: getViewTypeColor(_isGettingFiltered)),
                       onPressed: _filtersOpen ? null : _showFilterDialog,
@@ -1164,7 +1164,7 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
                         tooltip: _isReorderMode ? 'Exit Reorder Mode' : 'Reorder Series',
                         label: Text(_isReorderMode ? "Done" : "Reorder", style: Manager.subtitleStyle.copyWith(fontSize: 12)),
                         isFilled: _isReorderMode,
-                        filledColor: _isReorderMode ? (Manager.currentDominantAccentColor ?? Manager.accentColor).light : Colors.white.withOpacity(0.1),
+                        backgroundColor: _isReorderMode ? (Manager.currentDominantAccentColor ?? Manager.accentColor).light : Colors.white.withOpacity(0.1),
                         icon: Icon(
                           _isReorderMode ? mat.Icons.check : mat.Icons.swap_vert,
                           size: 16,

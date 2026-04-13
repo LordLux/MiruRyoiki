@@ -14,8 +14,8 @@ class LoadingButton extends StatefulWidget {
   final bool isFilled;
   final String? tooltip;
   final Widget? tooltipWidget;
-  final Color? filledColor;
-  final Color? hoverFillColor;
+  final Color? backgroundColor;
+  final Color? hoverColor;
   final bool expand;
   final Duration? tooltipWaitDuration;
 
@@ -30,8 +30,8 @@ class LoadingButton extends StatefulWidget {
     this.isFilled = false,
     this.tooltip,
     this.tooltipWidget,
-    this.filledColor,
-    this.hoverFillColor,
+    this.backgroundColor,
+    this.hoverColor,
     this.expand = false,
     this.tooltipWaitDuration,
   });
@@ -53,8 +53,9 @@ class LoadingButtonState extends State<LoadingButton> {
 
   @override
   Widget build(BuildContext context) {
-    final fill = widget.filledColor ?? (widget.isFilled ? Manager.accentColor.lighter : FluentTheme.of(context).resources.cardBackgroundFillColorDefault);
-    final hoverFill = widget.hoverFillColor ?? (widget.isFilled ? Manager.accentColor.lightest : FluentTheme.of(context).resources.cardBackgroundFillColorDefault);
+    final resources = FluentTheme.of(context).resources;
+    final fill = widget.backgroundColor ?? (widget.isFilled ? Manager.accentColor.lighter : resources.cardBackgroundFillColorDefault);
+    final hoverFill = widget.hoverColor ?? (widget.isFilled ? Manager.accentColor.lightest : resources.cardBackgroundFillColorDefault);
 
     return MouseButtonWrapper(
       isButtonDisabled: widget.isButtonDisabled,
@@ -66,7 +67,7 @@ class LoadingButtonState extends State<LoadingButton> {
         final Color? bg = widget.isLoading ? null : (isHovering ? hoverFill : fill);
         final Color fg = widget.isFilled && !widget.isLoading ? Colors.black : Colors.white;
 
-        ButtonStyle copy = ButtonStyle(
+        final ButtonStyle style = ButtonStyle(
           padding: WidgetStatePropertyAll(EdgeInsets.zero),
           foregroundColor: WidgetStatePropertyAll<Color>(fg),
           backgroundColor: WidgetStateProperty.all<Color?>(bg),
@@ -106,7 +107,7 @@ class LoadingButtonState extends State<LoadingButton> {
         );
         Widget buttonWidget = Button(
           onPressed: widget.isButtonDisabled ? null : widget.onPressed,
-          style: (!widget.isFilled ? FluentTheme.of(context).buttonTheme.defaultButtonStyle! : FluentTheme.of(context).buttonTheme.filledButtonStyle!).merge(copy),
+          style: style,
           child: child,
         );
         if (widget.expand) {

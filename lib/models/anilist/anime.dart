@@ -358,6 +358,12 @@ class DateValue {
 
   DateValue({this.year, this.month, this.day});
 
+  factory DateValue.fromDateTime(DateTime dt) {
+    return DateValue(year: dt.year, month: dt.month, day: dt.day);
+  }
+
+  bool get isEmpty => year == null && month == null && day == null;
+
   factory DateValue.fromJson(Map<String, dynamic> json) {
     return DateValue(
       year: json['year'] as int?,

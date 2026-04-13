@@ -487,9 +487,8 @@ class _KnabenSearchDialogState extends State<KnabenSearchDialog> {
   }
 }
 
-// ──────────────────────────────────────────────────────────────────────
+
 // Knaben release tile
-// ──────────────────────────────────────────────────────────────────────
 
 class _KnabenReleaseTile extends StatefulWidget {
   final KnabenRelease release;
@@ -672,9 +671,8 @@ class _KnabenReleaseTileState extends State<_KnabenReleaseTile> {
       );
 }
 
-// ──────────────────────────────────────────────────────────────────────
+
 // Sonarr release tile
-// ──────────────────────────────────────────────────────────────────────
 
 class _SonarrReleaseTile extends StatefulWidget {
   final SonarrRelease release;
@@ -849,9 +847,8 @@ class _SonarrReleaseTileState extends State<_SonarrReleaseTile> {
   }
 }
 
-// ──────────────────────────────────────────────────────────────────────
+
 // Shared badge widget
-// ──────────────────────────────────────────────────────────────────────
 
 class _Badge extends StatelessWidget {
   final String label;

@@ -381,8 +381,8 @@ class AnilistLinkMultiContentState extends State<AnilistLinkMultiContent> {
                     child: (_) => StandardButton(
                       onPressed: _switchToAddMode,
                       isFilled: !_mappingsChanged,
-                      filledColor: Manager.currentDominantColor,
-                      hoverFillColor: Manager.currentDominantColor?.toAccentColor().light,
+                      backgroundColor: Manager.currentDominantColor,
+                      hoverColor: Manager.currentDominantColor?.toAccentColor().light,
                       label: Text('Add New Link', style: Manager.bodyStyle.copyWith(color: getTextColor(!_mappingsChanged ? Manager.currentDominantColor ?? Manager.accentColor : Colors.black))),
                     ),
                   ),

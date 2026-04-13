@@ -1,20 +1,71 @@
-mutation UpdateProgress($mediaId: Int!, $progress: Int!) {
-  SaveMediaListEntry(mediaId: $mediaId, progress: $progress) {
+mutation SaveMediaListEntry(
+  $id: Int
+  $mediaId: Int
+  $status: MediaListStatus
+  $scoreRaw: Int
+  $progress: Int
+  $repeat: Int
+  $priority: Int
+  $private: Boolean
+  $notes: String
+  $hiddenFromStatusLists: Boolean
+  $customLists: [String]
+  $startedAt: FuzzyDateInput
+  $completedAt: FuzzyDateInput
+) {
+  SaveMediaListEntry(
+    id: $id
+    mediaId: $mediaId
+    status: $status
+    scoreRaw: $scoreRaw
+    progress: $progress
+    repeat: $repeat
+    priority: $priority
+    private: $private
+    notes: $notes
+    hiddenFromStatusLists: $hiddenFromStatusLists
+    customLists: $customLists
+    startedAt: $startedAt
+    completedAt: $completedAt
+  ) {
     id
-    progress
-  }
-}
-
-mutation UpdateStatus($mediaId: Int!, $status: MediaListStatus!) {
-  SaveMediaListEntry(mediaId: $mediaId, status: $status) {
-    id
+    mediaId
     status
+    score(format: POINT_100)
+    progress
+    repeat
+    priority
+    private
+    notes
+    hiddenFromStatusLists
+    customLists
+    startedAt {
+      year
+      month
+      day
+    }
+    completedAt {
+      year
+      month
+      day
+    }
+    updatedAt
+    createdAt
   }
 }
 
-mutation UpdateScore($mediaId: Int!, $score: Float!) {
-  SaveMediaListEntry(mediaId: $mediaId, score: $score) {
-    id
-    score
+mutation DeleteMediaListEntry($id: Int!) {
+  DeleteMediaListEntry(id: $id) {
+    deleted
+  }
+}
+
+mutation ToggleFavourite($animeId: Int) {
+  ToggleFavourite(animeId: $animeId) {
+    anime {
+      nodes {
+        id
+      }
+    }
   }
 }

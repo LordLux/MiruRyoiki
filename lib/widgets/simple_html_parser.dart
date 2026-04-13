@@ -1,9 +1,7 @@
-import 'dart:ui' as ui;
-
 import 'package:flutter/material.dart';
-import 'package:fluent_ui/fluent_ui.dart' as fluent;
 
 import '../manager.dart';
+import 'fluent_selectable_text.dart';
 
 class SimpleHtmlParser {
   final BuildContext context;
@@ -14,36 +12,13 @@ class SimpleHtmlParser {
   /// [html] - The HTML string to parse
   /// [selectable] - If true, returns a SelectableText widget with purple selection color
   Widget parse(String html, {bool selectable = false, Color? selectionColor}) {
-    selectionColor ??= Manager.accentColor;
     final spans = _parseHtml(html);
 
-    if (selectable) {
-      return Theme(
-        data: Theme.of(context).copyWith(
-          textSelectionTheme: TextSelectionThemeData(
-            selectionColor: selectionColor.withOpacity(0.3),
-            selectionHandleColor: selectionColor,
-          ),
-        ),
-        child: SelectableText.rich(
-          TextSpan(
-            children: spans,
-            style: Manager.bodyStyle,
-          ),
-          selectionControls: fluent.fluentTextSelectionControls,
-          cursorColor: selectionColor,
-          selectionHeightStyle: ui.BoxHeightStyle.tight,
-          selectionWidthStyle: ui.BoxWidthStyle.tight,
-        ),
-      );
-    } else {
-      return RichText(
-        text: TextSpan(
-          children: spans,
-          style: Manager.bodyStyle,
-        ),
-      );
-    }
+    return FluentSelectableText.rich(
+      TextSpan(children: spans),
+      selectable: selectable,
+      selectionColor: selectionColor,
+    );
   }
 
   /// Parses HTML and returns list of TextSpans

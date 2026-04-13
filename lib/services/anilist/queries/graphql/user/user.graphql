@@ -23,6 +23,9 @@ query GetCurrentUserData {
       restrictMessagesToFollowing
       staffNameLanguage
     }
+    mediaListOptions {
+      scoreFormat
+    }
     favourites {
       anime {
         nodes {
@@ -91,7 +94,10 @@ query GetUserAnimeLists($userName: String, $userId: Int) {
         mediaId
         status
         progress
-        score(format: POINT_10)
+        score(format: POINT_100)
+        repeat
+        notes
+        private
         hiddenFromStatusLists
         priority
         createdAt
@@ -112,6 +118,39 @@ query GetUserAnimeLists($userName: String, $userId: Int) {
       mediaListOptions {
         animeList { customLists }
       }
+    }
+  }
+}
+
+query GetMediaListEntry($mediaId: Int!, $userId: Int!) {
+  MediaList(mediaId: $mediaId, userId: $userId) {
+    id
+    mediaId
+    status
+    progress
+    score(format: POINT_100)
+    repeat
+    notes
+    private
+    hiddenFromStatusLists
+    priority
+    createdAt
+    updatedAt
+    startedAt { year month day }
+    completedAt { year month day }
+    customLists
+    media {
+      ...AnimeCard
+      siteUrl
+      mediaListEntry { id }
+    }
+  }
+}
+
+query GetScoreFormat {
+  Viewer {
+    mediaListOptions {
+      scoreFormat
     }
   }
 }

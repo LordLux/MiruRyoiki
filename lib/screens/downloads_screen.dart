@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'dart:math' as math;
 
+import 'package:collection/collection.dart';
 import 'package:fluent_ui/fluent_ui.dart' hide Colors, FilledButton, ButtonStyle;
 import 'package:flutter/material.dart' hide Card, Divider, Tooltip, ListTile, IconButton, showDialog;
 import 'package:miruryoiki/enums.dart';
@@ -208,175 +210,184 @@ class DownloadsScreenState extends State<DownloadsScreen> {
       );
     }
 
-    return MiruRyoikiTemplatePage(
-      scrollRestorationId: 'torrent',
-      headerWidget: HeaderWidget(
-        titleLeftAligned: true,
-        title: (_, __) => Padding(
-          padding: const EdgeInsets.only(bottom: 12),
-          child: Text('Active Torrents', style: Manager.titleLargeStyle),
-        ),
-        children: [
-          Padding(
-            padding: const EdgeInsets.only(bottom: 12.0),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (_torrents.isNotEmpty) ...[
-                  Text(
-                    '${_torrents.where((t) => t.state == TorrentState.downloading).length} downloading, '
-                    '${_torrents.where((t) => t.state == TorrentState.seeding).length} seeding',
-                    style: Manager.miniBodyStyle.copyWith(color: Colors.white.withValues(alpha: .5)),
+    return LayoutBuilder(builder: (context, constraints) {
+      return MiruRyoikiTemplatePage(
+        scrollRestorationId: 'torrent',
+        headerWidget: HeaderWidget(
+          titleLeftAligned: true,
+          title: (_, __) => Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: Text('Active Torrents', style: Manager.titleLargeStyle),
+          ),
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12.0),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (_torrents.isNotEmpty) ...[
+                    Text(
+                      '${_torrents.where((t) => t.state == TorrentState.downloading).length} downloading, '
+                      '${_torrents.where((t) => t.state == TorrentState.seeding).length} seeding',
+                      style: Manager.miniBodyStyle.copyWith(color: Colors.white.withValues(alpha: .5)),
+                    ),
+                    const SizedBox(width: 16),
+                    Text('Sort by', style: Manager.bodyStyle.copyWith(color: Colors.white.withValues(alpha: .7))),
+                    const SizedBox(width: 8),
+                    ComboBox<_SortMode>(
+                      value: _sortMode,
+                      items: const [
+                        ComboBoxItem(value: _SortMode.status, child: Text('Status')),
+                        ComboBoxItem(value: _SortMode.name, child: Text('Name')),
+                        ComboBoxItem(value: _SortMode.addedOn, child: Text('Added')),
+                        ComboBoxItem(value: _SortMode.progress, child: Text('Progress')),
+                        ComboBoxItem(value: _SortMode.size, child: Text('Size')),
+                      ],
+                      onChanged: (v) {
+                        if (v != null) setState(() => _sortMode = v);
+                      },
+                    ),
+                    const SizedBox(width: 4),
+                    IconButton(
+                      icon: Icon(_sortAscending ? Icons.arrow_upward : Icons.arrow_downward, size: 16),
+                      onPressed: () => setState(() => _sortAscending = !_sortAscending),
+                    ),
+                    const SizedBox(width: 16),
+                  ],
+                  SizedBox(
+                    width: ScreenUtils.kDefaultButtonSize,
+                    height: ScreenUtils.kDefaultButtonSize,
+                    child: StandardButton.icon(
+                      icon: _isLoading ? const SizedBox(width: 14, height: 14, child: RepaintBoundary(child: CircularProgressIndicator(strokeWidth: 2))) : const Icon(Icons.refresh, size: 18),
+                      onPressed: _isLoading ? null : () => _fetchTorrents(),
+                    ),
                   ),
-                  const SizedBox(width: 16),
-                  Text('Sort by', style: Manager.bodyStyle.copyWith(color: Colors.white.withValues(alpha: .7))),
-                  const SizedBox(width: 8),
-                  ComboBox<_SortMode>(
-                    value: _sortMode,
-                    items: const [
-                      ComboBoxItem(value: _SortMode.status, child: Text('Status')),
-                      ComboBoxItem(value: _SortMode.name, child: Text('Name')),
-                      ComboBoxItem(value: _SortMode.addedOn, child: Text('Added')),
-                      ComboBoxItem(value: _SortMode.progress, child: Text('Progress')),
-                      ComboBoxItem(value: _SortMode.size, child: Text('Size')),
-                    ],
-                    onChanged: (v) {
-                      if (v != null) setState(() => _sortMode = v);
-                    },
-                  ),
-                  const SizedBox(width: 4),
-                  IconButton(
-                    icon: Icon(_sortAscending ? Icons.arrow_upward : Icons.arrow_downward, size: 16),
-                    onPressed: () => setState(() => _sortAscending = !_sortAscending),
-                  ),
-                  const SizedBox(width: 16),
                 ],
-                SizedBox(
-                  width: ScreenUtils.kDefaultButtonSize,
-                  height: ScreenUtils.kDefaultButtonSize,
-                  child: StandardButton.icon(
-                    icon: _isLoading ? const SizedBox(width: 14, height: 14, child: RepaintBoundary(child: CircularProgressIndicator(strokeWidth: 2))) : const Icon(Icons.refresh, size: 18),
-                    onPressed: _isLoading ? null : () => _fetchTorrents(),
-                  ),
+              ),
+            ),
+          ],
+        ),
+        infobar: (noHeaderBanner) => MiruRyoikiInfobar(
+          noHeaderBanner: noHeaderBanner,
+          contentPadding: (_) => const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+          content: SizedBox(
+            width: ScreenUtils.kInfoBarWidth,
+            child: Column(
+              children: [
+                CategoryTileButton(
+                  title: 'All',
+                  icon: Icons.all_inclusive,
+                  color: Colors.white,
+                  isSelected: _filterState == _DownloadFilter.all,
+                  onPressed: () => setState(() => _filterState = _DownloadFilter.all),
+                ),
+                CategoryTileButton(
+                  title: 'Downloading',
+                  icon: Icons.arrow_downward,
+                  color: const Color(0xFF4CAF50),
+                  isSelected: _filterState == _DownloadFilter.downloading,
+                  onPressed: () => setState(() => _filterState = _DownloadFilter.downloading),
+                ),
+                CategoryTileButton(
+                  title: 'Seeding',
+                  icon: Icons.arrow_upward,
+                  color: const Color(0xFF2196F3),
+                  isSelected: _filterState == _DownloadFilter.seeding,
+                  onPressed: () => setState(() => _filterState = _DownloadFilter.seeding),
+                ),
+                CategoryTileButton(
+                  title: 'Completed',
+                  icon: Icons.check_circle,
+                  color: const Color(0xFF9C27B0),
+                  isSelected: _filterState == _DownloadFilter.completed,
+                  onPressed: () => setState(() => _filterState = _DownloadFilter.completed),
+                ),
+                CategoryTileButton(
+                  title: 'Running',
+                  icon: Icons.play_arrow,
+                  color: const Color(0xFF03A9F4),
+                  isSelected: _filterState == _DownloadFilter.running,
+                  onPressed: () => setState(() => _filterState = _DownloadFilter.running),
+                ),
+                CategoryTileButton(
+                  title: 'Stopped',
+                  icon: Icons.pause,
+                  color: const Color(0xFF9E9E9E),
+                  isSelected: _filterState == _DownloadFilter.stopped,
+                  onPressed: () => setState(() => _filterState = _DownloadFilter.stopped),
+                ),
+                CategoryTileButton(
+                  title: 'Stalled',
+                  icon: Icons.hourglass_empty,
+                  color: const Color(0xFFFF9800),
+                  isSelected: _filterState == _DownloadFilter.stalled,
+                  onPressed: () => setState(() => _filterState = _DownloadFilter.stalled),
+                ),
+                CategoryTileButton(
+                  title: 'Errored',
+                  icon: Icons.error,
+                  color: const Color(0xFFF44336),
+                  isSelected: _filterState == _DownloadFilter.errored,
+                  onPressed: () => setState(() => _filterState = _DownloadFilter.errored),
                 ),
               ],
             ),
           ),
-        ],
-      ),
-      infobar: (noHeaderBanner) => MiruRyoikiInfobar(
-        noHeaderBanner: noHeaderBanner,
-        contentPadding: (_) => const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-        content: SizedBox(
-          width: ScreenUtils.kInfoBarWidth,
+        ),
+        content: _buildContent(constraints),
+        hideInfoBar: false,
+        scrollController: widget.scrollController,
+        scrollableContent: true,
+        headerMinHeight: 130,
+        headerMaxHeight: 190,
+        noHeaderBanner: true,
+        wrapContentWithCard: true,
+        cardPadding: const EdgeInsets.all(8.0),
+      );
+    });
+  }
+
+  Widget _buildContent(BoxConstraints constraints) {
+    if (_isLoading && _torrents.isEmpty) return const Center(child: ProgressRing());
+    final availableHeight = constraints.maxHeight - ScreenUtils.kTitleBarHeight - 166;
+
+    if (_error != null && _torrents.isEmpty) {
+      return SizedBox(
+        height: availableHeight,
+        child: Center(
           child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              CategoryTileButton(
-                title: 'All',
-                icon: Icons.all_inclusive,
-                color: Colors.white,
-                isSelected: _filterState == _DownloadFilter.all,
-                onPressed: () => setState(() => _filterState = _DownloadFilter.all),
-              ),
-              CategoryTileButton(
-                title: 'Downloading',
-                icon: Icons.arrow_downward,
-                color: const Color(0xFF4CAF50),
-                isSelected: _filterState == _DownloadFilter.downloading,
-                onPressed: () => setState(() => _filterState = _DownloadFilter.downloading),
-              ),
-              CategoryTileButton(
-                title: 'Seeding',
-                icon: Icons.arrow_upward,
-                color: const Color(0xFF2196F3),
-                isSelected: _filterState == _DownloadFilter.seeding,
-                onPressed: () => setState(() => _filterState = _DownloadFilter.seeding),
-              ),
-              CategoryTileButton(
-                title: 'Completed',
-                icon: Icons.check_circle,
-                color: const Color(0xFF9C27B0),
-                isSelected: _filterState == _DownloadFilter.completed,
-                onPressed: () => setState(() => _filterState = _DownloadFilter.completed),
-              ),
-              CategoryTileButton(
-                title: 'Running',
-                icon: Icons.play_arrow,
-                color: const Color(0xFF03A9F4),
-                isSelected: _filterState == _DownloadFilter.running,
-                onPressed: () => setState(() => _filterState = _DownloadFilter.running),
-              ),
-              CategoryTileButton(
-                title: 'Stopped',
-                icon: Icons.pause,
-                color: const Color(0xFF9E9E9E),
-                isSelected: _filterState == _DownloadFilter.stopped,
-                onPressed: () => setState(() => _filterState = _DownloadFilter.stopped),
-              ),
-              CategoryTileButton(
-                title: 'Stalled',
-                icon: Icons.hourglass_empty,
-                color: const Color(0xFFFF9800),
-                isSelected: _filterState == _DownloadFilter.stalled,
-                onPressed: () => setState(() => _filterState = _DownloadFilter.stalled),
-              ),
-              CategoryTileButton(
-                title: 'Errored',
-                icon: Icons.error,
-                color: const Color(0xFFF44336),
-                isSelected: _filterState == _DownloadFilter.errored,
-                onPressed: () => setState(() => _filterState = _DownloadFilter.errored),
+              Icon(Icons.error_outline, size: 48, color: Colors.red),
+              const SizedBox(height: 12),
+              Text('Failed to connect to ${TorrentManager.torrentClient?.clientName ?? "torrent client"}', style: Manager.bodyStrongStyle),
+              const SizedBox(height: 8),
+              Text(_error!, style: Manager.miniBodyStyle.copyWith(color: Colors.white.withValues(alpha: .5))),
+              const SizedBox(height: 16),
+              StandardButton.label(
+                label: 'Retry',
+                onPressed: () => _fetchTorrents(),
               ),
             ],
           ),
-        ),
-      ),
-      content: _buildContent(),
-      hideInfoBar: false,
-      scrollController: widget.scrollController,
-      scrollableContent: true,
-      headerMinHeight: 130,
-      headerMaxHeight: 190,
-      noHeaderBanner: true,
-      wrapContentWithCard: true,
-      cardPadding: const EdgeInsets.symmetric(horizontal: 8.0),
-    );
-  }
-
-  Widget _buildContent() {
-    if (_isLoading && _torrents.isEmpty) return const Center(child: ProgressRing());
-
-    if (_error != null && _torrents.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.error_outline, size: 48, color: Colors.red),
-            const SizedBox(height: 12),
-            Text('Failed to connect to ${TorrentManager.torrentClient?.clientName ?? "torrent client"}', style: Manager.bodyStrongStyle),
-            const SizedBox(height: 8),
-            Text(_error!, style: Manager.miniBodyStyle.copyWith(color: Colors.white.withValues(alpha: .5))),
-            const SizedBox(height: 16),
-            StandardButton.label(
-              label: 'Retry',
-              onPressed: () => _fetchTorrents(),
-            ),
-          ],
         ),
       );
     }
 
     if (_torrents.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.download_done, size: 48, color: Colors.white.withValues(alpha: .3)),
-            const SizedBox(height: 12),
-            Text('No active torrents', style: Manager.bodyStrongStyle),
-            const SizedBox(height: 8),
-            Text('You need to add a torrent to see them here.', style: Manager.bodyStyle.copyWith(color: Colors.white.withValues(alpha: .5))),
-          ],
+      return SizedBox(
+        height: availableHeight,
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.download_done, size: 48, color: Colors.white.withValues(alpha: .3)),
+              const SizedBox(height: 12),
+              Text('No active torrents', style: Manager.bodyStrongStyle),
+              const SizedBox(height: 8),
+              Text('You need to add a torrent to see them here.', style: Manager.bodyStyle.copyWith(color: Colors.white.withValues(alpha: .5))),
+            ],
+          ),
         ),
       );
     }
@@ -429,34 +440,36 @@ class DownloadsScreenState extends State<DownloadsScreen> {
           break; // Handled by _torrents.isEmpty catch above
       }
 
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, size: 48, color: color.withValues(alpha: .5)),
-            const SizedBox(height: 12),
-            Text(title, style: Manager.bodyStrongStyle),
-            const SizedBox(height: 8),
-            Text(subtitle, style: Manager.bodyStyle.copyWith(color: Colors.white.withValues(alpha: .5))),
-          ],
+      return SizedBox(
+        height: availableHeight,
+        child: Align(
+          alignment: Alignment.center,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, size: 48, color: color.withValues(alpha: .5)),
+              const SizedBox(height: 12),
+              Text(title, style: Manager.bodyStrongStyle),
+              const SizedBox(height: 8),
+              Text(subtitle, style: Manager.bodyStyle.copyWith(color: Colors.white.withValues(alpha: .5))),
+            ],
+          ),
         ),
       );
     }
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0).copyWith(right: 4.0),
-      child: Column(
-        children: sorted
-            .map((torrent) => _TorrentTile(
-                  torrent: torrent,
-                  onPause: _pauseTorrent,
-                  onResume: _resumeTorrent,
-                  onChanged: () => _fetchTorrents(silent: true),
-                ))
-            .toList(),
-      ),
+    return Column(
+      children: sorted
+          .mapIndexed((int index, TorrentInfo torrent) => _TorrentTile(
+                isLast: index == sorted.length - 1,
+                torrent: torrent,
+                onPause: _pauseTorrent,
+                onResume: _resumeTorrent,
+                onChanged: () => _fetchTorrents(silent: true),
+              ))
+          .toList(),
     );
   }
 }
@@ -466,12 +479,14 @@ class _TorrentTile extends StatefulWidget {
   final Future<void> Function(TorrentInfo) onPause;
   final Future<void> Function(TorrentInfo) onResume;
   final VoidCallback onChanged;
+  final bool isLast;
 
   const _TorrentTile({
     required this.torrent,
     required this.onPause,
     required this.onResume,
     required this.onChanged,
+    required this.isLast,
   });
 
   @override
@@ -522,155 +537,157 @@ class _TorrentTileState extends State<_TorrentTile> {
         torrent: t,
         controller: _contextMenuController,
         onChanged: widget.onChanged,
-        child: MouseRegion(
-          onEnter: (_) => setState(() => _isHovering = true),
-          onExit: (_) => setState(() => _isHovering = false),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 150),
-            margin: const EdgeInsets.only(bottom: 4.0),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(ScreenUtils.kStatCardBorderRadius),
-              color: _isHovering ? Colors.white.withValues(alpha: .03) : Colors.transparent,
-            ),
-            child: Card(
-              borderRadius: BorderRadius.circular(ScreenUtils.kStatCardBorderRadius),
-              padding: const EdgeInsets.all(12.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Row 1: Name + actions
-                  Row(
-                    children: [
-                      Icon(_stateIcon(t.state), size: 18, color: color),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          t.name,
-                          style: Manager.bodyStyle.copyWith(fontWeight: FontWeight.w600),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      // Action buttons (visible on hover or always for mobile)
-                      AnimatedOpacity(
-                        duration: const Duration(milliseconds: 150),
-                        opacity: _isHovering ? 1.0 : 0.0,
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            if (isPaused)
-                              _ActionButton(
-                                icon: Icons.play_arrow,
-                                tooltip: 'Resume',
-                                onPressed: () => widget.onResume(t),
-                              )
-                            else if (isActive)
-                              _ActionButton(
-                                icon: Icons.pause,
-                                tooltip: 'Pause',
-                                onPressed: () => widget.onPause(t),
-                              ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 8),
-
-                  // Row 2: Progress bar
-                  Row(
-                    children: [
-                      SizedBox(
-                        width: _kPctColumnWidth,
-                        child: Text('$progressPercent%', overflow: TextOverflow.visible, maxLines: 1),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(2),
-                          child: SizedBox(
-                            height: 4,
-                            child: LinearProgressIndicator(
-                              value: t.progress,
-                              minHeight: 4,
-                              backgroundColor: Colors.white.withValues(alpha: .1),
-                              color: color,
-                            ),
+        child: Padding(
+          padding: EdgeInsets.only(bottom: widget.isLast ? 0 : 6.0),
+          child: MouseRegion(
+            onEnter: (_) => setState(() => _isHovering = true),
+            onExit: (_) => setState(() => _isHovering = false),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 150),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(ScreenUtils.kStatCardBorderRadius),
+                color: _isHovering ? Colors.white.withValues(alpha: .03) : Colors.transparent,
+              ),
+              child: Card(
+                borderRadius: BorderRadius.circular(ScreenUtils.kStatCardBorderRadius),
+                padding: const EdgeInsets.all(12.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Row 1: Name + actions
+                    Row(
+                      children: [
+                        Icon(_stateIcon(t.state), size: 18, color: color),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            t.name,
+                            style: Manager.bodyStyle.copyWith(fontWeight: FontWeight.w600),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                      ),
-                      const SizedBox(width: 8),
-                      SizedBox(
-                        width: _kSizeColumnWidth,
-                        child: Align(
-                          alignment: Alignment.centerRight,
-                          child: Text(fileSize(t.size), overflow: TextOverflow.visible, maxLines: 1),
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 8),
-
-                  // Row 3: Metadata
-                  DefaultTextStyle(
-                    style: TextStyle(fontSize: 11, color: Colors.white.withValues(alpha: .6)),
-                    child: Row(
-                      children: [
-                        // Added — fits "Added 99mo ago"
-                        SizedBox(
-                          width: _kAddedColumnWidth,
-                          child: t.addedOn != null
-                              ? TooltipWrapper(
-                                  tooltip: t.addedOn!.pretty(forceYear: true, time: true, seconds: true),
-                                  child: (_) => Text('Added ${formatRelativeTime(t.addedOn!)}', overflow: TextOverflow.ellipsis),
-                                )
-                              : const SizedBox.shrink(),
-                        ),
-                        // Variable middle: speeds + ETA when active
-                        if (isActive) ...[
-                          _dot(),
-                          Icon(Icons.arrow_downward, size: 11, color: const Color(0xFF4CAF50)),
-                          const SizedBox(width: 2),
-                          Text(fileTransferRate(t.downloadSpeed)),
-                          const SizedBox(width: 8),
-                          Icon(Icons.arrow_upward, size: 11, color: const Color(0xFF2196F3)),
-                          const SizedBox(width: 2),
-                          Text(fileTransferRate(t.uploadSpeed)),
-                        ],
-                        if (t.eta != null && isActive) ...[
-                          _dot(),
-                          Text('ETA ${t.eta}'),
-                        ],
-                        const Spacer(),
-                        // Seeders / Leechers — fits "S: 9999  L: 9999"
-                        SizedBox(
-                          width: _kSeedLeechColumnWidth,
+                        // Action buttons (visible on hover or always for mobile)
+                        AnimatedOpacity(
+                          duration: const Duration(milliseconds: 150),
+                          opacity: _isHovering ? 1.0 : 0.0,
                           child: Row(
-                            mainAxisAlignment: MainAxisAlignment.end,
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              _SeedLeechBadge(
-                                label: 'S',
-                                value: t.seeders,
-                                backgroundColor: const Color(0xFF4CAF50),
-                                labelColor: const Color(0xFF2E7D32),
-                              ),
-                              const SizedBox(width: 6),
-                              _SeedLeechBadge(
-                                label: 'L',
-                                value: t.leechers,
-                                backgroundColor: const Color(0xFF2196F3),
-                                labelColor: const Color(0xFF1565C0),
-                              ),
+                              if (isPaused)
+                                _ActionButton(
+                                  icon: Icons.play_arrow,
+                                  tooltip: 'Resume',
+                                  onPressed: () => widget.onResume(t),
+                                )
+                              else if (isActive)
+                                _ActionButton(
+                                  icon: Icons.pause,
+                                  tooltip: 'Pause',
+                                  onPressed: () => widget.onPause(t),
+                                ),
                             ],
                           ),
                         ),
                       ],
                     ),
-                  ),
-                ],
+
+                    const SizedBox(height: 8),
+
+                    // Row 2: Progress bar
+                    Row(
+                      children: [
+                        SizedBox(
+                          width: _kPctColumnWidth,
+                          child: Text('$progressPercent%', overflow: TextOverflow.visible, maxLines: 1),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(2),
+                            child: SizedBox(
+                              height: 4,
+                              child: LinearProgressIndicator(
+                                value: t.progress,
+                                minHeight: 4,
+                                backgroundColor: Colors.white.withValues(alpha: .1),
+                                color: color,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        SizedBox(
+                          width: _kSizeColumnWidth,
+                          child: Align(
+                            alignment: Alignment.centerRight,
+                            child: Text(fileSize(t.size), overflow: TextOverflow.visible, maxLines: 1),
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 8),
+
+                    // Row 3: Metadata
+                    DefaultTextStyle(
+                      style: TextStyle(fontSize: 11, color: Colors.white.withValues(alpha: .6)),
+                      child: Row(
+                        children: [
+                          // Added — fits "Added 99mo ago"
+                          SizedBox(
+                            width: _kAddedColumnWidth,
+                            child: t.addedOn != null
+                                ? TooltipWrapper(
+                                    tooltip: t.addedOn!.pretty(forceYear: true, time: true, seconds: true),
+                                    child: (_) => Text('Added ${formatRelativeTime(t.addedOn!)}', overflow: TextOverflow.ellipsis),
+                                  )
+                                : const SizedBox.shrink(),
+                          ),
+                          // Variable middle: speeds + ETA when active
+                          if (isActive) ...[
+                            _dot(),
+                            Icon(Icons.arrow_downward, size: 11, color: const Color(0xFF4CAF50)),
+                            const SizedBox(width: 2),
+                            Text(fileTransferRate(t.downloadSpeed)),
+                            const SizedBox(width: 8),
+                            Icon(Icons.arrow_upward, size: 11, color: const Color(0xFF2196F3)),
+                            const SizedBox(width: 2),
+                            Text(fileTransferRate(t.uploadSpeed)),
+                          ],
+                          if (t.eta != null && isActive) ...[
+                            _dot(),
+                            Text('ETA ${t.eta}'),
+                          ],
+                          const Spacer(),
+                          // Seeders / Leechers — fits "S: 9999  L: 9999"
+                          SizedBox(
+                            width: _kSeedLeechColumnWidth,
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                _SeedLeechBadge(
+                                  label: 'S',
+                                  value: t.seeders,
+                                  backgroundColor: const Color(0xFF4CAF50),
+                                  labelColor: const Color(0xFF2E7D32),
+                                ),
+                                const SizedBox(width: 6),
+                                _SeedLeechBadge(
+                                  label: 'L',
+                                  value: t.leechers,
+                                  backgroundColor: const Color(0xFF2196F3),
+                                  labelColor: const Color(0xFF1565C0),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),

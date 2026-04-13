@@ -84,6 +84,7 @@ ANILIST_CLIENT_SECRET=dummy_secret
             'SaveMediaListEntry': {
               '__typename': 'MediaList',
               'id': 123,
+              'mediaId': 100,
               'progress': 5
             }
           },
@@ -106,6 +107,7 @@ ANILIST_CLIENT_SECRET=dummy_secret
             'SaveMediaListEntry': {
               '__typename': 'MediaList',
               'id': 123,
+              'mediaId': 100,
               'status': 'CURRENT'
             }
           },
@@ -116,10 +118,11 @@ ANILIST_CLIENT_SECRET=dummy_secret
       expect(result, true);
     });
 
-    test('updateScore sends correct mutation', () async {
+    test('updateScore sends correct mutation (POINT_100 input, scoreRaw passed directly)', () async {
       mockClient.mutationHandler = <T>(options) async {
         expect(options.variables['mediaId'], 100);
-        expect(options.variables['score'], 85.0);
+        // score is now POINT_100 (0-100) and is passed directly as scoreRaw
+        expect(options.variables['scoreRaw'], 80);
         return QueryResult(
           options: options,
           source: QueryResultSource.network,
@@ -128,6 +131,31 @@ ANILIST_CLIENT_SECRET=dummy_secret
             'SaveMediaListEntry': {
               '__typename': 'MediaList',
               'id': 123,
+              'mediaId': 100,
+              'score': 80.0  // API returns POINT_100 (format: POINT_100)
+            }
+          },
+        );
+      };
+
+      // Call with POINT_100 value (80 = 8.0 in POINT_10 scale)
+      final result = await service.updateScore(100, 80);
+      expect(result, true);
+    });
+
+    test('updateScore with POINT_10_DECIMAL value preserves decimal precision', () async {
+      mockClient.mutationHandler = <T>(options) async {
+        // 85 = 8.5 in POINT_10_DECIMAL
+        expect(options.variables['scoreRaw'], 85);
+        return QueryResult(
+          options: options,
+          source: QueryResultSource.network,
+          data: {
+            '__typename': 'Mutation',
+            'SaveMediaListEntry': {
+              '__typename': 'MediaList',
+              'id': 100,
+              'mediaId': 100,
               'score': 85.0
             }
           },
@@ -136,6 +164,35 @@ ANILIST_CLIENT_SECRET=dummy_secret
 
       final result = await service.updateScore(100, 85);
       expect(result, true);
+    });
+
+    test('AnilistMediaListEntry.fromJson parses POINT_100 score correctly', () {
+      final json = {
+        'id': 1,
+        'mediaId': 100,
+        'status': 'CURRENT',
+        'progress': 5,
+        'score': 85.0,  // POINT_100 value from API (= 8.5 in POINT_10_DECIMAL)
+        'repeat': 0,
+        'notes': null,
+        'private': false,
+        'customLists': null,
+        'hiddenFromStatusLists': false,
+        'priority': null,
+        'startedAt': null,
+        'completedAt': null,
+        'createdAt': null,
+        'updatedAt': null,
+        'media': {
+          'id': 100,
+          'isFavourite': false,
+          'title': {'userPreferred': 'Test Anime'},
+        },
+      };
+
+      final entry = AnilistMediaListEntry.fromJson(json);
+      // score is stored as POINT_100 int
+      expect(entry.score, 85);
     });
 
     test('getUserAnimeLists parses response correctly', () async {

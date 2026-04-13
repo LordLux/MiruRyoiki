@@ -1135,7 +1135,6 @@ Future<void> _registerWindowsUrlScheme(String scheme) async {
 // TODO view settings to choose what to show on homepage
 // TODO fix settings players order not actually changing + add cursor to reordering handles
 // TODO add dialog after clicking random entry to choose between confirm or pick another random entry
-// TODO add different types of scoring system icons/values (decimal, 100-based, 10-based, stars and smiley faces) getting them from anilist user settings
 
 // TODO cache Anilist lists to be able to work offline
 

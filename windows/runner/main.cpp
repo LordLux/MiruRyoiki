@@ -70,7 +70,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev, _In_ wch
   // Initialize COM, so that it is available for use in the library and/or plugins.
   ::CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
 
-  // ── Parse flags from the .lnk target ──────────────────────────────────────────
+  // Parse flags from the .lnk target
   std::vector<std::string> dart_args = GetCommandLineArguments();
   // e.g. dart_args == {"--skip-registry-indexing", "--another-flag"}
 

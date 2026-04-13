@@ -1783,8 +1783,8 @@ class SettingsScreenState extends State<SettingsScreen> with AutomaticKeepAliveC
                           },
                           isLoading: _isRefreshingPlayers,
                           isFilled: true,
-                          hoverFillColor: Manager.accentColor.lighter,
-                          filledColor: Manager.accentColor.light,
+                          hoverColor: Manager.accentColor.lighter,
+                          backgroundColor: Manager.accentColor.light,
                           tooltip: 'Refresh Players list and Player configs',
                           tooltipWaitDuration: dimDuration,
                           label: 'Reload Players',
@@ -2216,7 +2216,7 @@ class SettingsScreenState extends State<SettingsScreen> with AutomaticKeepAliveC
             VDiv(12),
             StandardButton.label(
               label: 'Reset Torrent/Download Config',
-              filledColor: mat.Colors.red,
+              backgroundColor: mat.Colors.red,
               onPressed: () {
                 showPaddedDialog(
                   context,

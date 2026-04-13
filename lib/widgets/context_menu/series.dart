@@ -111,14 +111,14 @@ class SeriesContextMenuState extends State<SeriesContextMenu> {
           shortcutModifiers: ShortcutModifiers(control: Platform.isWindows, meta: Platform.isMacOS),
           onClick: (_) => selectSeriesImage(context, isBanner: true, series: series),
         ),
-        if (series.isLinked)
+        if (!series.isLinked)
           MenuItem(
-            label: 'Update from Anilist',
+            label: 'Link to Anilist',
             shortcutKey: 'a',
             icon: icons.anilist,
             disabled: shouldDisable,
             shortcutModifiers: ShortcutModifiers(control: Platform.isWindows, meta: Platform.isMacOS),
-            onClick: (_) => _updateFromAnilist(context),
+            onClick: (_) => _linkToAnilist(context),
           ),
         MenuItem(
           label: series.isForcedHidden ? 'Stop Hiding' : 'Hide',
@@ -203,9 +203,9 @@ class SeriesContextMenuState extends State<SeriesContextMenu> {
     nextFrame(() => Manager.setState());
   }
 
-  void _updateFromAnilist(BuildContext context) {
-    // TODO: Implement Anilist update
-    snackBar('Anilist update not yet implemented', severity: InfoBarSeverity.warning);
+  void _linkToAnilist(BuildContext context) {
+    // TODO: Implement Anilist linking
+    snackBar('Anilist linking not yet implemented', severity: InfoBarSeverity.warning);
   }
 
   void _markAllAsWatched(BuildContext context) {

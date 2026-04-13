@@ -127,8 +127,9 @@ Future showSimpleTickboxManagedDialog(
     constraints: constraints ?? const BoxConstraints(maxWidth: 500, minWidth: 300),
     builder: (context) {
       final content = builder != null ? builder(context) : Text(body, style: Manager.bodyStyle);
-      return Expanded(
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
           content,
           const SizedBox(height: 24),
           StatefulBuilder(builder: (context, setState) {
@@ -149,7 +150,7 @@ Future showSimpleTickboxManagedDialog(
               ),
             );
           }),
-        ]),
+        ],
       );
     },
     buttons: [

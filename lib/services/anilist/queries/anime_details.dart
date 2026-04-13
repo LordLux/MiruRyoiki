@@ -163,17 +163,58 @@ extension AnilistServiceAnimeDetails on AnilistService {
           }
         }
 
-        if (entriesForCustomList.isNotEmpty) {
-          lists['custom_$customListName'] = AnilistUserList.fromJson(
-            { 'lists': [ { 'entries': entriesForCustomList } ] },
-            customListName,
-            isCustomList: true,
-          );
-        }
+        // Always register the custom list, even if empty — otherwise newly
+        // created custom lists on AniList would never surface in the app until
+        // the user somehow managed to add an entry to them (chicken-and-egg).
+        lists['custom_$customListName'] = AnilistUserList.fromJson(
+          { 'lists': [ { 'entries': entriesForCustomList } ] },
+          customListName,
+          isCustomList: true,
+        );
       }
     }
 
     return lists;
+  }
+
+  /// Fetch a single media list entry by media ID and user ID.
+  /// Returns the entry as a JSON map (matching the structure of
+  /// `GetUserAnimeLists` entries) so it can be parsed with
+  /// `AnilistMediaListEntry.fromJson`, or `null` if not found.
+  Future<Map<String, dynamic>?> getMediaListEntry(int mediaId, int userId) async {
+    if (_client == null) return null;
+
+    final result = await executeQuery<Query$GetMediaListEntry>(
+      options: QueryOptions(
+        document: documentNodeQueryGetMediaListEntry,
+        variables: Variables$Query$GetMediaListEntry(mediaId: mediaId, userId: userId).toJson(),
+        fetchPolicy: FetchPolicy.networkOnly,
+      ),
+      operationName: 'GetMediaListEntry',
+      parser: (data) => Query$GetMediaListEntry.fromJson(data),
+    );
+
+    if (result?.MediaList == null) return null;
+    return result!.MediaList!.toJson();
+  }
+
+  /// Fetch the current user's score format setting from AniList.
+  /// Returns the format string (e.g. "POINT_10", "POINT_5") or null on failure.
+  Future<String?> getScoreFormat() async {
+    if (_client == null) return null;
+
+    final result = await executeQuery<Query$GetScoreFormat>(
+      options: QueryOptions(
+        document: documentNodeQueryGetScoreFormat,
+        cacheRereadPolicy: CacheRereadPolicy.ignoreAll,
+      ),
+      operationName: 'GetScoreFormat',
+      parser: (data) => Query$GetScoreFormat.fromJson(data),
+    );
+
+    final format = result?.Viewer?.mediaListOptions?.scoreFormat;
+    if (format == null) return null;
+    return toJson$Enum$ScoreFormat(format);
   }
 
   /// Get upcoming episodes for a list of anime IDs

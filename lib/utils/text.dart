@@ -4,6 +4,7 @@ import '../manager.dart';
 import 'color.dart';
 
 TextStyle getStyleBasedOnAccent(bool isFilled, {TextStyle? style}) => isFilled ? (style ?? Manager.bodyStyle).copyWith(color: getPrimaryColorBasedOnAccent()) : (style ?? Manager.bodyStyle);
+Color getIconColorBasedOnAccent(bool isFilled) => isFilled ? getPrimaryColorBasedOnAccent() : Colors.white;
 
 Size measureText(
   String text, {

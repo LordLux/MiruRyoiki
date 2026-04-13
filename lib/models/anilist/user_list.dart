@@ -1,8 +1,24 @@
 // ignore_for_file: constant_identifier_names
 
+import 'dart:convert';
 
 import 'anime.dart';
 import 'user_data.dart';
+
+/// Encode the `customLists` value from the API into a JSON string.
+///
+/// The AniList GraphQL API returns `customLists` as a JSON object
+/// (`Map<String, dynamic>`), but when the value has been through
+/// `toJson()` → `fromJson()` cycles it may already be a String.
+/// Using `toString()` on a Map produces Dart's default representation
+/// (e.g. `{key: true}`) which is NOT valid JSON, so we explicitly
+/// `jsonEncode` Maps to keep the round-trip safe.
+String? _encodeCustomLists(dynamic value) {
+  if (value == null) return null;
+  if (value is String) return value; // already serialised
+  if (value is Map) return jsonEncode(value);
+  return value.toString(); // fallback
+}
 
 enum AnilistListApiStatus {
   CURRENT,
@@ -58,7 +74,10 @@ class AnilistMediaListEntry {
   final AnilistAnime media;
   final AnilistListApiStatus status;
   final int? progress;
-  final int? score; // format POINT_10
+  final int? score; // format POINT_100 (0-100, format-independent)
+  final int? repeat;
+  final String? notes;
+  final bool private;
   final String? customLists;
   final bool hiddenFromStatusLists;
   final int? priority;
@@ -74,6 +93,9 @@ class AnilistMediaListEntry {
     required this.status,
     this.progress,
     this.score,
+    this.repeat,
+    this.notes,
+    this.private = false,
     this.customLists,
     this.hiddenFromStatusLists = false,
     this.priority,
@@ -90,8 +112,11 @@ class AnilistMediaListEntry {
       media: AnilistAnime.fromJson(json['media']),
       status: json['status'].toString().toListStatus() ?? AnilistListApiStatus.CURRENT,
       progress: json['progress'],
-      score: (json['score'] as num?)?.toInt(),
-      customLists: json['customLists']?.toString(),
+      score: (json['score'] as num?)?.round(),
+      repeat: json['repeat'],
+      notes: json['notes'],
+      private: json['private'] ?? false,
+      customLists: _encodeCustomLists(json['customLists']),
       hiddenFromStatusLists: json['hiddenFromStatusLists'] ?? false,
       priority: json['priority'],
       startedAt: json['startedAt'] != null ? DateValue.fromJson(json['startedAt']) : null,
@@ -109,6 +134,9 @@ class AnilistMediaListEntry {
       'status': status.name_,
       'progress': progress,
       'score': score,
+      'repeat': repeat,
+      'notes': notes,
+      'private': private,
       'customLists': customLists,
       'hiddenFromStatusLists': hiddenFromStatusLists,
       'priority': priority,
@@ -126,6 +154,9 @@ class AnilistMediaListEntry {
     AnilistListApiStatus? status,
     int? progress,
     int? score,
+    int? repeat,
+    String? notes,
+    bool? private,
     String? customLists,
     bool? hiddenFromStatusLists,
     int? priority,
@@ -141,6 +172,9 @@ class AnilistMediaListEntry {
       status: status ?? this.status,
       progress: progress ?? this.progress,
       score: score ?? this.score,
+      repeat: repeat ?? this.repeat,
+      notes: notes ?? this.notes,
+      private: private ?? this.private,
       customLists: customLists ?? this.customLists,
       hiddenFromStatusLists: hiddenFromStatusLists ?? this.hiddenFromStatusLists,
       priority: priority ?? this.priority,

@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:fluent_ui/fluent_ui.dart' as fluent;
 import 'package:miruryoiki/utils/color.dart';
 import 'package:miruryoiki/widgets/fading_edge_scrollview.dart';
+import 'package:smooth_scroll_multiplatform/smooth_scroll_multiplatform.dart';
 
 import '../manager.dart';
+import '../services/navigation/shortcuts.dart';
 import '../utils/time.dart';
 import 'buttons/button.dart';
 
@@ -70,6 +72,7 @@ class _ShrinkerState extends State<Shrinker> with SingleTickerProviderStateMixin
   bool _needsShrinker = false;
   double _contentHeight = 0;
   final GlobalKey _contentKey = GlobalKey();
+  final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
@@ -158,9 +161,16 @@ class _ShrinkerState extends State<Shrinker> with SingleTickerProviderStateMixin
           child: StandardButton(
             isFilled: readMore,
             isSmall: true,
-            filledColor: widget.buttonBackgroundColor ?? Manager.currentDominantColor ?? Manager.accentColor,
-            hoverFillColor: widget.buttonBackgroundColor?.toAccentColor().light ?? Manager.currentDominantAccentColor?.light ?? Manager.accentColor.light,
-            onPressed: () => readMore ? _controller.expand() : _controller.collapse(),
+            backgroundColor: widget.buttonBackgroundColor ?? Manager.currentDominantColor ?? Manager.accentColor,
+            hoverColor: widget.buttonBackgroundColor?.toAccentColor().light ?? Manager.currentDominantAccentColor?.light ?? Manager.accentColor.light,
+            onPressed: () {
+              if (readMore) {
+                _controller.expand();
+              } else {
+                _controller.collapse();
+                _scrollController.animateTo(0, duration: widget.animationDuration, curve: widget.animationCurve);
+              }
+            },
             label: Text(readMore ? 'Read More' : 'Read Less', style: Manager.miniBodyStyle.copyWith(color: readMore ? getTextColor(widget.buttonBackgroundColor ?? Manager.currentDominantColor ?? Manager.accentColor) : Colors.white)),
           ),
         ),
@@ -197,15 +207,42 @@ class _ShrinkerState extends State<Shrinker> with SingleTickerProviderStateMixin
               height: isExpanded ? expandedHeight : widget.minHeight,
               child: FadingEdgeScrollView(
                 gradientColors: [
+                  (widget.buttonBackgroundColor ?? Theme.of(context).scaffoldBackgroundColor).withOpacity(0.0),
+                  (widget.buttonBackgroundColor ?? Theme.of(context).scaffoldBackgroundColor).withOpacity(1.0),
                   (widget.buttonBackgroundColor ?? Theme.of(context).scaffoldBackgroundColor).withOpacity(1.0),
                   (widget.buttonBackgroundColor ?? Theme.of(context).scaffoldBackgroundColor).withOpacity(0.0),
                 ],
-                gradientStops: isExpanded ? const [0.99, 1.0] : const [0.6, 0.85],
+                // gradientStops: isExpanded ? const [0.99, 1.0] : const [0.6, 0.85],
+                gradientStops: isExpanded ? const [0.02, 0.1, 0.9, 1.0] : [0.0, 0.0, 0.6, 0.85],
                 child: ScrollConfiguration(
                   behavior: const ScrollBehavior().copyWith(overscroll: false, scrollbars: isExpanded),
-                  child: SingleChildScrollView(
-                    physics: isExpanded ? const AlwaysScrollableScrollPhysics() : const NeverScrollableScrollPhysics(),
-                    child: content,
+                  child: DynMouseScroll(
+                    stopScroll: KeyboardState.ctrlPressedNotifier,
+                    scrollSpeed: 0.5,
+                    enableSmoothScroll: Manager.animationsEnabled,
+                    durationMS: 350,
+                    controller: _scrollController,
+                    animationCurve: Curves.easeOutQuint,
+                    builder: (context, controller, physics) {
+                      return ValueListenableBuilder(
+                        valueListenable: KeyboardState.ctrlPressedNotifier,
+                        builder: (context, isCtrlPressed, _) {
+                          return SingleChildScrollView(
+                            physics: isCtrlPressed || !isExpanded ? const NeverScrollableScrollPhysics() : physics,
+                            controller: controller,
+                            child: AnimatedPadding(
+                              duration: widget.animationDuration,
+                              curve: widget.animationCurve,
+                              padding: EdgeInsets.only(
+                                bottom: 8.0,
+                                top: _controller.isExpanded ? 8.0 : 0.0,
+                              ),
+                              child: content,
+                            ),
+                          );
+                        },
+                      );
+                    },
                   ),
                 ),
               ),
