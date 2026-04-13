@@ -17,7 +17,7 @@ class ConfigurablePlayer extends MediaPlayer {
     try {
       if (path != null && path.isNotEmpty) {
         if (path.startsWith('assets/')) {
-          if (path.endsWith('.svg')) return Svg(path, width: 20, height: 20);
+          if (path.endsWith('.svg')) return Svg.asset(path, width: 20, height: 20);
           if (path.endsWith('.png') || path.endsWith('.jpg') || path.endsWith('.jpeg')) return Image.asset(path, width: 20, height: 20);
           return Image.asset(path, width: 20, height: 20);
         }

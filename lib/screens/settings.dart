@@ -55,6 +55,7 @@ import '../widgets/dialogs/database_recovery.dart';
 import '../widgets/enum_toggle.dart';
 import '../widgets/page/header_widget.dart';
 import '../widgets/page/page_template.dart';
+import '../widgets/svg.dart' as svg;
 import '../widgets/tooltip_wrapper.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -2314,17 +2315,25 @@ class SettingsScreenState extends State<SettingsScreen> with AutomaticKeepAliveC
       // Connection header
       Row(
         children: [
+          SizedBox(width: 44, height: 44, child: svg.sonarr),
+          SizedBox(width: 12),
           Text('Sonarr', style: Manager.titleStyle),
         ],
       ),
-      Text('Connection', style: Manager.bodyStrongStyle),
+      VDiv(8),
+      Text('Connection', style: Manager.subtitleStyle),
+      VDiv(4),
+      Text(
+        'Configure Sonarr client for local Series management.',
+        style: Manager.bodyStyle.copyWith(color: Colors.white.withValues(alpha: .5)),
+      ),
       VDiv(12),
 
       // Base URL
       Row(
         children: [
-          Text('Base URL', style: Manager.bodyStyle),
-          SizedBox(width: 24),
+          SizedBox(width: 100, child: Text('Base URL', style: Manager.bodyStyle)),
+          SizedBox(width: 14),
           Expanded(
             child: TextBox(
               controller: _sonarrUrlController,
@@ -2348,8 +2357,8 @@ class SettingsScreenState extends State<SettingsScreen> with AutomaticKeepAliveC
       // API Key
       Row(
         children: [
-          Text('API Key', style: Manager.bodyStyle),
-          SizedBox(width: 24),
+          SizedBox(width: 100, child: Text('API Key', style: Manager.bodyStyle)),
+          SizedBox(width: 14),
           Expanded(
             child: PasswordBox(
               controller: _sonarrApiKeyController,
@@ -2486,7 +2495,7 @@ class SettingsScreenState extends State<SettingsScreen> with AutomaticKeepAliveC
         VDiv(16),
 
         // Defaults header
-        Text('Defaults', style: Manager.bodyStrongStyle),
+        Text('Defaults', style: Manager.subtitleStyle),
         VDiv(4),
         Text(
           'These are used when adding new series to Sonarr.',
@@ -2635,10 +2644,18 @@ class SettingsScreenState extends State<SettingsScreen> with AutomaticKeepAliveC
   // Torrent client settings
   List<Widget> _buildTorrentClientSettings(SettingsManager settings) {
     return [
-      Text('Torrent Client', style: Manager.bodyStrongStyle),
+      Row(
+        children: [
+          SizedBox(width: 44, height: 44, child: svg.qbittorrent),
+          SizedBox(width: 12),
+          Text('qBittorrent', style: Manager.titleStyle),
+        ],
+      ),
+      VDiv(8),
+      Text('Connection', style: Manager.subtitleStyle),
       VDiv(4),
       Text(
-        'Configure your torrent client for downloading. Currently qBittorrent is supported.',
+        'Configure your torrent client for downloading.',
         style: Manager.bodyStyle.copyWith(color: Colors.white.withValues(alpha: .5)),
       ),
       VDiv(16),

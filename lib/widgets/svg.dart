@@ -8,11 +8,13 @@ import 'package:jovial_svg/jovial_svg.dart';
 import '../utils/time.dart';
 import '../utils/icons.dart' as icons;
 
-late final ScalableImageWidget anilistLogo;
-late final ScalableImageWidget offlineIcon;
-late final ScalableImageWidget offlineLogo;
-late final ScalableImageWidget vlc;
-late final ScalableImageWidget mpcHc;
+late ScalableImageWidget anilistLogo;
+late ScalableImageWidget offlineIcon;
+late ScalableImageWidget offlineLogo;
+late ScalableImageWidget vlc;
+late ScalableImageWidget mpcHc;
+late ScalableImageWidget sonarr;
+late ScalableImageWidget qbittorrent;
 
 Widget defaultSwitcher(BuildContext context, Widget child) {
   return AnimatedSwitcher(
@@ -210,4 +212,6 @@ Future<void> initializeSVGs() async {
   offlineLogo = ScalableImageWidget.fromSISource(si: ScalableImageSource.fromSI(rootBundle, icons.anilist_logo_offline));
   vlc = ScalableImageWidget.fromSISource(si: ScalableImageSource.fromSI(rootBundle, icons.vlc));
   mpcHc = ScalableImageWidget.fromSISource(si: ScalableImageSource.fromSI(rootBundle, icons.mpcHc));
+  sonarr = ScalableImageWidget.fromSISource(si: ScalableImageSource.fromSI(rootBundle, icons.sonarr));
+  qbittorrent = ScalableImageWidget.fromSISource(si: ScalableImageSource.fromSI(rootBundle, icons.qbittorrent));
 }

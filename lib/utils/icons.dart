@@ -35,3 +35,7 @@ String get watch_all2 => PathString("$contextMenuPath/watch_all.ico").path;
 // Video Players
 String get vlc => PathString("$videoPlayersPath/vlc.si").asset!;
 String get mpcHc => PathString("$videoPlayersPath/mpchc.si").asset!;
+
+// Software
+String get sonarr => PathString("$assets/system/software/sonarr.si").asset!;
+String get qbittorrent => PathString("$assets/system/software/qbittorrent.si").asset!;
