@@ -170,9 +170,7 @@ class _PlayButtonState extends State<PlayButton> with TickerProviderStateMixin {
 
         return MouseRegion(
           onExit: (_) {
-            if (_isHovered) {
-              _onHoverChanged(false);
-            }
+            if (_isHovered) _onHoverChanged(false);
           },
           child: SizedBox(
             width: size + hoverPadding,

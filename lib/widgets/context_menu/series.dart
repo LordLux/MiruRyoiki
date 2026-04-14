@@ -20,6 +20,7 @@ import '../../utils/logging.dart';
 import '../../utils/shell.dart';
 import '../../utils/icons.dart' as icons;
 import '../../utils/time.dart';
+import '../dialogs/entry_editor.dart';
 import 'controller.dart';
 
 typedef LastListChange = ({Series series, String previousListName});
@@ -30,6 +31,7 @@ class SeriesContextMenu extends StatefulWidget {
   final BuildContext context;
   final DesktopContextMenuController controller;
   final VoidCallback? onChanged;
+  final VoidCallback? navigateToSeriesScreen;
 
   static int? lastSeriesId_watched; //
   static LastListChange? lastSeriesList_changeLists;
@@ -41,6 +43,7 @@ class SeriesContextMenu extends StatefulWidget {
     required this.context,
     required this.controller,
     this.onChanged,
+    this.navigateToSeriesScreen,
   });
 
   @override
@@ -120,6 +123,15 @@ class SeriesContextMenuState extends State<SeriesContextMenu> {
             shortcutModifiers: ShortcutModifiers(control: Platform.isWindows, meta: Platform.isMacOS),
             onClick: (_) => _linkToAnilist(context),
           ),
+        MenuItem.separator(),
+        if (series.anilistMappings.length == 1)
+          MenuItem(
+            label: 'Open Anilist Dialog',
+            shortcutKey: 'a',
+            icon: icons.anilist,
+            disabled: shouldDisable,
+            onClick: (_) => _openAnilistDialog(context),
+          ),
         MenuItem(
           label: series.isForcedHidden ? 'Stop Hiding' : 'Hide',
           icon: series.isForcedHidden ? icons.unhide : icons.hide,
@@ -169,6 +181,49 @@ class SeriesContextMenuState extends State<SeriesContextMenu> {
     } catch (e) {
       logErr('Error occurred while toggling hidden status', e);
     }
+  }
+
+  void _openAnilistDialog(BuildContext context) {
+    final mapping = widget.series.anilistMappings.singleOrNull;
+
+    if (mapping == null) {
+      snackBar('No AniList mapping found for this item', severity: InfoBarSeverity.warning);
+      return;
+    }
+
+    final anime = mapping.anilistData;
+    if (anime == null) {
+      snackBar('No AniList data available for this mapping', severity: InfoBarSeverity.warning);
+      return;
+    }
+
+    final displayTitle = mapping.preferredTitle ?? anime.title.userPreferred ?? anime.title.romaji ?? anime.title.english ?? 'Unknown';
+
+    widget.navigateToSeriesScreen?.call();
+
+    // Look up existing entry in user's lists
+    final anilist = Provider.of<AnilistProvider>(context, listen: false);
+    AnilistMediaListEntry? existing;
+    for (final list in anilist.userLists.values) {
+      for (final entry in list.entries) {
+        if (entry.mediaId == mapping.anilistId) {
+          existing = entry;
+          break;
+        }
+      }
+      if (existing != null) break;
+    }
+
+    showEntryEditorDialog(
+      context,
+      mediaId: mapping.anilistId,
+      title: displayTitle,
+      totalEpisodes: anime.episodes,
+      bannerImage: anime.bannerImage,
+      coverImage: anime.posterImage,
+      isFavourite: anime.isFavourite ?? false,
+      entry: existing,
+    );
   }
 
   static void _toggleHiddenStatus(BuildContext context, Series series) {

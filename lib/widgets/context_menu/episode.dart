@@ -11,7 +11,6 @@ import '../../manager.dart';
 import '../../models/episode.dart';
 import '../../models/series.dart';
 import '../../models/ui_episode.dart';
-import '../../services/episode_navigation/episode_navigator.dart';
 import '../../services/library/library_provider.dart';
 import '../../services/lock_manager.dart';
 import '../../services/navigation/show_info.dart';
@@ -91,7 +90,6 @@ class EpisodeContextMenuState extends State<EpisodeContextMenu> {
   }) {
     final library = Provider.of<Library>(context, listen: false);
     final shouldDisable = library.isIndexing;
-    final arePreviousWatched = EpisodeNavigator.instance.arePreviousEpisodesWatched(widget.episode, widget.series);
 
     return Menu(
       items: [
@@ -140,19 +138,13 @@ class EpisodeContextMenuState extends State<EpisodeContextMenu> {
             ),
         ],
         MenuItem.separator(),
-        if (arePreviousWatched == false)
-          MenuItem(
-            label: 'Mark Previous Episodes as Watched',
-            icon: icons.checkPrevious,
-            disabled: shouldDisable,
-            onClick: (_) => _watchAllPreviousSeasonEpisodes(context),
-          ),
         MenuItem(
-          label: episode.watched ? 'Unmark as Watched' : 'Mark as Watched',
+          label: 'Watch Up to Here',
+          icon: icons.checkPrevious,
           shortcutKey: 'w',
-          icon: episode.watched ? icons.unwatch : icons.check,
+          shortcutModifiers: ShortcutModifiers(control: Platform.isWindows, meta: Platform.isMacOS),
           disabled: shouldDisable,
-          onClick: (_) => _toggleWatched(context),
+          onClick: (_) => _setProgressUpToHere(context),
         ),
       ],
     );
@@ -195,9 +187,8 @@ class EpisodeContextMenuState extends State<EpisodeContextMenu> {
     snackBar('Filename copied to clipboard', severity: InfoBarSeverity.success);
   }
 
-  void _toggleWatched(BuildContext context) {
+  void _setProgressUpToHere(BuildContext context) {
     final library = Provider.of<Library>(context, listen: false);
-    final newState = !widget.episode.watched;
 
     // Check if the action should be disabled
     if (library.lockManager.shouldDisableAction(UserAction.markEpisodeWatched)) {
@@ -208,35 +199,13 @@ class EpisodeContextMenuState extends State<EpisodeContextMenu> {
       return;
     }
 
-    library.markEpisodeWatched(widget.episode, watched: newState, overrideProgress: true);
+    library.setProgressUpToEpisode(widget.episode, widget.series);
 
-    snackBar(newState ? 'Marked as watched' : 'Marked as unwatched', severity: InfoBarSeverity.success);
-    widget.onEpisodeChanged?.call();
-    nextFrame(() => Manager.setState());
-  }
-
-  void _watchAllPreviousSeasonEpisodes(BuildContext context) {
-    List<Episode> previousEpisodes = [];
-    final collection = EpisodeNavigator.instance.findCollectionForEpisode(widget.episode, widget.series);
-    if (collection == null) {
-      snackBar('Could not find the season for this episode', severity: InfoBarSeverity.error);
-      return;
+    if (widget.episode.episodeNumber != null) {
+      snackBar('Watched up to Episode ${widget.episode.episodeNumber}', severity: InfoBarSeverity.success);
+    } else {
+      snackBar('Progress updated', severity: InfoBarSeverity.success);
     }
-
-    final currentEpisodeNumber = widget.episode.episodeNumber;
-    for (final ep in collection.episodes) {
-      if (ep.episodeNumber != null && currentEpisodeNumber != null && ep.episodeNumber! < currentEpisodeNumber && !ep.watched) {
-        previousEpisodes.add(ep);
-      }
-    }
-
-    if (previousEpisodes.isEmpty) {
-      snackBar('No previous episodes to mark as watched', severity: InfoBarSeverity.info);
-      return;
-    }
-
-    final library = Provider.of<Library>(context, listen: false);
-    library.markEpisodesWatched(previousEpisodes, watched: true, overrideProgress: true);
 
     widget.onEpisodeChanged?.call();
     nextFrame(() => Manager.setState());

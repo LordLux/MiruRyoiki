@@ -241,7 +241,7 @@ class _HoverableEpisodeTileState2 extends State<HoverableEpisodeTile2> {
                           key: ValueKey('play_${widget.uiEpisode.localEpisode!.path.path}'),
                           episode: widget.uiEpisode.localEpisode!,
                           forceExpand: _isHovering,
-                          isNextEpisodeToPlay: widget.series != null && widget.uiEpisode.localEpisode == Manager.anilistProgress.getNextEpisodeToWatch(widget.series!, anilistProivder),
+                          isNextEpisodeToPlay: widget.series != null && widget.uiEpisode.localEpisode == Manager.anilistProgress.getNextEpisodeToWatchLocal(widget.series!, anilistProivder),
                         ),
                       ),
                   ],

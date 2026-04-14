@@ -1117,6 +1117,7 @@ Future<void> _registerWindowsUrlScheme(String scheme) async {
   }
 }
 
+// TODO after entry editor update to episode progress, the previous 'last watched episode' is not updated UI
 // TODO update notification icon badge when reading notifications from notification dialog
 // TODO scanning library progress indicator in status bar in Browse page is bugged visually with background cards
 // TODO add 'random entry' button to top right corner of library

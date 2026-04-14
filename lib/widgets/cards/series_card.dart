@@ -179,6 +179,7 @@ class _SeriesCardState extends State<SeriesCard> {
         controller: _menuController,
         series: widget.series,
         context: context,
+        navigateToSeriesScreen: widget.onTap,
         onChanged: () {
           if (mounted) setState(() {});
         },
