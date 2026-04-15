@@ -199,7 +199,7 @@ class EpisodeContextMenuState extends State<EpisodeContextMenu> {
       return;
     }
 
-    library.setProgressUpToEpisode(widget.episode, widget.series);
+    // library.setProgressUpToEpisode(widget.episode, widget.series); TODO implement this method in the library service
 
     if (widget.episode.episodeNumber != null) {
       snackBar('Watched up to Episode ${widget.episode.episodeNumber}', severity: InfoBarSeverity.success);

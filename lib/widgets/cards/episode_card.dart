@@ -333,7 +333,7 @@ class _HoverableEpisodeTileState extends State<HoverableEpisodeTile> {
                   bottom: 8,
                   right: 8,
                   child: Builder(builder: (context) {
-                    final isNextEpisodeToPlay = widget.series != null && widget.uiEpisode.localEpisode == Manager.anilistProgress.getNextEpisodeToWatchLocal(widget.series!, anilistProivder);
+                    final isNextEpisodeToPlay = widget.series != null && widget.uiEpisode.localEpisode == Manager.anilistProgress.getNextEpisodeToWatch(widget.series!, anilistProivder);
                     return PlayButton(
                       key: ValueKey('play_${widget.uiEpisode.localEpisode!.path.path}'),
                       episode: widget.uiEpisode.localEpisode!,
