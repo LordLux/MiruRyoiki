@@ -14,7 +14,9 @@ class UserCacheDao extends DatabaseAccessor<AppDatabase> with _$UserCacheDaoMixi
 
   /// Get the cached user
   Future<AnilistUser?> getCachedUser() async {
-    final results = await select(db.anilistUserCacheTable).get();
+    final results = await (select(db.anilistUserCacheTable)
+          ..orderBy([(t) => OrderingTerm(expression: t.cachedAt, mode: OrderingMode.desc)]))
+        .get();
     if (results.isEmpty) return null;
 
     return _userFromRow(results.first);
@@ -22,6 +24,9 @@ class UserCacheDao extends DatabaseAccessor<AppDatabase> with _$UserCacheDaoMixi
 
   /// Save or update the user cache
   Future<void> upsertUser(AnilistUser user) async {
+    // Keep only the most recent user by deleting existing cache
+    await deleteCachedUser();
+    
     await into(db.anilistUserCacheTable).insertOnConflictUpdate(
       AnilistUserCacheTableCompanion.insert(
         id: Value(user.id),
