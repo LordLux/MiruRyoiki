@@ -13,6 +13,7 @@ import '../services/downloads/torrent_manager.dart';
 import '../services/library/library_provider.dart';
 import '../services/lock_manager.dart';
 import '../services/navigation/dialogs2.dart';
+import '../services/episode_navigation/anilist_progress_manager.dart';
 import '../services/navigation/show_info.dart';
 import '../services/navigation/statusbar.dart';
 import '../utils/color.dart';
@@ -173,6 +174,10 @@ class SeriesScreenState extends State<SeriesScreen> {
 
   // Widget: whether to allocate a full row or divide it in 2 columns [true = full row, false = 2 columns]
   Map<InfoLabel, bool> infos(Series series) {
+    if (!mounted) return {};
+    final anilistProvider = Provider.of<AnilistProvider>(context, listen: false);
+    final progressManager = AnilistProgressManager.instance;
+    
     if (isMappingMode && _cachedTarget != null) {
       return {
         if (_cachedTarget!.isCollection)
@@ -247,7 +252,7 @@ class SeriesScreenState extends State<SeriesScreen> {
       InfoLabel(
         label: 'Episodes',
         labelStyle: Manager.bodyStrongStyle,
-        child: Text('${series.totalEpisodes}'),
+        child: Text('${progressManager.getTotalEpisodes(series)}'),
       ): false,
       if (series.folders.isNotEmpty)
         InfoLabel(
@@ -273,13 +278,13 @@ class SeriesScreenState extends State<SeriesScreen> {
           labelStyle: Manager.bodyStrongStyle,
           child: Text('${series.seasonAndSeasonYearRange}'),
         ): true,
-      if (series.highestUserScore != null && series.highestUserScore! > 0)
+      if (anilistProvider.getHighestUserScore(series) != null && anilistProvider.getHighestUserScore(series)! > 0)
         InfoLabel(
           label: 'User Score',
           labelStyle: Manager.bodyStrongStyle,
           child: ScoreWidget(
-            score: series.highestUserScore,
-            format: Provider.of<AnilistProvider>(context, listen: false).scoreFormat,
+            score: anilistProvider.getHighestUserScore(series),
+            format: anilistProvider.scoreFormat,
           ),
         ): false,
       if (series.metadata?.duration != null && series.metadata!.duration.inSeconds > 0)

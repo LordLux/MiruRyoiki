@@ -152,18 +152,18 @@ extension LibraryMediaPlayerIntegration on Library {
 
     logInfo('Disconnected from $previousPlayer');
     notifyListeners();
-    Manager.setState();
+    // Manager.setState();
   }
 
   /// Refresh player connections
   Future<void> refreshMediaPlayers() async {
     notifyListeners();
-    Manager.setState();
+    // Manager.setState();
 
     await _startPlayerAutoConnection();
 
     notifyListeners();
-    Manager.setState();
+    // Manager.setState();
   }
 
   /// Attempt to connect to players in user defined priority order
@@ -205,7 +205,7 @@ extension LibraryMediaPlayerIntegration on Library {
         _setupPlayerStatusMonitoring();
         logInfo('Connected to media player: $_currentConnectedPlayer (priority: ${userPriorityOrder.indexOf(_currentConnectedPlayer!) + 1})');
         notifyListeners();
-        Manager.setState();
+        // Manager.setState();
       }
     } catch (e) {
       logErr('Failed to connect to media player: $e');
@@ -315,7 +315,7 @@ extension LibraryMediaPlayerIntegration on Library {
 
     // Notify UI of progress update
     notifyListeners();
-    Manager.setState();
+    // Manager.setState();
 
     // Update state tracking for next comparison
     _updateStateTracking(status, currentEpisode);
@@ -399,7 +399,7 @@ extension LibraryMediaPlayerIntegration on Library {
           // Save episode progress directly (efficient single-row UPDATE)
           await _saveEpisodeProgress(currentEpisode);
           notifyListeners();
-          Manager.setState();
+          // Manager.setState();
 
           // Update tracking after successful save
           _updateStateTracking(currentStatus, currentEpisode);
@@ -486,7 +486,7 @@ extension LibraryMediaPlayerIntegration on Library {
       await _saveLibrary(forceFull: true);
     }
     notifyListeners();
-    Manager.setState();
+    // Manager.setState();
 
     // Update throttling timestamps
     _lastImmediateSaveTime = now;

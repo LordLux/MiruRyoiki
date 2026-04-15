@@ -345,8 +345,8 @@ class _HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMi
     // Sort by most recently updated first, then by progress percentage (higher first)
     watchingSeries.sort((a, b) {
       // Primary sort: most recently updated first
-      final aUpdated = a.latestUpdatedAt ?? 0;
-      final bUpdated = b.latestUpdatedAt ?? 0;
+      final aUpdated = anilistProvider.getLatestUpdatedAt(a) ?? 0;
+      final bUpdated = anilistProvider.getLatestUpdatedAt(b) ?? 0;
       final updatedComparison = bUpdated.compareTo(aUpdated);
 
       if (updatedComparison != 0) {

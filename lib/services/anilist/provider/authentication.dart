@@ -71,14 +71,14 @@ extension AnilistProviderAuthentication on AnilistProvider {
     if (newLists.isNotEmpty) {
       _userLists = newLists;
       notifyListeners();
-      Manager.setState();
+      // Manager.setState();
       return true;
     } else if (_userLists.isEmpty) {
       // If we have no existing data and got empty results, still update
       // (this handles the case where the user truly has no lists)
       _userLists = newLists;
       notifyListeners();
-      Manager.setState();
+      // Manager.setState();
       return true;
     } else {
       logWarn('Failed to load user lists - preserving existing data (${_userLists.length} lists)');

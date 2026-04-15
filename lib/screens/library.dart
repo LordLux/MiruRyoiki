@@ -7,10 +7,10 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart' as mat;
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 import 'package:miruryoiki/manager.dart';
 import 'package:miruryoiki/screens/settings.dart';
 import 'package:miruryoiki/utils/color.dart';
-import 'package:provider/provider.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:sticky_headers/sticky_headers.dart';
 import 'package:smooth_scroll_multiplatform/smooth_scroll_multiplatform.dart';
@@ -24,6 +24,7 @@ import '../services/library/library_provider.dart';
 import '../services/library/search_service.dart';
 import '../models/series.dart';
 import '../services/anilist/provider/anilist_provider.dart';
+import '../services/episode_navigation/anilist_progress_manager.dart';
 import '../services/navigation/dialogs2.dart';
 import '../services/navigation/navigation.dart';
 import '../services/navigation/shortcuts.dart';
@@ -266,7 +267,7 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
   }
 
   /// Sort series using the same logic as isolate_manager.dart but in main thread
-  List<Series> _sortSeries(List<Series> series, Library library) {
+  List<Series> _sortSeries(List<Series> series, Library library, AnilistProvider anilistProvider, AnilistProgressManager progressManager) {
     final List<Series> seriesCopy = List.from(series);
 
     Comparator<Series> comparator;
@@ -289,32 +290,32 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
       case SortOrder.progress:
         comparator = (a, b) {
           // Use the Series watchedPercentage getter
-          final aProgress = a.watchedPercentage;
-          final bProgress = b.watchedPercentage;
+          final aProgress = progressManager.getSeriesProgress(a, anilistProvider);
+          final bProgress = progressManager.getSeriesProgress(b, anilistProvider);
           return aProgress.compareTo(bProgress);
         };
 
       // Date the user's List Entry was last modified (progress update, status change)
       case SortOrder.lastModified:
         comparator = (a, b) {
-          final aUpdated = a.latestUpdatedAt ?? 0;
-          final bUpdated = b.latestUpdatedAt ?? 0;
+          final aUpdated = anilistProvider.getLatestUpdatedAt(a) ?? 0;
+          final bUpdated = anilistProvider.getLatestUpdatedAt(b) ?? 0;
           return aUpdated.compareTo(bUpdated);
         };
 
       // Date the user added the series to their list
       case SortOrder.dateAdded:
         comparator = (a, b) {
-          final aCreated = a.earliestCreatedAt ?? 0;
-          final bCreated = b.earliestCreatedAt ?? 0;
+          final aCreated = anilistProvider.getEarliestCreatedAt(a) ?? 0;
+          final bCreated = anilistProvider.getEarliestCreatedAt(b) ?? 0;
           return aCreated.compareTo(bCreated);
         };
 
       // Date the user started watching the series (earliest across all mappings)
       case SortOrder.startDate:
         comparator = (a, b) {
-          final aDate = a.earliestStartedAt;
-          final bDate = b.earliestStartedAt;
+          final aDate = anilistProvider.getEarliestStartedAt(a);
+          final bDate = anilistProvider.getEarliestStartedAt(b);
 
           if (aDate == null && bDate == null) return 0;
           if (aDate == null) return 1;
@@ -326,8 +327,8 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
       // Date the user completed watching the series (latest across all mappings)
       case SortOrder.completedDate:
         comparator = (a, b) {
-          final aDate = a.latestCompletionDate;
-          final bDate = b.latestCompletionDate;
+          final aDate = anilistProvider.getLatestCompletionDate(a);
+          final bDate = anilistProvider.getLatestCompletionDate(b);
 
           if (aDate == null && bDate == null) return 0;
           if (aDate == null) return 1;
@@ -347,8 +348,8 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
       // Release date from Anilist (earliest across all mappings)
       case SortOrder.releaseDate:
         comparator = (a, b) {
-          final aDate = a.earliestReleaseDate;
-          final bDate = b.earliestReleaseDate;
+          final aDate = anilistProvider.getEarliestReleaseDate(a);
+          final bDate = anilistProvider.getEarliestReleaseDate(b);
 
           if (aDate == null && bDate == null) return 0;
           if (aDate == null) return 1;
@@ -360,8 +361,8 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
       // Popularity from Anilist (highest across all mappings)
       case SortOrder.popularity:
         comparator = (a, b) {
-          final aPopularity = a.highestPopularity ?? 0;
-          final bPopularity = b.highestPopularity ?? 0;
+          final aPopularity = anilistProvider.getHighestPopularity(a) ?? 0;
+          final bPopularity = anilistProvider.getHighestPopularity(b) ?? 0;
           return aPopularity.compareTo(bPopularity);
         };
 
@@ -382,9 +383,12 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
 
   /// Build or refresh the cache with current parameters
   void _buildCache(Library library) {
+    if (!mounted) return;
+    final anilistProvider = Provider.of<AnilistProvider>(context, listen: false);
+    final progressManager = AnilistProgressManager.instance;
     final rawSeries = library.series;
     final filteredSeries = _filterSeries(rawSeries);
-    final sortedSeries = _sortSeries(filteredSeries, library);
+    final sortedSeries = _sortSeries(filteredSeries, library, anilistProvider, progressManager);
 
     // Cache the sorted series
     _sortedSeriesCache = sortedSeries;
@@ -573,6 +577,9 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
 
   /// Filter the series in Hidden, Linked
   List<Series> _filterSeries(List<Series> series) {
+    if (!mounted) return series;
+    final anilistProvider = Provider.of<AnilistProvider>(context, listen: false);
+
     // Start with basic filtering (existing code)
     List<Series> filteredSeries = series;
 
@@ -583,7 +590,7 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
 
     filteredSeries = filteredSeries.where((s) {
       if (!showHidden && s.isForcedHidden) return false;
-      if (!showAnilistHidden && s.isAnilistHidden) return false;
+      if (!showAnilistHidden && anilistProvider.isAnilistHidden(s)) return false;
       if (onlyLinked && !s.isLinked) return false;
 
       // Filter by genres
@@ -1028,7 +1035,7 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
 
     // Re-sort the cache since we added a new item
     final library = Provider.of<Library>(context, listen: false);
-    _sortedSeriesCache = _sortSeries(_sortedSeriesCache!, library);
+    _sortedSeriesCache = _sortSeries(_sortedSeriesCache!, library, Provider.of<AnilistProvider>(context, listen: false), AnilistProgressManager.instance);
 
     // If grouped cache exists, rebuild it
     if (_groupedDataCache != null && _showGrouped && _groupBy != GroupBy.none) {
@@ -1058,7 +1065,7 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
   Widget build(BuildContext context) {
     super.build(context); // for AutomaticKeepAliveClientMixin
 
-    final library = context.watch<Library>();
+    final library = Provider.of<Library>(context);
 
     if (library.libraryPath == null) return _buildLibrarySelector();
 
@@ -1101,7 +1108,7 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
               child: MouseButtonWrapper(
                 cursor: SystemMouseCursors.click,
                 child: (_) => GestureDetector(
-                  onTap: () => print('Library path tapped'),
+                  onTap: () {},
                   child: Text(
                     'Path: ${library.libraryPath}',
                     style: Manager.bodyStyle.copyWith(
@@ -2238,3 +2245,7 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
     );
   }
 }
+
+
+
+

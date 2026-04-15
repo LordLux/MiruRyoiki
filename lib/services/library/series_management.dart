@@ -358,7 +358,7 @@ extension LibrarySeriesManagement on Library {
     } else {
       snackBar('Failed to remove mapping', severity: InfoBarSeverity.error);
     }
-    Manager.setState();
+    notifyListeners();
   }
 
   /// Clear thumbnail cache for a specific series and reset episode thumbnail statuses
@@ -374,7 +374,7 @@ extension LibrarySeriesManagement on Library {
     // Clear the thumbnail cache for this series
     await ThumbnailManager().clearThumbnailCacheForSeries(seriesPath.path);
     notifyListeners();
-    Manager.setState();
+    notifyListeners();
 
     // Reset thumbnail statuses for all episodes in this series
     for (final collection in series.collections) {
@@ -397,7 +397,7 @@ extension LibrarySeriesManagement on Library {
     await ThumbnailManager().clearAllThumbnailCache();
     await ImageCacheService().clearCache();
     notifyListeners();
-    Manager.setState();
+    notifyListeners();
 
     // Reset all episode thumbnail statuses
     for (final series in _series) {

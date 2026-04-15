@@ -1,6 +1,9 @@
 import 'dart:math';
 
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:provider/provider.dart';
+import 'package:miruryoiki/services/anilist/provider/anilist_provider.dart';
+import 'package:miruryoiki/services/episode_navigation/anilist_progress_manager.dart';
 import 'package:flutter/material.dart' show InkWell, Material;
 import 'package:miruryoiki/widgets/frosted_noise.dart';
 import 'package:transparent_image/transparent_image.dart';
@@ -153,6 +156,9 @@ class _SeriesCardState extends State<SeriesCard> {
 
   @override
   Widget build(BuildContext context) {
+    final anilistProvider = Provider.of<AnilistProvider>(context, listen: false);
+    final progressManager = AnilistProgressManager.instance;
+    
     final Color? cachedPrimaryColor = widget.series.effectivePrimaryColorSync();
 
     final Color mainColor;
@@ -249,8 +255,8 @@ class _SeriesCardState extends State<SeriesCard> {
                                   alignment: Alignment.topLeft,
                                   child: AnimatedContainer(
                                     duration: splashScreenFadeAnimationIn,
-                                    color: widget.series.watchedPercentage == 0 ? Colors.transparent : _dominantColor ?? cachedPrimaryColor,
-                                    width: constraints.maxWidth * widget.series.watchedPercentage,
+                                    color: progressManager.getSeriesProgress(widget.series, anilistProvider) == 0 ? Colors.transparent : _dominantColor ?? cachedPrimaryColor,
+                                    width: constraints.maxWidth * progressManager.getSeriesProgress(widget.series, anilistProvider),
                                   ),
                                 ),
                               ),
@@ -296,12 +302,12 @@ class _SeriesCardState extends State<SeriesCard> {
                                     Row(
                                       children: [
                                         Text(
-                                          '${widget.series.watchedEpisodes} / ${widget.series.totalEpisodes} Episodes',
+                                          '${progressManager.getWatchedEpisodes(widget.series, anilistProvider)} / ${progressManager.getTotalEpisodes(widget.series)} Episodes',
                                           style: Manager.miniBodyStyle.copyWith(color: Color.lerp(_dominantColor ?? cachedPrimaryColor, Colors.white, .7)),
                                         ),
                                         const Spacer(),
                                         Text(
-                                          '${(widget.series.watchedPercentage * 100).round()}%',
+                                          '${(progressManager.getSeriesProgress(widget.series, anilistProvider) * 100).round()}%',
                                           style: Manager.miniBodyStyle.copyWith(color: Color.lerp(_dominantColor ?? cachedPrimaryColor, Colors.white, .7)),
                                         ),
                                       ],

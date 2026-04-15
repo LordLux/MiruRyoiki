@@ -146,7 +146,8 @@ extension LibraryScanning on Library {
           onProgress: (processed, total) {
             scanProgress.value = (processed, total);
             LibraryScanProgressManager().show(processed.toDouble() / total.toDouble());
-            Manager.setState();
+            notifyListeners();
+            // Manager.setState();
           },
         );
 
@@ -690,7 +691,7 @@ extension LibraryScanning on Library {
       final mappingsToProcess = forceRecalculate //
           ? _series.expand((s) => s.anilistMappings).toList()
           : _series //
-              .expand((s) => s.anilistMappings.where((m) => !(Manager.settings.dominantColorSource == DominantColorSource.banner ? m.bannerColor != null : m.posterColor != null)))
+              .expand((s) => s.anilistMappings.where((m) => !(_settings.dominantColorSource == DominantColorSource.banner ? m.bannerColor != null : m.posterColor != null)))
               .toList();
 
       if (mappingsToProcess.isEmpty) {

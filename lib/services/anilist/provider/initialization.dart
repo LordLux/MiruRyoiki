@@ -128,7 +128,7 @@ extension AnilistProviderInitialization on AnilistProvider {
         _hasPrefetchedData = true;
         
         notifyListeners();
-        Manager.setState();
+        // Manager.setState();
         
         logDebug('_ | Prefetched AniList data successfully (${_prefetchedUserLists.length} lists)');
       } else {

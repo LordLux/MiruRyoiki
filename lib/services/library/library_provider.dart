@@ -187,6 +187,7 @@ class Library with ChangeNotifier {
   /// Constructor
   Library(this._settings, this._db) {
     seriesDao = SeriesDao(_db);
+    _hiddenSeriesService.init(_settings);
   }
 
   @override

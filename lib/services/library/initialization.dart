@@ -64,7 +64,8 @@ extension LibraryInitialization on Library {
         onProgress: (loaded, total) {
           if (loaded % 2 == 0 || loaded == total) {
             // Force UI refresh every 2 items or on completion
-            Manager.setState();
+            notifyListeners();
+            // Manager.setState();
           }
         });
 
@@ -73,7 +74,7 @@ extension LibraryInitialization on Library {
     logDebug('Finished Reloading Library');
     if (showSnackBar) snackBar('Library Reloaded', severity: InfoBarSeverity.success);
     notifyListeners();
-    Manager.setState();
+    // Manager.setState();
   }
 
   Future<void> cacheValidation() async {

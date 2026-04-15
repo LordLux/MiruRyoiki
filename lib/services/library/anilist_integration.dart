@@ -298,7 +298,7 @@ extension LibraryAnilistIntegration on Library {
     _markDirty(series);
     await seriesDao.syncSeries(series);
     notifyListeners();
-    Manager.setState();
+    // Manager.setState();
 
     return true;
   }

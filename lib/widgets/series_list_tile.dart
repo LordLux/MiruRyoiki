@@ -1,6 +1,9 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/material.dart' show InkWell, Material;
 import 'package:transparent_image/transparent_image.dart';
+import 'package:provider/provider.dart';
+import 'package:miruryoiki/services/anilist/provider/anilist_provider.dart';
+import 'package:miruryoiki/services/episode_navigation/anilist_progress_manager.dart';
 import '../enums.dart';
 import '../manager.dart';
 import '../models/series.dart';
@@ -153,9 +156,12 @@ class _SeriesListTileState extends State<SeriesListTile> {
     }
 
     return LayoutBuilder(builder: (context, constraints) {
+      final anilistProvider = Provider.of<AnilistProvider>(context, listen: false);
+      final progressManager = AnilistProgressManager.instance;
+      
       final double tileHeight = 51;
-      final String extra = constraints.maxWidth > 450 ? ' (${(widget.series.watchedPercentage * 100).round()}%)' : '';
-      final progressText = '${widget.series.watchedEpisodes} / ${widget.series.totalEpisodes}$extra';
+      final String extra = constraints.maxWidth > 450 ? ' (${(progressManager.getSeriesProgress(widget.series, anilistProvider) * 100).round()}%)' : '';
+      final progressText = '${progressManager.getWatchedEpisodes(widget.series, anilistProvider)} / ${progressManager.getTotalEpisodes(widget.series)}$extra';
 
       return KeyedSubtree(
         key: ValueKey('${widget.series.path}-${widget.series.localPosterColor?.value ?? 0}-list'),

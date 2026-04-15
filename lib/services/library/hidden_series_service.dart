@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import '../../models/series.dart';
-import '../../manager.dart';
+import '../../settings.dart';
+import '../anilist/provider/anilist_provider.dart';
 
 /// Service to manage cached AniList IDs of hidden series
 /// This helps efficiently filter hidden series across the app without recalculating each time
@@ -8,6 +9,17 @@ class HiddenSeriesService extends ChangeNotifier {
   static final HiddenSeriesService _instance = HiddenSeriesService._internal();
   factory HiddenSeriesService() => _instance;
   HiddenSeriesService._internal();
+
+  SettingsManager? _settings;
+  AnilistProvider? _anilistProvider;
+
+  void init(SettingsManager settings) {
+    _settings = settings;
+  }
+
+  void setAnilistProvider(AnilistProvider provider) {
+    _anilistProvider = provider;
+  }
 
   /// Set of AniList IDs for series that are currently hidden 
   /// Includes ALL AniList IDs from mappings of hidden series (both forced and AniList hidden)
@@ -19,16 +31,20 @@ class HiddenSeriesService extends ChangeNotifier {
   /// Check if an AniList ID should be filtered out based on current settings
   bool shouldFilterAnilistId(int? anilistId) {
     if (anilistId == null) return false;
-    return !Manager.settings.showHiddenSeries && _hiddenAnilistIds.contains(anilistId);
+    final showHidden = _settings?.showHiddenSeries ?? false;
+    return !showHidden && _hiddenAnilistIds.contains(anilistId);
   }
 
   /// Check if a series should be filtered out based on current settings
   bool shouldFilterSeries(Series series) {
+    final showHidden = _settings?.showHiddenSeries ?? false;
+    final showAnilistHidden = _settings?.showAnilistHiddenSeries ?? false;
+
     // Check forced hidden status
-    if (!Manager.settings.showHiddenSeries && series.isForcedHidden) return true;
+    if (!showHidden && series.isForcedHidden) return true;
 
     // Check AniList hidden status
-    if (!Manager.settings.showAnilistHiddenSeries && series.isAnilistHidden) return true;
+    if (!showAnilistHidden && _anilistProvider != null && _anilistProvider!.isAnilistHidden(series)) return true;
 
     // Check if any of the series' AniList IDs are in our hidden cache
     for (final mapping in series.anilistMappings) {
@@ -51,7 +67,7 @@ class HiddenSeriesService extends ChangeNotifier {
       }
 
       // Add ALL AniList IDs for AniList hidden series
-      if (series.isAnilistHidden) {
+      if (_anilistProvider != null && _anilistProvider!.isAnilistHidden(series)) {
         for (final mapping in series.anilistMappings) {
           _hiddenAnilistIds.add(mapping.anilistId);
         }
@@ -83,9 +99,9 @@ class HiddenSeriesService extends ChangeNotifier {
 
   /// Update the cache when a series' hidden status changes
   void updateSeriesHiddenStatus(Series series) {
-    if (series.anilistMappings.isEmpty) return;
+    if (series.anilistMappings.isEmpty || _anilistProvider == null) return;
 
-    bool shouldBeHidden = series.isForcedHidden || series.isAnilistHidden;
+    bool shouldBeHidden = series.isForcedHidden || _anilistProvider!.isAnilistHidden(series);
     bool wasModified = false;
 
     for (final mapping in series.anilistMappings) {
@@ -113,7 +129,7 @@ class HiddenSeriesService extends ChangeNotifier {
   String getDebugInfo() {
     return 'Hidden AniList IDs Cache: ${_hiddenAnilistIds.length} entries\n'
         'IDs: ${_hiddenAnilistIds.toList()}\n'
-        'Show Hidden Series: ${Manager.settings.showHiddenSeries}\n'
-        'Show AniList Hidden Series: ${Manager.settings.showAnilistHiddenSeries}';
+        'Show Hidden Series: ${_settings?.showHiddenSeries ?? false}\n'
+        'Show AniList Hidden Series: ${_settings?.showAnilistHiddenSeries ?? false}';
   }
 }

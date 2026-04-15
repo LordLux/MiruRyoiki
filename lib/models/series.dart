@@ -3,18 +3,14 @@
 import 'package:flutter/widgets.dart' hide Image;
 import 'package:miruryoiki/models/metadata.dart';
 import 'package:collection/collection.dart';
-import 'package:provider/provider.dart';
 import 'package:recase/recase.dart';
 
-import '../manager.dart';
-import '../services/anilist/provider/anilist_provider.dart';
 import '../services/anilist/queries/anilist_service.dart';
 import '../utils/logging.dart';
 import '../utils/path.dart';
 import '../utils/text.dart';
 import 'anilist/anime.dart';
 import 'anilist/mapping.dart';
-import 'anilist/user_list.dart';
 import 'episode.dart';
 import '../enums.dart';
 import 'season.dart';
@@ -388,14 +384,6 @@ class Series {
     return '''\nSeries(
   Name:                       $name,
   Path:                         '$path',
-  Last List Update:      ${DateTime.fromMillisecondsSinceEpoch((latestUpdatedAt ?? 0) * 1000).pretty()},
-  Added to List:           ${DateTime.fromMillisecondsSinceEpoch((earliestCreatedAt ?? 0) * 1000).pretty()},
-  Started Watching:     ${earliestStartedAt.pretty()},
-  Finished Watching:   ${latestCompletionDate.pretty()},
-  Release Date:            ${earliestReleaseDate.pretty()},
-  End Date:                  ${latestEndDate.pretty()},
-  Highest User Score:   $highestUserScore,
-  Highest Popularity:    $highestPopularity,
   Dominant Color:        ${localPosterColor?.toHex()},
   Hidden:                   $isForcedHidden,
 )''';
@@ -481,223 +469,6 @@ class Series {
   // Image URLs
   String? get anilistPosterUrl => presenter.anilistPosterUrl;
   String? get anilistBannerUrl => presenter.anilistBannerUrl;
-
-  /// Media list entries for the series
-  Map<int, AnilistMediaListEntry?>? _mediaListEntries;
-
-  /// Cached info for quick access
-  (AnilistMediaListEntry?, int?, int?, DateTime?, DateTime?, int?, DateTime?, DateTime?, int?)? _cachedSeriesInfo;
-
-  /// Get media list entries for the series
-  Map<int, AnilistMediaListEntry?> get mediaListEntries => _mediaListEntries ?? getMediaListEntries(Provider.of<AnilistProvider>(Manager.context, listen: false));
-
-  /// Get media list entries for the series
-  Map<int, AnilistMediaListEntry?> getMediaListEntries(AnilistProvider anilistProvider) {
-    if (!isLinked) return {};
-
-    // initialize if null
-    _mediaListEntries = {};
-
-    for (final mapping in anilistMappings) {
-      bool found = false;
-      for (final list in anilistProvider.userLists.values) {
-        for (final listEntry in list.entries) {
-          if (listEntry.mediaId == mapping.anilistId) {
-            // If the mapping is found in the list, add it to the map
-            _mediaListEntries![mapping.anilistId] = listEntry;
-            found = true;
-            break;
-          }
-        }
-        if (found) break;
-      }
-
-      // If not found in any list, add null
-      if (!found) _mediaListEntries![mapping.anilistId] = null;
-    }
-
-    // Clear the cached info so it will be recalculated next time
-    _cachedSeriesInfo = null;
-
-    return _mediaListEntries!;
-  }
-
-  /// Get the best entry values from all user's list entries for this series
-  (AnilistMediaListEntry?, int?, int?, DateTime?, DateTime?, int?, DateTime?, DateTime?, int?)? getSeriesInfoFromMediaListEntry(AnilistProvider anilistProvider) {
-    if (!isLinked) return null;
-
-    // Use cached info if available
-    if (_cachedSeriesInfo != null) return _cachedSeriesInfo;
-
-    // Make sure media list entries are populated
-    final entries = getMediaListEntries(anilistProvider);
-    if (entries.isEmpty) return null;
-
-    // Values to collect from all mappings
-    AnilistMediaListEntry? bestEntry;
-
-    int? latestUpdatedAt; //            updatedAt    - list updated timestamp
-    int? earliestCreatedAt; //          createdAt    - added to list timestamp
-    DateTime? earliestStartedAt; //     startedAt    - user started entry timestamp
-    DateTime? latestCompletionDate; //  completedAt  - user completion date
-    int? averageUserScore; //           averageScore - user score
-    DateTime? earliestReleaseDate; //   startDate    - official release date
-    DateTime? latestEndDate; //         endDate      - official end date
-    int? averagePopularity; //          popularity   - popularity
-
-    // Variables for calculating averages
-    int totalUserScore = 0;
-    int userScoreCount = 0;
-    int totalPopularity = 0;
-    int popularityCount = 0;
-
-    // Process each mapping's media list entry
-    for (final anilistId in entries.keys) {
-      final entry = entries[anilistId];
-
-      if (entry != null) {
-        // List updated timestamp - take the most recent
-        if (entry.updatedAt != null && (latestUpdatedAt == null || entry.updatedAt! > latestUpdatedAt)) {
-          latestUpdatedAt = entry.updatedAt;
-        }
-
-        // Added to list timestamp - take the earliest
-        if (entry.createdAt != null && (earliestCreatedAt == null || entry.createdAt! < earliestCreatedAt)) {
-          earliestCreatedAt = entry.createdAt;
-        }
-
-        // User started entry timestamp - take the earliest
-        final startedDate = entry.startedAt?.toDateTime();
-        if (startedDate != null && (earliestStartedAt == null || startedDate.isBefore(earliestStartedAt))) {
-          earliestStartedAt = startedDate;
-        }
-
-        // User completion date - take the latest
-        final completedDate = entry.completedAt?.toDateTime();
-        if (completedDate != null && (latestCompletionDate == null || completedDate.isAfter(latestCompletionDate))) {
-          latestCompletionDate = completedDate;
-          // Track the entry with the latest completion date as the "best" entry
-          bestEntry = entry;
-        }
-
-        // User score - collect for average calculation
-        if (entry.score != null) {
-          totalUserScore += entry.score!;
-          userScoreCount++;
-        }
-      }
-
-      // Get release date from the anime data for this mapping
-      final mapping = anilistMappings.firstWhereOrNull((m) => m.anilistId == anilistId);
-      final animeData = mapping?.anilistData;
-      if (animeData != null) {
-        // Release date - take the earliest
-        final releaseDate = animeData.startDate?.toDateTime();
-        if (releaseDate != null && (earliestReleaseDate == null || releaseDate.isBefore(earliestReleaseDate))) {
-          earliestReleaseDate = releaseDate;
-        }
-
-        final endDate = animeData.endDate?.toDateTime();
-        if (endDate != null && (latestEndDate == null || endDate.isAfter(latestEndDate))) {
-          latestEndDate = endDate;
-        }
-
-        // Popularity - collect for average calculation
-        if (animeData.popularity != null) {
-          totalPopularity += animeData.popularity!;
-          popularityCount++;
-        }
-      }
-    }
-
-    // Calculate averages
-    if (userScoreCount > 0) averageUserScore = int.parse((totalUserScore / userScoreCount).round().toString());
-
-    if (popularityCount > 0) averagePopularity = int.parse((totalPopularity / popularityCount).round().toString());
-
-    // Cache the results
-    _cachedSeriesInfo = (
-      bestEntry, //$1
-      latestUpdatedAt, //$2
-      earliestCreatedAt, //$3
-      earliestStartedAt, //$4
-      latestCompletionDate, //$5
-      averageUserScore, //$6
-      earliestReleaseDate, //$7
-      latestEndDate, //$8
-      averagePopularity, //$9
-    );
-
-    return _cachedSeriesInfo;
-  }
-
-  /// When the user last updated this series in their list
-  int? get latestUpdatedAt {
-    final anilistProvider = Provider.of<AnilistProvider>(Manager.context, listen: false);
-    return getSeriesInfoFromMediaListEntry(anilistProvider)?.$2;
-  }
-
-  /// When the user added this series to their list
-  int? get earliestCreatedAt {
-    final anilistProvider = Provider.of<AnilistProvider>(Manager.context, listen: false);
-    return getSeriesInfoFromMediaListEntry(anilistProvider)?.$3;
-  }
-
-  /// When the user started watching this series
-  DateTime? get earliestStartedAt {
-    final anilistProvider = Provider.of<AnilistProvider>(Manager.context, listen: false);
-    return getSeriesInfoFromMediaListEntry(anilistProvider)?.$4;
-  }
-
-  /// When the user completed watching this series
-  DateTime? get latestCompletionDate {
-    final anilistProvider = Provider.of<AnilistProvider>(Manager.context, listen: false);
-    return getSeriesInfoFromMediaListEntry(anilistProvider)?.$5;
-  }
-
-  /// The highest user score for this series
-  int? get highestUserScore {
-    final anilistProvider = Provider.of<AnilistProvider>(Manager.context, listen: false);
-    return getSeriesInfoFromMediaListEntry(anilistProvider)?.$6;
-  }
-
-  /// The earliest release date for this series
-  DateTime? get earliestReleaseDate {
-    final anilistProvider = Provider.of<AnilistProvider>(Manager.context, listen: false);
-    return getSeriesInfoFromMediaListEntry(anilistProvider)?.$7;
-  }
-
-  /// The latest end date for this series
-  DateTime? get latestEndDate {
-    final anilistProvider = Provider.of<AnilistProvider>(Manager.context, listen: false);
-    return getSeriesInfoFromMediaListEntry(anilistProvider)?.$8;
-  }
-
-  /// The highest popularity for this series
-  int? get highestPopularity {
-    final anilistProvider = Provider.of<AnilistProvider>(Manager.context, listen: false);
-    return getSeriesInfoFromMediaListEntry(anilistProvider)?.$9;
-  }
-
-  // Helper method to get specific media list entry for a given path
-  AnilistMediaListEntry? getMediaListEntry(AnilistProvider anilistProvider) {
-    if (!isLinked) return null;
-
-    // Make sure entries are populated
-    final entries = getMediaListEntries(anilistProvider);
-
-    // Use the primary mapping's entry if available
-    if (primaryAnilistId != null && entries.containsKey(primaryAnilistId)) {
-      return entries[primaryAnilistId];
-    }
-
-    // Otherwise return the first non-null entry
-    for (final entry in entries.values) {
-      if (entry != null) return entry;
-    }
-
-    return null;
-  }
 
   // Convenience getters
 
@@ -909,9 +680,6 @@ class Series {
     return '${first.$1} ${first.$2} - ${last.$1} ${last.$2}';
   }
 
-  /// Checks if any Anilist mapping has the "hide from status lists" flag set
-  bool get isAnilistHidden => isLinked && mediaListEntries.values.any((entry) => entry?.hiddenFromStatusLists == true);
-
   // Image resolution forwarding
   String? get effectivePosterPath => presenter.effectivePosterPath;
   String? get effectiveBannerPath => presenter.effectiveBannerPath;
@@ -991,42 +759,10 @@ class Series {
     return _metadata;
   }
 
-  // Update existing progress getters to use Anilist data
-  int get totalEpisodes {
-    if (isLinked) {
-      return Manager.anilistProgress.getTotalEpisodesFromAnilist(this);
-    }
-    // Fallback to local count
-    return collections.fold(0, (sum, c) => sum + c.episodes.length);
-  }
-
-  int get watchedEpisodes {
-    if (isLinked) {
-      try {
-        final provider = Provider.of<AnilistProvider>(Manager.context, listen: false);
-        return Manager.anilistProgress.getWatchedEpisodesFromAnilist(this, provider);
-      } catch (e) {
-        // Context not available in isolate
-        return collections.fold(0, (sum, c) => sum + c.watchedCount);
-      }
-    }
-    // Fallback to local count
-    return collections.fold(0, (sum, c) => sum + c.watchedCount);
-  }
-
-  double get watchedPercentage {
-    if (isLinked) {
-      try {
-        final provider = Provider.of<AnilistProvider>(Manager.context, listen: false);
-        return Manager.anilistProgress.getSeriesProgress(this, provider);
-      } catch (e) {
-        // Context not available in isolate
-        return totalEpisodes > 0 ? watchedEpisodes / totalEpisodes : 0.0;
-      }
-    }
-    // Fallback to local calculation
-    return totalEpisodes > 0 ? watchedEpisodes / totalEpisodes : 0.0;
-  }
+  int get localTotalEpisodes => collections.fold(0, (sum, c) => sum + c.episodes.length);
+  int get localWatchedEpisodes => collections.fold(0, (sum, c) => sum + c.watchedCount);
+  double get localWatchedPercentage => localTotalEpisodes > 0 ? localWatchedEpisodes / localTotalEpisodes : 0.0;
+  double get watchedPercentage => localWatchedPercentage; // Kept only for DB mapping
 
   int get numberOfSeasons {
     final seasonList = seasons;
@@ -1134,12 +870,11 @@ class Series {
     for (final mapping in anilistMappings) {
       if (mapping.localPath == target.path) {
         anilistMappings.remove(mapping);
-        // Invalidate cached media list entries
-        _mediaListEntries = null;
-        _cachedSeriesInfo = null;
         return true;
       }
     }
     return false;
   }
 }
+
+

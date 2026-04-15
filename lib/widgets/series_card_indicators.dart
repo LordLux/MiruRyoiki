@@ -1,4 +1,6 @@
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:provider/provider.dart';
+import 'package:miruryoiki/services/anilist/provider/anilist_provider.dart';
 import 'package:miruryoiki/utils/screen.dart';
 import 'package:miruryoiki/utils/time.dart';
 
@@ -17,16 +19,19 @@ class CardIndicators extends StatelessWidget {
     this.isListView = false,
   });
 
-  static List<Widget> indicators(Series series, {bool isListView = false}) => [
+  static List<Widget> indicators(BuildContext context, Series series, {bool isListView = false}) {
+    final anilistProvider = Provider.of<AnilistProvider>(context, listen: false);
+    return [
         // Anilist hidden indicator
-        if (series.isAnilistHidden) AnilistHidden(),
+        if (anilistProvider.isAnilistHidden(series)) AnilistHidden(),
         // LOCAL hidden indicator
         if (series.isForcedHidden) LocalHidden(),
       ];
+  }
 
   @override
   Widget build(BuildContext context) {
-    final indicatorsList = indicators(series);
+    final indicatorsList = indicators(context, series);
     if (indicatorsList.isEmpty) return SizedBox.shrink();
 
     return IgnorePointer(

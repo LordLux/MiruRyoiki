@@ -48,6 +48,7 @@ import 'settings.dart';
 import 'widgets/dialogs/splash/splash_screen.dart';
 import 'utils/logging.dart';
 import 'manager.dart';
+import 'services/library/hidden_series_service.dart';
 import 'services/library/library_provider.dart';
 import 'screens/accounts.dart';
 import 'screens/library.dart';
@@ -144,6 +145,9 @@ void main(List<String> args) async {
   // Pre-initialize the Thumbnail Manager isolate
   ThumbnailManager();
 
+  final anilistProvider = AnilistProvider();
+  HiddenSeriesService().setAnilistProvider(anilistProvider);
+
   // Run the app
   runApp(
     ReassembleListener(
@@ -163,9 +167,9 @@ void main(List<String> args) async {
       },
       child: MultiProvider(
         providers: [
+          ChangeNotifierProvider.value(value: anilistProvider),
           ChangeNotifierProvider(create: (_) => Library(_settings, db), lazy: false),
           ChangeNotifierProvider(create: (_) => ConnectivityService(), lazy: false),
-          ChangeNotifierProvider(create: (_) => AnilistProvider()),
           ChangeNotifierProvider.value(value: _appTheme),
           ChangeNotifierProvider.value(value: _settings),
           ChangeNotifierProvider.value(value: _navigationManager),

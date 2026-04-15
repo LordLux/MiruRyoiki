@@ -24,11 +24,20 @@ class AnilistProgressManager {
     return total;
   }
 
+  /// Get total episodes, falling back to local count if not linked or no episodes
+  int getTotalEpisodes(Series series) {
+    if (series.isLinked) {
+      final anilistTotal = getTotalEpisodesFromAnilist(series);
+      if (anilistTotal > 0) return anilistTotal;
+    }
+    return series.localTotalEpisodes;
+  }
+
   /// Get watched episodes from Anilist progress (sum of progress from all mappings)
   int getWatchedEpisodesFromAnilist(Series series, AnilistProvider provider) {
     if (!series.isLinked) return 0;
 
-    final entries = series.getMediaListEntries(provider);
+    final entries = provider.getMediaListEntries(series);
     int totalProgress = 0;
 
     for (final entry in entries.values) {
@@ -38,6 +47,14 @@ class AnilistProgressManager {
     }
 
     return totalProgress;
+  }
+
+  /// Get watched episodes, falling back to local count if not linked
+  int getWatchedEpisodes(Series series, AnilistProvider provider) {
+    if (series.isLinked) {
+      return getWatchedEpisodesFromAnilist(series, provider);
+    }
+    return series.localWatchedEpisodes;
   }
 
   /// Get series progress as percentage (0.0 - 1.0)
@@ -63,7 +80,7 @@ class AnilistProgressManager {
     if (!series.isLinked) return null;
 
     final orderedMappings = _getOrderedMappings(series);
-    final entries = series.getMediaListEntries(provider);
+    final entries = provider.getMediaListEntries(series);
     Episode? lastWatched;
     int absoluteOffset = 0;
 
@@ -92,7 +109,7 @@ class AnilistProgressManager {
     if (!series.isLinked) return null;
 
     final orderedMappings = _getOrderedMappings(series);
-    final entries = series.getMediaListEntries(provider);
+    final entries = provider.getMediaListEntries(series);
     int absoluteOffset = 0;
 
     for (final (mapping, season) in orderedMappings) {
@@ -123,7 +140,7 @@ class AnilistProgressManager {
     if (!series.isLinked) return null;
 
     final orderedMappings = _getOrderedMappings(series);
-    final entries = series.getMediaListEntries(provider);
+    final entries = provider.getMediaListEntries(series);
     int absoluteOffset = 0;
 
     for (final (mapping, season) in orderedMappings) {
@@ -181,7 +198,7 @@ class AnilistProgressManager {
     if (!series.isLinked) return [];
 
     final orderedMappings = _getOrderedMappings(series);
-    final entries = series.getMediaListEntries(provider);
+    final entries = provider.getMediaListEntries(series);
     final result = <Episode>[];
     int absoluteOffset = 0;
 
@@ -217,7 +234,7 @@ class AnilistProgressManager {
     if (!series.isLinked) return [];
 
     final orderedMappings = _getOrderedMappings(series);
-    final entries = series.getMediaListEntries(provider);
+    final entries = provider.getMediaListEntries(series);
     final result = <Episode>[];
     int absoluteOffset = 0;
 
@@ -338,3 +355,4 @@ class AnilistProgressManager {
     return null;
   }
 }
+

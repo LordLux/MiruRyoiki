@@ -3,6 +3,7 @@ import 'package:flutter_anitomy/flutter_anitomy.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:miruryoiki/enums.dart';
 import 'package:miruryoiki/manager.dart';
+import 'package:miruryoiki/services/episode_navigation/anilist_progress_manager.dart';
 import 'package:miruryoiki/models/anilist/anime.dart';
 import 'package:miruryoiki/models/anilist/mapping.dart';
 import 'package:miruryoiki/models/episode.dart';
@@ -1625,8 +1626,9 @@ void main() {
       final ovaFolder = Folder(name: 'OVA', path: PathString(r'M:\S\OVA'), episodes: [relEp]);
 
       final series = _makeSeries(collections: [s1, s2, ovaFolder]);
+      final progressManager = AnilistProgressManager.instance;
 
-      expect(series.totalEpisodes, 4);
+      expect(progressManager.getTotalEpisodes(series), 4);
     });
   });
 
@@ -2146,12 +2148,14 @@ void main() {
       final s1 = _makeSeason(episodes: eps1);
       final ovaFolder = Folder(name: 'OVA', path: PathString(r'M:\S\OVA'), episodes: [relEp]);
       final series = _makeSeries(collections: [s1, ovaFolder]);
+      final progressManager = AnilistProgressManager.instance;
 
-      expect(series.totalEpisodes, 3);
+      expect(progressManager.getTotalEpisodes(series), 3);
     });
 
     test('returns 0 for empty series', () {
-      expect(_makeSeries().totalEpisodes, 0);
+      final progressManager = AnilistProgressManager.instance;
+      expect(progressManager.getTotalEpisodes(_makeSeries()), 0);
     });
   });
 

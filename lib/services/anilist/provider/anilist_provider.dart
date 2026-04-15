@@ -7,8 +7,8 @@ import 'package:provider/provider.dart';
 import '../../../../models/anilist/user_list.dart';
 import '../../../../models/anilist/user_data.dart';
 import '../../../../models/anilist/anime.dart';
+import '../../../../models/series.dart';
 import '../../../main.dart';
-import '../../../manager.dart';
 import '../../../models/anilist/mutation.dart';
 import '../../../models/notification.dart';
 import '../../../utils/time.dart';
@@ -27,6 +27,7 @@ part 'lists_management.dart';
 part 'anime_cache.dart';
 part 'mutations.dart';
 part 'background_sync.dart';
+part 'series_info.dart';
 
 class AnilistProvider extends ChangeNotifier with WidgetsBindingObserver {
   final AnilistService _anilistService;
