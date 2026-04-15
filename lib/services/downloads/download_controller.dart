@@ -82,9 +82,9 @@ class DownloadController {
 
     if (sonarrSeriesId == null) throw Exception("Failed to sync series");
 
-    logTrace('[DownloadController] Sonarr series synced: id=$sonarrSeriesId, tvdbId=$tvdbId');
+    // logTrace('[DownloadController] Sonarr series synced: id=$sonarrSeriesId, tvdbId=$tvdbId');
     final episodes = await _sonarr.getEpisodes(sonarrSeriesId);
-    logTrace('[DownloadController] Got ${episodes.length} episodes');
+    // logTrace('[DownloadController] Got ${episodes.length} episodes');
 
     return (sonarrSeriesId, episodes);
   }
@@ -244,7 +244,7 @@ class DownloadController {
     required int sonarrEpisodeId,
     required int seasonNumber,
   }) async {
-    logTrace('[DownloadController] manualImportFile: "$localFilePath" → seriesId=$sonarrSeriesId, epId=$sonarrEpisodeId, S$seasonNumber');
+    // logTrace('[DownloadController] manualImportFile: "$localFilePath" → seriesId=$sonarrSeriesId, epId=$sonarrEpisodeId, S$seasonNumber');
     final sonarrFilePath = _toSonarrPath(localFilePath);
     final sonarrFolderPath = sonarrFilePath.substring(0, sonarrFilePath.lastIndexOf('/'));
 

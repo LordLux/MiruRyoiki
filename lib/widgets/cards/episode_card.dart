@@ -332,12 +332,15 @@ class _HoverableEpisodeTileState extends State<HoverableEpisodeTile> {
                 Positioned(
                   bottom: 8,
                   right: 8,
-                  child: PlayButton(
-                    key: ValueKey('play_${widget.uiEpisode.localEpisode!.path.path}'),
-                    episode: widget.uiEpisode.localEpisode!,
-                    forceExpand: _isHovering,
-                    isNextEpisodeToPlay: widget.series != null && widget.uiEpisode.localEpisode == Manager.anilistProgress.getNextEpisodeToWatch(widget.series!, anilistProivder),
-                  ),
+                  child: Builder(builder: (context) {
+                    final isNextEpisodeToPlay = widget.series != null && widget.uiEpisode.localEpisode == Manager.anilistProgress.getNextEpisodeToWatchLocal(widget.series!, anilistProivder);
+                    return PlayButton(
+                      key: ValueKey('play_${widget.uiEpisode.localEpisode!.path.path}'),
+                      episode: widget.uiEpisode.localEpisode!,
+                      forceExpand: _isHovering,
+                      isNextEpisodeToPlay: isNextEpisodeToPlay,
+                    );
+                  }),
                 ),
             ],
           ),
@@ -416,10 +419,10 @@ class _HoverableEpisodeTileState extends State<HoverableEpisodeTile> {
         ),
         child: child,
       );
-      
+
       // Always blur when thumbnail exists
       final isWatched = episode.watched;
-      
+
       return ImageFiltered(
         imageFilter: ImageFilter.blur(
           sigmaX: isWatched ? 0 : 15,
@@ -473,7 +476,7 @@ class _HoverableEpisodeTileState extends State<HoverableEpisodeTile> {
               child: child,
             );
             final isWatched = episode.watched;
-            
+
             return ImageFiltered(
               imageFilter: ImageFilter.blur(
                 sigmaX: isWatched ? 0 : 15,
