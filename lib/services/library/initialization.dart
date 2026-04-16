@@ -18,12 +18,13 @@ extension LibraryInitialization on Library {
   /// The main, long-running initialization sequence, now non-blocking.
   Future<void> startBackgroundLoading(BuildContext context) async {
     final anilistProvider = Provider.of<AnilistProvider>(context, listen: false);
+    final scannerService = Provider.of<LibraryScannerService>(context, listen: false);
 
     // Start prefetching AniList data in parallel with library scan
     final prefetchFuture = anilistProvider.prefetchOnlineData();
 
     // Scan Local Library (this now reports progress and manages its own state)
-    await scanLocalLibrary();
+    await scannerService.scanLocalLibrary();
 
     // Wait for prefetch to complete if it hasn't already
     await prefetchFuture;
@@ -47,12 +48,13 @@ extension LibraryInitialization on Library {
 
   // DISPOSE IN MAIN
   Future<void> reloadLibrary({bool force = false, bool showSnackBar = true}) async {
+    final scannerService = Provider.of<LibraryScannerService>(rootNavigatorKey.currentContext!, listen: false);
     if (_libraryPath == null) return;
-    if (!force && _isScanning) return;
+    if (!force && scannerService.isIndexing) return;
     logDebug('Reloading Library...');
 
     if (showSnackBar) snackBar('Reloading Library...', severity: InfoBarSeverity.info, autoHide: false);
-    await scanLocalLibrary();
+    await scannerService.scanLocalLibrary();
 
     await ensureCacheValidated();
 

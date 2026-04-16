@@ -15,6 +15,7 @@ import '../../widgets/dialogs/notifications.dart';
 import '../library/library_provider.dart';
 import '../../utils/logging.dart';
 import '../../utils/screen.dart';
+import '../library/scanner/scanner_service.dart';
 import 'navigation.dart';
 import 'statusbar.dart';
 
@@ -154,7 +155,8 @@ class _CustomKeyboardListenerState extends State<CustomKeyboardListener> {
       // Toggle hidden series
       if (isCtrlPressed && event.logicalKey == LogicalKeyboardKey.keyH) {
         final library = Provider.of<Library>(context, listen: false);
-        if (library.initialized && !library.isIndexing && homeKey.currentState?.isSeriesView == false) {
+        final scannerService = Provider.of<LibraryScannerService>(context, listen: false);
+        if (library.initialized && !scannerService.isIndexing && homeKey.currentState?.isSeriesView == false) {
           Manager.settings.showHiddenSeries = !Manager.settings.showHiddenSeries;
           snackBar(
             Manager.settings.showHiddenSeries ? 'Hidden series are now visible' : 'Hidden series are now hidden',
@@ -178,20 +180,22 @@ class _CustomKeyboardListenerState extends State<CustomKeyboardListener> {
       // Reload
       if (isCtrlPressed && !isShiftPressed && event.logicalKey == LogicalKeyboardKey.keyR && !HardwareKeyboard.instance.isAltPressed) {
         final library = Provider.of<Library>(context, listen: false);
+        final scannerService = Provider.of<LibraryScannerService>(context, listen: false);
 
-        if (library.initialized && !library.isIndexing) {
+        if (library.initialized && !scannerService.isIndexing) {
           library.reloadLibrary(force: true);
         } else {
           if (!library.initialized) snackBar('Library is not initialized', severity: InfoBarSeverity.warning);
-          if (library.isIndexing) snackBar('Library is currently scanning\nPlease wait before reloading', severity: InfoBarSeverity.warning);
+          if (scannerService.isIndexing) snackBar('Library is currently scanning\nPlease wait before reloading', severity: InfoBarSeverity.warning);
         }
       } else
       //
       // Reload + Clearing all Cache (Ctrl + Alt + Shift + R)
       if (isCtrlPressed && isShiftPressed && event.logicalKey == LogicalKeyboardKey.keyR && HardwareKeyboard.instance.isAltPressed) {
         final library = Provider.of<Library>(context, listen: false);
+        final scannerService = Provider.of<LibraryScannerService>(context, listen: false);
 
-        if (library.initialized && !library.isIndexing) {
+        if (library.initialized && !scannerService.isIndexing) {
           // Check if we're in series view and clear thumbnails for that series
           final homeState = homeKey.currentState;
 
@@ -277,7 +281,7 @@ class _CustomKeyboardListenerState extends State<CustomKeyboardListener> {
           Manager.setState();
         } else {
           if (!library.initialized) snackBar('Library is not initialized', severity: InfoBarSeverity.warning);
-          if (library.isIndexing) snackBar('Library is currently scanning\nPlease wait before reloading', severity: InfoBarSeverity.warning);
+          if (scannerService.isIndexing) snackBar('Library is currently scanning\nPlease wait before reloading', severity: InfoBarSeverity.warning);
         }
       } else
       //

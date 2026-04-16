@@ -1,33 +1,24 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
-import 'dart:isolate';
 
 import 'package:collection/collection.dart';
 import 'package:fluent_ui/fluent_ui.dart';
-import 'package:flutter/foundation.dart';
 import 'package:miruryoiki/functions.dart';
-import 'package:path/path.dart' as p;
-import 'package:path/path.dart' as path;
 import 'package:provider/provider.dart';
 
 import '../../models/mapping_target.dart';
 import '../../models/season.dart';
-import '../../utils/file.dart';
-import '../players/player_manager.dart';
-import '../players/factory.dart';
-import '../../models/players/mediastatus.dart';
 
 import '../../database/daos/series_dao.dart';
 import '../../database/database.dart';
 import '../../enums.dart';
 import '../../main.dart';
-import '../../manager.dart';
 import '../../models/anilist/anime.dart';
 import '../../models/anilist/mapping.dart';
 import '../../models/episode.dart';
-import '../../models/metadata.dart';
 import '../../models/series.dart';
+import 'scanner/scanner_service.dart';
 import '../../services/anilist/linking.dart';
 import '../../settings.dart';
 import '../../theme.dart';
@@ -37,15 +28,11 @@ import '../anilist/queries/anilist_service.dart';
 import '../anilist/episode_title_service.dart';
 import '../file_system/cache.dart';
 import '../../services/navigation/show_info.dart';
-import '../../utils/color.dart' as color_utils;
 import '../../utils/logging.dart';
 import '../../utils/path.dart';
-import '../../utils/shell.dart';
 import '../../utils/time.dart';
-import '../isolates/isolate_manager.dart';
 import '../isolates/thumbnail_manager.dart';
 import '../lock_manager.dart';
-import '../processes/monitor.dart' as process_monitor;
 import 'hidden_series_service.dart';
 
 // Include all the parts
@@ -63,13 +50,10 @@ class Library with ChangeNotifier {
   String? _libraryPath;
 
   /// If a scan is currently in progress
-  bool _isScanning = false;
 
   /// If this is the first scan after selecting a library path
-  bool _isInitialScan = false;
 
   /// (current, total)
-  final ValueNotifier<(int, int)?> scanProgress = ValueNotifier(null);
 
   /// Version counter that increments whenever series data changes
   /// (Used to invalidate their caches when library data updates)
@@ -105,6 +89,9 @@ class Library with ChangeNotifier {
   /// Path to the library directory
   String? get libraryPath => _libraryPath;
 
+  @visibleForTesting
+  set libraryPath(String? path) => _libraryPath = path;
+
   String? get libraryDockerPath {
     // Transform something like "C:\Videos\Series" to "/data/Videos/Series"
     return PathString("/data/${PathUtils.removeDriveLetter(PathString(libraryPath!).linux)}").linux;//remove drive letter for docker
@@ -114,10 +101,8 @@ class Library with ChangeNotifier {
   bool get initialized => _initialized;
 
   /// Whether a scan is currently in progress
-  bool get isIndexing => _isScanning;
 
   /// Whether this is the first scan after selecting a library path
-  bool get isInitialScan => _isInitialScan; // Also whether shimmer should be shown during scan
 
   /// Database instance
   AppDatabase get database => _db;
@@ -151,7 +136,6 @@ class Library with ChangeNotifier {
 
   @override
   void dispose() {
-    scanProgress.dispose();
     _debouncedSaveTimer?.cancel();
     super.dispose();
   }

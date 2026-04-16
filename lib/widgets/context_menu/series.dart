@@ -13,6 +13,7 @@ import '../../models/series.dart';
 import '../../services/anilist/provider/anilist_provider.dart';
 import '../../services/anilist/queries/anilist_service.dart';
 import '../../services/library/library_provider.dart';
+import '../../services/library/scanner/scanner_service.dart';
 import '../../services/lock_manager.dart';
 import '../../services/navigation/show_info.dart';
 import '../../screens/series.dart';
@@ -89,8 +90,8 @@ class SeriesContextMenuState extends State<SeriesContextMenu> {
     required final BuildContext context,
     required final Series series,
   }) {
-    final library = Provider.of<Library>(context, listen: false);
-    final shouldDisable = library.isIndexing;
+    final scannerService = Provider.of<LibraryScannerService>(context, listen: false);
+    final shouldDisable = scannerService.isIndexing;
     return Menu(
       items: [
         MenuItem(

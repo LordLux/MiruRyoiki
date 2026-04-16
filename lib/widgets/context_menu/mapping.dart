@@ -12,6 +12,7 @@ import '../../models/anilist/user_list.dart';
 import '../../models/series.dart';
 import '../../services/anilist/provider/anilist_provider.dart';
 import '../../services/library/library_provider.dart';
+import '../../services/library/scanner/scanner_service.dart';
 import '../../services/lock_manager.dart';
 import '../../services/navigation/show_info.dart';
 import '../../utils/shell.dart';
@@ -80,8 +81,8 @@ class MappingContextMenuState extends State<MappingContextMenu> {
     required final BuildContext context,
     required final MappingTarget target,
   }) {
-    final library = Provider.of<Library>(context, listen: false);
-    final shouldDisable = library.isIndexing;
+    final scannerService = Provider.of<LibraryScannerService>(context, listen: false);
+    final shouldDisable = scannerService.isIndexing;
 
     return Menu(
       items: [

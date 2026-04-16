@@ -11,6 +11,7 @@ import '../../manager.dart';
 import '../../models/episode.dart';
 import '../../models/series.dart';
 import '../../models/ui_episode.dart';
+import '../../services/library/scanner/scanner_service.dart';
 import '../../services/library/library_provider.dart';
 import '../../services/lock_manager.dart';
 import '../../services/navigation/show_info.dart';
@@ -88,8 +89,8 @@ class EpisodeContextMenuState extends State<EpisodeContextMenu> {
     required final BuildContext context,
     required final Episode episode,
   }) {
-    final library = Provider.of<Library>(context, listen: false);
-    final shouldDisable = library.isIndexing;
+    final scannerService = Provider.of<LibraryScannerService>(context, listen: false);
+    final shouldDisable = scannerService.isIndexing;
 
     return Menu(
       items: [

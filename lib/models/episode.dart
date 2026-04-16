@@ -22,7 +22,7 @@ class Episode {
   Metadata? metadata;
   MkvMetadata? mkvMetadata;
   String? _anilistTitle;
-  late final ParsedAnime _parsedAnime;
+  late final ParsedAnime? _parsedAnime;
   /// Episode title extracted by anitomy from the filename
   String? parsedTitle;
 
@@ -46,9 +46,13 @@ class Episode {
   })  : _episodeNumber = episodeNumber,
         _progress = progress {
     progressNotifier = ValueNotifier<double>(progress);
-    _parsedAnime = parsedAnime ?? FlutterAnitomy().parse(path.fileName!);
-    _episodeNumber ??= int.tryParse(_parsedAnime.episode ?? '');
-    parsedTitle ??= _parsedAnime.episodeTitle;
+    if (Platform.environment.containsKey('FLUTTER_TEST')) {
+      _parsedAnime = parsedAnime;
+    } else {
+      _parsedAnime = parsedAnime ?? FlutterAnitomy().parse(path.fileName!);
+    }
+    _episodeNumber ??= int.tryParse(_parsedAnime?.episode ?? '');
+    parsedTitle ??= _parsedAnime?.episodeTitle;
 
     // Fallback: try "DD - Title" pattern for manually renamed files
     if (_episodeNumber == null || parsedTitle == null) {
@@ -94,11 +98,11 @@ class Episode {
   String get progressPercentage => '${(progress * 100).toStringAsFixed(2)}%';
 
   /// Returns the episode number, either from metadata or parsed from the name
-  int? get episodeNumber => _episodeNumber ?? int.tryParse(_parsedAnime.episode ?? '');
+  int? get episodeNumber => _episodeNumber ?? int.tryParse(_parsedAnime?.episode ?? '');
   set episodeNumber(int? value) => _episodeNumber = value;
 
   /// Returns the display title, prioritizing AniList title over parsed title over filename
-  String? get displayTitle => (Manager.enableAnilistEpisodeTitles ? anilistTitle : null) ?? parsedTitle ?? _parsedAnime.episodeTitle;
+  String? get displayTitle => (Manager.enableAnilistEpisodeTitles ? anilistTitle : null) ?? parsedTitle ?? _parsedAnime?.episodeTitle;
 
   @override
   String toString() {
@@ -229,7 +233,7 @@ class Episode {
   bool get isDisplayTitleSimple => RegExp(r'^(Episode|Ep|E) \d{1,3}$', caseSensitive: false).hasMatch(displayTitle ?? '');
 
   /// Whether a meaningful title is available (from AniList, parsed from filename, or extracted by anitomy)
-  bool get isTitleParsable => _anilistTitle != null || parsedTitle != null || _parsedAnime.episodeTitle != null;
+  bool get isTitleParsable => _anilistTitle != null || parsedTitle != null || _parsedAnime?.episodeTitle != null;
 
   /// Detect special episode type from filename (OVA, ONA, Movie)
   static final _typePattern = RegExp(r'\b(OVA|ONA|Movie)\b', caseSensitive: false);

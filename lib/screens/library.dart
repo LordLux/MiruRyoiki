@@ -21,6 +21,7 @@ import '../models/anilist/user_data.dart';
 import '../models/anilist/user_list.dart';
 import '../services/anilist/queries/anilist_service.dart';
 import '../services/library/library_provider.dart';
+import '../services/library/scanner/scanner_service.dart';
 import '../services/library/search_service.dart';
 import '../models/series.dart';
 import '../services/anilist/provider/anilist_provider.dart';
@@ -1066,12 +1067,13 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
     super.build(context); // for AutomaticKeepAliveClientMixin
 
     final library = Provider.of<Library>(context);
+    final scannerService = Provider.of<LibraryScannerService>(context);
 
     if (library.libraryPath == null) return _buildLibrarySelector();
 
     return MiruRyoikiTemplatePage(
-      headerWidget: _buildHeader(library),
-      content: _buildLibraryView(library),
+      headerWidget: _buildHeader(library, scannerService),
+      content: _buildLibraryView(library, scannerService),
       headerMaxHeight: ScreenUtils.kMinHeaderHeight,
       headerMinHeight: ScreenUtils.kMinHeaderHeight,
       noHeaderBanner: true,
@@ -1088,7 +1090,7 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
     _saveUserPreferences();
   }
 
-  HeaderWidget _buildHeader(Library library) {
+  HeaderWidget _buildHeader(Library library, LibraryScannerService scannerService) {
     return HeaderWidget(
       contentRightPadding: -4,
       title: (_, __) => ValueListenableBuilder(
@@ -1277,7 +1279,7 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
     );
   }
 
-  Widget _buildLibraryView(Library library) {
+  Widget _buildLibraryView(Library library, LibraryScannerService scannerService) {
     // Check if cache is valid and exists
     List<Series> seriesToDisplay;
     Map<String, List<Series>>? groupedData;
@@ -1368,7 +1370,7 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
     return LayoutBuilder(builder: (context, constraints) {
       // Only hide library content if it's an initial scan (first time or new path)
       // For normal scans show the library with disabled actions
-      final bool hideLibrary = library.isIndexing && library.isInitialScan;
+      final bool hideLibrary = scannerService.isIndexing && scannerService.isInitialScan;
 
       // We use previousGridColumnCount to detect if we are transitioning
       if (previousGridColumnCount.value == null) {

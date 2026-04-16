@@ -14,6 +14,7 @@ import '../../models/series.dart';
 import '../../services/anilist/linking.dart';
 import '../../services/file_system/cache.dart';
 import '../../services/library/library_provider.dart';
+import '../../services/library/scanner/scanner_service.dart';
 import '../../services/lock_manager.dart';
 import '../../services/navigation/dialogs.dart';
 import '../../services/navigation/dialogs2.dart';
@@ -265,7 +266,6 @@ class AnilistLinkMultiContentState extends State<AnilistLinkMultiContent> {
 
   // View mode
   Widget _buildMappingsList() {
-    final library = Provider.of<Library>(context, listen: false);
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -328,12 +328,12 @@ class AnilistLinkMultiContentState extends State<AnilistLinkMultiContent> {
                   child: FluentTheme(
                     data: FluentTheme.of(context).copyWith(accentColor: Manager.currentDominantColor?.toAccentColor() ?? Manager.accentColor),
                     child: TooltipWrapper(
-                      tooltip: library.isIndexing ? 'The Library is indexing. Please wait...' : 'Select primary Anilist source',
+                      tooltip: Provider.of<LibraryScannerService>(context).isIndexing ? 'The Library is indexing. Please wait...' : 'Select primary Anilist source',
                       waitDuration: mediumDuration,
                       useMousePosition: false,
                       child: (_) => MouseButtonWrapper(
-                        isLoading: library.isIndexing,
-                        isButtonDisabled: library.isIndexing,
+                        isLoading: Provider.of<LibraryScannerService>(context).isIndexing,
+                        isButtonDisabled: Provider.of<LibraryScannerService>(context).isIndexing,
                         child: (_) => ComboBox<int>(
                           isExpanded: true,
                           placeholder: const Text('Select Anilist source'),
@@ -390,8 +390,8 @@ class AnilistLinkMultiContentState extends State<AnilistLinkMultiContent> {
                 if (_mappingsChanged) ...[
                   SizedBox(width: 8),
                   Builder(builder: (context) {
-                    final library = Provider.of<Library>(context);
-                    final bool indexing = library.isIndexing;
+                    final scannerService = Provider.of<LibraryScannerService>(context);
+                    final bool indexing = scannerService.isIndexing;
                     return TooltipWrapper(
                         tooltip: indexing ? 'Please wait for indexing to complete before saving changes.' : 'Save changes',
                         child: (_) => PaddedDialogButton(

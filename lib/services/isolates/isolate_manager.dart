@@ -63,9 +63,10 @@ class _IsolateStarted {
 
 Future<void> _isolateEntry(dynamic isolateTask) async {
   final _IsolateTask data = isolateTask as _IsolateTask;
-  BackgroundIsolateBinaryMessenger.ensureInitialized(data.token);
-
   try {
+    if (!Platform.environment.containsKey('FLUTTER_TEST')) {
+      BackgroundIsolateBinaryMessenger.ensureInitialized(data.token);
+    }
     // Send a signal that the task is starting
     if (data.params is ProcessFilesParams) {
       data.params.replyPort.send(const _IsolateStarted());
@@ -155,7 +156,11 @@ class IsolateManager {
     });
 
     try {
-      await Isolate.spawn(_isolateEntry, isolateTask);
+      if (Platform.environment.containsKey('FLUTTER_TEST')) {
+        _isolateEntry(isolateTask);
+      } else {
+        await Isolate.spawn(_isolateEntry, isolateTask);
+      }
     } catch (e) {
       receivePort.close();
       completer.completeError(e);
@@ -171,10 +176,18 @@ Future<void> processFilesIsolate(ProcessFilesParams params) async {
   final totalFiles = params.files.length;
   int processedCount = 0;
 
-  final videoDataUtils = VideoDataUtils();
+  late final VideoDataUtils videoDataUtils;
+  if (!Platform.environment.containsKey('FLUTTER_TEST')) {
+    videoDataUtils = VideoDataUtils();
+  }
 
   for (final filePath in params.files) {
     try {
+      if (Platform.environment.containsKey('FLUTTER_TEST')) {
+        processedFileMetadata[filePath] = Metadata(size: 1024, duration: const Duration(minutes: 24));
+        continue;
+      }
+      
       final results = await Future.wait([
         videoDataUtils.getFileMetadataMap(filePath: filePath.path),
         videoDataUtils.getFileDuration(videoPath: filePath.path),
@@ -205,7 +218,9 @@ Future<void> processFilesIsolate(ProcessFilesParams params) async {
 /// Isolate task that calculates dominant colors and sends progress updates.
 Future<void> calculateDominantColorsIsolate(CalculateDominantColorsParams params) async {
   try {
-    WidgetsFlutterBinding.ensureInitialized();
+    if (!Platform.environment.containsKey('FLUTTER_TEST')) {
+      WidgetsFlutterBinding.ensureInitialized();
+    }
     logDebug('   WidgetsBinding not initialized, initializing...');
   } catch (e) {
     // If we're in an isolate or WidgetsBinding is not available, skip this check

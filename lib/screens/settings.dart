@@ -11,7 +11,6 @@ import 'package:material_symbols_icons/symbols.dart';
 import 'package:miruryoiki/utils/text.dart';
 import 'package:miruryoiki/widgets/buttons/loading_button.dart';
 import 'package:miruryoiki/widgets/page/infobar.dart';
-import 'package:miruryoiki/widgets/svg.dart';
 import 'package:provider/provider.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:toggle_switch/toggle_switch.dart' as toggle;
@@ -22,6 +21,7 @@ import '../functions.dart';
 import '../main.dart';
 import '../manager.dart';
 // import '../models/formatter/action.dart';
+import '../services/library/scanner/scanner_service.dart';
 import '../services/anilist/episode_title_service.dart';
 import '../services/data_storage_service.dart';
 import '../services/downloads/torrent_manager.dart';
@@ -190,12 +190,12 @@ class SettingsScreenState extends State<SettingsScreen> with AutomaticKeepAliveC
       ];
 
   static Future<void> setLibraryPath(BuildContext context) async {
-    final library = Provider.of<Library>(context, listen: false);
+    final scannerService = Provider.of<LibraryScannerService>(context, listen: false);
     final result = await FilePicker.platform.getDirectoryPath(
       dialogTitle: 'Select Library Folder',
     );
 
-    if (result != null) library.setLibraryPath(result);
+    if (result != null) scannerService.setLibraryPath(result);
   }
 
   // Widget standard(BuildContext context) {
@@ -982,11 +982,12 @@ class SettingsScreenState extends State<SettingsScreen> with AutomaticKeepAliveC
                 ValueListenableBuilder(
                     valueListenable: KeyboardState.shiftPressedNotifier,
                     builder: (context, isShiftPressed, _) {
+                      final scannerService = Provider.of<LibraryScannerService>(context);
                       return LoadingButton(
                         tooltip: isShiftPressed //
                             ? 'Clear Cache and Scan Library'
                             : 'Scan Library',
-                        isButtonDisabled: library.isIndexing,
+                        isButtonDisabled: scannerService.isIndexing,
                         label: isShiftPressed ? 'Clear Cache and Scan Library' : 'Scan Library',
                         onPressed: () => isShiftPressed
                             ? library.reloadLibrary(force: true, showSnackBar: false).then((_) {
@@ -998,7 +999,7 @@ class SettingsScreenState extends State<SettingsScreen> with AutomaticKeepAliveC
                                 });
                               })
                             : library.reloadLibrary(force: true),
-                        isLoading: library.isIndexing,
+                        isLoading: scannerService.isIndexing,
                         isSmall: true,
                         isBigEvenWithoutLoading: true,
                       );
@@ -1374,10 +1375,10 @@ class SettingsScreenState extends State<SettingsScreen> with AutomaticKeepAliveC
                       body: 'Would you like to recalculate all dominant colors using the new source?\n\nThis may take some time depending on the size of your library.',
                       onPositive: () async {
                         settings.dominantColorSource = value;
-                        final library = Provider.of<Library>(context, listen: false);
+                        final scannerService = Provider.of<LibraryScannerService>(context, listen: false);
 
                         snackBar('Recalculating dominant colors using ${value.name_} source...', severity: InfoBarSeverity.info, autoHide: false);
-                        await library.calculateDominantColors(forceRecalculate: true);
+                        await scannerService.calculateDominantColors(forceRecalculate: true);
                         snackBar('Dominant colors recalculated successfully!', severity: InfoBarSeverity.success);
                       },
                     );
