@@ -20,6 +20,24 @@ extension LibrarySeriesManagement on Library {
     });
   }
 
+  /// Find an episode by file path across all series
+  Episode? getEpisodeByPath(PathString path) {
+    final series = getSeriesByPath(path);
+    if (series != null) {
+      for (final episode in series.collections.expand((c) => c.episodes)) {
+        if (episode.path == path) return episode;
+      }
+    }
+    
+    // Brute-force: file is outside the library path (symlink target) or inference failed
+    for (final series in _series) {
+      for (final episode in series.collections.expand((c) => c.episodes)) {
+        if (episode.path == path) return episode;
+      }
+    }
+    return null;
+  }
+
   Series? getSeriesByAnilistId(int anilistId) => _series.firstWhereOrNull((s) => s.anilistMappings.any((m) => m.anilistId == anilistId));
 
   T? applyFunctionToSeriesByAnilistId<T>(int anilistId, T Function(Series series) func) {
@@ -59,7 +77,7 @@ extension LibrarySeriesManagement on Library {
     _series.add(series);
     _dataVersion++;
     _markDirty(series);
-    await _saveLibrary();
+    await persistLibrary();
     notifyListeners();
   }
 
@@ -67,7 +85,7 @@ extension LibrarySeriesManagement on Library {
     _series.removeWhere((s) => s.path == series.path);
     _dataVersion++;
     _hasPendingDeletions = true;
-    await _saveLibrary();
+    await persistLibrary();
     notifyListeners();
   }
 
@@ -167,7 +185,7 @@ extension LibrarySeriesManagement on Library {
 
     try {
       _markDirty(series);
-      await _saveLibrary();
+      await persistLibrary();
       notifyListeners();
     } finally {
       saveLockHandle?.dispose();
@@ -385,7 +403,7 @@ extension LibrarySeriesManagement on Library {
     }
 
     _markDirty(series);
-    await _saveLibrary();
+    await persistLibrary();
     notifyListeners();
 
     logDebug('Cleared thumbnail cache and reset statuses for series: ${series.name}');
@@ -413,7 +431,7 @@ extension LibrarySeriesManagement on Library {
     Episode.resetAllFailedAttempts();
 
     _markAllDirty();
-    await _saveLibrary();
+    await persistLibrary();
     notifyListeners();
 
     logDebug('Cleared all thumbnail cache and reset all episode thumbnail statuses');

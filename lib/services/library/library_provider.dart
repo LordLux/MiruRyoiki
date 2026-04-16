@@ -54,7 +54,6 @@ part 'persistence.dart';
 part 'scanning.dart';
 part 'series_management.dart';
 part 'anilist_integration.dart';
-part 'media_player_integration.dart';
 
 class Library with ChangeNotifier {
   /// All series in the library
@@ -75,46 +74,6 @@ class Library with ChangeNotifier {
   /// Version counter that increments whenever series data changes
   /// (Used to invalidate their caches when library data updates)
   int _dataVersion = 0;
-
-  //
-  // Media player integration fields
-  /// Manages media player connections
-  PlayerManager? _playerManager;
-
-  /// Timer for periodic connection checks
-  Timer? _connectionTimer;
-
-  /// Timer for saving progress
-  Timer? _progressSaveTimer;
-
-  /// Timer for forced saves during playback
-  Timer? _forcedSaveTimer;
-
-  /// List of detected media players
-  final List<DetectedPlayer> _detectedPlayers = [];
-
-  /// Name of the currently connected player
-  String? _currentConnectedPlayer;
-
-  /// Subscription to player status updates
-  StreamSubscription? _playerStatusSubscription;
-
-  //
-  // State tracking for immediate saves
-  /// Last file path used for playback
-  String? _lastFilePath;
-
-  /// Last known playing state
-  bool? _lastPlayingState;
-
-  /// Last episode being played
-  Episode? _lastEpisode;
-
-  /// Timestamp of the last immediate save, for throttling
-  DateTime? _lastImmediateSaveTime;
-
-  /// Timestamp of when the current playback position was at the last save
-  Duration? _lastSavedPosition;
 
   /// Set of series paths that have been modified since last save
   final Set<PathString> _dirtySeries = {};
@@ -194,7 +153,6 @@ class Library with ChangeNotifier {
   void dispose() {
     scanProgress.dispose();
     _debouncedSaveTimer?.cancel();
-    disposeMediaPlayerIntegration();
     super.dispose();
   }
 }

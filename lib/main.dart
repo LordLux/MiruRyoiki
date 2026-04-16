@@ -26,6 +26,7 @@ import 'package:win32_registry/win32_registry.dart';
 
 import 'database/database.dart';
 import 'enums.dart';
+import 'services/players/media_player_monitor.dart';
 import 'screens/downloads_screen.dart';
 import 'screens/search.dart';
 import 'screens/searched_series.dart';
@@ -169,6 +170,11 @@ void main(List<String> args) async {
         providers: [
           ChangeNotifierProvider.value(value: anilistProvider),
           ChangeNotifierProvider(create: (_) => Library(_settings, db), lazy: false),
+          ChangeNotifierProxyProvider<Library, MediaPlayerMonitorService>(
+            create: (context) => MediaPlayerMonitorService(_settings, context.read<Library>()),
+            update: (context, library, previous) => previous ?? MediaPlayerMonitorService(_settings, library),
+            lazy: false,
+          ),
           ChangeNotifierProvider(create: (_) => ConnectivityService(), lazy: false),
           ChangeNotifierProvider.value(value: _appTheme),
           ChangeNotifierProvider.value(value: _settings),

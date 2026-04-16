@@ -13,6 +13,7 @@ import '../models/episode.dart';
 import '../models/players/mediastatus.dart';
 import '../models/series.dart';
 import '../services/library/library_provider.dart';
+import '../services/players/media_player_monitor.dart';
 import '../services/players/player_manager.dart';
 import '../utils/path.dart';
 import '../utils/screen.dart';
@@ -40,7 +41,7 @@ class _PlayerState extends State<Player> with TickerProviderStateMixin {
   String? _lastPath;
   ImageProvider? posterImage;
 
-  PlayerManager? get _playerManager => Provider.of<Library>(context, listen: false).playerManager;
+  PlayerManager? get _playerManager => Provider.of<MediaPlayerMonitorService>(context, listen: false).playerManager;
 
   bool get _hasCurrentMedia {
     final status = _playerManager?.lastStatus;
@@ -51,7 +52,7 @@ class _PlayerState extends State<Player> with TickerProviderStateMixin {
   Episode? get _currentEpisode {
     if (!_hasCurrentMedia) return null;
     _series = Provider.of<Library>(context, listen: false).getSeriesByPath(PathString(_playerManager?.lastStatus?.filePath ?? ''));
-    return _series?.getEpisodeByPath(PathString(_playerManager?.lastStatus?.filePath ?? ''));
+    return Provider.of<Library>(context, listen: false).getEpisodeByPath(PathString(_playerManager?.lastStatus?.filePath ?? ''));
   }
 
   static const Color _whiteColor = Color.fromARGB(255, 208, 208, 208);
@@ -71,7 +72,7 @@ class _PlayerState extends State<Player> with TickerProviderStateMixin {
   }
 
   void _subscribeToConnection() {
-    final library = Provider.of<Library>(context, listen: false);
+    final library = Provider.of<MediaPlayerMonitorService>(context, listen: false);
     _connectionSubscription?.cancel();
     _connectionSubscription = library.playerManager?.connectionStream.listen((status) {
       final connected = status.state == PlayerConnectionState.connected && library.currentConnectedPlayer != null;
@@ -98,7 +99,7 @@ class _PlayerState extends State<Player> with TickerProviderStateMixin {
   }
 
   void _subscribeToStatus() {
-    final library = Provider.of<Library>(context, listen: false);
+    final library = Provider.of<MediaPlayerMonitorService>(context, listen: false);
     _statusSubscription?.cancel();
     _statusSubscription = library.playerManager?.statusStream.listen((status) {
       if (mounted) {
@@ -138,7 +139,7 @@ class _PlayerState extends State<Player> with TickerProviderStateMixin {
       child: Builder(builder: (context) {
         if (Manager.settings.enableMediaPlayerIntegration != true) return SizedBox.shrink();
 
-        return Selector<Library, ({bool isConnected, String? playerName, MediaStatus? status})>(
+        return Selector<MediaPlayerMonitorService, ({bool isConnected, String? playerName, MediaStatus? status})>(
             selector: (_, library) => (
                   isConnected: library.playerManager?.isConnected ?? false,
                   playerName: library.currentConnectedPlayer,
@@ -207,8 +208,8 @@ class _PlayerState extends State<Player> with TickerProviderStateMixin {
                                                   Icons.skip_previous,
                                                   _hasCurrentMedia
                                                       ? () {
-                                                          final lib = Provider.of<Library>(context, listen: false);
-                                                          lib.previousCurrentVideo().then((_) {
+                                                          final mediaPlayerMonitorService = Provider.of<MediaPlayerMonitorService>(context, listen: false);
+                                                          mediaPlayerMonitorService.previousCurrentVideo().then((_) {
                                                             if (mounted) setState(() {});
                                                           });
                                                         }
@@ -220,8 +221,8 @@ class _PlayerState extends State<Player> with TickerProviderStateMixin {
                                                   _hasCurrentMedia && _playerManager?.lastStatus?.isPlaying == true ? Icons.pause : Icons.play_arrow,
                                                   _hasCurrentMedia
                                                       ? () {
-                                                          final lib = Provider.of<Library>(context, listen: false);
-                                                          lib.togglePlayPauseCurrentPlayback().then((_) {
+                                                          final mediaPlayerMonitorService = Provider.of<MediaPlayerMonitorService>(context, listen: false);
+                                                          mediaPlayerMonitorService.togglePlayPauseCurrentPlayback().then((_) {
                                                             if (mounted) setState(() {});
                                                           });
                                                         }
@@ -233,8 +234,8 @@ class _PlayerState extends State<Player> with TickerProviderStateMixin {
                                                   Icons.skip_next,
                                                   _hasCurrentMedia
                                                       ? () {
-                                                          final lib = Provider.of<Library>(context, listen: false);
-                                                          lib.nextCurrentVideo().then((_) {
+                                                          final mediaPlayerMonitorService = Provider.of<MediaPlayerMonitorService>(context, listen: false);
+                                                          mediaPlayerMonitorService.nextCurrentVideo().then((_) {
                                                             if (mounted) setState(() {});
                                                           });
                                                         }
@@ -309,17 +310,17 @@ class _PlayerState extends State<Player> with TickerProviderStateMixin {
                                                 child: VideoDurationBar(
                                                   status: _hasCurrentMedia ? data.status : null,
                                                   onSeek: (seconds) async {
-                                                    final lib = Provider.of<Library>(context, listen: false);
-                                                    await lib.gotoCurrentVideo(seconds);
+                                                    final mediaPlayerMonitorService = Provider.of<MediaPlayerMonitorService>(context, listen: false);
+                                                    await mediaPlayerMonitorService.gotoCurrentVideo(seconds);
                                                     setState(() {});
                                                   },
                                                   onSeekDown: () async {
-                                                    final lib = Provider.of<Library>(context, listen: false);
-                                                    await lib.pauseCurrentPlayback();
+                                                    final mediaPlayerMonitorService = Provider.of<MediaPlayerMonitorService>(context, listen: false);
+                                                    await mediaPlayerMonitorService.pauseCurrentPlayback();
                                                   },
                                                   onSeekUp: () async {
-                                                    final lib = Provider.of<Library>(context, listen: false);
-                                                    await lib.resumeCurrentPlayback();
+                                                    final mediaPlayerMonitorService = Provider.of<MediaPlayerMonitorService>(context, listen: false);
+                                                    await mediaPlayerMonitorService.resumeCurrentPlayback();
                                                   },
                                                 ),
                                               ),
@@ -371,8 +372,8 @@ class _PlayerState extends State<Player> with TickerProviderStateMixin {
                                             if (event is PointerScrollEvent && _hasCurrentMedia) {
                                               final delta = event.scrollDelta.dy;
                                               final newVolume = (_currentVolume + (delta > 0 ? -5 : 5)).clamp(0, 100);
-                                              final lib = Provider.of<Library>(context, listen: false);
-                                              lib.setPlaybackVolume(newVolume.toInt()).then((_) {
+                                              final mediaPlayerMonitorService = Provider.of<MediaPlayerMonitorService>(context, listen: false);
+                                              mediaPlayerMonitorService.setPlaybackVolume(newVolume.toInt()).then((_) {
                                                 if (mounted) setState(() {});
                                               });
                                             }
@@ -422,8 +423,8 @@ class _PlayerState extends State<Player> with TickerProviderStateMixin {
                                                           thumbsSize: Size(10, 0),
                                                           onChanged: _hasCurrentMedia
                                                               ? (value) {
-                                                                  final lib = Provider.of<Library>(context, listen: false);
-                                                                  lib.setPlaybackVolume(value.toInt()).then((_) {
+                                                                  final mediaPlayerMonitorService = Provider.of<MediaPlayerMonitorService>(context, listen: false);
+                                                                  mediaPlayerMonitorService.setPlaybackVolume(value.toInt()).then((_) {
                                                                     if (mounted) setState(() {});
                                                                   });
                                                                 }
@@ -452,8 +453,8 @@ class _PlayerState extends State<Player> with TickerProviderStateMixin {
                                               label: Icon(isMuted ? Icons.volume_off : Icons.volume_up, size: 18, color: _whiteColor),
                                               onPressed: _hasCurrentMedia
                                                   ? () {
-                                                      final lib = Provider.of<Library>(context, listen: false);
-                                                      lib.toggleMuteCurrentPlayback().then((_) {
+                                                      final mediaPlayerMonitorService = Provider.of<MediaPlayerMonitorService>(context, listen: false);
+                                                      mediaPlayerMonitorService.toggleMuteCurrentPlayback().then((_) {
                                                         if (mounted) setState(() {});
                                                       });
                                                     }

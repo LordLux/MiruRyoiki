@@ -378,7 +378,7 @@ extension LibraryAnilistIntegration on Library {
     );
 
     try {
-      await _saveLibrary();
+      await persistLibrary();
       notifyListeners();
 
       // Notify library screen if metadata changed

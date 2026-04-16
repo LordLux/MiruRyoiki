@@ -57,7 +57,7 @@ extension LibraryPersistence on Library {
   }
 
   /// Perform the actual save operation
-  Future<void> _saveLibrary({bool forceFull = false}) async {
+  Future<void> persistLibrary({bool forceFull = false}) async {
     // nothing to do
     if (!forceFull && _dirtySeries.isEmpty && !_hasPendingDeletions) {
       logTrace('nothing dirty, skipping...');
@@ -128,7 +128,7 @@ extension LibraryPersistence on Library {
   }
 
   /// Save only an episode's progress and watched status directly by ID
-  Future<bool> _saveEpisodeProgress(Episode episode) async {
+  Future<bool> saveEpisodeProgress(Episode episode) async {
     if (episode.id == null) return false;
     try {
       await seriesDao.updateEpisodeProgress(
@@ -148,7 +148,7 @@ extension LibraryPersistence on Library {
   void _scheduleDebouncedSave({Duration delay = const Duration(milliseconds: 500)}) {
     _debouncedSaveTimer?.cancel();
     _debouncedSaveTimer = Timer(delay, () async {
-      await _saveLibrary();
+      await persistLibrary();
     });
   }
 

@@ -22,9 +22,6 @@ extension LibraryInitialization on Library {
     // Start prefetching AniList data in parallel with library scan
     final prefetchFuture = anilistProvider.prefetchOnlineData();
 
-    // Initialize Media Player Integration
-    await initializeMediaPlayerIntegration();
-
     // Scan Local Library (this now reports progress and manages its own state)
     await scanLocalLibrary();
 

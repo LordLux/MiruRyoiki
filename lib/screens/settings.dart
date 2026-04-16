@@ -25,6 +25,7 @@ import '../manager.dart';
 import '../services/anilist/episode_title_service.dart';
 import '../services/data_storage_service.dart';
 import '../services/downloads/torrent_manager.dart';
+import '../services/players/media_player_monitor.dart';
 import '../models/sonarr/sonarr_quality_profile.dart';
 import '../services/qbittorrent/qbittorrent.dart';
 import '../services/lock_manager.dart';
@@ -1691,15 +1692,17 @@ class SettingsScreenState extends State<SettingsScreen> with AutomaticKeepAliveC
                 ToggleSwitch(
                   checked: settings.enableMediaPlayerIntegration,
                   content: Text(settings.enableMediaPlayerIntegration ? 'Enabled' : 'Disabled', style: Manager.bodyStyle),
-                  onChanged: (value) {
+                  onChanged: (value) async {
                     setState(() {
                       settings.enableMediaPlayerIntegration = value;
-                      if (value) {
-                        library.initializeMediaPlayerIntegration();
-                      } else {
-                        library.disposeMediaPlayerIntegration();
-                      }
                     });
+                    
+                    final monitor = context.read<MediaPlayerMonitorService>();
+                    if (value) {
+                      await monitor.start();
+                    } else {
+                      await monitor.stop();
+                    }
                   },
                 ),
               ),
@@ -1723,10 +1726,10 @@ class SettingsScreenState extends State<SettingsScreen> with AutomaticKeepAliveC
                   style: Manager.bodyStrongStyle,
                 ),
                 SizedBox(height: 12),
-                Consumer<Library>(
-                  builder: (context, lib, child) {
-                    final connectedPlayer = lib.currentConnectedPlayer;
-                    final detectedPlayers = lib.detectedPlayers;
+                Consumer<MediaPlayerMonitorService>(
+                  builder: (context, monitor, child) {
+                    final connectedPlayer = monitor.currentConnectedPlayer;
+                    final detectedPlayers = monitor.detectedPlayers;
 
                     return Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1802,9 +1805,10 @@ class SettingsScreenState extends State<SettingsScreen> with AutomaticKeepAliveC
                           onPressed: () async {
                             setState(() => _isRefreshingPlayers = true);
 
-                            await library.refreshMediaPlayers();
-                            await library.playerManager?.disconnect();
-                            await library.playerManager?.autoConnect();
+                            final monitor = context.read<MediaPlayerMonitorService>();
+                            await monitor.refreshMediaPlayers();
+                            await monitor.playerManager?.disconnect();
+                            await monitor.playerManager?.autoConnect();
 
                             snackBar('Video Players Reloaded', severity: InfoBarSeverity.success);
                             setState(() => _isRefreshingPlayers = false);

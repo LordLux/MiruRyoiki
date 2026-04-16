@@ -271,7 +271,7 @@ extension LibraryScanning on Library {
         }
       }
 
-      await _saveLibrary(); // Save the updated library to database
+      await persistLibrary(); // Save the updated library to database
 
       if (showSnack) {
         final changeCount = newSeriesPaths.length + deletedSeriesPaths.length;
@@ -786,7 +786,7 @@ extension LibraryScanning on Library {
         for (final series in _series) {
           _markDirty(series);
         }
-        await _saveLibrary();
+        await persistLibrary();
         notifyListeners();
         logTrace('Finished calculating dominant colors for $successCount series');
       }
