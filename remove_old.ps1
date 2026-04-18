@@ -1,0 +1,1 @@
+(Get-Content -Path 'lib/services/di/dependency_injection.dart' -Raw) -replace '(?s)/// interface for OS shell operations and shortcuts.*?}\n\n/// A simple Dependency Injector','/// A simple Dependency Injector' | Set-Content -Path 'lib/services/di/dependency_injection.dart'
