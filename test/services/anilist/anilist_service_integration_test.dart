@@ -1,3 +1,6 @@
+@Timeout(Duration(minutes: 5))
+library;
+import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:graphql/client.dart';
 import 'package:miruryoiki/models/anilist/anime_card.dart';
@@ -25,10 +28,27 @@ void main() {
 
     setUpAll(() async {
       // Load dummy env vars for AnilistAuthService
-      dotenv.testLoad(fileInput: '''
-        ANILIST_CLIENT_ID=dummy_id
-        ANILIST_CLIENT_SECRET=dummy_secret
-      ''');
+      try {
+        final envFile = File('test/.env');
+        if (envFile.existsSync()) {
+          final envContent = envFile.readAsStringSync();
+          dotenv.testLoad(fileInput: '''
+            ANILIST_CLIENT_ID=dummy_id
+            ANILIST_CLIENT_SECRET=dummy_secret
+            $envContent
+          ''');
+        } else {
+          dotenv.testLoad(fileInput: '''
+            ANILIST_CLIENT_ID=dummy_id
+            ANILIST_CLIENT_SECRET=dummy_secret
+          ''');
+        }
+      } catch (e) {
+        dotenv.testLoad(fileInput: '''
+          ANILIST_CLIENT_ID=dummy_id
+          ANILIST_CLIENT_SECRET=dummy_secret
+        ''');
+      }
 
       // Setup Manager mock settings
       Manager.mockSettings = SettingsManager();
@@ -39,7 +59,12 @@ void main() {
       service = AnilistService();
       
       // Setup real client
-      final httpLink = HttpLink('https://graphql.anilist.co');
+      final token = dotenv.env['ACCESS_TOKEN'];
+      final httpLink = HttpLink(
+        'https://graphql.anilist.co',
+        defaultHeaders: token != null ? {'Authorization': 'Bearer $token'} : {},
+      );
+      
       final client = GraphQLClient(
         cache: GraphQLCache(),
         link: httpLink,

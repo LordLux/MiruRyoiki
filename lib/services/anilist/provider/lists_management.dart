@@ -167,6 +167,7 @@ extension AnilistProviderListsManagement on AnilistProvider {
       });
 
       _userLists = parsedLists;
+      _rebuildAllUserAnilistIds();
       logDebug('Loaded Anilist lists from cache ($_lastListsCacheTime)');
       notifyListeners();
       return true;

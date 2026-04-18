@@ -1,3 +1,5 @@
+import '../services/di/dependency_injection.dart';
+import 'package:meta/meta.dart';
 // ignore_for_file: constant_identifier_names
 
 import 'dart:io';
@@ -26,9 +28,23 @@ const String IID_IShellLinkW = '{000214F9-0000-0000-C000-000000000046}';
 const String CLSID_ShellLink = '{00021401-0000-0000-C000-000000000046}';
 const String IID_IPersistFile = '{0000010B-0000-0000-C000-000000000046}';
 
-class ShellUtils {
+abstract class IShellUtils {
+  void openWithDialog(PathString filePath);
+  Future<bool> openFileExplorerAndSelect(PathString filePath);
+  Future<bool> openFolder(String folderPath);
+  Future<ProcessResult> runFFmpeg(List<String> args);
+  String resolveShortcutInternal(String shortcutPath);
+  Future<String?> resolveShortcut(String shortcutPath);
+  bool isShortcut(String path);
+  int findPlayerWindowByFilePath(String filePath);
+  bool bringWindowToForeground(int hwnd);
+  bool focusPlayerWindowByFilePath(String filePath);
+}
+
+class RealShellUtils implements IShellUtils {
   /// Opens the Windows "Open With" dialog for a file
-  static void openWithDialog(PathString filePath) async {
+  @override
+  void openWithDialog(PathString filePath) async {
     final exeInfo = calloc<SHELLEXECUTEINFO>();
     try {
       exeInfo.ref.cbSize = sizeOf<SHELLEXECUTEINFO>();
@@ -50,7 +66,7 @@ class ShellUtils {
     }
   }
 
-  static Future<bool> _open(String directory, String? fileName) async {
+  Future<bool> _open(String directory, String? fileName) async {
     if (!Platform.isWindows) {
       logErr('This functionality is Windows-only.');
       return false;
@@ -79,7 +95,8 @@ class ShellUtils {
   }
 
   /// Opens the file explorer and selects the specified file
-  static Future<bool> openFileExplorerAndSelect(PathString filePath) async {
+  @override
+  Future<bool> openFileExplorerAndSelect(PathString filePath) async {
     try {
       final directory = p.dirname(filePath.path);
       final fileName = p.basename(filePath.path);
@@ -91,7 +108,8 @@ class ShellUtils {
   }
 
   /// Opens the folder in file explorer
-  static Future<bool> openFolder(String folderPath) async {
+  @override
+  Future<bool> openFolder(String folderPath) async {
     try {
       return await _open(folderPath, null);
     } catch (e) {
@@ -100,13 +118,15 @@ class ShellUtils {
     }
   }
 
-  static Future<ProcessResult> runFFmpeg(List<String> args) async => //
+  @override
+  Future<ProcessResult> runFFmpeg(List<String> args) async => //
       await Process.run('ffmpeg', args);
 
   /// testing method to resolve shortcut
   /// example input: "M:\Videos\SeriesTest\A Place Further Than The Universe - Shortcut.lnk"
   /// output: "M:\Videos\Series\A Place Further Than The Universe\"
-  static String resolveShortcutInternal(String shortcutPath) {
+  @override
+  String resolveShortcutInternal(String shortcutPath) {
     shortcutPath = shortcutPath.replaceAll(" - Shortcut.lnk", "");
     final path = PathString(shortcutPath);
     return r"M:\Videos\Series\" + path.fileName!;
@@ -115,7 +135,8 @@ class ShellUtils {
   /// Resolves a Windows shortcut (.lnk) file to its target path
   /// Returns null if the file is not a shortcut or if resolution fails
   /// Based on the official Microsoft documentation approach using Resolve + GetPath
-  static Future<String?> resolveShortcut(String shortcutPath) async {
+  @override
+  Future<String?> resolveShortcut(String shortcutPath) async {
     if (!Platform.isWindows) return null;
     if (!shortcutPath.toLowerCase().endsWith('.lnk')) return null;
     if (!File(shortcutPath).existsSync()) return null;
@@ -124,15 +145,17 @@ class ShellUtils {
   }
 
   /// Check if a path is a Windows shortcut file
-  static bool isShortcut(String path) => Platform.isWindows && path.toLowerCase().endsWith('.lnk');
+  @override
+  bool isShortcut(String path) => Platform.isWindows && path.toLowerCase().endsWith('.lnk');
 
   /// Callback function for EnumWindows to find a window by its title
-  static Pointer<NativeFunction<WNDENUMPROC>>? _enumWindowsCallback;
+  Pointer<NativeFunction<WNDENUMPROC>>? _enumWindowsCallback;
   static String? _targetFilePath;
   static int _foundWindowHandle = 0;
 
   /// Finds a window handle by searching for a window title that contains the file path
-  static int findPlayerWindowByFilePath(String filePath) {
+  @override
+  int findPlayerWindowByFilePath(String filePath) {
     if (!Platform.isWindows) {
       logErr('This functionality is Windows-only.');
       return 0;
@@ -173,7 +196,8 @@ class ShellUtils {
   }
 
   /// Brings a window to the foreground
-  static bool bringWindowToForeground(int hwnd) {
+  @override
+  bool bringWindowToForeground(int hwnd) {
     if (!Platform.isWindows) {
       logErr('This functionality is Windows-only.');
       return false;
@@ -209,7 +233,8 @@ class ShellUtils {
 
   /// Finds a window by file path and brings it to the foreground
   /// Returns true if successful, false otherwise
-  static bool focusPlayerWindowByFilePath(String filePath) {
+  @override
+  bool focusPlayerWindowByFilePath(String filePath) {
     if (!Platform.isWindows) {
       logErr('This functionality is Windows-only.');
       return false;
@@ -228,4 +253,50 @@ class ShellUtils {
       return false;
     }
   }
+}
+
+@visibleForTesting
+class MockShellUtils implements IShellUtils {
+  @override
+  void openWithDialog(PathString filePath) {}
+
+  @override
+  Future<bool> openFileExplorerAndSelect(PathString filePath) async => true;
+
+  @override
+  Future<bool> openFolder(String folderPath) async => true;
+
+  @override
+  Future<ProcessResult> runFFmpeg(List<String> args) async => ProcessResult(0, 0, '', '');
+
+  @override
+  String resolveShortcutInternal(String shortcutPath) => shortcutPath.replaceAll(' - Shortcut.lnk', '');
+
+  @override
+  Future<String?> resolveShortcut(String shortcutPath) async => resolveShortcutInternal(shortcutPath);
+
+  @override
+  bool isShortcut(String path) => path.toLowerCase().endsWith('.lnk');
+
+  @override
+  int findPlayerWindowByFilePath(String filePath) => 0;
+
+  @override
+  bool bringWindowToForeground(int hwnd) => true;
+
+  @override
+  bool focusPlayerWindowByFilePath(String filePath) => true;
+}
+
+class ShellUtils {
+  static void openWithDialog(PathString filePath) => ServiceLocator.shellUtils.openWithDialog(filePath);
+  static Future<bool> openFileExplorerAndSelect(PathString filePath) => ServiceLocator.shellUtils.openFileExplorerAndSelect(filePath);
+  static Future<bool> openFolder(String folderPath) => ServiceLocator.shellUtils.openFolder(folderPath);
+  static Future<ProcessResult> runFFmpeg(List<String> args) => ServiceLocator.shellUtils.runFFmpeg(args);
+  static String resolveShortcutInternal(String shortcutPath) => ServiceLocator.shellUtils.resolveShortcutInternal(shortcutPath);
+  static Future<String?> resolveShortcut(String shortcutPath) => ServiceLocator.shellUtils.resolveShortcut(shortcutPath);
+  static bool isShortcut(String path) => ServiceLocator.shellUtils.isShortcut(path);
+  static int findPlayerWindowByFilePath(String filePath) => ServiceLocator.shellUtils.findPlayerWindowByFilePath(filePath);
+  static bool bringWindowToForeground(int hwnd) => ServiceLocator.shellUtils.bringWindowToForeground(hwnd);
+  static bool focusPlayerWindowByFilePath(String filePath) => ServiceLocator.shellUtils.focusPlayerWindowByFilePath(filePath);
 }

@@ -125,6 +125,7 @@ extension AnilistProviderInitialization on AnilistProvider {
         // Update in-memory state to show fresh data immediately
         _currentUser = _prefetchedUser;
         _userLists = _prefetchedUserLists;
+        _rebuildAllUserAnilistIds();
         _hasPrefetchedData = true;
         
         notifyListeners();

@@ -104,6 +104,18 @@ class AnilistProvider extends ChangeNotifier with WidgetsBindingObserver {
   /// { `API Name`: `AUL(Local Name)` }
   Map<String, AnilistUserList> get userLists => _userLists;
 
+  Set<int> _allUserAnilistIds = {};
+
+  /// A cached set of all Anilist media IDs the user has in any of their lists
+  Set<int> get allUserAnilistIds => _allUserAnilistIds;
+
+  void _rebuildAllUserAnilistIds() {
+    _allUserAnilistIds = _userLists.values
+        .expand((list) => list.entries)
+        .map((entry) => entry.mediaId)
+        .toSet();
+  }
+
   // Last time lists were cached
   DateTime? get lastListsCacheTime => _lastListsCacheTime;
 

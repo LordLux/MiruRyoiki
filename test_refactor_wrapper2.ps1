@@ -1,0 +1,1 @@
+(Get-Content -Path 'lib/utils/shell.dart' -Raw) -replace 'String\? _targetFilePath','static String? _targetFilePath' -replace 'int _foundWindowHandle','static int _foundWindowHandle' | Set-Content -Path 'lib/utils/shell.dart'

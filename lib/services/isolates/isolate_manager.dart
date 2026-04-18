@@ -7,7 +7,8 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:crypto/crypto.dart';
 import 'package:miruryoiki/models/anilist/mapping.dart';
-import 'package:video_data_utils/video_data_utils.dart';
+import '../library/video_metadata_service.dart';
+import '../di/dependency_injection.dart';
 import '../../main.dart' show rootIsolateToken;
 import '../../models/metadata.dart';
 import '../../utils/color.dart';
@@ -64,9 +65,10 @@ class _IsolateStarted {
 Future<void> _isolateEntry(dynamic isolateTask) async {
   final _IsolateTask data = isolateTask as _IsolateTask;
   try {
-    if (!Platform.environment.containsKey('FLUTTER_TEST')) {
+    if (ServiceLocator.requireBackgroundIsolateBinaryMessenger) {
       BackgroundIsolateBinaryMessenger.ensureInitialized(data.token);
     }
+
     // Send a signal that the task is starting
     if (data.params is ProcessFilesParams) {
       data.params.replyPort.send(const _IsolateStarted());
@@ -156,8 +158,8 @@ class IsolateManager {
     });
 
     try {
-      if (Platform.environment.containsKey('FLUTTER_TEST')) {
-        _isolateEntry(isolateTask);
+      if (!ServiceLocator.spawnIsolates) {
+        await _isolateEntry(isolateTask);
       } else {
         await Isolate.spawn(_isolateEntry, isolateTask);
       }
@@ -176,27 +178,12 @@ Future<void> processFilesIsolate(ProcessFilesParams params) async {
   final totalFiles = params.files.length;
   int processedCount = 0;
 
-  late final VideoDataUtils videoDataUtils;
-  if (!Platform.environment.containsKey('FLUTTER_TEST')) {
-    videoDataUtils = VideoDataUtils();
-  }
+  final videoMetadataService = VideoMetadataService();
 
   for (final filePath in params.files) {
     try {
-      if (Platform.environment.containsKey('FLUTTER_TEST')) {
-        processedFileMetadata[filePath] = Metadata(size: 1024, duration: const Duration(minutes: 24));
-        continue;
-      }
-      
-      final results = await Future.wait([
-        videoDataUtils.getFileMetadataMap(filePath: filePath.path),
-        videoDataUtils.getFileDuration(videoPath: filePath.path),
-      ]);
-
-      final metadata = Metadata.fromJson(results[0] as Map<String, dynamic>);
-      final duration = Duration(milliseconds: ((results[1] as double?) ?? 0).toInt());
-
-      processedFileMetadata[filePath] = metadata.copyWith(duration: duration);
+      final metadata = await videoMetadataService.extractMetadata(filePath);
+      processedFileMetadata[filePath] = metadata;
     } catch (e, stack) {
       logErr('Error processing file in isolate: ${filePath.path}', e, stack);
     } finally {
@@ -218,9 +205,8 @@ Future<void> processFilesIsolate(ProcessFilesParams params) async {
 /// Isolate task that calculates dominant colors and sends progress updates.
 Future<void> calculateDominantColorsIsolate(CalculateDominantColorsParams params) async {
   try {
-    if (!Platform.environment.containsKey('FLUTTER_TEST')) {
-      WidgetsFlutterBinding.ensureInitialized();
-    }
+    if (ServiceLocator.initializeWidgetsBindingInIsolates) WidgetsFlutterBinding.ensureInitialized();
+
     logDebug('   WidgetsBinding not initialized, initializing...');
   } catch (e) {
     // If we're in an isolate or WidgetsBinding is not available, skip this check

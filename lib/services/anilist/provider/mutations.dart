@@ -131,6 +131,9 @@ extension AnilistProviderMutations on AnilistProvider {
 
     // Update custom-list memberships
     _syncCustomListMembership(entry);
+
+    // Rebuild the cached lookup set since an entry was updated/added
+    _rebuildAllUserAnilistIds();
   }
 
   /// Remove an entry from the local cache by mediaId
@@ -147,6 +150,9 @@ extension AnilistProviderMutations on AnilistProvider {
       if (!list.isCustomList) continue;
       list.entries.removeWhere((e) => e.mediaId == mediaId);
     }
+
+    // Rebuild the cached lookup set since an entry was removed
+    _rebuildAllUserAnilistIds();
   }
 
   /// Synchronise custom-list membership for [entry] based on its customLists field
@@ -255,6 +261,7 @@ extension AnilistProviderMutations on AnilistProvider {
         _userLists[listKey]!.entries.removeAt(idx);
     }
 
+    _rebuildAllUserAnilistIds();
     _saveListsToCache();
   }
 

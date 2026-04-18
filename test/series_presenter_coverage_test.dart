@@ -1,8 +1,10 @@
 import 'package:flutter/widgets.dart' hide Image;
 import 'package:flutter_anitomy/flutter_anitomy.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:video_data_utils/video_data_utils.dart';
 import 'package:miruryoiki/enums.dart';
 import 'package:miruryoiki/manager.dart';
+import 'package:miruryoiki/services/di/dependency_injection.dart';
 import 'package:miruryoiki/services/episode_navigation/anilist_progress_manager.dart';
 import 'package:miruryoiki/models/anilist/anime.dart';
 import 'package:miruryoiki/models/anilist/mapping.dart';
@@ -166,10 +168,13 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   setUpAll(() {
+    ServiceLocator.configureForTest();
+    VideoDataUtils.setMockData(videoDuration: 1440000.0);
     Manager.mockSettings = SettingsManager();
   });
 
   tearDownAll(() {
+    ServiceLocator.reset();
     Manager.mockSettings = null;
   });
 
@@ -737,12 +742,12 @@ void main() {
       final json = original.toJson();
       final restored = Series.fromJson(json);
 
-      // Season itself is dropped because episode parsing fails inside Season.fromJson
-      expect(restored.seasons.length, 0);
+      // Season is preserved since we mocked the parser successfully
+      expect(restored.seasons.length, 1);
     });
 
-    test('round-trip handles folder collections gracefully (no native lib)', () {
-      // Episode.fromJson requires native lib; folder episodes skipped
+    test('round-trip handles folder collections gracefully', () {
+      // Episode.fromJson parses correctly with mock
       final ep = _makeEpisode(name: 'OVA 1', path: r'M:\Series\Test\OVA\OVA1.mkv');
       final folder = Folder(name: Folder.uncategorizedName, path: PathString(r'M:\Series\Test Series'), episodes: [ep]);
       final original = _makeSeries(collections: [folder]);
@@ -750,8 +755,8 @@ void main() {
       final json = original.toJson();
       final restored = Series.fromJson(json);
 
-      // Folder episodes are skipped because Episode.fromJson fails
-      expect(restored.collections.whereType<Folder>().expand((f) => f.episodes).length, 0);
+      // Folder episodes are preserved
+      expect(restored.collections.whereType<Folder>().expand((f) => f.episodes).length, 1);
     });
 
     test('round-trip preserves anilist mappings', () {
