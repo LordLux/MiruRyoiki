@@ -46,11 +46,8 @@ class Episode {
   })  : _episodeNumber = episodeNumber,
         _progress = progress {
     progressNotifier = ValueNotifier<double>(progress);
-    if (Platform.environment.containsKey('FLUTTER_TEST')) {
-      _parsedAnime = parsedAnime;
-    } else {
-      _parsedAnime = parsedAnime ?? FlutterAnitomy().parse(path.fileName!);
-    }
+    _parsedAnime = parsedAnime ?? FlutterAnitomy().parse(path.fileName!);
+
     _episodeNumber ??= int.tryParse(_parsedAnime?.episode ?? '');
     parsedTitle ??= _parsedAnime?.episodeTitle;
 

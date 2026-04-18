@@ -70,7 +70,7 @@ class SearchedSeriesContextMenuState extends State<SearchedSeriesContextMenu> {
     return Menu(
       items: [
         MenuItem(
-          label: 'Add to Library',
+          label: 'Add to Anilist', // TODO: In a future update, make this label conditional (for example, 'Add to Library' or 'Go to Library Series') when library-state information is available here. For now this action always opens the AniList entry editor.
           icon: icons.list,
           onClick: (_) => _openEntryEditor(context),
         ),

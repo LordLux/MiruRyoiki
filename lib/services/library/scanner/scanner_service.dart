@@ -18,8 +18,8 @@ import '../../../settings.dart';
 import '../../../utils/color.dart' as color_utils;
 import '../../../utils/file.dart';
 import '../../../utils/logging.dart';
-import '../../../utils/shell.dart';
 import '../../lock_manager.dart';
+import '../../../utils/shell.dart';
 import '../../navigation/show_info.dart';
 import '../../../utils/path.dart';
 import '../../../widgets/dialogs/splash/progress.dart';
@@ -372,24 +372,16 @@ class LibraryScannerService extends ChangeNotifier {
 
         logTrace('Series "$seriesName" has $fileCount video files');
       } else if (entity is File) {
-        bool isShortcut = false;
-        if (!Platform.environment.containsKey('FLUTTER_TEST')) {
-          isShortcut = ShellUtils.isShortcut(entity.path);
-        } else {
-          isShortcut = entity.path.toLowerCase().endsWith('.lnk');
-        }
+        bool isShortcut = ShellUtils.isShortcut(entity.path);
+
         if (isShortcut) {
           // Handle Windows shortcut files
           final shortcutName = p.basenameWithoutExtension(entity.path);
           logTrace('Found shortcut: $shortcutName.lnk');
 
           try {
-            String? targetPath;
-            if (!Platform.environment.containsKey('FLUTTER_TEST')) { //TODO
-              targetPath = await ShellUtils.resolveShortcut(entity.path);
-            } else {
-              targetPath = null;
-            }
+            String? targetPath = await ShellUtils.resolveShortcut(entity.path);
+            
             if (targetPath != null && targetPath.isNotEmpty) {
               final targetDir = Directory(targetPath);
               if (targetDir.existsSync()) {
@@ -860,3 +852,4 @@ class LibraryScannerService extends ChangeNotifier {
     }
   }
 }
+

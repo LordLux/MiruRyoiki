@@ -1,4 +1,4 @@
-﻿part of 'library_provider.dart';
+part of 'library_provider.dart';
 
 extension LibraryScanning on Library {
   Future<void> updateLibraryPathAndReload(String path) async {

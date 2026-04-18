@@ -5,6 +5,9 @@
 /// Run manually with:
 ///   fvm flutter test test/services/anilist/anilist_integration_test.dart
 
+@Timeout(Duration(minutes: 5))
+library;
+
 import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:graphql/client.dart';

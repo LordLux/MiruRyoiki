@@ -638,7 +638,7 @@ class SearchedSeriesScreenState extends State<SearchedSeriesScreen> {
       content: _buildInfoBarContent(series),
       footerPadding: EdgeInsets.all(6.0),
       footer: [
-        // Add to Library Button
+        // Add to Anilist Button
         Builder(builder: (context) {
           final animeId = series?.id;
           return StandardButton(
@@ -648,13 +648,13 @@ class SearchedSeriesScreenState extends State<SearchedSeriesScreen> {
                 Icon(mat.Icons.library_add_outlined),
                 HDiv(4),
                 Text(
-                  'Add to Library',
+                  'Add to Anilist', // TODO 'Add to Library' if already added to anilist and only needs to be added to library. otherwise, 'Go to Library Series'
                   style: getStyleBasedOnAccent(false),
                 ),
               ],
             ),
             expand: true,
-            tooltip: 'Add the series to your library',
+            tooltip: 'Add the series to your Anilist library',
             onPressed: animeId == null
                 ? null
                 : () {

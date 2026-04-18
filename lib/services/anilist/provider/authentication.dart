@@ -70,6 +70,7 @@ extension AnilistProviderAuthentication on AnilistProvider {
     // This prevents overriding existing data with empty results on API failure
     if (newLists.isNotEmpty) {
       _userLists = newLists;
+      _rebuildAllUserAnilistIds();
       notifyListeners();
       // Manager.setState();
       return true;
@@ -77,6 +78,7 @@ extension AnilistProviderAuthentication on AnilistProvider {
       // If we have no existing data and got empty results, still update
       // (this handles the case where the user truly has no lists)
       _userLists = newLists;
+      _rebuildAllUserAnilistIds();
       notifyListeners();
       // Manager.setState();
       return true;
@@ -184,6 +186,7 @@ extension AnilistProviderAuthentication on AnilistProvider {
     await _anilistService.logout();
     _currentUser = null;
     _userLists = {};
+    _rebuildAllUserAnilistIds();
     _animeCache = {};
     _upcomingEpisodesCache = {};
     _lastUpcomingEpisodesFetch = null;
