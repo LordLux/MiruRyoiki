@@ -1,5 +1,7 @@
 import 'dart:typed_data';
 
+import '../qbittorrent/transfer_info.dart';
+
 /// Abstract interface for torrent clients (qBittorrent, Deluge, Transmission, etc.)
 ///
 /// Implementations handle authentication and client-specific API details internally.
@@ -56,6 +58,9 @@ abstract class TorrentClient {
 
   /// Quick health-check — returns `true` if the client is reachable and authenticated
   Future<bool> testConnection();
+
+  /// Fetch global transfer statistics; returns `null` on error or if unsupported
+  Future<TransferInfo?> getTransferInfo();
 }
 
 enum QueueDirection { top, up, down, bottom }

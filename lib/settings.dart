@@ -238,6 +238,20 @@ class SettingsManager extends ChangeNotifier {
   bool get knabenLiveSearch => _getBool('knabenLiveSearch', defaultValue: false);
   set knabenLiveSearch(bool value) => _setBool('knabenLiveSearch', value);
 
+  // Speed Graph
+  Set<String> get graphMetrics {
+    final list = _getStringList('graphMetrics', defaultValue: ['totalDownload', 'totalUpload']);
+    return list.toSet();
+  }
+
+  set graphMetrics(Set<String> value) => _setStringList('graphMetrics', value.toList());
+
+  int get graphTimeframeMinutes => _getInt('graphTimeframeMinutes', defaultValue: 10);
+  set graphTimeframeMinutes(int value) => _setInt('graphTimeframeMinutes', value);
+
+  int get graphUpdateFrequencySeconds => _getInt('graphUpdateFrequencySeconds', defaultValue: 1);
+  set graphUpdateFrequencySeconds(int value) => _setInt('graphUpdateFrequencySeconds', value);
+
   // Genres
   List<String> get genres => _getStringList('genres', defaultValue: []);
   set genres(List<String> value) => _setStringList('genres', value);

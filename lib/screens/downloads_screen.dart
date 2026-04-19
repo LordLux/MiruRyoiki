@@ -2,17 +2,20 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:collection/collection.dart';
+import 'package:shimmer/shimmer.dart';
 import 'package:fluent_ui/fluent_ui.dart' hide Colors, FilledButton, ButtonStyle;
 import 'package:flutter/material.dart' hide Card, Divider, Tooltip, ListTile, IconButton, showDialog;
 import 'package:miruryoiki/enums.dart';
 import 'package:miruryoiki/widgets/tooltip_wrapper.dart';
 import '../manager.dart';
 import '../services/downloads/download_controller.dart';
+import '../services/downloads/speed_graph_service.dart';
 import '../services/downloads/torrent_client.dart';
 import '../services/downloads/torrent_manager.dart';
 import '../services/navigation/navigation.dart';
 import '../services/navigation/show_info.dart';
 import '../services/sonarr/sonarr_service.dart';
+import '../settings.dart';
 import '../utils/logging.dart';
 import '../utils/time.dart';
 import '../utils/units.dart';
@@ -24,6 +27,7 @@ import '../widgets/context_menu/torrent.dart';
 import '../widgets/page/header_widget.dart';
 import '../widgets/page/infobar.dart';
 import '../widgets/buttons/category_tile_button.dart';
+import '../widgets/speed_graph.dart';
 
 // Fixed widths for the metadata row columns so values line up across rows
 const double _kPctColumnWidth = 37; // "100.0%"
@@ -73,6 +77,8 @@ class DownloadsScreenState extends State<DownloadsScreen> {
   _SortMode _sortMode = _SortMode.status;
   bool _sortAscending = true;
   _DownloadFilter _filterState = _DownloadFilter.all;
+  SpeedGraphService? _speedService;
+  bool _graphExpanded = true;
 
   @override
   void activate() {
@@ -88,11 +94,24 @@ class DownloadsScreenState extends State<DownloadsScreen> {
     NavigationManager.restoreScrollOffset('torrent', widget.scrollController);
     _fetchTorrents();
     _refreshTimer = Timer.periodic(const Duration(seconds: 3), (_) => _fetchTorrents(silent: true));
+    _initSpeedGraph();
+  }
+
+  void _initSpeedGraph() {
+    final client = TorrentManager.torrentClient;
+    if (client == null) return;
+    final settings = SettingsManager();
+    _speedService = SpeedGraphService(
+      client: client,
+      updateFrequencySeconds: settings.graphUpdateFrequencySeconds,
+      timeframeMinutes: settings.graphTimeframeMinutes,
+    );
   }
 
   @override
   void dispose() {
     _refreshTimer?.cancel();
+    _speedService?.dispose();
     super.dispose();
   }
 
@@ -347,48 +366,86 @@ class DownloadsScreenState extends State<DownloadsScreen> {
     });
   }
 
+  static const _kGraphExpandedHeight = 264.0;
+  static const _kGraphCollapsedHeight = 50.0;
+
+  Widget _buildGraphSection() {
+    final service = _speedService;
+    if (service == null) return const SizedBox.shrink();
+    final settings = SettingsManager();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SpeedGraphWidget(
+          service: service,
+          enabledMetricNames: settings.graphMetrics,
+          expanded: _graphExpanded,
+          onExpandedChanged: (v) => setState(() => _graphExpanded = v),
+        ),
+        const SizedBox(height: 16),
+        Divider(),
+        const SizedBox(height: 8),
+      ],
+    );
+  }
+
   Widget _buildContent(BoxConstraints constraints) {
     if (_isLoading && _torrents.isEmpty) return const Center(child: ProgressRing());
-    final availableHeight = constraints.maxHeight - ScreenUtils.kTitleBarHeight - 166;
+
+    final hasGraph = _speedService != null;
+    final graphReservedHeight = hasGraph ? (_graphExpanded ? _kGraphExpandedHeight : _kGraphCollapsedHeight) + 40 : 0.0;
+    final availableHeight = math.max(120.0, constraints.maxHeight - ScreenUtils.kTitleBarHeight - 166 - graphReservedHeight);
 
     if (_error != null && _torrents.isEmpty) {
-      return SizedBox(
-        height: availableHeight,
-        child: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.error_outline, size: 48, color: Colors.red),
-              const SizedBox(height: 12),
-              Text('Failed to connect to ${TorrentManager.torrentClient?.clientName ?? "torrent client"}', style: Manager.bodyStrongStyle),
-              const SizedBox(height: 8),
-              Text(_error!, style: Manager.miniBodyStyle.copyWith(color: Colors.white.withValues(alpha: .5))),
-              const SizedBox(height: 16),
-              StandardButton.label(
-                label: 'Retry',
-                onPressed: () => _fetchTorrents(),
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (hasGraph) _buildGraphSection(),
+          SizedBox(
+            height: availableHeight,
+            child: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.error_outline, size: 48, color: Colors.red),
+                  const SizedBox(height: 12),
+                  Text('Failed to connect to ${TorrentManager.torrentClient?.clientName ?? "torrent client"}', style: Manager.bodyStrongStyle),
+                  const SizedBox(height: 8),
+                  Text(_error!, style: Manager.miniBodyStyle.copyWith(color: Colors.white.withValues(alpha: .5))),
+                  const SizedBox(height: 16),
+                  StandardButton.label(
+                    label: 'Retry',
+                    onPressed: () => _fetchTorrents(),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
-        ),
+        ],
       );
     }
 
     if (_torrents.isEmpty) {
-      return SizedBox(
-        height: availableHeight,
-        child: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.download_done, size: 48, color: Colors.white.withValues(alpha: .3)),
-              const SizedBox(height: 12),
-              Text('No active torrents', style: Manager.bodyStrongStyle),
-              const SizedBox(height: 8),
-              Text('You need to add a torrent to see them here.', style: Manager.bodyStyle.copyWith(color: Colors.white.withValues(alpha: .5))),
-            ],
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (hasGraph) _buildGraphSection(),
+          SizedBox(
+            height: availableHeight,
+            child: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.download_done, size: 48, color: Colors.white.withValues(alpha: .3)),
+                  const SizedBox(height: 12),
+                  Text('No active torrents', style: Manager.bodyStrongStyle),
+                  const SizedBox(height: 8),
+                  Text('You need to add a torrent to see them here.', style: Manager.bodyStyle.copyWith(color: Colors.white.withValues(alpha: .5))),
+                ],
+              ),
+            ),
           ),
-        ),
+        ],
       );
     }
 
@@ -440,36 +497,45 @@ class DownloadsScreenState extends State<DownloadsScreen> {
           break; // Handled by _torrents.isEmpty catch above
       }
 
-      return SizedBox(
-        height: availableHeight,
-        child: Align(
-          alignment: Alignment.center,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icon, size: 48, color: color.withValues(alpha: .5)),
-              const SizedBox(height: 12),
-              Text(title, style: Manager.bodyStrongStyle),
-              const SizedBox(height: 8),
-              Text(subtitle, style: Manager.bodyStyle.copyWith(color: Colors.white.withValues(alpha: .5))),
-            ],
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (hasGraph) _buildGraphSection(),
+          SizedBox(
+            height: availableHeight,
+            child: Align(
+              alignment: Alignment.center,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(icon, size: 48, color: color.withValues(alpha: .5)),
+                  const SizedBox(height: 12),
+                  Text(title, style: Manager.bodyStrongStyle),
+                  const SizedBox(height: 8),
+                  Text(subtitle, style: Manager.bodyStyle.copyWith(color: Colors.white.withValues(alpha: .5))),
+                ],
+              ),
+            ),
           ),
-        ),
+        ],
       );
     }
 
     return Column(
-      children: sorted
-          .mapIndexed((int index, TorrentInfo torrent) => _TorrentTile(
-                isLast: index == sorted.length - 1,
-                torrent: torrent,
-                onPause: _pauseTorrent,
-                onResume: _resumeTorrent,
-                onChanged: () => _fetchTorrents(silent: true),
-              ))
-          .toList(),
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (hasGraph) _buildGraphSection(),
+        ...sorted
+            .mapIndexed((int index, TorrentInfo torrent) => _TorrentTile(
+                  isLast: index == sorted.length - 1,
+                  torrent: torrent,
+                  onPause: _pauseTorrent,
+                  onResume: _resumeTorrent,
+                  onChanged: () => _fetchTorrents(silent: true),
+                )),
+      ],
     );
   }
 }
@@ -529,7 +595,7 @@ class _TorrentTileState extends State<_TorrentTile> {
   Widget build(BuildContext context) {
     final t = widget.torrent;
     final color = _stateColor(t.state);
-    final progressPercent = t.progress == 1 ? "100" : (t.progress * 100).toStringAsFixed(1);
+    final progressPercent = getPercent(t);
     final bool isPaused = t.state == TorrentState.paused;
     final bool isActive = t.state == TorrentState.downloading || t.state == TorrentState.seeding;
 
@@ -621,7 +687,20 @@ class _TorrentTileState extends State<_TorrentTile> {
                           width: _kSizeColumnWidth,
                           child: Align(
                             alignment: Alignment.centerRight,
-                            child: Text(fileSize(t.size), overflow: TextOverflow.visible, maxLines: 1),
+                            child: t.size <= 0
+                                ? Shimmer.fromColors(
+                                    baseColor: Colors.white.withValues(alpha: 0.12),
+                                    highlightColor: Colors.white.withValues(alpha: 0.28),
+                                    child: Container(
+                                      width: 48,
+                                      height: 10,
+                                      decoration: BoxDecoration(
+                                        color: Colors.white,
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                    ),
+                                  )
+                                : Text(fileSize(t.size), overflow: TextOverflow.visible, maxLines: 1),
                           ),
                         ),
                       ],
@@ -692,6 +771,13 @@ class _TorrentTileState extends State<_TorrentTile> {
             ),
           ),
         ));
+  }
+
+  String getPercent(TorrentInfo t) {
+    if (t.progress < 0 || t.progress > 1) return '?';
+    if (t.progress == 0) return '0';
+    if (t.progress == 1) return '100';
+    return (t.progress * 100).toStringAsFixed(1);
   }
 
   Widget _dot() => Padding(

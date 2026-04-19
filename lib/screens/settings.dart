@@ -25,6 +25,7 @@ import '../services/library/scanner/scanner_service.dart';
 import '../services/anilist/episode_title_service.dart';
 import '../services/data_storage_service.dart';
 import '../services/downloads/torrent_manager.dart';
+import '../services/downloads/speed_graph_service.dart';
 import '../services/players/media_player_monitor.dart';
 import '../models/sonarr/sonarr_quality_profile.dart';
 import '../services/qbittorrent/qbittorrent.dart';
@@ -140,6 +141,7 @@ class SettingsScreenState extends State<SettingsScreen> with AutomaticKeepAliveC
   bool _isQbitTesting = false;
   bool? _qbitTestResult;
   bool _isQbitEditing = false;
+  final FlyoutController _graphMetricsFlyoutController = FlyoutController();
 
   final FocusNode fontSizeFocusNode = FocusNode();
   final FocusNode transitionAnimationFocusNode = FocusNode();
@@ -2835,7 +2837,120 @@ class SettingsScreenState extends State<SettingsScreen> with AutomaticKeepAliveC
         ),
         severity: InfoBarSeverity.info,
       ),
+
+      VDiv(32),
+      Divider(),
+      VDiv(24),
+      Text('Speed Graph', style: Manager.subtitleStyle),
+      VDiv(4),
+      Text(
+        'Configure the transfer speed graph shown on the Downloads screen.',
+        style: Manager.bodyStyle.copyWith(color: Colors.white.withValues(alpha: 0.5)),
+      ),
+      VDiv(16),
+
+      // Timeframe
+      Row(
+        children: [
+          SizedBox(width: 140, child: Text('Timeframe', style: Manager.bodyStyle)),
+          HDiv(12),
+          ComboBox<int>(
+            value: settings.graphTimeframeMinutes,
+            items: const [
+              ComboBoxItem(value: 1, child: Text('1 minute')),
+              ComboBoxItem(value: 5, child: Text('5 minutes')),
+              ComboBoxItem(value: 10, child: Text('10 minutes')),
+              ComboBoxItem(value: 30, child: Text('30 minutes')),
+              ComboBoxItem(value: 60, child: Text('1 hour')),
+            ],
+            onChanged: (v) {
+              if (v != null) setState(() => settings.graphTimeframeMinutes = v);
+            },
+          ),
+        ],
+      ),
+      VDiv(12),
+
+      // Update frequency
+      Row(
+        children: [
+          SizedBox(width: 140, child: Text('Update every', style: Manager.bodyStyle)),
+          HDiv(12),
+          ComboBox<int>(
+            value: settings.graphUpdateFrequencySeconds,
+            items: const [
+              ComboBoxItem(value: 1, child: Text('1 second')),
+              ComboBoxItem(value: 2, child: Text('2 seconds')),
+              ComboBoxItem(value: 5, child: Text('5 seconds')),
+              ComboBoxItem(value: 10, child: Text('10 seconds')),
+            ],
+            onChanged: (v) {
+              if (v != null) setState(() => settings.graphUpdateFrequencySeconds = v);
+            },
+          ),
+        ],
+      ),
+      VDiv(12),
+
+      // Metrics selection
+      Row(
+        children: [
+          SizedBox(width: 140, child: Text('Metrics', style: Manager.bodyStyle)),
+          HDiv(12),
+          FlyoutTarget(
+            controller: _graphMetricsFlyoutController,
+            child: Builder(
+              builder: (context) => StandardButton.label(
+                label: '${settings.graphMetrics.length} metric${settings.graphMetrics.length == 1 ? '' : 's'} selected',
+                onPressed: () => _showMetricsFlyout(context, settings),
+              ),
+            ),
+          ),
+        ],
+      ),
+      VDiv(8),
+      Text(
+        'Payload, Overhead, DHT, and Tracker metrics may not be available in all qBittorrent versions.',
+        style: Manager.miniBodyStyle.copyWith(color: Colors.white.withValues(alpha: 0.4)),
+      ),
     ];
+  }
+
+  void _showMetricsFlyout(BuildContext context, SettingsManager settings) {
+    _graphMetricsFlyoutController.showFlyout(
+      barrierDismissible: true,
+      dismissOnPointerMoveAway: false,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setFlyoutState) {
+            return FlyoutContent(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: SpeedMetric.values.map((metric) {
+                  final isEnabled = settings.graphMetrics.contains(metric.name);
+                  return Checkbox(
+                    checked: isEnabled,
+                    onChanged: (v) {
+                      final metrics = Set<String>.from(settings.graphMetrics);
+                      if (v == true) {
+                        metrics.add(metric.name);
+                      } else {
+                        metrics.remove(metric.name);
+                      }
+                      settings.graphMetrics = metrics;
+                      setFlyoutState(() {});
+                      setState(() {});
+                    },
+                    content: Text(metric.label, style: Manager.bodyStyle),
+                  );
+                }).toList(),
+              ),
+            );
+          },
+        );
+      },
+    );
   }
 
   Expanded ReadonlyTextBoxWithShiftAltButton(

@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import 'package:miruryoiki/utils/text.dart';
 import '../downloads/torrent_client.dart';
+import 'transfer_info.dart';
 
 /// Lightweight client for the qBittorrent Web API v2
 ///
@@ -229,6 +230,19 @@ class QBittorrentRepository implements TorrentClient {
     final response = await _authedGet(uri);
     if (response.statusCode != 200) return null;
     return response.bodyBytes;
+  }
+
+  @override
+  Future<TransferInfo?> getTransferInfo() async {
+    try {
+      final uri = Uri.parse('$_baseUrl/api/v2/transfer/info');
+      final response = await _authedGet(uri);
+      if (response.statusCode != 200) return null;
+      final Map<String, dynamic> data = json.decode(response.body) as Map<String, dynamic>;
+      return TransferInfo.fromJson(data);
+    } catch (_) {
+      return null;
+    }
   }
 
   @override
