@@ -75,7 +75,7 @@ extension LibrarySeriesManagement on Library {
 
   Future<void> addSeries(Series series) async {
     _series.add(series);
-    _dataVersion++;
+    _incrementDataVersion();
     _markDirty(series);
     await persistLibrary();
     notifyListeners();
@@ -83,7 +83,7 @@ extension LibrarySeriesManagement on Library {
 
   Future<void> removeSeries(Series series) async {
     _series.removeWhere((s) => s.path == series.path);
-    _dataVersion++;
+    _incrementDataVersion();
     _hasPendingDeletions = true;
     await persistLibrary();
     notifyListeners();
@@ -113,7 +113,7 @@ extension LibrarySeriesManagement on Library {
     // Update DB
     if (series.id != null) await seriesDao.updateMappingAnilistData(series.id!, anilistId, anilistData, lastSynced);
 
-    _dataVersion++;
+    _incrementDataVersion();
     notifyListeners();
   }
 
@@ -135,7 +135,7 @@ extension LibrarySeriesManagement on Library {
     final updatedSeries = series.copyWith(anilistMappings: updatedMappings);
 
     _series[seriesIndex] = updatedSeries;
-    _dataVersion++;
+    _incrementDataVersion();
 
     await seriesDao.updateMappingViewType(anilistId, viewType);
     notifyListeners();
@@ -170,7 +170,7 @@ extension LibrarySeriesManagement on Library {
 
     // Update the series
     _series[index] = series;
-    _dataVersion++; // Invalidate caches when series updated
+    _incrementDataVersion(); // Invalidate caches when series updated
 
     if (invalidateCache && homeKey.currentState != null) homeKey.currentState!.seriesWasModified = true;
 

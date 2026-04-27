@@ -124,13 +124,14 @@ class Manager {
     return _cachedAppTheme ?? (_cachedAppTheme = AppTheme());
   }
 
-  static bool debugGreenEnabled = true;
+  static bool debugGreenEnabled = false;
 
   static AccentColor get accentColor => (kDebugMode && debugGreenEnabled //
           ? Colors.green
           // ? settings.accentColor
           : settings.accentColor)
       .toAccentColor();
+  static AccentColor get dominantOrAccentColor => currentDominantAccentColor ?? accentColor; // TODO replace all instances of Manager.currentDominantAccentColor ?? Manager.accentColor with this
   static Color get genericGray => FluentTheme.of(context).acrylicBackgroundColor.lerpWith(const Color.fromARGB(255, 35, 35, 35), 0.5);
   static Color get pastelDominantColor => Color.lerp(currentDominantColor ?? accentColor, Colors.white, .8)!;
   static Color get pastelAccentColor => Color.lerp(accentColor, Colors.white, .8)!;

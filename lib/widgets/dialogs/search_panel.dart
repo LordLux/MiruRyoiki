@@ -15,25 +15,28 @@ import '../../utils/time.dart';
 import 'link_anilist.dart';
 
 class AnilistSearchPanel extends StatefulWidget {
-  /// The series to link to Anilist.
+  /// The series to link to Anilist
   final Series series;
 
-  /// If true, the textbox is enabled, otherwise it is disabled.
+  /// If true, the textbox is enabled, otherwise it is disabled
   final bool enabled;
 
-  /// The service to use for linking series to Anilist.
+  /// The service to use for linking series to Anilist
   final SeriesLinkService linkService;
 
-  /// The function to call when a series is linked.
+  /// The function to call when a series is linked
   final Function(int, String) onLink;
 
-  /// The constraints for the dialog, used to resize it.
+  /// The constraints for the dialog, used to resize it
   final BoxConstraints constraints;
 
-  /// The initial search term to use when the dialog is opened.
+  /// The initial search term to use when the dialog is opened
   final String? initialSearch;
 
-  /// If true, the dialog will not close automatically after linking, it needs to be closed inside `onLink`.
+  /// The anilist ID to initially search for and select
+  final int? initialAnilistId;
+
+  /// If true, the dialog will not close automatically after linking, it needs to be closed inside `onLink`
   final bool skipAutoClose;
 
   const AnilistSearchPanel({
@@ -43,6 +46,7 @@ class AnilistSearchPanel extends StatefulWidget {
     required this.onLink,
     required this.constraints,
     this.initialSearch,
+    this.initialAnilistId,
     this.skipAutoClose = false,
     this.enabled = true,
   });

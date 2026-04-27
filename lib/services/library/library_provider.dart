@@ -49,15 +49,26 @@ class Library with ChangeNotifier {
   /// Path to the library directory
   String? _libraryPath;
 
-  /// If a scan is currently in progress
-
-  /// If this is the first scan after selecting a library path
-
-  /// (current, total)
-
   /// Version counter that increments whenever series data changes
   /// (Used to invalidate their caches when library data updates)
   int _dataVersion = 0;
+
+  Set<int> _mappedAnilistIds = {};
+
+  /// A set of all Anilist media IDs linked to a mapped local folder across all series
+  Set<int> get mappedAnilistIds => _mappedAnilistIds;
+
+  void _rebuildMappedAnilistIds() {
+    _mappedAnilistIds = _series
+        .expand((series) => series.anilistMappings)
+        .map((mapping) => mapping.anilistId)
+        .toSet();
+  }
+
+  void _incrementDataVersion() {
+    _dataVersion++;
+    _rebuildMappedAnilistIds();
+  }
 
   /// Set of series paths that have been modified since last save
   final Set<PathString> _dirtySeries = {};

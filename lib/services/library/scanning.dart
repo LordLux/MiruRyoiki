@@ -15,7 +15,7 @@ extension LibraryScanning on Library {
     required bool anyChanged,
   }) async {
     _series = updatedSeriesList;
-    _dataVersion++;
+    _incrementDataVersion();
 
     _markDirtyPaths(newSeriesPaths);
     if (deletedSeriesPaths.isNotEmpty) _hasPendingDeletions = true;

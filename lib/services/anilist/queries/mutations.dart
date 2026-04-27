@@ -6,7 +6,7 @@ extension AnilistServiceMutations on AnilistService {
   ///
   /// [scoreRaw] is the score in 0-100 raw format (format-independent).
   /// Our internal POINT_10 values should be multiplied by 10 before passing here.
-  Future<Mutation$SaveMediaListEntry$SaveMediaListEntry?> saveMediaListEntry({
+  Future<Map<String, dynamic>?> saveMediaListEntry({
     int? id,
     int? mediaId,
     AnilistListApiStatus? status,
@@ -50,7 +50,7 @@ extension AnilistServiceMutations on AnilistService {
       parser: (data) => Mutation$SaveMediaListEntry.fromJson(data),
     );
 
-    return result?.SaveMediaListEntry;
+    return result?.SaveMediaListEntry?.toJson();
   }
 
   /// Delete a media list entry by its list entry ID (not media ID).

@@ -1432,6 +1432,7 @@ class SeriesScreenState extends State<SeriesScreen> {
                                 episodeTitle: uiEpisode.isSpecial ? uiEpisode.displayTitle : null,
                                 sonarrEpisodeId: sonarrEp?.id,
                                 sonarrSeriesId: _sonarrSeriesId,
+                                series: series,
                               ),
                             );
                           },

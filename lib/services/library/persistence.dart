@@ -48,7 +48,7 @@ extension LibraryPersistence on Library {
       _hiddenSeriesService.rebuildCache(_series);
 
       // Increment data version since series data was loaded
-      _dataVersion++;
+      _incrementDataVersion();
     } catch (e, st) {
       handleDatabaseError(e, st, 'loading library from DB');
       _series = [];

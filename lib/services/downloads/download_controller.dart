@@ -179,7 +179,7 @@ class DownloadController {
   ///
   /// Example: library = "M:\Videos\Series", sonarrRoot = "/data/Videos/Series"
   ///   "M:\Videos\Series\Show\S01\ep.mkv" → "/data/Videos/Series/Show/S01/ep.mkv"
-  String _toSonarrPath(String localPath) {
+  String toSonarrPath(String localPath) {
     final library = Provider.of<Library>(Manager.context, listen: false);
     final settings = SettingsManager();
 
@@ -216,7 +216,7 @@ class DownloadController {
   /// [localSeriesPath] is the local Windows path to the series folder
   /// (e.g. "M:\Videos\Series\Make Heroine ga Oosugiru!").
   Future<String> ensureSonarrSeriesPath(int sonarrSeriesId, String localSeriesPath) async {
-    final expectedPath = _toSonarrPath(localSeriesPath);
+    final expectedPath = toSonarrPath(localSeriesPath);
 
     final seriesJson = await _sonarr.getSeriesById(sonarrSeriesId);
     final currentPath = (seriesJson['path'] as String?)?.replaceAll('\\', '/') ?? '';
@@ -245,7 +245,7 @@ class DownloadController {
     required int seasonNumber,
   }) async {
     // logTrace('[DownloadController] manualImportFile: "$localFilePath" → seriesId=$sonarrSeriesId, epId=$sonarrEpisodeId, S$seasonNumber');
-    final sonarrFilePath = _toSonarrPath(localFilePath);
+    final sonarrFilePath = toSonarrPath(localFilePath);
     final sonarrFolderPath = sonarrFilePath.substring(0, sonarrFilePath.lastIndexOf('/'));
 
     // Scan the folder without seriesId to avoid Sonarr 500 errors when its

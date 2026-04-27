@@ -36,7 +36,7 @@ class PathUtils {
     if (path == null || path.isEmpty) return null;
     return p.extension(path);
   }
-  
+
   static String? removeDriveLetter(String? path) {
     if (path == null || path.isEmpty) return null;
     if (Platform.isWindows && path.length > 2 && path[1] == ':') {
@@ -86,7 +86,7 @@ class PathString {
     final saveDir = miruRyoikiSaveDirectory;
     return PathUtils.relativePath(path, saveDir.path);
   }
-  
+
   static bool valid(PathString? thisPath) => thisPath != null && thisPath.pathMaybe != null && thisPath.pathMaybe!.isNotEmpty;
 
   @override

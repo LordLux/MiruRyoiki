@@ -116,10 +116,10 @@ class AnilistMapping {
     final localFile = File(localPath.path); // File
     final localDir = Directory(localPath.path); // Directory
 
-    // Case 1: Mapping points directly to a file (Movies/OVAs/ONAs)
+    // Mapping points directly to a file (Movies/OVAs/ONAs)
     if (localFile.existsSync()) return [localPath];
 
-    // Case 2: Mapping points to a directory (Season folders)
+    // Mapping points to a directory (Season folders)
     if (localDir.existsSync()) {
       final videoFiles = <PathString>[];
 
@@ -133,7 +133,7 @@ class AnilistMapping {
       return videoFiles;
     }
 
-    // Case 3: Path doesn't exist (this shouldn't happen)
+    // Path doesn't exist (this shouldn't happen)
     logErr('Anilist mapping path does not exist: ${localPath.path}');
     return [];
   }
