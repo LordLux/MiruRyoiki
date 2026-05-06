@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:collection/collection.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/material.dart' as mat;
+import 'package:material_symbols_icons/material_symbols_icons.dart';
 import 'package:miruryoiki/models/anilist/anime_overview.dart';
 import 'package:miruryoiki/models/anilist/page_info.dart';
 import 'package:miruryoiki/widgets/acrylic_header.dart';
@@ -12,6 +13,7 @@ import 'package:smooth_scroll_multiplatform/smooth_scroll_multiplatform.dart';
 import '../models/anilist/anime.dart';
 import '../models/anilist/user_list.dart';
 import '../services/connectivity/connectivity_service.dart';
+import '../services/library/library_provider.dart';
 import '../services/navigation/shortcuts.dart';
 import '../utils/text.dart';
 import '../widgets/buttons/back_button.dart';
@@ -31,6 +33,7 @@ import '../widgets/page/page_template.dart';
 import '../widgets/pill.dart';
 import '../widgets/shrinker.dart';
 import '../widgets/simple_html_parser.dart';
+import '../widgets/svg.dart';
 import '../widgets/transparency_shadow_image.dart';
 import 'package:recase/recase.dart';
 import '../widgets/series_download_view.dart';
@@ -38,8 +41,8 @@ import '../services/file_system/cache.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
 import '../utils/anilist_utils.dart';
+import '../utils/searched_series_actions.dart' as actions;
 import '../widgets/cards/dual_info_card.dart';
-import '../widgets/dialogs/entry_editor.dart';
 import '../services/anilist/provider/anilist_provider.dart';
 import '../widgets/score_widget.dart';
 import 'package:provider/provider.dart';
@@ -279,7 +282,9 @@ class SearchedSeriesScreenState extends State<SearchedSeriesScreen> {
     }
   }
 
-  /// Called whenever the user selects a tab. Triggers lazy data loading
+  /// Called whenever the user selects a tab
+  ///
+  /// Triggers lazy data loading
   void _onTabChanged(int index) {
     if (!mounted) return;
     if (index == currentTabIndex) return;
@@ -625,6 +630,12 @@ class SearchedSeriesScreenState extends State<SearchedSeriesScreen> {
     );
   }
 
+  (String, String, Widget) _getAddToButtonText(bool isInAnilist, bool isInLibrary) {
+    if (isInLibrary) return ('Go to Series', 'Open the series page in your Library', Icon(Symbols.newsstand));
+    if (isInAnilist) return ('Add to Library', 'Add the series to your Library', Icon(Symbols.library_add));
+    return ('Add to Anilist', 'Add the series to Anilist', SizedBox(width: 25, height: 25, child: Transform.translate(offset: const Offset(0, 3), child: anilistLogo)));
+  }
+
   MiruRyoikiInfobar _buildInfoBar(BuildContext context, AnimeOverview? series) {
     final posterImage = _getAnilistImage(banner: false);
 
@@ -641,45 +652,46 @@ class SearchedSeriesScreenState extends State<SearchedSeriesScreen> {
         // Add to Anilist Button
         Builder(builder: (context) {
           final animeId = series?.id;
+          final anilist = Provider.of<AnilistProvider>(context);
+          final library = Provider.of<Library>(context);
+
+          final isInAnilist = anilist.allUserAnilistIds.contains(animeId);
+          final isInLibrary = isInAnilist && library.mappedAnilistIds.contains(animeId);
+          final (text, tooltip, icon) = _getAddToButtonText(isInAnilist, isInLibrary);
+
           return StandardButton(
             label: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(mat.Icons.library_add_outlined),
+                icon,
                 HDiv(4),
-                Text(
-                  'Add to Anilist', // TODO 'Add to Library' if already added to anilist and only needs to be added to library. otherwise, 'Go to Library Series'
-                  style: getStyleBasedOnAccent(false),
-                ),
+                Text(text, style: getStyleBasedOnAccent(false)),
               ],
             ),
             expand: true,
-            tooltip: 'Add the series to your Anilist library',
-            onPressed: animeId == null
+            tooltip: tooltip,
+            onPressed: animeId == null || series == null || anilist.isOffline || !anilist.isLoggedIn
                 ? null
                 : () {
-                    logTrace('Opening Anilist List Editor Dialog');
-                    final s = series!;
-                    final displayTitle = s.title.userPreferred ?? s.title.romaji ?? s.title.english ?? 'Unknown';
-                    final anilist = Provider.of<AnilistProvider>(context, listen: false);
-                    AnilistMediaListEntry? existing;
-                    for (final list in anilist.userLists.values) {
-                      final match = list.entries.firstWhereOrNull((e) => e.mediaId == s.id);
-                      if (match != null) {
-                        existing = match;
-                        break;
+                    final s = series;
+                    if (isInLibrary) {
+                      // In Library, go to series page in Library
+                      actions.goToLibrarySeries(context, s.id);
+                    } else if (isInAnilist) {
+                      // In Anilist but not in Library, start add flow with pre-filled Anilist data
+                      actions.startAddToLibraryFlow(context, s);
+                    } else {
+                      // Not in Anilist, open entry editor with empty entry to add it
+                      AnilistMediaListEntry? existing;
+                      for (final list in anilist.userLists.values) {
+                        final match = list.entries.firstWhereOrNull((e) => e.mediaId == s.id);
+                        if (match != null) {
+                          existing = match;
+                          break;
+                        }
                       }
+                      actions.openEntryEditor(context, s, existing: existing, bannerImage: s.bannerImage);
                     }
-                    showEntryEditorDialog(
-                      context,
-                      mediaId: s.id,
-                      title: displayTitle,
-                      totalEpisodes: s.episodes,
-                      bannerImage: s.bannerImage,
-                      coverImage: s.coverImage,
-                      isFavourite: s.isFavourite,
-                      entry: existing,
-                    );
                   },
           );
         }),
@@ -825,7 +837,11 @@ class SearchedSeriesScreenState extends State<SearchedSeriesScreen> {
   Widget _buildWatchTabContent(BuildContext context, AnimeOverview? series) {
     if (series == null) return const Center(child: RepaintBoundary(child: mat.CircularProgressIndicator()));
 
-    return SeriesDownloadView(animeId: series.id, animeTitle: series.title);
+    return SeriesDownloadView(
+      animeId: series.id,
+      animeTitle: series.title,
+      onAddToLibrary: () => actions.startAddToLibraryFlow(context, series),
+    );
   }
 
   /// Shared smooth-scroll wrapper used by every tab

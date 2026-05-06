@@ -1,3 +1,4 @@
+import '../common/fragments.graphql.dart';
 import '../schema.graphql.dart';
 import 'dart:async';
 import 'package:gql/ast.dart';
@@ -976,6 +977,54 @@ const documentNodeMutationSaveMediaListEntry = DocumentNode(definitions: [
             selectionSet: null,
           ),
           FieldNode(
+            name: NameNode(value: 'media'),
+            alias: null,
+            arguments: [],
+            directives: [],
+            selectionSet: SelectionSetNode(selections: [
+              FragmentSpreadNode(
+                name: NameNode(value: 'AnimeCard'),
+                directives: [],
+              ),
+              FieldNode(
+                name: NameNode(value: 'siteUrl'),
+                alias: null,
+                arguments: [],
+                directives: [],
+                selectionSet: null,
+              ),
+              FieldNode(
+                name: NameNode(value: 'mediaListEntry'),
+                alias: null,
+                arguments: [],
+                directives: [],
+                selectionSet: SelectionSetNode(selections: [
+                  FieldNode(
+                    name: NameNode(value: 'id'),
+                    alias: null,
+                    arguments: [],
+                    directives: [],
+                    selectionSet: null,
+                  ),
+                  FieldNode(
+                    name: NameNode(value: '__typename'),
+                    alias: null,
+                    arguments: [],
+                    directives: [],
+                    selectionSet: null,
+                  ),
+                ]),
+              ),
+              FieldNode(
+                name: NameNode(value: '__typename'),
+                alias: null,
+                arguments: [],
+                directives: [],
+                selectionSet: null,
+              ),
+            ]),
+          ),
+          FieldNode(
             name: NameNode(value: '__typename'),
             alias: null,
             arguments: [],
@@ -993,6 +1042,7 @@ const documentNodeMutationSaveMediaListEntry = DocumentNode(definitions: [
       ),
     ]),
   ),
+  fragmentDefinitionAnimeCard,
 ]);
 Mutation$SaveMediaListEntry _parserFn$Mutation$SaveMediaListEntry(
         Map<String, dynamic> data) =>
@@ -1111,6 +1161,7 @@ class Mutation$SaveMediaListEntry$SaveMediaListEntry {
     this.completedAt,
     this.updatedAt,
     this.createdAt,
+    this.media,
     this.$__typename = 'MediaList',
   });
 
@@ -1131,6 +1182,7 @@ class Mutation$SaveMediaListEntry$SaveMediaListEntry {
     final l$completedAt = json['completedAt'];
     final l$updatedAt = json['updatedAt'];
     final l$createdAt = json['createdAt'];
+    final l$media = json['media'];
     final l$$__typename = json['__typename'];
     return Mutation$SaveMediaListEntry$SaveMediaListEntry(
       id: (l$id as int),
@@ -1156,6 +1208,10 @@ class Mutation$SaveMediaListEntry$SaveMediaListEntry {
               (l$completedAt as Map<String, dynamic>)),
       updatedAt: (l$updatedAt as int?),
       createdAt: (l$createdAt as int?),
+      media: l$media == null
+          ? null
+          : Mutation$SaveMediaListEntry$SaveMediaListEntry$media.fromJson(
+              (l$media as Map<String, dynamic>)),
       $__typename: (l$$__typename as String),
     );
   }
@@ -1189,6 +1245,8 @@ class Mutation$SaveMediaListEntry$SaveMediaListEntry {
   final int? updatedAt;
 
   final int? createdAt;
+
+  final Mutation$SaveMediaListEntry$SaveMediaListEntry$media? media;
 
   final String $__typename;
 
@@ -1225,6 +1283,8 @@ class Mutation$SaveMediaListEntry$SaveMediaListEntry {
     _resultData['updatedAt'] = l$updatedAt;
     final l$createdAt = createdAt;
     _resultData['createdAt'] = l$createdAt;
+    final l$media = media;
+    _resultData['media'] = l$media?.toJson();
     final l$$__typename = $__typename;
     _resultData['__typename'] = l$$__typename;
     return _resultData;
@@ -1247,6 +1307,7 @@ class Mutation$SaveMediaListEntry$SaveMediaListEntry {
     final l$completedAt = completedAt;
     final l$updatedAt = updatedAt;
     final l$createdAt = createdAt;
+    final l$media = media;
     final l$$__typename = $__typename;
     return Object.hashAll([
       l$id,
@@ -1264,6 +1325,7 @@ class Mutation$SaveMediaListEntry$SaveMediaListEntry {
       l$completedAt,
       l$updatedAt,
       l$createdAt,
+      l$media,
       l$$__typename,
     ]);
   }
@@ -1352,6 +1414,11 @@ class Mutation$SaveMediaListEntry$SaveMediaListEntry {
     if (l$createdAt != lOther$createdAt) {
       return false;
     }
+    final l$media = media;
+    final lOther$media = other.media;
+    if (l$media != lOther$media) {
+      return false;
+    }
     final l$$__typename = $__typename;
     final lOther$$__typename = other.$__typename;
     if (l$$__typename != lOther$$__typename) {
@@ -1397,12 +1464,14 @@ abstract class CopyWith$Mutation$SaveMediaListEntry$SaveMediaListEntry<TRes> {
     Mutation$SaveMediaListEntry$SaveMediaListEntry$completedAt? completedAt,
     int? updatedAt,
     int? createdAt,
+    Mutation$SaveMediaListEntry$SaveMediaListEntry$media? media,
     String? $__typename,
   });
   CopyWith$Mutation$SaveMediaListEntry$SaveMediaListEntry$startedAt<TRes>
       get startedAt;
   CopyWith$Mutation$SaveMediaListEntry$SaveMediaListEntry$completedAt<TRes>
       get completedAt;
+  CopyWith$Mutation$SaveMediaListEntry$SaveMediaListEntry$media<TRes> get media;
 }
 
 class _CopyWithImpl$Mutation$SaveMediaListEntry$SaveMediaListEntry<TRes>
@@ -1434,6 +1503,7 @@ class _CopyWithImpl$Mutation$SaveMediaListEntry$SaveMediaListEntry<TRes>
     Object? completedAt = _undefined,
     Object? updatedAt = _undefined,
     Object? createdAt = _undefined,
+    Object? media = _undefined,
     Object? $__typename = _undefined,
   }) =>
       _then(Mutation$SaveMediaListEntry$SaveMediaListEntry(
@@ -1470,6 +1540,9 @@ class _CopyWithImpl$Mutation$SaveMediaListEntry$SaveMediaListEntry<TRes>
             updatedAt == _undefined ? _instance.updatedAt : (updatedAt as int?),
         createdAt:
             createdAt == _undefined ? _instance.createdAt : (createdAt as int?),
+        media: media == _undefined
+            ? _instance.media
+            : (media as Mutation$SaveMediaListEntry$SaveMediaListEntry$media?),
         $__typename: $__typename == _undefined || $__typename == null
             ? _instance.$__typename
             : ($__typename as String),
@@ -1493,6 +1566,16 @@ class _CopyWithImpl$Mutation$SaveMediaListEntry$SaveMediaListEntry<TRes>
             .stub(_then(_instance))
         : CopyWith$Mutation$SaveMediaListEntry$SaveMediaListEntry$completedAt(
             local$completedAt, (e) => call(completedAt: e));
+  }
+
+  CopyWith$Mutation$SaveMediaListEntry$SaveMediaListEntry$media<TRes>
+      get media {
+    final local$media = _instance.media;
+    return local$media == null
+        ? CopyWith$Mutation$SaveMediaListEntry$SaveMediaListEntry$media.stub(
+            _then(_instance))
+        : CopyWith$Mutation$SaveMediaListEntry$SaveMediaListEntry$media(
+            local$media, (e) => call(media: e));
   }
 }
 
@@ -1518,6 +1601,7 @@ class _CopyWithStubImpl$Mutation$SaveMediaListEntry$SaveMediaListEntry<TRes>
     Mutation$SaveMediaListEntry$SaveMediaListEntry$completedAt? completedAt,
     int? updatedAt,
     int? createdAt,
+    Mutation$SaveMediaListEntry$SaveMediaListEntry$media? media,
     String? $__typename,
   }) =>
       _res;
@@ -1531,6 +1615,11 @@ class _CopyWithStubImpl$Mutation$SaveMediaListEntry$SaveMediaListEntry<TRes>
       get completedAt =>
           CopyWith$Mutation$SaveMediaListEntry$SaveMediaListEntry$completedAt
               .stub(_res);
+
+  CopyWith$Mutation$SaveMediaListEntry$SaveMediaListEntry$media<TRes>
+      get media =>
+          CopyWith$Mutation$SaveMediaListEntry$SaveMediaListEntry$media.stub(
+              _res);
 }
 
 class Mutation$SaveMediaListEntry$SaveMediaListEntry$startedAt {
@@ -1874,6 +1963,1508 @@ class _CopyWithStubImpl$Mutation$SaveMediaListEntry$SaveMediaListEntry$completed
     int? year,
     int? month,
     int? day,
+    String? $__typename,
+  }) =>
+      _res;
+}
+
+class Mutation$SaveMediaListEntry$SaveMediaListEntry$media
+    implements Fragment$AnimeCard {
+  Mutation$SaveMediaListEntry$SaveMediaListEntry$media({
+    required this.id,
+    this.title,
+    this.coverImage,
+    this.type,
+    this.format,
+    this.status,
+    this.episodes,
+    this.seasonYear,
+    this.season,
+    this.averageScore,
+    this.meanScore,
+    this.popularity,
+    this.isAdult,
+    required this.isFavourite,
+    this.nextAiringEpisode,
+    this.startDate,
+    this.genres,
+    this.$__typename = 'Media',
+    this.siteUrl,
+    this.mediaListEntry,
+  });
+
+  factory Mutation$SaveMediaListEntry$SaveMediaListEntry$media.fromJson(
+      Map<String, dynamic> json) {
+    final l$id = json['id'];
+    final l$title = json['title'];
+    final l$coverImage = json['coverImage'];
+    final l$type = json['type'];
+    final l$format = json['format'];
+    final l$status = json['status'];
+    final l$episodes = json['episodes'];
+    final l$seasonYear = json['seasonYear'];
+    final l$season = json['season'];
+    final l$averageScore = json['averageScore'];
+    final l$meanScore = json['meanScore'];
+    final l$popularity = json['popularity'];
+    final l$isAdult = json['isAdult'];
+    final l$isFavourite = json['isFavourite'];
+    final l$nextAiringEpisode = json['nextAiringEpisode'];
+    final l$startDate = json['startDate'];
+    final l$genres = json['genres'];
+    final l$$__typename = json['__typename'];
+    final l$siteUrl = json['siteUrl'];
+    final l$mediaListEntry = json['mediaListEntry'];
+    return Mutation$SaveMediaListEntry$SaveMediaListEntry$media(
+      id: (l$id as int),
+      title: l$title == null
+          ? null
+          : Mutation$SaveMediaListEntry$SaveMediaListEntry$media$title.fromJson(
+              (l$title as Map<String, dynamic>)),
+      coverImage: l$coverImage == null
+          ? null
+          : Mutation$SaveMediaListEntry$SaveMediaListEntry$media$coverImage
+              .fromJson((l$coverImage as Map<String, dynamic>)),
+      type: l$type == null ? null : fromJson$Enum$MediaType((l$type as String)),
+      format: l$format == null
+          ? null
+          : fromJson$Enum$MediaFormat((l$format as String)),
+      status: l$status == null
+          ? null
+          : fromJson$Enum$MediaStatus((l$status as String)),
+      episodes: (l$episodes as int?),
+      seasonYear: (l$seasonYear as int?),
+      season: l$season == null
+          ? null
+          : fromJson$Enum$MediaSeason((l$season as String)),
+      averageScore: (l$averageScore as int?),
+      meanScore: (l$meanScore as int?),
+      popularity: (l$popularity as int?),
+      isAdult: (l$isAdult as bool?),
+      isFavourite: (l$isFavourite as bool),
+      nextAiringEpisode: l$nextAiringEpisode == null
+          ? null
+          : Mutation$SaveMediaListEntry$SaveMediaListEntry$media$nextAiringEpisode
+              .fromJson((l$nextAiringEpisode as Map<String, dynamic>)),
+      startDate: l$startDate == null
+          ? null
+          : Mutation$SaveMediaListEntry$SaveMediaListEntry$media$startDate
+              .fromJson((l$startDate as Map<String, dynamic>)),
+      genres: (l$genres as List<dynamic>?)?.map((e) => (e as String?)).toList(),
+      $__typename: (l$$__typename as String),
+      siteUrl: (l$siteUrl as String?),
+      mediaListEntry: l$mediaListEntry == null
+          ? null
+          : Mutation$SaveMediaListEntry$SaveMediaListEntry$media$mediaListEntry
+              .fromJson((l$mediaListEntry as Map<String, dynamic>)),
+    );
+  }
+
+  final int id;
+
+  final Mutation$SaveMediaListEntry$SaveMediaListEntry$media$title? title;
+
+  final Mutation$SaveMediaListEntry$SaveMediaListEntry$media$coverImage?
+      coverImage;
+
+  final Enum$MediaType? type;
+
+  final Enum$MediaFormat? format;
+
+  final Enum$MediaStatus? status;
+
+  final int? episodes;
+
+  final int? seasonYear;
+
+  final Enum$MediaSeason? season;
+
+  final int? averageScore;
+
+  final int? meanScore;
+
+  final int? popularity;
+
+  final bool? isAdult;
+
+  final bool isFavourite;
+
+  final Mutation$SaveMediaListEntry$SaveMediaListEntry$media$nextAiringEpisode?
+      nextAiringEpisode;
+
+  final Mutation$SaveMediaListEntry$SaveMediaListEntry$media$startDate?
+      startDate;
+
+  final List<String?>? genres;
+
+  final String $__typename;
+
+  final String? siteUrl;
+
+  final Mutation$SaveMediaListEntry$SaveMediaListEntry$media$mediaListEntry?
+      mediaListEntry;
+
+  Map<String, dynamic> toJson() {
+    final _resultData = <String, dynamic>{};
+    final l$id = id;
+    _resultData['id'] = l$id;
+    final l$title = title;
+    _resultData['title'] = l$title?.toJson();
+    final l$coverImage = coverImage;
+    _resultData['coverImage'] = l$coverImage?.toJson();
+    final l$type = type;
+    _resultData['type'] = l$type == null ? null : toJson$Enum$MediaType(l$type);
+    final l$format = format;
+    _resultData['format'] =
+        l$format == null ? null : toJson$Enum$MediaFormat(l$format);
+    final l$status = status;
+    _resultData['status'] =
+        l$status == null ? null : toJson$Enum$MediaStatus(l$status);
+    final l$episodes = episodes;
+    _resultData['episodes'] = l$episodes;
+    final l$seasonYear = seasonYear;
+    _resultData['seasonYear'] = l$seasonYear;
+    final l$season = season;
+    _resultData['season'] =
+        l$season == null ? null : toJson$Enum$MediaSeason(l$season);
+    final l$averageScore = averageScore;
+    _resultData['averageScore'] = l$averageScore;
+    final l$meanScore = meanScore;
+    _resultData['meanScore'] = l$meanScore;
+    final l$popularity = popularity;
+    _resultData['popularity'] = l$popularity;
+    final l$isAdult = isAdult;
+    _resultData['isAdult'] = l$isAdult;
+    final l$isFavourite = isFavourite;
+    _resultData['isFavourite'] = l$isFavourite;
+    final l$nextAiringEpisode = nextAiringEpisode;
+    _resultData['nextAiringEpisode'] = l$nextAiringEpisode?.toJson();
+    final l$startDate = startDate;
+    _resultData['startDate'] = l$startDate?.toJson();
+    final l$genres = genres;
+    _resultData['genres'] = l$genres?.map((e) => e).toList();
+    final l$$__typename = $__typename;
+    _resultData['__typename'] = l$$__typename;
+    final l$siteUrl = siteUrl;
+    _resultData['siteUrl'] = l$siteUrl;
+    final l$mediaListEntry = mediaListEntry;
+    _resultData['mediaListEntry'] = l$mediaListEntry?.toJson();
+    return _resultData;
+  }
+
+  @override
+  int get hashCode {
+    final l$id = id;
+    final l$title = title;
+    final l$coverImage = coverImage;
+    final l$type = type;
+    final l$format = format;
+    final l$status = status;
+    final l$episodes = episodes;
+    final l$seasonYear = seasonYear;
+    final l$season = season;
+    final l$averageScore = averageScore;
+    final l$meanScore = meanScore;
+    final l$popularity = popularity;
+    final l$isAdult = isAdult;
+    final l$isFavourite = isFavourite;
+    final l$nextAiringEpisode = nextAiringEpisode;
+    final l$startDate = startDate;
+    final l$genres = genres;
+    final l$$__typename = $__typename;
+    final l$siteUrl = siteUrl;
+    final l$mediaListEntry = mediaListEntry;
+    return Object.hashAll([
+      l$id,
+      l$title,
+      l$coverImage,
+      l$type,
+      l$format,
+      l$status,
+      l$episodes,
+      l$seasonYear,
+      l$season,
+      l$averageScore,
+      l$meanScore,
+      l$popularity,
+      l$isAdult,
+      l$isFavourite,
+      l$nextAiringEpisode,
+      l$startDate,
+      l$genres == null ? null : Object.hashAll(l$genres.map((v) => v)),
+      l$$__typename,
+      l$siteUrl,
+      l$mediaListEntry,
+    ]);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) {
+      return true;
+    }
+    if (other is! Mutation$SaveMediaListEntry$SaveMediaListEntry$media ||
+        runtimeType != other.runtimeType) {
+      return false;
+    }
+    final l$id = id;
+    final lOther$id = other.id;
+    if (l$id != lOther$id) {
+      return false;
+    }
+    final l$title = title;
+    final lOther$title = other.title;
+    if (l$title != lOther$title) {
+      return false;
+    }
+    final l$coverImage = coverImage;
+    final lOther$coverImage = other.coverImage;
+    if (l$coverImage != lOther$coverImage) {
+      return false;
+    }
+    final l$type = type;
+    final lOther$type = other.type;
+    if (l$type != lOther$type) {
+      return false;
+    }
+    final l$format = format;
+    final lOther$format = other.format;
+    if (l$format != lOther$format) {
+      return false;
+    }
+    final l$status = status;
+    final lOther$status = other.status;
+    if (l$status != lOther$status) {
+      return false;
+    }
+    final l$episodes = episodes;
+    final lOther$episodes = other.episodes;
+    if (l$episodes != lOther$episodes) {
+      return false;
+    }
+    final l$seasonYear = seasonYear;
+    final lOther$seasonYear = other.seasonYear;
+    if (l$seasonYear != lOther$seasonYear) {
+      return false;
+    }
+    final l$season = season;
+    final lOther$season = other.season;
+    if (l$season != lOther$season) {
+      return false;
+    }
+    final l$averageScore = averageScore;
+    final lOther$averageScore = other.averageScore;
+    if (l$averageScore != lOther$averageScore) {
+      return false;
+    }
+    final l$meanScore = meanScore;
+    final lOther$meanScore = other.meanScore;
+    if (l$meanScore != lOther$meanScore) {
+      return false;
+    }
+    final l$popularity = popularity;
+    final lOther$popularity = other.popularity;
+    if (l$popularity != lOther$popularity) {
+      return false;
+    }
+    final l$isAdult = isAdult;
+    final lOther$isAdult = other.isAdult;
+    if (l$isAdult != lOther$isAdult) {
+      return false;
+    }
+    final l$isFavourite = isFavourite;
+    final lOther$isFavourite = other.isFavourite;
+    if (l$isFavourite != lOther$isFavourite) {
+      return false;
+    }
+    final l$nextAiringEpisode = nextAiringEpisode;
+    final lOther$nextAiringEpisode = other.nextAiringEpisode;
+    if (l$nextAiringEpisode != lOther$nextAiringEpisode) {
+      return false;
+    }
+    final l$startDate = startDate;
+    final lOther$startDate = other.startDate;
+    if (l$startDate != lOther$startDate) {
+      return false;
+    }
+    final l$genres = genres;
+    final lOther$genres = other.genres;
+    if (l$genres != null && lOther$genres != null) {
+      if (l$genres.length != lOther$genres.length) {
+        return false;
+      }
+      for (int i = 0; i < l$genres.length; i++) {
+        final l$genres$entry = l$genres[i];
+        final lOther$genres$entry = lOther$genres[i];
+        if (l$genres$entry != lOther$genres$entry) {
+          return false;
+        }
+      }
+    } else if (l$genres != lOther$genres) {
+      return false;
+    }
+    final l$$__typename = $__typename;
+    final lOther$$__typename = other.$__typename;
+    if (l$$__typename != lOther$$__typename) {
+      return false;
+    }
+    final l$siteUrl = siteUrl;
+    final lOther$siteUrl = other.siteUrl;
+    if (l$siteUrl != lOther$siteUrl) {
+      return false;
+    }
+    final l$mediaListEntry = mediaListEntry;
+    final lOther$mediaListEntry = other.mediaListEntry;
+    if (l$mediaListEntry != lOther$mediaListEntry) {
+      return false;
+    }
+    return true;
+  }
+}
+
+extension UtilityExtension$Mutation$SaveMediaListEntry$SaveMediaListEntry$media
+    on Mutation$SaveMediaListEntry$SaveMediaListEntry$media {
+  CopyWith$Mutation$SaveMediaListEntry$SaveMediaListEntry$media<
+          Mutation$SaveMediaListEntry$SaveMediaListEntry$media>
+      get copyWith =>
+          CopyWith$Mutation$SaveMediaListEntry$SaveMediaListEntry$media(
+            this,
+            (i) => i,
+          );
+}
+
+abstract class CopyWith$Mutation$SaveMediaListEntry$SaveMediaListEntry$media<
+    TRes> {
+  factory CopyWith$Mutation$SaveMediaListEntry$SaveMediaListEntry$media(
+    Mutation$SaveMediaListEntry$SaveMediaListEntry$media instance,
+    TRes Function(Mutation$SaveMediaListEntry$SaveMediaListEntry$media) then,
+  ) = _CopyWithImpl$Mutation$SaveMediaListEntry$SaveMediaListEntry$media;
+
+  factory CopyWith$Mutation$SaveMediaListEntry$SaveMediaListEntry$media.stub(
+          TRes res) =
+      _CopyWithStubImpl$Mutation$SaveMediaListEntry$SaveMediaListEntry$media;
+
+  TRes call({
+    int? id,
+    Mutation$SaveMediaListEntry$SaveMediaListEntry$media$title? title,
+    Mutation$SaveMediaListEntry$SaveMediaListEntry$media$coverImage? coverImage,
+    Enum$MediaType? type,
+    Enum$MediaFormat? format,
+    Enum$MediaStatus? status,
+    int? episodes,
+    int? seasonYear,
+    Enum$MediaSeason? season,
+    int? averageScore,
+    int? meanScore,
+    int? popularity,
+    bool? isAdult,
+    bool? isFavourite,
+    Mutation$SaveMediaListEntry$SaveMediaListEntry$media$nextAiringEpisode?
+        nextAiringEpisode,
+    Mutation$SaveMediaListEntry$SaveMediaListEntry$media$startDate? startDate,
+    List<String?>? genres,
+    String? $__typename,
+    String? siteUrl,
+    Mutation$SaveMediaListEntry$SaveMediaListEntry$media$mediaListEntry?
+        mediaListEntry,
+  });
+  CopyWith$Mutation$SaveMediaListEntry$SaveMediaListEntry$media$title<TRes>
+      get title;
+  CopyWith$Mutation$SaveMediaListEntry$SaveMediaListEntry$media$coverImage<TRes>
+      get coverImage;
+  CopyWith$Mutation$SaveMediaListEntry$SaveMediaListEntry$media$nextAiringEpisode<
+      TRes> get nextAiringEpisode;
+  CopyWith$Mutation$SaveMediaListEntry$SaveMediaListEntry$media$startDate<TRes>
+      get startDate;
+  CopyWith$Mutation$SaveMediaListEntry$SaveMediaListEntry$media$mediaListEntry<
+      TRes> get mediaListEntry;
+}
+
+class _CopyWithImpl$Mutation$SaveMediaListEntry$SaveMediaListEntry$media<TRes>
+    implements
+        CopyWith$Mutation$SaveMediaListEntry$SaveMediaListEntry$media<TRes> {
+  _CopyWithImpl$Mutation$SaveMediaListEntry$SaveMediaListEntry$media(
+    this._instance,
+    this._then,
+  );
+
+  final Mutation$SaveMediaListEntry$SaveMediaListEntry$media _instance;
+
+  final TRes Function(Mutation$SaveMediaListEntry$SaveMediaListEntry$media)
+      _then;
+
+  static const _undefined = <dynamic, dynamic>{};
+
+  TRes call({
+    Object? id = _undefined,
+    Object? title = _undefined,
+    Object? coverImage = _undefined,
+    Object? type = _undefined,
+    Object? format = _undefined,
+    Object? status = _undefined,
+    Object? episodes = _undefined,
+    Object? seasonYear = _undefined,
+    Object? season = _undefined,
+    Object? averageScore = _undefined,
+    Object? meanScore = _undefined,
+    Object? popularity = _undefined,
+    Object? isAdult = _undefined,
+    Object? isFavourite = _undefined,
+    Object? nextAiringEpisode = _undefined,
+    Object? startDate = _undefined,
+    Object? genres = _undefined,
+    Object? $__typename = _undefined,
+    Object? siteUrl = _undefined,
+    Object? mediaListEntry = _undefined,
+  }) =>
+      _then(Mutation$SaveMediaListEntry$SaveMediaListEntry$media(
+        id: id == _undefined || id == null ? _instance.id : (id as int),
+        title: title == _undefined
+            ? _instance.title
+            : (title
+                as Mutation$SaveMediaListEntry$SaveMediaListEntry$media$title?),
+        coverImage: coverImage == _undefined
+            ? _instance.coverImage
+            : (coverImage
+                as Mutation$SaveMediaListEntry$SaveMediaListEntry$media$coverImage?),
+        type: type == _undefined ? _instance.type : (type as Enum$MediaType?),
+        format: format == _undefined
+            ? _instance.format
+            : (format as Enum$MediaFormat?),
+        status: status == _undefined
+            ? _instance.status
+            : (status as Enum$MediaStatus?),
+        episodes:
+            episodes == _undefined ? _instance.episodes : (episodes as int?),
+        seasonYear: seasonYear == _undefined
+            ? _instance.seasonYear
+            : (seasonYear as int?),
+        season: season == _undefined
+            ? _instance.season
+            : (season as Enum$MediaSeason?),
+        averageScore: averageScore == _undefined
+            ? _instance.averageScore
+            : (averageScore as int?),
+        meanScore:
+            meanScore == _undefined ? _instance.meanScore : (meanScore as int?),
+        popularity: popularity == _undefined
+            ? _instance.popularity
+            : (popularity as int?),
+        isAdult: isAdult == _undefined ? _instance.isAdult : (isAdult as bool?),
+        isFavourite: isFavourite == _undefined || isFavourite == null
+            ? _instance.isFavourite
+            : (isFavourite as bool),
+        nextAiringEpisode: nextAiringEpisode == _undefined
+            ? _instance.nextAiringEpisode
+            : (nextAiringEpisode
+                as Mutation$SaveMediaListEntry$SaveMediaListEntry$media$nextAiringEpisode?),
+        startDate: startDate == _undefined
+            ? _instance.startDate
+            : (startDate
+                as Mutation$SaveMediaListEntry$SaveMediaListEntry$media$startDate?),
+        genres: genres == _undefined
+            ? _instance.genres
+            : (genres as List<String?>?),
+        $__typename: $__typename == _undefined || $__typename == null
+            ? _instance.$__typename
+            : ($__typename as String),
+        siteUrl:
+            siteUrl == _undefined ? _instance.siteUrl : (siteUrl as String?),
+        mediaListEntry: mediaListEntry == _undefined
+            ? _instance.mediaListEntry
+            : (mediaListEntry
+                as Mutation$SaveMediaListEntry$SaveMediaListEntry$media$mediaListEntry?),
+      ));
+
+  CopyWith$Mutation$SaveMediaListEntry$SaveMediaListEntry$media$title<TRes>
+      get title {
+    final local$title = _instance.title;
+    return local$title == null
+        ? CopyWith$Mutation$SaveMediaListEntry$SaveMediaListEntry$media$title
+            .stub(_then(_instance))
+        : CopyWith$Mutation$SaveMediaListEntry$SaveMediaListEntry$media$title(
+            local$title, (e) => call(title: e));
+  }
+
+  CopyWith$Mutation$SaveMediaListEntry$SaveMediaListEntry$media$coverImage<TRes>
+      get coverImage {
+    final local$coverImage = _instance.coverImage;
+    return local$coverImage == null
+        ? CopyWith$Mutation$SaveMediaListEntry$SaveMediaListEntry$media$coverImage
+            .stub(_then(_instance))
+        : CopyWith$Mutation$SaveMediaListEntry$SaveMediaListEntry$media$coverImage(
+            local$coverImage, (e) => call(coverImage: e));
+  }
+
+  CopyWith$Mutation$SaveMediaListEntry$SaveMediaListEntry$media$nextAiringEpisode<
+      TRes> get nextAiringEpisode {
+    final local$nextAiringEpisode = _instance.nextAiringEpisode;
+    return local$nextAiringEpisode == null
+        ? CopyWith$Mutation$SaveMediaListEntry$SaveMediaListEntry$media$nextAiringEpisode
+            .stub(_then(_instance))
+        : CopyWith$Mutation$SaveMediaListEntry$SaveMediaListEntry$media$nextAiringEpisode(
+            local$nextAiringEpisode, (e) => call(nextAiringEpisode: e));
+  }
+
+  CopyWith$Mutation$SaveMediaListEntry$SaveMediaListEntry$media$startDate<TRes>
+      get startDate {
+    final local$startDate = _instance.startDate;
+    return local$startDate == null
+        ? CopyWith$Mutation$SaveMediaListEntry$SaveMediaListEntry$media$startDate
+            .stub(_then(_instance))
+        : CopyWith$Mutation$SaveMediaListEntry$SaveMediaListEntry$media$startDate(
+            local$startDate, (e) => call(startDate: e));
+  }
+
+  CopyWith$Mutation$SaveMediaListEntry$SaveMediaListEntry$media$mediaListEntry<
+      TRes> get mediaListEntry {
+    final local$mediaListEntry = _instance.mediaListEntry;
+    return local$mediaListEntry == null
+        ? CopyWith$Mutation$SaveMediaListEntry$SaveMediaListEntry$media$mediaListEntry
+            .stub(_then(_instance))
+        : CopyWith$Mutation$SaveMediaListEntry$SaveMediaListEntry$media$mediaListEntry(
+            local$mediaListEntry, (e) => call(mediaListEntry: e));
+  }
+}
+
+class _CopyWithStubImpl$Mutation$SaveMediaListEntry$SaveMediaListEntry$media<
+        TRes>
+    implements
+        CopyWith$Mutation$SaveMediaListEntry$SaveMediaListEntry$media<TRes> {
+  _CopyWithStubImpl$Mutation$SaveMediaListEntry$SaveMediaListEntry$media(
+      this._res);
+
+  TRes _res;
+
+  call({
+    int? id,
+    Mutation$SaveMediaListEntry$SaveMediaListEntry$media$title? title,
+    Mutation$SaveMediaListEntry$SaveMediaListEntry$media$coverImage? coverImage,
+    Enum$MediaType? type,
+    Enum$MediaFormat? format,
+    Enum$MediaStatus? status,
+    int? episodes,
+    int? seasonYear,
+    Enum$MediaSeason? season,
+    int? averageScore,
+    int? meanScore,
+    int? popularity,
+    bool? isAdult,
+    bool? isFavourite,
+    Mutation$SaveMediaListEntry$SaveMediaListEntry$media$nextAiringEpisode?
+        nextAiringEpisode,
+    Mutation$SaveMediaListEntry$SaveMediaListEntry$media$startDate? startDate,
+    List<String?>? genres,
+    String? $__typename,
+    String? siteUrl,
+    Mutation$SaveMediaListEntry$SaveMediaListEntry$media$mediaListEntry?
+        mediaListEntry,
+  }) =>
+      _res;
+
+  CopyWith$Mutation$SaveMediaListEntry$SaveMediaListEntry$media$title<TRes>
+      get title =>
+          CopyWith$Mutation$SaveMediaListEntry$SaveMediaListEntry$media$title
+              .stub(_res);
+
+  CopyWith$Mutation$SaveMediaListEntry$SaveMediaListEntry$media$coverImage<TRes>
+      get coverImage =>
+          CopyWith$Mutation$SaveMediaListEntry$SaveMediaListEntry$media$coverImage
+              .stub(_res);
+
+  CopyWith$Mutation$SaveMediaListEntry$SaveMediaListEntry$media$nextAiringEpisode<
+          TRes>
+      get nextAiringEpisode =>
+          CopyWith$Mutation$SaveMediaListEntry$SaveMediaListEntry$media$nextAiringEpisode
+              .stub(_res);
+
+  CopyWith$Mutation$SaveMediaListEntry$SaveMediaListEntry$media$startDate<TRes>
+      get startDate =>
+          CopyWith$Mutation$SaveMediaListEntry$SaveMediaListEntry$media$startDate
+              .stub(_res);
+
+  CopyWith$Mutation$SaveMediaListEntry$SaveMediaListEntry$media$mediaListEntry<
+          TRes>
+      get mediaListEntry =>
+          CopyWith$Mutation$SaveMediaListEntry$SaveMediaListEntry$media$mediaListEntry
+              .stub(_res);
+}
+
+class Mutation$SaveMediaListEntry$SaveMediaListEntry$media$title
+    implements Fragment$AnimeCard$title {
+  Mutation$SaveMediaListEntry$SaveMediaListEntry$media$title({
+    this.userPreferred,
+    this.romaji,
+    this.english,
+    this.native,
+    this.$__typename = 'MediaTitle',
+  });
+
+  factory Mutation$SaveMediaListEntry$SaveMediaListEntry$media$title.fromJson(
+      Map<String, dynamic> json) {
+    final l$userPreferred = json['userPreferred'];
+    final l$romaji = json['romaji'];
+    final l$english = json['english'];
+    final l$native = json['native'];
+    final l$$__typename = json['__typename'];
+    return Mutation$SaveMediaListEntry$SaveMediaListEntry$media$title(
+      userPreferred: (l$userPreferred as String?),
+      romaji: (l$romaji as String?),
+      english: (l$english as String?),
+      native: (l$native as String?),
+      $__typename: (l$$__typename as String),
+    );
+  }
+
+  final String? userPreferred;
+
+  final String? romaji;
+
+  final String? english;
+
+  final String? native;
+
+  final String $__typename;
+
+  Map<String, dynamic> toJson() {
+    final _resultData = <String, dynamic>{};
+    final l$userPreferred = userPreferred;
+    _resultData['userPreferred'] = l$userPreferred;
+    final l$romaji = romaji;
+    _resultData['romaji'] = l$romaji;
+    final l$english = english;
+    _resultData['english'] = l$english;
+    final l$native = native;
+    _resultData['native'] = l$native;
+    final l$$__typename = $__typename;
+    _resultData['__typename'] = l$$__typename;
+    return _resultData;
+  }
+
+  @override
+  int get hashCode {
+    final l$userPreferred = userPreferred;
+    final l$romaji = romaji;
+    final l$english = english;
+    final l$native = native;
+    final l$$__typename = $__typename;
+    return Object.hashAll([
+      l$userPreferred,
+      l$romaji,
+      l$english,
+      l$native,
+      l$$__typename,
+    ]);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) {
+      return true;
+    }
+    if (other is! Mutation$SaveMediaListEntry$SaveMediaListEntry$media$title ||
+        runtimeType != other.runtimeType) {
+      return false;
+    }
+    final l$userPreferred = userPreferred;
+    final lOther$userPreferred = other.userPreferred;
+    if (l$userPreferred != lOther$userPreferred) {
+      return false;
+    }
+    final l$romaji = romaji;
+    final lOther$romaji = other.romaji;
+    if (l$romaji != lOther$romaji) {
+      return false;
+    }
+    final l$english = english;
+    final lOther$english = other.english;
+    if (l$english != lOther$english) {
+      return false;
+    }
+    final l$native = native;
+    final lOther$native = other.native;
+    if (l$native != lOther$native) {
+      return false;
+    }
+    final l$$__typename = $__typename;
+    final lOther$$__typename = other.$__typename;
+    if (l$$__typename != lOther$$__typename) {
+      return false;
+    }
+    return true;
+  }
+}
+
+extension UtilityExtension$Mutation$SaveMediaListEntry$SaveMediaListEntry$media$title
+    on Mutation$SaveMediaListEntry$SaveMediaListEntry$media$title {
+  CopyWith$Mutation$SaveMediaListEntry$SaveMediaListEntry$media$title<
+          Mutation$SaveMediaListEntry$SaveMediaListEntry$media$title>
+      get copyWith =>
+          CopyWith$Mutation$SaveMediaListEntry$SaveMediaListEntry$media$title(
+            this,
+            (i) => i,
+          );
+}
+
+abstract class CopyWith$Mutation$SaveMediaListEntry$SaveMediaListEntry$media$title<
+    TRes> {
+  factory CopyWith$Mutation$SaveMediaListEntry$SaveMediaListEntry$media$title(
+    Mutation$SaveMediaListEntry$SaveMediaListEntry$media$title instance,
+    TRes Function(Mutation$SaveMediaListEntry$SaveMediaListEntry$media$title)
+        then,
+  ) = _CopyWithImpl$Mutation$SaveMediaListEntry$SaveMediaListEntry$media$title;
+
+  factory CopyWith$Mutation$SaveMediaListEntry$SaveMediaListEntry$media$title.stub(
+          TRes res) =
+      _CopyWithStubImpl$Mutation$SaveMediaListEntry$SaveMediaListEntry$media$title;
+
+  TRes call({
+    String? userPreferred,
+    String? romaji,
+    String? english,
+    String? native,
+    String? $__typename,
+  });
+}
+
+class _CopyWithImpl$Mutation$SaveMediaListEntry$SaveMediaListEntry$media$title<
+        TRes>
+    implements
+        CopyWith$Mutation$SaveMediaListEntry$SaveMediaListEntry$media$title<
+            TRes> {
+  _CopyWithImpl$Mutation$SaveMediaListEntry$SaveMediaListEntry$media$title(
+    this._instance,
+    this._then,
+  );
+
+  final Mutation$SaveMediaListEntry$SaveMediaListEntry$media$title _instance;
+
+  final TRes Function(
+      Mutation$SaveMediaListEntry$SaveMediaListEntry$media$title) _then;
+
+  static const _undefined = <dynamic, dynamic>{};
+
+  TRes call({
+    Object? userPreferred = _undefined,
+    Object? romaji = _undefined,
+    Object? english = _undefined,
+    Object? native = _undefined,
+    Object? $__typename = _undefined,
+  }) =>
+      _then(Mutation$SaveMediaListEntry$SaveMediaListEntry$media$title(
+        userPreferred: userPreferred == _undefined
+            ? _instance.userPreferred
+            : (userPreferred as String?),
+        romaji: romaji == _undefined ? _instance.romaji : (romaji as String?),
+        english:
+            english == _undefined ? _instance.english : (english as String?),
+        native: native == _undefined ? _instance.native : (native as String?),
+        $__typename: $__typename == _undefined || $__typename == null
+            ? _instance.$__typename
+            : ($__typename as String),
+      ));
+}
+
+class _CopyWithStubImpl$Mutation$SaveMediaListEntry$SaveMediaListEntry$media$title<
+        TRes>
+    implements
+        CopyWith$Mutation$SaveMediaListEntry$SaveMediaListEntry$media$title<
+            TRes> {
+  _CopyWithStubImpl$Mutation$SaveMediaListEntry$SaveMediaListEntry$media$title(
+      this._res);
+
+  TRes _res;
+
+  call({
+    String? userPreferred,
+    String? romaji,
+    String? english,
+    String? native,
+    String? $__typename,
+  }) =>
+      _res;
+}
+
+class Mutation$SaveMediaListEntry$SaveMediaListEntry$media$coverImage
+    implements Fragment$AnimeCard$coverImage {
+  Mutation$SaveMediaListEntry$SaveMediaListEntry$media$coverImage({
+    this.extraLarge,
+    this.large,
+    this.color,
+    this.$__typename = 'MediaCoverImage',
+  });
+
+  factory Mutation$SaveMediaListEntry$SaveMediaListEntry$media$coverImage.fromJson(
+      Map<String, dynamic> json) {
+    final l$extraLarge = json['extraLarge'];
+    final l$large = json['large'];
+    final l$color = json['color'];
+    final l$$__typename = json['__typename'];
+    return Mutation$SaveMediaListEntry$SaveMediaListEntry$media$coverImage(
+      extraLarge: (l$extraLarge as String?),
+      large: (l$large as String?),
+      color: (l$color as String?),
+      $__typename: (l$$__typename as String),
+    );
+  }
+
+  final String? extraLarge;
+
+  final String? large;
+
+  final String? color;
+
+  final String $__typename;
+
+  Map<String, dynamic> toJson() {
+    final _resultData = <String, dynamic>{};
+    final l$extraLarge = extraLarge;
+    _resultData['extraLarge'] = l$extraLarge;
+    final l$large = large;
+    _resultData['large'] = l$large;
+    final l$color = color;
+    _resultData['color'] = l$color;
+    final l$$__typename = $__typename;
+    _resultData['__typename'] = l$$__typename;
+    return _resultData;
+  }
+
+  @override
+  int get hashCode {
+    final l$extraLarge = extraLarge;
+    final l$large = large;
+    final l$color = color;
+    final l$$__typename = $__typename;
+    return Object.hashAll([
+      l$extraLarge,
+      l$large,
+      l$color,
+      l$$__typename,
+    ]);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) {
+      return true;
+    }
+    if (other
+            is! Mutation$SaveMediaListEntry$SaveMediaListEntry$media$coverImage ||
+        runtimeType != other.runtimeType) {
+      return false;
+    }
+    final l$extraLarge = extraLarge;
+    final lOther$extraLarge = other.extraLarge;
+    if (l$extraLarge != lOther$extraLarge) {
+      return false;
+    }
+    final l$large = large;
+    final lOther$large = other.large;
+    if (l$large != lOther$large) {
+      return false;
+    }
+    final l$color = color;
+    final lOther$color = other.color;
+    if (l$color != lOther$color) {
+      return false;
+    }
+    final l$$__typename = $__typename;
+    final lOther$$__typename = other.$__typename;
+    if (l$$__typename != lOther$$__typename) {
+      return false;
+    }
+    return true;
+  }
+}
+
+extension UtilityExtension$Mutation$SaveMediaListEntry$SaveMediaListEntry$media$coverImage
+    on Mutation$SaveMediaListEntry$SaveMediaListEntry$media$coverImage {
+  CopyWith$Mutation$SaveMediaListEntry$SaveMediaListEntry$media$coverImage<
+          Mutation$SaveMediaListEntry$SaveMediaListEntry$media$coverImage>
+      get copyWith =>
+          CopyWith$Mutation$SaveMediaListEntry$SaveMediaListEntry$media$coverImage(
+            this,
+            (i) => i,
+          );
+}
+
+abstract class CopyWith$Mutation$SaveMediaListEntry$SaveMediaListEntry$media$coverImage<
+    TRes> {
+  factory CopyWith$Mutation$SaveMediaListEntry$SaveMediaListEntry$media$coverImage(
+    Mutation$SaveMediaListEntry$SaveMediaListEntry$media$coverImage instance,
+    TRes Function(
+            Mutation$SaveMediaListEntry$SaveMediaListEntry$media$coverImage)
+        then,
+  ) = _CopyWithImpl$Mutation$SaveMediaListEntry$SaveMediaListEntry$media$coverImage;
+
+  factory CopyWith$Mutation$SaveMediaListEntry$SaveMediaListEntry$media$coverImage.stub(
+          TRes res) =
+      _CopyWithStubImpl$Mutation$SaveMediaListEntry$SaveMediaListEntry$media$coverImage;
+
+  TRes call({
+    String? extraLarge,
+    String? large,
+    String? color,
+    String? $__typename,
+  });
+}
+
+class _CopyWithImpl$Mutation$SaveMediaListEntry$SaveMediaListEntry$media$coverImage<
+        TRes>
+    implements
+        CopyWith$Mutation$SaveMediaListEntry$SaveMediaListEntry$media$coverImage<
+            TRes> {
+  _CopyWithImpl$Mutation$SaveMediaListEntry$SaveMediaListEntry$media$coverImage(
+    this._instance,
+    this._then,
+  );
+
+  final Mutation$SaveMediaListEntry$SaveMediaListEntry$media$coverImage
+      _instance;
+
+  final TRes Function(
+      Mutation$SaveMediaListEntry$SaveMediaListEntry$media$coverImage) _then;
+
+  static const _undefined = <dynamic, dynamic>{};
+
+  TRes call({
+    Object? extraLarge = _undefined,
+    Object? large = _undefined,
+    Object? color = _undefined,
+    Object? $__typename = _undefined,
+  }) =>
+      _then(Mutation$SaveMediaListEntry$SaveMediaListEntry$media$coverImage(
+        extraLarge: extraLarge == _undefined
+            ? _instance.extraLarge
+            : (extraLarge as String?),
+        large: large == _undefined ? _instance.large : (large as String?),
+        color: color == _undefined ? _instance.color : (color as String?),
+        $__typename: $__typename == _undefined || $__typename == null
+            ? _instance.$__typename
+            : ($__typename as String),
+      ));
+}
+
+class _CopyWithStubImpl$Mutation$SaveMediaListEntry$SaveMediaListEntry$media$coverImage<
+        TRes>
+    implements
+        CopyWith$Mutation$SaveMediaListEntry$SaveMediaListEntry$media$coverImage<
+            TRes> {
+  _CopyWithStubImpl$Mutation$SaveMediaListEntry$SaveMediaListEntry$media$coverImage(
+      this._res);
+
+  TRes _res;
+
+  call({
+    String? extraLarge,
+    String? large,
+    String? color,
+    String? $__typename,
+  }) =>
+      _res;
+}
+
+class Mutation$SaveMediaListEntry$SaveMediaListEntry$media$nextAiringEpisode
+    implements Fragment$AnimeCard$nextAiringEpisode {
+  Mutation$SaveMediaListEntry$SaveMediaListEntry$media$nextAiringEpisode({
+    required this.airingAt,
+    required this.timeUntilAiring,
+    required this.episode,
+    this.$__typename = 'AiringSchedule',
+  });
+
+  factory Mutation$SaveMediaListEntry$SaveMediaListEntry$media$nextAiringEpisode.fromJson(
+      Map<String, dynamic> json) {
+    final l$airingAt = json['airingAt'];
+    final l$timeUntilAiring = json['timeUntilAiring'];
+    final l$episode = json['episode'];
+    final l$$__typename = json['__typename'];
+    return Mutation$SaveMediaListEntry$SaveMediaListEntry$media$nextAiringEpisode(
+      airingAt: (l$airingAt as int),
+      timeUntilAiring: (l$timeUntilAiring as int),
+      episode: (l$episode as int),
+      $__typename: (l$$__typename as String),
+    );
+  }
+
+  final int airingAt;
+
+  final int timeUntilAiring;
+
+  final int episode;
+
+  final String $__typename;
+
+  Map<String, dynamic> toJson() {
+    final _resultData = <String, dynamic>{};
+    final l$airingAt = airingAt;
+    _resultData['airingAt'] = l$airingAt;
+    final l$timeUntilAiring = timeUntilAiring;
+    _resultData['timeUntilAiring'] = l$timeUntilAiring;
+    final l$episode = episode;
+    _resultData['episode'] = l$episode;
+    final l$$__typename = $__typename;
+    _resultData['__typename'] = l$$__typename;
+    return _resultData;
+  }
+
+  @override
+  int get hashCode {
+    final l$airingAt = airingAt;
+    final l$timeUntilAiring = timeUntilAiring;
+    final l$episode = episode;
+    final l$$__typename = $__typename;
+    return Object.hashAll([
+      l$airingAt,
+      l$timeUntilAiring,
+      l$episode,
+      l$$__typename,
+    ]);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) {
+      return true;
+    }
+    if (other
+            is! Mutation$SaveMediaListEntry$SaveMediaListEntry$media$nextAiringEpisode ||
+        runtimeType != other.runtimeType) {
+      return false;
+    }
+    final l$airingAt = airingAt;
+    final lOther$airingAt = other.airingAt;
+    if (l$airingAt != lOther$airingAt) {
+      return false;
+    }
+    final l$timeUntilAiring = timeUntilAiring;
+    final lOther$timeUntilAiring = other.timeUntilAiring;
+    if (l$timeUntilAiring != lOther$timeUntilAiring) {
+      return false;
+    }
+    final l$episode = episode;
+    final lOther$episode = other.episode;
+    if (l$episode != lOther$episode) {
+      return false;
+    }
+    final l$$__typename = $__typename;
+    final lOther$$__typename = other.$__typename;
+    if (l$$__typename != lOther$$__typename) {
+      return false;
+    }
+    return true;
+  }
+}
+
+extension UtilityExtension$Mutation$SaveMediaListEntry$SaveMediaListEntry$media$nextAiringEpisode
+    on Mutation$SaveMediaListEntry$SaveMediaListEntry$media$nextAiringEpisode {
+  CopyWith$Mutation$SaveMediaListEntry$SaveMediaListEntry$media$nextAiringEpisode<
+          Mutation$SaveMediaListEntry$SaveMediaListEntry$media$nextAiringEpisode>
+      get copyWith =>
+          CopyWith$Mutation$SaveMediaListEntry$SaveMediaListEntry$media$nextAiringEpisode(
+            this,
+            (i) => i,
+          );
+}
+
+abstract class CopyWith$Mutation$SaveMediaListEntry$SaveMediaListEntry$media$nextAiringEpisode<
+    TRes> {
+  factory CopyWith$Mutation$SaveMediaListEntry$SaveMediaListEntry$media$nextAiringEpisode(
+    Mutation$SaveMediaListEntry$SaveMediaListEntry$media$nextAiringEpisode
+        instance,
+    TRes Function(
+            Mutation$SaveMediaListEntry$SaveMediaListEntry$media$nextAiringEpisode)
+        then,
+  ) = _CopyWithImpl$Mutation$SaveMediaListEntry$SaveMediaListEntry$media$nextAiringEpisode;
+
+  factory CopyWith$Mutation$SaveMediaListEntry$SaveMediaListEntry$media$nextAiringEpisode.stub(
+          TRes res) =
+      _CopyWithStubImpl$Mutation$SaveMediaListEntry$SaveMediaListEntry$media$nextAiringEpisode;
+
+  TRes call({
+    int? airingAt,
+    int? timeUntilAiring,
+    int? episode,
+    String? $__typename,
+  });
+}
+
+class _CopyWithImpl$Mutation$SaveMediaListEntry$SaveMediaListEntry$media$nextAiringEpisode<
+        TRes>
+    implements
+        CopyWith$Mutation$SaveMediaListEntry$SaveMediaListEntry$media$nextAiringEpisode<
+            TRes> {
+  _CopyWithImpl$Mutation$SaveMediaListEntry$SaveMediaListEntry$media$nextAiringEpisode(
+    this._instance,
+    this._then,
+  );
+
+  final Mutation$SaveMediaListEntry$SaveMediaListEntry$media$nextAiringEpisode
+      _instance;
+
+  final TRes Function(
+          Mutation$SaveMediaListEntry$SaveMediaListEntry$media$nextAiringEpisode)
+      _then;
+
+  static const _undefined = <dynamic, dynamic>{};
+
+  TRes call({
+    Object? airingAt = _undefined,
+    Object? timeUntilAiring = _undefined,
+    Object? episode = _undefined,
+    Object? $__typename = _undefined,
+  }) =>
+      _then(
+          Mutation$SaveMediaListEntry$SaveMediaListEntry$media$nextAiringEpisode(
+        airingAt: airingAt == _undefined || airingAt == null
+            ? _instance.airingAt
+            : (airingAt as int),
+        timeUntilAiring:
+            timeUntilAiring == _undefined || timeUntilAiring == null
+                ? _instance.timeUntilAiring
+                : (timeUntilAiring as int),
+        episode: episode == _undefined || episode == null
+            ? _instance.episode
+            : (episode as int),
+        $__typename: $__typename == _undefined || $__typename == null
+            ? _instance.$__typename
+            : ($__typename as String),
+      ));
+}
+
+class _CopyWithStubImpl$Mutation$SaveMediaListEntry$SaveMediaListEntry$media$nextAiringEpisode<
+        TRes>
+    implements
+        CopyWith$Mutation$SaveMediaListEntry$SaveMediaListEntry$media$nextAiringEpisode<
+            TRes> {
+  _CopyWithStubImpl$Mutation$SaveMediaListEntry$SaveMediaListEntry$media$nextAiringEpisode(
+      this._res);
+
+  TRes _res;
+
+  call({
+    int? airingAt,
+    int? timeUntilAiring,
+    int? episode,
+    String? $__typename,
+  }) =>
+      _res;
+}
+
+class Mutation$SaveMediaListEntry$SaveMediaListEntry$media$startDate
+    implements Fragment$AnimeCard$startDate {
+  Mutation$SaveMediaListEntry$SaveMediaListEntry$media$startDate({
+    this.year,
+    this.month,
+    this.day,
+    this.$__typename = 'FuzzyDate',
+  });
+
+  factory Mutation$SaveMediaListEntry$SaveMediaListEntry$media$startDate.fromJson(
+      Map<String, dynamic> json) {
+    final l$year = json['year'];
+    final l$month = json['month'];
+    final l$day = json['day'];
+    final l$$__typename = json['__typename'];
+    return Mutation$SaveMediaListEntry$SaveMediaListEntry$media$startDate(
+      year: (l$year as int?),
+      month: (l$month as int?),
+      day: (l$day as int?),
+      $__typename: (l$$__typename as String),
+    );
+  }
+
+  final int? year;
+
+  final int? month;
+
+  final int? day;
+
+  final String $__typename;
+
+  Map<String, dynamic> toJson() {
+    final _resultData = <String, dynamic>{};
+    final l$year = year;
+    _resultData['year'] = l$year;
+    final l$month = month;
+    _resultData['month'] = l$month;
+    final l$day = day;
+    _resultData['day'] = l$day;
+    final l$$__typename = $__typename;
+    _resultData['__typename'] = l$$__typename;
+    return _resultData;
+  }
+
+  @override
+  int get hashCode {
+    final l$year = year;
+    final l$month = month;
+    final l$day = day;
+    final l$$__typename = $__typename;
+    return Object.hashAll([
+      l$year,
+      l$month,
+      l$day,
+      l$$__typename,
+    ]);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) {
+      return true;
+    }
+    if (other
+            is! Mutation$SaveMediaListEntry$SaveMediaListEntry$media$startDate ||
+        runtimeType != other.runtimeType) {
+      return false;
+    }
+    final l$year = year;
+    final lOther$year = other.year;
+    if (l$year != lOther$year) {
+      return false;
+    }
+    final l$month = month;
+    final lOther$month = other.month;
+    if (l$month != lOther$month) {
+      return false;
+    }
+    final l$day = day;
+    final lOther$day = other.day;
+    if (l$day != lOther$day) {
+      return false;
+    }
+    final l$$__typename = $__typename;
+    final lOther$$__typename = other.$__typename;
+    if (l$$__typename != lOther$$__typename) {
+      return false;
+    }
+    return true;
+  }
+}
+
+extension UtilityExtension$Mutation$SaveMediaListEntry$SaveMediaListEntry$media$startDate
+    on Mutation$SaveMediaListEntry$SaveMediaListEntry$media$startDate {
+  CopyWith$Mutation$SaveMediaListEntry$SaveMediaListEntry$media$startDate<
+          Mutation$SaveMediaListEntry$SaveMediaListEntry$media$startDate>
+      get copyWith =>
+          CopyWith$Mutation$SaveMediaListEntry$SaveMediaListEntry$media$startDate(
+            this,
+            (i) => i,
+          );
+}
+
+abstract class CopyWith$Mutation$SaveMediaListEntry$SaveMediaListEntry$media$startDate<
+    TRes> {
+  factory CopyWith$Mutation$SaveMediaListEntry$SaveMediaListEntry$media$startDate(
+    Mutation$SaveMediaListEntry$SaveMediaListEntry$media$startDate instance,
+    TRes Function(
+            Mutation$SaveMediaListEntry$SaveMediaListEntry$media$startDate)
+        then,
+  ) = _CopyWithImpl$Mutation$SaveMediaListEntry$SaveMediaListEntry$media$startDate;
+
+  factory CopyWith$Mutation$SaveMediaListEntry$SaveMediaListEntry$media$startDate.stub(
+          TRes res) =
+      _CopyWithStubImpl$Mutation$SaveMediaListEntry$SaveMediaListEntry$media$startDate;
+
+  TRes call({
+    int? year,
+    int? month,
+    int? day,
+    String? $__typename,
+  });
+}
+
+class _CopyWithImpl$Mutation$SaveMediaListEntry$SaveMediaListEntry$media$startDate<
+        TRes>
+    implements
+        CopyWith$Mutation$SaveMediaListEntry$SaveMediaListEntry$media$startDate<
+            TRes> {
+  _CopyWithImpl$Mutation$SaveMediaListEntry$SaveMediaListEntry$media$startDate(
+    this._instance,
+    this._then,
+  );
+
+  final Mutation$SaveMediaListEntry$SaveMediaListEntry$media$startDate
+      _instance;
+
+  final TRes Function(
+      Mutation$SaveMediaListEntry$SaveMediaListEntry$media$startDate) _then;
+
+  static const _undefined = <dynamic, dynamic>{};
+
+  TRes call({
+    Object? year = _undefined,
+    Object? month = _undefined,
+    Object? day = _undefined,
+    Object? $__typename = _undefined,
+  }) =>
+      _then(Mutation$SaveMediaListEntry$SaveMediaListEntry$media$startDate(
+        year: year == _undefined ? _instance.year : (year as int?),
+        month: month == _undefined ? _instance.month : (month as int?),
+        day: day == _undefined ? _instance.day : (day as int?),
+        $__typename: $__typename == _undefined || $__typename == null
+            ? _instance.$__typename
+            : ($__typename as String),
+      ));
+}
+
+class _CopyWithStubImpl$Mutation$SaveMediaListEntry$SaveMediaListEntry$media$startDate<
+        TRes>
+    implements
+        CopyWith$Mutation$SaveMediaListEntry$SaveMediaListEntry$media$startDate<
+            TRes> {
+  _CopyWithStubImpl$Mutation$SaveMediaListEntry$SaveMediaListEntry$media$startDate(
+      this._res);
+
+  TRes _res;
+
+  call({
+    int? year,
+    int? month,
+    int? day,
+    String? $__typename,
+  }) =>
+      _res;
+}
+
+class Mutation$SaveMediaListEntry$SaveMediaListEntry$media$mediaListEntry {
+  Mutation$SaveMediaListEntry$SaveMediaListEntry$media$mediaListEntry({
+    required this.id,
+    this.$__typename = 'MediaList',
+  });
+
+  factory Mutation$SaveMediaListEntry$SaveMediaListEntry$media$mediaListEntry.fromJson(
+      Map<String, dynamic> json) {
+    final l$id = json['id'];
+    final l$$__typename = json['__typename'];
+    return Mutation$SaveMediaListEntry$SaveMediaListEntry$media$mediaListEntry(
+      id: (l$id as int),
+      $__typename: (l$$__typename as String),
+    );
+  }
+
+  final int id;
+
+  final String $__typename;
+
+  Map<String, dynamic> toJson() {
+    final _resultData = <String, dynamic>{};
+    final l$id = id;
+    _resultData['id'] = l$id;
+    final l$$__typename = $__typename;
+    _resultData['__typename'] = l$$__typename;
+    return _resultData;
+  }
+
+  @override
+  int get hashCode {
+    final l$id = id;
+    final l$$__typename = $__typename;
+    return Object.hashAll([
+      l$id,
+      l$$__typename,
+    ]);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) {
+      return true;
+    }
+    if (other
+            is! Mutation$SaveMediaListEntry$SaveMediaListEntry$media$mediaListEntry ||
+        runtimeType != other.runtimeType) {
+      return false;
+    }
+    final l$id = id;
+    final lOther$id = other.id;
+    if (l$id != lOther$id) {
+      return false;
+    }
+    final l$$__typename = $__typename;
+    final lOther$$__typename = other.$__typename;
+    if (l$$__typename != lOther$$__typename) {
+      return false;
+    }
+    return true;
+  }
+}
+
+extension UtilityExtension$Mutation$SaveMediaListEntry$SaveMediaListEntry$media$mediaListEntry
+    on Mutation$SaveMediaListEntry$SaveMediaListEntry$media$mediaListEntry {
+  CopyWith$Mutation$SaveMediaListEntry$SaveMediaListEntry$media$mediaListEntry<
+          Mutation$SaveMediaListEntry$SaveMediaListEntry$media$mediaListEntry>
+      get copyWith =>
+          CopyWith$Mutation$SaveMediaListEntry$SaveMediaListEntry$media$mediaListEntry(
+            this,
+            (i) => i,
+          );
+}
+
+abstract class CopyWith$Mutation$SaveMediaListEntry$SaveMediaListEntry$media$mediaListEntry<
+    TRes> {
+  factory CopyWith$Mutation$SaveMediaListEntry$SaveMediaListEntry$media$mediaListEntry(
+    Mutation$SaveMediaListEntry$SaveMediaListEntry$media$mediaListEntry
+        instance,
+    TRes Function(
+            Mutation$SaveMediaListEntry$SaveMediaListEntry$media$mediaListEntry)
+        then,
+  ) = _CopyWithImpl$Mutation$SaveMediaListEntry$SaveMediaListEntry$media$mediaListEntry;
+
+  factory CopyWith$Mutation$SaveMediaListEntry$SaveMediaListEntry$media$mediaListEntry.stub(
+          TRes res) =
+      _CopyWithStubImpl$Mutation$SaveMediaListEntry$SaveMediaListEntry$media$mediaListEntry;
+
+  TRes call({
+    int? id,
+    String? $__typename,
+  });
+}
+
+class _CopyWithImpl$Mutation$SaveMediaListEntry$SaveMediaListEntry$media$mediaListEntry<
+        TRes>
+    implements
+        CopyWith$Mutation$SaveMediaListEntry$SaveMediaListEntry$media$mediaListEntry<
+            TRes> {
+  _CopyWithImpl$Mutation$SaveMediaListEntry$SaveMediaListEntry$media$mediaListEntry(
+    this._instance,
+    this._then,
+  );
+
+  final Mutation$SaveMediaListEntry$SaveMediaListEntry$media$mediaListEntry
+      _instance;
+
+  final TRes Function(
+          Mutation$SaveMediaListEntry$SaveMediaListEntry$media$mediaListEntry)
+      _then;
+
+  static const _undefined = <dynamic, dynamic>{};
+
+  TRes call({
+    Object? id = _undefined,
+    Object? $__typename = _undefined,
+  }) =>
+      _then(Mutation$SaveMediaListEntry$SaveMediaListEntry$media$mediaListEntry(
+        id: id == _undefined || id == null ? _instance.id : (id as int),
+        $__typename: $__typename == _undefined || $__typename == null
+            ? _instance.$__typename
+            : ($__typename as String),
+      ));
+}
+
+class _CopyWithStubImpl$Mutation$SaveMediaListEntry$SaveMediaListEntry$media$mediaListEntry<
+        TRes>
+    implements
+        CopyWith$Mutation$SaveMediaListEntry$SaveMediaListEntry$media$mediaListEntry<
+            TRes> {
+  _CopyWithStubImpl$Mutation$SaveMediaListEntry$SaveMediaListEntry$media$mediaListEntry(
+      this._res);
+
+  TRes _res;
+
+  call({
+    int? id,
     String? $__typename,
   }) =>
       _res;

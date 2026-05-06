@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import '../../models/knaben/knaben_release.dart';
+import '../../models/torrent_release.dart';
 import '../../utils/logging.dart';
 
 /// Anime sub-category IDs used by Knaben

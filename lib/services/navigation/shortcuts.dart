@@ -10,6 +10,7 @@ import 'package:provider/provider.dart';
 import '../../main.dart';
 import '../../manager.dart';
 import '../../utils/time.dart';
+import '../../widgets/dialogs/knaben_search.dart';
 import '../../widgets/dialogs/link_anilist.dart';
 import '../../widgets/dialogs/notifications.dart';
 import '../library/library_provider.dart';
@@ -366,11 +367,16 @@ class _CustomKeyboardListenerState extends State<CustomKeyboardListener> {
         return Manager.navigation.popDialog();
       }
 
-      // Link Anilist dialog special handling
+      // Multi-state dialog special handling: route ESC to the dialog's
+      // inner-back method instead of closing the whole dialog
       if (!Manager.canPopDialog) {
-        if (Manager.navigation.currentView?.id.startsWith('anilist:link-series') ?? false) {
+        final id = Manager.navigation.currentView?.id ?? '';
+        if (id.startsWith('anilist:link-series')) {
           logTrace('Link Anilist dialog is open, switching to view mode');
           nextFrame(() => linkMultiDialogKey.currentState?.switchToViewMode());
+        } else if (id.startsWith('knaben:')) {
+          logTrace('Knaben search dialog is open, returning to result list');
+          nextFrame(() => knabenSearchDialogKey.currentState?.backToSearch());
         }
         return true;
       }

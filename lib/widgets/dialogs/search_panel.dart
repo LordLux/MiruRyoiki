@@ -14,7 +14,7 @@ import '../../utils/screen.dart';
 import '../../utils/time.dart';
 import 'link_anilist.dart';
 
-class AnilistSearchPanel extends StatefulWidget {
+class AnilistSimpleSearchPanel extends StatefulWidget {
   /// The series to link to Anilist
   final Series series;
 
@@ -39,7 +39,7 @@ class AnilistSearchPanel extends StatefulWidget {
   /// If true, the dialog will not close automatically after linking, it needs to be closed inside `onLink`
   final bool skipAutoClose;
 
-  const AnilistSearchPanel({
+  const AnilistSimpleSearchPanel({
     super.key,
     required this.series,
     required this.linkService,
@@ -52,10 +52,10 @@ class AnilistSearchPanel extends StatefulWidget {
   });
 
   @override
-  State<AnilistSearchPanel> createState() => _AnilistSearchPanelState();
+  State<AnilistSimpleSearchPanel> createState() => _AnilistSimpleSearchPanelState();
 }
 
-class _AnilistSearchPanelState extends State<AnilistSearchPanel> {
+class _AnilistSimpleSearchPanelState extends State<AnilistSimpleSearchPanel> {
   bool _isLoading = true;
   String? _error;
   List<AnilistAnime> _searchResults = [];
@@ -68,13 +68,62 @@ class _AnilistSearchPanelState extends State<AnilistSearchPanel> {
   void initState() {
     super.initState();
     _searchController.text = widget.initialSearch ?? widget.series.name;
-    _searchSeries();
+
+    if (widget.initialAnilistId != null) {
+      _fetchInitialAnilistId(widget.initialAnilistId!);
+    } else {
+      _searchSeries();
+    }
+
     nextFrame(() {
       context.resizeManagedDialog(
         width: widget.constraints.maxWidth,
         height: widget.constraints.maxHeight,
       );
     });
+  }
+
+  Future<void> _fetchInitialAnilistId(int id) async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
+    try {
+      final anime = await widget.linkService.fetchAnimeDetails(id);
+
+      if (anime != null) {
+        setState(() {
+          _searchResults = [anime];
+          _selectedSeries = anime;
+          _isLoading = false;
+        });
+
+        // Background search for extra text matches
+        _searchSeriesBackground();
+      } else {
+        _searchSeries();
+      }
+    } catch (e) {
+      setState(() {
+        _error = 'Error fetching initial Anilist entry: $e';
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _searchSeriesBackground() async {
+    try {
+      final results = await widget.linkService.findMatchesByName(widget.series);
+      if (mounted) {
+        setState(() {
+          final extraResults = results.where((r) => r.id != widget.initialAnilistId).toList();
+          _searchResults = [..._searchResults, ...extraResults];
+        });
+      }
+    } catch (e) {
+      // background error ignored
+    }
   }
 
   @override

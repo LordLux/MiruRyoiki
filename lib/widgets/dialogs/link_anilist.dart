@@ -16,6 +16,8 @@ import '../../services/file_system/cache.dart';
 import '../../services/library/library_provider.dart';
 import '../../services/library/scanner/scanner_service.dart';
 import '../../services/lock_manager.dart';
+import '../../services/anilist/anilist_availability.dart';
+import '../../services/connectivity/connectivity_service.dart';
 import '../../services/navigation/dialogs.dart';
 import '../../services/navigation/dialogs2.dart';
 import '../../services/navigation/navigation.dart';
@@ -27,6 +29,7 @@ import '../../utils/path.dart';
 import '../../utils/shell.dart';
 import '../buttons/button.dart';
 import '../file_explorer.dart';
+import '../service_unavailable_banner.dart';
 import '../buttons/hyperlink.dart';
 import '../buttons/wrapper.dart';
 import '../tooltip_wrapper.dart';
@@ -41,6 +44,13 @@ class AnilistLinkMultiDialog extends StatelessWidget {
   final Function(int, String)? onLink;
   final Function(bool? success, List<AnilistMapping> mappings)? onDialogComplete;
   final BoxConstraints constraints;
+  final bool requireLocalFirst;
+  final PathString? initialLocalPath;
+  final int? initialAnilistId;
+  final bool lockLocal;
+  final bool lockAnilist;
+  final bool startInAddMode;
+  final FileExplorerOptions explorerOptions;
 
   const AnilistLinkMultiDialog({
     super.key,
@@ -49,6 +59,13 @@ class AnilistLinkMultiDialog extends StatelessWidget {
     required this.onLink,
     required this.onDialogComplete,
     required this.constraints,
+    this.requireLocalFirst = true,
+    this.initialLocalPath,
+    this.initialAnilistId,
+    this.lockLocal = false,
+    this.lockAnilist = false,
+    this.startInAddMode = false,
+    this.explorerOptions = const FileExplorerOptions(allowFiles: true, allowCurrentFolder: true, autoSelectFolder: true),
   });
 
   @override
@@ -59,6 +76,13 @@ class AnilistLinkMultiDialog extends StatelessWidget {
       linkService: linkService,
       onLink: onLink,
       constraints: constraints,
+      requireLocalFirst: requireLocalFirst,
+      initialLocalPath: initialLocalPath,
+      initialAnilistId: initialAnilistId,
+      lockLocal: lockLocal,
+      lockAnilist: lockAnilist,
+      startInAddMode: startInAddMode,
+      explorerOptions: explorerOptions,
       onSave: (mappings) {
         onDialogComplete?.call(true, mappings);
 
@@ -81,6 +105,13 @@ class AnilistLinkMultiContent extends StatefulWidget {
   final BoxConstraints constraints;
   final Function(List<AnilistMapping> mappings) onSave;
   final VoidCallback onCancel;
+  final bool requireLocalFirst;
+  final PathString? initialLocalPath;
+  final int? initialAnilistId;
+  final bool lockLocal;
+  final bool lockAnilist;
+  final bool startInAddMode;
+  final FileExplorerOptions explorerOptions;
 
   const AnilistLinkMultiContent({
     super.key,
@@ -90,6 +121,13 @@ class AnilistLinkMultiContent extends StatefulWidget {
     required this.constraints,
     required this.onSave,
     required this.onCancel,
+    this.requireLocalFirst = true,
+    this.initialLocalPath,
+    this.initialAnilistId,
+    this.lockLocal = false,
+    this.lockAnilist = false,
+    this.startInAddMode = false,
+    this.explorerOptions = const FileExplorerOptions(allowFiles: true, allowCurrentFolder: true, autoSelectFolder: true),
   });
 
   @override
@@ -179,7 +217,11 @@ class AnilistLinkMultiContentState extends State<AnilistLinkMultiContent> {
     _loadFolderContents();
 
     nextFrame(() {
-      if (mode == 'view') switchToViewMode();
+      if (widget.startInAddMode) {
+        _switchToAddMode();
+      } else if (mode == 'view') {
+        switchToViewMode();
+      }
     });
   }
 
@@ -245,11 +287,11 @@ class AnilistLinkMultiContentState extends State<AnilistLinkMultiContent> {
     setState(() {
       mode = 'add';
       Manager.canPopDialog = false; // Prevent popping in add mode
-      selectedLocalPath = null;
-      selectedAnilistId = null;
-      selectedTitle = null;
+      selectedLocalPath = widget.initialLocalPath;
+      selectedAnilistId = widget.initialAnilistId;
+      selectedTitle = null; // Will be set by AnilistSimpleSearchPanel when it loads the initial title
 
-      currentDirectory = widget.series.path;
+      currentDirectory = selectedLocalPath ?? widget.series.path;
       _loadFolderContents(); // Reload folder contents for the reset path
     });
   }
@@ -326,7 +368,7 @@ class AnilistLinkMultiContentState extends State<AnilistLinkMultiContent> {
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 8.0),
                   child: FluentTheme(
-                    data: FluentTheme.of(context).copyWith(accentColor: Manager.currentDominantColor?.toAccentColor() ?? Manager.accentColor),
+                    data: FluentTheme.of(context).copyWith(accentColor: Manager.dominantOrAccentColor),
                     child: TooltipWrapper(
                       tooltip: Provider.of<LibraryScannerService>(context).isIndexing ? 'The Library is indexing. Please wait...' : 'Select primary Anilist source',
                       waitDuration: mediumDuration,
@@ -381,9 +423,9 @@ class AnilistLinkMultiContentState extends State<AnilistLinkMultiContent> {
                     child: (_) => StandardButton(
                       onPressed: _switchToAddMode,
                       isFilled: !_mappingsChanged,
-                      backgroundColor: Manager.currentDominantColor,
-                      hoverColor: Manager.currentDominantColor?.toAccentColor().light,
-                      label: Text('Add New Link', style: Manager.bodyStyle.copyWith(color: getTextColor(!_mappingsChanged ? Manager.currentDominantColor ?? Manager.accentColor : Colors.black))),
+                      backgroundColor: Manager.dominantOrAccentColor,
+                      hoverColor: Manager.dominantOrAccentColor.light,
+                      label: Text('Add New Link', style: Manager.bodyStyle.copyWith(color: getTextColor(!_mappingsChanged ? Manager.dominantOrAccentColor : Colors.black))),
                     ),
                   ),
                 ),
@@ -418,7 +460,7 @@ class AnilistLinkMultiContentState extends State<AnilistLinkMultiContent> {
     return Padding(
       padding: const EdgeInsets.only(bottom: 2.0),
       child: UnselectableTile(
-        color: isNewlyAddedMapping ? Colors.white.withOpacity(0.05) : Manager.currentDominantColor,
+        color: isNewlyAddedMapping ? Colors.white.withOpacity(0.05) : Manager.dominantOrAccentColor,
         // use the series effective poster if available
         icon: isNewlyAddedMapping
             ? SizedBox(width: 30, child: Icon(FluentIcons.add_link, color: Colors.white))
@@ -441,13 +483,13 @@ class AnilistLinkMultiContentState extends State<AnilistLinkMultiContent> {
           child: WrappedHyperlinkButton(
             tooltip: 'Open Anilist page for ${mapping.title ?? 'Anilist ID: ${mapping.anilistId}'}',
             url: "https://anilist.co/anime/${mapping.anilistId}",
-            hoverColor: isNewlyAddedMapping ? Colors.white : Manager.currentDominantColor,
+            hoverColor: isNewlyAddedMapping ? Colors.white : Manager.dominantOrAccentColor,
             text: mapping.title ?? 'Anilist ID: ${mapping.anilistId}',
             style: Manager.bodyStyle,
-            iconColor: isNewlyAddedMapping ? Colors.white : Manager.currentDominantColor,
+            iconColor: isNewlyAddedMapping ? Colors.white : Manager.dominantOrAccentColor,
             icon: Icon(
               Icons.open_in_new,
-              color: isNewlyAddedMapping ? Colors.white : Manager.currentDominantColor,
+              color: isNewlyAddedMapping ? Colors.white : Manager.dominantOrAccentColor,
             ),
           ),
         ),
@@ -502,7 +544,7 @@ class AnilistLinkMultiContentState extends State<AnilistLinkMultiContent> {
             icon: Icon(
               Icons.link_off_outlined,
               size: 18,
-              color: isNewlyAddedMapping ? Colors.white : Manager.currentDominantColor,
+              color: isNewlyAddedMapping ? Colors.white : Manager.dominantOrAccentColor,
             ),
             onPressed: () => setState(() => mappings.remove(mapping)),
           ),
@@ -530,9 +572,9 @@ class AnilistLinkMultiContentState extends State<AnilistLinkMultiContent> {
                     Expanded(
                       child: FileExplorer(
                         rootPath: widget.series.path,
-                        initialDirectory: currentDirectory,
-                        allowFiles: true,
-                        allowCurrentFolder: true,
+                        initialDirectory: widget.initialLocalPath ?? currentDirectory,
+                        options: widget.explorerOptions,
+                        enabled: !widget.lockLocal,
                         initialSelection: selectedLocalPath != null ? {selectedLocalPath!} : null,
                         onSelectionChanged: (sel) {
                           setState(() {
@@ -564,31 +606,36 @@ class AnilistLinkMultiContentState extends State<AnilistLinkMultiContent> {
               // Right panel: Anilist search
               Expanded(
                 flex: 1,
-                child: MouseRegion(
-                  cursor: selectedLocalPath == null ? SystemMouseCursors.forbidden : MouseCursor.defer,
-                  opaque: selectedLocalPath == null,
-                  hitTestBehavior: selectedLocalPath != null ? HitTestBehavior.opaque : HitTestBehavior.translucent,
-                  child: AbsorbPointer(
-                    absorbing: selectedLocalPath == null,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('Search for the Anilist entry:'),
-                        SizedBox(height: 8),
-                        Expanded(
-                          child: _buildAnilistSearch(),
-                        ),
-                        if (selectedAnilistId != null && selectedTitle != null)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 8.0),
-                            child: Text(
-                              'Selected: $selectedTitle',
-                              style: FluentTheme.of(context).typography.bodyStrong,
+                child: Builder(
+                  builder: (context) {
+                    final bool isAnilistLocked = widget.lockAnilist || (widget.requireLocalFirst && selectedLocalPath == null);
+                    return MouseRegion(
+                      cursor: isAnilistLocked ? SystemMouseCursors.forbidden : MouseCursor.defer,
+                      opaque: isAnilistLocked,
+                      hitTestBehavior: !isAnilistLocked ? HitTestBehavior.opaque : HitTestBehavior.translucent,
+                      child: AbsorbPointer(
+                        absorbing: isAnilistLocked,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('Search for the Anilist entry:'),
+                            SizedBox(height: 8),
+                            Expanded(
+                              child: _buildAnilistSearch(),
                             ),
-                          ),
-                      ],
-                    ),
-                  ),
+                            if (selectedAnilistId != null && selectedTitle != null)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 8.0),
+                                child: Text(
+                                  'Selected: $selectedTitle',
+                                  style: FluentTheme.of(context).typography.bodyStrong,
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
                 ),
               ),
             ],
@@ -614,11 +661,19 @@ class AnilistLinkMultiContentState extends State<AnilistLinkMultiContent> {
             ),
 
             // Buttons
-            Button(
-              onPressed: switchToViewMode,
-              child: Text('Back'),
-            ),
-            SizedBox(width: 8),
+            if (!widget.startInAddMode) ...[
+              Button(
+                onPressed: switchToViewMode,
+                child: Text('Back'),
+              ),
+              SizedBox(width: 8),
+            ] else ...[
+              Button(
+                onPressed: widget.onCancel,
+                child: Text('Cancel'),
+              ),
+              SizedBox(width: 8),
+            ],
             MouseButtonWrapper(
               isButtonDisabled: selectedLocalPath == null || selectedAnilistId == null || _isExactDuplicate,
               tooltip: _isExactDuplicate
@@ -638,8 +693,8 @@ class AnilistLinkMultiContentState extends State<AnilistLinkMultiContent> {
                             foregroundColor: ButtonState.all(Colors.white),
                           )
                         : ButtonStyle(
-                            backgroundColor: ButtonState.all(Manager.currentDominantColor ?? Manager.accentColor),
-                            foregroundColor: ButtonState.all(getTextColor(Manager.currentDominantColor ?? Manager.accentColor)),
+                            backgroundColor: ButtonState.all(Manager.dominantOrAccentColor),
+                            foregroundColor: ButtonState.all(getTextColor(Manager.dominantOrAccentColor)),
                           ),
                 onPressed: (selectedLocalPath != null && selectedAnilistId != null && !_isExactDuplicate)
                     ? () {
@@ -735,35 +790,49 @@ class AnilistLinkMultiContentState extends State<AnilistLinkMultiContent> {
   }
 
   Widget _buildAnilistSearch() {
-    final isSelected = selectedLocalPath != null && selectedTitle == null;
+    final bool isAnilistLocked = widget.lockAnilist || (widget.requireLocalFirst && selectedLocalPath == null);
+    final isSelected = !isAnilistLocked && selectedTitle == null;
     return AnimatedOpacity(
       duration: shortStickyHeaderDuration,
-      opacity: selectedLocalPath != null ? 1 : 0.5,
+      opacity: !isAnilistLocked ? 1 : 0.5,
       child: Card(
         padding: EdgeInsets.all(12),
         borderRadius: BorderRadius.circular(8),
-        backgroundColor: isSelected ? Manager.accentColor.lighter.withOpacity(0.1) : Colors.transparent,
-        borderColor: isSelected ? Manager.accentColor.lighter : FluentTheme.of(context).resources.controlStrokeColorDefault,
-        child: AnilistSearchPanel(
-          initialSearch: widget.series.name,
-          linkService: widget.linkService,
-          series: widget.series,
-          constraints: widget.constraints,
-          skipAutoClose: true,
-          enabled: selectedLocalPath != null,
-          onLink: (id, name) async {
-            setState(() {
-              selectedAnilistId = id;
-              selectedTitle = name;
-            });
-            _checkForDuplicates();
+        backgroundColor: isSelected ? Manager.dominantOrAccentColor.withOpacity(0.1) : Colors.transparent,
+        borderColor: isSelected ? Manager.dominantOrAccentColor.lighter : FluentTheme.of(context).resources.controlStrokeColorDefault,
+        child: ValueListenableBuilder<bool>(
+          valueListenable: ConnectivityService().isOnlineNotifier,
+          builder: (context, isOnline, _) {
+            return ValueListenableBuilder<bool>(
+              valueListenable: AnilistAvailabilityService().unavailableNotifier,
+              builder: (context, isUnavailable, _) {
+                if (!isOnline || isUnavailable) return ServiceUnavailableBanner();
+
+                return AnilistSimpleSearchPanel(
+                  initialSearch: widget.series.name,
+                  initialAnilistId: widget.initialAnilistId,
+                  linkService: widget.linkService,
+                  series: widget.series,
+                  constraints: widget.constraints,
+                  skipAutoClose: true,
+                  enabled: !isAnilistLocked,
+                  onLink: (id, name) async {
+                    setState(() {
+                      selectedAnilistId = id;
+                      selectedTitle = name;
+                    });
+                    _checkForDuplicates();
+                  },
+                );
+              },
+            );
           },
         ),
       ),
     );
   }
 
-  Color accent(double value) => Colors.grey.lerpWith(Manager.accentColor, value);
+  Color accent(double value) => Colors.grey.lerpWith(Manager.dominantOrAccentColor, value);
 
   Widget Circle(dynamic value) {
     return Container(
@@ -894,7 +963,19 @@ Widget FileEntityIcon(BuildContext context, bool isDir, bool isSelected) {
   );
 }
 
-void linkWithAnilist(BuildContext context, Series? series, Future<void> Function(List<int>) loadData, void Function(VoidCallback) setState) async {
+void linkWithAnilist(
+  BuildContext context,
+  Series? series,
+  Future<void> Function(List<int>) loadData,
+  void Function(VoidCallback) setState, {
+  bool requireLocalFirst = true,
+  PathString? initialLocalPath,
+  int? initialAnilistId,
+  bool lockLocal = false,
+  bool lockAnilist = false,
+  bool startInAddMode = false,
+  FileExplorerOptions explorerOptions = const FileExplorerOptions(allowFiles: true, allowCurrentFolder: true),
+}) async {
   if (series == null) {
     snackBar('Series not found', severity: InfoBarSeverity.error);
     return;
@@ -910,7 +991,7 @@ void linkWithAnilist(BuildContext context, Series? series, Future<void> Function
       dialogDoPopCheck: () => Manager.canPopDialog, // Allow popping only when in view mode
     ),
     barrierOptions: PaddedBarrierOptions(
-      barrierColor: Manager.currentDominantColor?.withOpacity(0.5),
+      barrierColor: Manager.dominantOrAccentColor.withOpacity(0.5),
       userDismissable: true,
     ),
     closeExistingDialogs: true,
@@ -927,6 +1008,13 @@ void linkWithAnilist(BuildContext context, Series? series, Future<void> Function
           linkService: SeriesLinkService(),
           onLink: (_, __) {},
           constraints: boxConstraints,
+          requireLocalFirst: requireLocalFirst,
+          initialLocalPath: initialLocalPath,
+          initialAnilistId: initialAnilistId,
+          lockLocal: lockLocal,
+          lockAnilist: lockAnilist,
+          startInAddMode: startInAddMode,
+          explorerOptions: explorerOptions,
           onDialogComplete: (success, mappings) async {
             // if the dialog was closed without a result, do nothing
             if (success == null) {

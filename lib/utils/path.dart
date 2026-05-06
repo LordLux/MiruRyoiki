@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:math' show min;
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart' show FilteringTextInputFormatter;
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
@@ -59,9 +60,9 @@ class PathString {
   String? get fileName => PathUtils.getFileName(_path);
   String? get ext => PathUtils.getFileExtension(_path);
 
-  /// Returns the asset path if this path is within the assets directory, otherwise null.
-  /// For example, if the path is "C:/Programs/MiruRyioiki/flutter_assets/assets/icons/anilist/logo.si",
-  /// this returns "assets/icons/anilist/logo.si".
+  /// Returns the asset path if this path is within the assets directory, otherwise null
+  ///
+  /// For example, if the path is "C:/Programs/MiruRyioiki/flutter_assets/assets/icons/anilist/logo.si", this returns "assets/icons/anilist/logo.si"
   String? get asset {
     if (pathMaybe == null || pathMaybe!.isEmpty) return null;
 
@@ -120,6 +121,44 @@ class PathString {
 
   String get linux => path.replaceAll('\\', '/');
   String get windows => path.replaceAll('/', '\\');
+
+  /// **Forbidden printable ASCII characters**
+  ///
+  /// - `<` (less than)
+  /// - `>` (greater than)
+  /// - `:` (colon - sometimes works, but is actually NTFS Alternate Data Streams)
+  /// - `"` (double quote)
+  /// - `/` (forward slash)
+  /// - `\` (backslash)
+  /// - `|` (vertical bar or pipe)
+  /// - `?` (question mark)
+  /// - `*` (asterisk)
+
+  /// **Non-printable characters**
+  ///
+  /// If your data comes from a source that would permit non-printable characters then there is more to check for
+  ///
+  /// - `0`-`31` (ASCII control characters)
+
+  /// **Reserved file names**
+  ///
+  /// The following filenames are reserved:
+  /// - `CON`, `PRN`, `AUX`, `NUL`
+  ///
+  /// - `COM1`, `COM2`, `COM3`, `COM4`, `COM5`, `COM6`, `COM7`, `COM8`, `COM9`
+  ///
+  /// - `LPT1`, `LPT2`, `LPT3`, `LPT4`, `LPT5`, `LPT6`, `LPT7`, `LPT8`, `LPT9`
+  ///
+  /// (both on their own and with arbitrary file extensions, e.g. LPT1.txt)
+
+  /// **Other rules**
+  /// - Filenames cannot end in a space or dot
+  static String unallowedWindowsCharactersPattern = r'[<>:"/\\|?*\x00-\x1F]|^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(\..*)?$|[. ]+$';
+  
+  static FilteringTextInputFormatter get pathInputFormatter {
+    if (Platform.isWindows) return FilteringTextInputFormatter.deny(RegExp(PathString.unallowedWindowsCharactersPattern, caseSensitive: false));
+    return FilteringTextInputFormatter.deny(RegExp(r'[<>:"/\\|?*]'));
+  }
 }
 
 String get assets => "${(Platform.resolvedExecutable.split(ps)..removeLast()).join(ps)}${ps}data${ps}flutter_assets${ps}assets";
@@ -137,8 +176,9 @@ String get iconPng => iconPngSize('');
 
 String? _miruRyoiokiSaveDirectoryPath;
 
-/// Initializes and stores the MiruRyoiki save directory path.
-/// Call this once at app startup (e.g., in main()).
+/// Initializes and stores the MiruRyoiki save directory path
+///
+/// Call this once at app startup (e.g., in main())
 Future<void> initializeMiruRyoikiSaveDirectory() async {
   if (_miruRyoiokiSaveDirectoryPath != null) return; // Already initialized
   final appDataDir = await getApplicationSupportDirectory();
@@ -149,9 +189,9 @@ Future<void> initializeMiruRyoikiSaveDirectory() async {
   _miruRyoiokiSaveDirectoryPath = miruRyoiokiDir.path;
 }
 
-/// Returns the MiruRyoiki save directory path.
+/// Returns the MiruRyoiki save directory path
 ///
-/// Throws if [initializeMiruRyoikiSaveDirectory] has not been called.
+/// Throws if [initializeMiruRyoikiSaveDirectory] has not been called
 Directory get miruRyoikiSaveDirectory {
   if (_miruRyoiokiSaveDirectoryPath != null) return Directory(_miruRyoiokiSaveDirectoryPath!);
 

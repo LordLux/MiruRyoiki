@@ -27,15 +27,15 @@ import '../fluent_selectable_text.dart';
 import '../score_widget.dart';
 import 'show_dialog.dart';
 
-/// Show the AniList entry editor dialog for a given media.
+/// Show the AniList entry editor dialog for a given media
 ///
-/// [mediaId] is the AniList media ID.
-/// [title] is the display title for the dialog header.
-/// [totalEpisodes] is the total episode count (null if unknown).
-/// [bannerImage] optional banner image URL for the header background.
-/// [coverImage] optional cover/poster image URL.
-/// [isFavourite] current favourite state (display only for now).
-/// [entry] is the existing list entry (null if adding for the first time).
+/// - [mediaId] is the AniList media ID
+/// - [title] is the display title for the dialog header
+/// - [totalEpisodes] is the total episode count (null if unknown)
+/// - [bannerImage] optional banner image URL for the header background
+/// - [coverImage] optional cover/poster image URL
+/// - [isFavourite] current favourite state (display only for now)
+/// - [entry] is the existing list entry (null if adding for the first time)
 void showEntryEditorDialog(
   BuildContext context, {
   required int mediaId,
@@ -141,9 +141,9 @@ class _EntryEditorShellState extends State<_EntryEditorShell> {
   bool _isDeleting = false;
   bool _isFetchingLatest = false;
 
-  /// Tracks whether we've received a fresh entry from the API.
-  /// Used to decide if "Delete" should be available (the passed-in entry may
-  /// be null for brand-new items, but the API may return an existing one).
+  /// Tracks whether we've received a fresh entry from the API
+  ///
+  /// Used to decide if "Delete" should be available (the passed-in entry may be null for brand-new items, but the API may return an existing one)
   AnilistMediaListEntry? _latestEntry;
 
   bool get _isNewEntry => _latestEntry == null && widget.entry == null;
@@ -161,9 +161,9 @@ class _EntryEditorShellState extends State<_EntryEditorShell> {
     _fetchLatestEntry();
   }
 
-  /// Populate form fields from an entry (or defaults when null).
+  /// Populate form fields from an entry (or defaults when null)
   void _applyEntry(AnilistMediaListEntry? e) {
-    _status = e?.status ?? AnilistListApiStatus.CURRENT;
+    _status = e?.status ?? AnilistListApiStatus.PLANNING; // Default to PLANNING for new entries
     _score = e?.score ?? 0;
     _progress = e?.progress ?? 0;
     _repeat = e?.repeat ?? 0;
@@ -184,7 +184,7 @@ class _EntryEditorShellState extends State<_EntryEditorShell> {
     _initialCompletedAt = _completedAt;
   }
 
-  /// Scan the provider to figure out which custom lists contain this entry.
+  /// Scan the provider to figure out which custom lists contain this entry
   void _populateCustomListsFromProvider() {
     _selectedCustomLists = <String>{};
     try {
@@ -204,12 +204,13 @@ class _EntryEditorShellState extends State<_EntryEditorShell> {
     _initialCustomLists = Set.from(_selectedCustomLists);
   }
 
-  /// Fetch the latest entry data from AniList and update the form if the
-  /// user hasn't started editing yet (i.e. no dirty fields).
+  /// Fetch the latest entry data from AniList and update the form if the user hasn't started editing yet (i.e. no dirty fields)
   Future<void> _fetchLatestEntry() async {
+    final anilist = Provider.of<AnilistProvider>(context, listen: false);
+    if (!anilist.allUserAnilistIds.contains(widget.mediaId)) return;
+    
     setState(() => _isFetchingLatest = true);
     try {
-      final anilist = Provider.of<AnilistProvider>(context, listen: false);
       final fresh = await anilist.fetchMediaListEntry(widget.mediaId);
       if (!mounted) return;
       if (fresh != null) {
@@ -933,10 +934,9 @@ class _EntryEditorShellState extends State<_EntryEditorShell> {
 }
 
 // TODO when upgrading to fluent_ui 4.15+:
-/// Show a simple date picker dialog and return the selected date.
+/// Show a simple date picker dialog and return the selected date
 ///
-/// Uses Flutter's native date picker (via showDatePicker) to avoid flyout
-/// issues when nested inside a managed dialog.
+/// Uses Flutter's native date picker (via showDatePicker) to avoid flyout issues when nested inside a managed dialog
 // Future<void> showDatePickerDialog(BuildContext context, {DateTime? initial, required void Function(DateTime)? onDateSelected}) async {
 //   DateTime selectedDate = initial ?? now;
 

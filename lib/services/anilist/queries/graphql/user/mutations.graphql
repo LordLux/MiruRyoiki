@@ -51,6 +51,11 @@ mutation SaveMediaListEntry(
     }
     updatedAt
     createdAt
+    media {
+      ...AnimeCard
+      siteUrl
+      mediaListEntry { id }
+    }
   }
 }
 

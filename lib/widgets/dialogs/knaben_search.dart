@@ -1,9 +1,9 @@
-import 'package:fluent_ui/fluent_ui.dart' hide Colors, FilledButton, ButtonStyle;
-import 'package:flutter/material.dart' hide Card, Divider, Tooltip, ListTile, IconButton, showDialog;
+import 'package:fluent_ui/fluent_ui.dart';
+import 'package:flutter/material.dart' show Icons;
 import 'package:miruryoiki/utils/logging.dart';
 
-import '../../models/knaben/knaben_release.dart';
-import '../../models/sonarr/sonarr_release.dart';
+import '../../models/series.dart';
+import '../../models/torrent_release.dart';
 import '../../services/downloads/download_controller.dart';
 import '../../services/downloads/torrent_manager.dart';
 import '../../services/knaben/knaben_service.dart';
@@ -12,11 +12,18 @@ import '../../services/navigation/navigation.dart';
 import '../../services/navigation/show_info.dart';
 import '../../settings.dart';
 import '../../manager.dart';
+import '../../utils/magnet.dart';
+import '../../utils/quality.dart';
 import '../../utils/units.dart';
 import '../../utils/screen.dart';
 import '../buttons/button.dart';
 
 enum _SearchProvider { knaben, sonarr }
+
+enum _Step { search, confirm }
+
+/// Global key used by the ESC key back-navigation handler in `shortcuts.dart`
+final GlobalKey<KnabenSearchDialogState> knabenSearchDialogKey = GlobalKey<KnabenSearchDialogState>();
 
 /// Dialog that searches Knaben or Sonarr for releases and lets the user download them
 class KnabenSearchDialog extends StatefulWidget {
@@ -35,6 +42,13 @@ class KnabenSearchDialog extends StatefulWidget {
   /// Sonarr series ID (for season Sonarr search)
   final int? sonarrSeriesId;
 
+  /// Local series for the episode being downloaded
+  ///
+  /// Used to derive the default destination folder (series path + season subfolder)
+  ///
+  /// May be null when the series is not yet in the local library
+  final Series? series;
+
   const KnabenSearchDialog({
     super.key,
     required this.controller,
@@ -45,13 +59,14 @@ class KnabenSearchDialog extends StatefulWidget {
     this.episodeTitle,
     this.sonarrEpisodeId,
     this.sonarrSeriesId,
+    this.series,
   });
 
   @override
-  State<KnabenSearchDialog> createState() => _KnabenSearchDialogState();
+  State<KnabenSearchDialog> createState() => KnabenSearchDialogState();
 }
 
-class _KnabenSearchDialogState extends State<KnabenSearchDialog> {
+class KnabenSearchDialogState extends State<KnabenSearchDialog> {
   late TextEditingController _searchController;
   bool _isCustomSearch = false;
 
@@ -66,29 +81,131 @@ class _KnabenSearchDialogState extends State<KnabenSearchDialog> {
   // Sonarr state
   Future<List<SonarrRelease>>? _sonarrFuture;
 
+  _Step _step = _Step.search;
+  TorrentRelease? _selectedRelease;
+  bool _isDownloading = false;
+  late final TextEditingController _destFolderController;
+
+  /// Identifiers of releases the user has grabbed during this dialog session
+  final Set<String> _sentIdentifiers = {};
+
+  /// qBittorrent torrent hashes loaded once on dialog open. Used to mark
+  /// Knaben results that are already in the client. Empty until the async
+  /// load completes, then setState rebuilds the tiles
+  Set<String> _qbitHashes = {};
+
+  String _initialDestFolder() {
+    final series = widget.series;
+    if (series == null) return '';
+    return widget.controller.seriesSeasonSavePath(series, widget.season) ?? '';
+  }
+
+  void _goToConfirm(TorrentRelease release) {
+    context.resizeManagedDialog(constraints: const BoxConstraints(maxWidth: 700, maxHeight: 520));
+    setState(() {
+      _step = _Step.confirm;
+      _selectedRelease = release;
+      Manager.canPopDialog = false; // Block barrier dismiss + ESC pop while a release is staged
+    });
+  }
+
+  /// Return from the confirm step to the result list
+  void backToSearch() {
+    if (_step != _Step.confirm) return;
+    context.resizeManagedDialog(constraints: const BoxConstraints(maxWidth: 900, maxHeight: 900));
+    setState(() {
+      _step = _Step.search;
+      _selectedRelease = null;
+      Manager.canPopDialog = true;
+    });
+  }
+
+  Future<void> _doDownload() async {
+    if (_isDownloading) return;
+    final r = _selectedRelease;
+    if (r == null) return;
+
+    setState(() => _isDownloading = true);
+    try {
+      switch (r) {
+        case KnabenRelease():
+          final dest = _destFolderController.text.trim();
+          final ok = await widget.controller.grabMagnet(r.magnetUrl, savePath: dest.isNotEmpty ? dest : null);
+          if (!mounted) return;
+
+          if (ok) {
+            final hash = extractBtih(r.magnetUrl);
+            if (hash != null) _sentIdentifiers.add(hash);
+            _onGrabSucceeded('Sent to qBittorrent');
+          } else {
+            snackBar('qBittorrent rejected the magnet', severity: InfoBarSeverity.error);
+          }
+        case SonarrRelease():
+          await TorrentManager.sonarrRepository!.grabRelease(r.guid, r.indexerId);
+          if (!mounted) return;
+
+          _sentIdentifiers.add(r.guid);
+          _onGrabSucceeded('Sent to Sonarr');
+      }
+    } catch (e) {
+      if (mounted) snackBar('Download failed: $e', severity: InfoBarSeverity.error);
+    } finally {
+      if (mounted) setState(() => _isDownloading = false);
+    }
+  }
+
+  void _onGrabSucceeded(String message) {
+    snackBar(message,
+        severity: InfoBarSeverity.success,
+        action: Button(
+          child: const Text('View Downloads'),
+          onPressed: () {
+            closeDialog();
+            Manager.navigation.pushPaneIndex(NavigationManager.TorrentIndex);
+          },
+        ));
+
+    if (widget.isSeasonSearch) {
+      backToSearch();
+    } else {
+      closeDialog();
+    }
+  }
+
   @override
   void initState() {
     super.initState();
+    _destFolderController = TextEditingController(text: _initialDestFolder());
     _liveSearch = SettingsManager().knabenLiveSearch;
-    _sonarrAvailable = TorrentManager.sonarrRepository != null &&
-        (widget.sonarrEpisodeId != null || widget.sonarrSeriesId != null);
+    _sonarrAvailable = TorrentManager.sonarrRepository != null && (widget.sonarrEpisodeId != null || widget.sonarrSeriesId != null);
 
-    String initial = widget.seriesTitles.isNotEmpty ? widget.seriesTitles.first : "Unknown";
-    if (widget.episodeTitle != null) {
-      initial += ' ${widget.episodeTitle}';
-    } else if (widget.isSeasonSearch && widget.season != null) {
-      initial += ' S${widget.season.toString().padLeft(2, '0')}';
-    } else if (widget.season != null && widget.episode != null) {
-      initial += ' - ${widget.episode}';
-    }
-    _searchController = TextEditingController(text: initial);
+    final name = widget.seriesTitles.isNotEmpty ? widget.seriesTitles.first : "Unknown";
+    final tag = _searchTag();
+    _searchController = TextEditingController(text: tag != null ? '$name $tag' : name);
     _isCustomSearch = widget.episodeTitle != null;
     _startSearch();
+    _loadQbitTorrents();
+  }
+
+  /// Snapshot qBittorrent's current torrent list to mark already-downloading results in the UI
+  Future<void> _loadQbitTorrents() async {
+    final client = TorrentManager.torrentClient;
+    if (client == null) return;
+    try {
+      final torrents = await client.listTorrents();
+      if (!mounted) return;
+
+      setState(() => _qbitHashes = torrents.map((t) => t.hash.toLowerCase()).toSet());
+    } catch (e) {
+      logErr('[KnabenSearch] Failed to load qBittorrent torrent list', e);
+    }
   }
 
   @override
   void dispose() {
     _searchController.dispose();
+    _destFolderController.dispose();
+    Manager.canPopDialog = true; // Restore in case we're disposed mid-confirm
     super.dispose();
   }
 
@@ -154,65 +271,81 @@ class _KnabenSearchDialogState extends State<KnabenSearchDialog> {
 
   void _onProviderChanged(_SearchProvider provider) {
     if (provider == _provider) return;
-    setState(() {
-      _provider = provider;
-    });
+
+    setState(() => _provider = provider);
+    _startSearch();
+  }
+
+  /// Run the user's typed query for Knaben searches
+  void _runCustomSearch() {
+    _isCustomSearch = true;
     _startSearch();
   }
 
   void _onLiveSearchToggled(bool value) {
-    setState(() {
-      _liveSearch = value;
-    });
+    setState(() => _liveSearch = value);
     SettingsManager().knabenLiveSearch = value;
     _startSearch();
   }
 
+  /// Short label for the current search target
+  ///
+  /// `S01E03` for an episode, `S01` for a season pack, original title for specials/movies
+  String? _searchTag() {
+    if (widget.episodeTitle != null && widget.episodeTitle!.isNotEmpty) return widget.episodeTitle;
+    if (widget.isSeasonSearch && widget.season != null) return 'S${widget.season.toString().padLeft(2, '0')}';
+    if (widget.season != null && widget.episode != null) return 'S${widget.season.toString().padLeft(2, '0')}E${widget.episode.toString().padLeft(2, '0')}';
+    return null;
+  }
+
   String get _dialogTitle {
     final type = widget.isSeasonSearch ? "Season" : "Episode";
-    return "$type Search";
+    final base = "$type Search";
+    if (widget.seriesTitles.isEmpty) return base;
+    final name = widget.seriesTitles.first;
+    final tag = _searchTag();
+    return tag != null ? '$base — $name $tag' : '$base — $name';
   }
 
   @override
   Widget build(BuildContext context) {
+    return switch (_step) {
+      _Step.search => _buildSearchDialog(),
+      _Step.confirm => _buildConfirmDialog(),
+    };
+  }
+
+  Widget _buildSearchDialog() {
     return ContentDialog(
       title: Text(_dialogTitle, style: Manager.subtitleStyle),
       constraints: const BoxConstraints(maxWidth: 900, maxHeight: 700),
       content: Column(
         children: [
-          // Search bar row
-          Padding(
-            padding: const EdgeInsets.only(bottom: 10.0),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextBox(
-                    controller: _searchController,
-                    placeholder: "Modify search query...",
-                    enabled: _provider == _SearchProvider.knaben,
-                    style: Manager.bodyStyle,
-                    onSubmitted: (_) {
-                      _isCustomSearch = true;
-                      _startSearch();
-                    },
-                    suffix: _provider == _SearchProvider.knaben
-                        ? Padding(
-                            padding: const EdgeInsets.only(right: 4),
-                            child: StandardButton.icon(
-                              icon: const Icon(Icons.search, size: 16),
-                              onPressed: () {
-                                _isCustomSearch = true;
-                                _startSearch();
-                              },
-                              tooltip: 'Search',
-                            ),
-                          )
-                        : null,
+          // Search bar row for Knaben
+          if (_provider == _SearchProvider.knaben)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 10.0),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextBox(
+                      controller: _searchController,
+                      placeholder: "Modify search query...",
+                      style: Manager.bodyStyle,
+                      onSubmitted: (_) => _runCustomSearch(),
+                      suffix: Padding(
+                        padding: const EdgeInsets.only(right: 4),
+                        child: StandardButton.icon(
+                          icon: const Icon(Icons.search, size: 16),
+                          onPressed: _runCustomSearch,
+                          tooltip: 'Search',
+                        ),
+                      ),
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
 
           // Settings row
           Padding(
@@ -255,7 +388,7 @@ class _KnabenSearchDialogState extends State<KnabenSearchDialog> {
                   ),
                   const SizedBox(width: 4),
                   Tooltip(
-                    message: _liveSearch
+                    message: _liveSearch //
                         ? 'Live: queries all indexers in real-time (slower, more results)'
                         : 'Fast: searches local cache only (faster, fewer results)',
                     child: Icon(Icons.info_outline, size: 13, color: Colors.white.withValues(alpha: .3)),
@@ -287,6 +420,125 @@ class _KnabenSearchDialogState extends State<KnabenSearchDialog> {
       ],
     );
   }
+
+  Widget _buildConfirmDialog() {
+    final r = _selectedRelease;
+    if (r == null) return const SizedBox.shrink();
+
+    final accentColor = Manager.currentDominantColor ?? Manager.accentColor;
+    final isKnaben = r is KnabenRelease;
+
+    return ContentDialog(
+      title: Text('Confirm Download', style: Manager.subtitleStyle),
+      constraints: const BoxConstraints(maxWidth: 700, maxHeight: 520),
+      content: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Release summary card
+          Card(
+            borderRadius: BorderRadius.circular(ScreenUtils.kStatCardBorderRadius),
+            padding: const EdgeInsets.all(12.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(r.title, style: Manager.bodyStyle.copyWith(fontWeight: FontWeight.w600), maxLines: 3, overflow: TextOverflow.ellipsis),
+                const SizedBox(height: 8),
+                DefaultTextStyle(
+                  style: TextStyle(fontSize: 11, color: Colors.white.withValues(alpha: .6)),
+                  child: Row(
+                    children: [
+                      _Badge(label: r.quality, color: qualityBadgeColor(r.quality)),
+                      const SizedBox(width: 6),
+                      Text(fileSize(r.bytes)),
+                      _dot(),
+                      Text(r.tracker, style: const TextStyle(fontStyle: FontStyle.italic)),
+                      const Spacer(),
+                      Icon(Icons.arrow_upward, size: 12, color: const Color(0xFF4CAF50)),
+                      const SizedBox(width: 2),
+                      Text('${r.seeders}', style: const TextStyle(color: Color(0xFF4CAF50))),
+                      const SizedBox(width: 8),
+                      Icon(Icons.arrow_downward, size: 12, color: Colors.red),
+                      const SizedBox(width: 2),
+                      Text('${r.peers}', style: TextStyle(color: Colors.red.withValues(alpha: .8))),
+                    ],
+                  ),
+                ),
+                if (r.isLikelyBatch) ...[
+                  const SizedBox(height: 4),
+                  _Badge(label: 'BATCH', color: accentColor),
+                ],
+                if (r is KnabenRelease && r.virusDetection > 0.5) ...[
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      Icon(Icons.warning_amber_rounded, size: 13, color: const Color(0xFFFF9800)),
+                      const SizedBox(width: 4),
+                      Text('Virus detection score: ${r.virusDetection}', style: const TextStyle(fontSize: 11, color: Color(0xFFFF9800))),
+                    ],
+                  ),
+                ],
+                if (r is SonarrRelease && r.rejected && r.rejections.isNotEmpty) ...[
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      Icon(Icons.block, size: 13, color: Colors.red.withValues(alpha: .7)),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(r.rejections.join(', '), style: TextStyle(fontSize: 11, color: Colors.red.withValues(alpha: .7)), maxLines: 2, overflow: TextOverflow.ellipsis),
+                      ),
+                    ],
+                  ),
+                ],
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          Text('Destination folder', style: Manager.bodyStrongStyle),
+          const SizedBox(height: 6),
+          if (isKnaben)
+            ValueListenableBuilder<TextEditingValue>(
+              valueListenable: _destFolderController,
+              builder: (_, __, ___) => TextBox(
+                controller: _destFolderController,
+                placeholder: 'e.g. M:\\Videos\\Series\\Series Name\\Season 01',
+              ),
+            )
+          else
+            Text(
+              'Sonarr will place this in its configured series folder.',
+              style: Manager.captionStyle.copyWith(color: Colors.white.withValues(alpha: .5)),
+            ),
+        ],
+      ),
+      actions: [
+        Button(
+          onPressed: _isDownloading ? null : backToSearch,
+          child: const Text('Back'),
+        ),
+        if (isKnaben)
+          ValueListenableBuilder<TextEditingValue>(
+            valueListenable: _destFolderController,
+            builder: (_, v, __) => FilledButton(
+              onPressed: (_isDownloading || v.text.trim().isEmpty) ? null : _doDownload,
+              child: _isDownloading ? const SizedBox(width: 16, height: 16, child: RepaintBoundary(child: ProgressRing(strokeWidth: 2))) : const Text('Download'),
+            ),
+          )
+        else
+          FilledButton(
+            onPressed: _isDownloading ? null : _doDownload,
+            child: _isDownloading ? const SizedBox(width: 16, height: 16, child: RepaintBoundary(child: ProgressRing(strokeWidth: 2))) : const Text('Grab via Sonarr'),
+          ),
+      ],
+    );
+  }
+
+  Widget _dot() => Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 6),
+        child: Text('\u00B7', style: TextStyle(color: Colors.white.withValues(alpha: .3))),
+      );
 
   Widget _buildResultCount() {
     if (_provider == _SearchProvider.knaben && _knabenFuture != null) {
@@ -393,9 +645,16 @@ class _KnabenSearchDialogState extends State<KnabenSearchDialog> {
           padding: const EdgeInsets.only(top: 4),
           itemCount: releases.length,
           itemBuilder: (context, index) {
+            final release = releases[index];
+            final hash = extractBtih(release.magnetUrl);
+            final isSent = hash != null && _sentIdentifiers.contains(hash);
+            final isAlreadyDownloading = hash != null && _qbitHashes.contains(hash);
+
             return _KnabenReleaseTile(
-              release: releases[index],
-              controller: widget.controller,
+              release: release,
+              onSelected: () => _goToConfirm(release),
+              isSent: isSent,
+              isAlreadyDownloading: isAlreadyDownloading,
             );
           },
         );
@@ -479,7 +738,13 @@ class _KnabenSearchDialogState extends State<KnabenSearchDialog> {
           padding: const EdgeInsets.only(top: 4),
           itemCount: releases.length,
           itemBuilder: (context, index) {
-            return _SonarrReleaseTile(release: releases[index]);
+            final release = releases[index];
+
+            return _SonarrReleaseTile(
+              release: release,
+              onSelected: () => _goToConfirm(release),
+              isSent: _sentIdentifiers.contains(release.guid),
+            );
           },
         );
       },
@@ -487,72 +752,40 @@ class _KnabenSearchDialogState extends State<KnabenSearchDialog> {
   }
 }
 
-
 // Knaben release tile
 
 class _KnabenReleaseTile extends StatefulWidget {
   final KnabenRelease release;
-  final DownloadController controller;
+  final VoidCallback onSelected;
+  final bool isSent;
+  final bool isAlreadyDownloading;
 
-  const _KnabenReleaseTile({required this.release, required this.controller});
+  const _KnabenReleaseTile({
+    required this.release,
+    required this.onSelected,
+    this.isSent = false,
+    this.isAlreadyDownloading = false,
+  });
 
   @override
   State<_KnabenReleaseTile> createState() => _KnabenReleaseTileState();
 }
 
 class _KnabenReleaseTileState extends State<_KnabenReleaseTile> {
-  bool _isGrabbing = false;
-  bool _grabbed = false;
   bool _isHovering = false;
-
-  Future<void> _handleGrab() async {
-    if (_isGrabbing || _grabbed) return;
-    setState(() => _isGrabbing = true);
-    try {
-      final ok = await widget.controller.grabMagnet(
-        widget.release.magnetUrl,
-        savePath: widget.controller.sonarrSavePath,
-      );
-      if (mounted) {
-        if (ok) {
-          setState(() => _grabbed = true);
-          snackBar('Sent to qBittorrent: ${widget.release.title}', severity: InfoBarSeverity.success);
-        } else {
-          snackBar('qBittorrent rejected the magnet', severity: InfoBarSeverity.error);
-        }
-      }
-    } catch (e) {
-      if (mounted) {
-        snackBar('Failed to send to qBittorrent: $e', severity: InfoBarSeverity.error);
-      }
-    } finally {
-      if (mounted) setState(() => _isGrabbing = false);
-    }
-  }
-
-  Color get _qualityColor {
-    switch (widget.release.quality) {
-      case '2160p':
-        return const Color(0xFFFFD700); // gold
-      case '1080p':
-        return const Color(0xFF4CAF50); // green
-      case '720p':
-        return const Color(0xFF2196F3); // blue
-      case '480p':
-        return const Color(0xFFFF9800); // orange
-      default:
-        return Colors.grey[120] ?? Colors.grey;
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
     final r = widget.release;
     final hasVirus = r.virusDetection > 0.5;
     final accentColor = Manager.currentDominantColor ?? Manager.accentColor;
+    // isSent wins over isAlreadyDownloading: a release the user just grabbed
+    // takes the "Sent" label even if it was already in qBittorrent before
+    final disabled = widget.isSent || widget.isAlreadyDownloading;
+    final disabledOpacity = hasVirus ? 0.45 : (disabled ? 0.6 : 1.0);
 
     return Opacity(
-      opacity: hasVirus ? 0.45 : 1.0,
+      opacity: disabledOpacity,
       child: MouseRegion(
         onEnter: (_) => setState(() => _isHovering = true),
         onExit: (_) => setState(() => _isHovering = false),
@@ -561,7 +794,7 @@ class _KnabenReleaseTileState extends State<_KnabenReleaseTile> {
           margin: const EdgeInsets.only(bottom: 4.0),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(ScreenUtils.kStatCardBorderRadius),
-            color: _isHovering ? Colors.white.withValues(alpha: .03) : Colors.transparent,
+            color: _isHovering && !disabled ? Colors.white.withValues(alpha: .03) : Colors.transparent,
           ),
           child: Card(
             borderRadius: BorderRadius.circular(ScreenUtils.kStatCardBorderRadius),
@@ -582,24 +815,28 @@ class _KnabenReleaseTileState extends State<_KnabenReleaseTile> {
                       ),
                     ),
                     const SizedBox(width: 12),
-                    _grabbed
-                        ? Padding(
-                            padding: const EdgeInsets.all(4.0),
-                            child: Icon(Icons.check_circle, size: 20, color: const Color(0xFF4CAF50)),
-                          )
-                        : StandardButton.iconLabel(
-                            icon: _isGrabbing
-                                ? const SizedBox(
-                                    width: 14,
-                                    height: 14,
-                                    child: RepaintBoundary(child: CircularProgressIndicator(strokeWidth: 2)),
-                                  )
-                                : const Icon(Icons.download, size: 16),
-                            label: Text(_isGrabbing ? 'Sending...' : 'Download'),
-                            onPressed: _isGrabbing ? null : _handleGrab,
-                            isFilled: true,
-                            isSmall: true,
-                          ),
+                    if (widget.isSent)
+                      StandardButton.iconLabel(
+                        icon: const Icon(Icons.check_circle, size: 16, color: Color(0xFF4CAF50)),
+                        label: const Text('Sent'),
+                        onPressed: null,
+                        isSmall: true,
+                      )
+                    else if (widget.isAlreadyDownloading)
+                      StandardButton.iconLabel(
+                        icon: const Icon(Icons.downloading, size: 16),
+                        label: const Text('Already downloading'),
+                        onPressed: null,
+                        isSmall: true,
+                      )
+                    else
+                      StandardButton.iconLabel(
+                        icon: const Icon(Icons.download, size: 16),
+                        label: const Text('Download'),
+                        onPressed: widget.onSelected,
+                        isFilled: true,
+                        isSmall: true,
+                      ),
                   ],
                 ),
 
@@ -610,32 +847,20 @@ class _KnabenReleaseTileState extends State<_KnabenReleaseTile> {
                   style: TextStyle(fontSize: 11, color: Colors.white.withValues(alpha: .6)),
                   child: Row(
                     children: [
-                      // Quality badge
-                      _Badge(label: r.quality, color: _qualityColor),
+                      _Badge(label: r.quality, color: qualityBadgeColor(r.quality)),
                       const SizedBox(width: 6),
-
-                      // Size
                       Text(fileSize(r.bytes)),
                       _dot(),
-
-                      // Tracker
                       Text(r.tracker, style: const TextStyle(fontSize: 11, fontStyle: FontStyle.italic)),
-
-                      // Batch badge
                       if (r.isLikelyBatch) ...[
                         const SizedBox(width: 6),
                         _Badge(label: 'BATCH', color: accentColor),
                       ],
-
                       const Spacer(),
-
-                      // Seeders
                       Icon(Icons.arrow_upward, size: 12, color: const Color(0xFF4CAF50)),
                       const SizedBox(width: 2),
-                      Text('${r.seeders}', style: TextStyle(color: const Color(0xFF4CAF50), fontSize: 11)),
+                      Text('${r.seeders}', style: const TextStyle(color: Color(0xFF4CAF50), fontSize: 11)),
                       const SizedBox(width: 8),
-
-                      // Peers
                       Icon(Icons.arrow_downward, size: 12, color: Colors.red.withValues(alpha: .8)),
                       const SizedBox(width: 2),
                       Text('${r.peers}', style: TextStyle(color: Colors.red.withValues(alpha: .8), fontSize: 11)),
@@ -643,7 +868,6 @@ class _KnabenReleaseTileState extends State<_KnabenReleaseTile> {
                   ),
                 ),
 
-                // Virus warning
                 if (hasVirus) ...[
                   const SizedBox(height: 6),
                   Row(
@@ -652,7 +876,7 @@ class _KnabenReleaseTileState extends State<_KnabenReleaseTile> {
                       const SizedBox(width: 4),
                       Text(
                         'Virus detection score: ${r.virusDetection}',
-                        style: TextStyle(fontSize: 11, color: const Color(0xFFFF9800)),
+                        style: const TextStyle(fontSize: 11, color: Color(0xFFFF9800)),
                       ),
                     ],
                   ),
@@ -671,50 +895,35 @@ class _KnabenReleaseTileState extends State<_KnabenReleaseTile> {
       );
 }
 
-
 // Sonarr release tile
 
 class _SonarrReleaseTile extends StatefulWidget {
   final SonarrRelease release;
+  final VoidCallback onSelected;
+  final bool isSent;
 
-  const _SonarrReleaseTile({required this.release});
+  const _SonarrReleaseTile({
+    required this.release,
+    required this.onSelected,
+    this.isSent = false,
+  });
 
   @override
   State<_SonarrReleaseTile> createState() => _SonarrReleaseTileState();
 }
 
 class _SonarrReleaseTileState extends State<_SonarrReleaseTile> {
-  bool _isDownloading = false;
-  bool _downloaded = false;
   bool _isHovering = false;
-
-  Future<void> _handleDownload() async {
-    if (_isDownloading || _downloaded) return;
-    setState(() => _isDownloading = true);
-
-    try {
-      await TorrentManager.sonarrRepository!.grabRelease(widget.release.guid, widget.release.indexerId);
-      if (mounted) setState(() => _downloaded = true);
-    } catch (e) {
-      if (mounted) {
-        showSimpleOneButtonManagedDialog(
-          context,
-          id: 'sonarr:download-error',
-          title: 'Download Error',
-          body: e.toString(),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _isDownloading = false);
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
     final r = widget.release;
+    final accentColor = Manager.currentDominantColor ?? Manager.accentColor;
+    final tileOpacity = r.rejected ? 0.5 : (widget.isSent ? 0.6 : 1.0);
+    final disabled = r.rejected || widget.isSent;
 
     return Opacity(
-      opacity: r.rejected ? 0.5 : 1.0,
+      opacity: tileOpacity,
       child: MouseRegion(
         onEnter: (_) => setState(() => _isHovering = true),
         onExit: (_) => setState(() => _isHovering = false),
@@ -723,7 +932,7 @@ class _SonarrReleaseTileState extends State<_SonarrReleaseTile> {
           margin: const EdgeInsets.only(bottom: 4.0),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(ScreenUtils.kStatCardBorderRadius),
-            color: _isHovering ? Colors.white.withValues(alpha: .03) : Colors.transparent,
+            color: _isHovering && !disabled ? Colors.white.withValues(alpha: .03) : Colors.transparent,
           ),
           child: Card(
             borderRadius: BorderRadius.circular(ScreenUtils.kStatCardBorderRadius),
@@ -732,7 +941,6 @@ class _SonarrReleaseTileState extends State<_SonarrReleaseTile> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Row 1: Title + download button
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -745,67 +953,48 @@ class _SonarrReleaseTileState extends State<_SonarrReleaseTile> {
                       ),
                     ),
                     const SizedBox(width: 12),
-                    _downloaded
-                        ? Padding(
-                            padding: const EdgeInsets.all(4.0),
-                            child: Icon(Icons.check_circle, size: 20, color: const Color(0xFF4CAF50)),
-                          )
-                        : _isDownloading
-                            ? const Padding(
-                                padding: EdgeInsets.all(4.0),
-                                child: SizedBox(width: 20, height: 20, child: RepaintBoundary(child: ProgressRing(strokeWidth: 2))),
-                              )
-                            : StandardButton.iconLabel(
-                                icon: const Icon(Icons.download, size: 16),
-                                label: const Text('Grab'),
-                                onPressed: r.rejected ? null : _handleDownload,
-                                isFilled: !r.rejected,
-                                isSmall: true,
-                              ),
+                    if (widget.isSent)
+                      StandardButton.iconLabel(
+                        icon: const Icon(Icons.check_circle, size: 16, color: Color(0xFF4CAF50)),
+                        label: const Text('Sent'),
+                        onPressed: null,
+                        isSmall: true,
+                      )
+                    else
+                      StandardButton.iconLabel(
+                        icon: const Icon(Icons.download, size: 16),
+                        label: const Text('Grab'),
+                        onPressed: r.rejected ? null : widget.onSelected,
+                        isFilled: !r.rejected,
+                        isSmall: true,
+                      ),
                   ],
                 ),
-
                 const SizedBox(height: 8),
-
-                // Row 2: Metadata
                 DefaultTextStyle(
                   style: TextStyle(fontSize: 11, color: Colors.white.withValues(alpha: .6)),
                   child: Row(
                     children: [
-                      // Quality badge
-                      _Badge(label: r.quality, color: _qualityColorFor(r.quality)),
+                      _Badge(label: r.quality, color: qualityBadgeColor(r.quality)),
                       const SizedBox(width: 6),
-
-                      // Size
                       Text(fileSize(r.size)),
                       _dot(),
-
-                      // Indexer
                       Text(r.indexer, style: const TextStyle(fontSize: 11, fontStyle: FontStyle.italic)),
-
-                      // Batch badge
                       if (r.isLikelyBatch) ...[
                         const SizedBox(width: 6),
-                        _Badge(label: 'BATCH', color: Manager.currentDominantColor ?? Manager.accentColor),
+                        _Badge(label: 'BATCH', color: accentColor),
                       ],
-
                       const Spacer(),
-
-                      // Seeders
                       Icon(Icons.arrow_upward, size: 12, color: const Color(0xFF4CAF50)),
                       const SizedBox(width: 2),
-                      Text('${r.seeders}', style: TextStyle(color: const Color(0xFF4CAF50), fontSize: 11)),
+                      Text('${r.seeders}', style: const TextStyle(color: Color(0xFF4CAF50), fontSize: 11)),
                       const SizedBox(width: 8),
-
-                      // Leechers
                       Icon(Icons.arrow_downward, size: 12, color: Colors.red.withValues(alpha: .8)),
                       const SizedBox(width: 2),
                       Text('${r.leechers}', style: TextStyle(color: Colors.red.withValues(alpha: .8), fontSize: 11)),
                     ],
                   ),
                 ),
-
-                // Rejections
                 if (r.rejected && r.rejections.isNotEmpty) ...[
                   const SizedBox(height: 6),
                   Row(
@@ -836,17 +1025,7 @@ class _SonarrReleaseTileState extends State<_SonarrReleaseTile> {
         padding: const EdgeInsets.symmetric(horizontal: 6),
         child: Text('\u00B7', style: TextStyle(color: Colors.white.withValues(alpha: .3))),
       );
-
-  Color _qualityColorFor(String quality) {
-    final lower = quality.toLowerCase();
-    if (lower.contains('2160') || lower.contains('4k')) return const Color(0xFFFFD700);
-    if (lower.contains('1080')) return const Color(0xFF4CAF50);
-    if (lower.contains('720')) return const Color(0xFF2196F3);
-    if (lower.contains('480')) return const Color(0xFFFF9800);
-    return Colors.grey[120] ?? Colors.grey;
-  }
 }
-
 
 // Shared badge widget
 

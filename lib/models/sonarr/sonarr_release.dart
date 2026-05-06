@@ -1,13 +1,18 @@
-class SonarrRelease {
-  final String guid; // The unique ID needed to "grab" the file
+part of '../torrent_release.dart';
+
+class SonarrRelease extends TorrentRelease {
+  final String guid;
+  @override
   final String title;
   final int size;
   final int indexerId;
   final String indexer;
-  final bool rejected; // Is it blocked by profile settings?
-  final List<String> rejections;
+  final bool rejected; // If it's blocked by user profile settings
+  final List<String> rejections; // Reasons why it was rejected
+  @override
   final int seeders;
   final int leechers;
+  @override
   final String quality; // e.g. "1080p Web-DL"
 
   SonarrRelease({
@@ -23,14 +28,14 @@ class SonarrRelease {
     required this.quality,
   });
 
-  bool get isLikelyBatch {
-    final lowerTitle = title.toLowerCase();
-    // Common keywords indicating a multi-episode pack
-    return lowerTitle.contains('batch') ||
-        lowerTitle.contains('complete') ||
-        // Regex looking for "S01" or "Season 1" without a specific "E01" following closely
-        RegExp(r'(s\d+|season \d+)(?!.*e\d+)').hasMatch(lowerTitle);
-  }
+  @override
+  int get bytes => size;
+
+  @override
+  int get peers => leechers;
+
+  @override
+  String get tracker => indexer;
 
   factory SonarrRelease.fromJson(Map<String, dynamic> json) {
     return SonarrRelease(

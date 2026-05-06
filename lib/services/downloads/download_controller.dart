@@ -1,9 +1,12 @@
 import 'package:collection/collection.dart';
+import 'package:path/path.dart' as p;
 import 'package:provider/provider.dart';
 
-import '../../models/knaben/knaben_release.dart';
+import '../../models/torrent_release.dart';
+import '../../models/series.dart';
 import '../../settings.dart';
 import '../../utils/logging.dart';
+import '../../utils/path.dart';
 import '../knaben/knaben_service.dart';
 import '../mapping/plex_anibridge_service.dart';
 import '../mapping/custom_sonarr_mapping_service.dart';
@@ -174,8 +177,11 @@ class DownloadController {
     return _torrentClient.addMagnet(magnetUrl, savePath: savePath, category: 'MiruRyoiki');
   }
 
-  /// Converts a local Windows path to the path that Sonarr sees inside its
-  /// Docker container, using the known library ↔ Sonarr root folder mapping.
+  /// Converts a local path to the path that Sonarr sees inside its Docker container, using the known library ↔ Sonarr root folder mapping
+  ///
+  /// Sonarr always uses POSIX paths (forward slashes)
+  ///
+  /// Local paths use the host's separator (`\` on Windows, `/` on macOS)
   ///
   /// Example: library = "M:\Videos\Series", sonarrRoot = "/data/Videos/Series"
   ///   "M:\Videos\Series\Show\S01\ep.mkv" → "/data/Videos/Series/Show/S01/ep.mkv"
@@ -187,13 +193,13 @@ class DownloadController {
     final sonarrRoot = settings.sonarrRootFolderPath.isNotEmpty ? settings.sonarrRootFolderPath : library.libraryDockerPath;
 
     if (localLibraryPath != null && sonarrRoot != null) {
-      final normalizedLocal = localPath.replaceAll('\\', '/').toLowerCase();
-      final normalizedLibrary = localLibraryPath.replaceAll('\\', '/').toLowerCase();
+      final localPosix = _toPosix(localPath);
+      final libraryPosix = _toPosix(localLibraryPath);
 
-      if (normalizedLocal.startsWith(normalizedLibrary)) {
-        final relativePath = localPath.replaceAll('\\', '/').substring(localLibraryPath.length);
-        final root = sonarrRoot.endsWith('/') ? sonarrRoot.substring(0, sonarrRoot.length - 1) : sonarrRoot;
-        final rel = relativePath.startsWith('/') ? relativePath : '/$relativePath';
+      if (localPosix.toLowerCase().startsWith(libraryPosix.toLowerCase())) {
+        final relativePosix = localPosix.substring(libraryPosix.length);
+        final root = _stripTrailingSlash(sonarrRoot);
+        final rel = relativePosix.startsWith('/') ? relativePosix : '/$relativePosix';
         logTrace('Path mapping: "$localPath" → "$root$rel"');
         return '$root$rel';
       }
@@ -201,25 +207,57 @@ class DownloadController {
 
     logTrace('Path mapping fallback for: "$localPath" (library=$localLibraryPath, sonarrRoot=$sonarrRoot)');
 
-    // Fallback: strip drive letter and prepend /data
-    final linux = localPath.replaceAll('\\', '/');
-    final noDrive = (linux.length > 2 && linux[1] == ':') ? linux.substring(2) : linux;
+    // Fallback: strip Windows drive letter and prepend /data
+    final posix = _toPosix(localPath);
+    final noDrive = (posix.length > 2 && posix[1] == ':') ? posix.substring(2) : posix;
     return '/data$noDrive';
   }
 
-  /// Ensures the Sonarr series path matches the actual local folder so that
-  /// manual-import API calls can find the files.
+  /// Converts a Sonarr/Docker path back to a local path using the host's separator
   ///
-  /// Call once before a batch of [manualImportFile] calls to avoid redundant
-  /// API requests. Returns the (possibly updated) Sonarr series path.
+  /// Inverse of [toSonarrPath]
   ///
-  /// [localSeriesPath] is the local Windows path to the series folder
-  /// (e.g. "M:\Videos\Series\Make Heroine ga Oosugiru!").
+  /// Example (Windows host): "/data/Videos/Series/Show/" → "M:\Videos\Series\Show"
+  /// Example (macOS host):   "/data/Videos/Series/Show/" → "/Volumes/M/Videos/Series/Show"
+  PathString? fromSonarrPath(String sonarrPath) {
+    final library = Provider.of<Library>(Manager.context, listen: false);
+    final settings = SettingsManager();
+
+    final localLibraryPath = library.libraryPath;
+    final sonarrRoot = settings.sonarrRootFolderPath.isNotEmpty ? settings.sonarrRootFolderPath : library.libraryDockerPath;
+    if (localLibraryPath == null || sonarrRoot == null) return null;
+
+    final sonarrPosix = _toPosix(sonarrPath);
+    final root = _stripTrailingSlash(sonarrRoot);
+
+    if (sonarrPosix.toLowerCase().startsWith(root.toLowerCase())) {
+      final relativePosix = sonarrPosix.substring(root.length);
+      // Split on POSIX separators, join with the host's separator
+      final relSegments = p.posix.split(relativePosix).where((s) => s.isNotEmpty);
+      final result = p.joinAll([localLibraryPath, ...relSegments]);
+      logTrace('Path mapping: "$sonarrPath" → "$result"');
+      return PathString(result);
+    }
+
+    logTrace('fromSonarrPath: could not translate "$sonarrPath" (root=$sonarrRoot, library=$localLibraryPath)');
+    return null;
+  }
+
+  static String _toPosix(String path) => p.posix.normalize(path.replaceAll('\\', '/'));
+  static String _stripTrailingSlash(String s) => s.endsWith('/') ? s.substring(0, s.length - 1) : s;
+
+  /// Ensures the Sonarr series path matches the actual local folder so that manual-import API calls can find the files
+  ///
+  /// Call once before a batch of [manualImportFile] calls to avoid redundant API requests
+  ///
+  /// Returns the (possibly updated) Sonarr series path
+  ///
+  /// [localSeriesPath] is the local Windows path to the series folder (e.g. "M:\Videos\Series\Make Heroine ga Oosugiru!")
   Future<String> ensureSonarrSeriesPath(int sonarrSeriesId, String localSeriesPath) async {
     final expectedPath = toSonarrPath(localSeriesPath);
 
     final seriesJson = await _sonarr.getSeriesById(sonarrSeriesId);
-    final currentPath = (seriesJson['path'] as String?)?.replaceAll('\\', '/') ?? '';
+    final currentPath = _toPosix((seriesJson['path'] as String?) ?? '');
 
     if (currentPath != expectedPath) {
       logDebug('Updating Sonarr series path: "$currentPath" → "$expectedPath"');
@@ -230,14 +268,13 @@ class DownloadController {
     return expectedPath;
   }
 
-  /// Imports a local file into Sonarr, linking it to a specific episode.
+  /// Imports a local file into Sonarr, linking it to a specific episode
   ///
   /// Uses the manual import workflow:
   /// 1. GET /manualimport to let Sonarr parse the file (quality, language, etc.)
   /// 2. POST /command ManualImport to actually import it
   ///
-  /// **Important**: call [ensureSonarrSeriesPath] once before a batch of imports
-  /// so Sonarr's series folder matches the real folder on disk.
+  /// **Important**: call [ensureSonarrSeriesPath] once before a batch of imports so Sonarr's series folder matches the real folder on disk
   Future<void> manualImportFile({
     required String localFilePath,
     required int sonarrSeriesId,
@@ -256,8 +293,8 @@ class DownloadController {
     );
 
     // Find our file in the preview results
-    final match = previews.where((p) {
-      final pPath = (p['path'] as String?)?.replaceAll('\\', '/') ?? '';
+    final match = previews.where((preview) {
+      final pPath = _toPosix((preview['path'] as String?) ?? '');
       return pPath == sonarrFilePath;
     }).firstOrNull;
 
@@ -290,5 +327,52 @@ class DownloadController {
     final library = Provider.of<Library>(Manager.context, listen: false);
 
     return library.libraryDockerPath;
+  }
+
+  /// Returns the Sonarr/Docker-translated save path for [series] + [seasonNumber]
+  ///
+  /// Uses the existing [Season.path] when the season folder is already on disk, otherwise derives `Season NN` from the series path
+  ///
+  /// Returns `null` if the series has no local folder
+  String? seriesSeasonSavePath(Series series, int? seasonNumber) {
+    final local = _localSeriesSeasonPath(series, seasonNumber);
+    if (local == null) return null;
+    return toSonarrPath(local);
+  }
+
+  String? _localSeriesSeasonPath(Series series, int? seasonNumber) {
+    if (seasonNumber == null) return series.path.path;
+    final existing = series.seasons.firstWhereOrNull((s) => s.seasonNumber == seasonNumber);
+    if (existing != null) return existing.path.path;
+    return p.join(series.path.path, 'Season ${seasonNumber.toString().padLeft(2, '0')}');
+  }
+
+  /// Resolve a known tvdbId for [anilistId] by checking (in order):
+  /// - customMappings.getCustomTvdbId(anilistId)
+  /// - PlexAniBridge mapping service (official AniList → TheTVDB)
+  ///
+  /// Returns null if neither has an entry
+  ///
+  /// Does not call Sonarr's lookupSeries
+  Future<int?> resolveKnownTvdbId(int anilistId) async {
+    final custom = await _customMappingService.getCustomTvdbId(anilistId);
+    if (custom != null && custom != 0) return custom;
+    
+    final mapping = await _mappingService.getMapping(anilistId);
+    
+    final official = mapping?.tvdbId;
+    if (official != null && official != 0) return official;
+    return null;
+  }
+
+  /// Returns the first tvdbId found across every anilistMapping on [series], using [resolveKnownTvdbId]
+  ///
+  /// Returns null if none of the mappings resolve
+  Future<int?> firstKnownTvdbForSeries(Series series) async {
+    for (final m in series.anilistMappings) {
+      final tvdb = await resolveKnownTvdbId(m.anilistId);
+      if (tvdb != null) return tvdb;
+    }
+    return null;
   }
 }

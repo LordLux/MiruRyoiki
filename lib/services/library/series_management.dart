@@ -7,17 +7,7 @@ extension LibrarySeriesManagement on Library {
     if (exactMatch != null) return exactMatch;
 
     // If no exact match, check if the path is inside any series directory
-    return _series.firstWhereOrNull((s) {
-      // Check if the given path starts with the series path
-      if (path.path.startsWith(s.path.path)) {
-        // Get the relative path from series to the given path
-        final relativePath = path.path.substring(s.path.path.length);
-
-        // If the relative path is empty or starts with a separator, it's inside this series
-        return relativePath.isEmpty || relativePath.startsWith('/') || relativePath.startsWith('\\');
-      }
-      return false;
-    });
+    return _series.firstWhereOrNull((s) => p.isWithin(s.path.path, path.path));
   }
 
   /// Find an episode by file path across all series

@@ -1,18 +1,23 @@
-import '../../utils/units.dart';
+part of '../torrent_release.dart';
 
 /// A single torrent result returned by Knaben's `/v1` search API
-class KnabenRelease {
+class KnabenRelease extends TorrentRelease {
+  @override
   final String title;
   final String magnetUrl;
+  @override
   final int bytes;
+  @override
   final int seeders;
+  @override
   final int peers;
+  @override
   final String tracker;
   final double virusDetection;
   final String? category;
   final DateTime? dateAdded;
 
-  const KnabenRelease({
+  KnabenRelease({
     required this.title,
     required this.magnetUrl,
     required this.bytes,
@@ -24,15 +29,8 @@ class KnabenRelease {
     this.dateAdded,
   });
 
-  /// Whether the release is likely a multi-episode / season batch
-  bool get isLikelyBatch {
-    final lower = title.toLowerCase();
-    return lower.contains('batch') ||
-        lower.contains('complete') ||
-        RegExp(r'(s\d+|season \d+)(?!.*e\d+)').hasMatch(lower);
-  }
-
-  /// Rough quality label derived from the title text.\
+  /// Rough quality label derived from the title text
+  @override
   String get quality {
     final lower = title.toLowerCase();
     if (lower.contains('2160p') || lower.contains('4k')) return '2160p';

@@ -1,7 +1,7 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/material.dart' as mat;
 
-import '../../models/sonarr/sonarr_release.dart';
+import '../../models/torrent_release.dart';
 import '../../services/sonarr/sonarr_service.dart';
 import '../../services/navigation/dialogs.dart';
 import '../../services/navigation/navigation.dart';

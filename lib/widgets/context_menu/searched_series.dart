@@ -4,10 +4,13 @@ import 'dart:io';
 
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter_desktop_context_menu/flutter_desktop_context_menu.dart';
+import 'package:provider/provider.dart';
 import '../../models/anilist/anime_card.dart';
+import '../../services/anilist/provider/anilist_provider.dart';
+import '../../services/library/library_provider.dart';
 import '../../utils/anilist_utils.dart';
 import '../../utils/icons.dart' as icons;
-import '../dialogs/entry_editor.dart';
+import '../../utils/searched_series_actions.dart' as actions;
 import 'controller.dart';
 
 class SearchedSeriesContextMenu extends StatefulWidget {
@@ -67,12 +70,31 @@ class SearchedSeriesContextMenuState extends State<SearchedSeriesContextMenu> {
     required final BuildContext context,
     required final AnimeCard series,
   }) {
+    final anilist = Provider.of<AnilistProvider>(context, listen: false);
+    final library = Provider.of<Library>(context, listen: false);
+    final isInAnilist = anilist.allUserAnilistIds.contains(series.id);
+    final isInLibrary = isInAnilist && library.mappedAnilistIds.contains(series.id);
+
+    final label = isInLibrary
+        ? 'Go to Series'
+        : isInAnilist
+            ? 'Add to Library'
+            : 'Add to Anilist';
+
     return Menu(
       items: [
         MenuItem(
-          label: 'Add to Anilist', // TODO: In a future update, make this label conditional (for example, 'Add to Library' or 'Go to Library Series') when library-state information is available here. For now this action always opens the AniList entry editor.
+          label: label,
           icon: icons.list,
-          onClick: (_) => _openEntryEditor(context),
+          onClick: (_) {
+            if (isInLibrary) {
+              actions.goToLibrarySeries(context, series.id);
+            } else if (isInAnilist) {
+              actions.startAddToLibraryFlow(context, series);
+            } else {
+              actions.openEntryEditor(context, series);
+            }
+          },
         ),
         MenuItem.separator(),
         MenuItem(
@@ -87,19 +109,6 @@ class SearchedSeriesContextMenuState extends State<SearchedSeriesContextMenu> {
   }
 
   void _openInAnilist(BuildContext context) => openAnilistAnime(widget.series.id);
-
-  void _openEntryEditor(BuildContext context) {
-    final s = widget.series;
-    final displayTitle = s.title.userPreferred ?? s.title.romaji ?? s.title.english ?? 'Unknown';
-    showEntryEditorDialog(
-      context,
-      mediaId: s.id,
-      title: displayTitle,
-      totalEpisodes: s.episodes,
-      coverImage: s.coverImage,
-      isFavourite: s.isFavourite,
-    );
-  }
 
   @override
   Widget build(BuildContext context) => widget.child;

@@ -4,10 +4,9 @@ import 'package:miruryoiki/utils/text.dart';
 import '../../models/sonarr/sonarr_episode.dart';
 import '../../models/sonarr/sonarr_episode_file.dart';
 import '../../models/sonarr/sonarr_quality_profile.dart';
-import '../../models/sonarr/sonarr_release.dart';
+import '../../models/torrent_release.dart';
 import '../../models/sonarr/sonarr_root_folder.dart';
 import '../../models/sonarr/sonarr_series.dart';
-import '../../utils/logging.dart';
 
 class SonarrRepository {
   final String _baseUrl; // e.g., http://localhost:8989
@@ -51,6 +50,7 @@ class SonarrRepository {
     required String title,
     required String rootFolderPath,
     required int qualityProfileId,
+    String? path, // optional custom path
   }) async {
     // logTrace('[Sonarr] ensureSeriesExists: tvdbId=$tvdbId, title="$title"');
     final checkUri = Uri.parse('$_baseUrl/api/v3/series?tvdbId=$tvdbId&apikey=$_apiKey');
@@ -65,7 +65,7 @@ class SonarrRepository {
     }
 
     final addUri = Uri.parse('$_baseUrl/api/v3/series?apikey=$_apiKey');
-    final payload = {
+    final payload = <String, dynamic>{
       "title": title,
       "tvdbId": tvdbId,
       "qualityProfileId": qualityProfileId,
@@ -75,7 +75,8 @@ class SonarrRepository {
       "seasonFolder": true,
       "addOptions": {
         "searchForMissingEpisodes": false
-      }
+      },
+      if (path != null) "path": path,
     };
 
     final addResponse = await _client.post(
@@ -155,8 +156,9 @@ class SonarrRepository {
     throw Exception('Failed to load episode files');
   }
 
-  /// Deletes an episode file record from Sonarr (unlinks it from the episode).
-  /// This does NOT delete the actual file on disk.
+  /// Deletes an episode file record from Sonarr (unlinks it from the episode)
+  ///
+  /// This does NOT delete the actual file on disk
   Future<void> deleteEpisodeFile(int episodeFileId) async {
     // logTrace('[Sonarr] deleteEpisodeFile: id=$episodeFileId');
     final uri = Uri.parse('$_baseUrl/api/v3/episodefile/$episodeFileId?apikey=$_apiKey');
@@ -169,11 +171,11 @@ class SonarrRepository {
     }
   }
 
-  /// Previews files available for manual import from a given folder.
+  /// Previews files available for manual import from a given folder
   ///
-  /// When [seriesId] is provided, Sonarr cross-references its episode file
-  /// database — which can crash (500) if any tracked file was deleted from
-  /// disk. Omit it to just scan the filesystem.
+  /// When [seriesId] is provided, Sonarr cross-references its episode file database — which can crash (500) if any tracked file was deleted from disk
+  ///
+  /// Omit it to just scan the filesystem
   Future<List<Map<String, dynamic>>> previewManualImport({
     required String folder,
     int? seriesId,
@@ -221,7 +223,7 @@ class SonarrRepository {
     }
   }
 
-  /// Triggers a RescanSeries command so Sonarr re-reads episode files on disk.
+  /// Triggers a RescanSeries command so Sonarr re-reads episode files on disk
   Future<void> rescanSeries(int seriesId) async {
     // logTrace('[Sonarr] rescanSeries: seriesId=$seriesId');
     final uri = Uri.parse('$_baseUrl/api/v3/command?apikey=$_apiKey');
@@ -276,9 +278,9 @@ class SonarrRepository {
     throw Exception('Failed to load series $seriesId');
   }
 
-  /// Updates the series path in Sonarr via PUT.
-  /// [seriesJson] should be the full series object (from [getSeriesById]) with
-  /// the `path` field changed.
+  /// Updates the series path in Sonarr via PUT
+  ///
+  /// [seriesJson] should be the full series object (from [getSeriesById]) with the `path` field changed
   Future<void> updateSeries(Map<String, dynamic> seriesJson) async {
     final id = seriesJson['id'];
     // logTrace('[Sonarr] updateSeries: id=$id, path="${seriesJson['path']}"');
@@ -292,6 +294,13 @@ class SonarrRepository {
     if (response.statusCode != 200 && response.statusCode != 202) {
       throw Exception('Failed to update series: ${response.body}');
     }
+  }
+
+  /// Updates only the `path` field of an existing Sonarr series
+  Future<void> updateSeriesPath(int sonarrSeriesId, String newPath) async {
+    final seriesJson = await getSeriesById(sonarrSeriesId);
+    seriesJson['path'] = newPath;
+    await updateSeries(seriesJson);
   }
 
   Future<bool> testConnection() async {

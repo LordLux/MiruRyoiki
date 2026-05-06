@@ -1137,7 +1137,6 @@ Future<void> _registerWindowsUrlScheme(String scheme) async {
   }
 }
 
-// TODO after entry editor update to episode progress, the previous 'last watched episode' is not updated UI
 // TODO update notification icon badge when reading notifications from notification dialog
 // TODO scanning library progress indicator in status bar in Browse page is bugged visually with background cards
 // TODO add 'random entry' button to top right corner of library
@@ -1152,10 +1151,13 @@ Future<void> _registerWindowsUrlScheme(String scheme) async {
 // TODO fix seriescards use dominant color for text regardless of setting
 // TODO 'no episodes found for this season' should be 'no episodes found for this series' when there are no episodes in any season
 // TODO when view is linkedOnly, hideFromUserList series automatically get added to Watching -> add category for them
-// TODO released section in homepage to show release but not yet downloaded
+// TODO released section in homepage to show released but not yet downloaded
 // TODO view settings to choose what to show on homepage
 // TODO fix settings players order not actually changing + add cursor to reordering handles
 // TODO add dialog after clicking random entry to choose between confirm or pick another random entry
+// TODO intercept esc key when focused on rename file in file explorer to unfocus instead of closing the dialog
+// TODO disable 'Add to Anilist'/'Add to Library' button until fetch is complete
+// TODO fix back mouse button not working on multi-state dialogs
 
 // TODO cache Anilist lists to be able to work offline
 
@@ -1167,7 +1169,6 @@ Future<void> _registerWindowsUrlScheme(String scheme) async {
 // TODO remove hardcoded filtering for only the local series for scheduled releases notifications as we'll have the ability to download them
 // TODO add ctrl + tab navigation
 // TODO Local 'Unlinked' auto connect to Anilist 'About to Watch' (allow custom name to search for)
-// TODO fix back mouse button navigation
 // TODO add group traversal policies to app
 // TODO detect custom players
 // TODO create autolinker

@@ -13,6 +13,7 @@ import 'package:win32/win32.dart';
 
 import 'path.dart';
 
+// Constants for ShellExecuteEx
 const int SEE_MASK_INVOKEIDLIST = 0x0000000C;
 const int SEE_MASK_NO_CONSOLE = 0x00008000;
 const int SEE_MASK_FLAG_DDEWAIT = 0x00000100;
@@ -22,6 +23,12 @@ const int HWND_TOP = 0;
 const int SWP_NOMOVE = 0x0002;
 const int SWP_NOSIZE = 0x0001;
 const int SWP_SHOWWINDOW = 0x0040;
+
+// Constants for SHFileOperation
+const int FO_DELETE = 0x0003;
+const int FOF_ALLOWUNDO = 0x0040;
+const int FOF_NOCONFIRMATION = 0x0010;
+const int FOF_SILENT = 0x0004;
 
 // GUIDs for IShellLink
 const String IID_IShellLinkW = '{000214F9-0000-0000-C000-000000000046}';
@@ -39,6 +46,7 @@ abstract class IShellUtils {
   int findPlayerWindowByFilePath(String filePath);
   bool bringWindowToForeground(int hwnd);
   bool focusPlayerWindowByFilePath(String filePath);
+  void moveToRecycleBin(String path);
 }
 
 class RealShellUtils implements IShellUtils {
@@ -253,6 +261,42 @@ class RealShellUtils implements IShellUtils {
       return false;
     }
   }
+
+  // TODO: implement proper recycle bin support for other platforms
+  /// Moves [path] to the Windows Recycle Bin (with undo support)
+  ///
+  /// On non-Windows platforms the entity is permanently deleted
+  @override
+  void moveToRecycleBin(String path) {
+    if (!Platform.isWindows) {
+      try {
+        if (FileSystemEntity.isDirectorySync(path)) {
+          Directory(path).deleteSync(recursive: true);
+        } else {
+          File(path).deleteSync();
+        }
+      } catch (e) {
+        logErr('Error permanently deleting: $e', e);
+      }
+      return;
+    }
+
+    final units = path.codeUnits;
+    final pFrom = calloc<Uint16>(units.length + 2);
+    for (var i = 0; i < units.length; i++) {
+      pFrom[i] = units[i];
+    }
+    final fileOp = calloc<SHFILEOPSTRUCT>();
+    try {
+      fileOp.ref.wFunc = FO_DELETE;
+      fileOp.ref.pFrom = pFrom.cast<Utf16>();
+      fileOp.ref.fFlags = FOF_ALLOWUNDO | FOF_NOCONFIRMATION | FOF_SILENT;
+      SHFileOperation(fileOp);
+    } finally {
+      calloc.free(pFrom);
+      calloc.free(fileOp);
+    }
+  }
 }
 
 @visibleForTesting
@@ -286,6 +330,9 @@ class MockShellUtils implements IShellUtils {
 
   @override
   bool focusPlayerWindowByFilePath(String filePath) => true;
+
+  @override
+  void moveToRecycleBin(String path) {}
 }
 
 class ShellUtils {
@@ -299,4 +346,5 @@ class ShellUtils {
   static int findPlayerWindowByFilePath(String filePath) => ServiceLocator.shellUtils.findPlayerWindowByFilePath(filePath);
   static bool bringWindowToForeground(int hwnd) => ServiceLocator.shellUtils.bringWindowToForeground(hwnd);
   static bool focusPlayerWindowByFilePath(String filePath) => ServiceLocator.shellUtils.focusPlayerWindowByFilePath(filePath);
+  static void moveToRecycleBin(String path) => ServiceLocator.shellUtils.moveToRecycleBin(path);
 }

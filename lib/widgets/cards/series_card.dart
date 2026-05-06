@@ -19,16 +19,36 @@ import '../context_menu/series.dart';
 import '../context_menu/controller.dart';
 import '../series_card_indicators.dart';
 
+class SeriesCardOptions {
+  final BorderRadius borderRadius;
+  final bool disableContextMenu;
+  final bool hideCardIndicators;
+  final bool hideAiringIndicator;
+  final bool hideEpisodeProgress;
+  final bool hideProgressBar;
+  final bool hideProgressPercentage;
+
+  const SeriesCardOptions({
+    this.borderRadius = const BorderRadius.all(Radius.circular(8.0)),
+    this.disableContextMenu = false,
+    this.hideCardIndicators = false,
+    this.hideAiringIndicator = false,
+    this.hideEpisodeProgress = false,
+    this.hideProgressBar = false,
+    this.hideProgressPercentage = false,
+  });
+}
+
 class SeriesCard extends StatefulWidget {
   final Series series;
   final VoidCallback onTap;
-  final BorderRadius borderRadius;
+  final SeriesCardOptions options;
 
   const SeriesCard({
     super.key,
     required this.series,
     required this.onTap,
-    this.borderRadius = const BorderRadius.all(Radius.circular(8.0)),
+    this.options = const SeriesCardOptions(),
   });
 
   @override
@@ -158,7 +178,8 @@ class _SeriesCardState extends State<SeriesCard> {
   Widget build(BuildContext context) {
     final anilistProvider = Provider.of<AnilistProvider>(context, listen: false);
     final progressManager = AnilistProgressManager.instance;
-    
+    final options = widget.options;
+
     final Color? cachedPrimaryColor = widget.series.effectivePrimaryColorSync();
 
     final Color mainColor;
@@ -179,204 +200,221 @@ class _SeriesCardState extends State<SeriesCard> {
         mainColor = Manager.genericGray;
         break;
     }
-    return KeyedSubtree(
-      key: ValueKey('${widget.series.path}-${_dominantColor ?? cachedPrimaryColor?.value ?? 0}'),
-      child: SeriesContextMenu(
-        controller: _menuController,
-        series: widget.series,
-        context: context,
-        navigateToSeriesScreen: widget.onTap,
-        onChanged: () {
-          if (mounted) setState(() {});
-        },
-        child: MouseRegion(
-          onEnter: (_) => setState(() => _isHovering = true),
-          onExit: (_) {
-            StatusBarManager().hide();
-            setState(() => _isHovering = false);
-          },
-          onHover: (_) => StatusBarManager().showDelayed(widget.series.name),
-          cursor: SystemMouseCursors.click,
-          child: ClipRRect(
-            borderRadius: widget.borderRadius,
-            child: AnimatedContainer(
-              duration: shortDuration,
-              decoration: BoxDecoration(
-                borderRadius: widget.borderRadius,
-                color: Colors.transparent,
-                boxShadow: _isHovering
-                    ? [
-                        BoxShadow(
-                          color: mainColor.withOpacity(0.05),
-                          blurRadius: 8,
-                          spreadRadius: 1,
-                        )
-                      ]
-                    : null,
+    final Widget cardContent = MouseRegion(
+      onEnter: (_) => setState(() => _isHovering = true),
+      onExit: (_) {
+        StatusBarManager().hide();
+        setState(() => _isHovering = false);
+      },
+      onHover: (_) => StatusBarManager().showDelayed(widget.series.name),
+      cursor: SystemMouseCursors.click,
+      child: ClipRRect(
+        borderRadius: options.borderRadius,
+        child: AnimatedContainer(
+          duration: shortDuration,
+          decoration: BoxDecoration(
+            borderRadius: options.borderRadius,
+            color: Colors.transparent,
+            boxShadow: _isHovering
+                ? [
+                    BoxShadow(
+                      color: mainColor.withOpacity(0.05),
+                      blurRadius: 8,
+                      spreadRadius: 1,
+                    )
+                  ]
+                : null,
+          ),
+          child: Stack(
+            children: [
+              // Poster image
+              Positioned.fill(
+                top: 0,
+                child: Container(
+                  child: _getSeriesImage(),
+                ),
               ),
-              child: Stack(
-                children: [
-                  // Poster image
-                  Positioned.fill(
-                    top: 0,
-                    child: Container(
-                      child: _getSeriesImage(),
-                    ),
-                  ),
-                  // to fix visual glitch
-                  // Positioned(
-                  //   bottom: 0,
-                  //   child: Container(
-                  //     color: Colors.black,
-                  //     height: 1,
-                  //     width: 1000,
-                  //   ),
-                  // ),
-                  Card(
-                    padding: EdgeInsets.zero,
-                    borderRadius: widget.borderRadius,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Poster image
-                        Expanded(child: SizedBox.shrink()),
+              // to fix visual glitch
+              // Positioned(
+              //   bottom: 0,
+              //   child: Container(
+              //     color: Colors.black,
+              //     height: 1,
+              //     width: 1000,
+              //   ),
+              // ),
+              Card(
+                padding: EdgeInsets.zero,
+                borderRadius: options.borderRadius,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.max,
+                  children: [
+                    // Poster image
+                    Expanded(child: SizedBox.shrink()),
 
-                        LayoutBuilder(builder: (context, constraints) {
-                          return Transform.scale(
-                            scale: 1.01,
-                            child: Transform.translate(
-                              offset: Offset(0, .5),
-                              child: AnimatedContainer(
-                                duration: splashScreenFadeAnimationIn,
-                                width: constraints.maxWidth,
-                                height: 4,
-                                color: Color.lerp(Colors.black.withOpacity(0.2), _dominantColor ?? cachedPrimaryColor, .4),
-                                child: Align(
-                                  alignment: Alignment.topLeft,
-                                  child: AnimatedContainer(
-                                    duration: splashScreenFadeAnimationIn,
-                                    color: progressManager.getSeriesProgress(widget.series, anilistProvider) == 0 ? Colors.transparent : _dominantColor ?? cachedPrimaryColor,
-                                    width: constraints.maxWidth * progressManager.getSeriesProgress(widget.series, anilistProvider),
-                                  ),
+                    if (!options.hideProgressBar)
+                      LayoutBuilder(builder: (context, constraints) {
+                        return Transform.scale(
+                          scale: 1.01,
+                          child: Transform.translate(
+                            offset: Offset(0, .5),
+                            child: AnimatedContainer(
+                              duration: splashScreenFadeAnimationIn,
+                              width: constraints.maxWidth,
+                              height: 4,
+                              color: Color.lerp(Colors.black.withOpacity(0.2), _dominantColor ?? cachedPrimaryColor, .4),
+                              child: Align(
+                                alignment: Alignment.topLeft,
+                                child: AnimatedContainer(
+                                  duration: splashScreenFadeAnimationIn,
+                                  color: progressManager.getSeriesProgress(widget.series, anilistProvider) == 0 ? Colors.transparent : _dominantColor ?? cachedPrimaryColor,
+                                  width: constraints.maxWidth * progressManager.getSeriesProgress(widget.series, anilistProvider),
                                 ),
                               ),
                             ),
-                          );
-                        }),
+                          ),
+                        );
+                      }),
 
-                        // Series info
-                        Builder(builder: (context) {
-                          final double value = widget.series.isAnilistPosterBeingUsed ? .76 : .9;
-                          final Color nicerColor = mainColor.lerpWith(Colors.grey, value);
+                    // Series info
+                    Builder(builder: (context) {
+                      final double value = widget.series.isAnilistPosterBeingUsed ? .76 : .9;
+                      final Color nicerColor = mainColor.lerpWith(Colors.grey, value);
+                      final bool showEpisodeProgress = !options.hideEpisodeProgress;
+                      final bool showProgressPercentage = !options.hideProgressPercentage;
 
-                          Widget child = AnimatedContainer(
+                      Widget child = AnimatedContainer(
+                        duration: splashScreenFadeAnimationIn,
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              Colors.black.withOpacity(.3),
+                              Colors.transparent,
+                              Colors.transparent,
+                              Colors.transparent,
+                            ],
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                          ),
+                        ),
+                        child: Padding(
+                          padding: EdgeInsets.all(12.0 * Manager.fontSizeMultiplier),
+                          child: AnimatedContainer(
                             duration: splashScreenFadeAnimationIn,
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                colors: [
-                                  Colors.black.withOpacity(.3),
-                                  Colors.transparent,
-                                  Colors.transparent,
-                                  Colors.transparent,
-                                ],
-                                begin: Alignment.topCenter,
-                                end: Alignment.bottomCenter,
-                              ),
-                            ),
-                            child: Padding(
-                              padding: EdgeInsets.all(12.0 * Manager.fontSizeMultiplier),
-                              child: AnimatedContainer(
-                                duration: splashScreenFadeAnimationIn,
-                                constraints: BoxConstraints(minHeight: 42 * min(Manager.fontSizeMultiplier, 1)),
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      widget.series.name,
-                                      style: Manager.bodyStrongStyle.copyWith(fontSize: 12 * Manager.fontSizeMultiplier),
-                                      maxLines: 3,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                    VDiv(4),
-                                    Row(
-                                      children: [
+                            constraints: BoxConstraints(minHeight: (showEpisodeProgress || showProgressPercentage ? 42 : 34) * min(Manager.fontSizeMultiplier, 1)),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                SizedBox(
+                                  width: double.infinity,
+                                  child: Text(
+                                    widget.series.name,
+                                    style: Manager.bodyStrongStyle.copyWith(fontSize: 12 * Manager.fontSizeMultiplier),
+                                    maxLines: 3,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                if (showEpisodeProgress || showProgressPercentage) ...[
+                                  VDiv(4),
+                                  Row(
+                                    children: [
+                                      if (showEpisodeProgress)
                                         Text(
                                           '${progressManager.getWatchedEpisodes(widget.series, anilistProvider)} / ${progressManager.getTotalEpisodes(widget.series)} Episodes',
                                           style: Manager.miniBodyStyle.copyWith(color: Color.lerp(_dominantColor ?? cachedPrimaryColor, Colors.white, .7)),
                                         ),
-                                        const Spacer(),
+                                      if (showEpisodeProgress && showProgressPercentage) const Spacer(),
+                                      if (showProgressPercentage)
                                         Text(
                                           '${(progressManager.getSeriesProgress(widget.series, anilistProvider) * 100).round()}%',
                                           style: Manager.miniBodyStyle.copyWith(color: Color.lerp(_dominantColor ?? cachedPrimaryColor, Colors.white, .7)),
                                         ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          );
-                          if (widget.series.isAnilistPosterBeingUsed) {
-                            return Transform.scale(
-                              scale: 1.02,
-                              child: Transform.translate(
-                                offset: Offset(0, 1),
-                                child: Acrylic(
-                                  blurAmount: 2,
-                                  tint: nicerColor.lerpWith(Colors.grey, 0.2),
-                                  elevation: 0.5,
-                                  tintAlpha: 0.5,
-                                  luminosityAlpha: 0.8,
-                                  child: FrostedNoise(
-                                    child: child,
+                                    ],
                                   ),
-                                ),
-                              ),
-                            );
-                          }
-                          return AnimatedContainer(
-                            duration: splashScreenFadeAnimationIn,
-                            color: nicerColor,
-                            child: child,
-                          );
-                        }),
-                      ],
-                    ),
-                  ),
-
-                  // Hover overlay
-                  Positioned.fill(
-                    child: Material(
-                      color: Colors.transparent,
-                      child: GestureDetector(
-                        onSecondaryTapDown: (_) => _menuController.open(),
-                        child: InkWell(
-                          onTap: widget.onTap,
-                          splashColor: mainColor.withOpacity(0.1),
-                          highlightColor: mainColor.withOpacity(0.05),
-                          borderRadius: widget.borderRadius,
-                          child: AnimatedContainer(
-                            duration: shortDuration,
-                            decoration: BoxDecoration(
-                              borderRadius: widget.borderRadius,
-                              color: _isHovering ? mainColor.withOpacity(0.1) : Colors.transparent,
+                                ],
+                              ],
                             ),
                           ),
+                        ),
+                      );
+                      if (widget.series.isAnilistPosterBeingUsed) {
+                        return Transform.scale(
+                          scale: 1.02,
+                          child: Transform.translate(
+                            offset: Offset(0, 1),
+                            child: Acrylic(
+                              blurAmount: 2,
+                              tint: nicerColor.lerpWith(Colors.grey, 0.2),
+                              elevation: 0.5,
+                              tintAlpha: 0.5,
+                              luminosityAlpha: 0.8,
+                              child: FrostedNoise(
+                                child: child,
+                              ),
+                            ),
+                          ),
+                        );
+                      }
+                      return AnimatedContainer(
+                        duration: splashScreenFadeAnimationIn,
+                        color: nicerColor,
+                        child: child,
+                      );
+                    }),
+                  ],
+                ),
+              ),
+
+              // Hover overlay
+              Positioned.fill(
+                child: Material(
+                  color: Colors.transparent,
+                  child: GestureDetector(
+                    onSecondaryTapDown: options.disableContextMenu ? null : (_) => _menuController.open(),
+                    child: InkWell(
+                      onTap: widget.onTap,
+                      splashColor: mainColor.withOpacity(0.1),
+                      highlightColor: mainColor.withOpacity(0.05),
+                      borderRadius: options.borderRadius,
+                      child: AnimatedContainer(
+                        duration: shortDuration,
+                        decoration: BoxDecoration(
+                          borderRadius: options.borderRadius,
+                          color: _isHovering ? mainColor.withOpacity(0.1) : Colors.transparent,
                         ),
                       ),
                     ),
                   ),
-
-                  CardIndicators(series: widget.series),
-
-                  AiringIndicator(series: widget.series, isHovered: _isHovering),
-                ],
+                ),
               ),
-            ),
+
+              if (!options.hideCardIndicators) CardIndicators(series: widget.series),
+
+              if (!options.hideAiringIndicator) AiringIndicator(series: widget.series, isHovered: _isHovering),
+            ],
           ),
         ),
       ),
+    );
+
+    return KeyedSubtree(
+      key: ValueKey(
+        '${widget.series.path}-${_dominantColor ?? cachedPrimaryColor?.value ?? 0}-${options.disableContextMenu}-${options.hideCardIndicators}-${options.hideAiringIndicator}-${options.hideEpisodeProgress}-${options.hideProgressBar}-${options.hideProgressPercentage}',
+      ),
+      child: options.disableContextMenu
+          ? cardContent
+          : SeriesContextMenu(
+              controller: _menuController,
+              series: widget.series,
+              context: context,
+              navigateToSeriesScreen: widget.onTap,
+              onChanged: () {
+                if (mounted) setState(() {});
+              },
+              child: cardContent,
+            ),
     );
   }
 }

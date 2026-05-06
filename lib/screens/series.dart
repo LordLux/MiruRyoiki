@@ -3,6 +3,7 @@ import 'package:collection/collection.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/material.dart' as mat;
 import 'package:miruryoiki/widgets/acrylic_header.dart';
+import 'package:miruryoiki/widgets/file_explorer.dart';
 import 'package:provider/provider.dart';
 import 'package:defer_pointer/defer_pointer.dart';
 
@@ -59,7 +60,7 @@ import '../models/ui_episode.dart';
 import '../models/sonarr/sonarr_episode.dart';
 import '../widgets/dialogs/knaben_search.dart';
 import '../widgets/episode_grid.dart';
-import '../widgets/series_download_view.dart';
+import '../widgets/dialogs/manage_episodes_dialog.dart';
 import '../widgets/dialogs/sonarr_manual_link_dialog.dart';
 
 /// Duration for which AniList data is considered fresh and doesn't need refetching
@@ -96,7 +97,8 @@ class SeriesScreenState extends State<SeriesScreen> {
   List<SonarrEpisode>? _sonarrEpisodes;
   int? _sonarrSeriesId;
 
-  /// Sonarr episodes filtered to the current target season only.
+  /// Sonarr episodes filtered to the current target season only
+  ///
   /// Returns null for EpisodeTargets as single-episode mappings don't use Sonarr
   List<SonarrEpisode>? get _sonarrEpisodesForTarget {
     if (_sonarrEpisodes == null) return null;
@@ -177,7 +179,7 @@ class SeriesScreenState extends State<SeriesScreen> {
     if (!mounted) return {};
     final anilistProvider = Provider.of<AnilistProvider>(context, listen: false);
     final progressManager = AnilistProgressManager.instance;
-    
+
     if (isMappingMode && _cachedTarget != null) {
       return {
         if (_cachedTarget!.isCollection)
@@ -1212,7 +1214,13 @@ class SeriesScreenState extends State<SeriesScreen> {
             //   return;
             // }
 
-            linkWithAnilist(context, series, _loadAnilistData, setState);
+            linkWithAnilist(context, series, _loadAnilistData, setState,
+                explorerOptions: FileExplorerOptions(
+                  allowCreateFolder: true,
+                  allowRename: true,
+                  allowCurrentFolder: true,
+                  allowDelete: true,
+                ));
           },
           isButtonDisabled: anilistProvider.isOffline,
         );
@@ -1418,13 +1426,18 @@ class SeriesScreenState extends State<SeriesScreen> {
 
                         showPaddedDialog(
                           context,
-                          navigationItem: DialogNavigationItem(id: 'episode-search', title: 'Episode Search'),
+                          navigationItem: DialogNavigationItem(
+                            id: 'knaben:episode-search',
+                            title: 'Episode Search',
+                            dialogDoPopCheck: () => Manager.canPopDialog,
+                          ),
                           builder: (context, item, options) {
                             return PaddedDialog.custom(
                               navigationItem: item,
                               barrierOptions: options,
                               constraints: const BoxConstraints(maxWidth: 900, maxHeight: 900),
                               contentBuilder: (_, __) => KnabenSearchDialog(
+                                key: knabenSearchDialogKey,
                                 controller: controller,
                                 seriesTitles: titles,
                                 season: seasonNum,

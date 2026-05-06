@@ -65,9 +65,9 @@ extension AnilistProviderMutations on AnilistProvider {
     return null;
   }
 
-  /// Fetch a single media list entry from the AniList API and merge it into the local [_userLists] cache.
+  /// Fetch a single media list entry from the AniList API and merge it into the local [_userLists] cache
   ///
-  /// Returns the merged entry, or `null` when the entry doesn't exist.
+  /// Returns the merged entry, or `null` when the entry doesn't exist
   Future<AnilistMediaListEntry?> fetchMediaListEntry(int mediaId) async {
     final userId = _currentUser?.id;
     if (userId == null) return null;
@@ -118,15 +118,19 @@ extension AnilistProviderMutations on AnilistProvider {
       } else {
         // Status changed -> move to new list
         _userLists[oldListKey]!.entries.removeAt(idx);
-        if (_userLists.containsKey(targetListKey)) {
-          _userLists[targetListKey]!.entries.insert(0, entry);
-        }
-      }
-    } else {
-      // New entry -> insert into target list
-      if (_userLists.containsKey(targetListKey)) {
+        _userLists.putIfAbsent(
+          targetListKey,
+          () => AnilistUserList(entries: [], name: targetListKey, status: entry.status),
+        );
         _userLists[targetListKey]!.entries.insert(0, entry);
       }
+    } else {
+      // New entry -> insert into target list (create the list if it doesn't exist yet; happens when the user has never had an entry in this status)
+      _userLists.putIfAbsent(
+        targetListKey,
+        () => AnilistUserList(entries: [], name: targetListKey, status: entry.status),
+      );
+      _userLists[targetListKey]!.entries.insert(0, entry);
     }
 
     // Update custom-list memberships
@@ -265,65 +269,17 @@ extension AnilistProviderMutations on AnilistProvider {
     _saveListsToCache();
   }
 
-  // Public mutation methods
+  Future<bool> updateProgress(int mediaId, int progress) => saveEntry(mediaId: mediaId, progress: progress);
 
-  /// Update progress for an anime
-  Future<bool> updateProgress(int mediaId, int progress) async {
-    if (!_isOffline) {
-      try {
-        final success = await _anilistService.updateProgress(mediaId, progress);
-        if (success) {
-          await fetchMediaListEntry(mediaId);
-          return true;
-        }
-      } catch (e) {
-        logErr('Error updating progress online', e);
-      }
-    }
+  Future<bool> updateStatus(int mediaId, AnilistListApiStatus status) => saveEntry(mediaId: mediaId, status: status);
 
-    await queueMutation('progress', mediaId, {'progress': progress});
-    return true;
-  }
+  Future<bool> updateScore(int mediaId, int score) => saveEntry(mediaId: mediaId, score: score);
 
-  /// Update status for an anime
-  Future<bool> updateStatus(int mediaId, AnilistListApiStatus status) async {
-    if (!_isOffline) {
-      try {
-        final success = await _anilistService.updateStatus(mediaId, status);
-        if (success) {
-          await fetchMediaListEntry(mediaId);
-          return true;
-        }
-      } catch (e) {
-        logErr('Error updating status online', e);
-      }
-    }
-
-    await queueMutation('status', mediaId, {'status': status.name_});
-    return true;
-  }
-
-  /// Update score for an anime
-  Future<bool> updateScore(int mediaId, int score) async {
-    if (!_isOffline) {
-      try {
-        final success = await _anilistService.updateScore(mediaId, score);
-        if (success) {
-          await fetchMediaListEntry(mediaId);
-          return true;
-        }
-      } catch (e) {
-        logErr('Error updating score online', e);
-      }
-    }
-
-    await queueMutation('score', mediaId, {'score': score});
-    return true;
-  }
-
-  /// Comprehensive save of a media list entry.
+  /// Comprehensive save of a media list entry
   ///
-  /// Only non-null fields are sent. Returns true if the save succeeded or was queued.
+  /// Only non-null fields are sent
+  ///
+  /// Returns true if the save succeeded or was queued
   Future<bool> saveEntry({
     required int mediaId,
     AnilistListApiStatus? status,
@@ -340,7 +296,7 @@ extension AnilistProviderMutations on AnilistProvider {
   }) async {
     if (!_isOffline) {
       try {
-        final mutationResult = await _anilistService.saveMediaListEntry(
+        final responseJson = await _anilistService.saveMediaListEntry(
           mediaId: mediaId,
           status: status,
           scoreRaw: score,
@@ -354,9 +310,19 @@ extension AnilistProviderMutations on AnilistProvider {
           startedAt: startedAt,
           completedAt: completedAt,
         );
-        if (mutationResult != null) {
-          // Fetch single entry and merge into local cache instead of refetching the entire library
-          await fetchMediaListEntry(mediaId);
+        if (responseJson != null) {
+          // Merge the mutation response directly — authoritative and avoids any
+          // AniList eventual-consistency window that would make a follow-up GET
+          // return null for a brand-new entry
+          try {
+            final entry = AnilistMediaListEntry.fromJson(responseJson);
+            _mergeEntryIntoLists(entry);
+            _saveListsToCache();
+            notifyListeners();
+          } catch (e) {
+            logErr('Error parsing SaveMediaListEntry response for $mediaId — falling back to refetch', e);
+            await fetchMediaListEntry(mediaId);
+          }
           return true;
         }
       } catch (e) {
@@ -383,9 +349,7 @@ extension AnilistProviderMutations on AnilistProvider {
     return true;
   }
 
-  /// Delete a media list entry.
-  ///
-  /// Requires the list entry ID.
+  /// Delete a media list entry
   Future<bool> deleteEntry({required int mediaId, required int entryId}) async {
     if (!_isOffline) {
       try {
@@ -405,9 +369,9 @@ extension AnilistProviderMutations on AnilistProvider {
     return true;
   }
 
-  /// Toggle favourite status for an anime on AniList.
+  /// Toggle favourite status for an anime on AniList
   ///
-  /// Returns `true` if the API call succeeded.
+  /// Returns `true` if the API call succeeded
   Future<bool> toggleFavourite(int animeId) async {
     if (_isOffline) return false;
 
