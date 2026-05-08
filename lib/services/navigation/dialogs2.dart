@@ -48,8 +48,20 @@ class DialogNavigationItem extends NavigationItem {
   /// Callback to be called when the dialog is dismissed.
   final VoidCallback? onDismiss;
 
-  /// A function that checks whether the dialog can be popped at the moment of non-barrier dismissal.
+  /// Fallback pop-check for dialogs without a [controller]
+  /// 
+  /// When a [controller] is attached, [effectiveCanPop] takes precedence.
   final bool Function() dialogDoPopCheck;
+
+  /// Optional controller bound by a multi-state dialog's [State] in initState
+  /// 
+  /// When non-null, [effectiveCanPop] delegates to [DialogController.canPop] instead of [dialogDoPopCheck]
+  DialogController? controller;
+
+  /// Whether this dialog can currently be popped
+  /// 
+  /// Prefers [controller.canPop] when a controller is attached
+  bool effectiveCanPop() => controller?.canPop ?? dialogDoPopCheck();
 }
 
 /// Configuration options for dialogs with customizable barriers.
@@ -385,16 +397,6 @@ class PaddedDialogState extends State<PaddedDialog> {
 
   /// Positions the dialog on screen.
   void positionDialog(Position? alignment) => setState(() => this.alignment = alignment);
-
-  Positioned _AlignmentWidget({required Widget child}) {
-    return Positioned(
-      top: alignment?.top,
-      bottom: alignment?.bottom,
-      left: alignment?.left,
-      right: alignment?.right,
-      child: child,
-    );
-  }
 
   Alignment _fromPosition(Position? position) {
     if (position == null) return Alignment.center;

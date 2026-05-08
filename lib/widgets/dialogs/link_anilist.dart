@@ -36,8 +36,6 @@ import '../tooltip_wrapper.dart';
 import 'search_panel.dart';
 import 'show_dialog.dart';
 
-final GlobalKey<AnilistLinkMultiContentState> linkMultiDialogKey = GlobalKey<AnilistLinkMultiContentState>();
-
 class AnilistLinkMultiDialog extends StatelessWidget {
   final Series series;
   final SeriesLinkService linkService;
@@ -51,6 +49,7 @@ class AnilistLinkMultiDialog extends StatelessWidget {
   final bool lockAnilist;
   final bool startInAddMode;
   final FileExplorerOptions explorerOptions;
+  final DialogNavigationItem? item;
 
   const AnilistLinkMultiDialog({
     super.key,
@@ -66,12 +65,13 @@ class AnilistLinkMultiDialog extends StatelessWidget {
     this.lockAnilist = false,
     this.startInAddMode = false,
     this.explorerOptions = const FileExplorerOptions(allowFiles: true, allowCurrentFolder: true, autoSelectFolder: true),
+    this.item,
   });
 
   @override
   Widget build(BuildContext context) {
     return AnilistLinkMultiContent(
-      key: linkMultiDialogKey,
+      item: item,
       series: series,
       linkService: linkService,
       onLink: onLink,
@@ -85,12 +85,6 @@ class AnilistLinkMultiDialog extends StatelessWidget {
       explorerOptions: explorerOptions,
       onSave: (mappings) {
         onDialogComplete?.call(true, mappings);
-
-        if (mappings.isEmpty) {
-          homeKey.currentState?.setState(() {});
-          return;
-        }
-
         homeKey.currentState?.setState(() {});
       },
       onCancel: () => onDialogComplete?.call(null, <AnilistMapping>[]),
@@ -112,6 +106,7 @@ class AnilistLinkMultiContent extends StatefulWidget {
   final bool lockAnilist;
   final bool startInAddMode;
   final FileExplorerOptions explorerOptions;
+  final DialogNavigationItem? item;
 
   const AnilistLinkMultiContent({
     super.key,
@@ -128,13 +123,23 @@ class AnilistLinkMultiContent extends StatefulWidget {
     this.lockAnilist = false,
     this.startInAddMode = false,
     this.explorerOptions = const FileExplorerOptions(allowFiles: true, allowCurrentFolder: true, autoSelectFolder: true),
+    this.item,
   });
 
   @override
   AnilistLinkMultiContentState createState() => AnilistLinkMultiContentState();
 }
 
-class AnilistLinkMultiContentState extends State<AnilistLinkMultiContent> {
+class AnilistLinkMultiContentState extends State<AnilistLinkMultiContent> implements DialogController {
+  @override
+  bool get canPop => mode == 'view';
+
+  @override
+  bool onBackRequested() {
+    switchToViewMode();
+    return true;
+  }
+
   late List<AnilistMapping> mappings;
   late List<AnilistMapping> oldMappings;
   String mode = 'view';
@@ -210,7 +215,7 @@ class AnilistLinkMultiContentState extends State<AnilistLinkMultiContent> {
   @override
   void initState() {
     super.initState();
-    Manager.canPopDialog = true;
+    widget.item?.controller = this;
     mappings = List.from(widget.series.anilistMappings);
     oldMappings = List.from(mappings);
     currentDirectory = widget.series.path;
@@ -223,6 +228,12 @@ class AnilistLinkMultiContentState extends State<AnilistLinkMultiContent> {
         switchToViewMode();
       }
     });
+  }
+
+  @override
+  void dispose() {
+    widget.item?.controller = null;
+    super.dispose();
   }
 
   void _loadFolderContents() {
@@ -265,7 +276,6 @@ class AnilistLinkMultiContentState extends State<AnilistLinkMultiContent> {
 
     setState(() {
       mode = 'view';
-      Manager.canPopDialog = true; // Allow dialog to be popped in view mode
       selectedLocalPath = null;
       selectedAnilistId = null;
       selectedTitle = null;
@@ -286,7 +296,6 @@ class AnilistLinkMultiContentState extends State<AnilistLinkMultiContent> {
 
     setState(() {
       mode = 'add';
-      Manager.canPopDialog = false; // Prevent popping in add mode
       selectedLocalPath = widget.initialLocalPath;
       selectedAnilistId = widget.initialAnilistId;
       selectedTitle = null; // Will be set by AnilistSimpleSearchPanel when it loads the initial title
@@ -988,7 +997,6 @@ void linkWithAnilist(
       id: 'anilist:link-series:${series.path}',
       title: 'Link to Anilist',
       data: series.path,
-      dialogDoPopCheck: () => Manager.canPopDialog, // Allow popping only when in view mode
     ),
     barrierOptions: PaddedBarrierOptions(
       barrierColor: Manager.dominantOrAccentColor.withOpacity(0.5),
@@ -1004,6 +1012,7 @@ void linkWithAnilist(
         title: Text('Anilist Links for ${series.displayTitle}', overflow: TextOverflow.ellipsis),
         constraints: boxConstraints,
         content: AnilistLinkMultiDialog(
+          item: item,
           series: series,
           linkService: SeriesLinkService(),
           onLink: (_, __) {},
