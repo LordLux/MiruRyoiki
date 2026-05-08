@@ -203,7 +203,6 @@ class _SeriesDownloadViewState extends State<SeriesDownloadView> {
       navigationItem: DialogNavigationItem(
         id: 'knaben:season-search',
         title: 'Season Search',
-        dialogDoPopCheck: () => Manager.canPopDialog,
       ),
       builder: (context, item, options) {
         return PaddedDialog.custom(
@@ -211,7 +210,7 @@ class _SeriesDownloadViewState extends State<SeriesDownloadView> {
           barrierOptions: options,
           constraints: const BoxConstraints(maxWidth: 850, maxHeight: 650),
           contentBuilder: (_, __) => KnabenSearchDialog(
-            key: knabenSearchDialogKey,
+            item: item,
             controller: controller,
             seriesTitles: titles,
             season: season,
@@ -250,7 +249,6 @@ class _SeriesDownloadViewState extends State<SeriesDownloadView> {
       navigationItem: DialogNavigationItem(
         id: 'knaben:episode-search',
         title: 'Episode Search',
-        dialogDoPopCheck: () => Manager.canPopDialog,
       ),
       builder: (context, item, options) {
         return PaddedDialog.custom(
@@ -258,7 +256,7 @@ class _SeriesDownloadViewState extends State<SeriesDownloadView> {
           barrierOptions: options,
           constraints: const BoxConstraints(maxWidth: 900, maxHeight: 900),
           contentBuilder: (_, __) => KnabenSearchDialog(
-            key: knabenSearchDialogKey,
+            item: item,
             controller: controller,
             seriesTitles: titles,
             season: ep.seasonNumber,

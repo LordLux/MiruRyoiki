@@ -1429,7 +1429,6 @@ class SeriesScreenState extends State<SeriesScreen> {
                           navigationItem: DialogNavigationItem(
                             id: 'knaben:episode-search',
                             title: 'Episode Search',
-                            dialogDoPopCheck: () => Manager.canPopDialog,
                           ),
                           builder: (context, item, options) {
                             return PaddedDialog.custom(
@@ -1437,7 +1436,7 @@ class SeriesScreenState extends State<SeriesScreen> {
                               barrierOptions: options,
                               constraints: const BoxConstraints(maxWidth: 900, maxHeight: 900),
                               contentBuilder: (_, __) => KnabenSearchDialog(
-                                key: knabenSearchDialogKey,
+                                item: item,
                                 controller: controller,
                                 seriesTitles: titles,
                                 season: seasonNum,

@@ -8,6 +8,7 @@ import '../../services/downloads/download_controller.dart';
 import '../../services/downloads/torrent_manager.dart';
 import '../../services/knaben/knaben_service.dart';
 import '../../services/navigation/dialogs.dart';
+import '../../services/navigation/dialogs2.dart';
 import '../../services/navigation/navigation.dart';
 import '../../services/navigation/show_info.dart';
 import '../../settings.dart';
@@ -21,9 +22,6 @@ import '../buttons/button.dart';
 enum _SearchProvider { knaben, sonarr }
 
 enum _Step { search, confirm }
-
-/// Global key used by the ESC key back-navigation handler in `shortcuts.dart`
-final GlobalKey<KnabenSearchDialogState> knabenSearchDialogKey = GlobalKey<KnabenSearchDialogState>();
 
 /// Dialog that searches Knaben or Sonarr for releases and lets the user download them
 class KnabenSearchDialog extends StatefulWidget {
@@ -49,6 +47,8 @@ class KnabenSearchDialog extends StatefulWidget {
   /// May be null when the series is not yet in the local library
   final Series? series;
 
+  final DialogNavigationItem? item;
+
   const KnabenSearchDialog({
     super.key,
     required this.controller,
@@ -60,13 +60,22 @@ class KnabenSearchDialog extends StatefulWidget {
     this.sonarrEpisodeId,
     this.sonarrSeriesId,
     this.series,
+    this.item,
   });
 
   @override
   State<KnabenSearchDialog> createState() => KnabenSearchDialogState();
 }
 
-class KnabenSearchDialogState extends State<KnabenSearchDialog> {
+class KnabenSearchDialogState extends State<KnabenSearchDialog> implements DialogController {
+  @override
+  bool get canPop => _step == _Step.search;
+
+  @override
+  bool onBackRequested() {
+    backToSearch();
+    return true;
+  }
   late TextEditingController _searchController;
   bool _isCustomSearch = false;
 
@@ -105,7 +114,6 @@ class KnabenSearchDialogState extends State<KnabenSearchDialog> {
     setState(() {
       _step = _Step.confirm;
       _selectedRelease = release;
-      Manager.canPopDialog = false; // Block barrier dismiss + ESC pop while a release is staged
     });
   }
 
@@ -116,7 +124,6 @@ class KnabenSearchDialogState extends State<KnabenSearchDialog> {
     setState(() {
       _step = _Step.search;
       _selectedRelease = null;
-      Manager.canPopDialog = true;
     });
   }
 
@@ -175,6 +182,7 @@ class KnabenSearchDialogState extends State<KnabenSearchDialog> {
   @override
   void initState() {
     super.initState();
+    widget.item?.controller = this;
     _destFolderController = TextEditingController(text: _initialDestFolder());
     _liveSearch = SettingsManager().knabenLiveSearch;
     _sonarrAvailable = TorrentManager.sonarrRepository != null && (widget.sonarrEpisodeId != null || widget.sonarrSeriesId != null);
@@ -203,9 +211,9 @@ class KnabenSearchDialogState extends State<KnabenSearchDialog> {
 
   @override
   void dispose() {
+    widget.item?.controller = null;
     _searchController.dispose();
     _destFolderController.dispose();
-    Manager.canPopDialog = true; // Restore in case we're disposed mid-confirm
     super.dispose();
   }
 
