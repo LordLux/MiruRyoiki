@@ -1,12 +1,10 @@
 // ignore_for_file: constant_identifier_names
 
 import 'package:fluent_ui/fluent_ui.dart';
-import 'package:flutter/foundation.dart';
 import 'package:miruryoiki/utils/time.dart';
 
 import '../../main.dart';
 import '../../manager.dart';
-import '../../utils/logging.dart';
 import 'dialogs2.dart';
 
 enum NavigationLevel {
