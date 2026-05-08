@@ -8,6 +8,19 @@ import '../../widgets/frosted_noise.dart';
 import 'dialogs.dart';
 import 'navigation.dart';
 
+/// Interface for multi-state dialogs that need to intercept back/dismiss requests and handle them internally (e.g. "go up one step") before letting the navigation framework close the route
+///
+/// Implement this on a dialog's [State] and assign [DialogNavigationItem.controller] in [State.initState] to opt in
+abstract class DialogController {
+  /// Whether the dialog can currently be closed by the user via barrier tap, ESC key, or the mouse-back button
+  bool get canPop;
+
+  /// Called when the user requests back/dismiss while [canPop] is false
+  ///
+  /// Return `true` if the dialog handled the request internally (e.g. returned to a previous inner step). Return `false` to let the navigation framework pop the route as usual
+  bool onBackRequested();
+}
+
 /// A navigation item that represents a dialog in the navigation system.
 ///
 /// This class extends [NavigationItem] to provide dialog-specific functionality,

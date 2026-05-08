@@ -210,7 +210,10 @@ class NavigationManager extends ChangeNotifier {
   bool get hasPane => _stack.isNotEmpty && _stack.last.level == NavigationLevel.pane;
   bool get hasPage => _stack.isNotEmpty && _stack.last.level == NavigationLevel.page;
   bool get hasDialog => _stack.length > 1 && _stack.last.level == NavigationLevel.dialog;
-  bool get isDialogLocked => hasDialog && !(_stack.last as DialogNavigationItem).dialogDoPopCheck();
+  bool get isDialogLocked => hasDialog && !(_stack.last as DialogNavigationItem).effectiveCanPop();
+
+  /// The topmost dialog item, or null if no dialog is open.
+  DialogNavigationItem? get currentDialog => hasDialog ? _stack.last as DialogNavigationItem : null;
 
   /// Returns if between the closest pane and the current view there is at least one page.
   bool get isTherePage {
