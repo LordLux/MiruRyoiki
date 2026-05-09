@@ -55,7 +55,7 @@ void goToLibrarySeries(BuildContext context, int anilistId) {
 
 /// Navigate to a local library series page (switches to Library pane + pushes page)
 void navigateToLibrarySeries(BuildContext context, Series series) {
-  context.read<NavigationManager>().pushPaneIndex(NavigationManager.LibraryIndex);
+  context.read<NavigationManager>().pushPane(NavigationManager.LibraryPane);
   context.read<NavigationManager>().pushPage(
     '/series:${series.path.path}',
     series.name,

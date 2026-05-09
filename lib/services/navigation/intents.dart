@@ -1,5 +1,7 @@
 import 'package:fluent_ui/fluent_ui.dart';
 
+import 'navigation.dart';
+
 // Intent definitions
 class OpenSettingsIntent extends Intent {
   const OpenSettingsIntent();
@@ -42,6 +44,6 @@ class ToggleDebugColorIntent extends Intent {
 }
 
 class GoToPaneIntent extends Intent {
-  const GoToPaneIntent(this.paneIndex);
-  final int paneIndex;
+  const GoToPaneIntent(this.pane);
+  final PaneDefinition pane;
 }

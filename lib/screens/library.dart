@@ -650,7 +650,7 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
   void _selectLibraryFolder() async {
     setState(() => _isSelectingFolder = true);
 
-    context.read<NavigationManager>().pushPaneIndex(NavigationManager.SettingsIndex);
+    context.read<NavigationManager>().pushPane(NavigationManager.SettingsPane);
 
     await SettingsScreenState.setLibraryPath(context);
 

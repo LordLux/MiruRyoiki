@@ -1092,10 +1092,7 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> with Autom
     final isToday = _selectedDate.year == now.year && _selectedDate.month == now.month && _selectedDate.day == now.day;
     final isFutureDate = _selectedDate.isAfter(DateTime(now.year, now.month, now.day));
 
-    // Check if we should show the "Show older notifications" button
-    // Show the button when:
-    // 1. We're on today and not in today-only mode and not showing older notifications
-    // 2. We're on a selected date that has no entries (filtered) and not showing older notifications
+    // Show the "Show older notifications" button when on today (outside today-only mode) or on a selected date that has no entries — but only if older notifications aren't already visible
     final isOnSelectedDateWithNoEntries = _filterSelectedDate && selectedDayEntries.isEmpty;
     final shouldShowOlderButton = (isToday && !_showOnlyTodayEpisodes && !_showOlderNotifications) || (isOnSelectedDateWithNoEntries && !_showOlderNotifications);
 

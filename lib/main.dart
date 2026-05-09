@@ -463,12 +463,13 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
   void openSettings() => onChangedPane(NavigationManager.SettingsIndex);
 
   void onChangedPane(int index) {
+    final pane = NavigationManager.getPane(index);
     setState(() {
       _selectedIndex = index;
       _isCompactView = false;
       Manager.currentDominantColor = null;
 
-      context.read<NavigationManager>().pushPaneIndex(index);
+      if (pane != null) context.read<NavigationManager>().pushPane(pane);
     });
   }
 
@@ -490,7 +491,7 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
 
     NavigationManager.instance.addListener(_onNavigationChanged);
 
-    nextFrame(() async => context.read<NavigationManager>().pushPaneIndex(NavigationManager.HomeIndex));
+    nextFrame(() async => context.read<NavigationManager>().pushPane(NavigationManager.HomePane));
   }
 
   @override
@@ -1004,7 +1005,7 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
                                   _selectedIndex = NavigationManager.CalendarIndex;
                                   Manager.currentDominantColor = null;
 
-                                  context.read<NavigationManager>().pushPaneIndex(NavigationManager.CalendarIndex);
+                                  context.read<NavigationManager>().pushPane(NavigationManager.CalendarPane);
                                 });
 
                                 // Refresh the release calendar after navigation
@@ -1033,7 +1034,7 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
     if (_selectedIndex != NavigationManager.LibraryIndex) {
       logTrace('Navigating to library pane before opening series view');
       // We just push the pane. The listener will handle the UI updates.
-      context.read<NavigationManager>().pushPaneIndex(NavigationManager.LibraryIndex);
+      context.read<NavigationManager>().pushPane(NavigationManager.LibraryPane);
 
       // Small delay to allow UI to update to library pane first
       await Future.delayed(const Duration(milliseconds: 50));

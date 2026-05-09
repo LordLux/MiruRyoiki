@@ -33,7 +33,7 @@ class _AnimeFilterHeaderState extends State<AnimeFilterHeader> {
         return Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // 2. Dropdowns
+            // Dropdowns
             _buildDropdown("Genres", _selectedGenre, ['Any', 'Action', 'Drama'], (v) => setState(() => _selectedGenre = v!), sizePerFilter),
             const SizedBox(width: 16),
             _buildDropdown("Year", _selectedYear, ['Any', '2024', '2023'], (v) => setState(() => _selectedYear = v!), sizePerFilter),
@@ -46,7 +46,7 @@ class _AnimeFilterHeaderState extends State<AnimeFilterHeader> {
 
             const SizedBox(width: 16),
 
-            // 3. Filter/List View Toggle Button (Far right in image)
+            // Filter/List View Toggle Button
             GlossyContainer(
               color: filterColorBg,
               opacity: 0.1,

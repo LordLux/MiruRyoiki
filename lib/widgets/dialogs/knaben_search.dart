@@ -169,7 +169,7 @@ class KnabenSearchDialogState extends State<KnabenSearchDialog> implements Dialo
           child: const Text('View Downloads'),
           onPressed: () {
             closeDialog();
-            context.read<NavigationManager>().pushPaneIndex(NavigationManager.TorrentIndex);
+            context.read<NavigationManager>().pushPane(NavigationManager.TorrentPane);
           },
         ));
 

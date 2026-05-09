@@ -226,33 +226,26 @@ class _SearchTemplatePageState extends State<SearchTemplatePage> with SingleTick
                                 onNotification: (notification) {
                                   if (widget.searchBarStatus != SearchBarStatus.automatic) return false;
 
-                                  // We only care about updates that change scroll position
                                   if (notification is ScrollUpdateNotification) {
                                     final currentPixels = notification.metrics.pixels;
 
-                                    // 1. Determine Direction
                                     final isScrollingDown = currentPixels > _lastPixels;
                                     final isScrollingUp = currentPixels < _lastPixels;
 
                                     // Update tracker for next frame
                                     _lastPixels = currentPixels;
 
-                                    // 2. LOGIC
-
-                                    // SCENARIO A: Scrolling DOWN (Leaving top)
-                                    // Trigger: Immediate collapse as soon as we leave 0
+                                    // Scrolling DOWN <-Immediate collapse as soon as we leave 0
                                     if (isScrollingDown && currentPixels > 0 && !_isScrolled) {
                                       _handleScroll(true);
                                     }
 
-                                    // SCENARIO B: Scrolling UP (Returning to top)
-                                    // Trigger: Early expansion if we are within the threshold
+                                    // Scrolling UP (Returning to top) <- Early expansion if we are within the threshold
                                     else if (isScrollingUp && currentPixels < expansionThreshold && _isScrolled) {
                                       _handleScroll(false);
                                     }
 
-                                    // SCENARIO C: Bounce safety
-                                    // If we hit 0 or negative (iOS bounce), strictly ensure we are expanded
+                                    // Bounce safety <- If we hit 0 or negative (iOS bounce), strictly ensure we are expanded
                                     else if (currentPixels <= 0 && _isScrolled) {
                                       _handleScroll(false);
                                     }

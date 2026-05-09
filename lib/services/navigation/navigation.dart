@@ -236,20 +236,13 @@ class NavigationManager extends ChangeNotifier {
   DateTime? _lastDialogOpenTime;
   DateTime? get lastDialogOpenTime => _lastDialogOpenTime;
 
-  /// Pushes a Pane. Adds to history
-  void pushPaneIndex(int index, {Object? data}) {
-    final pane = getPane(index)!;
-
-    // If we are already at this pane at the top of the stack, don't duplicate
+  /// Pushes a pane by its [PaneDefinition]
+  void pushPane(PaneDefinition pane, {Object? data}) {
     if (currentView?.level == NavigationLevel.pane && currentView?.id == pane.id) return;
 
-    // Snapshot the current pane's scroll position before replacing the route
     saveActiveScrollOffset();
-
-    // Clear Future History
     _forwardStack.clear();
 
-    // Add to Past History
     _pushToStack(NavigationItem(
       id: pane.id,
       title: pane.title,
@@ -257,11 +250,18 @@ class NavigationManager extends ChangeNotifier {
       data: data,
     ));
 
-    // Visual Navigation
-    _navigatorKey.currentState?.pushReplacementNamed('/${pane.id}', arguments: data); // push replacement because we keep the stack ourselves
+    _navigatorKey.currentState?.pushReplacementNamed('/${pane.id}', arguments: data);
 
-    // Specific logic for Calendar
-    if (index == CalendarIndex) nextFrame(() => releaseCalendarScreenKey.currentState?.loadReleaseData());
+    if (pane.id == CalendarId) nextFrame(() => releaseCalendarScreenKey.currentState?.loadReleaseData());
+  }
+
+  @Deprecated('Use pushPane instead')
+  void pushPaneIndex(int index, {Object? data}) => pushPane(getPane(index)!, data: data);
+
+  @Deprecated('Use pushPane instead')
+  void navigateToPane(String id) {
+    final pane = getPaneById(id);
+    if (pane != null) pushPane(pane);
   }
 
   /// Pushes a Page. Adds to history
@@ -413,14 +413,15 @@ class NavigationManager extends ChangeNotifier {
     return true;
   }
 
-  /// Goes forward one step (Re-does the last Back action)
+  /// Goes forward one step (re-does the last Back action)
   bool goForward() {
     if (!canGoForward) return false;
+    if (hasDialog) return false; // Dialogs are transient and must be dismissed before navigating forward
 
     // Snapshot scroll position of the current view before navigating away
     saveActiveScrollOffset();
 
-    // 1. Move from ForwardStack -> Stack
+    // Move from ForwardStack -> Stack
     final currentItem = _stack.last;
     final itemToRestore = _forwardStack.removeLast();
     _stack.add(itemToRestore);
@@ -434,7 +435,7 @@ class NavigationManager extends ChangeNotifier {
       return true;
     }
 
-    // 2. Visual Navigation
+    // Visual Navigation
     final navigator = _navigatorKey.currentState;
 
     if (itemToRestore.level == NavigationLevel.pane) {
@@ -473,35 +474,25 @@ class NavigationManager extends ChangeNotifier {
     return buffer.toString();
   }
 
-  // TODO: Remove, unused
-  @Deprecated('Use pushPaneIndex instead')
-  void navigateToPane(String id) {
-    final index = getIndexById(id);
-    if (index != null) pushPaneIndex(index);
-  }
-
   /// Resets the current pane to its root view by popping all pages on top of it.
   void resetCurrentPane() {
     if (_stack.isEmpty) return;
 
-    // 1. Find the index of the last Pane
+    // Find the index of the last Pane
     final lastPaneIndex = _stack.lastIndexWhere((item) => item.level == NavigationLevel.pane);
     if (lastPaneIndex == -1) return;
 
     // If we are already at the pane (and no pages/dialogs on top), do nothing
     if (lastPaneIndex == _stack.length - 1) return;
 
-    // 2. Identify the Pane
     final paneItem = _stack[lastPaneIndex];
 
-    // 3. Update Logical Stack
     // Remove everything after the pane
     _stack.removeRange(lastPaneIndex + 1, _stack.length);
 
     // Clear forward stack as we are resetting the branch
     _forwardStack.clear();
 
-    // 4. Visual Navigation
     // Pop until we reach the route corresponding to the pane
     _navigatorKey.currentState?.popUntil(ModalRoute.withName('/${paneItem.id}'));
 

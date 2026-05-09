@@ -34,12 +34,12 @@ Map<ShortcutActivator, Intent> _buildShortcuts() {
     ctrl(LogicalKeyboardKey.keyR): const ReloadLibraryIntent(),
     const SingleActivator(LogicalKeyboardKey.escape): const BackNavigationIntent(),
     const SingleActivator(LogicalKeyboardKey.f1): const DebugDialogIntent(),
-    ctrl(LogicalKeyboardKey.digit1): const GoToPaneIntent(NavigationManager.HomeIndex),
-    ctrl(LogicalKeyboardKey.digit2): const GoToPaneIntent(NavigationManager.LibraryIndex),
-    ctrl(LogicalKeyboardKey.digit3): const GoToPaneIntent(NavigationManager.CalendarIndex),
-    ctrl(LogicalKeyboardKey.digit4): const GoToPaneIntent(NavigationManager.BrowseIndex),
-    ctrl(LogicalKeyboardKey.digit5): const GoToPaneIntent(NavigationManager.TorrentIndex),
-    ctrl(LogicalKeyboardKey.digit6): const GoToPaneIntent(NavigationManager.AccountsIndex),
+    ctrl(LogicalKeyboardKey.digit1): GoToPaneIntent(NavigationManager.HomePane),
+    ctrl(LogicalKeyboardKey.digit2): GoToPaneIntent(NavigationManager.LibraryPane),
+    ctrl(LogicalKeyboardKey.digit3): GoToPaneIntent(NavigationManager.CalendarPane),
+    ctrl(LogicalKeyboardKey.digit4): GoToPaneIntent(NavigationManager.BrowsePane),
+    ctrl(LogicalKeyboardKey.digit5): GoToPaneIntent(NavigationManager.TorrentPane),
+    ctrl(LogicalKeyboardKey.digit6): GoToPaneIntent(NavigationManager.AccountsPane),
     ctrl(LogicalKeyboardKey.minus): const ZoomOutIntent(),
     SingleActivator(LogicalKeyboardKey.numpadSubtract, control: !mac, meta: mac): const ZoomOutIntent(),
     if (kDebugMode) ctrl(LogicalKeyboardKey.keyD, shift: true): const ToggleDebugColorIntent(),
@@ -77,7 +77,7 @@ class _CustomKeyboardListenerState extends State<CustomKeyboardListener> {
     _actions = {
       // Ctrl + ,
       OpenSettingsIntent: CallbackAction<OpenSettingsIntent>(
-        onInvoke: (_) => ctx.read<NavigationManager>().pushPaneIndex(NavigationManager.SettingsIndex),
+        onInvoke: (_) => ctx.read<NavigationManager>().pushPane(NavigationManager.SettingsPane),
       ),
       // Ctrl + = or Ctrl + Numpad Add
       ZoomInIntent: CallbackAction<ZoomInIntent>(
@@ -129,7 +129,7 @@ class _CustomKeyboardListenerState extends State<CustomKeyboardListener> {
       ),
       // Ctrl + 1-6
       GoToPaneIntent: CallbackAction<GoToPaneIntent>(
-        onInvoke: (intent) => ctx.read<NavigationManager>().pushPaneIndex(intent.paneIndex),
+        onInvoke: (intent) => ctx.read<NavigationManager>().pushPane(intent.pane),
       ),
       // Ctrl + Shift + D
       if (kDebugMode)
@@ -361,8 +361,11 @@ class _CustomKeyboardListenerState extends State<CustomKeyboardListener> {
   }
 
   void _handleForwardNavigation() {
+    final nav = context.read<NavigationManager>();
+    if (nav.hasDialog) return; // Dialogs are transient and must be dismissed before navigating forward
+
     logTrace('Forward navigation via mouse button 5');
-    context.read<NavigationManager>().goForward();
+    nav.goForward();
   }
 
   @override

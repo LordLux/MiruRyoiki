@@ -176,15 +176,11 @@ class LockManager extends ChangeNotifier {
         return shouldDisableUserActions();
 
       case UserAction.scanLibrary:
-        // Library scan is blocked if:
-        // 1. Library scan is already running, OR
-        // 2. Dominant color calculation is running (dangerous operations are mutually exclusive)
+        // Library scan is blocked if a scan is already running, or a dominant color calculation is running (dangerous operations are mutually exclusive)
         return isLocked(OperationType.libraryScanning) || isLocked(OperationType.dominantColorCalculation);
 
       case UserAction.calculateDominantColors:
-        // Color calculation is blocked if:
-        // 1. Color calculation is already running, OR  
-        // 2. Library scan is running (dangerous operations are mutually exclusive)
+        // Color calculation is blocked if it is already running, or a library scan is running (dangerous operations are mutually exclusive)
         return isLocked(OperationType.dominantColorCalculation) || isLocked(OperationType.libraryScanning);
 
       case UserAction.anilistOperations:

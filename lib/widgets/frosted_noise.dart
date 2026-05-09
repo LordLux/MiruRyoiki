@@ -216,7 +216,6 @@ class FrostedNoiseDecoration extends Decoration {
   }
 }
 
-// 3. Create the custom BoxPainter
 class _FrostedNoiseBoxPainter extends BoxPainter {
   final FrostedNoiseDecoration decoration;
   ui.Image? _image;
@@ -274,7 +273,6 @@ class _FrostedNoiseBoxPainter extends BoxPainter {
 
   @override
   void dispose() {
-    // 11. Clean up the image stream
     _stream?.removeListener(_listener!);
     super.dispose();
   }

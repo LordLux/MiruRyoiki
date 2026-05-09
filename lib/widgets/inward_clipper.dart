@@ -18,7 +18,6 @@ class InwardRRectClipper extends CustomClipper<RRect> {
 
   @override
   RRect getClip(Size size) {
-    // 1. Define the Rect (Rectangle) for the visible area.
     final double left = horizontal ? inset : 0;
     final double top = vertical ? inset : 0;
     final double right = horizontal ? size.width - inset : size.width;
@@ -26,7 +25,7 @@ class InwardRRectClipper extends CustomClipper<RRect> {
 
     final Rect rect = Rect.fromLTRB(left, top, right, bottom);
 
-    // 2. Apply the BorderRadius to the inset Rect to create the RRect.
+    // Apply the BorderRadius to the inset Rect to create the RRect.
     return RRect.fromRectAndCorners(
       rect,
       topLeft: horizontal ? borderRadius.topLeft : Radius.zero,
