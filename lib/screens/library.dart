@@ -28,6 +28,7 @@ import '../services/anilist/provider/anilist_provider.dart';
 import '../services/episode_navigation/anilist_progress_manager.dart';
 import '../services/navigation/dialogs2.dart';
 import '../services/navigation/navigation.dart';
+import '../services/navigation/intents.dart';
 import '../services/navigation/shortcuts.dart';
 import '../utils/logging.dart';
 import '../utils/path.dart';
@@ -1069,19 +1070,29 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
     final library = Provider.of<Library>(context);
     final scannerService = Provider.of<LibraryScannerService>(context);
 
-    if (library.libraryPath == null) return _buildLibrarySelector();
+    final child = library.libraryPath == null
+        ? _buildLibrarySelector()
+        : MiruRyoikiTemplatePage(
+            headerWidget: _buildHeader(library, scannerService),
+            content: _buildLibraryView(library, scannerService),
+            headerMaxHeight: ScreenUtils.kMinHeaderHeight,
+            headerMinHeight: ScreenUtils.kMinHeaderHeight,
+            noHeaderBanner: true,
+            scrollableContent: false,
+            enableContentExtraHeaderPadding: true,
+            contentRightPadding: 4.0,
+            contentExtraHeaderPadding: 8.0,
+            hideInfoBar: true,
+          );
 
-    return MiruRyoikiTemplatePage(
-      headerWidget: _buildHeader(library, scannerService),
-      content: _buildLibraryView(library, scannerService),
-      headerMaxHeight: ScreenUtils.kMinHeaderHeight,
-      headerMinHeight: ScreenUtils.kMinHeaderHeight,
-      noHeaderBanner: true,
-      scrollableContent: false,
-      enableContentExtraHeaderPadding: true,
-      contentRightPadding: 4.0,
-      contentExtraHeaderPadding: 8.0,
-      hideInfoBar: true,
+    // Add keyboard shortcut for focusing search bar (Ctrl+F)
+    return Actions(
+      actions: {
+        OpenSearchIntent: CallbackAction<OpenSearchIntent>(
+          onInvoke: (_) { focusSearchBar(); return null; },
+        ),
+      },
+      child: child,
     );
   }
 

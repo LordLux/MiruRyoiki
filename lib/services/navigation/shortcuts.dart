@@ -79,10 +79,6 @@ class _CustomKeyboardListenerState extends State<CustomKeyboardListener> {
       OpenSettingsIntent: CallbackAction<OpenSettingsIntent>(
         onInvoke: (_) => Manager.navigation.pushPaneIndex(NavigationManager.SettingsIndex),
       ),
-      // Ctrl + F
-      OpenSearchIntent: CallbackAction<OpenSearchIntent>(
-        onInvoke: (_) => libraryScreenKey.currentState?.focusSearchBar(),
-      ),
       // Ctrl + = or Ctrl + Numpad Add
       ZoomInIntent: CallbackAction<ZoomInIntent>(
         onInvoke: (_) {
