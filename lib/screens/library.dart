@@ -650,7 +650,7 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
   void _selectLibraryFolder() async {
     setState(() => _isSelectingFolder = true);
 
-    Manager.navigation.pushPaneIndex(NavigationManager.SettingsIndex);
+    context.read<NavigationManager>().pushPaneIndex(NavigationManager.SettingsIndex);
 
     await SettingsScreenState.setLibraryPath(context);
 
@@ -2084,7 +2084,7 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
   }
 
   void _showFilterDialog() async {
-    if (Manager.navigation.hasDialog && Manager.navigation.currentView?.id == "library:lists") {
+    if (context.read<NavigationManager>().hasDialog && context.read<NavigationManager>().currentView?.id == "library:lists") {
       closeDialog();
       log('Lists dialog open, closing it and opening filters dialog');
       await Future.delayed(const Duration(milliseconds: 50));
@@ -2161,7 +2161,7 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
   }
 
   void _showListDialog() async {
-    if (Manager.navigation.hasDialog && Manager.navigation.currentView?.id == "library:filters") {
+    if (context.read<NavigationManager>().hasDialog && context.read<NavigationManager>().currentView?.id == "library:filters") {
       closeDialog();
       log('Filters dialog open, closing it and opening lists dialog');
       await Future.delayed(const Duration(milliseconds: 50));

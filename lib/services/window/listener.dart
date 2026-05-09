@@ -125,11 +125,11 @@ class MyWindowListener extends WindowListener with TrayListener {
   @override // TODO fix bug for some reason this gets called when running
   void onTrayMenuItemClick(MenuItem menuItem) {
     // Prevents menu item clicks immediately after opening a dialog
-    if (Manager.navigation.lastDialogOpenTime != null && now.difference(Manager.navigation.lastDialogOpenTime!).inMilliseconds < 100) {
+    if (NavigationManager.instance.lastDialogOpenTime != null && now.difference(NavigationManager.instance.lastDialogOpenTime!).inMilliseconds < 100) {
       // This fixes a bug in Tray Manager when for some reason, after the image picker dialog is opened via context menu, this gets called immediately after
       return;
     }
-    
+
     switch (menuItem.key) {
       case ShowWindowMenuKey:
         _showAndFocus();
@@ -158,7 +158,7 @@ class MyWindowListener extends WindowListener with TrayListener {
       logDebug('Shutdown requested while database is saving, waiting...');
       if (!await windowManager.isVisible()) await windowManager.show();
 
-      if (Manager.context.mounted && Manager.navigation.currentView?.id == 'system:saving-database') {
+      if (Manager.context.mounted && NavigationManager.instance.currentView?.id == 'system:saving-database') {
         final title = 'Saving Database';
         showPaddedDialog(
           Manager.context,
@@ -279,7 +279,7 @@ class MyWindowListener extends WindowListener with TrayListener {
 
   @override
   void onWindowResize() {
-    final currentDialogId = Manager.navigation.currentView?.id;
+    final currentDialogId = NavigationManager.instance.currentView?.id;
     if (currentDialogId == 'library:filters' || currentDialogId == 'library:lists') {
       closeDialog();
     }

@@ -65,8 +65,13 @@ class PaneDefinition {
 }
 
 class NavigationManager extends ChangeNotifier {
+  static NavigationManager? _instance;
+  static NavigationManager get instance => _instance!;
+
   final GlobalKey<NavigatorState> _navigatorKey;
-  NavigationManager(this._navigatorKey);
+  NavigationManager(this._navigatorKey) {
+    _instance = this;
+  }
 
   static const String HomeId = 'home';
   static const String LibraryId = 'library';
@@ -516,4 +521,4 @@ class NavigationManager extends ChangeNotifier {
   NavigationItem? get nextView => _forwardStack.isNotEmpty ? _forwardStack.last : null;
 }
 
-bool closeDialog() => Manager.navigation.popDialog();
+bool closeDialog() => NavigationManager.instance.popDialog();

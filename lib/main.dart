@@ -468,7 +468,7 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
       _isCompactView = false;
       Manager.currentDominantColor = null;
 
-      Manager.navigation.pushPaneIndex(index);
+      context.read<NavigationManager>().pushPaneIndex(index);
     });
   }
 
@@ -488,21 +488,21 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
       scrollController: NavigationManager.getScrollController(NavigationManager.LibraryIndex),
     );
 
-    Manager.navigation.addListener(_onNavigationChanged);
+    NavigationManager.instance.addListener(_onNavigationChanged);
 
-    nextFrame(() async => Manager.navigation.pushPaneIndex(NavigationManager.HomeIndex));
+    nextFrame(() async => context.read<NavigationManager>().pushPaneIndex(NavigationManager.HomeIndex));
   }
 
   @override
   void dispose() {
-    Manager.navigation.removeListener(_onNavigationChanged);
+    NavigationManager.instance.removeListener(_onNavigationChanged);
     final navManager = Provider.of<NavigationManager>(context, listen: false);
     navManager.dispose();
     super.dispose();
   }
 
   void _onNavigationChanged() {
-    final current = Manager.navigation.currentView;
+    final current = NavigationManager.instance.currentView;
     if (current == null) return;
 
     // Handle Pane Selection
@@ -520,7 +520,7 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
     }
 
     // Handle Compact View & Colors
-    final shouldBeCompact = Manager.navigation.isTherePage;
+    final shouldBeCompact = NavigationManager.instance.isTherePage;
     if (_isCompactView != shouldBeCompact) setState(() => _isCompactView = shouldBeCompact);
 
     if (current.id.startsWith('/series:')) {
@@ -613,7 +613,7 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
 
                         if (isSeriesView) {
                           // If in series view, reset to pane first
-                          Manager.navigation.resetCurrentPane();
+                          context.read<NavigationManager>().resetCurrentPane();
                         }
 
                         if (_selectedIndex == index) {
@@ -761,7 +761,7 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
         page = SeriesScreen(
           key: seriesScreenKey,
           seriesPath: seriesPath,
-          onBack: () => Manager.navigation.goBack(),
+          onBack: () => context.read<NavigationManager>().goBack(),
         );
       case String() when routeName.startsWith('/mapping:'):
         final args = settings.arguments as Map<String, dynamic>;
@@ -794,7 +794,7 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
         page = SeriesScreen(
           key: seriesMappingScreenKey,
           seriesPath: seriesPath,
-          onBack: () => Manager.navigation.goBack(),
+          onBack: () => context.read<NavigationManager>().goBack(),
           mapping: mapping,
           target: target,
         );
@@ -827,7 +827,7 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
       case String() when routeName.startsWith('/searched_series:'):
         page = SearchedSeriesScreen(
           anilistUrl: "https://anilist.co/anime/${(settings.arguments as AnimeCard).id}",
-          onBack: () => Manager.navigation.goBack(),
+          onBack: () => context.read<NavigationManager>().goBack(),
         );
       default:
         // Default to home
@@ -850,10 +850,10 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
     }
 
     // based on previous index and current index, detect if we went upwards or downwards in the panes indexes
-    final previous = Manager.navigation.previousView;
+    final previous = NavigationManager.instance.previousView;
     final previousIndex = previous != null ? NavigationManager.getIndexById(previous.id) ?? 0 : 0;
 
-    final current = Manager.navigation.currentView;
+    final current = NavigationManager.instance.currentView;
     final currentIndex = current != null ? NavigationManager.getIndexById(current.id) ?? 0 : 0;
     final direction = currentIndex - previousIndex;
 
@@ -926,11 +926,12 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
   Widget _buildTitleBar({bool isSecondary = false}) {
     double winButtonsWidth = 128;
     return ValueListenableBuilder<bool>(
-        valueListenable: Manager.navigation.stackNotifier,
+        valueListenable: NavigationManager.instance.stackNotifier,
         builder: (context, _, __) {
+          final titleBarBGColor = (NavigationManager.instance.darkenTitleBar ? getBarrierColor(Manager.currentDominantColor).withOpacity(.25) : Colors.transparent);
           return AnimatedContainer(
             duration: dimDuration,
-            color: Manager.navigation.darkenTitleBar ? getBarrierColor(Manager.currentDominantColor).withOpacity(.25) : Colors.transparent,
+            color: titleBarBGColor,
             child: Stack(
               children: [
                 Positioned.fill(
@@ -998,12 +999,12 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
 
                                 await Future.delayed(const Duration(milliseconds: 100));
                                 setState(() {
-                                  if (isSeriesView) Manager.navigation.resetCurrentPane();
+                                  if (isSeriesView) context.read<NavigationManager>().resetCurrentPane();
 
                                   _selectedIndex = NavigationManager.CalendarIndex;
                                   Manager.currentDominantColor = null;
 
-                                  Manager.navigation.pushPaneIndex(NavigationManager.CalendarIndex);
+                                  context.read<NavigationManager>().pushPaneIndex(NavigationManager.CalendarIndex);
                                 });
 
                                 // Refresh the release calendar after navigation
@@ -1032,7 +1033,7 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
     if (_selectedIndex != NavigationManager.LibraryIndex) {
       logTrace('Navigating to library pane before opening series view');
       // We just push the pane. The listener will handle the UI updates.
-      Manager.navigation.pushPaneIndex(NavigationManager.LibraryIndex);
+      context.read<NavigationManager>().pushPaneIndex(NavigationManager.LibraryIndex);
 
       // Small delay to allow UI to update to library pane first
       await Future.delayed(const Duration(milliseconds: 50));
@@ -1042,7 +1043,7 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
     final seriesName = series?.name ?? 'Series';
 
     // Update navigation stack with the series page
-    Manager.navigation.pushPage('/series:$seriesPath', seriesName, data: seriesPath);
+    context.read<NavigationManager>().pushPage('/series:$seriesPath', seriesName, data: seriesPath);
   }
 }
 

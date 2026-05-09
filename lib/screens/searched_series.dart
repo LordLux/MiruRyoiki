@@ -14,6 +14,7 @@ import '../models/anilist/anime.dart';
 import '../models/anilist/user_list.dart';
 import '../services/connectivity/connectivity_service.dart';
 import '../services/library/library_provider.dart';
+import '../services/navigation/navigation.dart';
 import '../services/navigation/shortcuts.dart';
 import '../utils/text.dart';
 import '../widgets/buttons/back_button.dart';
@@ -227,10 +228,10 @@ class SearchedSeriesScreenState extends State<SearchedSeriesScreen> {
     parser = SimpleHtmlParser(context);
 
     // Listen for intra-page back/forward restores
-    Manager.navigation.restoreNotifier.addListener(_onRestoreFromHistory);
+    context.read<NavigationManager>().restoreNotifier.addListener(_onRestoreFromHistory);
 
     // Store pending viewState for deferred resolution after _initTabs
-    final viewState = Manager.navigation.currentView?.viewState;
+    final viewState = context.read<NavigationManager>().currentView?.viewState;
     if (viewState != null) _pendingViewState = viewState;
   }
 
@@ -256,7 +257,7 @@ class SearchedSeriesScreenState extends State<SearchedSeriesScreen> {
     _pages.addAll(pages);
 
     // Set initial viewState on the navigation item so the original entry is restorable
-    final currentView = Manager.navigation.currentView;
+    final currentView = context.read<NavigationManager>().currentView;
     if (currentView != null && currentView.viewState == null) {
       currentView.viewState = {
         'tabIndex': 0,
@@ -293,9 +294,9 @@ class SearchedSeriesScreenState extends State<SearchedSeriesScreen> {
     if (!_restoringFromHistory) {
       _captureCurrentScrollOffset();
       final currentMementos = Map<String, double>.from(
-        (Manager.navigation.currentView?.viewState?['mementos'] as Map?)?.cast<String, double>() ?? {},
+        (context.read<NavigationManager>().currentView?.viewState?['mementos'] as Map?)?.cast<String, double>() ?? {},
       );
-      Manager.navigation.pushTabState({
+      context.read<NavigationManager>().pushTabState({
         'tabIndex': index,
         'tabName': _tabNames[index],
         'mementos': currentMementos,
@@ -322,7 +323,7 @@ class SearchedSeriesScreenState extends State<SearchedSeriesScreen> {
     final tabName = _tabNames[currentTabIndex];
     final controller = _tabScrollControllers[tabName];
     if (controller != null && controller.hasClients) {
-      final viewState = Manager.navigation.currentView?.viewState;
+      final viewState = context.read<NavigationManager>().currentView?.viewState;
       if (viewState != null) {
         final mementos = (viewState['mementos'] as Map?)?.cast<String, double>() ?? <String, double>{};
         mementos[tabName] = controller.offset;
@@ -334,7 +335,7 @@ class SearchedSeriesScreenState extends State<SearchedSeriesScreen> {
   /// Handles intra-page back/forward restore events
   void _onRestoreFromHistory() {
     // Guard: only act if this screen is the current view
-    final currentView = Manager.navigation.currentView;
+    final currentView = context.read<NavigationManager>().currentView;
     if (currentView == null || !currentView.id.startsWith('/searched_series:')) return;
 
     final viewState = currentView.viewState;
@@ -479,7 +480,7 @@ class SearchedSeriesScreenState extends State<SearchedSeriesScreen> {
 
   @override
   void dispose() {
-    Manager.navigation.restoreNotifier.removeListener(_onRestoreFromHistory);
+    context.read<NavigationManager>().restoreNotifier.removeListener(_onRestoreFromHistory);
     for (final c in _tabScrollControllers.values) c.dispose();
     deferredPointerLink?.dispose();
     super.dispose();

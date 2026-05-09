@@ -50,13 +50,13 @@ void goToLibrarySeries(BuildContext context, int anilistId) {
     snackBar('Series not found in library', severity: InfoBarSeverity.error);
     return;
   }
-  navigateToLibrarySeries(s);
+  navigateToLibrarySeries(context, s);
 }
 
 /// Navigate to a local library series page (switches to Library pane + pushes page)
-void navigateToLibrarySeries(Series series) {
-  Manager.navigation.pushPaneIndex(NavigationManager.LibraryIndex);
-  Manager.navigation.pushPage(
+void navigateToLibrarySeries(BuildContext context, Series series) {
+  context.read<NavigationManager>().pushPaneIndex(NavigationManager.LibraryIndex);
+  context.read<NavigationManager>().pushPage(
     '/series:${series.path.path}',
     series.name,
     data: series.path,

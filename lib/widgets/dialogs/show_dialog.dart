@@ -2,8 +2,10 @@
 // ignore_for_file: use_build_context_synchronously
 
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:provider/provider.dart';
 import '../../manager.dart';
 import '../../services/navigation/dialogs2.dart';
+import '../../services/navigation/navigation.dart';
 import 'padded_dialog_route.dart';
 
 Widget _defaultTransitionBuilder(
@@ -59,11 +61,13 @@ Future<bool> showPaddedDialog(
 }) async {
   assert(debugCheckHasFluentLocalizations(Manager.context));
 
+  final navigator = context.read<NavigationManager>();
+
   if (closeExistingDialogs) {
-    if (Manager.navigation.hasDialog) {
-      if (Manager.navigation.isDialogLocked) return false;
+    if (navigator.hasDialog) {
+      if (navigator.isDialogLocked) return false;
       // Close the top dialog programmatically
-      Manager.navigation.popDialog();
+      navigator.popDialog();
       await Future.delayed(const Duration(milliseconds: 100));
     }
   }
@@ -94,12 +98,12 @@ Future<bool> showPaddedDialog(
   navigationItem.activeRoute = route;
 
   // Update NavigationManager Stack
-  Manager.navigation.pushDialog(navigationItem);
+  navigator.pushDialog(navigationItem);
 
   // Push the route
   Navigator.of(Manager.context).push(route).then((_) {
     // Cleanup when the dialog is closed
-    Manager.navigation.handleDialogPopped(navigationItem);
+    navigator.handleDialogPopped(navigationItem);
   });
 
   return true;

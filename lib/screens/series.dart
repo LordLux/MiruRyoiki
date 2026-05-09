@@ -36,6 +36,7 @@ import '../widgets/score_widget.dart';
 import '../models/season.dart';
 import '../models/series.dart';
 import '../services/anilist/linking.dart';
+import '../services/navigation/navigation.dart';
 import '../services/navigation/shortcuts.dart';
 import '../utils/logging.dart';
 import '../utils/error_handling.dart';
@@ -164,7 +165,7 @@ class SeriesScreenState extends State<SeriesScreen> {
     final mappingName = _mappingDisplayTitle(mapping: mapping, target: target);
 
     // Push the inner mapping page to navigation stack
-    Manager.navigation.pushPage(
+    context.read<NavigationManager>().pushPage(
       '/mapping:${mapping.localPath}',
       mappingName,
       data: {

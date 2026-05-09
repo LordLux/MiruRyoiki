@@ -1,14 +1,14 @@
 import 'package:url_launcher/url_launcher.dart';
 
-import '../manager.dart';
 import '../models/anilist/anime_card.dart';
+import '../services/navigation/navigation.dart';
 
 /// Base URL for AniList website
 const String kAnilistBaseUrl = 'https://anilist.co';
 
 /// Navigate to a series detail page within the app.
 void navigateToSeries(AnimeCard anime) {
-  Manager.navigation.pushPage(
+  NavigationManager.instance.pushPage(
     '/searched_series:${anime.id}',
     anime.title.userPreferred ?? 'Anime Details',
     data: anime,

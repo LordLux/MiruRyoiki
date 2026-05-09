@@ -5,7 +5,6 @@ import 'package:flutter/foundation.dart';
 import 'package:miruryoiki/database/database.dart';
 import 'package:miruryoiki/main.dart';
 import 'package:miruryoiki/services/library/library_provider.dart';
-import 'package:miruryoiki/services/navigation/navigation.dart';
 import 'package:provider/provider.dart';
 import 'package:args/args.dart';
 import 'package:package_info_plus/package_info_plus.dart';
@@ -85,8 +84,6 @@ class Manager {
   static void setState([VoidCallback? fn]) => homeKey.currentState?.setState(() => fn?.call());
 
   static BuildContext get context => rootNavigatorKey.currentContext!;
-
-  static NavigationManager get navigation => Provider.of<NavigationManager>(context, listen: false);
 
   static SettingsManager? _mockSettings;
   @visibleForTesting

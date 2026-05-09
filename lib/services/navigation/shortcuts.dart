@@ -77,7 +77,7 @@ class _CustomKeyboardListenerState extends State<CustomKeyboardListener> {
     _actions = {
       // Ctrl + ,
       OpenSettingsIntent: CallbackAction<OpenSettingsIntent>(
-        onInvoke: (_) => Manager.navigation.pushPaneIndex(NavigationManager.SettingsIndex),
+        onInvoke: (_) => ctx.read<NavigationManager>().pushPaneIndex(NavigationManager.SettingsIndex),
       ),
       // Ctrl + = or Ctrl + Numpad Add
       ZoomInIntent: CallbackAction<ZoomInIntent>(
@@ -129,7 +129,7 @@ class _CustomKeyboardListenerState extends State<CustomKeyboardListener> {
       ),
       // Ctrl + 1-6
       GoToPaneIntent: CallbackAction<GoToPaneIntent>(
-        onInvoke: (intent) => Manager.navigation.pushPaneIndex(intent.paneIndex),
+        onInvoke: (intent) => ctx.read<NavigationManager>().pushPaneIndex(intent.paneIndex),
       ),
       // Ctrl + Shift + D
       if (kDebugMode)
@@ -334,34 +334,35 @@ class _CustomKeyboardListenerState extends State<CustomKeyboardListener> {
 
   /// Returns true if back navigation was performed, false otherwise
   bool handleBackNavigation({bool isBackFromEscKey = false}) {
-    if (Manager.navigation.hasDialog) {
+    final navigator = context.read<NavigationManager>();
+    if (navigator.hasDialog) {
       if (!isBackFromEscKey) {
         logTrace('Back Mouse Button Pressed: Closing dialog');
-        return Manager.navigation.popDialog();
+        return navigator.popDialog();
       }
 
-      final controller = Manager.navigation.currentDialog?.controller;
+      final controller = navigator.currentDialog?.controller;
       if (controller != null && !controller.canPop) {
         logTrace('Dialog has a controller and is locked, routing ESC to controller');
         return controller.onBackRequested();
       }
 
       logTrace('Closing dialog from back navigation');
-      return Manager.navigation.goBack();
+      return navigator.goBack();
     }
 
-    if (Manager.navigation.canGoBack && !isBackFromEscKey) {
-      logDebug('Going back in navigation stack -> ${Manager.navigation.stack[Manager.navigation.stack.length - 2].title}');
-      return Manager.navigation.goBack();
+    if (navigator.canGoBack && !isBackFromEscKey) {
+      logDebug('Going back in navigation stack -> ${navigator.stack[navigator.stack.length - 2].title}');
+      return navigator.goBack();
     }
 
-    logTrace(isBackFromEscKey ? 'Cannot go back to another page with ESC key, use mouse button 4 instead or UI Back Button' : 'No dialog to close and no back navigation available: ${Manager.navigation.currentStackString}');
+    logTrace(isBackFromEscKey ? 'Cannot go back to another page with ESC key, use mouse button 4 instead or UI Back Button' : 'No dialog to close and no back navigation available: ${navigator.currentStackString}');
     return false;
   }
 
   void _handleForwardNavigation() {
     logTrace('Forward navigation via mouse button 5');
-    Manager.navigation.goForward();
+    context.read<NavigationManager>().goForward();
   }
 
   @override

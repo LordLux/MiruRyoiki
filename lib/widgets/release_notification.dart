@@ -114,8 +114,8 @@ class _ReleaseNotificationWidgetState extends State<ReleaseNotificationWidget> {
     if (_isDialogToggling || Manager.notificationsPopping) return;
 
     try {
-      final currentDialog = Manager.navigation.currentView;
-      if (Manager.navigation.hasDialog) {
+      final currentDialog = context.read<NavigationManager>().currentView;
+      if (context.read<NavigationManager>().hasDialog) {
         _isDialogToggling = true;
         closeDialog();
         //get current top dialog id

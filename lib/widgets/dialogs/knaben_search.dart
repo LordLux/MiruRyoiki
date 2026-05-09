@@ -9,6 +9,7 @@ import '../../services/downloads/torrent_manager.dart';
 import '../../services/knaben/knaben_service.dart';
 import '../../services/navigation/dialogs.dart';
 import '../../services/navigation/dialogs2.dart';
+import 'package:provider/provider.dart';
 import '../../services/navigation/navigation.dart';
 import '../../services/navigation/show_info.dart';
 import '../../settings.dart';
@@ -168,7 +169,7 @@ class KnabenSearchDialogState extends State<KnabenSearchDialog> implements Dialo
           child: const Text('View Downloads'),
           onPressed: () {
             closeDialog();
-            Manager.navigation.pushPaneIndex(NavigationManager.TorrentIndex);
+            context.read<NavigationManager>().pushPaneIndex(NavigationManager.TorrentIndex);
           },
         ));
 
