@@ -40,8 +40,6 @@ class Manager {
   static late final String buildNumber;
   static late final DateTime? lastUpdate;
 
-  /// Indicates if the current dialog can be popped, used when dialogs have multiple 'views'
-  static bool canPopDialog = true;
   static bool notificationsPopping = false;
   static bool skipScan = false;
   static bool isHotRestart = true;

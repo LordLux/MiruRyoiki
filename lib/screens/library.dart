@@ -2110,7 +2110,6 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
       navigationItem: DialogNavigationItem(
         id: 'library:filters',
         title: 'Filters',
-        dialogDoPopCheck: () => Manager.canPopDialog,
         data: {"darkenTitleBar": false},
         onDismiss: () async {
           await Future.delayed(const Duration(milliseconds: 100));
@@ -2188,7 +2187,6 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
       navigationItem: DialogNavigationItem(
         id: 'library:lists',
         title: 'Lists',
-        dialogDoPopCheck: () => Manager.canPopDialog,
         data: {"darkenTitleBar": false},
         onDismiss: () async {
           await Future.delayed(const Duration(milliseconds: 100));

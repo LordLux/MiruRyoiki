@@ -16,6 +16,35 @@ import '../../utils/screen.dart';
 import '../library/scanner/scanner_service.dart';
 import 'navigation.dart';
 import 'statusbar.dart';
+import 'intents.dart';
+
+Map<ShortcutActivator, Intent> _buildShortcuts() {
+  final bool mac = Manager.isMacOS;
+  SingleActivator ctrl(LogicalKeyboardKey key, {bool shift = false, bool alt = false}) => mac //
+      ? SingleActivator(key, meta: true, shift: shift, alt: alt)
+      : SingleActivator(key, control: true, shift: shift, alt: alt);
+
+  return {
+    ctrl(LogicalKeyboardKey.keyR, alt: true, shift: true): const ClearCacheReloadIntent(),
+    ctrl(LogicalKeyboardKey.comma): const OpenSettingsIntent(),
+    ctrl(LogicalKeyboardKey.keyF): const OpenSearchIntent(),
+    ctrl(LogicalKeyboardKey.equal): const ZoomInIntent(),
+    SingleActivator(LogicalKeyboardKey.numpadAdd, control: !mac, meta: mac): const ZoomInIntent(),
+    ctrl(LogicalKeyboardKey.keyH): const ToggleHiddenSeriesIntent(),
+    ctrl(LogicalKeyboardKey.keyR): const ReloadLibraryIntent(),
+    const SingleActivator(LogicalKeyboardKey.escape): const BackNavigationIntent(),
+    const SingleActivator(LogicalKeyboardKey.f1): const DebugDialogIntent(),
+    ctrl(LogicalKeyboardKey.digit1): const GoToPaneIntent(NavigationManager.HomeIndex),
+    ctrl(LogicalKeyboardKey.digit2): const GoToPaneIntent(NavigationManager.LibraryIndex),
+    ctrl(LogicalKeyboardKey.digit3): const GoToPaneIntent(NavigationManager.CalendarIndex),
+    ctrl(LogicalKeyboardKey.digit4): const GoToPaneIntent(NavigationManager.BrowseIndex),
+    ctrl(LogicalKeyboardKey.digit5): const GoToPaneIntent(NavigationManager.TorrentIndex),
+    ctrl(LogicalKeyboardKey.digit6): const GoToPaneIntent(NavigationManager.AccountsIndex),
+    ctrl(LogicalKeyboardKey.minus): const ZoomOutIntent(),
+    SingleActivator(LogicalKeyboardKey.numpadSubtract, control: !mac, meta: mac): const ZoomOutIntent(),
+    if (kDebugMode) ctrl(LogicalKeyboardKey.keyD, shift: true): const ToggleDebugColorIntent(),
+  };
+}
 
 class KeyboardState {
   static final ValueNotifier<bool> ctrlPressedNotifier = ValueNotifier<bool>(false);
@@ -33,354 +62,304 @@ class CustomKeyboardListener extends StatefulWidget {
 }
 
 class _CustomKeyboardListenerState extends State<CustomKeyboardListener> {
-  bool isCtrlPressed = false;
-  bool isShiftPressed = false;
-
-  bool isSuperPressed(RawKeyDownEvent event) {
-    if (Manager.isMacOS) return event.logicalKey == LogicalKeyboardKey.metaLeft || event.logicalKey == LogicalKeyboardKey.metaRight;
-    return event.logicalKey == LogicalKeyboardKey.controlLeft || event.logicalKey == LogicalKeyboardKey.controlRight;
-  }
+  late final FocusNode _focusNode;
+  late final Map<ShortcutActivator, Intent> _shortcuts;
+  late final Map<Type, Action<Intent>> _actions;
 
   BuildContext get ctx => homeKey.currentContext ?? rootNavigatorKey.currentContext ?? context;
 
-  void _zoom(bool zoomIn) {
+  @override
+  void initState() {
+    super.initState();
+    _focusNode = FocusNode();
+    HardwareKeyboard.instance.addHandler(_syncModifierState);
+    _shortcuts = _buildShortcuts();
+    _actions = {
+      // Ctrl + ,
+      OpenSettingsIntent: CallbackAction<OpenSettingsIntent>(
+        onInvoke: (_) => Manager.navigation.pushPaneIndex(NavigationManager.SettingsIndex),
+      ),
+      // Ctrl + F
+      OpenSearchIntent: CallbackAction<OpenSearchIntent>(
+        onInvoke: (_) => libraryScreenKey.currentState?.focusSearchBar(),
+      ),
+      // Ctrl + = or Ctrl + Numpad Add
+      ZoomInIntent: CallbackAction<ZoomInIntent>(
+        onInvoke: (_) {
+          _zoom(zoomIn: true);
+          KeyboardState.zoomReleaseNotifier.value = !KeyboardState.zoomReleaseNotifier.value;
+          return null;
+        },
+      ),
+      // Ctrl + - or Ctrl + Numpad Subtract
+      ZoomOutIntent: CallbackAction<ZoomOutIntent>(
+        onInvoke: (_) {
+          _zoom(zoomIn: false);
+          KeyboardState.zoomReleaseNotifier.value = !KeyboardState.zoomReleaseNotifier.value;
+          return null;
+        },
+      ),
+      // Ctrl + H
+      ToggleHiddenSeriesIntent: CallbackAction<ToggleHiddenSeriesIntent>(
+        onInvoke: (_) {
+          _handleToggleHiddenSeries();
+          return null;
+        },
+      ),
+      // Ctrl + R
+      ReloadLibraryIntent: CallbackAction<ReloadLibraryIntent>(
+        onInvoke: (_) {
+          _handleReloadLibrary();
+          return null;
+        },
+      ),
+      // Ctrl + Alt + Shift + R
+      ClearCacheReloadIntent: CallbackAction<ClearCacheReloadIntent>(
+        onInvoke: (_) {
+          _handleClearCacheReload();
+          return null;
+        },
+      ),
+      // Esc
+      BackNavigationIntent: CallbackAction<BackNavigationIntent>(
+        onInvoke: (_) {
+          handleBackNavigation(isBackFromEscKey: true);
+          return null;
+        },
+      ),
+      // F1
+      DebugDialogIntent: CallbackAction<DebugDialogIntent>(
+        onInvoke: (_) => showDebugDialog(ctx),
+      ),
+      // Ctrl + 1-6
+      GoToPaneIntent: CallbackAction<GoToPaneIntent>(
+        onInvoke: (intent) => Manager.navigation.pushPaneIndex(intent.paneIndex),
+      ),
+      // Ctrl + Shift + D
+      if (kDebugMode)
+        ToggleDebugColorIntent: CallbackAction<ToggleDebugColorIntent>(
+          onInvoke: (_) {
+            Manager.debugGreenEnabled = !Manager.debugGreenEnabled;
+            Manager.appTheme.notify();
+            Manager.setState();
+            return null;
+          },
+        ),
+    };
+  }
+
+  @override
+  void dispose() {
+    HardwareKeyboard.instance.removeHandler(_syncModifierState);
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  /// Keeps [KeyboardState] notifiers in sync with actual hardware modifier state
+  ///
+  /// Returns false so it never consumes events
+  bool _syncModifierState(KeyEvent event) {
+    final bool isCtrl = Manager.isMacOS ? HardwareKeyboard.instance.isMetaPressed : HardwareKeyboard.instance.isControlPressed;
+    final bool isShift = HardwareKeyboard.instance.isShiftPressed;
+
+    if (KeyboardState.ctrlPressedNotifier.value != isCtrl) {
+      KeyboardState.ctrlPressedNotifier.value = isCtrl;
+      if (!isCtrl) KeyboardState.zoomReleaseNotifier.value = !KeyboardState.zoomReleaseNotifier.value;
+    }
+
+    if (KeyboardState.shiftPressedNotifier.value != isShift) {
+      KeyboardState.shiftPressedNotifier.value = isShift;
+    }
+    return false;
+  }
+
+  void _zoom({required bool zoomIn}) {
     final appTheme = Provider.of<AppTheme>(context, listen: false);
     double newFontSize = appTheme.fontSize;
     newFontSize = zoomIn //
         ? (newFontSize + 2).clamp(ScreenUtils.kMinFontSize, ScreenUtils.kMaxFontSize)
         : (newFontSize - 2).clamp(ScreenUtils.kMinFontSize, ScreenUtils.kMaxFontSize);
 
-    // Snap zoom to nearest allowed value
     final zoomRaw = ScreenUtils.textScaleFactor * (newFontSize / kDefaultFontSize);
-    double zoom = calculateZoom(zoomRaw);
-    StatusBarManager().show("${(zoom * 100).toInt().toString()}%", autoHideDuration: const Duration(seconds: 2));
+    final zoom = calculateZoom(zoomRaw);
+    StatusBarManager().show("${(zoom * 100).toInt()}%", autoHideDuration: const Duration(seconds: 2));
 
-    // Only update if changed
-    if (newFontSize != appTheme.fontSize) {
-      // Update settings
-      appTheme.fontSize = newFontSize;
-    }
+    if (newFontSize != appTheme.fontSize) appTheme.fontSize = newFontSize;
     Manager.setState(() {});
   }
 
   void _handleScrollSignal(PointerSignalEvent event) {
-    if (event is PointerScrollEvent && isCtrlPressed) {
-      // Scrolling up has negative delta.dy, scrolling down has positive
-      final bool isScrollingUp = event.scrollDelta.dy < 0;
-
-      // Adjust font size
-      _zoom(isScrollingUp);
-
+    if (event is PointerScrollEvent && KeyboardState.ctrlPressedNotifier.value) {
+      _zoom(zoomIn: event.scrollDelta.dy < 0);
       KeyboardState.zoomReleaseNotifier.value = !KeyboardState.zoomReleaseNotifier.value;
     }
   }
 
   double calculateZoom(double zoomRaw) {
-    double zoom;
-    if (zoomRaw >= 100 && zoomRaw < 114) {
-      zoom = 100;
-    } else if (zoomRaw >= 114 && zoomRaw < 128) {
-      zoom = 110;
-    } else if (zoomRaw >= 128 && zoomRaw < 142) {
-      zoom = 120;
-    } else if (zoomRaw >= 142 && zoomRaw < 157) {
-      zoom = 130;
-    } else if (zoomRaw >= 157 && zoomRaw < 171) {
-      zoom = 140;
-    } else if (zoomRaw >= 171) {
-      zoom = 150;
-    } else if (zoomRaw >= 85 && zoomRaw < 100) {
-      zoom = 90;
-    } else if (zoomRaw >= 71 && zoomRaw < 85) {
-      zoom = 80;
-    } else if (zoomRaw >= 57 && zoomRaw < 71) {
-      zoom = 70;
-    } else {
-      zoom = zoomRaw;
-    }
-    return zoom;
+    if (zoomRaw >= 171) return 150;
+    if (zoomRaw >= 157) return 140;
+    if (zoomRaw >= 142) return 130;
+    if (zoomRaw >= 128) return 120;
+    if (zoomRaw >= 114) return 110;
+    if (zoomRaw >= 100) return 100;
+    if (zoomRaw >= 85) return 90;
+    if (zoomRaw >= 71) return 80;
+    if (zoomRaw >= 57) return 70;
+    return zoomRaw;
   }
 
-  void _handleKeyPress(RawKeyEvent event) async {
-    if (event is RawKeyDownEvent) {
-      if (isSuperPressed(event)) {
-        isCtrlPressed = true;
-        KeyboardState.ctrlPressedNotifier.value = true;
-        KeyboardState.zoomReleaseNotifier.value = !KeyboardState.zoomReleaseNotifier.value;
+  void _handleToggleHiddenSeries() {
+    logTrace('Ctrl + H: Toggle hidden series');
+    final library = Provider.of<Library>(context, listen: false);
+    final scannerService = Provider.of<LibraryScannerService>(context, listen: false);
+    if (library.initialized && !scannerService.isIndexing && homeKey.currentState?.isSeriesView == false) {
+      Manager.settings.showHiddenSeries = !Manager.settings.showHiddenSeries;
+
+      snackBar(
+        Manager.settings.showHiddenSeries ? 'Hidden series are now visible' : 'Hidden series are now hidden',
+        severity: InfoBarSeverity.info,
+      );
+
+      // Invalidate data/caches and refresh whichever screen is active
+      libraryScreenKey.currentState?.setState(() => libraryScreenKey.currentState?.invalidateSortCache());
+      releaseCalendarScreenKey.currentState?.setState(() {});
+      homeKey.currentState?.setState(() {});
+      notificationsContentKey.currentState?.setState(() => notificationsContentKey.currentState!.refreshNotifications());
+    }
+  }
+
+  void _handleReloadLibrary() {
+    logTrace('Ctrl + R: Reload library');
+    final library = Provider.of<Library>(context, listen: false);
+    final scannerService = Provider.of<LibraryScannerService>(context, listen: false);
+
+    if (library.initialized && !scannerService.isIndexing) {
+      library.reloadLibrary(force: true);
+    } else {
+      if (!library.initialized) snackBar('Library is not initialized', severity: InfoBarSeverity.warning);
+      if (scannerService.isIndexing) snackBar('Library is currently scanning\nPlease wait before reloading', severity: InfoBarSeverity.warning);
+    }
+  }
+
+  Future<void> _handleClearCacheReload() async {
+    logTrace('Ctrl + Alt + Shift + R: Clear cache and reload');
+    final library = Provider.of<Library>(context, listen: false);
+    final scannerService = Provider.of<LibraryScannerService>(context, listen: false);
+
+    if (!library.initialized || scannerService.isIndexing) {
+      if (!library.initialized) snackBar('Library is not initialized', severity: InfoBarSeverity.warning);
+      if (scannerService.isIndexing) snackBar('Library is currently scanning\nPlease wait before reloading', severity: InfoBarSeverity.warning);
+      return;
+    }
+
+    final homeState = homeKey.currentState;
+    if (homeState == null || !homeState.mounted) return;
+
+    if (homeState.isSeriesView) {
+      final seriesScreenState = seriesScreenKey.currentState;
+      snackBar('Clearing Series cache...', severity: InfoBarSeverity.info, autoHide: false);
+
+      if (seriesScreenState != null && seriesScreenState.widget.seriesPath?.pathMaybe != null) {
+        seriesScreenState.setState(() => seriesScreenState.isReloadingSeries = true);
+
+        Future.wait([
+          library.clearThumbnailCacheForSeries(seriesScreenState.widget.seriesPath),
+          library.clearSingleAnilistCache(seriesScreenState.widget.seriesPath),
+        ]).then((_) {
+          logTrace('Cleared cache for series: ${seriesScreenState.widget.seriesPath?.fileName}');
+          imageCache.clear();
+          imageCache.clearLiveImages();
+        }).catchError((error) {
+          logErr('Error clearing cache for series: ${seriesScreenState.widget.seriesPath?.fileName}', error);
+        });
+
+        library.reloadLibrary(force: true, showSnackBar: false).then((_) {
+          library.clearSingleAnilistCache(seriesScreenState.widget.seriesPath!).then((_) {
+            snackBar('Cleared caches and reloaded data!', severity: InfoBarSeverity.success);
+            seriesScreenState.setState(() => seriesScreenState.isReloadingSeries = false);
+          }).catchError((error, stacktrace) {
+            snackBar('Error refetching AniList data after reload', severity: InfoBarSeverity.error, exception: error, stackTrace: stacktrace);
+          });
+        });
       }
-      if (event.logicalKey == LogicalKeyboardKey.shiftLeft || event.logicalKey == LogicalKeyboardKey.shiftRight) {
-        isShiftPressed = true;
-        KeyboardState.shiftPressedNotifier.value = true;
+    } else {
+      void clearAllCaches() {
+        snackBar('Clearing cache for All Series...', severity: InfoBarSeverity.info, autoHide: false);
+
+        Future.wait([
+          library.clearAllThumbnailCache(),
+          library.clearAnilistCaches(),
+        ]).then((_) {
+          logTrace('Cleared all thumbnail cache and AniList cache');
+          imageCache.clear();
+          imageCache.clearLiveImages();
+        }).catchError((error) {
+          logErr('Error clearing all thumbnail cache and AniList cache', error);
+        });
+
+        library.reloadLibrary(force: true, showSnackBar: false).then((_) {
+          library.clearAnilistCaches(refetchAfterClear: true).then((_) {
+            snackBar('Cleared caches, reloaded, and refetched AniList data!', severity: InfoBarSeverity.success);
+          }).catchError((error, stacktrace) {
+            snackBar('Error refetching AniList data after reload', severity: InfoBarSeverity.error, exception: error, stackTrace: stacktrace);
+          });
+        });
       }
 
-      /// Handle specific key combinations
-      // Open settings
-      if (isCtrlPressed && event.logicalKey == LogicalKeyboardKey.comma) {
-        logTrace('Ctrl + , pressed: Open settings');
-        if (homeKey.currentState != null && homeKey.currentState!.mounted) {
-          Manager.navigation.pushPaneIndex(NavigationManager.SettingsIndex);
-        }
-      } else
-      //
-      // Open search Palette
-      if (isCtrlPressed && event.logicalKey == LogicalKeyboardKey.keyF) {
-        logTrace('Ctrl + f pressed: Search');
-        libraryScreenKey.currentState?.focusSearchBar();
-      } else
-      //
-      // Toggle debug green accent color for screenshots (Debug Mode only)
-      if (kDebugMode && isCtrlPressed && isShiftPressed && event.logicalKey == LogicalKeyboardKey.keyD) {
-        logTrace('Ctrl + Shift + D pressed: Toggle debug green color');
-        Manager.debugGreenEnabled = !Manager.debugGreenEnabled;
-        Manager.appTheme.notify();
-        Manager.setState();
-      } else
-      //
-      // Zoom in
-      if (isCtrlPressed && (event.logicalKey == LogicalKeyboardKey.equal || event.logicalKey == LogicalKeyboardKey.numpadAdd || event.logicalKey == LogicalKeyboardKey.add)) {
-        logTrace('Ctrl + + pressed: Zoom in');
-        _zoom(true);
-        KeyboardState.zoomReleaseNotifier.value = !KeyboardState.zoomReleaseNotifier.value;
-      } else
-      //
-      // Zoom out
-      if (isCtrlPressed && (event.logicalKey == LogicalKeyboardKey.minus || event.logicalKey == LogicalKeyboardKey.numpadSubtract)) {
-        logTrace('Ctrl + - pressed: Zoom out');
-        _zoom(false);
-        KeyboardState.zoomReleaseNotifier.value = !KeyboardState.zoomReleaseNotifier.value;
-      } else
-      //
-      // Toggle hidden series
-      if (isCtrlPressed && event.logicalKey == LogicalKeyboardKey.keyH) {
-        final library = Provider.of<Library>(context, listen: false);
-        final scannerService = Provider.of<LibraryScannerService>(context, listen: false);
-        if (library.initialized && !scannerService.isIndexing && homeKey.currentState?.isSeriesView == false) {
-          Manager.settings.showHiddenSeries = !Manager.settings.showHiddenSeries;
-          snackBar(
-            Manager.settings.showHiddenSeries ? 'Hidden series are now visible' : 'Hidden series are now hidden',
-            severity: InfoBarSeverity.info,
-          );
-
-          // If in library view, invalidate sort cache to refresh the list
-          libraryScreenKey.currentState?.setState(() => libraryScreenKey.currentState?.invalidateSortCache());
-
-          // Refresh release calendar if visible
-          releaseCalendarScreenKey.currentState?.setState(() {});
-
-          // Refresh home screen if visible
-          homeKey.currentState?.setState(() {});
-
-          // Refresh notifications dialog if visible
-          notificationsContentKey.currentState?.setState(() => notificationsContentKey.currentState!.refreshNotifications());
-        }
-      } else
-      //
-      // Reload
-      if (isCtrlPressed && !isShiftPressed && event.logicalKey == LogicalKeyboardKey.keyR && !HardwareKeyboard.instance.isAltPressed) {
-        final library = Provider.of<Library>(context, listen: false);
-        final scannerService = Provider.of<LibraryScannerService>(context, listen: false);
-
-        if (library.initialized && !scannerService.isIndexing) {
-          library.reloadLibrary(force: true);
-        } else {
-          if (!library.initialized) snackBar('Library is not initialized', severity: InfoBarSeverity.warning);
-          if (scannerService.isIndexing) snackBar('Library is currently scanning\nPlease wait before reloading', severity: InfoBarSeverity.warning);
-        }
-      } else
-      //
-      // Reload + Clearing all Cache (Ctrl + Alt + Shift + R)
-      if (isCtrlPressed && isShiftPressed && event.logicalKey == LogicalKeyboardKey.keyR && HardwareKeyboard.instance.isAltPressed) {
-        final library = Provider.of<Library>(context, listen: false);
-        final scannerService = Provider.of<LibraryScannerService>(context, listen: false);
-
-        if (library.initialized && !scannerService.isIndexing) {
-          // Check if we're in series view and clear thumbnails for that series
-          final homeState = homeKey.currentState;
-
-          if (homeState != null && homeState.mounted) {
-            if (homeState.isSeriesView) {
-              final seriesScreenState = seriesScreenKey.currentState;
-              snackBar('Clearing Series cache...', severity: InfoBarSeverity.info, autoHide: false);
-
-              // Clear thumbnails for the CURRENT SERIES if possible
-              if (seriesScreenState != null && seriesScreenState.widget.seriesPath?.pathMaybe != null) {
-                seriesScreenState.setState(() => seriesScreenState.isReloadingSeries = true);
-
-                // Clear thumbnails and AniList caches for this specific series (don't await, do it in background)
-                Future.wait([
-                  library.clearThumbnailCacheForSeries(seriesScreenState.widget.seriesPath),
-                  library.clearSingleAnilistCache(seriesScreenState.widget.seriesPath),
-                ]).then((_) {
-                  logTrace('Cleared cache for series: ${seriesScreenState.widget.seriesPath?.fileName}');
-                  imageCache.clear();
-                  imageCache.clearLiveImages();
-                }).catchError((error) {
-                  logErr('Error clearing cache for series: ${seriesScreenState.widget.seriesPath?.fileName}', error);
-                });
-
-                library.reloadLibrary(force: true, showSnackBar: false).then((_) {
-                  // Refetch AniList data after reload completes
-                  library.clearSingleAnilistCache(seriesScreenState.widget.seriesPath!).then((_) {
-                    snackBar('Cleared caches and reloaded data!', severity: InfoBarSeverity.success);
-                    seriesScreenState.setState(() => seriesScreenState.isReloadingSeries = false);
-                  }).catchError((error, stacktrace) {
-                    snackBar('Error refetching AniList data after reload', severity: InfoBarSeverity.error, exception: error, stackTrace: stacktrace);
-                  });
-                });
-              }
-            } else {
-              // Not in series view, clear ALL thumbnails after confirmation
-              void clearAllCaches() {
-                snackBar('Clearing cache for All Series...', severity: InfoBarSeverity.info, autoHide: false);
-
-                Future.wait([
-                  library.clearAllThumbnailCache(),
-                  library.clearAnilistCaches(),
-                ]).then((_) {
-                  logTrace('Cleared all thumbnail cache and AniList cache');
-                  imageCache.clear();
-                  imageCache.clearLiveImages();
-                }).catchError((error) {
-                  logErr('Error clearing all thumbnail cache and AniList cache', error);
-                });
-
-                library.reloadLibrary(force: true, showSnackBar: false).then((_) {
-                  // Refetch AniList data after reload completes
-                  library.clearAnilistCaches(refetchAfterClear: true).then((_) {
-                    snackBar('Cleared caches, reloaded, and refetched AniList data!', severity: InfoBarSeverity.success);
-                  }).catchError((error, stacktrace) {
-                    snackBar('Error refetching AniList data after reload', severity: InfoBarSeverity.error, exception: error, stackTrace: stacktrace);
-                  });
-                });
-              }
-
-              if (Manager.settings.confirmClearAllThumbnails)
-                clearAllCaches();
-              else
-                // Confirm before clearing all thumbnails if the setting is not enabled
-                await showSimpleTickboxManagedDialog(
-                  Manager.context,
-                  id: 'system:confirm-clear-caches',
-                  title: 'Clear All Caches?',
-                  body: 'Are you sure you want to clear ALL caches?\nThis will clear thumbnails and AniList data for all Series in your Library and they will be refetched when needed.',
-                  isPositiveButtonPrimary: true,
-                  hideTitle: false,
-                  positiveButtonText: 'Clear All Caches',
-                  negativeButtonText: 'Cancel',
-                  tickboxLabel: 'Do not show this again',
-                  onPositive: (bool tickbox) {
-                    setState(() => Manager.settings.confirmClearAllThumbnails = tickbox);
-                    clearAllCaches();
-                  },
-                );
-            }
-          }
-
-          Manager.setState();
-        } else {
-          if (!library.initialized) snackBar('Library is not initialized', severity: InfoBarSeverity.warning);
-          if (scannerService.isIndexing) snackBar('Library is currently scanning\nPlease wait before reloading', severity: InfoBarSeverity.warning);
-        }
-      } else
-      //
-      // Esc
-      if (event.logicalKey == LogicalKeyboardKey.escape) {
-        _handleBackNavigation(isBackFromEscKey: true);
-      } else
-      //
-      //
-      if (event.logicalKey == LogicalKeyboardKey.enter) {
-        logTrace('Enter pressed');
-      } else
-      //
-      // Debug
-      if (event.logicalKey == LogicalKeyboardKey.f1) {
-        logTrace('F1 pressed: Debug');
-        showDebugDialog(ctx);
-      } else
-      //
-      // Rename
-      if (event.logicalKey == LogicalKeyboardKey.f2) {
-        logTrace('F2 pressed: Rename');
-      } else
-      //
-      // Modify path
-      if (event.logicalKey == LogicalKeyboardKey.f4) {
-        logTrace('F4 pressed: Modify path');
-      }
-      // else
-      //
-      // ctrl + N to expand/collapse Nth season
-      if (isCtrlPressed && event.logicalKey == LogicalKeyboardKey.digit1) {
-        Manager.navigation.pushPaneIndex(NavigationManager.HomeIndex);
-      } else if (isCtrlPressed && event.logicalKey == LogicalKeyboardKey.digit2) {
-        Manager.navigation.pushPaneIndex(NavigationManager.LibraryIndex);
-      } else if (isCtrlPressed && event.logicalKey == LogicalKeyboardKey.digit3) {
-        Manager.navigation.pushPaneIndex(NavigationManager.CalendarIndex);
-      } else if (isCtrlPressed && event.logicalKey == LogicalKeyboardKey.digit4) {
-        Manager.navigation.pushPaneIndex(NavigationManager.BrowseIndex);
-      } else if (isCtrlPressed && event.logicalKey == LogicalKeyboardKey.digit5) {
-        Manager.navigation.pushPaneIndex(NavigationManager.TorrentIndex);
-      } else if (isCtrlPressed && event.logicalKey == LogicalKeyboardKey.digit6) {
-        Manager.navigation.pushPaneIndex(NavigationManager.AccountsIndex);
-      }
-    } else if (event is RawKeyUpEvent) {
-      // Update key states on key release
-      if (event.logicalKey == LogicalKeyboardKey.controlLeft || event.logicalKey == LogicalKeyboardKey.controlRight) {
-        isCtrlPressed = false;
-        KeyboardState.ctrlPressedNotifier.value = false;
-      }
-      if (event.logicalKey == LogicalKeyboardKey.shiftLeft || event.logicalKey == LogicalKeyboardKey.shiftRight) {
-        isShiftPressed = false;
-        KeyboardState.shiftPressedNotifier.value = false;
+      if (Manager.settings.confirmClearAllThumbnails) {
+        clearAllCaches();
+      } else {
+        await showSimpleTickboxManagedDialog(
+          Manager.context,
+          id: 'system:confirm-clear-caches',
+          title: 'Clear All Caches?',
+          body: 'Are you sure you want to clear ALL caches?\nThis will clear thumbnails and AniList data for all Series in your Library and they will be refetched when needed.',
+          isPositiveButtonPrimary: true,
+          hideTitle: false,
+          positiveButtonText: 'Clear All Caches',
+          negativeButtonText: 'Cancel',
+          tickboxLabel: 'Do not show this again',
+          onPositive: (bool tickbox) {
+            setState(() => Manager.settings.confirmClearAllThumbnails = tickbox);
+            clearAllCaches();
+          },
+        );
       }
     }
-    setState(() {});
+
+    Manager.setState();
   }
 
   void _handlePointerSignal(PointerDownEvent event) {
     if (event.buttons == kBackMouseButton)
-      _handleBackNavigation();
-    else if (event.buttons == kForwardMouseButton) //
-      _handleForwardNavigation();
+      handleBackNavigation();
+    else if (event.buttons == kForwardMouseButton) _handleForwardNavigation();
   }
 
-  void _handleBackNavigation({bool isBackFromEscKey = false}) {
-    if (handleBackNavigation(isBackFromEscKey: isBackFromEscKey)) {
-      logTrace('Back navigation via ${isBackFromEscKey ? "ESC" : "mouse button 4"}');
-      // Handled by AppRoot
-      return;
-    }
-  }
-
-  /// Handles back navigation throughout the app
   /// Returns true if back navigation was performed, false otherwise
   bool handleBackNavigation({bool isBackFromEscKey = false}) {
-    // Handle dialog closure
     if (Manager.navigation.hasDialog) {
       if (!isBackFromEscKey) {
         logTrace('Back Mouse Button Pressed: Closing dialog');
         return Manager.navigation.popDialog();
       }
 
-      // Route ESC to the dialog's own back handler if it has one and is locked
       final controller = Manager.navigation.currentDialog?.controller;
       if (controller != null && !controller.canPop) {
         logTrace('Dialog has a controller and is locked, routing ESC to controller');
         return controller.onBackRequested();
       }
 
-      logTrace('Closing dialog from back navigation in series view');
+      logTrace('Closing dialog from back navigation');
       return Manager.navigation.goBack();
     }
 
-    // Handle general back navigation
     if (Manager.navigation.canGoBack && !isBackFromEscKey) {
       logDebug('Going back in navigation stack -> ${Manager.navigation.stack[Manager.navigation.stack.length - 2].title}');
       return Manager.navigation.goBack();
     }
 
-    logTrace('Back navigation not possible: \n${isBackFromEscKey ? "Cannot go back to another page with ESC key, use mouse button 4 instead or UI Back Button" : "No dialog to close and no back navigation available: ${Manager.navigation.currentStackString}"}');
+    logTrace(isBackFromEscKey ? 'Cannot go back to another page with ESC key, use mouse button 4 instead or UI Back Button' : 'No dialog to close and no back navigation available: ${Manager.navigation.currentStackString}');
     return false;
   }
 
@@ -390,23 +369,20 @@ class _CustomKeyboardListenerState extends State<CustomKeyboardListener> {
   }
 
   @override
-  void dispose() {
-    KeyboardState.ctrlPressedNotifier.dispose();
-    KeyboardState.shiftPressedNotifier.dispose();
-    KeyboardState.zoomReleaseNotifier.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
     return Listener(
       onPointerDown: _handlePointerSignal,
       onPointerSignal: _handleScrollSignal,
-      child: RawKeyboardListener(
-        focusNode: FocusNode(),
-        autofocus: true,
-        onKey: _handleKeyPress,
-        child: widget.child,
+      child: Shortcuts(
+        shortcuts: _shortcuts,
+        child: Actions(
+          actions: _actions,
+          child: Focus(
+            focusNode: _focusNode,
+            autofocus: true,
+            child: widget.child,
+          ),
+        ),
       ),
     );
   }

@@ -135,7 +135,6 @@ class _ReleaseNotificationWidgetState extends State<ReleaseNotificationWidget> {
       navigationItem: DialogNavigationItem(
         id: 'system:notifications',
         title: 'Notifications',
-        dialogDoPopCheck: () => Manager.canPopDialog,
         data: {"darkenTitleBar": false},
         onDismiss: () async {
           Manager.notificationsPopping = true;

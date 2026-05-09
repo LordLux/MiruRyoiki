@@ -42,7 +42,6 @@ class NotificationsContentState extends State<NotificationsContent> {
   @override
   void initState() {
     super.initState();
-    Manager.canPopDialog = true;
     _initializeService();
   }
 
