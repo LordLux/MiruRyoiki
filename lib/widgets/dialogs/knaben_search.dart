@@ -94,6 +94,7 @@ class KnabenSearchDialogState extends State<KnabenSearchDialog> implements Dialo
   _Step _step = _Step.search;
   TorrentRelease? _selectedRelease;
   bool _isDownloading = false;
+  bool _grabbed = false;
   late final TextEditingController _destFolderController;
 
   /// Identifiers of releases the user has grabbed during this dialog session
@@ -125,6 +126,7 @@ class KnabenSearchDialogState extends State<KnabenSearchDialog> implements Dialo
     setState(() {
       _step = _Step.search;
       _selectedRelease = null;
+      _grabbed = false;
     });
   }
 
@@ -144,6 +146,7 @@ class KnabenSearchDialogState extends State<KnabenSearchDialog> implements Dialo
           if (ok) {
             final hash = extractBtih(r.magnetUrl);
             if (hash != null) _sentIdentifiers.add(hash);
+            _grabbed = true;
             _onGrabSucceeded('Sent to qBittorrent');
           } else {
             snackBar('qBittorrent rejected the magnet', severity: InfoBarSeverity.error);
@@ -153,12 +156,13 @@ class KnabenSearchDialogState extends State<KnabenSearchDialog> implements Dialo
           if (!mounted) return;
 
           _sentIdentifiers.add(r.guid);
+          _grabbed = true;
           _onGrabSucceeded('Sent to Sonarr');
       }
     } catch (e) {
       if (mounted) snackBar('Download failed: $e', severity: InfoBarSeverity.error);
     } finally {
-      if (mounted) setState(() => _isDownloading = false);
+      if (mounted && !_grabbed) setState(() => _isDownloading = false);
     }
   }
 
