@@ -9,7 +9,6 @@ import 'package:miruryoiki/enums.dart';
 import 'package:miruryoiki/widgets/tooltip_wrapper.dart';
 import '../manager.dart';
 import '../services/downloads/download_controller.dart';
-import '../services/downloads/speed_graph_service.dart';
 import '../services/downloads/torrent_client.dart';
 import '../services/downloads/torrent_manager.dart';
 import '../services/navigation/navigation.dart';
@@ -77,7 +76,6 @@ class DownloadsScreenState extends State<DownloadsScreen> {
   _SortMode _sortMode = _SortMode.status;
   bool _sortAscending = true;
   _DownloadFilter _filterState = _DownloadFilter.all;
-  SpeedGraphService? _speedService;
   bool _graphExpanded = true;
 
   @override
@@ -94,24 +92,11 @@ class DownloadsScreenState extends State<DownloadsScreen> {
     NavigationManager.restoreScrollOffset('torrent', widget.scrollController);
     _fetchTorrents();
     _refreshTimer = Timer.periodic(const Duration(seconds: 3), (_) => _fetchTorrents(silent: true));
-    _initSpeedGraph();
-  }
-
-  void _initSpeedGraph() {
-    final client = TorrentManager.torrentClient;
-    if (client == null) return;
-    final settings = SettingsManager();
-    _speedService = SpeedGraphService(
-      client: client,
-      updateFrequencySeconds: settings.graphUpdateFrequencySeconds,
-      timeframeMinutes: settings.graphTimeframeMinutes,
-    );
   }
 
   @override
   void dispose() {
     _refreshTimer?.cancel();
-    _speedService?.dispose();
     super.dispose();
   }
 
@@ -370,9 +355,10 @@ class DownloadsScreenState extends State<DownloadsScreen> {
   static const _kGraphCollapsedHeight = 50.0;
 
   Widget _buildGraphSection() {
-    final service = _speedService;
+    final service = TorrentManager.speedGraphService;
     if (service == null) return const SizedBox.shrink();
     final settings = SettingsManager();
+    service.setDisplayTimeframeMinutes(settings.graphTimeframeMinutes);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -392,7 +378,7 @@ class DownloadsScreenState extends State<DownloadsScreen> {
   Widget _buildContent(BoxConstraints constraints) {
     if (_isLoading && _torrents.isEmpty) return const Center(child: ProgressRing());
 
-    final hasGraph = _speedService != null;
+    final hasGraph = TorrentManager.speedGraphService != null;
     final graphReservedHeight = hasGraph ? (_graphExpanded ? _kGraphExpandedHeight : _kGraphCollapsedHeight) + 40 : 0.0;
     final availableHeight = math.max(120.0, constraints.maxHeight - ScreenUtils.kTitleBarHeight - 166 - graphReservedHeight);
 

@@ -2864,7 +2864,10 @@ class SettingsScreenState extends State<SettingsScreen> with AutomaticKeepAliveC
               ComboBoxItem(value: 60, child: Text('1 hour')),
             ],
             onChanged: (v) {
-              if (v != null) setState(() => settings.graphTimeframeMinutes = v);
+              if (v != null) {
+                setState(() => settings.graphTimeframeMinutes = v);
+                TorrentManager.speedGraphService?.setDisplayTimeframeMinutes(v);
+              }
             },
           ),
         ],
@@ -2885,7 +2888,10 @@ class SettingsScreenState extends State<SettingsScreen> with AutomaticKeepAliveC
               ComboBoxItem(value: 10, child: Text('10 seconds')),
             ],
             onChanged: (v) {
-              if (v != null) setState(() => settings.graphUpdateFrequencySeconds = v);
+              if (v != null) {
+                setState(() => settings.graphUpdateFrequencySeconds = v);
+                TorrentManager.speedGraphService?.setUpdateFrequency(v);
+              }
             },
           ),
         ],

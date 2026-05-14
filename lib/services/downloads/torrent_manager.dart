@@ -7,6 +7,7 @@ import '../qbittorrent/qbittorrent.dart';
 import '../sonarr/sonarr_service.dart';
 import '../knaben/knaben_service.dart';
 import 'download_controller.dart';
+import 'speed_graph_service.dart';
 import 'torrent_client.dart';
 
 class TorrentManager {
@@ -15,6 +16,7 @@ class TorrentManager {
   static KnabenRepository? knabenRepository;
   static TorrentClient? torrentClient;
   static DownloadController? downloadController;
+  static SpeedGraphService? speedGraphService;
 
   /// Whether the download system is fully configured and operational
   static bool get isEnabled => downloadController != null;
@@ -31,6 +33,12 @@ class TorrentManager {
     knabenRepository = KnabenRepository();
 
     torrentClient = _createTorrentClient(settings);
+
+    speedGraphService = SpeedGraphService(
+      client: torrentClient!,
+      updateFrequencySeconds: settings.graphUpdateFrequencySeconds,
+      timeframeMinutes: settings.graphTimeframeMinutes,
+    );
 
     final baseUrl = settings.sonarrBaseUrl.fallbackIfEmpty(SonarrRepository.defaultUrlPort);
     sonarrRepository = SonarrRepository(
@@ -61,6 +69,8 @@ class TorrentManager {
 
   /// Re-create all clients after settings change
   static void reinitialize() {
+    speedGraphService?.dispose();
+    speedGraphService = null;
     sonarrRepository = null;
     knabenRepository = null;
     torrentClient = null;

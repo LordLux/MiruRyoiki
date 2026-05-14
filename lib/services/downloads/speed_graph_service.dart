@@ -72,10 +72,12 @@ class SpeedDataPoint {
       };
 }
 
+const int _kBufferMinutes = 60;
+
 class SpeedGraphService extends ChangeNotifier {
   final TorrentClient _client;
-  final int updateFrequencySeconds;
-  final int timeframeMinutes;
+  int updateFrequencySeconds;
+  int timeframeMinutes;
 
   final Queue<SpeedDataPoint> _points = Queue();
   Timer? _timer;
@@ -86,6 +88,19 @@ class SpeedGraphService extends ChangeNotifier {
     this.timeframeMinutes = 10,
   }) : _client = client {
     _tick();
+    _timer = Timer.periodic(Duration(seconds: updateFrequencySeconds), (_) => _tick());
+  }
+
+  void setDisplayTimeframeMinutes(int minutes) {
+    if (timeframeMinutes == minutes) return;
+    timeframeMinutes = minutes;
+    notifyListeners();
+  }
+
+  void setUpdateFrequency(int seconds) {
+    if (updateFrequencySeconds == seconds) return;
+    updateFrequencySeconds = seconds;
+    _timer?.cancel();
     _timer = Timer.periodic(Duration(seconds: updateFrequencySeconds), (_) => _tick());
   }
 
@@ -130,7 +145,7 @@ class SpeedGraphService extends ChangeNotifier {
   }
 
   void _trim() {
-    final cutoff = DateTime.now().subtract(Duration(minutes: timeframeMinutes));
+    final cutoff = DateTime.now().subtract(const Duration(minutes: _kBufferMinutes));
     while (_points.isNotEmpty && _points.first.timestamp.isBefore(cutoff)) {
       _points.removeFirst();
     }
