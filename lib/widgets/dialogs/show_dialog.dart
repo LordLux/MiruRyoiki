@@ -19,19 +19,9 @@ Widget _defaultTransitionBuilder(
       parent: animation,
       curve: Curves.easeOut,
     ),
-    child: ScaleTransition(
-      scale: CurvedAnimation(
-        parent: Tween<double>(
-          begin: 1,
-          end: 0.85,
-        ).animate(animation),
-        curve: Curves.easeOut,
-      ),
-      child: child,
-    ),
+    child: child,
   );
 }
-
 
 /// Shows a dialog with a customizable barrier that can have padding.
 ///

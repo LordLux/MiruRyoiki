@@ -1089,7 +1089,10 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
     return Actions(
       actions: {
         OpenSearchIntent: CallbackAction<OpenSearchIntent>(
-          onInvoke: (_) { focusSearchBar(); return null; },
+          onInvoke: (_) {
+            focusSearchBar();
+            return null;
+          },
         ),
       },
       child: child,
@@ -1171,6 +1174,7 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
                     child: StandardButton.iconLabel(
                       tooltip: 'Manage Lists',
                       label: Text("Lists", style: Manager.subtitleStyle.copyWith(fontSize: 12)),
+                      backgroundColor: Colors.white.withOpacity(0.1),
                       key: _listButtonKey,
                       icon: Icon(mat.Icons.list, size: 16, color: getViewTypeColor(_listsOpen)),
                       onPressed: _listsOpen ? null : _showListDialog,
@@ -1556,7 +1560,7 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
 
   /// Defers setState to avoid mutations during layout (drag lifecycle callbacks can fire during layout)
   void _deferSetState(VoidCallback fn) {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    nextFrame(() {
       if (mounted) setState(fn);
     });
   }
@@ -2099,7 +2103,7 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
 
     if (_filterButtonKey.currentContext != null) {
       final RenderBox renderBox = _filterButtonKey.currentContext!.findRenderObject() as RenderBox;
-      anchorPosition = renderBox.localToGlobal(Offset(-140, -33));
+      anchorPosition = renderBox.localToGlobal(Offset(-35, 100));
       anchorSize = renderBox.size;
     }
 
@@ -2135,28 +2139,16 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
       closeExistingDialogs: true,
       builder: (ctx, item, options) => PaddedDialog.frosted(
         constraints: BoxConstraints(
-          maxWidth: 250,
+          minWidth: 250, maxWidth: 400,
           // TODO do the same as listsDialogHeight
           maxHeight: Manager.settings.listsDialogHeight, //just temporarily initialize with this value
         ),
         navigationItem: item,
         barrierOptions: options,
-        alignment: Position.fromAlignment(alignment),
+        alignment: alignment,
+        transition: DialogTransition.scaleFromAbove(alignment: alignment, offset: 90),
         content: GenresFilterContent(),
       ),
-      transitionBuilder: (context, animation, secondaryAnimation, child) {
-        return ScaleTransition(
-          alignment: alignment,
-          scale: CurvedAnimation(
-            parent: Tween<double>(
-              begin: 0,
-              end: 1,
-            ).animate(animation),
-            curve: Curves.easeOut,
-          ),
-          child: child,
-        );
-      },
     );
   }
 
@@ -2176,7 +2168,7 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
 
     if (_listButtonKey.currentContext != null) {
       final RenderBox renderBox = _listButtonKey.currentContext!.findRenderObject() as RenderBox;
-      anchorPosition = renderBox.localToGlobal(Offset(-140, -33));
+      anchorPosition = renderBox.localToGlobal(Offset(-20, 93));
       anchorSize = renderBox.size;
     }
 
@@ -2211,13 +2203,14 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
       ),
       closeExistingDialogs: true,
       builder: (ctx, item, options) {
-        final constraints = BoxConstraints(maxWidth: 250, maxHeight: Manager.settings.listsDialogHeight);
+        final constraints = BoxConstraints(minWidth: 250, maxWidth: 400, maxHeight: Manager.settings.listsDialogHeight);
 
         return PaddedDialog.frosted(
           constraints: constraints,
           navigationItem: item,
           barrierOptions: options,
-          alignment: Position.fromAlignment(alignment),
+          alignment: alignment,
+          transition: DialogTransition.scaleFromAbove(alignment: alignment, offset: 70),
           content: ListsContent(
             constraints: constraints,
             currentView: _currentView,
@@ -2240,23 +2233,6 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
           ),
         );
       },
-      transitionBuilder: (context, animation, secondaryAnimation, child) {
-        return ScaleTransition(
-          alignment: alignment,
-          scale: CurvedAnimation(
-            parent: Tween<double>(
-              begin: 0,
-              end: 1,
-            ).animate(animation),
-            curve: Curves.easeOut,
-          ),
-          child: child,
-        );
-      },
     );
   }
 }
-
-
-
-

@@ -47,7 +47,7 @@ void nextFrame(
     _runAfterFrame(function);
 }
 
-void _runAfterFrame(VoidCallback function) => WidgetsBinding.instance.addPostFrameCallback((_) => function());
+void _runAfterFrame(VoidCallback function) => nextFrame(function);
 
 extension DurationArithmetic on Duration {
   Duration operator +(Duration other) => Duration(milliseconds: inMilliseconds + other.inMilliseconds);

@@ -1555,7 +1555,7 @@ void selectSeriesImage(BuildContext context, {required bool isBanner, Series? se
         navigationItem: item,
         barrierOptions: options,
         constraints: boxConstraints,
-        alignment: Position.fromAlignment(Alignment.center),
+        alignment: Alignment.center,
         contentBuilder: (context, _) => ImageSelectionContent(
           series: series,
           constraints: boxConstraints,

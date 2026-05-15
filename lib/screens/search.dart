@@ -831,7 +831,7 @@ class _SectionWidgetState extends State<SectionWidget> {
       _isRestoring = true;
       _showLoadMoreAfterExpand = false;
 
-      WidgetsBinding.instance.addPostFrameCallback((_) {
+      nextFrame(() {
         if (mounted) setState(() => _isRestoring = false);
       });
     }

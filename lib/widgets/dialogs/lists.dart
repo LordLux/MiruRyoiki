@@ -19,7 +19,6 @@ import '../animated_order_tile.dart';
 import '../buttons/wrapper.dart';
 import '../tooltip_wrapper.dart';
 
-
 /// UI for managing Anilist list order and visibility in the library dialog
 class ListsContent extends StatefulWidget {
   final BoxConstraints constraints;
@@ -74,7 +73,7 @@ class ListsContentState extends State<ListsContent> {
   }
 
   void _updateHeight() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    nextFrame(() {
       if (mounted) {
         final renderBox = _columnKey.currentContext?.findRenderObject() as RenderBox?;
         if (renderBox != null) {
@@ -117,7 +116,7 @@ class ListsContentState extends State<ListsContent> {
     // If _customListOrder is empty, initialize with default order
     if (_customListOrder.isEmpty) {
       _customListOrder = List.from(allLists);
-      WidgetsBinding.instance.addPostFrameCallback((_) {
+      nextFrame(() {
         widget.onCustomListOrderChanged(_customListOrder);
         widget.onSaveUserPreferences();
       });
@@ -153,7 +152,7 @@ class ListsContentState extends State<ListsContent> {
       if (_customListOrder.length != initialLength) changed = true;
 
       if (changed) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
+        nextFrame(() {
           widget.onCustomListOrderChanged(_customListOrder);
           widget.onSaveUserPreferences();
         });
@@ -163,170 +162,162 @@ class ListsContentState extends State<ListsContent> {
     // Filter out hidden lists when not in edit mode for display purposes
     final displayListOrder = editListsEnabled ? _customListOrder : _customListOrder.where((listName) => !widget.hiddenLists.contains(listName)).toList();
 
-    final double childHeight = 40;
-
-    return SizedBox(
-      height: displayListOrder.length * childHeight,
-      child: ValueListenableBuilder(
-        valueListenable: KeyboardState.ctrlPressedNotifier,
-        builder: (context, isCtrlPressed, _) {
-          // Non-reorderable view when editing is disabled
-          if (!editListsEnabled) {
-            return ListView.builder(
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: displayListOrder.length,
-              prototypeItem: SizedBox(height: childHeight),
-              itemBuilder: (context, index) {
-                final listName = displayListOrder[index];
-                final displayName = StatusStatistic.getDisplayName(listName);
-
-                // Check if list is empty by checking grouped data cache
-                final isEmpty = widget.groupedDataCache != null && (widget.groupedDataCache![displayName]?.isEmpty ?? true);
-
-                return AnimatedReorderableTile(
-                  key: ValueKey(listName),
-                  listName: listName,
-                  displayName: displayName,
-                  onPressed: (i) => widget.onScrollToList(displayName),
-                  index: index,
-                  selected: false,
-                  isReordering: false,
-                  reorderable: false,
-                  isEmpty: isEmpty,
-                );
-              },
-            );
-          }
-
-          // Reorderable view when editing is enabled
-          return ReorderableListView.builder(
-            physics: isCtrlPressed ? const NeverScrollableScrollPhysics() : null,
-            itemCount: displayListOrder.length,
-            buildDefaultDragHandles: false,
-            clipBehavior: Clip.none,
-            proxyDecorator: (child, index, animation) {
+    return ValueListenableBuilder(
+      valueListenable: KeyboardState.ctrlPressedNotifier,
+      builder: (context, isCtrlPressed, _) {
+        // Non-reorderable view when editing is disabled
+        if (!editListsEnabled) {
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: List.generate(displayListOrder.length, (index) {
               final listName = displayListOrder[index];
               final displayName = StatusStatistic.getDisplayName(listName);
-              final isHidden = widget.hiddenLists.contains(listName);
-              final isEmpty = widget.groupedDataCache != null && (widget.groupedDataCache![displayName]?.isEmpty ?? true);
 
-              return AnimatedReorderableTile(
-                key: ValueKey('${listName}_dragging'),
-                listName: listName,
-                displayName: displayName,
-                index: index,
-                selected: true,
-                initialAnimation: true,
-                isHidden: isHidden,
-                isEmpty: isEmpty,
-                isReordering: true,
-                reorderable: true,
-              );
-            },
-            onReorderStart: (_) => setState(() => _isReordering = true),
-            onReorderEnd: (_) => setState(() => _isReordering = false),
-            onReorder: (oldIndex, newIndex) {
-              setState(() {
-                // Get the item being reordered
-                final item = displayListOrder[oldIndex];
-                final actualOldIndex = _customListOrder.indexOf(item);
-
-                int actualNewIndex;
-
-                // If moving to the very end of the list
-                if (newIndex >= displayListOrder.length) {
-                  final lastVisibleItem = displayListOrder.last;
-                  final lastVisibleIndex = _customListOrder.indexOf(lastVisibleItem);
-
-                  // We want to place it AFTER the last visible item
-                  actualNewIndex = lastVisibleIndex + 1;
-
-                  // If the item was before the insertion point, we need to adjust because
-                  // removing it will shift indices down
-                  if (actualOldIndex < actualNewIndex) {
-                    actualNewIndex -= 1;
-                  }
-                } else {
-                  // Moving to a specific position (before an item)
-                  final targetItem = displayListOrder[newIndex];
-                  final targetIndex = _customListOrder.indexOf(targetItem);
-
-                  // We want to place it BEFORE the target item
-                  actualNewIndex = targetIndex;
-
-                  // If the item was before the insertion point, we need to adjust
-                  if (actualOldIndex < actualNewIndex) {
-                    actualNewIndex -= 1;
-                  }
-                }
-
-                _customListOrder.removeAt(actualOldIndex);
-                _customListOrder.insert(actualNewIndex, item);
-                widget.onCustomListOrderChanged(_customListOrder);
-                widget.onInvalidateSortCache();
-                widget.onSaveUserPreferences();
-                _updateHeight();
-              });
-            },
-            prototypeItem: SizedBox(height: childHeight),
-            itemBuilder: (context, index) {
-              final listName = displayListOrder[index];
-              final displayName = StatusStatistic.getDisplayName(listName);
-              final isHidden = widget.hiddenLists.contains(listName);
+              // Check if list is empty by checking grouped data cache
               final isEmpty = widget.groupedDataCache != null && (widget.groupedDataCache![displayName]?.isEmpty ?? true);
 
               return AnimatedReorderableTile(
                 key: ValueKey(listName),
                 listName: listName,
                 displayName: displayName,
-                isHidden: isHidden,
-                isEmpty: isEmpty,
-                trailing: (isHovering) {
-                  return MouseRegion(
-                    cursor: SystemMouseCursors.click,
-                    child: AnimatedSwitcher(
-                      duration: shortDuration / 2,
-                      child: isHovering || isHidden
-                          ? TooltipWrapper(
-                              tooltip: isHidden ? 'Unhide List' : 'Hide List',
-                              child: (_) => IconButton(
-                                style: ButtonStyle(
-                                  padding: ButtonState.all(EdgeInsets.zero),
-                                ),
-                                icon: Icon(
-                                  isHidden ? mat.Icons.visibility_off : mat.Icons.visibility,
-                                  size: 16,
-                                  color: isHidden ? Colors.red.withOpacity(.6) : Colors.white.withOpacity(.5),
-                                ),
-                                onPressed: () {
-                                  setState(() {
-                                    if (isHidden)
-                                      widget.hiddenLists.remove(listName);
-                                    else
-                                      widget.hiddenLists.add(listName);
-
-                                    widget.onHiddenListsChanged(widget.hiddenLists);
-                                  });
-
-                                  widget.onSaveUserPreferences();
-                                  nextFrame(() {
-                                    widget.onInvalidateSortCache();
-                                  });
-                                },
-                              ),
-                            )
-                          : null,
-                    ),
-                  );
-                },
+                onPressed: (i) => widget.onScrollToList(displayName),
                 index: index,
                 selected: false,
-                isReordering: _isReordering,
+                isReordering: false,
+                reorderable: false,
+                isEmpty: isEmpty,
               );
-            },
+            }),
           );
-        },
-      ),
+        }
+
+        // Reorderable view when editing is enabled
+        return ReorderableListView.builder(
+          shrinkWrap: true,
+          physics: isCtrlPressed ? const NeverScrollableScrollPhysics() : null,
+          itemCount: displayListOrder.length,
+          buildDefaultDragHandles: false,
+          clipBehavior: Clip.none,
+          proxyDecorator: (child, index, animation) {
+            final listName = displayListOrder[index];
+            final displayName = StatusStatistic.getDisplayName(listName);
+            final isHidden = widget.hiddenLists.contains(listName);
+            final isEmpty = widget.groupedDataCache != null && (widget.groupedDataCache![displayName]?.isEmpty ?? true);
+
+            return AnimatedReorderableTile(
+              key: ValueKey('${listName}_dragging'),
+              listName: listName,
+              displayName: displayName,
+              index: index,
+              selected: true,
+              initialAnimation: true,
+              isHidden: isHidden,
+              isEmpty: isEmpty,
+              isReordering: true,
+              reorderable: true,
+            );
+          },
+          onReorderStart: (_) => setState(() => _isReordering = true),
+          onReorderEnd: (_) => setState(() => _isReordering = false),
+          onReorder: (oldIndex, newIndex) {
+            setState(() {
+              // Get the item being reordered
+              final item = displayListOrder[oldIndex];
+              final actualOldIndex = _customListOrder.indexOf(item);
+
+              int actualNewIndex;
+
+              // If moving to the very end of the list
+              if (newIndex >= displayListOrder.length) {
+                final lastVisibleItem = displayListOrder.last;
+                final lastVisibleIndex = _customListOrder.indexOf(lastVisibleItem);
+
+                // We want to place it AFTER the last visible item
+                actualNewIndex = lastVisibleIndex + 1;
+
+                // If the item was before the insertion point, we need to adjust because
+                // removing it will shift indices down
+                if (actualOldIndex < actualNewIndex) {
+                  actualNewIndex -= 1;
+                }
+              } else {
+                // Moving to a specific position (before an item)
+                final targetItem = displayListOrder[newIndex];
+                final targetIndex = _customListOrder.indexOf(targetItem);
+
+                // We want to place it BEFORE the target item
+                actualNewIndex = targetIndex;
+
+                // If the item was before the insertion point, we need to adjust
+                if (actualOldIndex < actualNewIndex) {
+                  actualNewIndex -= 1;
+                }
+              }
+
+              _customListOrder.removeAt(actualOldIndex);
+              _customListOrder.insert(actualNewIndex, item);
+              widget.onCustomListOrderChanged(_customListOrder);
+              widget.onInvalidateSortCache();
+              widget.onSaveUserPreferences();
+              _updateHeight();
+            });
+          },
+          itemBuilder: (context, index) {
+            final listName = displayListOrder[index];
+            final displayName = StatusStatistic.getDisplayName(listName);
+            final isHidden = widget.hiddenLists.contains(listName);
+            final isEmpty = widget.groupedDataCache != null && (widget.groupedDataCache![displayName]?.isEmpty ?? true);
+
+            return AnimatedReorderableTile(
+              key: ValueKey(listName),
+              listName: listName,
+              displayName: displayName,
+              isHidden: isHidden,
+              isEmpty: isEmpty,
+              trailing: (isHovering) {
+                return MouseRegion(
+                  cursor: SystemMouseCursors.click,
+                  child: AnimatedSwitcher(
+                    duration: shortDuration / 2,
+                    child: isHovering || isHidden
+                        ? TooltipWrapper(
+                            tooltip: isHidden ? 'Unhide List' : 'Hide List',
+                            child: (_) => IconButton(
+                              style: ButtonStyle(
+                                padding: ButtonState.all(EdgeInsets.all(5.0)),
+                              ),
+                              icon: Icon(
+                                isHidden ? mat.Icons.visibility_off : mat.Icons.visibility,
+                                size: 16,
+                                color: isHidden ? Colors.red.withOpacity(.6) : Colors.white.withOpacity(.5),
+                              ),
+                              onPressed: () {
+                                setState(() {
+                                  if (isHidden)
+                                    widget.hiddenLists.remove(listName);
+                                  else
+                                    widget.hiddenLists.add(listName);
+
+                                  widget.onHiddenListsChanged(widget.hiddenLists);
+                                });
+
+                                widget.onSaveUserPreferences();
+                                nextFrame(() => widget.onInvalidateSortCache());
+                              },
+                            ),
+                          )
+                        : null,
+                  ),
+                );
+              },
+              index: index,
+              selected: false,
+              isReordering: _isReordering,
+            );
+          },
+        );
+      },
     );
   }
 

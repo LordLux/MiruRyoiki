@@ -155,12 +155,13 @@ class _ReleaseNotificationWidgetState extends State<ReleaseNotificationWidget> {
           navigationItem: item,
           barrierOptions: option,
           constraints: boxConstraints,
+          padding: EdgeInsets.only(right: 36, top: 16),
           content: NotificationsContent(
             key: notificationsContentKey,
             onMorePressed: widget.onMorePressed,
             constraints: boxConstraints,
           ),
-          alignment: Position.fromAlignment(Alignment.topRight),
+          alignment: Alignment.topRight,
         );
       },
       transitionBuilder: (context, animation, secondaryAnimation, child) {

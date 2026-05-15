@@ -103,7 +103,7 @@ class _AnimatedReorderableTileState extends State<AnimatedReorderableTile> with 
             if (widget.isEmpty && !widget.isHidden) TextSpan(text: '\nThis item is empty', style: Manager.miniBodyStyle.copyWith(fontStyle: FontStyle.italic)), // Only show empty if not hidden
           ])),
           child: (_) => MouseButtonWrapper(
-            cursor: widget.onPressed == null || nullify ? SystemMouseCursors.basic : (widget.reorderable ? FlutterCustomMemoryImageCursor(key: widget.isReordering ? systemMouseCursorGrabbing : systemMouseCursorGrab) : SystemMouseCursors.click),
+            cursor: nullify ? SystemMouseCursors.basic : (widget.reorderable ? FlutterCustomMemoryImageCursor(key: widget.isReordering ? systemMouseCursorGrabbing : systemMouseCursorGrab) : SystemMouseCursors.click),
             child: (isHovering) => AnimatedBuilder(
               animation: _animationController,
               builder: (context, child) {
@@ -117,15 +117,60 @@ class _AnimatedReorderableTileState extends State<AnimatedReorderableTile> with 
                 // Calculate final opacity: hidden = 0.5, empty = 0.5, both = 0.5, normal = 1.0
                 final double textOpacity = nullify ? 0.5 : 1.0;
 
-                return ListTile(
+                return AnimatedContainer(
+                  duration: dimDuration,
                   margin: EdgeInsets.zero,
-                  onPressed: nullify ? null : () => widget.onPressed?.call(widget.index),
-                  tileColor: WidgetStatePropertyAll(tileColor),
-                  title: Text(widget.displayName, style: Manager.bodyStyle.copyWith(decoration: widget.isHidden ? TextDecoration.lineThrough : null, color: Colors.white.withOpacity(textOpacity))),
-                  leading: widget.reorderable ? Icon(!widget.selected ? Icons.drag_handle : FluentIcons.drag_object, size: 12 * Manager.fontSizeMultiplier) : null,
-                  contentPadding: widget.reorderable ? kDefaultListTilePadding : EdgeInsets.symmetric(horizontal: 6),
-                  trailing: widget.trailing?.call(isHovering),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(4),
+                    color: tileColor,
+                    border: Border.all(color: Colors.white.withOpacity(.1)),
+                  ),
+                  child: GestureDetector(
+                    onTap: nullify ? null : () => widget.onPressed?.call(widget.index),
+                    behavior: HitTestBehavior.opaque,
+                    child: Stack(
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+                          child: Row(
+                            children: [
+                              if (widget.reorderable) ...[
+                                Padding(
+                                  padding: const EdgeInsets.only(left: 8.0),
+                                  child: Icon(!widget.selected ? Icons.drag_handle : FluentIcons.drag_object, size: 12 * Manager.fontSizeMultiplier),
+                                ),
+                                const SizedBox(width: 4),
+                              ],
+                              Flexible(
+                                child: Padding(
+                                  padding: const EdgeInsets.only(left: 8.0),
+                                  child: Text(
+                                    widget.displayName,
+                                    style: Manager.bodyStyle.copyWith(
+                                      decoration: widget.isHidden ? TextDecoration.lineThrough : null,
+                                      color: Colors.white.withOpacity(textOpacity),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        if (widget.trailing != null) ...[
+                          Positioned.fill(
+                            right: 0,
+                            child: Align(
+                              alignment: Alignment.centerRight,
+                              child: Padding(
+                                padding: const EdgeInsets.only(left: 8.0, right: 6.0),
+                                child: widget.trailing!(isHovering) ?? const SizedBox.shrink(),
+                              ),
+                            ),
+                          ),
+                        ]
+                      ],
+                    ),
+                  ),
                 );
               },
             ),

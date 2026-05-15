@@ -3,7 +3,9 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/material.dart' as mat;
 import 'package:glossy/glossy.dart';
+import 'dart:ui' show ImageFilter;
 import 'package:miruryoiki/utils/screen.dart';
+import 'dart:math' as math;
 import '../../widgets/frosted_noise.dart';
 import 'dialogs.dart';
 import 'navigation.dart';
@@ -49,17 +51,17 @@ class DialogNavigationItem extends NavigationItem {
   final VoidCallback? onDismiss;
 
   /// Fallback pop-check for dialogs without a [controller]
-  /// 
+  ///
   /// When a [controller] is attached, [effectiveCanPop] takes precedence.
   final bool Function() dialogDoPopCheck;
 
   /// Optional controller bound by a multi-state dialog's [State] in initState
-  /// 
+  ///
   /// When non-null, [effectiveCanPop] delegates to [DialogController.canPop] instead of [dialogDoPopCheck]
   DialogController? controller;
 
   /// Whether this dialog can currently be popped
-  /// 
+  ///
   /// Prefers [controller.canPop] when a controller is attached
   bool effectiveCanPop() => controller?.canPop ?? dialogDoPopCheck();
 }
@@ -116,24 +118,143 @@ enum _PaddedDialogType {
   custom,
 }
 
-/// Represents the position of a dialog on the screen.
+/// Configuration for how a dialog transitions in and out
+abstract class DialogTransition {
+  const DialogTransition();
+
+  /// Applies the transition to the given [child]
+  Widget build(BuildContext context, Animation<double> animation, Widget child);
+
+  /// No transition, just fades (handled by the route)
+  factory DialogTransition.none() = _DialogTransitionNone;
+
+  /// Scales the dialog from the given [alignment]
+  factory DialogTransition.scaleFromAlignment({required Alignment alignment}) = _DialogTransitionScaleFromAlignment;
+
+  /// Scales the dialog from a point slightly above its top edge
+  factory DialogTransition.scaleFromAbove({required Alignment alignment, required double offset}) = _DialogTransitionScaleFromAbove;
+
+  /// A completely custom transition
+  factory DialogTransition.custom(Widget Function(BuildContext, Animation<double>, Widget) builder) = _DialogTransitionCustom;
+}
+
+class _DialogTransitionNone extends DialogTransition {
+  const _DialogTransitionNone();
+  @override
+  Widget build(BuildContext context, Animation<double> animation, Widget child) => child;
+}
+
+class _DialogTransitionScaleFromAlignment extends DialogTransition {
+  final Alignment? alignment;
+  const _DialogTransitionScaleFromAlignment({this.alignment});
+
+  @override
+  Widget build(BuildContext context, Animation<double> animation, Widget child) {
+    return ScaleTransition(
+      alignment: alignment ?? Alignment.center,
+      scale: CurvedAnimation(
+        parent: Tween<double>(begin: 0, end: 1.0).animate(animation),
+        curve: Curves.easeOut,
+      ),
+      child: child,
+    );
+  }
+}
+
+class _DialogTransitionScaleFromAbove extends DialogTransition {
+  final Alignment? alignment;
+  final double offset;
+  const _DialogTransitionScaleFromAbove({this.alignment, this.offset = 50.0});
+
+  @override
+  Widget build(BuildContext context, Animation<double> animation, Widget child) {
+    return AnimatedBuilder(
+      animation: animation,
+      builder: (context, child) {
+        final double scale = CurvedAnimation(
+          parent: Tween<double>(begin: 0, end: 1.0).animate(animation),
+          curve: Curves.easeOut,
+        ).value;
+
+        return Transform(
+          transform: Matrix4.identity()
+            ..translate(20.0, -offset * (1 - scale)) // for some reason the dialog is slightly off-center when scaling from the top, adding a small horizontal translation seems to fix it
+            ..scale(scale),
+          alignment: alignment ?? Alignment.topCenter,
+          child: child,
+        );
+      },
+      child: child,
+    );
+  }
+}
+
+class _DialogTransitionCustom extends DialogTransition {
+  final Widget Function(BuildContext, Animation<double>, Widget) builder;
+  const _DialogTransitionCustom(this.builder);
+
+  @override
+  Widget build(BuildContext context, Animation<double> animation, Widget child) {
+    return builder(context, animation, child);
+  }
+}
+
+class _ClampedAlignmentLayoutDelegate extends SingleChildLayoutDelegate {
+  final Alignment alignment;
+  final EdgeInsets padding;
+
+  _ClampedAlignmentLayoutDelegate({
+    required this.alignment,
+    required this.padding,
+  });
+
+  @override
+  BoxConstraints getConstraintsForChild(BoxConstraints constraints) {
+    return constraints.deflate(padding).loosen();
+  }
+
+  @override
+  Offset getPositionForChild(Size size, Size childSize) {
+    // Calculate the ideal position from the alignment.
+    final double idealX = (size.width - childSize.width) / 2 + alignment.x * (size.width - childSize.width) / 2;
+    final double idealY = (size.height - childSize.height) / 2 + alignment.y * (size.height - childSize.height) / 2;
+
+    // Clamp the position to be within the allowed bounds (size minus padding).
+    final double minX = padding.left;
+    final double minY = padding.top;
+    final double maxX = size.width - padding.right - childSize.width;
+    final double maxY = size.height - padding.bottom - childSize.height;
+
+    return Offset(
+      idealX.clamp(minX, math.max(minX, maxX)),
+      idealY.clamp(minY, math.max(minY, maxY)),
+    );
+  }
+
+  @override
+  bool shouldRelayout(_ClampedAlignmentLayoutDelegate oldDelegate) {
+    return alignment != oldDelegate.alignment || padding != oldDelegate.padding;
+  }
+}
+
+/// Represents the position of a dialog on the screen
 class Position {
-  /// Distance from the top edge.
+  /// Distance from the top edge
   final double? top;
 
-  /// Distance from the bottom edge.
+  /// Distance from the bottom edge
   final double? bottom;
 
-  /// Distance from the left edge.
+  /// Distance from the left edge
   final double? left;
 
-  /// Distance from the right edge.
+  /// Distance from the right edge
   final double? right;
 
-  /// Creates a [Position] with optional offsets.
+  /// Creates a [Position] with optional offsets
   Position({this.top, this.bottom, this.left, this.right});
 
-  /// Creates a [Position] from a standard [Alignment].
+  /// Creates a [Position] from a standard [Alignment]
   factory Position.fromAlignment(Alignment alignment) {
     return switch (alignment) {
       Alignment.topLeft => Position(top: 0, left: 0),
@@ -163,46 +284,49 @@ class Position {
   }
 }
 
-/// A dialog widget that supports custom padding, positioning, and barrier options.
+/// A dialog widget that supports custom padding, positioning, and barrier options
 ///
 /// This widget can be created using one of the factory constructors:
-/// * [PaddedDialog.simple] for a standard dialog with title, content, and actions.
-/// * [PaddedDialog.custom] for a fully custom dialog content.
-/// * [PaddedDialog.frosted] for a dialog with a frosted glass effect.
+/// * [PaddedDialog.simple] for a standard dialog with title, content, and actions
+/// * [PaddedDialog.custom] for a fully custom dialog content
+/// * [PaddedDialog.frosted] for a dialog with a frosted glass effect
 class PaddedDialog extends StatefulWidget {
-  /// Title of the dialog.
+  /// Title of the dialog
   final Widget? title;
 
-  /// Content builder for the dialog.
+  /// Content builder for the dialog
   final Widget Function(BuildContext, BoxConstraints) contentBuilder;
 
-  /// Actions builder for the dialog.
+  /// Actions builder for the dialog
   final List<Widget> Function(Object?)? actions;
 
-  /// Constraints for the dialog.
+  /// Constraints for the dialog
   final BoxConstraints constraints;
 
-  /// Alignment for the dialog.
-  final Position? alignment;
+  /// Alignment for the dialog
+  final Alignment? alignment;
 
-  /// Theme for the dialog.
+  /// Theme for the dialog
   final ContentDialogThemeData? theme;
 
-  /// Padding around the dialog content.
+  /// Padding around the dialog content
   final EdgeInsets padding;
 
-  /// Callback when the dialog is dismissed.
+  /// Callback when the dialog is dismissed
   final VoidCallback? onDismiss;
 
-  /// Navigation item associated with this dialog.
+  /// Navigation item associated with this dialog
   final DialogNavigationItem? navigationItem;
 
-  /// Barrier options for this dialog.
+  /// Barrier options for this dialog
   final PaddedBarrierOptions barrierOptions;
+
+  /// Transition for this dialog
+  final DialogTransition transition;
 
   final _PaddedDialogType _type;
 
-  /// Creates a [PaddedDialog].
+  /// Creates a [PaddedDialog]
   const PaddedDialog({
     super.key,
     required this.title,
@@ -215,40 +339,43 @@ class PaddedDialog extends StatefulWidget {
     this.onDismiss,
     this.navigationItem,
     PaddedBarrierOptions? barrierOptions,
+    DialogTransition? transition,
     _PaddedDialogType type = _PaddedDialogType.custom,
   })  : _type = type,
         padding = padding ?? const EdgeInsets.all(16.0),
         constraints = constraints ?? const BoxConstraints(maxWidth: 500, maxHeight: 300, minWidth: 300),
         theme = theme,
+        transition = transition ?? const _DialogTransitionNone(),
 
         // [navigationItem] can't be defaulted here
         barrierOptions = barrierOptions ?? const PaddedBarrierOptions();
 
-  /// Creates a simple dialog with title, content and actions.
+  /// Creates a simple dialog with title, content and actions
   ///
-  /// * [title]: Title of the dialog.
-  /// * [content]: Content of the dialog.
-  /// * [padding]: Padding around the dialog.
-  /// * [actions]: Actions for the dialog.
-  /// * [constraints]: Constraints for the dialog size.
-  /// * [alignment]: Alignment of the dialog on screen. Use [Position.fromAlignment] for common alignments.
-  /// * [theme]: Theme for the dialog.
-  /// * [onDismiss]: Callback when the dialog is dismissed.
-  /// * [navigationItem]: Navigation item for the dialog.
-  /// * [barrierOptions]: Barrier options for the dialog.
+  /// * [title]: Title of the dialog
+  /// * [content]: Content of the dialog
+  /// * [padding]: Padding around the dialog
+  /// * [actions]: Actions for the dialog
+  /// * [constraints]: Constraints for the dialog size
+  /// * [alignment]: Alignment of the dialog on screen. Use [Position.fromAlignment] for common alignments
+  /// * [theme]: Theme for the dialog
+  /// * [onDismiss]: Callback when the dialog is dismissed
+  /// * [navigationItem]: Navigation item for the dialog
+  /// * [barrierOptions]: Barrier options for the dialog
   factory PaddedDialog.simple({
     required Widget? title,
     required Widget content,
     EdgeInsets? padding,
     List<Widget>? actions,
     required BoxConstraints? constraints,
-    Position? alignment,
+    Alignment? alignment,
     ContentDialogThemeData? theme,
     VoidCallback? onDismiss,
     required DialogNavigationItem? navigationItem,
     required PaddedBarrierOptions? barrierOptions,
+    DialogTransition? transition,
   }) {
-    alignment ??= Position();
+    alignment ??= Alignment.center;
     constraints ??= BoxConstraints(maxWidth: 500, maxHeight: 300, minWidth: 300);
     return PaddedDialog(
       title: title,
@@ -261,29 +388,31 @@ class PaddedDialog extends StatefulWidget {
       onDismiss: onDismiss,
       navigationItem: navigationItem,
       barrierOptions: barrierOptions,
+      transition: transition,
       type: _PaddedDialogType.simple,
     );
   }
 
-  /// Creates a custom dialog with full control over content.
+  /// Creates a custom dialog with full control over content
   ///
-  /// * [content]: The content of the dialog.
-  /// * [padding]: Padding around the dialog.
-  /// * [constraints]: Constraints for the dialog size.
-  /// * [alignment]: Alignment of the dialog on screen. Use [Position.fromAlignment] for common alignments.
-  /// * [onDismiss]: Callback when the dialog is dismissed.
-  /// * [navigationItem]: Navigation item for the dialog.
-  /// * [barrierOptions]: Barrier options for the dialog.
+  /// * [content]: The content of the dialog
+  /// * [padding]: Padding around the dialog
+  /// * [constraints]: Constraints for the dialog size
+  /// * [alignment]: Alignment of the dialog on screen. Use [Position.fromAlignment] for common alignments
+  /// * [onDismiss]: Callback when the dialog is dismissed
+  /// * [navigationItem]: Navigation item for the dialog
+  /// * [barrierOptions]: Barrier options for the dialog
   factory PaddedDialog.custom({
     required Widget Function(BuildContext, BoxConstraints) contentBuilder,
     EdgeInsets? padding,
     required BoxConstraints? constraints,
-    Position? alignment,
+    Alignment? alignment,
     VoidCallback? onDismiss,
     required DialogNavigationItem? navigationItem,
     required PaddedBarrierOptions? barrierOptions,
+    DialogTransition? transition,
   }) {
-    alignment ??= Position();
+    alignment ??= Alignment.center;
     constraints ??= BoxConstraints(maxWidth: 500, maxHeight: 300, minWidth: 300);
     return PaddedDialog(
       title: null,
@@ -297,50 +426,75 @@ class PaddedDialog extends StatefulWidget {
       onDismiss: onDismiss,
       navigationItem: navigationItem,
       barrierOptions: barrierOptions,
+      transition: transition,
       type: _PaddedDialogType.custom,
     );
   }
 
-  /// Creates a frosted glass style dialog.
+  /// Creates a frosted glass style dialog
   ///
-  /// * [content]: The content of the dialog.
-  /// * [padding]: Padding around the dialog.
-  /// * [constraints]: Constraints for the dialog size.
-  /// * [alignment]: Alignment of the dialog on screen. Use [Position.fromAlignment] for common alignments.
-  /// * [onDismiss]: Callback when the dialog is dismissed.
-  /// * [navigationItem]: Navigation item for the dialog.
-  /// * [barrierOptions]: Barrier options for the dialog.
+  /// * [content]: The content of the dialog
+  /// * [padding]: Padding around the dialog
+  /// * [constraints]: Constraints for the dialog size
+  /// * [alignment]: Alignment of the dialog on screen. Use [Position.fromAlignment] for common alignments
+  /// * [onDismiss]: Callback when the dialog is dismissed
+  /// * [navigationItem]: Navigation item for the dialog
+  /// * [barrierOptions]: Barrier options for the dialog
   factory PaddedDialog.frosted({
     required Widget content,
     required BoxConstraints? constraints,
     EdgeInsets? padding,
-    Position? alignment,
+    Alignment? alignment,
     VoidCallback? onDismiss,
     required DialogNavigationItem? navigationItem,
     required PaddedBarrierOptions? barrierOptions,
+    DialogTransition? transition,
   }) {
-    alignment ??= Position.fromAlignment(Alignment.center);
+    alignment ??= Alignment.center;
     constraints ??= BoxConstraints(maxWidth: 250, minWidth: 250);
     return PaddedDialog(
       title: null,
       contentBuilder: (context, constraints) {
         constraints = _fixConstraints(constraints);
-        return GlossyContainer(
-          width: constraints.maxWidth,
-          height: constraints.maxHeight,
-          color: Colors.black,
-          opacity: 0.1,
-          strengthX: 20,
-          strengthY: 20,
-          blendMode: BlendMode.src,
+        return ClipRRect(
           borderRadius: BorderRadius.circular(12),
           child: Stack(
             children: [
-              FrostedNoise(
-                intensity: 0.7,
-                child: Padding(
-                  padding: const EdgeInsets.all(20.0),
-                  child: content,
+              Positioned.fill(
+                child: BackdropFilter(
+                  blendMode: BlendMode.src,
+                  filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+                  child: Container(color: Colors.transparent),
+                ),
+              ),
+              Positioned.fill(
+                child: Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12),
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        Colors.black.withOpacity(0.1),
+                        Colors.black.withOpacity(0.1),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              GlossyContainer(
+                height: constraints.maxHeight != double.infinity ? constraints.maxHeight : 250,
+                width: constraints.maxWidth != double.infinity ? constraints.maxWidth : 250,
+                border: Border.all(color: Colors.white.withOpacity(0.2), width: 1),
+                borderRadius: BorderRadius.circular(12),
+                color: Colors.white,
+                opacity: 0.05,
+                child: FrostedNoise(
+                  intensity: 0.7,
+                  child: Padding(
+                    padding: const EdgeInsets.all(20.0),
+                    child: content,
+                  ),
                 ),
               ),
             ],
@@ -353,32 +507,35 @@ class PaddedDialog extends StatefulWidget {
       onDismiss: onDismiss,
       navigationItem: navigationItem,
       barrierOptions: barrierOptions,
+      transition: transition ?? _DialogTransitionScaleFromAbove(alignment: alignment),
       type: _PaddedDialogType.custom,
     );
   }
 
   static BoxConstraints _fixConstraints(BoxConstraints constraints) {
-    if (constraints.maxWidth == double.infinity || constraints.maxHeight == double.infinity) constraints = constraints.copyWith(maxWidth: ScreenUtils.width, maxHeight: ScreenUtils.height);
-    return constraints;
+    return constraints.copyWith(
+      maxWidth: constraints.maxWidth.clamp(0.0, ScreenUtils.width),
+      maxHeight: constraints.maxHeight.clamp(0.0, ScreenUtils.height),
+    );
   }
 
   @override
   State<PaddedDialog> createState() => PaddedDialogState();
 }
 
-/// State for [PaddedDialog].
+/// State for [PaddedDialog]
 class PaddedDialogState extends State<PaddedDialog> {
   late BoxConstraints currentConstraints;
-  late Position? alignment;
+  late Alignment alignment;
 
   @override
   void initState() {
     super.initState();
     currentConstraints = widget.constraints;
-    alignment = widget.alignment;
+    alignment = widget.alignment ?? Alignment.center;
   }
 
-  /// Resizes the dialog to the given dimensions or constraints.
+  /// Resizes the dialog to the given dimensions or constraints
   void resizeDialog({double? width, double? height, BoxConstraints? constraints}) {
     setState(() {
       if (constraints != null) {
@@ -395,52 +552,30 @@ class PaddedDialogState extends State<PaddedDialog> {
     });
   }
 
-  /// Positions the dialog on screen.
-  void positionDialog(Position? alignment) => setState(() => this.alignment = alignment);
-
-  Alignment _fromPosition(Position? position) {
-    if (position == null) return Alignment.center;
-    if (position.top == 0 && position.left == 0) return Alignment.topLeft;
-    if (position.top == 0 && position.right == 0) return Alignment.topRight;
-    if (position.bottom == 0 && position.left == 0) return Alignment.bottomLeft;
-    if (position.bottom == 0 && position.right == 0) return Alignment.bottomRight;
-    if (position.top == 0) return Alignment.topCenter;
-    if (position.bottom == 0) return Alignment.bottomCenter;
-    if (position.left == 0) return Alignment.centerLeft;
-    if (position.right == 0) return Alignment.centerRight;
-    return Alignment(
-      (position.left ?? 0) - (position.right ?? 0), // +0.5 to convert from 0..1 to -1..1
-      (position.top ?? 0) - (position.bottom ?? 0),
-    );
-  }
+  /// Positions the dialog on screen
+  void positionDialog(Alignment alignment) => setState(() => this.alignment = alignment);
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: widget.barrierOptions.barrierPadding,
-      child: Stack(
-        alignment: _fromPosition(alignment),
-        children: [
-          Padding(
-            padding: widget.padding,
-            child: Builder(builder: (context) {
-              currentConstraints = PaddedDialog._fixConstraints(currentConstraints);
-              switch (widget._type) {
-                case _PaddedDialogType.simple:
-                  if (widget.actions == null || widget.actions!(null).isEmpty)
-                    return ContentActionlessDialog(
-                      constraints: currentConstraints,
-                      style: widget.theme,
-                      title: widget.title,
-                      content: mat.Material(
-                        color: Colors.transparent,
-                        child: Container(
-                          constraints: currentConstraints,
-                          child: widget.contentBuilder(context, currentConstraints),
-                        ),
-                      ),
-                    );
-                  return ContentDialog(
+    final ModalRoute<dynamic>? route = ModalRoute.of(context);
+    final Animation<double> animation = route?.animation ?? const AlwaysStoppedAnimation(1.0);
+
+    return CustomSingleChildLayout(
+      delegate: _ClampedAlignmentLayoutDelegate(
+        alignment: alignment,
+        padding: widget.barrierOptions.barrierPadding,
+      ),
+      child: widget.transition.build(
+        context,
+        animation,
+        Padding(
+          padding: widget.padding,
+          child: Builder(builder: (context) {
+            currentConstraints = PaddedDialog._fixConstraints(currentConstraints);
+            switch (widget._type) {
+              case _PaddedDialogType.simple:
+                if (widget.actions == null || widget.actions!(null).isEmpty) {
+                  return ContentActionlessDialog(
                     constraints: currentConstraints,
                     style: widget.theme,
                     title: widget.title,
@@ -451,29 +586,41 @@ class PaddedDialogState extends State<PaddedDialog> {
                         child: widget.contentBuilder(context, currentConstraints),
                       ),
                     ),
-                    actions: [
-                      ...?widget.actions?.call(widget.navigationItem?.data),
-                    ],
                   );
-                case _PaddedDialogType.custom:
-                  return mat.Material(
+                }
+                return ContentDialog(
+                  constraints: currentConstraints,
+                  style: widget.theme,
+                  title: widget.title,
+                  content: mat.Material(
                     color: Colors.transparent,
                     child: Container(
                       constraints: currentConstraints,
                       child: widget.contentBuilder(context, currentConstraints),
                     ),
-                  );
-              }
-            }),
-          ),
-        ],
+                  ),
+                  actions: [
+                    ...?widget.actions?.call(widget.navigationItem?.data),
+                  ],
+                );
+              case _PaddedDialogType.custom:
+                return mat.Material(
+                  color: Colors.transparent,
+                  child: Container(
+                    constraints: currentConstraints,
+                    child: widget.contentBuilder(context, currentConstraints),
+                  ),
+                );
+            }
+          }),
+        ),
       ),
     );
   }
 }
 
 class ContentActionlessDialog extends StatelessWidget {
-  /// Creates a content dialog without actions.
+  /// Creates a content dialog without actions
   const ContentActionlessDialog({
     super.key,
     this.title,
@@ -482,25 +629,23 @@ class ContentActionlessDialog extends StatelessWidget {
     this.constraints = kDefaultContentDialogConstraints,
   });
 
-  /// The title of the dialog. Usually, a [Text] widget
+  /// The title of the dialog
   final Widget? title;
 
-  /// The content of the dialog. Usually, a [Text] widget
+  /// The content of the dialog
   final Widget? content;
 
-  /// The style used by this dialog. If non-null, it's merged with
-  /// [FluentThemeData.dialogTheme]
+  /// The style used by this dialog. If non-null, it's merged with [FluentThemeData.dialogTheme]
   final ContentDialogThemeData? style;
 
-  /// The constraints of the dialog. It defaults to `BoxConstraints(maxWidth: 368)`
+  /// The constraints of the dialog. Defaults to `BoxConstraints(maxWidth: 368, maxHeight: 756)`
   final BoxConstraints constraints;
 
   @override
   Widget build(BuildContext context) {
     assert(debugCheckHasFluentTheme(context));
-    final style = ContentDialogThemeData.standard(FluentTheme.of(
-      context,
-    )).merge(FluentTheme.of(context).dialogTheme.merge(this.style));
+    final style = ContentDialogThemeData.standard(FluentTheme.of(context)) //
+        .merge(FluentTheme.of(context).dialogTheme.merge(this.style));
 
     return Align(
       alignment: AlignmentDirectional.center,

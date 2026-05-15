@@ -313,9 +313,8 @@ extension PaddedDialogExtensions on BuildContext {
     if (state != null) state.resizeDialog(width: width, height: height, constraints: constraints);
   }
 
-  void positionManagedDialog(Position alignment) {
+  void positionManagedDialog(Alignment alignment) {
     final state = managedDialogState;
-
     if (state != null) state.positionDialog(alignment);
   }
 }
