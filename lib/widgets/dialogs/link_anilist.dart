@@ -130,7 +130,7 @@ class AnilistLinkMultiContent extends StatefulWidget {
   AnilistLinkMultiContentState createState() => AnilistLinkMultiContentState();
 }
 
-class AnilistLinkMultiContentState extends State<AnilistLinkMultiContent> implements DialogController {
+class AnilistLinkMultiContentState extends State<AnilistLinkMultiContent> with DialogController {
   @override
   bool get canPop => mode == 'view';
 

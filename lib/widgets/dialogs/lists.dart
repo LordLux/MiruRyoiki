@@ -21,6 +21,7 @@ import '../tooltip_wrapper.dart';
 
 /// UI for managing Anilist list order and visibility in the library dialog
 class ListsContent extends StatefulWidget {
+  final DialogNavigationItem? item;
   final BoxConstraints constraints;
   final LibraryView currentView;
   final List<String> customListOrder;
@@ -34,6 +35,7 @@ class ListsContent extends StatefulWidget {
 
   const ListsContent({
     super.key,
+    this.item,
     required this.constraints,
     required this.currentView,
     required this.customListOrder,
@@ -50,7 +52,7 @@ class ListsContent extends StatefulWidget {
   ListsContentState createState() => ListsContentState();
 }
 
-class ListsContentState extends State<ListsContent> {
+class ListsContentState extends State<ListsContent> with DialogController {
   bool editListsEnabled = false;
   List<String> _previousCustomListOrder = [];
   late List<String> _customListOrder;
@@ -58,18 +60,41 @@ class ListsContentState extends State<ListsContent> {
   final GlobalKey _columnKey = GlobalKey();
 
   @override
+  bool get canPop => true;
+
+  @override
+  bool onBackRequested() => false;
+
+  @override
+  bool onEscPressed() {
+    if (editListsEnabled) {
+      setState(() {
+        editListsEnabled = false;
+        _updateHeight();
+      });
+      return true;
+    }
+    return false;
+  }
+
+  @override
   void initState() {
     super.initState();
     _customListOrder = List.from(widget.customListOrder);
+    widget.item?.controller = this;
     _updateHeight();
+  }
+
+  @override
+  void dispose() {
+    widget.item?.controller = null;
+    super.dispose();
   }
 
   @override
   void didUpdateWidget(ListsContent oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.hiddenLists != oldWidget.hiddenLists) {
-      _updateHeight();
-    }
+    if (widget.hiddenLists != oldWidget.hiddenLists) _updateHeight();
   }
 
   void _updateHeight() {

@@ -342,6 +342,10 @@ class _CustomKeyboardListenerState extends State<CustomKeyboardListener> {
       }
 
       final controller = navigator.currentDialog?.controller;
+      if (controller != null && controller.onEscPressed()) {
+        logTrace('Dialog controller consumed ESC via onEscPressed');
+        return true;
+      }
       if (controller != null && !controller.canPop) {
         logTrace('Dialog has a controller and is locked, routing ESC to controller');
         return controller.onBackRequested();

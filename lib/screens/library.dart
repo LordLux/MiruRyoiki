@@ -2168,7 +2168,7 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
 
     if (_listButtonKey.currentContext != null) {
       final RenderBox renderBox = _listButtonKey.currentContext!.findRenderObject() as RenderBox;
-      anchorPosition = renderBox.localToGlobal(Offset(-20, 93));
+      anchorPosition = renderBox.localToGlobal(Offset(-20, 86));
       anchorSize = renderBox.size;
     }
 
@@ -2212,6 +2212,7 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
           alignment: alignment,
           transition: DialogTransition.scaleFromAbove(alignment: alignment, offset: 70),
           content: ListsContent(
+            item: item,
             constraints: constraints,
             currentView: _currentView,
             customListOrder: customListOrder,

@@ -36,7 +36,7 @@ final Duration splashScreenFadeAnimationOut = const Duration(milliseconds: 400);
 ///
 /// This is useful for ensuring that the UI is fully built before executing
 void nextFrame(
-  /// a function, optionally with a delay.
+  /// a function, optionally with a delay
   VoidCallback function, {
   /// delay in milliseconds before running the function 
   int delay = 0,
@@ -47,7 +47,7 @@ void nextFrame(
     _runAfterFrame(function);
 }
 
-void _runAfterFrame(VoidCallback function) => nextFrame(function);
+void _runAfterFrame(VoidCallback function) => WidgetsBinding.instance.addPostFrameCallback((_) => function());
 
 extension DurationArithmetic on Duration {
   Duration operator +(Duration other) => Duration(milliseconds: inMilliseconds + other.inMilliseconds);

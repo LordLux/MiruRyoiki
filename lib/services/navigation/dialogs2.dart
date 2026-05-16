@@ -12,8 +12,8 @@ import 'navigation.dart';
 
 /// Interface for multi-state dialogs that need to intercept back/dismiss requests and handle them internally (e.g. "go up one step") before letting the navigation framework close the route
 ///
-/// Implement this on a dialog's [State] and assign [DialogNavigationItem.controller] in [State.initState] to opt in
-abstract class DialogController {
+/// Mix this into a dialog's [State] with `with DialogController` and assign [DialogNavigationItem.controller] in [State.initState] to opt in
+mixin DialogController {
   /// Whether the dialog can currently be closed by the user via barrier tap, ESC key, or the mouse-back button
   bool get canPop;
 
@@ -21,6 +21,17 @@ abstract class DialogController {
   ///
   /// Return `true` if the dialog handled the request internally (e.g. returned to a previous inner step). Return `false` to let the navigation framework pop the route as usual
   bool onBackRequested();
+
+  /// Called when the user presses ESC while this dialog is the top dialog, before the normal back/close flow runs
+  ///
+  /// Expected behavior for implementers:
+  /// * Return `true` when the ESC key event should be consumed (preventing dialog closure)
+  /// * Return `false` to allow normal handling (let the global handler proceed as usual)
+  ///
+  /// Unlike [canPop]/[onBackRequested], this hook fires regardless of [canPop] and does **not** contribute to [NavigationManager.isDialogLocked]
+  /// 
+  /// Use it for ESC-only local overrides that should not block other dismissal paths (barrier tap, mouse-back, programmatic close)
+  bool onEscPressed() => false;
 }
 
 /// A navigation item that represents a dialog in the navigation system.

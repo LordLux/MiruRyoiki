@@ -68,7 +68,7 @@ class KnabenSearchDialog extends StatefulWidget {
   State<KnabenSearchDialog> createState() => KnabenSearchDialogState();
 }
 
-class KnabenSearchDialogState extends State<KnabenSearchDialog> implements DialogController {
+class KnabenSearchDialogState extends State<KnabenSearchDialog> with DialogController {
   @override
   bool get canPop => _step == _Step.search;
 
@@ -77,6 +77,7 @@ class KnabenSearchDialogState extends State<KnabenSearchDialog> implements Dialo
     backToSearch();
     return true;
   }
+
   late TextEditingController _searchController;
   bool _isCustomSearch = false;
 
