@@ -1,59 +1,39 @@
-import 'dart:async';
+/// Smoke tests that exercise the real AniList public API through the
+/// [AnilistQueryExecutor] mixin directly (no service wrapper).
+///
+/// These are read-only, require no authentication, and exist to verify that
+/// the executor correctly handles network-only fetches against the live API.
+///
+/// Run with:  powershell -File test/run_real_anilist.ps1
+@Tags(['real-api'])
+library;
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:graphql/client.dart';
-import 'package:connectivity_plus/connectivity_plus.dart';
-import 'package:miruryoiki/services/connectivity/connectivity_service.dart';
 import 'package:miruryoiki/services/anilist/queries/anilist_query_executor.dart';
 import 'package:miruryoiki/models/anilist/anime.dart';
 
-// A concrete implementation of the mixin for testing
-class RealApiExecutor with AnilistQueryExecutor {
+import 'support/anilist_test_harness.dart';
+
+/// Thin concrete class that wires an external client into the executor mixin.
+class _RealApiExecutor with AnilistQueryExecutor {
   final GraphQLClient _client;
-  RealApiExecutor(this._client);
+  _RealApiExecutor(this._client);
 
   @override
   GraphQLClient? get client => _client;
 }
 
-// Mock connectivity that always reports online for the integration test
-class AlwaysOnlineStrategy implements ConnectivityStrategy {
-  @override
-  Stream<List<ConnectivityResult>> get onConnectivityChanged => Stream.value([ConnectivityResult.wifi]);
-
-  @override
-  Future<bool> hasInternetAccess() async => true;
-}
-
 void main() {
-  // SET YOUR TOKEN HERE IF NEEDED FOR AUTHENTICATED TESTS
-  const String? userToken = null; 
-
-  late RealApiExecutor executor;
+  late _RealApiExecutor executor;
 
   setUpAll(() async {
-    // Initialize Logging to see output (optional, but good for debugging)
-    // initializeLoggingSession(); // Requires path_provider which might fail in pure unit test env without mocks
-
-    // Force connectivity to be "online" so we don't depend on the actual device state logic
-    // (though for a real integration test, we assume the machine has internet)
-    ConnectivityService().setStrategy(AlwaysOnlineStrategy());
-    await ConnectivityService().initialize();
-
-    final HttpLink httpLink = HttpLink('https://graphql.anilist.co');
-    
-    Link link = httpLink;
-    if (userToken != null && userToken.isNotEmpty) {
-      final AuthLink authLink = AuthLink(getToken: () => 'Bearer $userToken');
-      link = authLink.concat(httpLink);
+    final ctx = await RealAnilist.setUp();
+    if (ctx == null) {
+      markTestSkipped('No ACCESS_TOKEN in test/.env');
+      return;
     }
-
-    final client = GraphQLClient(
-      cache: GraphQLCache(),
-      link: link,
-    );
-
-    executor = RealApiExecutor(client);
+    executor = _RealApiExecutor(ctx.client);
   });
 
   group('Real AniList API Integration', () {
@@ -72,8 +52,6 @@ void main() {
         }
       ''';
 
-      print('Executing query against https://graphql.anilist.co...');
-
       final result = await executor.executeQuery<AnilistAnime>(
         options: QueryOptions(
           document: gql(query),
@@ -82,8 +60,6 @@ void main() {
         operationName: 'RealApiTest_CowboyBebop',
         parser: (data) => AnilistAnime.fromJson(data['Media']),
       );
-
-      print('Result: $result');
 
       expect(result, isNotNull);
       expect(result!.id, 1);
@@ -119,13 +95,10 @@ void main() {
         },
       );
 
-      print('Found ${result?.length} results for "Naruto"');
-      
       expect(result, isNotNull);
       expect(result!.isNotEmpty, true);
-      // Check if any result contains "Naruto"
-      final hasNaruto = result.any((anime) => 
-        (anime.title.english)?.contains('Naruto') ?? false
+      final hasNaruto = result.any(
+        (anime) => (anime.title.english)?.contains('Naruto') ?? false,
       );
       expect(hasNaruto, true);
     });
