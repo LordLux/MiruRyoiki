@@ -1,13 +1,18 @@
 import 'path.dart';
 
 class FilenameUtils {
-  /// Strip Windows-forbidden characters, control chars, reserved names, and trailing dots/spaces using [PathString.unallowedWindowsCharactersPattern]
+  /// Replace Windows-forbidden characters and control chars with `-`; strip reserved
+  /// device names and trailing dots/spaces.
   ///
   /// Collapses internal whitespace and trims
   static String sanitize(String input) {
     if (input.isEmpty) return input;
-    final stripped = input.replaceAll(
-      RegExp(PathString.unallowedWindowsCharactersPattern, caseSensitive: false),
+    final dashed = input.replaceAll(
+      RegExp(PathString.forbiddenWindowsCharsPattern, caseSensitive: false),
+      '-',
+    );
+    final stripped = dashed.replaceAll(
+      RegExp(PathString.reservedWindowsNameOrTrailingPattern, caseSensitive: false),
       '',
     );
     return stripped.replaceAll(RegExp(r'\s+'), ' ').trim();

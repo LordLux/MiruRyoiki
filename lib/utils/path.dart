@@ -153,7 +153,14 @@ class PathString {
 
   /// **Other rules**
   /// - Filenames cannot end in a space or dot
-  static String unallowedWindowsCharactersPattern = r'[<>:"/\\|?*\x00-\x1F]|^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(\..*)?$|[. ]+$';
+
+  /// Windows-forbidden + control characters — sanitizers replace these (e.g. with '-')
+  static String forbiddenWindowsCharsPattern = r'[<>:"/\\|?*\x00-\x1F]';
+
+  /// Reserved device names and trailing dots/spaces — sanitizers strip these
+  static String reservedWindowsNameOrTrailingPattern = r'^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(\..*)?$|[. ]+$';
+
+  static String unallowedWindowsCharactersPattern = '$forbiddenWindowsCharsPattern|$reservedWindowsNameOrTrailingPattern';
   
   static FilteringTextInputFormatter get pathInputFormatter {
     if (Platform.isWindows) return FilteringTextInputFormatter.deny(RegExp(PathString.unallowedWindowsCharactersPattern, caseSensitive: false));

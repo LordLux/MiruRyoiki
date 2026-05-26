@@ -37,17 +37,34 @@ sealed class TorrentRelease {
   late final bool isLikelyBatch = _computeIsLikelyBatch();
 
   bool _computeIsLikelyBatch() {
-    final parsed = FlutterAnitomy().parse(title);
+    try {
+      final parsed = FlutterAnitomy().parse(title);
 
-    for (final info in parsed.getAll(ElementKind.releaseInformation)) {
-      final l = info.toLowerCase();
-      if (l.contains('batch') || l.contains('complete')) return true;
+      for (final info in parsed.getAll(ElementKind.releaseInformation)) {
+        final l = info.toLowerCase();
+        if (l.contains('batch') || l.contains('complete')) return true;
+      }
+
+      final episodes = parsed.getAll(ElementKind.episode);
+      if (episodes.length >= 2) return true;
+
+      final hasSeason = parsed.getAll(ElementKind.season).isNotEmpty;
+      return hasSeason && episodes.isEmpty;
+    } catch (_) {
+      // Anitomy's native library can be unavailable (unit tests, or a failed
+      // plugin load at runtime). Fall back to a title heuristic instead of
+      // letting batch detection throw.
+      return _heuristicIsLikelyBatch();
     }
+  }
 
-    final episodes = parsed.getAll(ElementKind.episode);
-    if (episodes.length >= 2) return true;
-
-    final hasSeason = parsed.getAll(ElementKind.season).isNotEmpty;
-    return hasSeason && episodes.isEmpty;
+  bool _heuristicIsLikelyBatch() {
+    if (RegExp(r'\b(batch|complete)\b', caseSensitive: false).hasMatch(title)) return true;
+    // Episode range, e.g. "01-12" / "01~12".
+    if (RegExp(r'\b\d{1,4}\s*[-~]\s*\d{1,4}\b').hasMatch(title)) return true;
+    // A season marker with no single-episode marker reads as a whole-season pack.
+    final hasSeason = RegExp(r'(\bS\d{1,2}\b|\bseason\s+\d+)', caseSensitive: false).hasMatch(title);
+    final hasSingleEpisode = RegExp(r'(\bS\d{1,2}E\d{1,4}\b|\bE\d{1,4}\b|\bepisode\s+\d+)', caseSensitive: false).hasMatch(title);
+    return hasSeason && !hasSingleEpisode;
   }
 }
