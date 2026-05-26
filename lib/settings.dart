@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter_acrylic/window_effect.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -27,6 +29,12 @@ class SettingsManager extends ChangeNotifier {
   final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
   String _sonarrApiKey = '';
   bool _initialized = false;
+
+  /// True when running under `flutter test`. Used to suppress the expected
+  /// "saved before SettingsDao initialized" log noise that only occurs in the
+  /// DB-less test environment; the same condition in production is a real
+  /// ordering bug worth logging loudly.
+  static final bool _isTestEnv = Platform.environment.containsKey('FLUTTER_TEST');
 
   // // Typed getters/setters for settings
   // Appearance
@@ -400,7 +408,7 @@ class SettingsManager extends ChangeNotifier {
   // Save a single setting to DB
   Future<void> _saveToDb(String key, String value) async {
     if (_settingsDao == null) {
-      logErr('Attempted to save setting $key before SettingsDao was initialized.');
+      if (!_isTestEnv) logErr('Attempted to save setting $key before SettingsDao was initialized.');
       return;
     }
     await _settingsDao!.set(key, value);
@@ -409,7 +417,7 @@ class SettingsManager extends ChangeNotifier {
   // Save all settings to DB
   Future<void> saveAllSettings() async {
     if (_settingsDao == null) {
-      logErr('Attempted to save all settings before SettingsDao was initialized.');
+      if (!_isTestEnv) logErr('Attempted to save all settings before SettingsDao was initialized.');
       return;
     }
 
