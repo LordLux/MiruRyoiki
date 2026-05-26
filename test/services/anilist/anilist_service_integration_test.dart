@@ -4,7 +4,7 @@
 /// These tests are order-independent (all read-only) and require no account
 /// mutations.
 ///
-/// Run with:  powershell -File test/run_real_anilist.ps1
+/// Run with:  powershell -File test/launch_scripts/real_anilist.ps1
 @Timeout(Duration(minutes: 10))
 @Tags(['real-api'])
 library;

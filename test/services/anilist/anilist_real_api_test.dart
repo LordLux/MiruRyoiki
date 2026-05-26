@@ -4,7 +4,8 @@
 /// These are read-only, require no authentication, and exist to verify that
 /// the executor correctly handles network-only fetches against the live API.
 ///
-/// Run with:  powershell -File test/run_real_anilist.ps1
+/// Run with:  powershell -File test/launch_scripts/real_anilist.ps1
+@Timeout(Duration(minutes: 10))
 @Tags(['real-api'])
 library;
 

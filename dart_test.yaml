@@ -1,6 +1,11 @@
 # Tags for selective test execution.
-# real-api tests hit the real AniList API and require a valid ACCESS_TOKEN in test/.env.
-# Run them with:  powershell -File test/run_real_anilist.ps1
-# Skip them with: fvm flutter test --exclude-tags real-api
+#
+# real-api        - hit the real AniList API; need a valid ACCESS_TOKEN in test/.env.
+#                   Run:  powershell -File test/launch_scripts/real_anilist.ps1
+# requires-player - need a real running media player (VLC/MPC-HC, web interface on).
+#                   Run:  powershell -File test/launch_scripts/requires_player.ps1
+#
+# Fast offline suite (excludes both):  powershell -File test/launch_scripts/unit.ps1
 tags:
   real-api: {}
+  requires-player: {}

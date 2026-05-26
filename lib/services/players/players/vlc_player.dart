@@ -33,6 +33,12 @@ class VLCPlayer extends MediaPlayer {
     PlayerConfiguration? configuration,
   }) : _configuration = configuration;
 
+  /// Convert a 0–100 percentage to VLC's 0–256 volume scale.
+  static int percentToVlc(num percent) => (percent * 2.56).round();
+
+  /// Convert VLC's 0–256 volume scale back to a 0–100 percentage.
+  static int vlcToPercent(num vlcVolume) => (vlcVolume / 2.56).round();
+
   @override
   Stream<MediaStatus> get statusStream => _statusController.stream;
 
@@ -94,7 +100,7 @@ class VLCPlayer extends MediaPlayer {
           currentPosition: Duration(seconds: (data['time'] ?? 0).toInt()),
           totalDuration: Duration(seconds: (data['length'] ?? 0).toInt()),
           isPlaying: data['state'] == 'playing',
-          volumeLevel: ((data['volume'] ?? 0) / 2.56).round(), // VLC uses 0-256, convert to 0-100
+          volumeLevel: vlcToPercent(data['volume'] ?? 0), // VLC uses 0-256, convert to 0-100
           isMuted: data['volume'] == 0,
         );
 
@@ -121,7 +127,7 @@ class VLCPlayer extends MediaPlayer {
   @override
   Future<void> setVolume(int level) async {
     // VLC uses 0-256 volume range
-    final vlcVolume = (level * 2.56).round();
+    final vlcVolume = percentToVlc(level);
     await _sendCommand('volume', {'val': vlcVolume.toString()});
   }
 
@@ -132,7 +138,7 @@ class VLCPlayer extends MediaPlayer {
   }
 
   @override
-  Future<void> unmute() async => await _sendCommand('volume', {'val': '${(prevVolume * 2.56).round()}'});
+  Future<void> unmute() async => await _sendCommand('volume', {'val': '${percentToVlc(prevVolume)}'});
 
   @override
   Future<void> nextVideo() async => await _sendCommand('pl_next');

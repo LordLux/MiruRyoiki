@@ -1,4 +1,7 @@
 // ignore_for_file: avoid_print
+@Timeout(Duration(minutes: 2))
+@Tags(['requires-player'])
+library;
 
 import 'package:flutter_test/flutter_test.dart';
 import 'dart:async';

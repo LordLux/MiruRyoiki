@@ -6,7 +6,7 @@
 /// The pure-unit [AnilistMediaListEntry.fromJson] test requires no network
 /// and is grouped separately.
 ///
-/// Run with:  powershell -File test/run_real_anilist.ps1
+/// Run with:  powershell -File test/launch_scripts/real_anilist.ps1
 @Timeout(Duration(minutes: 10))
 @Tags(['real-api'])
 library;

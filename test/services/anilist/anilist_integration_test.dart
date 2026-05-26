@@ -4,7 +4,7 @@
 /// Each test's [setUp] resets the Cowboy Bebop list entry to a blank slate so
 /// tests are order-independent regardless of which subset is run.
 ///
-/// Run with:  powershell -File test/run_real_anilist.ps1
+/// Run with:  powershell -File test/launch_scripts/real_anilist.ps1
 @Timeout(Duration(minutes: 10))
 @Tags(['real-api'])
 library;

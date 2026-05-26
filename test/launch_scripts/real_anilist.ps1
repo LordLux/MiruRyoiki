@@ -8,7 +8,7 @@
 # This keeps the combined request rate safely below AniList's degraded cap of 30 req/min even across file boundaries
 #
 # Usage (from repo root):
-#   `powershell -File test/run_real_anilist.ps1`
+#   `powershell -File test/launch_scripts/real_anilist.ps1`
 
 Write-Host "Running real-AniList API tests (concurrency=1)..." -ForegroundColor Cyan
 fvm flutter test --concurrency=1 --tags real-api @args

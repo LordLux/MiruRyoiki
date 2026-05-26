@@ -5,7 +5,7 @@
 /// in-memory [userLists] state after each save — exactly as before, but now
 /// backed by a live API response rather than a fake client.
 ///
-/// Run with:  powershell -File test/run_real_anilist.ps1
+/// Run with:  powershell -File test/launch_scripts/real_anilist.ps1
 @Timeout(Duration(minutes: 10))
 @Tags(['real-api'])
 library;
