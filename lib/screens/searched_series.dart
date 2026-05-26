@@ -9,6 +9,7 @@ import 'package:miruryoiki/models/anilist/page_info.dart';
 import 'package:miruryoiki/widgets/acrylic_header.dart';
 import 'package:defer_pointer/defer_pointer.dart';
 import 'package:smooth_scroll_multiplatform/smooth_scroll_multiplatform.dart';
+import 'package:url_launcher/url_launcher.dart' show launchUrl;
 
 import '../models/anilist/anime.dart';
 import '../models/anilist/user_list.dart';
@@ -718,7 +719,7 @@ class SearchedSeriesScreenState extends State<SearchedSeriesScreen> {
                 ? null
                 : () {
                     logTrace('Opening anime in browser: $kAnilistBaseUrl/anime/$animeId');
-                    openAnilistAnime(animeId);
+                    launchUrl(Uri.parse(widget.anilistUrl));
                   },
           );
         }),
