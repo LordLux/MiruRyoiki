@@ -69,8 +69,13 @@ class SearchedSeriesScreen extends StatefulWidget {
   SearchedSeriesScreenState createState() => SearchedSeriesScreenState();
 }
 
+enum CachedButtonState { inLibrary, inAnilist, neither }
+
 class SearchedSeriesScreenState extends State<SearchedSeriesScreen> {
+  static final Map<int, CachedButtonState> _buttonStatusCache = {};
+
   int currentTabIndex = 0;
+  bool _isFetching = true;
   late final SimpleHtmlParser parser;
 
   final ShrinkerController _descriptionController = ShrinkerController();
@@ -527,6 +532,7 @@ class SearchedSeriesScreenState extends State<SearchedSeriesScreen> {
           logWarn('Failed to fetch AniList details for ID $anilistId: device is offline');
         else
           logErr('Failed to load Anilist data for ID: $anilistId');
+        if (mounted) setState(() => _isFetching = false);
         return;
       }
 
@@ -537,9 +543,11 @@ class SearchedSeriesScreenState extends State<SearchedSeriesScreen> {
 
       // Finalize UI
       _initTabs();
+      if (mounted) setState(() => _isFetching = false);
       Manager.setState();
     } catch (e) {
       if (!isExpectedOfflineError(e)) logErr('Failed to load Anilist data', e);
+      if (mounted) setState(() => _isFetching = false);
     }
   }
 
@@ -632,9 +640,15 @@ class SearchedSeriesScreenState extends State<SearchedSeriesScreen> {
     );
   }
 
-  (String, String, Widget) _getAddToButtonText(bool isInAnilist, bool isInLibrary) {
-    if (isInLibrary) return ('Go to Series', 'Open the series page in your Library', Icon(Symbols.newsstand));
-    if (isInAnilist) return ('Add to Library', 'Add the series to your Library', Icon(Symbols.library_add));
+  (String, String, Widget) _getAddToButtonText(int anilistId, bool isInAnilist, bool isInLibrary) {
+    if (_isFetching && !_buttonStatusCache.containsKey(anilistId)) return ('Loading...', 'Syncing state...', const Icon(Symbols.sync));
+
+    final inLibrary = _isFetching ? _buttonStatusCache[anilistId] == CachedButtonState.inLibrary : isInLibrary;
+    final inAnilist = _isFetching ? _buttonStatusCache[anilistId] == CachedButtonState.inAnilist : isInAnilist;
+
+    if (inLibrary) return ('Go to Series', 'Open the series page in your Library', const Icon(Symbols.newsstand));
+    if (inAnilist) return ('Add to Library', 'Add the series to your Library', const Icon(Symbols.library_add));
+    
     return ('Add to Anilist', 'Add the series to Anilist', SizedBox(width: 25, height: 25, child: Transform.translate(offset: const Offset(0, 3), child: anilistLogo)));
   }
 
@@ -653,26 +667,39 @@ class SearchedSeriesScreenState extends State<SearchedSeriesScreen> {
       footer: [
         // Add to Anilist Button
         Builder(builder: (context) {
-          final animeId = series?.id;
+          final anilistId = series?.id ?? int.tryParse(widget.anilistUrl.split('/').last) ?? 0;
           final anilist = Provider.of<AnilistProvider>(context);
           final library = Provider.of<Library>(context);
 
-          final isInAnilist = anilist.allUserAnilistIds.contains(animeId);
-          final isInLibrary = isInAnilist && library.mappedAnilistIds.contains(animeId);
-          final (text, tooltip, icon) = _getAddToButtonText(isInAnilist, isInLibrary);
+          final isInAnilist = anilist.allUserAnilistIds.contains(anilistId);
+          final isInLibrary = isInAnilist && library.mappedAnilistIds.contains(anilistId);
+
+          if (!_isFetching && anilistId > 0) {
+            if (isInLibrary) _buttonStatusCache[anilistId] = CachedButtonState.inLibrary;
+            else if (isInAnilist) _buttonStatusCache[anilistId] = CachedButtonState.inAnilist;
+            else _buttonStatusCache[anilistId] = CachedButtonState.neither;
+          }
+
+          final (text, tooltip, icon) = _getAddToButtonText(anilistId, isInAnilist, isInLibrary);
 
           return StandardButton(
+            isLoading: _isFetching,
             label: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 icon,
                 HDiv(4),
-                Text(text, style: getStyleBasedOnAccent(false)),
+                Text(
+                  text,
+                  style: getStyleBasedOnAccent(false).copyWith(
+                    fontStyle: text == 'Loading...' ? FontStyle.italic : null,
+                  ),
+                ),
               ],
             ),
             expand: true,
             tooltip: tooltip,
-            onPressed: animeId == null || series == null || anilist.isOffline || !anilist.isLoggedIn
+            onPressed: anilistId <= 0 || series == null || anilist.isOffline || !anilist.isLoggedIn || _isFetching
                 ? null
                 : () {
                     final s = series;
