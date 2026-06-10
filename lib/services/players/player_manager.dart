@@ -63,6 +63,18 @@ class PlayerManager {
     }
   }
 
+  /// Connect to an already-built, push-based player (like the MPC-HC slave facade)
+  ///
+  /// Unlike [connectToPlayer], it adopts the given instance directly and skips the polling connection check
+  Future<bool> connectToPushPlayer(MediaPlayer player, PlayerType type) async {
+    await disconnect();
+
+    _currentPlayer = player;
+    _currentPlayerType = type;
+    _currentPlayerConfig = null;
+    return await _establishConnection();
+  }
+
   /// Connect to a player using a configuration object
   Future<bool> connectToPlayerWithConfiguration(PlayerConfiguration config) async {
     // Always disconnect from current player first to ensure only one connection
@@ -153,7 +165,8 @@ class PlayerManager {
     if (connected) {
       _connectionController.add(PlayerConnectionStatus.connected());
       _setupPlayerListeners();
-      _startConnectionCheck();
+      // Only poll-based players need the connection check; push-based players (like the MPC-HC slave) deliver status themselves
+      if (_currentPlayer?.isPushBased != true) _startConnectionCheck();
       return true;
     } else {
       _connectionController.add(PlayerConnectionStatus.error('Failed to connect to player'));
@@ -194,7 +207,7 @@ class PlayerManager {
     } catch (e) {
       // Connection lost, disconnect current player and try to reconnect following priority order
       _connectionController.add(PlayerConnectionStatus.error('Connection lost, attempting reconnection'));
-      
+
       // Store the priority order before disconnecting to ensure we use the same order for reconnection
       final priorityOrder = PlayerConfig.autoConnectOrder;
       await disconnect();
@@ -206,7 +219,7 @@ class PlayerManager {
 
   /// Verify if the player is actually still connected by attempting to communicate with it
   /// (Unlike `isConnected` which just checks if _currentPlayer is not null, this tries to poll the player to verify it's still responding)
-  /// 
+  ///
   /// Returns true if the player is connected and responding, false otherwise
   /// If the connection is dead, it will automatically clean up the stale connection
   Future<bool> verifyConnection() async {

@@ -138,6 +138,9 @@ class SettingsScreenState extends State<SettingsScreen> with AutomaticKeepAliveC
   final TextEditingController _qbitUrlController = TextEditingController();
   final TextEditingController _qbitUsernameController = TextEditingController();
   final TextEditingController _qbitPasswordController = TextEditingController();
+
+  // Media player settings state
+  final TextEditingController _mpcHcPathController = TextEditingController();
   bool _isQbitTesting = false;
   bool? _qbitTestResult;
   bool _isQbitEditing = false;
@@ -147,6 +150,12 @@ class SettingsScreenState extends State<SettingsScreen> with AutomaticKeepAliveC
   final FocusNode transitionAnimationFocusNode = FocusNode();
 
   int _selectedSettingCategory = 0;
+
+  void openPlayersCategory() {
+    if (!mounted) return;
+    const playersCategoryIndex = 3;
+    setState(() => _selectedSettingCategory = playersCategoryIndex);
+  }
 
   static List<Map<String, dynamic>> get settingsList => [
         {
@@ -828,6 +837,7 @@ class SettingsScreenState extends State<SettingsScreen> with AutomaticKeepAliveC
       _qbitUrlController.text = settings.qbitBaseUrl; // empty = placeholder shown
       _qbitUsernameController.text = settings.qbitUsername; // empty = placeholder shown
       _qbitPasswordController.text = settings.qbitPassword;
+      _mpcHcPathController.text = settings.mpcHcExecutablePath; // empty = auto-detect
 
       // Restore verified Sonarr connection state
       if (settings.sonarrConnectionVerified && settings.isSonarrConfigured) {
@@ -1272,9 +1282,7 @@ class SettingsScreenState extends State<SettingsScreen> with AutomaticKeepAliveC
                   ToggleSwitch(
                     checked: settings.disableAnimations,
                     content: Text(settings.disableAnimations ? 'Animations Disabled' : 'Animations Enabled', style: Manager.bodyStyle),
-                    onChanged: (value) {
-                      setState(() => settings.disableAnimations = value);
-                    },
+                    onChanged: (value) => setState(() => settings.disableAnimations = value),
                   ),
                   tooltip: 'When enabled, most UI animations will be disabled for a more static experience.',
                 ),
@@ -1411,9 +1419,7 @@ class SettingsScreenState extends State<SettingsScreen> with AutomaticKeepAliveC
                         ToggleSwitch(
                           checked: settings.showAiringIndicator,
                           content: Text(settings.showAiringIndicator ? 'Enabled' : 'Disabled', style: Manager.bodyStyle),
-                          onChanged: (value) {
-                            setState(() => settings.showAiringIndicator = value);
-                          },
+                          onChanged: (value) => setState(() => settings.showAiringIndicator = value),
                         ),
                         tooltip: 'When enabled, an indicator will be shown on series cards if the series is currently airing or if the series is local.\nOtherwise, no indicator is shown.',
                       ),
@@ -1458,9 +1464,7 @@ class SettingsScreenState extends State<SettingsScreen> with AutomaticKeepAliveC
                   ToggleSwitch(
                     checked: settings.squigglySliderEnabled,
                     content: Text(settings.squigglySliderEnabled ? 'Enabled' : 'Disabled', style: Manager.bodyStyle),
-                    onChanged: (value) {
-                      setState(() => settings.squigglySliderEnabled = value);
-                    },
+                    onChanged: (value) => setState(() => settings.squigglySliderEnabled = value),
                   ),
                   tooltip: 'When enabled, the video progress slider will have a squiggly animation effect when the video is playing.\nWhen disabled, the slider will appear like a normal line.',
                 ),
@@ -1507,9 +1511,7 @@ class SettingsScreenState extends State<SettingsScreen> with AutomaticKeepAliveC
                   ToggleSwitch(
                     checked: settings.useAcrylicTooltips,
                     content: Text(settings.useAcrylicTooltips ? 'Enabled' : 'Disabled', style: Manager.bodyStyle),
-                    onChanged: (value) {
-                      setState(() => settings.useAcrylicTooltips = value);
-                    },
+                    onChanged: (value) => setState(() => settings.useAcrylicTooltips = value),
                   ),
                   tooltip: 'When enabled, acrylic tooltips will be used throughout the application.\nWhen disabled, standard tooltips will be used.',
                 ),
@@ -1696,20 +1698,89 @@ class SettingsScreenState extends State<SettingsScreen> with AutomaticKeepAliveC
                   checked: settings.enableMediaPlayerIntegration,
                   content: Text(settings.enableMediaPlayerIntegration ? 'Enabled' : 'Disabled', style: Manager.bodyStyle),
                   onChanged: (value) async {
-                    setState(() {
-                      settings.enableMediaPlayerIntegration = value;
-                    });
-                    
+                    setState(() => settings.enableMediaPlayerIntegration = value);
+
                     final monitor = context.read<MediaPlayerMonitorService>();
                     if (value) {
                       await monitor.start();
                     } else {
                       await monitor.stop();
                     }
+                    // start() ran player discovery; rebuild so the path field's
+                    // placeholder reflects the freshly-detected MPC-HC path.
+                    if (mounted) setState(() {});
                   },
                 ),
               ),
             ],
+          ),
+
+          // MPC-HC Slave Mode
+          AnimatedHider(
+            duration: dimDuration,
+            shouldShowChild: settings.enableMediaPlayerIntegration,
+            switchInCurve: Curves.easeInOut,
+            switchOutCurve: Curves.easeInOut,
+            child: Padding(
+              padding: const EdgeInsets.only(top: 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'MPC-HC Slave Mode',
+                              style: Manager.bodyStrongStyle,
+                            ),
+                            SizedBox(height: 4),
+                            Text(
+                              'When MPC-HC is your default video player, launch it in slave mode for push-based control (no polling) and correct tracking of multiple windows. Externally-opened players still use polling.',
+                              style: Manager.bodyStyle.copyWith(color: Colors.white.withOpacity(.5)),
+                            ),
+                          ],
+                        ),
+                      ),
+                      SizedBox(width: 24),
+                      NormalSwitch(
+                        ToggleSwitch(
+                          checked: settings.enableMpcHcSlaveMode,
+                          content: Text(settings.enableMpcHcSlaveMode ? 'Enabled' : 'Disabled', style: Manager.bodyStyle),
+                          onChanged: (value) => setState(() => settings.enableMpcHcSlaveMode = value),
+                        ),
+                      ),
+                    ],
+                  ),
+                  // Optional exe-path override (auto-detected from the default app otherwise)
+                  AnimatedHider(
+                    duration: dimDuration,
+                    shouldShowChild: settings.enableMpcHcSlaveMode,
+                    switchInCurve: Curves.easeInOut,
+                    switchOutCurve: Curves.easeInOut,
+                    child: Padding(
+                      padding: const EdgeInsets.only(top: 12),
+                      child: Row(
+                        children: [
+                          SizedBox(width: 100, child: Text('MPC-HC path', style: Manager.bodyStyle)),
+                          SizedBox(width: 14),
+                          Expanded(
+                            child: TextBox(
+                              controller: _mpcHcPathController,
+                              placeholder: settings.mpcHcDetectedPath.isNotEmpty ? settings.mpcHcDetectedPath : 'MPC-HC not detected. Please enter the mpc-hc executable path manually',
+                              placeholderStyle: Manager.bodyStyle.copyWith(color: Colors.white.withValues(alpha: .5), fontStyle: FontStyle.italic),
+                              onChanged: (value) => settings.mpcHcExecutablePath = value.trim(),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
 
           // Player Priority

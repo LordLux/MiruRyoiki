@@ -139,11 +139,12 @@ class _PlayerState extends State<Player> with TickerProviderStateMixin {
       child: Builder(builder: (context) {
         if (Manager.settings.enableMediaPlayerIntegration != true) return SizedBox.shrink();
 
-        return Selector<MediaPlayerMonitorService, ({bool isConnected, String? playerName, MediaStatus? status})>(
+        return Selector<MediaPlayerMonitorService, ({bool isConnected, String? playerName, MediaStatus? status, bool supportsVolumeRead})>(
             selector: (_, library) => (
                   isConnected: library.playerManager?.isConnected ?? false,
                   playerName: library.currentConnectedPlayer,
                   status: library.playerManager?.lastStatus,
+                  supportsVolumeRead: library.activePlayerSupportsVolumeRead,
                 ),
             builder: (context, data, _) {
               if (!data.isConnected || data.playerName == null) return const SizedBox.shrink();
@@ -370,10 +371,14 @@ class _PlayerState extends State<Player> with TickerProviderStateMixin {
                                         ? null
                                         : (event) {
                                             if (event is PointerScrollEvent && _hasCurrentMedia) {
-                                              final delta = event.scrollDelta.dy;
-                                              final newVolume = (_currentVolume + (delta > 0 ? -5 : 5)).clamp(0, 100);
+                                              final up = event.scrollDelta.dy < 0;
                                               final mediaPlayerMonitorService = Provider.of<MediaPlayerMonitorService>(context, listen: false);
-                                              mediaPlayerMonitorService.setPlaybackVolume(newVolume.toInt()).then((_) {
+                                              // Absolute when the level is known (owner / poll players),
+                                              // relative otherwise (non-owner slave instances).
+                                              final action = data.supportsVolumeRead
+                                                  ? mediaPlayerMonitorService.setPlaybackVolume((_currentVolume + (up ? 5 : -5)).clamp(0, 100).toInt())
+                                                  : mediaPlayerMonitorService.stepVolumeCurrentPlayback(up);
+                                              action.then((_) {
                                                 if (mounted) setState(() {});
                                               });
                                             }
@@ -388,10 +393,10 @@ class _PlayerState extends State<Player> with TickerProviderStateMixin {
                                           bottom: !_hasCurrentMedia || _isHoveringVolume ? 28 : 15,
                                           right: 0,
                                           child: IgnorePointer(
-                                            ignoring: !_hasCurrentMedia || !_isHoveringVolume,
+                                            ignoring: !_hasCurrentMedia || !_isHoveringVolume || !data.supportsVolumeRead,
                                             child: AnimatedOpacity(
                                               duration: dimDuration,
-                                              opacity: !_hasCurrentMedia || !_isHoveringVolume ? 0.0 : 1.0,
+                                              opacity: !_hasCurrentMedia || !_isHoveringVolume || !data.supportsVolumeRead ? 0.0 : 1.0,
                                               child: SizedBox(
                                                 width: 25,
                                                 height: 70,
@@ -435,6 +440,21 @@ class _PlayerState extends State<Player> with TickerProviderStateMixin {
                                                   );
                                                 }),
                                               ),
+                                            ),
+                                          ),
+                                        ),
+                                        // Volume up/down buttons (slave instances with no readable level)
+                                        AnimatedPositioned(
+                                          duration: dimDuration,
+                                          curve: Curves.easeOutCubic,
+                                          bottom: !_hasCurrentMedia || _isHoveringVolume ? 28 : 15,
+                                          right: 0,
+                                          child: IgnorePointer(
+                                            ignoring: !_hasCurrentMedia || !_isHoveringVolume || data.supportsVolumeRead,
+                                            child: AnimatedOpacity(
+                                              duration: dimDuration,
+                                              opacity: !_hasCurrentMedia || !_isHoveringVolume || data.supportsVolumeRead ? 0.0 : 1.0,
+                                              child: _buildVolumeStepButtons(),
                                             ),
                                           ),
                                         ),
@@ -563,6 +583,42 @@ class _PlayerState extends State<Player> with TickerProviderStateMixin {
                     ),
         );
       },
+    );
+  }
+
+  /// Up/down volume buttons shown in place of the slider for slave instances
+  /// whose absolute level can't be read (everything but the first instance).
+  Widget _buildVolumeStepButtons() {
+    return SizedBox(
+      width: 25,
+      height: 70,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          _volumeStepButton(Icons.keyboard_arrow_up, true),
+          _volumeStepButton(Icons.keyboard_arrow_down, false),
+        ],
+      ),
+    );
+  }
+
+  Widget _volumeStepButton(IconData icon, bool up) {
+    return SizedBox.square(
+      dimension: 25,
+      child: StandardButton(
+        isSmall: true,
+        isButtonDisabled: !_hasCurrentMedia,
+        padding: EdgeInsets.zero,
+        label: Icon(icon, size: 18, color: _whiteColor),
+        onPressed: _hasCurrentMedia
+            ? () {
+                final mediaPlayerMonitorService = Provider.of<MediaPlayerMonitorService>(context, listen: false);
+                mediaPlayerMonitorService.stepVolumeCurrentPlayback(up).then((_) {
+                  if (mounted) setState(() {});
+                });
+              }
+            : null,
+      ),
     );
   }
 

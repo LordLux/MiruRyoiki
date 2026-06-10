@@ -264,6 +264,12 @@ class NavigationManager extends ChangeNotifier {
     if (pane != null) pushPane(pane);
   }
 
+  /// Navigate to Settings and select the Media Players section
+  void goToMediaPlayerSettings() {
+    pushPane(SettingsPane);
+    nextFrame(() => settingsScreenKey.currentState?.openPlayersCategory());
+  }
+
   /// Pushes a Page. Adds to history
   void pushPage(String id, String title, {Object? data}) {
     _forwardStack.clear(); // Wipe future history

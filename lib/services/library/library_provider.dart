@@ -8,6 +8,7 @@ import 'package:miruryoiki/functions.dart';
 import 'package:path/path.dart' as p;
 import 'package:provider/provider.dart';
 
+import '../../manager.dart';
 import '../../models/mapping_target.dart';
 import '../../models/season.dart';
 
@@ -19,6 +20,7 @@ import '../../models/anilist/anime.dart';
 import '../../models/anilist/mapping.dart';
 import '../../models/episode.dart';
 import '../../models/series.dart';
+import '../players/media_player_monitor.dart';
 import 'scanner/scanner_service.dart';
 import '../../services/anilist/linking.dart';
 import '../../settings.dart';

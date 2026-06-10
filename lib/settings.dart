@@ -173,6 +173,22 @@ class SettingsManager extends ChangeNotifier {
   bool get enableMediaPlayerIntegration => _getBool('enableMediaPlayerIntegration', defaultValue: true);
   set enableMediaPlayerIntegration(bool value) => _setBool('enableMediaPlayerIntegration', value);
 
+  bool get enableMpcHcSlaveMode => _getBool('enableMpcHcSlaveMode', defaultValue: true);
+  set enableMpcHcSlaveMode(bool value) {
+    // Re-enabling slave mode gives the one-time "locate MPC-HC" setup prompt another chance
+    if (value && !enableMpcHcSlaveMode) mpcHcSlavePromptShown = false;
+    _setBool('enableMpcHcSlaveMode', value);
+  }
+
+  String get mpcHcExecutablePath => _getString('mpcHcExecutablePath', defaultValue: '');
+  set mpcHcExecutablePath(String value) => _setString('mpcHcExecutablePath', value);
+
+  String get mpcHcDetectedPath => _getString('mpcHcDetectedPath', defaultValue: '');
+  set mpcHcDetectedPath(String value) => _setString('mpcHcDetectedPath', value);
+
+  bool get mpcHcSlavePromptShown => _getBool('mpcHcSlavePromptShown', defaultValue: false);
+  set mpcHcSlavePromptShown(bool value) => _setBool('mpcHcSlavePromptShown', value);
+
   // AniList Episode Titles
   bool get enableAnilistEpisodeTitles => _getBool('enableAnilistEpisodeTitles', defaultValue: false);
   set enableAnilistEpisodeTitles(bool value) => _setBool('enableAnilistEpisodeTitles', value);

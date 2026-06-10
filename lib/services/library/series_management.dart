@@ -18,7 +18,7 @@ extension LibrarySeriesManagement on Library {
         if (episode.path == path) return episode;
       }
     }
-    
+
     // Brute-force: file is outside the library path (symlink target) or inference failed
     for (final series in _series) {
       for (final episode in series.collections.expand((c) => c.episodes)) {
@@ -184,8 +184,16 @@ extension LibrarySeriesManagement on Library {
   }
 
   Future<void> playEpisode(Episode episode) async {
+    // If the OS default player is MPC-HC, launch it in slave mode
     try {
-      // Use openFile and monitor by the media player system
+      final monitor = Provider.of<MediaPlayerMonitorService>(Manager.context, listen: false);
+      if (await monitor.tryLaunchViaSlave(episode.path)) return;
+    } catch (e, stackTrace) {
+      logErr('MPC-HC slave launch failed; falling back to default open', e, stackTrace);
+    }
+
+    try {
+      // In case the MPC-HC slave launch fails, open with the OS default handler and let the media player system monitor it
       openFile(episode.path);
     } catch (e, stackTrace) {
       snackBar(

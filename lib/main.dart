@@ -86,6 +86,7 @@ final GlobalKey<LibraryScreenState> libraryScreenKey = GlobalKey<LibraryScreenSt
 final GlobalKey<ReleaseCalendarScreenState> releaseCalendarScreenKey = GlobalKey<ReleaseCalendarScreenState>();
 final GlobalKey<DownloadsScreenState> torrentScreenKey = GlobalKey<DownloadsScreenState>();
 final GlobalKey<AccountsScreenState> accountsKey = GlobalKey<AccountsScreenState>();
+final GlobalKey<SettingsScreenState> settingsScreenKey = GlobalKey<SettingsScreenState>();
 
 final GlobalKey<State<StatefulWidget>> paletteOverlayKey = GlobalKey<State<StatefulWidget>>();
 
@@ -823,6 +824,7 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
         );
       case '/${NavigationManager.SettingsId}':
         page = SettingsScreen(
+          key: settingsScreenKey,
           scrollController: NavigationManager.getScrollController(NavigationManager.SettingsIndex),
         );
       case String() when routeName.startsWith('/searched_series:'):

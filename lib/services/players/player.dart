@@ -29,6 +29,11 @@ abstract class MediaPlayer {
   // Force immediate status update
   Future<bool> pollStatus();
 
+  /// Whether status arrives by push (no polling)
+  /// 
+  /// Push players skip the [PlayerManager] connection-check timer and report liveness themselves
+  bool get isPushBased => false;
+
   /// Widget for displaying the player's icon
   Widget get iconWidget;
 
