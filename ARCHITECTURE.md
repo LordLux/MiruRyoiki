@@ -10,7 +10,7 @@
 
 ## Summary
 
-MiruRyoiki is a local anime media management desktop app built with Flutter and Provider. It bridges the gap between local filesystem media (grouped into `Series` and `EpisodeCollection`) and remote AniList metadata (AniList API v2 `Media`). The central architecture pattern heavily utilizes `ChangeNotifierProvider` for global state (`Library`, `AnilistProvider`, `SettingsManager`, `AppTheme`). Metadata, images, and progress are synced asynchronously using an offline-first mutation queue.
+MiruRyoiki is a local anime media management desktop app built with Flutter and Provider. It bridges the gap between local filesystem media (grouped into `Series` and `EpisodeCollection`) and remote AniList metadata (AniList API v2 `Media`). The central architecture pattern heavily utilizes `ChangeNotifierProvider` for global state (`Library`, `AnilistProvider`, `SettingsManager`, `AppTheme`, `NavigationManager`), with `ChangeNotifierProxyProvider`s for services extracted from `Library`: `LibraryScannerService` (filesystem scanning) and `MediaPlayerMonitorService` (player tracking). Metadata, images, and progress are synced asynchronously using an offline-first mutation queue. An optional download stack (Sonarr + qBittorrent + Knaben, behind `TorrentManager`) is initialized only when fully configured in settings.
 
 ---
 
@@ -53,9 +53,10 @@ The app's core domains bridge local files and AniList representations.
 
 **Responsibilities:**
 
-- **Filesystem Scanning:** Non-blocking isolate worker scans directories, using Anitomy to extract episode numbers and titles.
+- **Core State:** `Library` provider holds the series list and orchestrates persistence (`persistence.dart`, `series_management.dart`, `anilist_integration.dart`).
+- **Filesystem Scanning:** Extracted into `LibraryScannerService` (`scanner/scanner_service.dart`) — non-blocking isolate worker scans directories, using Anitomy to extract episode numbers and titles, with rename/move detection via metadata keys.
 - **Persistence & Integration:** Manages SQLite (Drift) via `SeriesDao`. Fetches AniList posters/banners for mapped series.
-- **Media Player Integration:** Monitors MPCHC playback state via named pipes to automatically save watch progress to `Episode`s based on video timestamps.
+- **Media Player Integration:** Extracted into `MediaPlayerMonitorService` (`lib/services/players/media_player_monitor.dart`) — detects player processes (process_monitor), connects via each player's driver (VLC HTTP JSON, MPC-HC HTTP web interface), and automatically saves watch progress to `Episode`s based on video timestamps.
 **Data Consumption:** Heavily consumed by all screens via `Provider.watch<Library>()`.
 
 ### C. Episode Navigation Service Layer (`lib/services/episode_navigation/`)
@@ -63,8 +64,18 @@ The app's core domains bridge local files and AniList representations.
 **Responsibilities:**
 
 - **Progress Calculation:** Aggregates watched episodes across AniList mappings and calculates series completion percentage.
-- **Episode Lookup:** Checks bounds (first/last episode) and bridges AniList absolute episode numbers to local season-based numbering.
+- **Episode Lookup:** Checks bounds (first/last episode) and bridges AniList absolute episode numbers to local season-based numbering (`AnilistProgressManager` handles cross-season navigation).
 **Data Consumption:** Stateless singleton services called by UI to calculate next episodes and progress bars.
+
+### D. Download Stack (`lib/services/downloads/`, `sonarr/`, `qbittorrent/`, `knaben/`, `mapping/`)
+
+**Entirely optional** — `TorrentManager.initialize()` is a no-op unless `settings.isDownloadsFullyConfigured` (Sonarr API key + torrent client credentials). UI checks `TorrentManager.isEnabled`.
+
+**Responsibilities:**
+
+- **TorrentManager:** Static composition root. Creates `PlexAniBridgeService` (AniList↔TVDB ID mapping), `KnabenRepository` (torrent search), the `TorrentClient` (qBittorrent is the only implementation today), `SpeedGraphService` (download metrics), `SonarrRepository`, and the `DownloadController` that ties them together.
+- **DownloadController:** Orchestrates the search→grab→monitor flow and exposes state to the Downloads screen and series download views.
+- **CustomSonarrMappingService:** User overrides when automatic AniList↔Sonarr matching fails.
 
 ---
 

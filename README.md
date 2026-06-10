@@ -5,26 +5,45 @@
 </a>
 
 # MiruRyoiki
-MiruRyoiki is a Flutter-based desktop application designed to help you seamlessly track and manage your local media library, primarily focusing on anime episodes. With MiruRyoiki, you can easily sync your progress with AniList, keeping your watched status up to date without hassle.
 
-## Features:
-### Manual & Automatic Episode Tracking:
+MiruRyoiki is a Flutter desktop application (Windows-first, macOS planned) that helps you track and manage your local anime library, keeping your watch progress seamlessly in sync with AniList.
 
-- You can manually mark episodes as watched or let the app automatically detect the watched status via the MPCHC player.
+## Features
 
-- Support for other media players will be added in the future to expand compatibility.
+### Local Library Management
 
-### AniList Integration:
+- Scans your media folders, detects series, seasons, and episodes (powered by an Anitomy filename parser), and survives file renames/moves without losing watch state.
+- Dominant-color theming: posters and banners tint the UI per series.
+- Advanced library browsing: sorting, grouping, filtering, custom sort orders, and hidden series.
 
-- AniList is the main focus of this app, providing smooth synchronization for anime tracking and management.
+### Manual & Automatic Episode Tracking
 
-- MyAnimeList integration will be added once AniList support is fully implemented.
+- Mark episodes watched manually, or let the app detect playback automatically from your media player.
+- Currently supported players: **MPC-HC** and **VLC** (via their web interfaces), plus user-configurable custom players. More players (e.g. mpv) are in the works.
+- When MPC-HC is your default player, the app launches it in **slave mode**: push-based tracking (no polling) that can follow multiple player windows at once.
+- Episodes are auto-marked as watched near the end of playback, and progress is saved continuously.
 
-### Non-Anime Support:
+### AniList Integration
 
-- In addition to anime, MiruRyoiki also supports non-anime media tracking. However, non-anime content won't be synced with AniList or MyAnimeList.
+- OAuth login, list management (status, score, progress), notifications, and a release calendar for airing series.
+- Offline-first: progress updates are queued locally and synced when you're back online.
+- Browse/search AniList (trending, popular, genres) directly inside the app.
 
-## Upcoming Features:
-- Expanded Player Support: Plans to include compatibility with additional media players.
+### Downloads (optional)
 
-- MyAnimeList Sync: After completing the AniList integration, MyAnimeList support will be introduced to extend the app's capabilities.
+- Optional integration with **Sonarr** + **qBittorrent** and **Knaben** torrent search for automated episode downloads, with a dedicated downloads screen (speeds, graphs, per-series views).
+- Completely opt-in: the app works fully without any of these configured. Setup happens in Settings (Sonarr URL/API key, qBittorrent credentials).
+
+### Non-Anime Support
+
+- Non-anime media can be tracked locally too; it simply won't sync with AniList.
+
+## Upcoming
+
+- Expanded player support (mpv).
+- Guided setup for the optional download stack (Docker-based Sonarr + qBittorrent provisioning).
+- MyAnimeList sync, after AniList support is fully complete.
+
+## Development
+
+See `CLAUDE.md` / `GEMINI.md` for developer documentation and `ARCHITECTURE.md` for a system map. Requires Flutter 3.32.8 (via FVM) and a `.env` file with AniList credentials.
