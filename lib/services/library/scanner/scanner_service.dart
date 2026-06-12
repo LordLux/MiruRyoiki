@@ -232,15 +232,39 @@ class LibraryScannerService extends ChangeNotifier {
         final newFilesForSeries = unresolvedFiles[seriesPath] ?? <PathString>{};
         final missingEpisodesForSeries = unresolvedEpisodes[seriesPath] ?? <Episode>{};
 
-        // For rename detection, we create a key from size and duration
-        final newFilesByMetadata = {
-          for (var path in newFilesForSeries)
-            if (scanResult.containsKey(path)) _createMetadataKey(scanResult[path]!): path
-        };
-        final missingEpisodesByMetadata = {
-          for (var ep in missingEpisodesForSeries)
-            if (ep.metadata != null) _createMetadataKey(ep.metadata!): ep
-        };
+        // For rename detection, we create a key from size and duration.
+        // A key is only usable for matching when it is unique on BOTH sides:
+        // files with identical size+duration (NCOP/NCED pairs, padded releases,
+        // or whole folders moved at once) would otherwise collapse in the maps
+        // and silently drop adds/deletes, leaving phantom episodes behind.
+        // Ambiguous keys fall back to plain add+delete (watch state is lost for
+        // those files, but the library stays consistent with the disk)
+        final newFilesByMetadata = <String, PathString>{};
+        final ambiguousKeys = <String>{};
+
+        for (final path in newFilesForSeries) {
+          final meta = scanResult[path];
+          if (meta == null) continue; // metadata extraction failed; handled below
+
+          final key = _createMetadataKey(meta);
+          if (newFilesByMetadata.containsKey(key))
+            ambiguousKeys.add(key);
+          else
+            newFilesByMetadata[key] = path;
+        }
+
+        final missingEpisodesByMetadata = <String, Episode>{};
+
+        for (final ep in missingEpisodesForSeries) {
+          final meta = ep.metadata;
+          if (meta == null) continue;
+
+          final key = _createMetadataKey(meta);
+          if (missingEpisodesByMetadata.containsKey(key))
+            ambiguousKeys.add(key);
+          else
+            missingEpisodesByMetadata[key] = ep;
+        }
 
         final Set<Episode> episodesToAdd = {};
         final Set<Episode> episodesToDelete = {};
@@ -249,6 +273,8 @@ class LibraryScannerService extends ChangeNotifier {
 
         // Match renamed files by metadata key
         for (var metaKey in newFilesByMetadata.keys) {
+          if (ambiguousKeys.contains(metaKey)) continue; // skip ambiguous keys
+
           if (missingEpisodesByMetadata.containsKey(metaKey)) {
             final oldEpisode = missingEpisodesByMetadata[metaKey]!;
             final newPath = newFilesByMetadata[metaKey]!;
@@ -261,18 +287,28 @@ class LibraryScannerService extends ChangeNotifier {
         }
 
         // Identify truly new and deleted episodes
-        newFilesByMetadata.forEach((metaKey, path) {
-          if (!matchedKeys.contains(metaKey)) {
+        // Iterate the full sets so files sharing a metadata key are never silently dropped
+        for (final path in newFilesForSeries) {
+          final meta = scanResult[path];
+          if (meta == null) continue; // no metadata -> episode can't be built (same as initial scan)
+
+          final key = _createMetadataKey(meta);
+          final wasRenameMatched = matchedKeys.contains(key) && newFilesByMetadata[key] == path;
+          if (!wasRenameMatched) {
             logTrace('    Adding new episode: ${p.basename(path.path)}');
-            episodesToAdd.add(_createEpisode(path, scanResult[path]!));
+            episodesToAdd.add(_createEpisode(path, meta));
           }
-        });
-        missingEpisodesByMetadata.forEach((metaKey, episode) {
-          if (!matchedKeys.contains(metaKey)) {
+        }
+
+        for (final episode in missingEpisodesForSeries) {
+          final meta = episode.metadata;
+          final key = meta != null ? _createMetadataKey(meta) : null;
+          final wasRenameMatched = key != null && matchedKeys.contains(key) && identical(missingEpisodesByMetadata[key], episode);
+          if (!wasRenameMatched) {
             logTrace('    Deleting episode: ${p.basename(episode.path.path)}');
             episodesToDelete.add(episode);
           }
-        });
+        }
 
         logTrace('  Episodes to add: ${episodesToAdd.length}');
         logTrace('  Episodes to delete: ${episodesToDelete.length}');
@@ -381,7 +417,7 @@ class LibraryScannerService extends ChangeNotifier {
 
           try {
             String? targetPath = await ShellUtils.resolveShortcut(entity.path);
-            
+
             if (targetPath != null && targetPath.isNotEmpty) {
               final targetDir = Directory(targetPath);
               if (targetDir.existsSync()) {
@@ -852,4 +888,3 @@ class LibraryScannerService extends ChangeNotifier {
     }
   }
 }
-
