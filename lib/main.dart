@@ -244,7 +244,10 @@ class MyApp extends StatelessWidget {
       );
     }
 
-    return FluentTheme(
+    return ValueListenableBuilder<bool>(
+      valueListenable: Manager.renderingEnabled,
+      builder: (context, enabled, child) => TickerMode(enabled: enabled, child: child!),
+      child: FluentTheme(
       data: FluentTheme.of(ctx).copyWith(
         cursorOpacityAnimates: true,
         typography: scaleTypography(
@@ -280,6 +283,7 @@ class MyApp extends StatelessWidget {
             ),
           ),
         ),
+      ),
       ),
     );
   }

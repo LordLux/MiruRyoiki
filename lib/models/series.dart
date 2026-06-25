@@ -683,7 +683,7 @@ class Series {
   // Image resolution forwarding
   String? get effectivePosterPath => presenter.effectivePosterPath;
   String? get effectiveBannerPath => presenter.effectiveBannerPath;
-  Future<ImageProvider?> getPosterImage() => presenter.getPosterImage();
+  Future<ImageProvider?> getPosterImage({int? targetWidthPx}) => presenter.getPosterImage(targetWidthPx: targetWidthPx);
   Future<ImageProvider?> getBannerImage() => presenter.getBannerImage();
   String? getEffectivePosterPathForEpisode(Episode episode) => presenter.getEffectivePosterPathForEpisode(episode);
   Future<ImageProvider?> getPosterImageForEpisode(Episode episode) => presenter.getEffectivePosterImageForEpisode(episode);

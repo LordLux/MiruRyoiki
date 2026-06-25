@@ -227,13 +227,32 @@ class SeriesPresenter {
   }
 
   /// Get the effective poster image as an ImageProvider
-  Future<ImageProvider?> getPosterImage() async {
+  Future<ImageProvider?> getPosterImage({int? targetWidthPx}) async {
     final path = effectivePosterPath;
 
     if (path == null) return null;
     if (isLocalPosterBeingUsed) return FileImage(File(path));
-    if (isAnilistPosterBeingUsed) return await ImageCacheService().getImageProvider(path);
+    if (isAnilistPosterBeingUsed) return await ImageCacheService().getImageProvider(_anilistCoverVariant(path, targetWidthPx));
     return null;
+  }
+
+  /// AniList serves cover images at fixed sizes embedded in the URL path:
+  /// `/cover/small/` (100x141), `/cover/medium/` (230x325) and
+  /// `/cover/large/` (460x650) — there is no `/cover/extraLarge/` (the
+  /// GraphQL `extraLarge` field itself returns a `/cover/large/` URL, so the
+  /// stored poster URL is already the largest that exists). Given the target
+  /// display width in physical pixels, swap whichever size segment the URL
+  /// has to the smallest one that still covers it. Unknown URL shapes or a
+  /// null target are returned unchanged (safe fallback).
+  String _anilistCoverVariant(String url, int? targetWidthPx) {
+    if (targetWidthPx == null) return url;
+
+    final String desired = targetWidthPx <= 100 ? 'small' : (targetWidthPx <= 230 ? 'medium' : 'large');
+    for (final seg in const ['small', 'medium', 'large']) {
+      final needle = '/cover/$seg/';
+      if (url.contains(needle)) return url.replaceFirst(needle, '/cover/$desired/');
+    }
+    return url;
   }
 
   /// Get the effective poster path for a specific episode

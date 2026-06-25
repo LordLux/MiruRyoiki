@@ -134,6 +134,12 @@ class Manager {
   /// A notifier that indicates whether the database is currently being saved.
   static final ValueNotifier<bool> isDatabaseSaving = ValueNotifier(false);
 
+  /// Drives a global [TickerMode] around the app's root subtree
+  /// 
+  /// When set to `false`, every vsync-based Ticker is muted, so no frames are scheduled.
+  /// Flip back to true to resume animations in place
+  static final ValueNotifier<bool> renderingEnabled = ValueNotifier(true);
+
   static ImageSource get defaultPosterSource => settings.defaultPosterSource;
 
   static ImageSource get defaultBannerSource => settings.defaultBannerSource;

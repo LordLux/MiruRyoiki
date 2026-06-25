@@ -4,6 +4,7 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:transparent_image/transparent_image.dart';
 import 'package:miruryoiki/models/series.dart';
 import 'package:miruryoiki/utils/time.dart';
+import 'package:miruryoiki/utils/screen.dart';
 
 /// A widget that displays a series image (poster or banner) with loading state handling
 class SeriesImageBuilder extends StatefulWidget {
@@ -46,9 +47,12 @@ class SeriesImageBuilder extends StatefulWidget {
     Curve fadeInCurve = Curves.easeIn,
     bool skipLoadingIndicator = true,
   }) {
+    // Request the smallest AniList cover variant that still satisfies the
+    // display resolution (×DPR), to save disk/bandwidth without blur.
+    final int? targetWidthPx = width == null ? null : (width * ScreenUtils.pixelResolution).round();
     return SeriesImageBuilder(
       key: key,
-      imageProviderFuture: series.getPosterImage(),
+      imageProviderFuture: series.getPosterImage(targetWidthPx: targetWidthPx),
       width: width,
       height: height,
       fit: fit,
@@ -162,6 +166,13 @@ class _SeriesImageBuilderState extends State<SeriesImageBuilder> {
           );
         });
 
+    // Decode at display size (×DPR) rather than full source resolution —
+    // this is what keeps the in-memory image cache small.
+    final double dpr = ScreenUtils.pixelResolution;
+    final int? cacheW = widget.width == null ? null : (widget.width! * dpr).round();
+    final int? cacheH = widget.height == null ? null : (widget.height! * dpr).round();
+    ImageProvider decoded(ImageProvider p) => ResizeImage.resizeIfNeeded(cacheW, cacheH, p);
+
     // If loading and we have an image provider already, keep showing the image
     // This prevents flickering when the app regains focus
     if (_loading && _imageProvider != null) {
@@ -170,7 +181,7 @@ class _SeriesImageBuilderState extends State<SeriesImageBuilder> {
         height: widget.height,
         child: FadeInImage(
           placeholder: MemoryImage(kTransparentImage),
-          image: _imageProvider!,
+          image: decoded(_imageProvider!),
           fit: widget.fit,
           alignment: widget.alignment,
           fadeInDuration: getAnimationDuration(widget.fadeInDuration),
@@ -190,7 +201,7 @@ class _SeriesImageBuilderState extends State<SeriesImageBuilder> {
       height: widget.height,
       child: FadeInImage(
         placeholder: MemoryImage(kTransparentImage),
-        image: _imageProvider!,
+        image: decoded(_imageProvider!),
         fit: widget.fit,
         alignment: widget.alignment,
         fadeInDuration: getAnimationDuration(widget.fadeInDuration),

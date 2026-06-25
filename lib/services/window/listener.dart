@@ -102,17 +102,27 @@ class MyWindowListener extends WindowListener with TrayListener {
   void onTrayIconMouseDown() async {
     // Hide if already open, show and focus if hidden
     if (lastFocusTime != null && now.difference(lastFocusTime!).inMilliseconds < 170) {
-      windowManager.hide();
+      hideToTray();
     } else {
-      windowManager.show();
-      windowManager.focus();
+      restoreFromTray();
     }
   }
 
   @override
   void onTrayIconRightMouseDown() => trayManager.popUpContextMenu(bringAppToFront: true);
 
-  Future<void> _showAndFocus() async {
+  Future<void> _showAndFocus() async => restoreFromTray();
+
+  /// Hides the window to the tray and pauses rendering so no frames are
+  /// scheduled and the engine goes idle (GPU ~0%).
+  static Future<void> hideToTray() async {
+    Manager.renderingEnabled.value = false;
+    await windowManager.hide();
+  }
+
+  /// Restores the window from the tray (or minimized) and resumes rendering.
+  static Future<void> restoreFromTray() async {
+    Manager.renderingEnabled.value = true;
     await windowManager.show();
     await windowManager.focus();
   }
@@ -153,6 +163,9 @@ class MyWindowListener extends WindowListener with TrayListener {
   }
 
   static Future<void> performShutdown() async {
+    // Ensure rendering is live so any saving dialog below animates even if we
+    // were quit straight from the tray while hidden.
+    Manager.renderingEnabled.value = true;
     if (Manager.isDatabaseSaving.value) {
       await windowManager.setPreventClose(true);
       logDebug('Shutdown requested while database is saving, waiting...');
@@ -200,7 +213,7 @@ class MyWindowListener extends WindowListener with TrayListener {
     bool isPreventClose = await windowManager.isPreventClose();
     if (isPreventClose) {
       if (Manager.settings.suppressCloseWarning) {
-        windowManager.hide();
+        hideToTray();
         return;
       }
 
@@ -222,11 +235,11 @@ class MyWindowListener extends WindowListener with TrayListener {
           onPositive: (_) => performShutdown(),
           onNegative: (tickboxValue) {
             if (tickboxValue) Manager.settings.suppressCloseWarning = true;
-            return windowManager.hide();
+            return hideToTray();
           },
         );
       } else {
-        windowManager.hide();
+        hideToTray();
       }
     }
   }
@@ -265,16 +278,18 @@ class MyWindowListener extends WindowListener with TrayListener {
 
   @override
   void onWindowMinimize() {
+    // A minimized window already stops compositing, but muting tickers also
+    // halts the build/animation work that would otherwise keep the CPU busy.
+    Manager.renderingEnabled.value = false;
     update();
     super.onWindowMinimize();
-    // logTrace('Window minimized');
   }
 
   @override
   void onWindowRestore() {
+    Manager.renderingEnabled.value = true;
     update();
     super.onWindowRestore();
-    // logTrace('Window restored');
   }
 
   @override
