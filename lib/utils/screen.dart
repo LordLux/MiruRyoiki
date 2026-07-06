@@ -22,7 +22,7 @@ class ScreenUtils {
   static const double kDefaultSplashScreenWidth = 500.0;
   static const double kDefaultSplashScreenHeight = 300.0;
 
-  static const double kDefaultMinWindowWidth = 800.0;
+  static const double kDefaultMinWindowWidth = 801.0; // +1 because fluent_ui has a bug with the sidebar
   static const double kDefaultMinWindowHeight = 600.0;
   static const double kDefaultMaxWindowWidth = 100000.0;
   static const double kDefaultMaxWindowHeight = 100000.0;
@@ -42,7 +42,8 @@ class ScreenUtils {
   static const double kPaneBarCollapsedWidth = 50.0;
   static const double kPaneBarExpandedWidth = 321.0;
   static const double kMaxContentWidth = 1400.0;
-  static const double kTitleBarHeight = 40.0;
+  static const double kTitleBarHeight = 44.0;
+  static const double kDefaultPaneTileHeight = 40.0;
   static const double kOfflineBarMaxHeight = 20.0;
   static const double kEpisodeCardBorderRadius = 8.0;
   static const double kStatCardBorderRadius = 8.0;
