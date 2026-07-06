@@ -8,8 +8,10 @@ import 'package:provider/provider.dart';
 
 import '../manager.dart';
 import '../models/anilist/anime_card.dart';
+import '../models/anilist/mapping.dart';
 import '../models/anilist/user_list.dart';
 import '../models/series.dart';
+import '../services/anilist/provider/anilist_provider.dart';
 import '../services/downloads/torrent_manager.dart';
 import '../services/library/library_provider.dart';
 import '../services/navigation/dialogs2.dart';
@@ -38,6 +40,43 @@ void openEntryEditor(BuildContext context, AnimeCard series, {AnilistMediaListEn
     bannerImage: bannerImage,
     coverImage: series.coverImage,
     isFavourite: series.isFavourite,
+    entry: existing,
+  );
+}
+
+/// Open the AniList entry editor for a local [mapping], looking up the user's
+/// existing list entry. Shared by the series/mapping context menus and the
+/// series screen so the lookup + dialog args stay in one place.
+void openEntryEditorForMapping(BuildContext context, AnilistMapping mapping) {
+  final anime = mapping.anilistData;
+  if (anime == null) {
+    snackBar('No AniList data available for this mapping', severity: InfoBarSeverity.warning);
+    return;
+  }
+
+  final displayTitle = mapping.preferredTitle ?? anime.title.userPreferred ?? anime.title.romaji ?? anime.title.english ?? 'Unknown';
+
+  // Look up the user's existing list entry for this media, if any.
+  final anilist = Provider.of<AnilistProvider>(context, listen: false);
+  AnilistMediaListEntry? existing;
+  for (final list in anilist.userLists.values) {
+    for (final entry in list.entries) {
+      if (entry.mediaId == mapping.anilistId) {
+        existing = entry;
+        break;
+      }
+    }
+    if (existing != null) break;
+  }
+
+  showEntryEditorDialog(
+    context,
+    mediaId: mapping.anilistId,
+    title: displayTitle,
+    totalEpisodes: anime.episodes,
+    bannerImage: anime.bannerImage,
+    coverImage: anime.posterImage,
+    isFavourite: anime.isFavourite ?? false,
     entry: existing,
   );
 }

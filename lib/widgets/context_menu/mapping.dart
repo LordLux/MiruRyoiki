@@ -8,16 +8,14 @@ import 'package:provider/provider.dart';
 import 'package:flutter_desktop_context_menu/flutter_desktop_context_menu.dart';
 
 import '../../manager.dart';
-import '../../models/anilist/user_list.dart';
 import '../../models/series.dart';
-import '../../services/anilist/provider/anilist_provider.dart';
 import '../../services/library/library_provider.dart';
 import '../../services/library/scanner/scanner_service.dart';
 import '../../services/lock_manager.dart';
 import '../../services/navigation/show_info.dart';
+import '../../utils/searched_series_actions.dart';
 import '../../utils/shell.dart';
 import '../../utils/icons.dart' as icons;
-import '../dialogs/entry_editor.dart';
 import 'controller.dart';
 
 class MappingContextMenu extends StatefulWidget {
@@ -207,37 +205,7 @@ class MappingContextMenuState extends State<MappingContextMenu> {
       return;
     }
 
-    final anime = mapping.anilistData;
-    if (anime == null) {
-      snackBar('No AniList data available for this mapping', severity: InfoBarSeverity.warning);
-      return;
-    }
-
-    final displayTitle = mapping.preferredTitle ?? anime.title.userPreferred ?? anime.title.romaji ?? anime.title.english ?? 'Unknown';
-
-    // Look up existing entry in user's lists
-    final anilist = Provider.of<AnilistProvider>(context, listen: false);
-    AnilistMediaListEntry? existing;
-    for (final list in anilist.userLists.values) {
-      for (final entry in list.entries) {
-        if (entry.mediaId == mapping.anilistId) {
-          existing = entry;
-          break;
-        }
-      }
-      if (existing != null) break;
-    }
-
-    showEntryEditorDialog(
-      context,
-      mediaId: mapping.anilistId,
-      title: displayTitle,
-      totalEpisodes: anime.episodes,
-      bannerImage: anime.bannerImage,
-      coverImage: anime.posterImage,
-      isFavourite: anime.isFavourite ?? false,
-      entry: existing,
-    );
+    openEntryEditorForMapping(context, mapping);
   }
 
   @override

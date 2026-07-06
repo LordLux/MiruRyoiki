@@ -177,18 +177,12 @@ flutter:
   ### Images:
     - assets/images/noise.png
 
+  ### Fonts:
+  fonts:
+    - family: StackSansNotch
+      fonts:
+        - asset: assets/fonts/StackSansNotch-Regular.ttf
 
-  # fonts:
-  #   - family: 
-  #     fonts:
-  #       - asset: fonts/Regular.ttf
-  #       - asset: fonts/Italic.ttf
-  #         style: italic
-  #   - family: 
-  #     fonts:
-  #       - asset: fonts/Regular.ttf
-  #       - asset: fonts/Bold.ttf
-  #         weight: 700
 flutter_launcher_icons:
   image_path: "assets/system/icon.png"
   windows:
