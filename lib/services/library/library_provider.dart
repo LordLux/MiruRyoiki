@@ -29,6 +29,7 @@ import '../../widgets/dialogs/splash/progress.dart';
 import '../anilist/provider/anilist_provider.dart';
 import '../anilist/queries/anilist_service.dart';
 import '../anilist/episode_title_service.dart';
+import '../episode_navigation/anilist_progress_manager.dart';
 import '../file_system/cache.dart';
 import '../../services/navigation/show_info.dart';
 import '../../utils/logging.dart';

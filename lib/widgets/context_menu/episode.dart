@@ -20,6 +20,11 @@ import '../../utils/icons.dart' as icons;
 import '../../utils/time.dart';
 import 'controller.dart';
 
+/// Sonarr link/override removal is not implemented yet — keep the menu item hidden
+/// rather than offering a clickable no-op.
+// TODO(sonarr): implement override removal, then flip this to true.
+const bool _sonarrLinkRemovalEnabled = false;
+
 class EpisodeContextMenu extends StatefulWidget {
   final Episode episode;
   final Series series;
@@ -108,7 +113,7 @@ class EpisodeContextMenuState extends State<EpisodeContextMenu> {
           onClick: (_) => _openWith(context),
         ),
         MenuItem(
-          label: 'Open Folder Location',
+          label: 'Show in Explorer',
           shortcutKey: 'f',
           icon: icons.folder_open,
           shortcutModifiers: ShortcutModifiers(control: Platform.isWindows, meta: Platform.isMacOS),
@@ -129,12 +134,12 @@ class EpisodeContextMenuState extends State<EpisodeContextMenu> {
                 : 'Link to Sonarr Episode...',
             onClick: (_) => widget.onChangeSonarrLink!(widget.uiEpisode!),
           ),
-          if (widget.uiEpisode!.sonarrEpisode != null)
+          if (_sonarrLinkRemovalEnabled && widget.uiEpisode!.sonarrEpisode != null)
             MenuItem(
               label: 'Remove Sonarr Link',
               icon: icons.remove_link,
               onClick: (_) {
-                // TODO: implement removing the override/link
+                // TODO(sonarr): implement removing the override/link
               },
             ),
         ],
@@ -200,7 +205,7 @@ class EpisodeContextMenuState extends State<EpisodeContextMenu> {
       return;
     }
 
-    // library.setProgressUpToEpisode(widget.episode, widget.series); TODO implement this method in the library service
+    library.setProgressUpToEpisode(widget.episode, widget.series);
 
     if (widget.episode.episodeNumber != null) {
       snackBar('Watched up to Episode ${widget.episode.episodeNumber}', severity: InfoBarSeverity.success);

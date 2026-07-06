@@ -7,6 +7,7 @@ import 'package:flutter_desktop_context_menu/flutter_desktop_context_menu.dart';
 import 'package:provider/provider.dart';
 import '../../main.dart';
 import '../../manager.dart';
+import '../../models/anilist/mapping.dart';
 import '../../models/anilist/user_data.dart';
 import '../../models/anilist/user_list.dart';
 import '../../models/series.dart';
@@ -21,7 +22,9 @@ import '../../utils/logging.dart';
 import '../../utils/shell.dart';
 import '../../utils/icons.dart' as icons;
 import '../../utils/time.dart';
-import '../dialogs/entry_editor.dart';
+import '../../utils/searched_series_actions.dart';
+import '../dialogs/link_anilist.dart';
+import '../file_explorer.dart';
 import 'controller.dart';
 
 typedef LastListChange = ({Series series, String previousListName});
@@ -95,7 +98,13 @@ class SeriesContextMenuState extends State<SeriesContextMenu> {
     return Menu(
       items: [
         MenuItem(
-          label: 'Open in File Explorer',
+          label: 'Play Next Episode',
+          icon: icons.play,
+          onClick: (_) => _playNextEpisode(context),
+        ),
+        MenuItem.separator(),
+        MenuItem(
+          label: 'Open Folder',
           shortcutKey: 'e',
           icon: icons.folder_open,
           shortcutModifiers: ShortcutModifiers(control: Platform.isWindows, meta: Platform.isMacOS),
@@ -127,11 +136,29 @@ class SeriesContextMenuState extends State<SeriesContextMenu> {
         MenuItem.separator(),
         if (series.anilistMappings.length == 1)
           MenuItem(
-            label: 'Open Anilist Dialog',
+            label: 'Edit AniList Entry',
             shortcutKey: 'a',
             icon: icons.anilist,
             disabled: shouldDisable,
-            onClick: (_) => _openAnilistDialog(context),
+            onClick: (_) => _openAnilistDialog(context, series.anilistMappings.first),
+          )
+        else if (series.anilistMappings.length > 1)
+          MenuItem.submenu(
+            label: 'Edit AniList Entry',
+            disabled: shouldDisable,
+            submenu: Menu(
+              items: [
+                for (final mapping in series.anilistMappings)
+                  MenuItem(
+                    label: mapping.preferredTitle ?? //
+                        mapping.anilistData?.title.userPreferred ??
+                        mapping.anilistData?.title.romaji ??
+                        mapping.anilistData?.title.english ??
+                        'AniList #${mapping.anilistId}',
+                    onClick: (_) => _openAnilistDialog(context, mapping),
+                  ),
+              ],
+            ),
           ),
         MenuItem(
           label: series.isForcedHidden ? 'Stop Hiding' : 'Hide',
@@ -149,7 +176,7 @@ class SeriesContextMenuState extends State<SeriesContextMenu> {
         MenuItem.separator(),
         MenuItem(
           disabled: shouldDisable,
-          label: widget.series.watchedPercentage == 1.0 ? 'Mark as Unwatched' : 'Mark as Watched',
+          label: widget.series.watchedPercentage == 1.0 ? 'Mark entire series unwatched' : 'Mark entire series watched',
           toolTip: widget.series.watchedPercentage == 1.0 ? 'Mark all Episodes from this Series as Unwatched' : 'Mark all Episodes from this Series as Watched',
           icon: widget.series.watchedPercentage == 1.0 ? icons.unwatch : icons.check,
           onClick: (_) => widget.series.watchedPercentage == 1.0 ? _markAllAsUnwatched(context) : _markAllAsWatched(context),
@@ -160,7 +187,7 @@ class SeriesContextMenuState extends State<SeriesContextMenu> {
 
   void _openFolderLocation(BuildContext context) async {
     try {
-      ShellUtils.openFileExplorerAndSelect(widget.series.path);
+      ShellUtils.openFolder(widget.series.path.path);
     } catch (e, stackTrace) {
       snackBar(
         'Could not open folder: $e',
@@ -169,6 +196,11 @@ class SeriesContextMenuState extends State<SeriesContextMenu> {
         stackTrace: stackTrace,
       );
     }
+  }
+
+  void _playNextEpisode(BuildContext context) {
+    final library = Provider.of<Library>(context, listen: false);
+    library.playNextEpisodeForSeries(widget.series);
   }
 
   static void _undoToggleHiddenStatus(BuildContext context) {
@@ -184,47 +216,13 @@ class SeriesContextMenuState extends State<SeriesContextMenu> {
     }
   }
 
-  void _openAnilistDialog(BuildContext context) {
-    final mapping = widget.series.anilistMappings.singleOrNull;
-
-    if (mapping == null) {
-      snackBar('No AniList mapping found for this item', severity: InfoBarSeverity.warning);
-      return;
-    }
-
-    final anime = mapping.anilistData;
-    if (anime == null) {
+  void _openAnilistDialog(BuildContext context, AnilistMapping mapping) {
+    if (mapping.anilistData == null) {
       snackBar('No AniList data available for this mapping', severity: InfoBarSeverity.warning);
       return;
     }
-
-    final displayTitle = mapping.preferredTitle ?? anime.title.userPreferred ?? anime.title.romaji ?? anime.title.english ?? 'Unknown';
-
     widget.navigateToSeriesScreen?.call();
-
-    // Look up existing entry in user's lists
-    final anilist = Provider.of<AnilistProvider>(context, listen: false);
-    AnilistMediaListEntry? existing;
-    for (final list in anilist.userLists.values) {
-      for (final entry in list.entries) {
-        if (entry.mediaId == mapping.anilistId) {
-          existing = entry;
-          break;
-        }
-      }
-      if (existing != null) break;
-    }
-
-    showEntryEditorDialog(
-      context,
-      mediaId: mapping.anilistId,
-      title: displayTitle,
-      totalEpisodes: anime.episodes,
-      bannerImage: anime.bannerImage,
-      coverImage: anime.posterImage,
-      isFavourite: anime.isFavourite ?? false,
-      entry: existing,
-    );
+    openEntryEditorForMapping(context, mapping);
   }
 
   static void _toggleHiddenStatus(BuildContext context, Series series) {
@@ -260,8 +258,20 @@ class SeriesContextMenuState extends State<SeriesContextMenu> {
   }
 
   void _linkToAnilist(BuildContext context) {
-    // TODO: Implement Anilist linking
-    snackBar('Anilist linking not yet implemented', severity: InfoBarSeverity.warning);
+    // Context menu has no screen state to refresh; the library reload after linking
+    // refreshes the series regardless (mirrors searched_series_actions._openLinkDialog).
+    linkWithAnilist(
+      context,
+      widget.series,
+      (_) async {},
+      (_) {},
+      explorerOptions: FileExplorerOptions(
+        allowCreateFolder: true,
+        allowRename: true,
+        allowCurrentFolder: true,
+        allowDelete: true,
+      ),
+    );
   }
 
   void _markAllAsWatched(BuildContext context) {

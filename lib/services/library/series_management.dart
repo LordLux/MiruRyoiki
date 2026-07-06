@@ -214,6 +214,34 @@ extension LibrarySeriesManagement on Library {
     }
   }
 
+  /// Play the next unwatched episode for the whole series, crossing seasons/folders.
+  ///
+  /// For linked series this uses [AnilistProgressManager] (which handles per-season
+  /// vs absolute numbering and cross-season transitions); otherwise it falls back to
+  /// the first unwatched episode in display (collection) order.
+  void playNextEpisodeForSeries(Series series) {
+    Episode? next;
+
+    if (series.isLinked) {
+      try {
+        final provider = Provider.of<AnilistProvider>(Manager.context, listen: false);
+        next = AnilistProgressManager.instance.getNextEpisodeToWatch(series, provider);
+      } catch (e, st) {
+        logErr('playNextEpisodeForSeries: progress lookup failed', e, st);
+      }
+    }
+
+    // Fallback: first unwatched episode in display order
+    next ??= series.collections.expand((c) => c.episodes).firstWhereOrNull((e) => !e.watched);
+
+    if (next == null) {
+      snackBar('No unwatched episodes', severity: InfoBarSeverity.info);
+      return;
+    }
+
+    playEpisode(next);
+  }
+
   void markEpisodeWatched(
     /// The episode to mark
     Episode episode, {
@@ -281,6 +309,66 @@ extension LibrarySeriesManagement on Library {
     }
   }
 
+  /// Within the episode's own collection, mark every episode up to and including
+  /// [episode] as watched, and every episode after it as unwatched.
+  ///
+  /// Episodes are ordered by [Episode.episodeNumber]; episodes with a null number
+  /// keep their original list order (stable, sorted last among numbered ones).
+  /// Local-only by design — matches the other mark methods.
+  void setProgressUpToEpisode(Episode episode, Series series, {bool save = true}) {
+    // Check if user actions are disabled
+    if (_lockManager.shouldDisableAction(UserAction.markEpisodeWatched)) {
+      snackBar(
+        _lockManager.getDisabledReason(UserAction.markEpisodeWatched),
+        severity: InfoBarSeverity.warning,
+      );
+      return;
+    }
+
+    // Find the collection that owns this episode
+    final collection = series.collections.firstWhereOrNull((c) => c.episodes.contains(episode));
+    if (collection == null) {
+      logWarn('setProgressUpToEpisode: episode not found in any collection of ${series.name}');
+      return;
+    }
+
+    // Stable order by episodeNumber, falling back to original list order (nulls last)
+    final indexed = <(int, Episode)>[
+      for (int i = 0; i < collection.episodes.length; i++) (i, collection.episodes[i])
+    ];
+    indexed.sort((a, b) {
+      final an = a.$2.episodeNumber;
+      final bn = b.$2.episodeNumber;
+      if (an != null && bn != null && an != bn) return an.compareTo(bn);
+      if (an == null && bn != null) return 1; // nulls last
+      if (an != null && bn == null) return -1;
+      return a.$1.compareTo(b.$1); // stable tiebreak by original index
+    });
+    final ordered = [for (final e in indexed) e.$2];
+
+    // Use == (id/path-based) rather than identical(): must match the `contains`
+    // check above, which also uses ==, so an equal-but-not-same instance
+    // (e.g. a copy from a UI wrapper) still resolves to the right pivot.
+    final pivotIndex = ordered.indexWhere((e) => e == episode);
+    if (pivotIndex == -1) {
+      logWarn('setProgressUpToEpisode: pivot episode not found in its collection (${episode.path})');
+      return;
+    }
+
+    final upToAndIncluding = ordered.sublist(0, pivotIndex + 1);
+    final after = ordered.sublist(pivotIndex + 1);
+
+    markEpisodesWatched(upToAndIncluding, watched: true, save: false);
+    markEpisodesWatched(after, watched: false, overrideProgress: true, save: false);
+
+    if (save) {
+      if (homeKey.currentState != null) homeKey.currentState!.seriesWasModified = true;
+      _markDirty(series);
+      _scheduleDebouncedSave();
+      notifyListeners();
+    }
+  }
+
   void markSeasonWatched(EpisodeCollection season, {bool watched = true, bool save = true}) {
     // Check if user actions are disabled
     if (_lockManager.shouldDisableAction(UserAction.markSeriesWatched)) {
@@ -336,7 +424,23 @@ extension LibrarySeriesManagement on Library {
 
     if (target.isCollection) {
       final collection = target.asCollection;
-      if (collection != null) markSeasonWatched(collection, watched: watched, save: false);
+      if (collection != null) {
+        // Recursive: a folder represents everything inside it, so mark this
+        // collection's episodes AND any nested sub-collections (matched by path).
+        // Keeps "mark watched" consistent with the recursive progress shown on
+        // folder cards. Falls back to shallow if the owning series isn't found.
+        final owner = _series.firstWhereOrNull((s) => s.collections.contains(collection));
+        if (owner != null) {
+          final folderPath = collection.path.path;
+          final episodes = owner.collections //
+              .where((c) => c.path.path == folderPath || p.isWithin(folderPath, c.path.path))
+              .expand((c) => c.episodes)
+              .toList();
+          markEpisodesWatched(episodes, watched: watched, save: false, overrideProgress: true);
+        } else {
+          markSeasonWatched(collection, watched: watched, save: false);
+        }
+      }
     } else {
       final episode = target.asEpisode;
       if (episode != null) markEpisodeWatched(episode, watched: watched, save: false, overrideProgress: true);
