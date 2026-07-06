@@ -1,0 +1,24 @@
+# Normalize all text files to LF in the repository; checkout uses native line endings.
+# This makes line-ending behavior explicit and independent of each machine's core.autocrlf.
+* text=auto
+
+# Windows scripts must keep CRLF on checkout
+*.bat text eol=crlf
+*.ps1 text eol=crlf
+
+# Unix scripts must keep LF
+*.sh text eol=lf
+
+# Binary files — never touch
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary
+*.ttf binary
+*.otf binary
+*.zip binary
+*.exe binary
+*.dll binary
+*.lnk binary
