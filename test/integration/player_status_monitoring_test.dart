@@ -9,9 +9,22 @@ import 'dart:async';
 import 'package:miruryoiki/services/players/player_manager.dart';
 import 'package:miruryoiki/models/players/mediastatus.dart';
 
+import 'support/mpc_test_harness.dart';
+
 /// Integration test that monitors media player status
 /// This can be used to verify status updates are working correctly
+///
+/// A running VLC/MPC-HC is used when present; otherwise [MpcTestHarness]
+/// spawns an MPC-HC instance (from test/.env paths) and closes it afterwards.
 void main() {
+  setUpAll(() async {
+    await MpcTestHarness.acquire();
+  });
+
+  tearDownAll(() async {
+    await MpcTestHarness.release();
+  });
+
   group('Player Status Monitoring Integration Tests', () {
     late PlayerManager playerManager;
 

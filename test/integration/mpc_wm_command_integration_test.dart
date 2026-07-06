@@ -3,14 +3,12 @@
 @Tags(['requires-player'])
 library;
 
-import 'dart:ffi';
-
-import 'package:ffi/ffi.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:miruryoiki/services/players/slave/mpc_slave_bridge.dart';
 import 'package:miruryoiki/services/players/slave/mpc_slave_payload.dart';
-import 'package:win32/win32.dart';
+
+import 'support/mpc_test_harness.dart';
 
 /// Verifies the **WM_COMMAND-to-the-window** control path that slave mode relies
 /// on for the actions the slave API lacks (mute) and as a volume fallback.
@@ -20,15 +18,29 @@ import 'package:win32/win32.dart';
 /// it is a real pass/fail check of [MpcSlaveBridge.sendWmCommand] +
 /// [MpcWmCommand] against a live MPC-HC.
 ///
+/// Player lifecycle is handled by [MpcTestHarness]: an already-running MPC-HC
+/// is used (and left open); otherwise one is spawned from `test/.env` paths and
+/// closed again afterwards. Commands are sent to EVERY MPC-HC window found —
+/// `FindWindow` alone returns only the topmost instance, which previously made
+/// this test fail when a second (e.g. leftover slave) instance was running and
+/// the web-interface owner never received the commands.
+///
 /// Prerequisites (otherwise the test self-skips, it does not fail):
-///   1. MPC-HC running with a video loaded
+///   1. MPC-HC available (running, or spawnable via test/.env)
 ///   2. Its web interface enabled on :13579 (Options ▸ Player ▸ Web Interface)
 ///
 /// Run: `powershell -File test/launch_scripts/requires_player.ps1`
-const String _baseUrl = 'http://localhost:13579';
-const String _mpcWindowClass = 'MediaPlayerClassicW';
+const String _baseUrl = MpcTestHarness.webUiBase;
 
 void main() {
+  setUpAll(() async {
+    await MpcTestHarness.acquire();
+  });
+
+  tearDownAll(() async {
+    await MpcTestHarness.release();
+  });
+
   test('WM_COMMAND volume up/down and mute reach MPC-HC', () async {
     final initial = await _readVariables();
     if (initial == null) {
@@ -37,22 +49,31 @@ void main() {
       return;
     }
 
-    final hwnd = _findMpcWindow();
-    if (hwnd == 0) {
-      print('[SKIP] Could not find an MPC-HC window (class "$_mpcWindowClass").');
+    final hwnds = MpcTestHarness.findMpcWindows();
+    if (hwnds.isEmpty) {
+      print('[SKIP] Could not find an MPC-HC window (class "${MpcTestHarness.mpcWindowClass}").');
       return;
     }
-    print('[INFO] Found MPC-HC window: $hwnd');
+    print('[INFO] Found ${hwnds.length} MPC-HC window(s): $hwnds');
+    if (hwnds.length > 1) {
+      print('[INFO] Multiple instances detected — broadcasting commands to all of '
+          'them so the web-interface owner is guaranteed to receive them.');
+    }
 
     final bridge = MpcSlaveBridge.instance;
+    void broadcast(int command) {
+      for (final hwnd in hwnds) {
+        bridge.sendWmCommand(hwnd, command);
+      }
+    }
 
     // --- Make sure we are unmuted and have headroom to move the volume down ---
     if (_boolVar(initial, 'muted')) {
-      bridge.sendWmCommand(hwnd, MpcWmCommand.mute); // toggle off
+      broadcast(MpcWmCommand.mute); // toggle off
       await Future.delayed(const Duration(milliseconds: 300));
     }
     for (var i = 0; i < 4; i++) {
-      bridge.sendWmCommand(hwnd, MpcWmCommand.volumeUp);
+      broadcast(MpcWmCommand.volumeUp);
       await Future.delayed(const Duration(milliseconds: 120));
     }
 
@@ -62,7 +83,7 @@ void main() {
 
     // --- Volume DOWN should lower volumelevel ---
     for (var i = 0; i < 3; i++) {
-      bridge.sendWmCommand(hwnd, MpcWmCommand.volumeDown);
+      broadcast(MpcWmCommand.volumeDown);
       await Future.delayed(const Duration(milliseconds: 120));
     }
     final afterDown = await _pollVar((v) => _intVar(v, 'volumelevel') < baseVolume);
@@ -72,7 +93,7 @@ void main() {
 
     // --- Volume UP should raise it again ---
     for (var i = 0; i < 3; i++) {
-      bridge.sendWmCommand(hwnd, MpcWmCommand.volumeUp);
+      broadcast(MpcWmCommand.volumeUp);
       await Future.delayed(const Duration(milliseconds: 120));
     }
     final afterUp = await _pollVar((v) => _intVar(v, 'volumelevel') > downVolume);
@@ -81,25 +102,15 @@ void main() {
 
     // --- Mute should toggle the muted flag, then restore ---
     final muteBefore = _boolVar(afterUp, 'muted');
-    bridge.sendWmCommand(hwnd, MpcWmCommand.mute);
+    broadcast(MpcWmCommand.mute);
     final afterMute = await _pollVar((v) => _boolVar(v, 'muted') != muteBefore);
     print('[INFO] muted: $muteBefore → ${_boolVar(afterMute, 'muted')}');
     expect(_boolVar(afterMute, 'muted'), isNot(muteBefore), reason: 'WM_COMMAND 909 (mute) had no effect');
 
     // Restore the original mute state so we leave MPC-HC as we found it.
-    bridge.sendWmCommand(hwnd, MpcWmCommand.mute);
+    broadcast(MpcWmCommand.mute);
     await Future.delayed(const Duration(milliseconds: 200));
   });
-}
-
-/// Finds a top-level MPC-HC window by its class name. Returns 0 if not found.
-int _findMpcWindow() {
-  final classNamePtr = _mpcWindowClass.toNativeUtf16();
-  try {
-    return FindWindow(classNamePtr, nullptr);
-  } finally {
-    calloc.free(classNamePtr);
-  }
 }
 
 /// Reads and parses MPC-HC's `variables.html`, or returns null if unreachable.

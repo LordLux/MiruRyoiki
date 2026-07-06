@@ -9,9 +9,21 @@ import 'dart:async';
 import 'package:miruryoiki/services/players/player_manager.dart';
 import 'package:miruryoiki/models/players/mediastatus.dart';
 
-/// Integration tests that require actual media players to be running
-/// Run these tests manually when you have VLC or MPC-HC running with a video loaded
+import 'support/mpc_test_harness.dart';
+
+/// Integration tests that require an actual media player.
+///
+/// A running VLC/MPC-HC is used when present; otherwise [MpcTestHarness]
+/// spawns an MPC-HC instance (from test/.env paths) and closes it afterwards.
 void main() {
+  setUpAll(() async {
+    await MpcTestHarness.acquire();
+  });
+
+  tearDownAll(() async {
+    await MpcTestHarness.release();
+  });
+
   group('Player Command Integration Tests', () {
     late PlayerManager playerManager;
 

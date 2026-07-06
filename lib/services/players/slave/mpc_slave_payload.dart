@@ -72,6 +72,10 @@ abstract final class MpcCommand {
   /// notification — see [MpcWmCommand] for the `WM_COMMAND` fallback.
   static const int increaseVolume = 0xA0004003;
   static const int decreaseVolume = 0xA0004004;
+
+  /// Ask the instance to exit (`CMD_CLOSEAPP`). Used by integration tests to
+  /// clean up the instances they launch.
+  static const int closeApp = 0xA0004006;
 }
 
 /// MPC-HC internal command IDs usable by sending `WM_COMMAND` (0x111) straight

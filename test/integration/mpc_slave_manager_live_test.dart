@@ -3,14 +3,13 @@
 @Tags(['requires-player'])
 library;
 
-import 'dart:io';
-
 import 'package:flutter_test/flutter_test.dart';
 import 'package:miruryoiki/services/players/slave/mpc_slave_bridge.dart';
 import 'package:miruryoiki/services/players/slave/mpc_slave_manager.dart';
 import 'package:miruryoiki/services/players/slave/mpc_slave_payload.dart';
 import 'package:miruryoiki/utils/path.dart';
-import 'package:path/path.dart' as p;
+
+import 'support/mpc_test_harness.dart';
 
 /// LIVE test of the real [MpcSlaveManager] against real MPC-HC (no fakes):
 /// launches two instances and verifies the manager tracks both, routes commands
@@ -18,21 +17,19 @@ import 'package:path/path.dart' as p;
 ///
 /// Requires MPC-HC's "allow multiple instances" to be on; otherwise the second
 /// launch is forwarded to the first and the test reports that rather than failing.
-/// Self-skips without the exe/videos.
+/// Self-skips without the exe/videos (needs TEST_VIDEO_PATH in test/.env plus a
+/// second video in the same folder).
 /// Run: `powershell -File test/launch_scripts/requires_player.ps1 test/integration/mpc_slave_manager_live_test.dart`
-const String _mpcExe = r'C:\Program Files (x86)\K-Lite Codec Pack\MPC-HC64\mpc-hc64.exe';
-const String _seriesRoot = r'M:\Videos\Series';
-const int _cmdCloseApp = 0xA0004006; // MPCAPI CMD_CLOSEAPP
-
 void main() {
   test('MpcSlaveManager: tracks two real instances, targets commands, falls back on close', () async {
-    if (!File(_mpcExe).existsSync()) {
-      print('[SKIP] MPC-HC not found at $_mpcExe');
+    final mpcExe = MpcTestHarness.mpcPath;
+    if (mpcExe == null) {
+      print('[SKIP] MPC-HC not found — set MPC_HC_PATH in test/.env');
       return;
     }
-    final videos = _findSampleVideos(2);
+    final videos = MpcTestHarness.sampleVideos(2);
     if (videos.length < 2) {
-      print('[SKIP] need two sample videos under $_seriesRoot\\*\\S01 (found ${videos.length})');
+      print('[SKIP] need two videos (TEST_VIDEO_PATH plus a sibling in its folder, found ${videos.length})');
       return;
     }
 
@@ -46,9 +43,9 @@ void main() {
     try {
       expect(await manager.ensureStarted(), isTrue, reason: 'bridge should start');
 
-      await manager.launch(_mpcExe, PathString(videos[0]));
+      await manager.launch(mpcExe, PathString(videos[0]));
       await _waitUntil(() => manager.instanceCount >= 1);
-      await manager.launch(_mpcExe, PathString(videos[1]));
+      await manager.launch(mpcExe, PathString(videos[1]));
       await _waitUntil(() => manager.instanceCount >= 2);
 
       print('[INFO] instanceCount = ${manager.instanceCount}');
@@ -73,7 +70,7 @@ void main() {
 
       // Disconnect fallback: close the active instance; another stays active.
       final closedHwnd = manager.activeInstance!.hwnd;
-      bridge.send(closedHwnd, _cmdCloseApp);
+      bridge.send(closedHwnd, MpcCommand.closeApp);
       final droppedToOne = await _waitUntil(() => manager.instanceCount == 1);
       expect(droppedToOne, isTrue, reason: 'closing an instance should drop the tracked count');
       expect(manager.activeInstance, isNotNull, reason: 'active should fall back to the remaining instance');
@@ -81,9 +78,9 @@ void main() {
     } finally {
       // Close every instance this test opened, then tear down.
       for (final hwnd in connectedHwnds) {
-        bridge.send(hwnd, _cmdCloseApp);
+        bridge.send(hwnd, MpcCommand.closeApp);
       }
-      await Future.delayed(const Duration(milliseconds: 300));
+      await Future.delayed(const Duration(milliseconds: 500));
       await sub.cancel();
       await manager.dispose();
     }
@@ -100,20 +97,3 @@ Future<bool> _waitUntil(bool Function() condition, {Duration timeout = const Dur
   return condition();
 }
 
-List<String> _findSampleVideos(int count) {
-  final root = Directory(_seriesRoot);
-  if (!root.existsSync()) return const [];
-  const exts = {'.mkv', '.mp4', '.avi', '.m4v', '.mov'};
-  final found = <String>[];
-  for (final series in root.listSync().whereType<Directory>()) {
-    final season = Directory(p.join(series.path, 'S01'));
-    if (!season.existsSync()) continue;
-    for (final entity in season.listSync().whereType<File>()) {
-      if (exts.contains(p.extension(entity.path).toLowerCase())) {
-        found.add(entity.path);
-        if (found.length >= count) return found;
-      }
-    }
-  }
-  return found;
-}

@@ -9,26 +9,25 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:miruryoiki/services/players/slave/mpc_slave_bridge.dart';
 import 'package:miruryoiki/services/players/slave/mpc_slave_payload.dart';
-import 'package:path/path.dart' as p;
+
+import 'support/mpc_test_harness.dart';
 
 /// LIVE end-to-end check of the real [MpcSlaveBridge] against a real MPC-HC:
 /// launches `mpc-hc64.exe /slave <hostHwnd> "<file>"`, captures the WM_COPYDATA
-/// push trace, and exercises command send. Leaves MPC-HC open at the end.
+/// push trace, and exercises command send. Closes its instance at the end.
 ///
-/// Self-skips if the exe or a sample video can't be found.
+/// Self-skips if the exe or the test video (test/.env) can't be found.
 /// Run: `powershell -File test/launch_scripts/requires_player.ps1 test/integration/mpc_slave_live_test.dart`
-const String _mpcExe = r'C:\Program Files (x86)\K-Lite Codec Pack\MPC-HC64\mpc-hc64.exe';
-const String _seriesRoot = r'M:\Videos\Series';
-
 void main() {
   test('MPC-HC slave mode: launch, receive push notifications, send commands', () async {
-    if (!File(_mpcExe).existsSync()) {
-      print('[SKIP] MPC-HC not found at $_mpcExe');
+    final mpcExe = MpcTestHarness.mpcPath;
+    if (mpcExe == null) {
+      print('[SKIP] MPC-HC not found — set MPC_HC_PATH in test/.env');
       return;
     }
-    final video = _findSampleVideo();
+    final video = MpcTestHarness.videoPath;
     if (video == null) {
-      print('[SKIP] No sample video under $_seriesRoot\\*\\S01');
+      print('[SKIP] No test video — set TEST_VIDEO_PATH in test/.env');
       return;
     }
     print('[INFO] Video: $video');
@@ -54,7 +53,7 @@ void main() {
       expect(hostHwnd, isNot(0));
 
       print('[INFO] Launching: mpc-hc64.exe /slave $hostHwnd "$video"');
-      await Process.start(_mpcExe, ['/slave', '$hostHwnd', video], mode: ProcessStartMode.detached);
+      await Process.start(mpcExe, ['/slave', '$hostHwnd', video], mode: ProcessStartMode.detached);
 
       // 1. Handshake.
       await connected.future.timeout(const Duration(seconds: 20),
@@ -100,8 +99,14 @@ void main() {
       expect(playModes, isNotEmpty, reason: 'no CMD_PLAYMODE received around pause/play');
       print('[PASS] command send produced play-mode notifications');
 
-      print('[DONE] Slave protocol verified. MPC-HC left open.');
+      print('[DONE] Slave protocol verified.');
     } finally {
+      // Close the instance this test launched, then tear down.
+      if (senderHwnd != 0) {
+        print('[INFO] Closing launched instance $senderHwnd');
+        bridge.send(senderHwnd, MpcCommand.closeApp);
+        await Future.delayed(const Duration(milliseconds: 500));
+      }
       await sub.cancel();
       await bridge.stop();
     }
@@ -133,17 +138,3 @@ String _decode(MpcIncomingMessage m) {
   }
 }
 
-/// First .mkv/.mp4/.avi found in any `<seriesRoot>\*\S01` folder, or null.
-String? _findSampleVideo() {
-  final root = Directory(_seriesRoot);
-  if (!root.existsSync()) return null;
-  const exts = {'.mkv', '.mp4', '.avi', '.m4v', '.mov'};
-  for (final series in root.listSync().whereType<Directory>()) {
-    final season = Directory(p.join(series.path, 'S01'));
-    if (!season.existsSync()) continue;
-    for (final entity in season.listSync().whereType<File>()) {
-      if (exts.contains(p.extension(entity.path).toLowerCase())) return entity.path;
-    }
-  }
-  return null;
-}
