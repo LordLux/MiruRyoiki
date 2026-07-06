@@ -4,8 +4,8 @@ import 'package:material_symbols_icons/material_symbols_icons.dart';
 import 'package:provider/provider.dart';
 
 import '../../manager.dart';
+import '../../models/calendar_entry.dart';
 import '../../models/series.dart';
-import '../../screens/release_calendar.dart';
 import '../../services/library/library_provider.dart';
 import '../../utils/color.dart';
 import '../../utils/text.dart';

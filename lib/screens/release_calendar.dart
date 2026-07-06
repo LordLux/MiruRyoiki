@@ -8,12 +8,7 @@ import 'package:smooth_scroll_multiplatform/smooth_scroll_multiplatform.dart';
 
 import '../utils/anilist_utils.dart';
 
-import '../services/library/library_provider.dart';
-import '../models/series.dart';
-import '../models/anilist/anime.dart';
-import '../models/notification.dart';
-import '../services/anilist/provider/anilist_provider.dart';
-import '../services/anilist/queries/anilist_service.dart';
+import '../models/calendar_entry.dart';
 import '../services/navigation/navigation.dart';
 import '../services/navigation/shortcuts.dart';
 import '../services/navigation/show_info.dart';
@@ -22,6 +17,7 @@ import '../utils/logging.dart';
 import '../utils/path.dart';
 import '../utils/screen.dart';
 import '../utils/time.dart';
+import '../viewmodels/release_calendar_viewmodel.dart';
 import '../widgets/buttons/button.dart';
 import '../widgets/frosted_noise.dart';
 import '../widgets/notifications/notif.dart';
@@ -35,6 +31,10 @@ import '../widgets/tooltip_wrapper.dart';
 import '../enums.dart';
 import '../settings.dart';
 
+/// Release Calendar screen.
+///
+/// All calendar state and data access lives in [ReleaseCalendarViewModel] (registered app-wide in `main.dart`).
+/// This widget only renders it and owns view-only concerns: scroll position, keep-alive, and the minute ticker for relative-time labels.
 class ReleaseCalendarScreen extends StatefulWidget {
   final Function(PathString) onSeriesSelected;
   final ScrollController scrollController;
@@ -50,22 +50,14 @@ class ReleaseCalendarScreen extends StatefulWidget {
 }
 
 class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> with AutomaticKeepAliveClientMixin {
-  DateTime _selectedDate = now;
-  DateTime _focusedMonth = now;
-
-  // Cache for release data to avoid repeated calculations
-  Map<DateTime, List<CalendarEntry>> _calendarCache = {};
-  bool _isLoading = false;
-  String? _errorMessage;
-  bool _showOnlyTodayEpisodes = false; // Track if we're filtering to today only
   Timer? _minuteRefreshTimer; // periodic UI refresh for relative labels & countdowns
-  bool _filterSelectedDate = false; // controls whether selected date filter is active
-  bool _showOlderNotifications = false; // Track if we're showing older notifications when on today
   bool _isDisposed = false;
   bool _isTempHidingResults = false;
 
   /// Indicates if the scroll is currently at the bottom of the list
   bool _isAtBottom = true;
+
+  ReleaseCalendarViewModel get _vm => context.read<ReleaseCalendarViewModel>();
 
   @override
   bool get wantKeepAlive => true;
@@ -109,83 +101,26 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> with Autom
     super.dispose();
   }
 
-  void focusToday() {
-    if (mounted && !_isDisposed) {
-      setState(() {
-        _focusedMonth = DateTime(now.year, now.month, 1);
-        _selectedDate = now; // Reset selection to today
-        _filterSelectedDate = false; // Disable filter to show all episodes
-        _showOlderNotifications = false; // Reset older notifications flag
-      });
-      // nextFrame(() => scrollToToday(animated: false)); // Scroll immediately without animation
-    }
-  }
+  void focusToday() => _vm.focusToday();
 
-  void toggleFilter([bool? value]) {
-    if (mounted && !_isDisposed) {
-      setState(() {
-        _showOnlyTodayEpisodes = value ?? !_showOnlyTodayEpisodes;
-      });
-    }
-  }
+  void toggleFilter([bool? value]) => _vm.toggleTodayFilter(value);
+
+  Future<void> loadReleaseData() => _vm.loadReleaseData();
+
+  /// Cache-only read-status update
+  void updateNotificationReadStatus(int notificationId) => _vm.applyNotificationRead(notificationId);
+
+  /// Cache-only bulk read-status update
+  void markAllNotificationsAsRead() => _vm.applyAllNotificationsRead();
 
   void toggleOlderNotifications([bool? value]) {
-    if (mounted && !_isDisposed) {
-      final newValue = value ?? !_showOlderNotifications;
+    if (!mounted || _isDisposed) return;
+    final turnedOn = _vm.toggleOlderNotifications(value);
 
-      setState(() {
-        _showOlderNotifications = newValue;
-      });
-
-      // Auto-scroll when toggled to true
-      if (newValue && widget.scrollController.hasClients) {
-        // Wait for the list to rebuild before calculating scroll position
-        nextFrame(() => _autoScrollToScheduledEpisodes());
-      }
-    }
-  }
-
-  /// Update the read status of a notification in the calendar cache
-  void updateNotificationReadStatus(int notificationId) {
-    if (mounted && !_isDisposed) {
-      Manager.setState(() {
-        // Iterate through all dates in the calendar cache
-        for (final dateKey in _calendarCache.keys) {
-          final entriesForDate = _calendarCache[dateKey];
-          if (entriesForDate != null) {
-            // Update the entry if it matches the notification ID
-            _calendarCache[dateKey] = entriesForDate.map((e) {
-              if (e is NotificationCalendarEntry && e.notification.id == notificationId) {
-                final updatedNotification = e.notification.copyWith(isRead: true);
-                return NotificationCalendarEntry(notification: updatedNotification, series: e.series);
-              }
-              return e;
-            }).toList();
-          }
-        }
-      });
-    }
-  }
-
-  /// Mark all notifications as read in the calendar cache (used by notification dialog to update this UI, actual db save is already done by the dialog)
-  void markAllNotificationsAsRead() {
-    if (mounted && !_isDisposed) {
-      Manager.setState(() {
-        // Iterate through all dates in the calendar cache
-        for (final dateKey in _calendarCache.keys) {
-          final entriesForDate = _calendarCache[dateKey];
-          if (entriesForDate != null) {
-            // Update all notification entries to mark them as read
-            _calendarCache[dateKey] = entriesForDate.map((e) {
-              if (e is NotificationCalendarEntry && !e.notification.isRead) {
-                final updatedNotification = e.notification.copyWith(isRead: true);
-                return NotificationCalendarEntry(notification: updatedNotification, series: e.series);
-              }
-              return e;
-            }).toList();
-          }
-        }
-      });
+    // Auto-scroll when toggled to true
+    if (turnedOn && widget.scrollController.hasClients) {
+      // Wait for the list to rebuild before calculating scroll position
+      nextFrame(() => _autoScrollToScheduledEpisodes());
     }
   }
 
@@ -203,35 +138,6 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> with Autom
     }
   }
 
-  /// Count unread notifications currently present in the calendar cache
-  int _getUnreadCount() {
-    var count = 0;
-    for (final entries in _calendarCache.values) {
-      for (final e in entries) {
-        if (e is NotificationCalendarEntry && !e.notification.isRead) count++;
-      }
-    }
-    return count;
-  }
-
-  /// Mark all unread notifications as read (remote DB + local cache)
-  Future<void> _markAllAsRead() async {
-    final library = Provider.of<Library>(context, listen: false);
-    try {
-      final anilistService = AnilistService();
-      await anilistService.markAllAsRead(library.database);
-
-      // Update local cache/UI
-      markAllNotificationsAsRead();
-
-      // Provide user feedback
-      snackBar('Marked all notifications as read', severity: InfoBarSeverity.success);
-    } catch (e) {
-      logErr('Failed to mark all notifications as read', e);
-      snackBar('Failed to mark all notifications as read', severity: InfoBarSeverity.error);
-    }
-  }
-
   Future<void> _autoScrollToScheduledEpisodes() async {
     if (!widget.scrollController.hasClients) return;
 
@@ -240,8 +146,8 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> with Autom
       int scheduledEpisodeCount = 0;
       int dateHeaderCount = 0;
 
-      // Get current entries
-      final Map<DateTime, List<CalendarEntry>> entriesByDate = _getCurrentEntriesByDate();
+      // Current entries as the list shows them
+      final Map<DateTime, List<CalendarEntry>> entriesByDate = _vm.visibleEntriesByDate;
       final sortedDates = entriesByDate.keys.toList()..sort();
 
       // Count items that appear in future dates (scheduled episodes and their headers)
@@ -298,290 +204,11 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> with Autom
     }
   }
 
-  Map<DateTime, List<CalendarEntry>> _getCurrentEntriesByDate() {
-    // This helper method returns the current entries by date
-    // We need to replicate the filtering logic from the build method
-    final Map<DateTime, List<CalendarEntry>> entriesByDate = {};
-
-    for (final entry in _calendarCache.entries) {
-      final date = entry.key;
-      final entries = entry.value;
-
-      if (entries.isEmpty) continue;
-
-      // Apply the same filtering logic as in build method
-      final isOnToday = date.year == now.year && date.month == now.month && date.day == now.day;
-      final shouldFilterOlder = isOnToday && !_showOnlyTodayEpisodes && !_showOlderNotifications;
-
-      List<CalendarEntry> filteredEntries = entries;
-      if (shouldFilterOlder) {
-        // Filter out older notifications (keep only future episodes)
-        filteredEntries = entries.where((entry) {
-          if (entry is EpisodeCalendarEntry && entry.isFutureEntry) return true; // Keep scheduled episodes
-          if (entry is NotificationCalendarEntry) {
-            final notificationTime = DateTime.fromMillisecondsSinceEpoch(entry.notification.createdAt * 1000);
-            return notificationTime.isAfter(now.subtract(const Duration(hours: 6)));
-          }
-          return true;
-        }).toList();
-      }
-
-      if (filteredEntries.isNotEmpty) {
-        entriesByDate[date] = filteredEntries;
-      }
-    }
-
-    return entriesByDate;
-  }
-
-  Future<void> loadReleaseData() async {
-    if (_isLoading || _isDisposed) return;
-
-    if (mounted) setState(() => _isLoading = true);
-
-    try {
-      final library = Provider.of<Library>(context, listen: false);
-      final anilistProvider = Provider.of<AnilistProvider>(context, listen: false);
-
-      // Check if user is logged in
-      if (!anilistProvider.isLoggedIn) {
-        if (mounted && !_isDisposed) setState(() => _isLoading = false);
-        return;
-      }
-
-      if (_isDisposed) return;
-
-      final Map<DateTime, List<CalendarEntry>> calendarMap = {};
-
-      // Load cached data
-      await _loadNotificationData(library, calendarMap, null, now);
-      await _loadEpisodeData(library, anilistProvider, calendarMap, now, null);
-
-      // Display cached data immediately
-      if (mounted && !_isDisposed && calendarMap.isNotEmpty) {
-        setState(() {
-          _calendarCache = calendarMap;
-          _errorMessage = null;
-        });
-      }
-
-      if (!mounted || _isDisposed) return;
-
-      // If Online, sync notifications in background
-      if (!anilistProvider.isOffline) {
-        try {
-          final anilistService = AnilistService();
-          await anilistService.syncNotifications(
-            database: library.database,
-            types: [NotificationType.AIRING, NotificationType.RELATED_MEDIA_ADDITION, NotificationType.MEDIA_DATA_CHANGE],
-            maxPages: 2,
-          );
-
-          if (!mounted || _isDisposed) return;
-
-          // Reload data after sync to get fresh notifications
-          final freshCalendarMap = <DateTime, List<CalendarEntry>>{};
-          await _loadNotificationData(library, freshCalendarMap, null, now);
-          await _loadEpisodeData(library, anilistProvider, freshCalendarMap, now, null);
-
-          if (!mounted || _isDisposed) return;
-
-          // Sort entries by date within each day
-          for (final dayEntries in freshCalendarMap.values) {
-            dayEntries.sort((a, b) => a.date.compareTo(b.date));
-          }
-
-          logTrace('  Found ${freshCalendarMap.length} days with entries after sync, total entries: ${freshCalendarMap.values.expand((x) => x).length}');
-
-          if (mounted && !_isDisposed) {
-            setState(() {
-              _calendarCache = freshCalendarMap;
-              _errorMessage = freshCalendarMap.isEmpty ? 'No episodes or notifications found within the selected date range.' : null;
-              _isLoading = false;
-            });
-          }
-        } catch (e) {
-          logErr('Failed to sync notifications for release calendar', e);
-          if (mounted && !_isDisposed) setState(() => _isLoading = false);
-        }
-      } else {
-        // If Offline, display cached data
-        for (final dayEntries in calendarMap.values) {
-          dayEntries.sort((a, b) => a.date.compareTo(b.date));
-        }
-
-        if (mounted && !_isDisposed) {
-          setState(() {
-            _errorMessage = calendarMap.isEmpty ? 'No episodes or notifications found within the selected date range.' : null;
-            _isLoading = false;
-          });
-        }
-      }
-    } catch (e) {
-      if (mounted && !_isDisposed) {
-        setState(() {
-          _isLoading = false;
-          _errorMessage = 'Error loading data: ${e.toString()}';
-        });
-      }
-      logErr('Error loading calendar data', e);
-    }
-  }
-
-  Future<void> _loadEpisodeData(Library library, AnilistProvider anilistProvider, Map<DateTime, List<CalendarEntry>> calendarMap, DateTime? startDate, DateTime? endDate) async {
-    if (_isDisposed) return;
-
-    // Get unique anime IDs to avoid duplicate requests
-    final Set<int> animeIds = {};
-    for (final series in library.series) {
-      if (series.anilistMappings.isNotEmpty) {
-        for (final mapping in series.anilistMappings) {
-          if (mapping.anilistData?.status?.toAnimeStatus() == AnilistAnimeStatus.RELEASING) animeIds.add(mapping.anilistId); // only consider RELEASING series
-        }
-      }
-    }
-
-    if (animeIds.isEmpty || _isDisposed) return;
-
-    // Use the same approach as homepage - get cached data first, refresh in background
-    final cachedUpcomingEpisodes = anilistProvider.getCachedUpcomingEpisodes(animeIds.toList(), refreshInBackground: true);
-
-    logTrace('  Using cached upcoming episodes for ${cachedUpcomingEpisodes.length} anime');
-
-    // Process the cached results first
-    if (cachedUpcomingEpisodes.isNotEmpty) {
-      for (final series in library.series) {
-        if (_isDisposed) return;
-
-        if (series.anilistMappings.isNotEmpty) {
-          for (final mapping in series.anilistMappings) {
-            final airingInfo = cachedUpcomingEpisodes[mapping.anilistId]; // Get airing info for this anime ID
-            if (airingInfo?.airingAt != null) {
-              final airingDate = DateTime.fromMillisecondsSinceEpoch(airingInfo!.airingAt! * 1000);
-              final dateKey = DateTime(airingDate.year, airingDate.month, airingDate.day);
-
-              if ((startDate == null || airingDate.isAfter(startDate)) && (endDate == null || airingDate.isBefore(endDate))) {
-                final episodeInfo = ReleaseEpisodeInfo(
-                  series: series,
-                  animeData: null, // We don't need full anime data for this
-                  airingEpisode: airingInfo,
-                  airingDate: airingDate,
-                  isWatched: false,
-                  isAvailable: false, // TODO Implement availability check
-                );
-
-                final calendarEntry = EpisodeCalendarEntry(episodeInfo: episodeInfo);
-                calendarMap.putIfAbsent(dateKey, () => []).add(calendarEntry);
-              }
-            }
-          }
-        }
-      }
-    }
-
-    // If no cached data available, try fetching fresh data as fallback
-    if (calendarMap.isEmpty && !_isDisposed) {
-      try {
-        final upcomingEpisodes = await anilistProvider.getUpcomingEpisodes(animeIds.toList());
-
-        if (_isDisposed) return;
-
-        // Process the fresh results
-        for (final series in library.series) {
-          if (_isDisposed) return;
-
-          if (series.anilistMappings.isNotEmpty) {
-            for (final mapping in series.anilistMappings) {
-              final airingInfo = upcomingEpisodes[mapping.anilistId];
-              if (airingInfo?.airingAt != null) {
-                final airingDate = DateTime.fromMillisecondsSinceEpoch(airingInfo!.airingAt! * 1000);
-                final dateKey = DateTime(airingDate.year, airingDate.month, airingDate.day);
-
-                if ((startDate == null || airingDate.isAfter(startDate)) && (endDate == null || airingDate.isBefore(endDate))) {
-                  final episodeInfo = ReleaseEpisodeInfo(
-                    series: series,
-                    animeData: null, // We don't need full anime data for this
-                    airingEpisode: airingInfo,
-                    airingDate: airingDate,
-                    isWatched: false,
-                    isAvailable: false, //TODO: Implement availability check
-                  );
-
-                  final calendarEntry = EpisodeCalendarEntry(episodeInfo: episodeInfo);
-                  calendarMap.putIfAbsent(dateKey, () => []).add(calendarEntry);
-                }
-              }
-            }
-          }
-        }
-      } catch (e, st) {
-        // If API call fails, log but don't fail completely since we might have notifications
-        logErr('Episode API call failed', e, st);
-      }
-    }
-  }
-
-  Future<void> _loadNotificationData(Library library, Map<DateTime, List<CalendarEntry>> calendarMap, DateTime? startDate, DateTime endDate) async {
-    if (_isDisposed) return;
-
-    try {
-      final anilistService = AnilistService();
-
-      // Get notifications from the database
-      final notifications = await anilistService.getCachedNotifications(
-        database: library.database,
-        limit: 256,
-      );
-
-      if (_isDisposed) return;
-
-      logTrace('  Loaded ${notifications.length} cached notifications for calendar');
-
-      // Filter notifications for our date range and add them to calendar
-      for (final notification in notifications) {
-        if (_isDisposed) return;
-
-        final notificationDate = DateTime.fromMillisecondsSinceEpoch(notification.createdAt * 1000);
-
-        if ((((startDate != null && notificationDate.isAfter(startDate)) || startDate == null) && notificationDate.isBefore(endDate))) {
-          final dateKey = DateTime(notificationDate.year, notificationDate.month, notificationDate.day);
-          Series? associatedSeries;
-          int? anilistIdToCheck;
-
-          // Extract the AniList ID based on notification type
-          anilistIdToCheck = notification.anilistId;
-
-          // Look for a series with matching anilist ID
-          if (anilistIdToCheck != null) {
-            for (final series in library.series) {
-              if (series.anilistMappings.any((mapping) => mapping.anilistId == anilistIdToCheck)) {
-                associatedSeries = series;
-                break;
-              }
-            }
-          }
-
-          // Check if this notification should be filtered based on hidden series
-          if (anilistIdToCheck != null && library.hiddenSeriesService.shouldFilterAnilistId(anilistIdToCheck)) //
-            continue;
-
-          final calendarEntry = NotificationCalendarEntry(
-            notification: notification,
-            series: associatedSeries,
-          );
-
-          calendarMap.putIfAbsent(dateKey, () => []).add(calendarEntry);
-        }
-      }
-    } catch (e, st) {
-      // Log error but don't fail completely since we might have episodes
-      logErr('Error loading notifications', e, st);
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     super.build(context); // for AutomaticKeepAliveClientMixin
+
+    final vm = context.watch<ReleaseCalendarViewModel>();
 
     return MiruRyoikiTemplatePage(
       headerWidget: HeaderWidget(
@@ -593,7 +220,7 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> with Autom
               const Text('Release Calendar'),
               const SizedBox(width: 12),
               AnimatedOpacity(
-                opacity: _isLoading ? 1.0 : 0.0,
+                opacity: vm.isLoading ? 1.0 : 0.0,
                 duration: const Duration(milliseconds: 200),
                 child: Padding(
                   padding: const EdgeInsets.only(bottom: 6.0),
@@ -656,14 +283,14 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> with Autom
                 ),
               ),
       ),
-      content: _buildContent(),
+      content: _buildContent(vm),
       scrollableContent: false,
       hideInfoBar: true,
       noHeaderBanner: true,
     );
   }
 
-  Widget _buildContent() {
+  Widget _buildContent(ReleaseCalendarViewModel vm) {
     return SizedBox(
       height: ScreenUtils.height,
       child: Row(
@@ -673,7 +300,7 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> with Autom
             flex: 16,
             child: Padding(
               padding: const EdgeInsets.only(left: 16.0, right: 22.0),
-              child: _buildCalendar(),
+              child: _buildCalendar(vm),
             ),
           ),
 
@@ -688,7 +315,7 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> with Autom
             flex: 30,
             child: Padding(
               padding: const EdgeInsets.only(left: 24.0),
-              child: _buildEpisodeList(),
+              child: _buildEpisodeList(vm),
             ),
           ),
         ],
@@ -696,7 +323,7 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> with Autom
     );
   }
 
-  Widget _buildCalendar() {
+  Widget _buildCalendar(ReleaseCalendarViewModel vm) {
     const double maxCalendarHeight = 466.0;
     const double minCalendarWidth = 380.0;
 
@@ -721,17 +348,17 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> with Autom
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           // Calendar header with navigation
-          _buildCalendarHeader(calendarWidth),
+          _buildCalendarHeader(vm, calendarWidth),
           VDiv(16),
 
           // Calendar grid
-          _buildCalendarGrid(calendarWidth),
+          _buildCalendarGrid(vm, calendarWidth),
         ],
       ),
     );
   }
 
-  Widget _buildCalendarHeader(double calendarWidth) {
+  Widget _buildCalendarHeader(ReleaseCalendarViewModel vm, double calendarWidth) {
     return SizedBox(
       width: calendarWidth,
       child: Row(
@@ -741,13 +368,7 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> with Autom
             padding: const EdgeInsets.only(left: 6.0),
             child: StandardButton.icon(
               tooltip: 'Go to previous month',
-              onPressed: () {
-                if (mounted && !_isDisposed) {
-                  setState(() {
-                    _focusedMonth = DateTime(_focusedMonth.year, _focusedMonth.month - 1);
-                  });
-                }
-              },
+              onPressed: vm.previousMonth,
               icon: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 4.0),
                 child: const Icon(FluentIcons.chevron_left),
@@ -758,9 +379,9 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> with Autom
             tooltipWaitDuration: const Duration(milliseconds: 300),
             tooltip: 'Click to go to current date',
             child: (_) => GestureDetector(
-              onTap: () => focusToday(),
+              onTap: () => vm.focusToday(),
               child: Text(
-                DateFormat.yMMMM().format(_focusedMonth),
+                DateFormat.yMMMM().format(vm.focusedMonth),
                 style: FluentTheme.of(context).typography.subtitle,
               ),
             ),
@@ -769,13 +390,7 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> with Autom
             padding: const EdgeInsets.only(right: 6.0),
             child: StandardButton.icon(
               tooltip: 'Go to next month',
-              onPressed: () {
-                if (mounted && !_isDisposed) {
-                  setState(() {
-                    _focusedMonth = DateTime(_focusedMonth.year, _focusedMonth.month + 1);
-                  });
-                }
-              },
+              onPressed: vm.nextMonth,
               icon: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 4.0),
                 child: const Icon(FluentIcons.chevron_right),
@@ -787,12 +402,12 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> with Autom
     );
   }
 
-  Widget _buildCalendarGrid(double calendarWidth) {
+  Widget _buildCalendarGrid(ReleaseCalendarViewModel vm, double calendarWidth) {
     final settings = SettingsManager();
     final firstDayOfWeekSetting = settings.firstDayOfWeek;
 
-    final daysInMonth = DateTime(_focusedMonth.year, _focusedMonth.month + 1, 0).day;
-    final firstDayOfMonth = DateTime(_focusedMonth.year, _focusedMonth.month, 1);
+    final daysInMonth = DateTime(vm.focusedMonth.year, vm.focusedMonth.month + 1, 0).day;
+    final firstDayOfMonth = DateTime(vm.focusedMonth.year, vm.focusedMonth.month, 1);
 
     // Calculate start day based on configurable first day of week
     final firstDayWeekdayValue = firstDayOfWeekSetting.toWeekdayValue;
@@ -845,13 +460,13 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> with Autom
 
                   if (dayOffset < 1 || dayOffset > daysInMonth) return Container(); // Empty cell
 
-                  final date = DateTime(_focusedMonth.year, _focusedMonth.month, dayOffset);
+                  final date = DateTime(vm.focusedMonth.year, vm.focusedMonth.month, dayOffset);
                   final dateKey = DateTime(date.year, date.month, date.day);
-                  final entriesForDay = _calendarCache[dateKey] ?? [];
-                  final isSelected = _isSameDay(date, _selectedDate);
+                  final entriesForDay = vm.calendarCache[dateKey] ?? [];
+                  final isSelected = _isSameDay(date, vm.selectedDate);
                   final isToday = _isSameDay(date, now);
 
-                  return _buildCalendarDay(date, entriesForDay, isSelected, isToday);
+                  return _buildCalendarDay(vm, date, entriesForDay, isSelected, isToday);
                 },
               ),
             ),
@@ -861,7 +476,7 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> with Autom
     );
   }
 
-  Widget _buildCalendarDay(DateTime date, List<CalendarEntry> entries, bool isSelected, bool isToday) {
+  Widget _buildCalendarDay(ReleaseCalendarViewModel vm, DateTime date, List<CalendarEntry> entries, bool isSelected, bool isToday) {
     final entryCount = entries.length;
 
     return Container(
@@ -871,30 +486,7 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> with Autom
             ? '${DateFormat.yMMMd().format(date)}\n$entryCount notification${entryCount > 1 ? 's' : ''}'
             : '${DateFormat.yMMMd().format(date)}\nNo notifications',
         child: (isHovering) => Button(
-          onPressed: () {
-            if (mounted && !_isDisposed) {
-              setState(() {
-                // Toggle filter off/on when clicking the same selected date
-                if (isSelected) {
-                  // DISABLE FILTER - show all episodes when clicking the already selected date
-                  _filterSelectedDate = false;
-                } else {
-                  // ENABLE FILTER - show only this date's episodes when clicking a different date
-                  _selectedDate = date;
-                  _filterSelectedDate = true;
-                }
-                // Turning off today-only if user manually toggles date
-                if (_showOnlyTodayEpisodes && !_filterSelectedDate) {
-                  _showOnlyTodayEpisodes = false;
-                }
-                // Reset older notifications flag when navigating to any different date
-                _showOlderNotifications = false;
-                if (_selectedDate.month == now.month && _selectedDate.year == now.year && _selectedDate.day == now.day) {
-                  _filterSelectedDate = false;
-                }
-              });
-            }
-          },
+          onPressed: () => vm.selectDate(date),
           style: ButtonStyle(
             padding: ButtonState.all(const EdgeInsets.all(0)),
             backgroundColor: ButtonState.resolveWith((states) {
@@ -978,14 +570,14 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> with Autom
     }
   }
 
-  Widget _buildEpisodeList() {
-    if (_errorMessage != null) {
+  Widget _buildEpisodeList(ReleaseCalendarViewModel vm) {
+    if (vm.errorMessage != null) {
       return Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(FluentIcons.error, size: 48, color: Colors.red.light),
           VDiv(16),
-          Text(_errorMessage!, style: FluentTheme.of(context).typography.subtitle),
+          Text(vm.errorMessage!, style: FluentTheme.of(context).typography.subtitle),
           VDiv(16),
           Button(
             onPressed: loadReleaseData,
@@ -995,14 +587,7 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> with Autom
       );
     }
 
-    // Entries for selected date
-    final selectedDateKey = DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day);
-    final selectedDayEntries = _calendarCache[selectedDateKey] ?? [];
-
-    // All entries (within cached window)
-    final allEntries = _calendarCache.entries.expand((entry) => entry.value).toList();
-
-    if (allEntries.isEmpty) {
+    if (!vm.hasAnyEntries) {
       return Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
@@ -1013,64 +598,18 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> with Autom
       );
     }
 
-    // Decide mode: today-only, selected-date, or all grouped
-    late Map<DateTime, List<CalendarEntry>> entriesByDate;
+    final entriesByDate = vm.visibleEntriesByDate;
 
-    if (_showOnlyTodayEpisodes) {
-      final today = now;
-      final todayKey = DateTime(today.year, today.month, today.day);
-      final todaysEntries = _calendarCache[todayKey] ?? [];
-      if (todaysEntries.isEmpty) {
-        return Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(FluentIcons.calendar_day, size: 48, color: FluentTheme.of(context).inactiveColor),
-            VDiv(16),
-            Text('No entries today', style: FluentTheme.of(context).typography.subtitle),
-          ],
-        );
-      }
-      entriesByDate = {todayKey: List.of(todaysEntries)..sort((a, b) => a.date.compareTo(b.date))};
-    } else if (_filterSelectedDate && selectedDayEntries.isNotEmpty) {
-      // Show ONLY selected date
-      entriesByDate = {selectedDateKey: List.of(selectedDayEntries)..sort((a, b) => a.date.compareTo(b.date))};
-    } else if (_filterSelectedDate && selectedDayEntries.isEmpty) {
-      // Selected date has no entries - check if we should filter older notifications
-      if (!_showOlderNotifications) {
-        // Show empty for now, but we'll show the button to reveal older notifications
-        entriesByDate = {};
-      } else {
-        // Show all entries when revealing older notifications
-        allEntries.sort((a, b) => a.date.compareTo(b.date));
-        final map = <DateTime, List<CalendarEntry>>{};
-        for (final entry in allEntries) {
-          final k = DateTime(entry.date.year, entry.date.month, entry.date.day);
-          map.putIfAbsent(k, () => []).add(entry);
-        }
-        entriesByDate = map;
-      }
-    } else {
-      // Group all entries (within cache window)
-      allEntries.sort((a, b) => a.date.compareTo(b.date));
-      final map = <DateTime, List<CalendarEntry>>{};
-
-      // Check if we're on today and should filter older notifications
-      final today = now;
-      final todayKey = DateTime(today.year, today.month, today.day);
-      final isOnToday = _selectedDate.year == today.year && _selectedDate.month == today.month && _selectedDate.day == today.day;
-      final shouldFilterOlder = isOnToday && !_showOnlyTodayEpisodes && !_showOlderNotifications;
-
-      for (final entry in allEntries) {
-        final k = DateTime(entry.date.year, entry.date.month, entry.date.day);
-
-        // If we should filter older notifications, skip past entries
-        if (shouldFilterOlder && k.isBefore(todayKey)) {
-          continue;
-        }
-
-        map.putIfAbsent(k, () => []).add(entry);
-      }
-      entriesByDate = map;
+    // Today-only filter with nothing today
+    if (vm.showOnlyTodayEpisodes && entriesByDate.isEmpty) {
+      return Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(FluentIcons.calendar_day, size: 48, color: FluentTheme.of(context).inactiveColor),
+          VDiv(16),
+          Text('No entries today', style: FluentTheme.of(context).typography.subtitle),
+        ],
+      );
     }
 
     final sortedDates = entriesByDate.keys.toList()..sort();
@@ -1089,12 +628,9 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> with Autom
       flattenedList.addAll(entriesByDate[date]!); // Add all entries for that date
     }
 
-    final isToday = _selectedDate.year == now.year && _selectedDate.month == now.month && _selectedDate.day == now.day;
-    final isFutureDate = _selectedDate.isAfter(DateTime(now.year, now.month, now.day));
-
-    // Show the "Show older notifications" button when on today (outside today-only mode) or on a selected date that has no entries — but only if older notifications aren't already visible
-    final isOnSelectedDateWithNoEntries = _filterSelectedDate && selectedDayEntries.isEmpty;
-    final shouldShowOlderButton = (isToday && !_showOnlyTodayEpisodes && !_showOlderNotifications) || (isOnSelectedDateWithNoEntries && !_showOlderNotifications);
+    final isToday = vm.isSelectedToday;
+    final isFutureDate = vm.isSelectedFuture;
+    final shouldShowOlderButton = vm.shouldShowOlderButton;
 
     // If we have no entries to show and should show the button, show a different empty state
     if (entriesByDate.isEmpty && shouldShowOlderButton) {
@@ -1111,7 +647,7 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> with Autom
                   label: Text(isToday ? 'Show older notifications' : 'Show all notifications'),
                 ),
                 const Spacer(),
-                _buildMarkAllAsReadButton(),
+                _buildMarkAllAsReadButton(vm),
               ],
             ),
           ),
@@ -1157,7 +693,7 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> with Autom
                 ),
               ],
               const Spacer(),
-              Padding(padding: EdgeInsets.only(top: 8.0, right: 8.0), child: _buildMarkAllAsReadButton()),
+              Padding(padding: EdgeInsets.only(top: 8.0, right: 8.0), child: _buildMarkAllAsReadButton(vm)),
             ],
           ),
           // Episode list
@@ -1235,7 +771,7 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> with Autom
                             final entry = item;
                             return Padding(
                               padding: const EdgeInsets.only(bottom: 3.0),
-                              child: _buildCalendarEntryItem(entry),
+                              child: _buildCalendarEntryItem(vm, entry),
                             );
                           }
 
@@ -1254,24 +790,24 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> with Autom
     );
   }
 
-  Padding _buildMarkAllAsReadButton() {
+  Padding _buildMarkAllAsReadButton(ReleaseCalendarViewModel vm) {
     return Padding(
       padding: const EdgeInsets.only(top: 8.0),
       child: Builder(builder: (context) {
-        final unread = _getUnreadCount();
+        final unread = vm.unreadCount;
         return StandardButton.iconLabel(
           tooltip: unread == 0 ? 'All notifications are read' : 'Mark all notifications as read',
           isButtonDisabled: unread == 0,
           cursor: unread == 0 ? SystemMouseCursors.basic : SystemMouseCursors.click,
           icon: const Icon(FluentIcons.check_mark, size: 14),
           label: Text('Mark all as read'),
-          onPressed: _markAllAsRead,
+          onPressed: vm.markAllAsRead,
         );
       }),
     );
   }
 
-  Widget _buildCalendarEntryItem(CalendarEntry entry) {
+  Widget _buildCalendarEntryItem(ReleaseCalendarViewModel vm, CalendarEntry entry) {
     try {
       return switch (entry) {
         NotificationCalendarEntry notificationEntry => NotificationCalendarEntryWidget(
@@ -1297,24 +833,9 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> with Autom
               openAnilistAnime(animeId);
             },
             onNotificationRead: (notificationId) async {
-              // check if the notification is already marked as read and if so, do nothing
+              // Already read → nothing to do
               if (notificationEntry.notification.isRead) return;
-
-              final library = Provider.of<Library>(context, listen: false);
-              await AnilistService().markAsRead(library.database, notificationId);
-              setState(() {
-                final dateKey = DateTime(notificationEntry.date.year, notificationEntry.date.month, notificationEntry.date.day);
-                final entriesForDate = _calendarCache[dateKey];
-                if (entriesForDate != null) {
-                  _calendarCache[dateKey] = entriesForDate.map((e) {
-                    if (e is NotificationCalendarEntry && e.notification.id == notificationId) {
-                      final updatedNotification = e.notification.copyWith(isRead: true);
-                      return NotificationCalendarEntry(notification: updatedNotification, series: e.series);
-                    }
-                    return e;
-                  }).toList();
-                }
-              });
+              await vm.markNotificationRead(notificationId);
             },
           ),
         EpisodeCalendarEntry episodeEntry => ScheduledEpisodeCalendarEntryWidget(
@@ -1356,60 +877,6 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> with Autom
   bool _isSameDay(DateTime a, DateTime b) {
     return a.year == b.year && a.month == b.month && a.day == b.day;
   }
-}
-
-class ReleaseEpisodeInfo {
-  final Series series;
-  final AnilistAnime? animeData; // Make nullable
-  final AiringEpisode airingEpisode;
-  final DateTime airingDate;
-  final bool isWatched;
-  final bool isAvailable;
-
-  ReleaseEpisodeInfo({
-    required this.series,
-    required this.animeData,
-    required this.airingEpisode,
-    required this.airingDate,
-    required this.isWatched,
-    required this.isAvailable,
-  });
-}
-
-// Unified data structure for calendar entries (episodes and notifications)
-abstract class CalendarEntry {
-  final DateTime date;
-  final Series? series; // nullable because notifications might not have series
-
-  CalendarEntry({
-    required this.date,
-    this.series,
-  });
-
-  bool get isPastEntry => date.isBefore(now);
-  bool get isFutureEntry => date.isAfter(now);
-}
-
-class EpisodeCalendarEntry extends CalendarEntry {
-  final ReleaseEpisodeInfo episodeInfo;
-
-  EpisodeCalendarEntry({
-    required this.episodeInfo,
-  }) : super(
-          date: episodeInfo.airingDate,
-          series: episodeInfo.series,
-        );
-}
-
-class NotificationCalendarEntry extends CalendarEntry {
-  final AnilistNotification notification;
-
-  NotificationCalendarEntry({
-    required this.notification,
-    super.series,
-  }) : super(
-          date: notification.createdAt != 0 ? DateTime.fromMillisecondsSinceEpoch(notification.createdAt * 1000) : now,
-        );
 }
 
 /// Sentinel marker inserted into the flattened list to render a divider between aired entries and scheduled entries

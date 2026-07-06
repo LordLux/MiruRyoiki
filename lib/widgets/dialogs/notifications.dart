@@ -7,12 +7,12 @@ import 'package:miruryoiki/utils/logging.dart';
 import 'package:miruryoiki/widgets/buttons/button.dart';
 import 'package:provider/provider.dart';
 
-import '../../main.dart';
 import '../../manager.dart';
 import '../../models/notification.dart';
 import '../../services/anilist/queries/anilist_service.dart';
 import '../../services/library/library_provider.dart';
 import '../../utils/time.dart';
+import '../../viewmodels/release_calendar_viewmodel.dart';
 import '../../widgets/buttons/wrapper.dart';
 import '../buttons/rotating_loading_button.dart';
 import '../notifications/notif.dart';
@@ -180,8 +180,8 @@ class NotificationsContentState extends State<NotificationsContent> {
         _unreadCount = (_unreadCount - 1).clamp(0, double.infinity).toInt();
       });
 
-      // Update the release calendar screen if it's open
-      releaseCalendarScreenKey.currentState?.updateNotificationReadStatus(notificationId);
+      // Update the release calendar's cached entries
+      if (mounted) context.read<ReleaseCalendarViewModel>().applyNotificationRead(notificationId);
     } catch (e) {
       logErr("Error marking notification $notificationId as read: $e");
     }
@@ -215,8 +215,8 @@ class NotificationsContentState extends State<NotificationsContent> {
         _unreadCount = 0;
       });
 
-      // Update the release calendar screen if it's open
-      releaseCalendarScreenKey.currentState?.markAllNotificationsAsRead();
+      // Update the release calendar's cached entries
+      if (mounted) context.read<ReleaseCalendarViewModel>().applyAllNotificationsRead();
     } catch (e) {
       // Handle error silently
       logErr("Error marking all notifications as read: $e");

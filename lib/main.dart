@@ -4,7 +4,7 @@ import 'dart:async';
 import 'dart:io';
 import 'package:defer_pointer/defer_pointer.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart' show Material, MaterialPageRoute, ScaffoldMessenger, Ink, InkWell;
+import 'package:flutter/material.dart' show Material, MaterialPageRoute, ScaffoldMessenger;
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_acrylic/flutter_acrylic.dart';
@@ -21,7 +21,6 @@ import 'package:window_manager/window_manager.dart';
 import 'package:tray_manager/tray_manager.dart';
 import 'package:flutter_single_instance/flutter_single_instance.dart';
 import 'package:material_symbols_icons/material_symbols_icons.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:win32_registry/win32_registry.dart';
 
 import 'database/database.dart';
@@ -37,7 +36,6 @@ import 'screens/release_calendar.dart';
 import 'services/isolates/thumbnail_manager.dart';
 import 'widgets/dialogs/padded_dialog_route.dart';
 import 'widgets/dialogs/splash/status.dart';
-import 'widgets/navigator_transition_delegates.dart';
 import 'widgets/reassemble_widget.dart';
 import 'widgets/route_transition_builders.dart';
 import 'widgets/sidebar_opener_detector.dart';
@@ -45,6 +43,7 @@ import 'widgets/player.dart';
 import 'widgets/release_notification.dart';
 import 'widgets/svg.dart';
 import 'services/anilist/provider/anilist_provider.dart';
+import 'viewmodels/release_calendar_viewmodel.dart';
 import 'services/connectivity/connectivity_service.dart';
 import 'services/navigation/statusbar.dart';
 import 'settings.dart';
@@ -184,6 +183,15 @@ void main(List<String> args) async {
               return service;
             },
             lazy: false,
+          ),
+          // Per-screen ViewModels
+          ChangeNotifierProxyProvider2<Library, AnilistProvider, ReleaseCalendarViewModel>(
+            create: (context) => ReleaseCalendarViewModel()..update(context.read<Library>(), context.read<AnilistProvider>()),
+            update: (context, library, anilist, previous) {
+              final vm = previous ?? ReleaseCalendarViewModel();
+              vm.update(library, anilist);
+              return vm;
+            },
           ),
           ChangeNotifierProvider(create: (_) => ConnectivityService(), lazy: false),
           ChangeNotifierProvider.value(value: _appTheme),
