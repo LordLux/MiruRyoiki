@@ -220,25 +220,34 @@ class HomeViewModel extends ChangeNotifier {
     return animeIds.toList();
   }
 
-  /// Cached upcoming episodes for [animeIds] (kicks off a background refresh).
-  ///
-  /// Invalidates the fresh-fetch future when the library data version changes.
-  Map<int, AiringEpisode?> cachedUpcomingEpisodes(List<int> animeIds) {
+  /// Drops the memoized fresh-fetch future when the library data version
+  /// changes. Shared by both upcoming-episode entry points so neither relies
+  /// on the other having been called first.
+  void _syncUpcomingCacheWithDataVersion() {
     if (_lastLibraryDataVersion != null && _lastLibraryDataVersion != _library.dataVersion) {
       _cachedUpcomingEpisodesFuture = null;
       _lastRequestedAnimeIds = null;
     }
     _lastLibraryDataVersion = _library.dataVersion;
+  }
 
+  /// Cached upcoming episodes for [animeIds] (kicks off a background refresh).
+  Map<int, AiringEpisode?> cachedUpcomingEpisodes(List<int> animeIds) {
+    _syncUpcomingCacheWithDataVersion();
     return _anilist.getCachedUpcomingEpisodes(animeIds, refreshInBackground: true);
   }
 
   /// Memoized fresh fetch of upcoming episodes, keyed on [animeIds].
   ///
   /// Reused across rebuilds so FutureBuilder doesn't refire the request every frame.
+  /// The key is a sorted defensive copy, so comparison is order-insensitive
+  /// (callers build IDs from a Set) and immune to later caller-side mutation.
   Future<Map<int, AiringEpisode?>> freshUpcomingEpisodes(List<int> animeIds) {
-    if (_cachedUpcomingEpisodesFuture == null || _lastRequestedAnimeIds == null || !_listsEqual(_lastRequestedAnimeIds!, animeIds)) {
-      _lastRequestedAnimeIds = animeIds;
+    _syncUpcomingCacheWithDataVersion();
+
+    final key = List<int>.of(animeIds)..sort();
+    if (_cachedUpcomingEpisodesFuture == null || _lastRequestedAnimeIds == null || !_listsEqual(_lastRequestedAnimeIds!, key)) {
+      _lastRequestedAnimeIds = key;
       _cachedUpcomingEpisodesFuture = _anilist.getUpcomingEpisodes(animeIds);
     }
     return _cachedUpcomingEpisodesFuture!;
@@ -327,7 +336,11 @@ class HomeViewModel extends ChangeNotifier {
     series.sort((a, b) {
       final aNext = earliestAiring(a, upcomingEpisodesMap)?.$1.airingAt;
       final bNext = earliestAiring(b, upcomingEpisodesMap)?.$1.airingAt;
-      return (aNext ?? 0).compareTo(bNext ?? 0);
+      // Series with no scheduled episode sort last (not first, as `?? 0` would)
+      if (aNext == null && bNext == null) return 0;
+      if (aNext == null) return 1;
+      if (bNext == null) return -1;
+      return aNext.compareTo(bNext);
     });
   }
 }

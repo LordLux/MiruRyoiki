@@ -155,5 +155,19 @@ void main() {
 
       expect(list.map((s) => s.name).toList(), ['B', 'C', 'A']);
     });
+
+    test('series with no scheduled episode sort last, not first', () {
+      final noSchedule = _series('None', anilistIds: [1]);
+      final scheduled = _series('Soon', anilistIds: [2]);
+      final map = <int, AiringEpisode?>{
+        1: AiringEpisode(airingAt: null),
+        2: AiringEpisode(airingAt: 100),
+      };
+
+      final list = [noSchedule, scheduled];
+      HomeViewModel.sortByNearestAiring(list, map);
+
+      expect(list.map((s) => s.name).toList(), ['Soon', 'None']);
+    });
   });
 }
