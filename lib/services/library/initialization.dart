@@ -134,18 +134,13 @@ extension LibraryInitialization on Library {
   /// After a library reload, refresh any open series/mapping screens to reflect updated data
   /// Uses global keys to call [SeriesScreenState.refreshFromLibrary] on mounted screens
   Future<void> reloadOpenedSeries() async {
-    // Refresh the main series screen if it's currently mounted
+    // Refresh the root series screen if it's currently mounted. Nested folder
+    // screens re-derive their node from the live series via context.select, so
+    // they refresh automatically on notifyListeners() — no global key needed.
     final seriesState = seriesScreenKey.currentState;
     if (seriesState != null && seriesState.mounted) {
       logTrace('Refreshing open series screen after library reload');
       seriesState.refreshFromLibrary();
-    }
-
-    // Refresh the mapping screen if it's currently mounted
-    final mappingState = seriesMappingScreenKey.currentState;
-    if (mappingState != null && mappingState.mounted) {
-      logTrace('Refreshing open mapping screen after library reload');
-      mappingState.refreshFromLibrary();
     }
   }
 }

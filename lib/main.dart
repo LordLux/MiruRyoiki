@@ -2,9 +2,9 @@
 
 import 'dart:async';
 import 'dart:io';
-import 'package:collection/collection.dart';
+import 'package:defer_pointer/defer_pointer.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart' show Material, MaterialPageRoute, ScaffoldMessenger;
+import 'package:flutter/material.dart' show Material, MaterialPageRoute, ScaffoldMessenger, Ink, InkWell;
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_acrylic/flutter_acrylic.dart';
@@ -37,6 +37,7 @@ import 'screens/release_calendar.dart';
 import 'services/isolates/thumbnail_manager.dart';
 import 'widgets/dialogs/padded_dialog_route.dart';
 import 'widgets/dialogs/splash/status.dart';
+import 'widgets/navigator_transition_delegates.dart';
 import 'widgets/reassemble_widget.dart';
 import 'widgets/route_transition_builders.dart';
 import 'widgets/sidebar_opener_detector.dart';
@@ -47,6 +48,7 @@ import 'services/anilist/provider/anilist_provider.dart';
 import 'services/connectivity/connectivity_service.dart';
 import 'services/navigation/statusbar.dart';
 import 'settings.dart';
+import 'widgets/animated_account_avatar.dart';
 import 'widgets/dialogs/splash/splash_screen.dart';
 import 'utils/logging.dart';
 import 'manager.dart';
@@ -56,8 +58,6 @@ import 'screens/accounts.dart';
 import 'screens/library.dart';
 import 'screens/series.dart';
 import 'screens/settings.dart';
-import 'models/anilist/mapping.dart';
-import 'models/mapping_target.dart';
 import 'services/anilist/auth.dart';
 import 'services/file_system/cache.dart';
 import 'services/navigation/navigation.dart';
@@ -81,7 +81,6 @@ RootIsolateToken? rootIsolateToken;
 final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
 final GlobalKey<_MiruRyoikiState> homeKey = GlobalKey<_MiruRyoikiState>();
 final GlobalKey<SeriesScreenState> seriesScreenKey = GlobalKey<SeriesScreenState>();
-final GlobalKey<SeriesScreenState> seriesMappingScreenKey = GlobalKey<SeriesScreenState>();
 final GlobalKey<LibraryScreenState> libraryScreenKey = GlobalKey<LibraryScreenState>();
 final GlobalKey<ReleaseCalendarScreenState> releaseCalendarScreenKey = GlobalKey<ReleaseCalendarScreenState>();
 final GlobalKey<DownloadsScreenState> torrentScreenKey = GlobalKey<DownloadsScreenState>();
@@ -248,42 +247,42 @@ class MyApp extends StatelessWidget {
       valueListenable: Manager.renderingEnabled,
       builder: (context, enabled, child) => TickerMode(enabled: enabled, child: child!),
       child: FluentTheme(
-      data: FluentTheme.of(ctx).copyWith(
-        cursorOpacityAnimates: true,
-        typography: scaleTypography(
-          FluentTheme.of(ctx).typography,
-          Manager.fontSizeMultiplier,
-        ),
-        buttonTheme: FluentTheme.of(ctx).buttonTheme.merge(
-              ButtonThemeData(
-                defaultButtonStyle: ButtonStyle(
-                  padding: ButtonState.all(const EdgeInsets.symmetric(horizontal: 20, vertical: 8)),
-                ),
-                filledButtonStyle: ButtonStyle(
-                  padding: ButtonState.all(const EdgeInsets.symmetric(horizontal: 20, vertical: 8)),
+        data: FluentTheme.of(ctx).copyWith(
+          cursorOpacityAnimates: true,
+          typography: scaleTypography(
+            FluentTheme.of(ctx).typography,
+            Manager.fontSizeMultiplier,
+          ),
+          buttonTheme: FluentTheme.of(ctx).buttonTheme.merge(
+                ButtonThemeData(
+                  defaultButtonStyle: ButtonStyle(
+                    padding: ButtonState.all(const EdgeInsets.symmetric(horizontal: 20, vertical: 8)),
+                  ),
+                  filledButtonStyle: ButtonStyle(
+                    padding: ButtonState.all(const EdgeInsets.symmetric(horizontal: 20, vertical: 8)),
+                  ),
                 ),
               ),
-            ),
-      ),
-      child: DefaultTextStyle(
-        style: FluentTheme.of(ctx).typography.body!,
-        child: Navigator(
-          onGenerateRoute: (_) => MaterialPageRoute(
-            builder: (context) => Directionality(
-              textDirection: appTheme.textDirection,
-              child: NavigationPaneTheme(
-                data: NavigationPaneThemeData(
-                  backgroundColor: appTheme.windowEffect != WindowEffect.disabled ? Colors.transparent : null,
-                ),
-                child: Material(
-                  color: Colors.transparent,
-                  child: child!,
+        ),
+        child: DefaultTextStyle(
+          style: FluentTheme.of(ctx).typography.body!,
+          child: Navigator(
+            onGenerateRoute: (_) => MaterialPageRoute(
+              builder: (context) => Directionality(
+                textDirection: appTheme.textDirection,
+                child: NavigationPaneTheme(
+                  data: NavigationPaneThemeData(
+                    backgroundColor: appTheme.windowEffect != WindowEffect.disabled ? Colors.transparent : null,
+                  ),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: child!,
+                  ),
                 ),
               ),
             ),
           ),
         ),
-      ),
       ),
     );
   }
@@ -401,6 +400,11 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
 
   late final LibraryScreen _libraryScreen;
 
+  DeferredPointerHandlerLink? deferredPointerLink;
+
+  /// Stable key so the account avatar keeps its animation state across pane rebuilds.
+  final GlobalKey _accountAvatarKey = GlobalKey();
+
   /// Whether we're currently viewing a series
   bool get isSeriesView {
     final navManager = Provider.of<NavigationManager>(context, listen: false);
@@ -494,6 +498,8 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
       scrollController: NavigationManager.getScrollController(NavigationManager.LibraryIndex),
     );
 
+    deferredPointerLink = DeferredPointerHandlerLink();
+
     NavigationManager.instance.addListener(_onNavigationChanged);
 
     nextFrame(() async => context.read<NavigationManager>().pushPane(NavigationManager.HomePane));
@@ -504,6 +510,7 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
     NavigationManager.instance.removeListener(_onNavigationChanged);
     final navManager = Provider.of<NavigationManager>(context, listen: false);
     navManager.dispose();
+    deferredPointerLink?.dispose();
     super.dispose();
   }
 
@@ -586,132 +593,109 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
                 child: AnimatedContainer(
                   duration: dimDuration,
                   color: getDimmableBlack(context),
-                  child: NavigationView(
-                    onDisplayModeChanged: (value) => nextFrame(() => setState(() {
-                          _isNavigationPaneCollapsed = _paneKey.currentState?.displayMode == PaneDisplayMode.compact;
-                        })),
-                    key: _paneKey,
-                    paneBodyBuilder: (item, _) {
-                      return Column(
-                        children: [
-                          // Page Content
-                          Expanded(
-                            child: Navigator(
-                              key: navigatorKey,
-                              initialRoute: '/',
-                              onGenerateRoute: _onGenerateRoute,
-                            ),
-                          ),
-                          // Status Bar
-                          StatusBar()
-                        ],
-                      );
-                    },
-                    transitionBuilder: (child, animation) => SuppressPageTransition(
-                      // animation: animation,
-                      child: child,
-                    ),
-                    pane: NavigationPane(
-                      menuButton: const SizedBox.shrink(), //_appTitle(),
-                      selected: _selectedIndex,
-                      onItemPressed: (index) {
-                        previousGridColumnCount.value = null;
-
-                        if (isSeriesView) {
-                          // If in series view, reset to pane first
-                          context.read<NavigationManager>().resetCurrentPane();
-                        }
-
-                        if (_selectedIndex == index) {
-                          // If clicking the same tab, reset its scroll position
-                          _resetScrollPosition(index, animate: true);
-                          // releaseCalendarScreenKey.currentState?.toggleFilter(false);
-                          releaseCalendarScreenKey.currentState?.focusToday();
-                        }
-                      },
-                      onChanged: onChangedPane,
-                      displayMode: _isCompactView ? PaneDisplayMode.compact : PaneDisplayMode.auto,
-                      indicator: AnimatedNavigationIndicator(
-                        targetColor: Manager.currentDominantColor ?? Manager.accentColor,
-                        indicatorBuilder: (color) => StickyNavigationIndicator(color: color),
-                      ),
-                      items: [
-                        buildPaneItem(
-                          NavigationManager.HomeIndex,
-                          mouseCursorClick: !_isCurrentIdSelected(NavigationManager.HomeIndex),
-                          icon: movedPaneItemIcon(const Icon(FluentIcons.home)),
-                        ),
-                        buildPaneItem(
-                          NavigationManager.LibraryIndex,
-                          mouseCursorClick: !_isCurrentIdSelected(NavigationManager.LibraryIndex), // || _isSeriesView,
-                          icon: movedPaneItemIcon(const Icon(Symbols.newsstand)),
-                        ),
-                        buildPaneItem(
-                          NavigationManager.CalendarIndex,
-                          mouseCursorClick: !_isCurrentIdSelected(NavigationManager.CalendarIndex),
-                          icon: movedPaneItemIcon(const Icon(FluentIcons.calendar)),
-                        ),
-                        buildPaneItem(
-                          NavigationManager.BrowseIndex,
-                          mouseCursorClick: !_isCurrentIdSelected(NavigationManager.BrowseIndex),
-                          icon: movedPaneItemIcon(const Icon(FluentIcons.search)),
-                        ),
-                        buildPaneItem(
-                          NavigationManager.TorrentIndex,
-                          mouseCursorClick: !_isCurrentIdSelected(NavigationManager.TorrentIndex),
-                          icon: movedPaneItemIcon(const Icon(FluentIcons.download)),
-                        ),
-                      ],
-                      footerItems: [
-                        PaneItemSeparator(),
-                        buildPaneItem(
-                          NavigationManager.AccountsIndex,
-                          mouseCursorClick: !_isCurrentIdSelected(NavigationManager.AccountsIndex),
-                          icon: anilistIcon(anilistProvider.isOffline),
-                          extra: (isHovered) {
-                            final anilistProvider = Provider.of<AnilistProvider>(context, listen: false);
-                            final user = anilistProvider.currentUser;
-
-                            if (user == null) return null;
-
-                            return Flexible(
-                              child: Align(
-                                alignment: Alignment.centerRight,
-                                child: SizedBox(
-                                  height: 50,
-                                  width: 50,
-                                  child: Padding(
-                                    padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 8.0),
-                                    child: Builder(builder: (context) {
-                                      if (user.avatar == null) return CircleAvatar(backgroundColor: Manager.accentColor.withOpacity(0.25));
-
-                                      return CircleAvatar(
-                                        backgroundImage: ResizeImage.resizeIfNeeded(
-                                          50,
-                                          50,
-                                          CachedNetworkImageProvider(
-                                            user.avatar!,
-                                            errorListener: (error) {
-                                              logWarn('Failed to load Anilist avatar image: $error');
-                                            },
-                                          ),
-                                        ),
-                                        backgroundColor: Manager.accentColor.withOpacity(0.25),
-                                        radius: 17,
-                                      );
-                                    }),
-                                  ),
-                                ),
+                  child: DeferredPointerHandler(
+                    key: ValueKey('root'),
+                    link: deferredPointerLink,
+                    child: NavigationView(
+                      onDisplayModeChanged: (value) => nextFrame(() => setState(() {
+                            _isNavigationPaneCollapsed = _paneKey.currentState?.displayMode == PaneDisplayMode.compact;
+                          })),
+                      key: _paneKey,
+                      paneBodyBuilder: (item, _) {
+                        return Column(
+                          children: [
+                            // Page Content
+                            Expanded(
+                              child: Navigator(
+                                key: navigatorKey,
+                                initialRoute: '/',
+                                onGenerateRoute: _onGenerateRoute,
                               ),
-                            );
-                          },
+                            ),
+                            // Status Bar
+                            StatusBar()
+                          ],
+                        );
+                      },
+                      pane: NavigationPane(
+                        menuButton: _isCompactView ? const SizedBox.shrink() : null,
+                        selected: _selectedIndex,
+                        onItemPressed: (index) {
+                          previousGridColumnCount.value = null;
+
+                          if (isSeriesView) {
+                            // If in series view, reset to pane first
+                            context.read<NavigationManager>().resetCurrentPane();
+                          }
+
+                          if (_selectedIndex == index) {
+                            // If clicking the same tab, reset its scroll position
+                            _resetScrollPosition(index, animate: true);
+                            // releaseCalendarScreenKey.currentState?.toggleFilter(false);
+                            releaseCalendarScreenKey.currentState?.focusToday();
+                          }
+                        },
+                        onChanged: onChangedPane,
+                        displayMode: _isCompactView ? PaneDisplayMode.compact : PaneDisplayMode.auto,
+                        indicator: AnimatedNavigationIndicator(
+                          targetColor: Manager.currentDominantColor ?? Manager.accentColor,
+                          indicatorBuilder: (color) => StickyNavigationIndicator(color: color),
                         ),
-                        buildPaneItem(
-                          NavigationManager.SettingsIndex,
-                          mouseCursorClick: !_isCurrentIdSelected(NavigationManager.SettingsIndex),
-                          icon: movedPaneItemIcon(const Icon(FluentIcons.settings)),
-                        ),
-                      ],
+                        items: [
+                          buildPaneItem(
+                            NavigationManager.HomeIndex,
+                            mouseCursorClick: !_isCurrentIdSelected(NavigationManager.HomeIndex),
+                            icon: movedPaneItemIcon(const Icon(FluentIcons.home)),
+                          ),
+                          buildPaneItem(
+                            NavigationManager.LibraryIndex,
+                            mouseCursorClick: !_isCurrentIdSelected(NavigationManager.LibraryIndex), // || _isSeriesView,
+                            icon: movedPaneItemIcon(const Icon(Symbols.newsstand)),
+                          ),
+                          buildPaneItem(
+                            NavigationManager.CalendarIndex,
+                            mouseCursorClick: !_isCurrentIdSelected(NavigationManager.CalendarIndex),
+                            icon: movedPaneItemIcon(const Icon(FluentIcons.calendar)),
+                          ),
+                          buildPaneItem(
+                            NavigationManager.BrowseIndex,
+                            mouseCursorClick: !_isCurrentIdSelected(NavigationManager.BrowseIndex),
+                            icon: movedPaneItemIcon(const Icon(FluentIcons.search)),
+                          ),
+                          buildPaneItem(
+                            NavigationManager.TorrentIndex,
+                            mouseCursorClick: !_isCurrentIdSelected(NavigationManager.TorrentIndex),
+                            icon: movedPaneItemIcon(const Icon(FluentIcons.download)),
+                          ),
+                        ],
+                        footerItems: [
+                          PaneItemSeparator(),
+                          buildPaneItem(
+                            NavigationManager.AccountsIndex,
+                            mouseCursorClick: !_isCurrentIdSelected(NavigationManager.AccountsIndex),
+                            icon: anilistIcon(anilistProvider.isOffline),
+                            extra: (isHovered) {
+                              final anilistProvider = Provider.of<AnilistProvider>(context, listen: false);
+                              final user = anilistProvider.currentUser;
+
+                              if (user == null || user.avatar == null) return null;
+
+                              return AnimatedAccountAvatar(
+                                key: _accountAvatarKey,
+                                avatarUrl: user.avatar!,
+                                isSelected: _isCurrentIdSelected(NavigationManager.AccountsIndex),
+                                onTap: () => onChangedPane(NavigationManager.AccountsIndex),
+                                link: deferredPointerLink,
+                              );
+                            },
+                          ),
+                          buildPaneItem(
+                            NavigationManager.SettingsIndex,
+                            mouseCursorClick: !_isCurrentIdSelected(NavigationManager.SettingsIndex),
+                            icon: movedPaneItemIcon(const Icon(FluentIcons.settings)),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -770,40 +754,28 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
           onBack: () => context.read<NavigationManager>().goBack(),
         );
       case String() when routeName.startsWith('/mapping:'):
+        // A folder node (sub-folder) of a series, opened as its own page. Each
+        // nesting level pushes a distinct route, so this uses a per-path ValueKey
+        // rather than a single shared GlobalKey (which can't back a deep stack).
         final args = settings.arguments as Map<String, dynamic>;
         final seriesPath = args['seriesPath'] as PathString?;
-        final mappingPath = args['mappingPath'] as PathString?;
+        final nodePath = args['nodePath'] as PathString?;
 
-        final library = Provider.of<Library>(context, listen: false);
-        final series = seriesPath != null ? library.getSeriesByPath(seriesPath) : null;
-
-        AnilistMapping? mapping;
-        MappingTarget? target;
-
-        if (series != null && mappingPath != null) {
-          mapping = series.anilistMappings.firstWhereOrNull((m) => m.localPath == mappingPath);
-          if (mapping != null) {
-            if (File(mappingPath.path).existsSync()) {
-              final episode = series.getEpisodeByPath(mappingPath);
-              if (episode != null) {
-                target = MappingTarget.episode(episode);
-              }
-            } else if (Directory(mappingPath.path).existsSync()) {
-              final collection = series.getCollectionFromPath(mappingPath);
-              if (collection != null) target = MappingTarget.collection(collection);
-            }
-          }
+        if (seriesPath == null || nodePath == null) {
+          logWarn('Failed to open folder view: seriesPath - $seriesPath | nodePath - $nodePath');
+          // Bad/missing arguments — fall back to Home instead of a dead folder screen
+          page = HomeScreen(
+            onSeriesSelected: navigateToSeries,
+            scrollController: NavigationManager.getScrollController(NavigationManager.HomeIndex),
+          );
         } else {
-          logWarn('Failed to open mapping view: series - $series | mappingPath - $mappingPath');
+          page = SeriesScreen(
+            key: ValueKey('/node:$nodePath'),
+            seriesPath: seriesPath,
+            onBack: () => context.read<NavigationManager>().goBack(),
+            nodePath: nodePath,
+          );
         }
-
-        page = SeriesScreen(
-          key: seriesMappingScreenKey,
-          seriesPath: seriesPath,
-          onBack: () => context.read<NavigationManager>().goBack(),
-          mapping: mapping,
-          target: target,
-        );
       case '/${NavigationManager.CalendarId}':
         page = ReleaseCalendarScreen(
           key: releaseCalendarScreenKey,
@@ -915,7 +887,7 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
       enabled: isEnabled,
       key: ValueKey("pane_item_$id"),
       mouseCursor: mouseCursorClick && isEnabled ? SystemMouseCursors.click : MouseCursor.defer,
-      title: Text(title, style: Manager.bodyStyle.copyWith(color: Colors.white.withOpacity(isEnabled ? 1 : .5))),
+      title: Text("  $title", style: Manager.bodyStyle.copyWith(color: Colors.white.withOpacity(isEnabled ? 1 : .5))),
       icon: icon,
       infoBadge: !anilistProvider.isLoggedIn && id == NavigationManager.AccountsIndex
           ? InfoBadge(
@@ -925,7 +897,10 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
             )
           : null,
       body: const SizedBox.shrink(),
-      trailing: extra?.call(true),
+      trailing: SizedBox(
+        height: ScreenUtils.kDefaultPaneTileHeight,
+        child: extra?.call(true),
+      ),
     );
   }
 
@@ -977,19 +952,41 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
                     children: [
                       // Menu bar
                       Transform.translate(
-                        offset: const Offset(-19, 1.75),
+                        offset: const Offset(7, 2),
                         child: SizedBox(
                           width: winButtonsWidth + 71 + 13,
-                          child: Text(
-                            Manager.appTitle,
-                            overflow: TextOverflow.clip,
-                            maxLines: 1,
-                            textAlign: TextAlign.center,
-                            style: GoogleFonts.raleway(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w300,
-                              color: FluentTheme.of(context).typography.body!.color,
-                            ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.baseline,
+                            textBaseline: TextBaseline.alphabetic,
+                            children: [
+                              Flexible(
+                                child: Text(
+                                  Manager.appTitle,
+                                  overflow: TextOverflow.clip,
+                                  maxLines: 1,
+                                  textAlign: TextAlign.center,
+                                  style: GoogleFonts.nunitoSans(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w300,
+                                    color: FluentTheme.of(context).typography.body!.color,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              Transform.translate(
+                                offset: const Offset(0, 1),
+                                child: Text(
+                                  'Preview',
+                                  overflow: TextOverflow.clip,
+                                  maxLines: 1,
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: FluentTheme.of(context).inactiveColor.withOpacity(0.5),
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ),

@@ -58,3 +58,4 @@ GEMINI.md
 knaben.py
 CLAUDE.md
 .claude/settings.local.json
+*.md

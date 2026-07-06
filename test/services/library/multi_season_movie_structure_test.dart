@@ -20,8 +20,10 @@ import 'package:drift/native.dart';
 import 'package:miruryoiki/database/database.dart';
 import 'package:miruryoiki/main.dart';
 import 'package:miruryoiki/manager.dart';
+import 'package:miruryoiki/models/folder_node.dart';
 import 'package:miruryoiki/models/season.dart';
 import 'package:miruryoiki/services/di/dependency_injection.dart';
+import 'package:miruryoiki/utils/path.dart';
 import 'package:miruryoiki/services/library/library_provider.dart';
 import 'package:miruryoiki/services/library/scanner/scanner_service.dart';
 import 'package:miruryoiki/settings.dart';
@@ -111,6 +113,34 @@ void main() {
 
       final totalEpisodes = series.collections.expand((c) => c.episodes).length;
       expect(totalEpisodes, 13, reason: '3 extras + 2 movies + 1 + 1 movie extras + 3 + 3 episodes');
+    });
+
+    test('folder tree reconstructs the real nesting from the flat scan', () async {
+      await scanner.scanLocalLibrary();
+      final series = library.series.single;
+
+      final root = buildFolderTree(series);
+      expect(root.isRoot, isTrue);
+
+      // Top-level children: Extras, Movies, S1, S2 (Movie extras live UNDER Movies)
+      expect(root.children.map((c) => c.displayName).toSet(), {
+        '[Judas] Chuunibyou - Extras',
+        '[Judas] Chuunibyou - Movies',
+        '[Judas] Chuunibyou demo Koi ga Shitai! - S1',
+        '[Judas] Chuunibyou demo Koi ga Shitai! - S2 - Ren',
+      });
+
+      // The Movies node has BOTH direct episodes AND nested sub-folders
+      final movies = root.children.firstWhere((c) => c.displayName == '[Judas] Chuunibyou - Movies');
+      expect(movies.directEpisodes.length, 2, reason: '2 movie files directly in the folder');
+      expect(movies.children.map((c) => c.displayName).toSet(), {'Movie 01 Extras', 'Movie 02 Extras'});
+      expect(movies.subtreeEpisodes.length, 4, reason: '2 movies + 1 + 1 nested making-of files (recursive)');
+
+      // Deep navigation resolves a nested node by path
+      final movie1Extras = movies.children.firstWhere((c) => c.displayName == 'Movie 01 Extras');
+      final resolved = resolveNode(series, PathString(movie1Extras.path.path));
+      expect(resolved, isNotNull);
+      expect(resolved!.subtreeEpisodes.length, 1);
     });
 
     test('rescan of the unchanged structure is idempotent and does not throw', () async {

@@ -30,8 +30,7 @@ import '../widgets/dialogs/image_select.dart';
 import '../enums.dart';
 import '../manager.dart';
 import '../models/anilist/mapping.dart';
-import '../models/anilist/user_list.dart';
-import '../widgets/dialogs/entry_editor.dart';
+import '../utils/searched_series_actions.dart';
 import '../widgets/score_widget.dart';
 import '../models/season.dart';
 import '../models/series.dart';
@@ -47,6 +46,9 @@ import '../widgets/page/header_widget.dart';
 import '../widgets/page/infobar.dart';
 import '../widgets/page/page_template.dart';
 import '../widgets/cards/mapping_card.dart';
+import '../widgets/cards/folder_card.dart';
+import '../models/folder_node.dart';
+import 'package:path/path.dart' as p;
 import '../widgets/shift_clickable_hover.dart';
 import '../widgets/shrinker.dart';
 import '../widgets/simple_html_parser.dart';
@@ -70,15 +72,16 @@ const Duration kAnilistCacheDuration = Duration(days: 1);
 class SeriesScreen extends StatefulWidget {
   final PathString? seriesPath;
   final VoidCallback onBack;
-  final MappingTarget? target;
-  final AnilistMapping? mapping;
+
+  /// The folder node to render. Null (or == seriesPath) means the series root.
+  /// Any deeper path renders that sub-folder as its own node (recursive nesting).
+  final PathString? nodePath;
 
   const SeriesScreen({
     super.key,
     required this.seriesPath,
     required this.onBack,
-    this.target,
-    this.mapping,
+    this.nodePath,
   });
 
   @override
@@ -117,29 +120,100 @@ class SeriesScreenState extends State<SeriesScreen> {
 
   /// Cached reference to the current series, updated via Selector in build()
   Series? _cachedSeries;
-  AnilistMapping? _cachedMapping;
-  MappingTarget? _cachedTarget;
+
+  /// The folder node currently rendered (root or a sub-folder). Re-derived from
+  /// the live [Series] each build via [resolveNode] — no manual cache invalidation.
+  FolderNode? _resolvedNode;
+
+  bool _nodeInitialized = false;
+
+  /// The AniList mapping (if any) attached to the current node.
+  AnilistMapping? get _cachedMapping => _resolvedNode?.mapping;
+
+  /// A [MappingTarget] for the current node's collection, or null for the root /
+  /// synthesized intermediate folders that have no collection of their own.
+  MappingTarget? get _cachedTarget {
+    final c = _resolvedNode?.collection;
+    return c != null ? MappingTarget.collection(c) : null;
+  }
+
+  /// Memoized folder tree. Rebuilt only when the series instance, its data
+  /// version, or its mapping count changes — NOT on hover/color/setState
+  /// rebuilds, which previously reconstructed the whole tree every frame.
+  FolderNode? _treeRoot;
+  Series? _treeSeries;
+  int _treeVersion = -1;
+  int _treeMappingCount = -1;
+
+  FolderNode _buildOrGetTree(Series series, int dataVersion) {
+    if (_treeRoot != null && //
+        identical(_treeSeries, series) &&
+        _treeVersion == dataVersion &&
+        _treeMappingCount == series.anilistMappings.length) {
+      return _treeRoot!;
+    }
+    _treeRoot = buildFolderTree(series);
+    _treeSeries = series;
+    _treeVersion = dataVersion;
+    _treeMappingCount = series.anilistMappings.length;
+    return _treeRoot!;
+  }
 
   /// Cached merged episodes list to avoid recomputing on every build
   List<UIEpisode>? _cachedMergedEpisodes;
-  MappingTarget? _lastMergeTarget;
+  String? _lastMergeNodePath;
   int _lastMergeLocalCount = -1;
   int _lastMergeSonarrCount = -1;
 
+  /// File-level (single-file) AniList mappings located directly inside the
+  /// current node — they render as their own cards and are excluded from the
+  /// episode grid. Computed once per build in [build] via [_recomputeFileMappings]
+  /// (single source of truth for both the cards and the grid exclusion).
+  List<(AnilistMapping, MappingTarget)> _fileMappingsAtNode = const [];
+  Set<String> _fileMappingPaths = const {};
+
+  void _recomputeFileMappings(Series series, FolderNode node) {
+    final list = <(AnilistMapping, MappingTarget)>[];
+    final paths = <String>{};
+    for (final m in series.anilistMappings) {
+      final lp = m.localPath.pathMaybe;
+      if (lp == null) continue;
+      final t = series.getTargetForMapping(m);
+      if (t != null && t.isEpisode && p.equals(p.dirname(lp), node.path.path)) {
+        list.add((m, t));
+        paths.add(lp);
+      }
+    }
+    _fileMappingsAtNode = list;
+    _fileMappingPaths = paths;
+  }
+
+  /// Episodes shown in the current node's episode grid: the node's direct
+  /// episodes minus any that are themselves file-level AniList mappings.
+  List<Episode> get _gridEpisodes {
+    final node = _resolvedNode;
+    if (node == null) return const [];
+    if (_fileMappingPaths.isEmpty) return node.directEpisodes;
+    return node.directEpisodes.where((e) => !_fileMappingPaths.contains(e.path.pathMaybe)).toList();
+  }
+
   List<UIEpisode> get _mergedEpisodes {
-    final localEps = _cachedTarget?.episodes;
-    final sonarrEps = _sonarrEpisodesForTarget;
-    final localCount = localEps?.length ?? -1;
+    final localEps = _gridEpisodes;
+    // Sonarr episodes are season-scoped — only merge them inside a folder/season
+    // node, never into the series root's loose-files grid.
+    final sonarrEps = isMappingMode ? _sonarrEpisodesForTarget : null;
+    final localCount = localEps.length;
     final sonarrCount = sonarrEps?.length ?? -1;
+    final nodePath = _resolvedNode?.path.pathMaybe;
 
     if (_cachedMergedEpisodes != null && //
-        identical(_lastMergeTarget, _cachedTarget) &&
+        _lastMergeNodePath == nodePath &&
         _lastMergeLocalCount == localCount &&
         _lastMergeSonarrCount == sonarrCount) {
       return _cachedMergedEpisodes!;
     }
 
-    _lastMergeTarget = _cachedTarget;
+    _lastMergeNodePath = nodePath;
     _lastMergeLocalCount = localCount;
     _lastMergeSonarrCount = sonarrCount;
     _cachedMergedEpisodes = UIEpisode.merge(localEps, sonarrEps);
@@ -153,24 +227,19 @@ class SeriesScreenState extends State<SeriesScreen> {
   late Color _textColor;
   late Color _selectedTextColor;
 
-  bool get isMappingMode => widget.target != null;
+  bool get isMappingMode => !(_resolvedNode?.isRoot ?? true);
 
-  String _mappingDisplayTitle({AnilistMapping? mapping, MappingTarget? target}) {
-    return mapping?.preferredTitle ?? target?.displayName ?? 'Mapping';
-  }
-
-  void navigateToMapping(AnilistMapping mapping, MappingTarget target) {
+  /// Push a child folder node onto the navigation stack as its own page,
+  /// enabling root → folder → sub-folder → … navigation with a real back stack.
+  void navigateToNode(FolderNode node) {
     if (!mounted) return;
 
-    final mappingName = _mappingDisplayTitle(mapping: mapping, target: target);
-
-    // Push the inner mapping page to navigation stack
     context.read<NavigationManager>().pushPage(
-      '/mapping:${mapping.localPath}',
-      mappingName,
+      '/mapping:${node.path}',
+      node.displayName,
       data: {
         'seriesPath': widget.seriesPath,
-        'mappingPath': mapping.localPath,
+        'nodePath': node.path,
       },
     );
   }
@@ -181,14 +250,14 @@ class SeriesScreenState extends State<SeriesScreen> {
     final anilistProvider = Provider.of<AnilistProvider>(context, listen: false);
     final progressManager = AnilistProgressManager.instance;
 
-    if (isMappingMode && _cachedTarget != null) {
+    if (isMappingMode && _resolvedNode != null) {
+      final nodeMeta = _resolvedNode!.collection?.metadata;
       return {
-        if (_cachedTarget!.isCollection)
-          InfoLabel(
-            label: 'Episodes',
-            labelStyle: Manager.bodyStrongStyle,
-            child: Text('${_cachedTarget!.episodes.length}'),
-          ): false,
+        InfoLabel(
+          label: 'Episodes',
+          labelStyle: Manager.bodyStrongStyle,
+          child: Text('${_resolvedNode!.totalCount}'),
+        ): false,
         if (_cachedMapping?.anilistData?.status != null)
           InfoLabel(
             label: 'Status',
@@ -237,11 +306,11 @@ class SeriesScreenState extends State<SeriesScreen> {
             labelStyle: Manager.bodyStrongStyle,
             child: Text('${_cachedMapping!.anilistData!.favourites}'),
           ): false,
-        if (_cachedTarget!.metadata?.duration != null && _cachedTarget!.metadata!.duration.inSeconds > 0)
+        if (nodeMeta?.duration != null && nodeMeta!.duration.inSeconds > 0)
           InfoLabel(
             label: 'Duration',
             labelStyle: Manager.bodyStrongStyle,
-            child: Text(_cachedTarget!.metadata!.durationFormatted),
+            child: Text(nodeMeta.durationFormatted),
           ): true,
       };
     }
@@ -314,19 +383,20 @@ class SeriesScreenState extends State<SeriesScreen> {
       deferredPointerLink = DeferredPointerHandlerLink();
       nextFrame(() => _loadAnilistDataForCurrentSeries());
     }
-
-    // Initialize the cached mapping and target from the widget
-    _cachedMapping = widget.mapping;
-    _cachedTarget = widget.target;
     _invalidateMergedEpisodes();
-    if (_cachedMapping?.viewType != null) _currentViewType = _cachedMapping!.viewType!;
+    parser = SimpleHtmlParser(context);
+  }
+
+  /// Kicks off node-dependent data loads (view type, episode titles, Sonarr)
+  /// once the node has been resolved in [build]. Runs once per node.
+  void _initNodeData() {
+    if (_currentViewType == ViewType.grid && _resolvedNode?.mapping?.viewType != null) //
+      _currentViewType = _resolvedNode!.mapping!.viewType!;
 
     if (isMappingMode)
-      nextFrame(() => _initializeMappingData());
-    else if (TorrentManager.isEnabled)
-      nextFrame(() => _fetchSonarrEpisodes());
-
-    parser = SimpleHtmlParser(context);
+      _initializeMappingData();
+    else if (TorrentManager.isEnabled) //
+      _fetchSonarrEpisodes();
   }
 
   @override
@@ -340,16 +410,11 @@ class SeriesScreenState extends State<SeriesScreen> {
       }
     }
 
-    // Mapping or target changed
-    if (widget.target != oldWidget.target || widget.mapping != oldWidget.mapping) {
-      _cachedMapping = widget.mapping;
-      _cachedTarget = widget.target;
+    // Node (or series) changed → re-init node-dependent data on next build
+    if (widget.nodePath != oldWidget.nodePath || widget.seriesPath != oldWidget.seriesPath) {
+      _nodeInitialized = false;
       _invalidateMergedEpisodes();
-      if (_cachedMapping?.viewType != null) _currentViewType = _cachedMapping!.viewType!;
-
-      if (isMappingMode)
-        nextFrame(() => _initializeMappingData());
-      else
+      if (!isMappingMode) //
         Manager.setState(() => Manager.currentDominantColor = Manager.seriesDominantColor ?? Manager.accentColor);
     }
   }
@@ -357,14 +422,16 @@ class SeriesScreenState extends State<SeriesScreen> {
   void _onViewTypeChanged(ViewType newViewType) {
     setState(() => _currentViewType = newViewType);
 
-    if (_cachedMapping != null) {
+    final mapping = _resolvedNode?.mapping;
+    if (mapping != null) {
       final library = Provider.of<Library>(context, listen: false);
-      library.updateMappingViewType(_cachedMapping!.anilistId, newViewType);
+      library.updateMappingViewType(mapping.anilistId, newViewType);
     }
   }
 
-  /// Re-resolves the cached mapping/target from the current Library state
-  /// Called by [Library.reloadOpenedSeries] after a library reload to refresh stale data
+  /// Called by [Library.reloadOpenedSeries] after a library reload. The folder
+  /// node is re-derived from the live series in [build], so this just refreshes
+  /// AniList data and colors and triggers a rebuild.
   void refreshFromLibrary() {
     if (!mounted) return;
 
@@ -373,26 +440,8 @@ class SeriesScreenState extends State<SeriesScreen> {
     if (series == null) return;
 
     _cachedSeries = series;
+    _invalidateMergedEpisodes();
 
-    if (isMappingMode && _cachedMapping != null) {
-      final localPath = _cachedMapping!.localPath;
-
-      // Re-resolve mapping from the fresh series
-      final freshMapping = series.anilistMappings.firstWhereOrNull((m) => m.localPath == localPath);
-      if (freshMapping != null) {
-        _cachedMapping = freshMapping;
-        _cachedTarget = series.getTargetForMapping(freshMapping);
-        _invalidateMergedEpisodes();
-      } else {
-        // Mapping path no longer exists
-        logWarn('Mapping path no longer found after library reload: $localPath');
-        snackBar('Mapping no longer available', severity: InfoBarSeverity.warning); // TODO in the future, try to match possibly-moved folder to preserve the mapping if the original path is gone
-        widget.onBack();
-        return;
-      }
-    }
-
-    // Reload Anilist data and colors
     _loadAnilistDataForCurrentSeries();
     _loadColors();
 
@@ -786,8 +835,42 @@ class SeriesScreenState extends State<SeriesScreen> {
       );
     }
 
+    // Resolve the folder node to render (root, or a sub-folder for nesting),
+    // walking a memoized tree so hover/color rebuilds don't reconstruct it.
+    final tree = _buildOrGetTree(series, context.read<Library>().dataVersion);
+    _resolvedNode = findNodeInTree(tree, widget.nodePath ?? series.path);
+
+    if (_resolvedNode == null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text('Folder not found', style: Manager.subtitleStyle),
+            VDiv(8),
+            Text('This folder may have been moved or removed.', style: Manager.captionStyle, textAlign: TextAlign.center),
+            VDiv(16),
+            StandardButton.label(
+              onPressed: widget.onBack,
+              tooltip: 'Go back',
+              label: 'Back',
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Compute the file-level mappings at this node once per build (used by both
+    // the card grid and the episode-grid exclusion).
+    _recomputeFileMappings(series, _resolvedNode!);
+
+    // One-time, node-dependent loads (view type, episode titles, Sonarr)
+    if (!_nodeInitialized) {
+      _nodeInitialized = true;
+      nextFrame(() => _initNodeData());
+    }
+
     return DeferredPointerHandler(
-      key: ValueKey(series.path),
+      key: ValueKey('${series.path}|${_resolvedNode!.path}'),
       link: deferredPointerLink,
       child: MiruRyoikiTemplatePage(
         headerWidget: _buildHeader(context, series),
@@ -802,7 +885,7 @@ class SeriesScreenState extends State<SeriesScreen> {
 
   HeaderWidget _buildHeader(BuildContext context, Series series) {
     final isMapping = isMappingMode;
-    final title = isMapping ? _mappingDisplayTitle(mapping: _cachedMapping, target: _cachedTarget) : series.displayTitle;
+    final title = isMapping ? (_resolvedNode?.displayName ?? series.displayTitle) : series.displayTitle;
     final description = isMapping ? _cachedMapping?.anilistData?.description : series.description;
     final imageFuture = isMapping ? _getMappingImage(banner: true) : series.getBannerImage();
 
@@ -968,14 +1051,14 @@ class SeriesScreenState extends State<SeriesScreen> {
               Icon(mat.Icons.folder_open),
               HDiv(4),
               Text(
-                'Open Series Folder',
+                isMapping ? 'Open Folder' : 'Open Series Folder',
                 style: getStyleBasedOnAccent(false),
               ),
             ],
           ),
           expand: true,
-          tooltip: 'Open the series folder in your file explorer',
-          onPressed: () => ShellUtils.openFolder(isMapping ? (_cachedMapping?.localPath.path ?? series.path.path) : series.path.path),
+          tooltip: 'Open this folder in your file explorer',
+          onPressed: () => ShellUtils.openFolder(isMapping ? (_resolvedNode?.path.path ?? series.path.path) : series.path.path),
         ),
         if (isMapping && _cachedMapping != null && _cachedMapping!.anilistData != null) ...[
           SizedBox(height: 6.0),
@@ -994,7 +1077,42 @@ class SeriesScreenState extends State<SeriesScreen> {
             expand: true,
             tooltip: 'Edit this entry on AniList',
             isButtonDisabled: anilistProvider.isOffline || !anilistProvider.isLoggedIn,
-            onPressed: () => _openEntryEditorForMapping(anilistProvider, _cachedMapping!),
+            onPressed: () => openEntryEditorForMapping(context, _cachedMapping!),
+          ),
+        ],
+        // Unlinked folder node → offer to link it directly (pre-targeted to this folder)
+        if (isMapping && _cachedMapping == null && _resolvedNode?.collection != null) ...[
+          SizedBox(height: 6.0),
+          StandardButton(
+            label: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(FluentIcons.add_link),
+                HDiv(4),
+                Text(
+                  'Link to AniList',
+                  style: getStyleBasedOnAccent(false),
+                ),
+              ],
+            ),
+            expand: true,
+            tooltip: 'Link this folder to an AniList entry',
+            isButtonDisabled: anilistProvider.isOffline || !anilistProvider.isLoggedIn,
+            onPressed: () => linkWithAnilist(
+              context,
+              series,
+              _loadAnilistData,
+              setState,
+              initialLocalPath: _resolvedNode!.path,
+              lockLocal: true,
+              startInAddMode: true,
+              explorerOptions: FileExplorerOptions(
+                allowCreateFolder: true,
+                allowRename: true,
+                allowCurrentFolder: true,
+                allowDelete: true,
+              ),
+            ),
           ),
         ],
         if (!isMapping) ...[
@@ -1138,37 +1256,6 @@ class SeriesScreenState extends State<SeriesScreen> {
     );
   }
 
-  void _openEntryEditorForMapping(AnilistProvider anilistProvider, AnilistMapping mapping) {
-    final anime = mapping.anilistData;
-    if (anime == null) {
-      snackBar('No AniList data available for this mapping', severity: InfoBarSeverity.warning);
-      return;
-    }
-
-    final displayTitle = mapping.preferredTitle ?? anime.title.userPreferred ?? anime.title.romaji ?? anime.title.english ?? 'Unknown';
-
-    // Look up existing entry in user's lists
-    AnilistMediaListEntry? existing;
-    for (final list in anilistProvider.userLists.values) {
-      final match = list.entries.firstWhereOrNull((e) => e.mediaId == mapping.anilistId);
-      if (match != null) {
-        existing = match;
-        break;
-      }
-    }
-
-    showEntryEditorDialog(
-      context,
-      mediaId: mapping.anilistId,
-      title: displayTitle,
-      totalEpisodes: anime.episodes,
-      bannerImage: anime.bannerImage,
-      coverImage: anime.posterImage,
-      isFavourite: anime.isFavourite ?? false,
-      entry: existing,
-    );
-  }
-
   Builder _buildManageLinksButton(AnilistProvider anilistProvider, Series series) {
     return Builder(
       builder: (context) {
@@ -1233,7 +1320,8 @@ class SeriesScreenState extends State<SeriesScreen> {
     final infos_ = infos(series);
     final isMapping = isMappingMode;
     final genres = isMapping ? (_cachedMapping?.anilistData?.genres ?? []) : series.genres;
-    final watchedPercentage = isMapping ? (_cachedTarget?.watchedPercentage ?? 0) : series.watchedPercentage;
+    final watchedPercentage = isMapping ? (_resolvedNode?.watchedPercentage ?? 0) : series.watchedPercentage;
+    final nodeMeta = _resolvedNode?.collection?.metadata;
 
     return LayoutBuilder(builder: (context, constraints) {
       return Column(
@@ -1313,27 +1401,27 @@ class SeriesScreenState extends State<SeriesScreen> {
                 }),
           ),
 
-          if (isMapping ? (_cachedTarget?.metadata != null) : (series.metadata != null)) ...[
+          if (isMapping ? (nodeMeta != null) : (series.metadata != null)) ...[
             VDiv(16),
             Wrap(alignment: WrapAlignment.spaceBetween, spacing: 8, runSpacing: 8, children: [
               InfoLabel(
                 label: 'Path',
                 child: Text(
-                  isMapping ? _cachedTarget!.path.path : series.path.path,
+                  isMapping ? (_resolvedNode?.path.path ?? series.path.path) : series.path.path,
                   style: Manager.captionStyle,
                 ),
               ),
               InfoLabel(
                 label: 'Size',
-                child: Text(isMapping ? _cachedTarget!.metadata!.fileSize() : series.metadata!.fileSize(), style: Manager.captionStyle),
+                child: Text(isMapping ? nodeMeta!.fileSize() : series.metadata!.fileSize(), style: Manager.captionStyle),
               ),
               InfoLabel(
                 label: 'First Downloaded',
-                child: Text(isMapping ? _cachedTarget!.metadata!.creationTime.pretty() : series.metadata!.creationTime.pretty(), style: Manager.captionStyle),
+                child: Text(isMapping ? nodeMeta!.creationTime.pretty() : series.metadata!.creationTime.pretty(), style: Manager.captionStyle),
               ),
               InfoLabel(
                 label: 'Last Modified',
-                child: Text(isMapping ? _cachedTarget!.metadata!.lastModified.pretty() : series.metadata!.lastModified.pretty(), style: Manager.captionStyle),
+                child: Text(isMapping ? nodeMeta!.lastModified.pretty() : series.metadata!.lastModified.pretty(), style: Manager.captionStyle),
               ),
             ]),
             VDiv(16),
@@ -1344,188 +1432,224 @@ class SeriesScreenState extends State<SeriesScreen> {
   }
 
   Widget _buildContentGrid(BuildContext context, Series series) {
-    if (isMappingMode && _cachedTarget != null) {
-      final headerHeight = 45.0;
-      final borderRadius = ScreenUtils.kStatCardBorderRadius;
+    final node = _resolvedNode;
+    if (node == null) return const SizedBox.shrink();
 
-      final visibleHeader = Container(
-        height: headerHeight,
-        margin: EdgeInsets.all(.5),
-        constraints: BoxConstraints(maxHeight: headerHeight),
-        child: AcrylicHeader(
-          borderRadius: BorderRadius.only(
-            topRight: Radius.circular(borderRadius),
-            topLeft: Radius.circular(borderRadius),
-          ),
-          useFrostedNoise: false,
-          useAcrylic: false,
-          padding: EdgeInsets.all(3),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              HDiv(6),
-              ViewTypeSwitcher(
-                useBorder: false,
-                currentViewType: _currentViewType,
-                textColor: _textColor,
-                selectedTextColor: _selectedTextColor,
-                onViewTypeChanged: _onViewTypeChanged,
-              ),
-              HDiv(3.5),
-            ],
-          ),
-        ),
-      );
+    final cards = _buildNodeCards(node, series);
+    final hasCards = cards.isNotEmpty;
+    final hasEpisodes = _mergedEpisodes.isNotEmpty;
 
-      return Column(
-        children: [
-          visibleHeader,
-          SizedBox(height: 4),
-          Expanded(
-            child: Card(
-              borderRadius: BorderRadius.only(
-                bottomLeft: Radius.circular(borderRadius),
-                bottomRight: Radius.circular(borderRadius),
-              ),
-              padding: EdgeInsets.only(top: 16, left: 16, bottom: 16),
-              child: ClipRRect(
-                borderRadius: BorderRadius.only(
-                  bottomLeft: Radius.circular(borderRadius),
-                  bottomRight: Radius.circular(borderRadius),
-                ),
-                child: Padding(
-                  padding: EdgeInsets.only(right: 2),
-                  child: EpisodeGrid(
-                    collapsable: false,
-                    episodes: _mergedEpisodes,
-                    onTap: (uiEpisode) {
-                      // If the episode can be played, play it
-                      if (uiEpisode.canPlay) {
-                        _playEpisode(uiEpisode.localEpisode!);
-                        return;
-                      }
-
-                      // If the episode is released or in the future, open search dialog
-                      if (uiEpisode.state == EpisodeState.released || uiEpisode.state == EpisodeState.future) {
-                        final controller = TorrentManager.downloadController;
-                        if (controller == null) {
-                          snackBar('Download client not configured. Set up qBittorrent in Settings.', severity: InfoBarSeverity.warning);
-                          return;
-                        }
-
-                        final titleObj = _cachedMapping?.anilistData?.title ?? _cachedSeries?.anilistData?.title; // TODO get name from Sonarr, as it's "simpler" and more likely to be correct for the episode search than the AniList title which is not guaranteed to be accurate for the series as a whole (especially for mappings that are not the first season)
-                        final titles = <String>{
-                          if (titleObj?.userPreferred != null) titleObj!.userPreferred!,
-                          if (titleObj?.romaji != null) titleObj!.romaji!,
-                          if (titleObj?.english != null) titleObj!.english!,
-                        }.where((t) => t.trim().isNotEmpty).toList();
-
-                        if (titles.isEmpty) titles.add(series.displayTitle);
-
-                        final sonarrEp = uiEpisode.sonarrEpisode;
-                        final seasonNum = sonarrEp?.seasonNumber ?? ((_cachedTarget?.asCollection is Season) ? (_cachedTarget!.asCollection as Season).seasonNumber : null);
-
-                        showPaddedDialog(
-                          context,
-                          navigationItem: DialogNavigationItem(
-                            id: 'knaben:episode-search',
-                            title: 'Episode Search',
-                          ),
-                          builder: (context, item, options) {
-                            return PaddedDialog.custom(
-                              navigationItem: item,
-                              barrierOptions: options,
-                              constraints: const BoxConstraints(maxWidth: 900, maxHeight: 900),
-                              contentBuilder: (_, __) => KnabenSearchDialog(
-                                item: item,
-                                controller: controller,
-                                seriesTitles: titles,
-                                season: seasonNum,
-                                episode: sonarrEp?.episodeNumber ?? uiEpisode.episodeNumber,
-                                episodeTitle: uiEpisode.isSpecial ? uiEpisode.displayTitle : null,
-                                sonarrEpisodeId: sonarrEp?.id,
-                                sonarrSeriesId: _sonarrSeriesId,
-                                series: series,
-                              ),
-                            );
-                          },
-                        );
-                      }
-                    },
-                    series: series,
-                    mapping: _cachedMapping,
-                    padding: EdgeInsets.only(right: 14),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
-      );
-    }
-
-    // Create MappingTarget for each AnilistMapping using the helper method
-    final List<(AnilistMapping, MappingTarget?)> mappingsWithTargets = series.anilistMappings.map((mapping) => (mapping, series.getTargetForMapping(mapping))).toList();
-
-    // Filter out mappings without valid targets
-    final validMappings = mappingsWithTargets.where((tuple) => tuple.$2 != null).toList();
-
-    if (validMappings.isEmpty) {
+    // Genuinely empty node
+    if (!hasCards && !hasEpisodes) {
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(16.0),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(mat.Icons.add_link, size: 48, color: Manager.accentColor.lighter),
+              Icon(FluentIcons.fabric_folder, size: 48, color: Manager.accentColor.lighter),
               VDiv(16),
-              Text('No Links found', style: Manager.subtitleStyle),
-              VDiv(8),
-              Text(
-                'Link the correct path with an AniList entry to see seasons and episodes', // TODO add counter that tracks how many times the mappings manager was opened while the valid mappings have been empty
-                style: Manager.captionStyle,
-                textAlign: TextAlign.center,
-              ),
-              VDiv(32),
-              SizedBox(width: 420, child: _buildManageLinksButton(Provider.of<AnilistProvider>(context, listen: false), series)),
+              Text('No episodes found in this folder', style: Manager.subtitleStyle),
             ],
           ),
         ),
       );
     }
 
+    // Pure episode node (a season / leaf folder): the classic episode-grid layout.
+    if (!hasCards) return _buildEpisodeSection(context, series, nested: false);
+
+    // Folder container: a grid of folder/file cards, with the episode grid below
+    // it when the node also holds loose episodes (e.g. the series root).
     return LayoutBuilder(
       builder: (context, constraints) {
-        final List<Widget> children = validMappings.map((tuple) {
-          final mapping = tuple.$1;
-          final target = tuple.$2!;
-
-          return MappingCard(
-            key: ValueKey('${mapping.localPath}:${mapping.anilistId}'),
-            target: target,
-            series: series,
-            mapping: mapping,
-            onTap: () {
-              navigateToMapping(mapping, target);
-            },
-          );
-        }).toList();
-
         return ScrollConfiguration(
           behavior: ScrollBehavior().copyWith(overscroll: false, scrollbars: false),
-          child: GridView(
-            padding: EdgeInsets.zero,
-            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: ScreenUtils.crossAxisCount(constraints.maxWidth),
-              childAspectRatio: ScreenUtils.kDefaultAspectRatio,
-              crossAxisSpacing: ScreenUtils.cardPadding,
-              mainAxisSpacing: ScreenUtils.cardPadding,
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                GridView(
+                  padding: EdgeInsets.zero,
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: ScreenUtils.crossAxisCount(constraints.maxWidth),
+                    childAspectRatio: ScreenUtils.kDefaultAspectRatio,
+                    crossAxisSpacing: ScreenUtils.cardPadding,
+                    mainAxisSpacing: ScreenUtils.cardPadding,
+                  ),
+                  children: cards,
+                ),
+                if (hasEpisodes) ...[
+                  VDiv(16),
+                  _buildEpisodeSection(context, series, nested: true),
+                ],
+              ],
             ),
-            children: children,
           ),
         );
       },
     );
+  }
+
+  /// Cards for the node's child sub-folders plus any file-level (single-file)
+  /// AniList mappings located directly in this node (e.g. a mapped movie).
+  List<Widget> _buildNodeCards(FolderNode node, Series series) {
+    final cards = <Widget>[];
+
+    for (final child in node.children) {
+      cards.add(FolderCard(
+        key: ValueKey('folder:${child.path}'),
+        node: child,
+        series: series,
+        onTap: () => navigateToNode(child),
+      ));
+    }
+
+    for (final (m, target) in _fileMappingsAtNode) {
+      cards.add(MappingCard(
+        key: ValueKey('file:${m.localPath}:${m.anilistId}'),
+        target: target,
+        series: series,
+        mapping: m,
+        onTap: () {
+          final ep = target.asEpisode;
+          if (ep != null) _playEpisode(ep);
+        },
+      ));
+    }
+
+    return cards;
+  }
+
+  /// The episode-grid section for the current node. [nested] embeds it inside a
+  /// parent scroll view (folder-container layout); otherwise it fills the
+  /// remaining space (classic season layout).
+  Widget _buildEpisodeSection(BuildContext context, Series series, {required bool nested}) {
+    final headerHeight = 45.0;
+    final borderRadius = ScreenUtils.kStatCardBorderRadius;
+
+    final visibleHeader = Container(
+      height: headerHeight,
+      margin: EdgeInsets.all(.5),
+      constraints: BoxConstraints(maxHeight: headerHeight),
+      child: AcrylicHeader(
+        borderRadius: BorderRadius.only(
+          topRight: Radius.circular(borderRadius),
+          topLeft: Radius.circular(borderRadius),
+        ),
+        useFrostedNoise: false,
+        useAcrylic: false,
+        padding: EdgeInsets.all(3),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            HDiv(6),
+            ViewTypeSwitcher(
+              useBorder: false,
+              currentViewType: _currentViewType,
+              textColor: _textColor,
+              selectedTextColor: _selectedTextColor,
+              onViewTypeChanged: _onViewTypeChanged,
+            ),
+            HDiv(3.5),
+          ],
+        ),
+      ),
+    );
+
+    final card = Card(
+      borderRadius: BorderRadius.only(
+        bottomLeft: Radius.circular(borderRadius),
+        bottomRight: Radius.circular(borderRadius),
+      ),
+      padding: EdgeInsets.only(top: 16, left: 16, bottom: 16),
+      child: ClipRRect(
+        borderRadius: BorderRadius.only(
+          bottomLeft: Radius.circular(borderRadius),
+          bottomRight: Radius.circular(borderRadius),
+        ),
+        child: Padding(
+          padding: EdgeInsets.only(right: 2),
+          child: EpisodeGrid(
+            collapsable: false,
+            nested: nested,
+            episodes: _mergedEpisodes,
+            onTap: (uiEpisode) => _onEpisodeTap(uiEpisode, series),
+            series: series,
+            mapping: _cachedMapping,
+            padding: EdgeInsets.only(right: 14),
+          ),
+        ),
+      ),
+    );
+
+    if (nested) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [visibleHeader, SizedBox(height: 4), card],
+      );
+    }
+
+    return Column(
+      children: [visibleHeader, SizedBox(height: 4), Expanded(child: card)],
+    );
+  }
+
+  void _onEpisodeTap(UIEpisode uiEpisode, Series series) {
+    // If the episode can be played, play it
+    if (uiEpisode.canPlay) {
+      _playEpisode(uiEpisode.localEpisode!);
+      return;
+    }
+
+    // If the episode is released or in the future, open search dialog
+    if (uiEpisode.state == EpisodeState.released || uiEpisode.state == EpisodeState.future) {
+      final controller = TorrentManager.downloadController;
+      if (controller == null) {
+        snackBar('Download client not configured. Set up qBittorrent in Settings.', severity: InfoBarSeverity.warning);
+        return;
+      }
+
+      final titleObj = _cachedMapping?.anilistData?.title ?? _cachedSeries?.anilistData?.title; // TODO get name from Sonarr, as it's "simpler" and more likely to be correct for the episode search than the AniList title which is not guaranteed to be accurate for the series as a whole (especially for mappings that are not the first season)
+      final titles = <String>{
+        if (titleObj?.userPreferred != null) titleObj!.userPreferred!,
+        if (titleObj?.romaji != null) titleObj!.romaji!,
+        if (titleObj?.english != null) titleObj!.english!,
+      }.where((t) => t.trim().isNotEmpty).toList();
+
+      if (titles.isEmpty) titles.add(series.displayTitle);
+
+      final sonarrEp = uiEpisode.sonarrEpisode;
+      final seasonNum = sonarrEp?.seasonNumber ?? _resolvedNode?.seasonNumber;
+
+      showPaddedDialog(
+        context,
+        navigationItem: DialogNavigationItem(
+          id: 'knaben:episode-search',
+          title: 'Episode Search',
+        ),
+        builder: (context, item, options) {
+          return PaddedDialog.custom(
+            navigationItem: item,
+            barrierOptions: options,
+            constraints: const BoxConstraints(maxWidth: 900, maxHeight: 900),
+            contentBuilder: (_, __) => KnabenSearchDialog(
+              item: item,
+              controller: controller,
+              seriesTitles: titles,
+              season: seasonNum,
+              episode: sonarrEp?.episodeNumber ?? uiEpisode.episodeNumber,
+              episodeTitle: uiEpisode.isSpecial ? uiEpisode.displayTitle : null,
+              sonarrEpisodeId: sonarrEp?.id,
+              sonarrSeriesId: _sonarrSeriesId,
+              series: series,
+            ),
+          );
+        },
+      );
+    }
   }
 }
 
