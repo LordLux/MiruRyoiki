@@ -1,31 +1,30 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'dart:async';
-import 'package:miruryoiki/models/anilist/user_list.dart';
 import 'package:miruryoiki/widgets/buttons/button.dart';
 import 'package:provider/provider.dart';
 
 import '../models/episode.dart';
-import '../services/library/library_provider.dart';
-import '../models/season.dart';
 import '../models/series.dart';
 import '../models/anilist/anime.dart';
 import '../services/anilist/provider/anilist_provider.dart';
-import '../services/downloads/torrent_manager.dart';
-import '../services/episode_navigation/episode_navigator.dart';
-import '../services/mapping/custom_sonarr_mapping_service.dart';
+import '../services/library/library_provider.dart';
 import '../services/navigation/shortcuts.dart';
 import '../settings.dart';
 import '../utils/color.dart';
 import '../utils/logging.dart';
 import '../utils/path.dart';
 import '../utils/screen.dart';
-import '../utils/time.dart';
+import '../viewmodels/home_viewmodel.dart';
 import '../widgets/cards/continue_episode_card.dart';
 import '../widgets/page/header_widget.dart';
 import '../widgets/page/page_template.dart';
 import '../manager.dart';
 import '../widgets/cards/upcoming_episode_card.dart';
 
+/// Home screen.
+///
+/// Section data (Continue Watching / Next Up / Upcoming) and the Sonarr title cache live in [HomeViewModel] (registered app-wide in `main.dart`).
+/// This widget only renders and owns view concerns: the minute ticker for relative times, scrollbars, and navigation callbacks.
 class HomeScreen extends StatefulWidget {
   final Function(PathString) onSeriesSelected;
   final ScrollController scrollController;
@@ -45,14 +44,6 @@ Color get moreGradientColor => shiftHue(Manager.accentColor.lighter, 10);
 
 class _HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMixin {
   Timer? _minuteRefreshTimer; // refresh relative times every minute
-  Future<Map<int, AiringEpisode?>>? _cachedUpcomingEpisodesFuture;
-  List<int>? _lastRequestedAnimeIds;
-  int? _lastLibraryDataVersion;
-
-  /// Persistent Sonarr episode title cache: series path → (episode path, title).
-  /// Static so it survives page navigation. Invalidated per-series when the
-  /// next episode to watch changes.
-  static final Map<String, (PathString, String)> _sonarrTitleCache = {};
 
   @override
   bool get wantKeepAlive => true;
@@ -71,134 +62,26 @@ class _HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMi
     super.dispose();
   }
 
-  bool _listsEqual<T>(List<T> a, List<T> b) {
-    if (a.length != b.length) return false;
-    for (int i = 0; i < a.length; i++) {
-      if (a[i] != b[i]) return false;
-    }
-    return true;
-  }
+  void _selectRandomEntry(HomeViewModel vm, List<Series> series) {
+    final pick = vm.pickRandomEntry(series);
+    if (pick == null) return;
 
-  /// Returns the cached Sonarr title for a series' next episode, or null if not yet fetched.
-  String? _getSonarrTitle(Series series, Episode nextEpisode) {
-    final cached = _sonarrTitleCache[series.path.path];
-    if (cached != null && cached.$1 == nextEpisode.path) return cached.$2;
-    return null;
-  }
-
-  /// Fetches Sonarr episode titles for series that aren't already cached.
-  /// Only fetches for series whose next episode changed or has no cached title.
-  void _fetchSonarrTitles(List<Series> watchingSeries, AnilistProvider anilistProvider) {
-    final sonarr = TorrentManager.sonarrRepository;
-    if (sonarr == null || !TorrentManager.isEnabled) return;
-
-    // Collect series that need fetching (cache miss or stale entry)
-    final seriesToFetch = <(Series, Episode)>[];
-    for (final series in watchingSeries) {
-      final nextEpisode = Manager.anilistProgress.getNextEpisodeToWatch(series, anilistProvider);
-      if (nextEpisode == null) continue;
-
-      final cached = _sonarrTitleCache[series.path.path];
-      if (cached != null && cached.$1 == nextEpisode.path) continue; // Cache hit
-
-      seriesToFetch.add((series, nextEpisode));
-    }
-
-    if (seriesToFetch.isEmpty) return;
-    _fetchSonarrTitlesAsync(seriesToFetch, sonarr);
-  }
-
-  Future<void> _fetchSonarrTitlesAsync(List<(Series, Episode)> seriesToFetch, dynamic sonarr) async {
-    final customMappings = CustomSonarrMappingService();
-    bool anyNew = false;
-
-    for (final (series, nextEpisode) in seriesToFetch) {
-      try {
-        // Resolve TVDB ID from any of the series' anilist mappings
-        int? tvdbId;
-        for (final mapping in series.anilistMappings) {
-          tvdbId = await customMappings.getCustomTvdbId(mapping.anilistId);
-          if (tvdbId != null) break;
-          final plexMapping = await TorrentManager.plexBridge?.getMapping(mapping.anilistId);
-          if (plexMapping != null) {
-            tvdbId = plexMapping.tvdbId;
-            break;
-          }
-        }
-        if (tvdbId == null || tvdbId == 0) continue;
-
-        // Fetch all episodes from Sonarr
-        final sonarrSeriesId = await sonarr.getSeriesIdByTvdbId(tvdbId);
-        if (sonarrSeriesId == null) continue;
-        final sonarrEpisodes = await sonarr.getEpisodes(sonarrSeriesId);
-
-        // Find the collection for this episode
-        final collection = EpisodeNavigator.instance.findCollectionForEpisode(nextEpisode, series);
-        final seasonNumber = (collection is Season) ? collection.seasonNumber : null;
-        final epNumber = nextEpisode.episodeNumber;
-        if (epNumber == null) continue;
-
-        // Per-season match first
-        String? matchedTitle;
-        if (seasonNumber != null) {
-          for (final sonarrEp in sonarrEpisodes) {
-            if (sonarrEp.seasonNumber == seasonNumber && sonarrEp.episodeNumber == epNumber) {
-              matchedTitle = sonarrEp.title;
-              break;
-            }
-          }
-        }
-
-        // Absolute numbering fallback
-        if (matchedTitle == null) {
-          for (final sonarrEp in sonarrEpisodes) {
-            if (sonarrEp.absoluteEpisodeNumber == epNumber) {
-              matchedTitle = sonarrEp.title;
-              break;
-            }
-          }
-        }
-
-        if (matchedTitle != null) {
-          _sonarrTitleCache[series.path.path] = (nextEpisode.path, matchedTitle);
-          anyNew = true;
-        }
-      } catch (e) {
-        logDebug('Failed to fetch Sonarr title for ${series.name}: $e');
-      }
-    }
-
-    if (anyNew && mounted) setState(() {});
-  }
-
-  void _selectRandomEntry(List<Series> series) {
-    if (series.isEmpty) return;
-
-    // Select a random series from the list
-    final randomSeries = series[now.millisecondsSinceEpoch % series.length];
-
-    final anilistProvider = Provider.of<AnilistProvider>(context, listen: false);
-    final nextEpisode = Manager.anilistProgress.getNextEpisodeToWatch(randomSeries, anilistProvider);
-
-    // Trigger the onSeriesSelected callback with the selected series path
-    _openEpisode(randomSeries, nextEpisode!);
+    _openEpisode(pick.$1, pick.$2);
   }
 
   void _openEpisode(Series currentSeries, Episode nextEpisode) async {
     widget.onSeriesSelected(currentSeries.path);
-    final library = Provider.of<Library>(context, listen: false);
+    final vm = context.read<HomeViewModel>();
 
     await Future.delayed(const Duration(milliseconds: 100));
-    library.playEpisode(nextEpisode);
+    vm.playEpisode(nextEpisode);
   }
 
   @override
   Widget build(BuildContext context) {
     super.build(context); // for AutomaticKeepAliveClientMixin
 
-    final library = Provider.of<Library>(context);
-
-    final settings = Provider.of<SettingsManager>(context);
+    final vm = context.watch<HomeViewModel>();
 
     return MiruRyoikiTemplatePage(
       scrollRestorationId: 'home',
@@ -212,101 +95,100 @@ class _HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMi
       ),
       headerMaxHeight: 100,
       headerMinHeight: 100,
-      content: _buildContent(library, settings),
+      content: _buildContent(vm),
       hideInfoBar: true,
       noHeaderBanner: true,
     );
   }
 
-  Widget _buildContent(Library library, SettingsManager settings) {
-    return Consumer<AnilistProvider>(
-      builder: (context, anilistProvider, _) {
-        // Get the base watching series data
-        final watchingSeries = _getWatchingSeries(anilistProvider, library);
+  Widget _buildContent(HomeViewModel vm) {
+    // Rebuild when Library, AnilistProvider, or settings notify
+    context.watch<Library>();
+    context.watch<AnilistProvider>();
+    context.watch<SettingsManager>();
 
-        if (watchingSeries == null) {
-          // No watching list found - show error state
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildSection(
-                title: 'Continue Watching',
-                child: _buildEmptyState('No watching list found', 'Unable to find your watching list from Anilist'),
-              ),
-            ],
-          );
-        }
+    final watchingSeries = vm.watchingSeries;
 
-        if (watchingSeries.isEmpty) {
-          // No series in watching list - show empty state
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildSection(
-                title: 'Continue Watching',
-                child: _buildEmptyState('No series in your watching list', 'Link your series with Anilist and add them to your watching list'),
-              ),
-            ],
-          );
-        }
-
-        // Start async Sonarr title fetch if needed
-        _fetchSonarrTitles(watchingSeries, anilistProvider);
-
-        // Get series for each section
-        final (continueWatchingSeries, nextUpSeries) = _getSeriesForSection(watchingSeries, anilistProvider); // $1: started, $2: not started
-        final releasedSeries = List<Series>.from(watchingSeries); // series with aired but not downloaded episodes
-
-        // Apply visibility rules
-        final showContinueWatching = continueWatchingSeries.isNotEmpty;
-        final showNextUp = nextUpSeries.isNotEmpty /* && !showContinueWatching*/;
-        final showEmptyState = !showContinueWatching && nextUpSeries.isEmpty;
-
-        final releasedEpisodes = _getReleasedEpisodes();
-
-        return Padding(
-          padding: EdgeInsets.only(right: 8.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Continue Watching section
-              if (showContinueWatching)
-                _buildSection(
-                  title: 'Continue Watching',
-                  child: _buildContinueWatchingList(continueWatchingSeries, anilistProvider, onlyStarted: true),
-                ),
-
-              // Next Up section
-              if (showNextUp)
-                _buildSection(
-                  title: 'Next Up',
-                  child: _buildContinueWatchingList(nextUpSeries, anilistProvider, onlyStarted: false),
-                ),
-
-              // Empty state when both sections are empty
-              if (showEmptyState)
-                _buildSection(
-                  title: 'Continue Watching',
-                  child: _buildEmptyState('No series to continue', 'Start watching some series from your library'),
-                ),
-
-              if (releasedEpisodes.isNotEmpty) ...[
-                VDiv(8), // Reduced spacing between sections
-                _buildSection(
-                  title: 'Release Episodes to Download',
-                  child: _buildReleasedEpisodesSection(releasedEpisodes),
-                ),
-              ],
-
-              VDiv(8), // Reduced spacing between sections
-              _buildSection(
-                title: 'Upcoming Episodes',
-                child: _buildUpcomingEpisodesSection(),
-              ),
-            ],
+    if (watchingSeries == null) {
+      // No watching list found
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildSection(
+            title: 'Continue Watching',
+            child: _buildEmptyState('No watching list found', 'Unable to find your watching list from Anilist'),
           ),
-        );
-      },
+        ],
+      );
+    }
+
+    if (watchingSeries.isEmpty) {
+      // No series in watching list
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildSection(
+            title: 'Continue Watching',
+            child: _buildEmptyState('No series in your watching list', 'Link your series with Anilist and add them to your watching list'),
+          ),
+        ],
+      );
+    }
+
+    // Start async Sonarr title fetch if needed
+    vm.ensureSonarrTitles(watchingSeries);
+
+    // Get series for each section
+    final (continueWatchingSeries, nextUpSeries) = vm.sectionsFor(watchingSeries);
+
+    // Apply visibility rules
+    final showContinueWatching = continueWatchingSeries.isNotEmpty;
+    final showNextUp = nextUpSeries.isNotEmpty /* && !showContinueWatching*/;
+    final showEmptyState = !showContinueWatching && nextUpSeries.isEmpty;
+
+    final releasedEpisodes = _getReleasedEpisodes();
+
+    return Padding(
+      padding: EdgeInsets.only(right: 8.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Continue Watching section
+          if (showContinueWatching)
+            _buildSection(
+              title: 'Continue Watching',
+              child: _buildContinueWatchingList(vm, continueWatchingSeries, onlyStarted: true),
+            ),
+
+          // Next Up section
+          if (showNextUp)
+            _buildSection(
+              title: 'Next Up',
+              child: _buildContinueWatchingList(vm, nextUpSeries, onlyStarted: false),
+            ),
+
+          // Empty state when both sections are empty
+          if (showEmptyState)
+            _buildSection(
+              title: 'Continue Watching',
+              child: _buildEmptyState('No series to continue', 'Start watching some series from your library'),
+            ),
+
+          if (releasedEpisodes.isNotEmpty) ...[
+            VDiv(8), // Reduced spacing between sections
+            _buildSection(
+              title: 'Release Episodes to Download',
+              child: _buildReleasedEpisodesSection(releasedEpisodes),
+            ),
+          ],
+
+          VDiv(8), // Reduced spacing between sections
+          _buildSection(
+            title: 'Upcoming Episodes',
+            child: _buildUpcomingEpisodesSection(vm),
+          ),
+        ],
+      ),
     );
   }
 
@@ -321,73 +203,7 @@ class _HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMi
     );
   }
 
-  /// Gets the base watching series from Anilist and library
-  List<Series>? _getWatchingSeries(AnilistProvider anilistProvider, Library library) {
-    // Get the "Watching" list from Anilist user lists
-    final watchingList = anilistProvider.userLists[AnilistListApiStatus.CURRENT.name_];
-
-    if (watchingList == null) return null;
-
-    // Filter to get only series that are in "Watching" list and in library
-    final watchingSeries = library.series.where((series) {
-      // Only consider linked series
-      if (!series.isLinked) return false;
-
-      // Filter out hidden series based on current settings
-      if (library.hiddenSeriesService.shouldFilterSeries(series)) return false;
-
-      // Check if any of the series' Anilist mappings are in the watching list
-      return series.anilistMappings.any((mapping) {
-        return watchingList.entries.any((entry) => entry.media.id == mapping.anilistId);
-      });
-    }).toList();
-
-    // Sort by most recently updated first, then by progress percentage (higher first)
-    watchingSeries.sort((a, b) {
-      // Primary sort: most recently updated first
-      final aUpdated = anilistProvider.getLatestUpdatedAt(a) ?? 0;
-      final bUpdated = anilistProvider.getLatestUpdatedAt(b) ?? 0;
-      final updatedComparison = bUpdated.compareTo(aUpdated);
-
-      if (updatedComparison != 0) {
-        return updatedComparison;
-      }
-
-      // Secondary sort: higher progress percentage first (for series updated at same time)
-      final aProgress = a.watchedPercentage;
-      final bProgress = b.watchedPercentage;
-      return bProgress.compareTo(aProgress);
-    });
-
-    return watchingSeries;
-  }
-
-  /// Filters series for a specific section based on episode progress
-  ///
-  /// $1 contains only series whose first non-finished has progress > 0
-  /// $2 contains only series whose first non-finished has progress == 0
-  (List<Series>, List<Series>) _getSeriesForSection(List<Series> watchingSeries, AnilistProvider anilistProvider) {
-    final startedSeries = <Series>[];
-    final notStartedSeries = <Series>[];
-
-    for (final s in watchingSeries) {
-      // Use the new progress manager to check if series has next episode
-      final nextEpisode = Manager.anilistProgress.getNextEpisodeToWatch(s, anilistProvider);
-      if (nextEpisode == null) continue; // Skip series with no next episode
-
-      // Filter based on onlyStarted parameter
-      if (nextEpisode.progress > 0 && nextEpisode.progress < Library.progressThreshold && !nextEpisode.watched) {
-        // Show only episodes that have been started (progress > 0)
-        startedSeries.add(s);
-      } else {
-        notStartedSeries.add(s);
-      }
-    }
-
-    return (startedSeries, notStartedSeries);
-  }
-
-  Widget _buildContinueWatchingList(List<Series> series, AnilistProvider anilistProvider, {required bool onlyStarted}) {
+  Widget _buildContinueWatchingList(HomeViewModel vm, List<Series> series, {required bool onlyStarted}) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -400,7 +216,7 @@ class _HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMi
               child: StandardButton.iconLabel(
                 label: const Text('Random Entry'),
                 icon: const Icon(FluentIcons.switch_widget),
-                onPressed: () => _selectRandomEntry(series),
+                onPressed: () => _selectRandomEntry(vm, series),
               ),
             ),
           ),
@@ -423,8 +239,7 @@ class _HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMi
                       itemBuilder: (context, index) {
                         final currentSeries = series[index];
                         final bool isLast = index == series.length - 1;
-                        // Use the new progress manager to get next episode
-                        final nextEpisode = Manager.anilistProgress.getNextEpisodeToWatch(currentSeries, anilistProvider);
+                        final nextEpisode = vm.nextEpisodeFor(currentSeries);
                         if (nextEpisode == null) return const SizedBox.shrink();
 
                         return Padding(
@@ -434,7 +249,7 @@ class _HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMi
                             child: ContinueEpisodeCard(
                               series: currentSeries,
                               episode: nextEpisode,
-                              sonarrTitle: _getSonarrTitle(currentSeries, nextEpisode),
+                              sonarrTitle: vm.sonarrTitleFor(currentSeries, nextEpisode),
                               onTap: () => _openEpisode(currentSeries, nextEpisode),
                               progress: onlyStarted ? nextEpisode.progress : null, // Show progress only if this is "Continue Watching"
                             ),
@@ -481,144 +296,59 @@ class _HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMi
     );
   }
 
-  Widget _buildUpcomingEpisodesSection() {
-    final anilistProvider = Provider.of<AnilistProvider>(context);
-    final library = Provider.of<Library>(context);
+  Widget _buildUpcomingEpisodesSection(HomeViewModel vm) {
+    final watchPlanSeries = vm.watchPlanLinkedSeries;
 
-    // Get the "Watching" + "Planning" lists from Anilist user lists
-    final AnilistUserList? watchingList = anilistProvider.userLists[AnilistListApiStatus.CURRENT.name_];
-    final AnilistUserList? planningList = anilistProvider.userLists[AnilistListApiStatus.PLANNING.name_];
+    if (watchPlanSeries == null) return _buildEmptyState('No watching list found', 'Unable to find your watching/planning lists from Anilist');
+    if (watchPlanSeries.isEmpty) return _buildEmptyState('No series in your watching list', 'Link your series with Anilist and add them to your watching list');
 
-    final list = [...watchingList?.entries ?? [], ...planningList?.entries ?? []];
-
-    if (list.isEmpty) return _buildEmptyState('No watching list found', 'Unable to find your watching/planning lists from Anilist');
-
-    // Filter to get only series that are in "Watching" list, linked, and in library
-    final watchingSeries = library.series.where((series) {
-      // Only consider linked series
-      if (!series.isLinked) return false;
-
-      // Check if any of the series' Anilist mappings are in the watching/planning list
-      return series.anilistMappings.any((mapping) {
-        return list.any((entry) => entry.media.id == mapping.anilistId);
-      });
-    }).toList();
-
-    if (watchingSeries.isEmpty) return _buildEmptyState('No series in your watching list', 'Link your series with Anilist and add them to your watching list');
-
-    // Use StreamBuilder approach with cached data for immediate display
-    return _buildUpcomingEpisodesAndBuildCache(watchingSeries, anilistProvider);
-  }
-
-  Widget _buildUpcomingEpisodesAndBuildCache(List<Series> watchingSeries, AnilistProvider anilistProvider) {
-    final library = Provider.of<Library>(context, listen: false);
-
-    // Invalidate cache if library data version changed
-    if (_lastLibraryDataVersion != null && _lastLibraryDataVersion != library.dataVersion) {
-      _cachedUpcomingEpisodesFuture = null;
-      _lastRequestedAnimeIds = null;
-    }
-    _lastLibraryDataVersion = library.dataVersion;
-
-    // Collect all unique anime IDs from the series
-    final Set<int> animeIds = {};
-    for (final series_ in watchingSeries) {
-      for (final mapping in series_.anilistMappings) {
-        if (mapping.anilistData?.status?.toAnimeStatus() == AnilistAnimeStatus.RELEASING) animeIds.add(mapping.anilistId); // only display RELEASING series that the user is watching
-      }
-    }
+    final animeIds = vm.releasingAnimeIds(watchPlanSeries);
 
     // Get cached data immediately
-    final cachedUpcomingEpisodes = anilistProvider.getCachedUpcomingEpisodes(animeIds.toList(), refreshInBackground: true);
+    final cachedUpcomingEpisodes = vm.cachedUpcomingEpisodes(animeIds);
 
     // Filter to only series with cached upcoming episodes data
-    final seriesWithUpcomingEpisodes = watchingSeries.where((series) {
-      return series.anilistMappings.any((mapping) {
-        final upcomingEpisode = cachedUpcomingEpisodes[mapping.anilistId];
-        return upcomingEpisode != null && upcomingEpisode.airingAt != null;
-      });
+    final seriesWithUpcomingEpisodes = watchPlanSeries.where((series) {
+      return HomeViewModel.earliestAiring(series, cachedUpcomingEpisodes) != null;
     }).toList();
 
-    if (seriesWithUpcomingEpisodes.isEmpty) {
-      // Check if we need to create or reuse the cached future
-      final currentAnimeIds = animeIds.toList();
-      if (_cachedUpcomingEpisodesFuture == null || _lastRequestedAnimeIds == null || !_listsEqual(_lastRequestedAnimeIds!, currentAnimeIds)) {
-        _lastRequestedAnimeIds = currentAnimeIds;
-        _cachedUpcomingEpisodesFuture = anilistProvider.getUpcomingEpisodes(currentAnimeIds);
-      }
+    if (seriesWithUpcomingEpisodes.isNotEmpty) return _buildSortedUpcomingEpisodesList(seriesWithUpcomingEpisodes, cachedUpcomingEpisodes);
 
-      // If no cached data, try to fetch fresh data
-      return FutureBuilder<Map<int, AiringEpisode?>>(
-        future: _cachedUpcomingEpisodesFuture,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return Container(
-              height: 150,
-              decoration: BoxDecoration(
-                color: FluentTheme.of(context).resources.cardBackgroundFillColorSecondary,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Center(
-                child: ProgressRing(),
-              ),
-            );
-          }
+    // If no cached data, try to fetch fresh data (memoized future)
+    return FutureBuilder<Map<int, AiringEpisode?>>(
+      future: vm.freshUpcomingEpisodes(animeIds),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Container(
+            height: 150,
+            decoration: BoxDecoration(
+              color: FluentTheme.of(context).resources.cardBackgroundFillColorSecondary,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Center(
+              child: ProgressRing(),
+            ),
+          );
+        }
 
-          if (snapshot.hasError) return _buildEmptyState('Error loading upcoming episodes', 'Failed to fetch airing information from Anilist');
+        if (snapshot.hasError) return _buildEmptyState('Error loading upcoming episodes', 'Failed to fetch airing information from Anilist');
 
-          final freshUpcomingEpisodes = snapshot.data ?? <int, AiringEpisode?>{};
+        final freshUpcomingEpisodes = snapshot.data ?? <int, AiringEpisode?>{};
 
-          final freshSeriesWithUpcomingEpisodes = watchingSeries.where((series) {
-            return series.anilistMappings.any((mapping) {
-              final upcomingEpisode = freshUpcomingEpisodes[mapping.anilistId];
-              return upcomingEpisode != null && upcomingEpisode.airingAt != null;
-            });
-          }).toList();
+        final freshSeriesWithUpcomingEpisodes = watchPlanSeries.where((series) {
+          return HomeViewModel.earliestAiring(series, freshUpcomingEpisodes) != null;
+        }).toList();
 
-          if (freshSeriesWithUpcomingEpisodes.isEmpty) return _buildEmptyState('No upcoming episodes', 'None of your watched series have upcoming episodes scheduled');
+        if (freshSeriesWithUpcomingEpisodes.isEmpty) return _buildEmptyState('No upcoming episodes', 'None of your watched series have upcoming episodes scheduled');
 
-          return _buildSortedUpcomingEpisodesList(freshSeriesWithUpcomingEpisodes, freshUpcomingEpisodes);
-        },
-      );
-    }
-
-    // We have cached data, display it immediately
-    return _buildSortedUpcomingEpisodesList(seriesWithUpcomingEpisodes, cachedUpcomingEpisodes);
+        return _buildSortedUpcomingEpisodesList(freshSeriesWithUpcomingEpisodes, freshUpcomingEpisodes);
+      },
+    );
   }
 
   Widget _buildSortedUpcomingEpisodesList(List<Series> series, Map<int, AiringEpisode?> upcomingEpisodesMap) {
-    // Sort by nearest airing date
-    series.sort((a, b) {
-      int? aNextAiring;
-      int? bNextAiring;
+    HomeViewModel.sortByNearestAiring(series, upcomingEpisodesMap);
 
-      // Get the earliest upcoming episode for series A
-      for (final mapping in a.anilistMappings) {
-        final episode = upcomingEpisodesMap[mapping.anilistId];
-        if (episode?.airingAt != null) {
-          aNextAiring = aNextAiring == null ? episode!.airingAt! : (episode!.airingAt! < aNextAiring ? episode.airingAt! : aNextAiring);
-        }
-      }
-
-      // Get the earliest upcoming episode for series B
-      for (final mapping in b.anilistMappings) {
-        final episode = upcomingEpisodesMap[mapping.anilistId];
-        if (episode?.airingAt != null) {
-          bNextAiring = bNextAiring == null ? episode!.airingAt! : (episode!.airingAt! < bNextAiring ? episode.airingAt! : bNextAiring);
-        }
-      }
-
-      // Compare airing times (earlier first)
-      return (aNextAiring ?? 0).compareTo(bNextAiring ?? 0);
-    });
-
-    return _buildUpcomingEpisodesSeriesList(series, upcomingEpisodesMap);
-  }
-
-  Widget _buildUpcomingEpisodesSeriesList(List<Series> series, Map<int, AiringEpisode?> upcomingEpisodesMap) {
-    final onlyUpcomingEpisodes = series.where((s) {
-      return s.anilistMappings.any((mapping) => upcomingEpisodesMap[mapping.anilistId]?.airingAt != null);
-    }).toList();
     return HoverVisibleScrollbar(
       height: 280 * Manager.fontSizeMultiplier,
       builder: (context, scrollController) {
@@ -631,33 +361,22 @@ class _HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMi
                 controller: scrollController,
                 physics: isCtrlPressed ? const NeverScrollableScrollPhysics() : null,
                 scrollDirection: Axis.horizontal,
-                itemCount: onlyUpcomingEpisodes.length,
+                itemCount: series.length,
                 itemBuilder: (context, index) {
-                  final currentSeries = onlyUpcomingEpisodes[index];
+                  final currentSeries = series[index];
 
-                  // Get the upcoming episode info for this series and track which mapping it belongs to
-                  AiringEpisode? nextEpisode;
-                  int? correspondingAnilistId;
-
-                  for (final mapping in currentSeries.anilistMappings) {
-                    final episode = upcomingEpisodesMap[mapping.anilistId];
-                    if (episode?.airingAt != null) {
-                      // Find the earliest airing episode among mappings
-                      if (nextEpisode == null || episode!.airingAt! < nextEpisode.airingAt!) {
-                        nextEpisode = episode;
-                        correspondingAnilistId = mapping.anilistId;
-                      }
-                    }
-                  }
+                  // Earliest upcoming episode for this series and the mapping it belongs to
+                  final airing = HomeViewModel.earliestAiring(currentSeries, upcomingEpisodesMap);
+                  if (airing == null) return const SizedBox.shrink();
 
                   return Padding(
-                    padding: index != onlyUpcomingEpisodes.length - 1 ? const EdgeInsets.only(right: 12) : EdgeInsets.zero,
+                    padding: index != series.length - 1 ? const EdgeInsets.only(right: 12) : EdgeInsets.zero,
                     child: AspectRatio(
                       aspectRatio: 1 / ScreenUtils.kDefaultUpcomingEpisodeCardAspectRatio,
                       child: UpcomingEpisodeCard(
                         series: currentSeries,
-                        airingEpisode: nextEpisode!,
-                        anilistId: correspondingAnilistId,
+                        airingEpisode: airing.$1,
+                        anilistId: airing.$2,
                       ),
                     ),
                   );

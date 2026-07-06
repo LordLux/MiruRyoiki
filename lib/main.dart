@@ -43,6 +43,7 @@ import 'widgets/player.dart';
 import 'widgets/release_notification.dart';
 import 'widgets/svg.dart';
 import 'services/anilist/provider/anilist_provider.dart';
+import 'viewmodels/home_viewmodel.dart';
 import 'viewmodels/release_calendar_viewmodel.dart';
 import 'services/connectivity/connectivity_service.dart';
 import 'services/navigation/statusbar.dart';
@@ -189,6 +190,14 @@ void main(List<String> args) async {
             create: (context) => ReleaseCalendarViewModel()..update(context.read<Library>(), context.read<AnilistProvider>()),
             update: (context, library, anilist, previous) {
               final vm = previous ?? ReleaseCalendarViewModel();
+              vm.update(library, anilist);
+              return vm;
+            },
+          ),
+          ChangeNotifierProxyProvider2<Library, AnilistProvider, HomeViewModel>(
+            create: (context) => HomeViewModel()..update(context.read<Library>(), context.read<AnilistProvider>()),
+            update: (context, library, anilist, previous) {
+              final vm = previous ?? HomeViewModel();
               vm.update(library, anilist);
               return vm;
             },
