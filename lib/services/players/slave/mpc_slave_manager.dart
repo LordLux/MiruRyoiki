@@ -92,9 +92,25 @@ class MpcSlaveManager {
   /// The web-interface-owning instance = the first-connected one still alive.
   int get _ownerHwnd => _connectOrder.firstWhere(_instances.containsKey, orElse: () => 0);
 
-  /// True only when the active instance is the owner, i.e. when a real volume
-  /// level/mute is available for the volume slider.
-  bool get activeInstanceHasVolumeReadback => _lastActiveHwnd != 0 && _lastActiveHwnd == _ownerHwnd;
+  /// Whether the active instance is the web-interface owner (first-connected).
+  bool get _activeIsOwner => _lastActiveHwnd != 0 && _lastActiveHwnd == _ownerHwnd;
+
+  /// Whether the web interface actually responded to the last volume read.
+  /// Starts false so the absolute slider never shows a stale/zero level when
+  /// the user has the web interface disabled in MPC-HC's settings.
+  bool _webUiReachable = false;
+
+  /// True only when the active instance is the owner AND its web interface is
+  /// actually reachable, i.e. when a real volume level/mute is available for
+  /// the volume slider. When false the UI falls back to relative step buttons
+  /// (which go through WM_COMMAND and need no web interface).
+  bool get activeInstanceHasVolumeReadback => _activeIsOwner && _webUiReachable;
+
+  void _setWebUiReachable(bool value) {
+    if (_webUiReachable == value) return;
+    _webUiReachable = value;
+    if (!_changeController.isClosed) _changeController.add(null);
+  }
 
   /// Ensures the receive bridge is running. Returns false if it can't start.
   Future<bool> ensureStarted() async {
@@ -257,7 +273,9 @@ class MpcSlaveManager {
   // --- Owner volume readback (the only remaining, scoped HTTP use) --------
 
   void _updateOwnerVolumePolling() {
-    final shouldPoll = activeInstanceHasVolumeReadback;
+    // Poll while the active instance is the owner — NOT gated on reachability,
+    // so the slider can (re)appear when the user enables the web interface.
+    final shouldPoll = _activeIsOwner;
     if (shouldPoll && _ownerVolumeTimer == null) {
       _ownerVolumeTimer = Timer.periodic(const Duration(seconds: 1), (_) => _refreshOwnerVolume());
       _refreshOwnerVolume();
@@ -273,7 +291,10 @@ class MpcSlaveManager {
     if (inst == null) return;
     try {
       final response = await http.get(Uri.parse('http://localhost:$webInterfacePort/variables.html')).timeout(const Duration(seconds: 1));
-      if (response.statusCode != 200) return;
+      if (response.statusCode != 200) {
+        _setWebUiReachable(false);
+        return;
+      }
       final vars = <String, String>{};
       for (final match in RegExp(r'<p id="([^"]+)">([^<]*)</p>').allMatches(response.body)) {
         final key = match.group(1);
@@ -283,9 +304,12 @@ class MpcSlaveManager {
       final volume = int.tryParse(vars['volumelevel'] ?? '');
       if (volume != null) inst.volumeLevel = volume;
       inst.isMuted = vars['muted'] == '1';
+      _setWebUiReachable(true);
       if (_lastActiveHwnd == hwnd) _emitActiveStatus();
     } catch (_) {
-      // web interface disabled/unreachable: slider stays hidden
+      // Web interface disabled/unreachable: flag it so the absolute slider is
+      // hidden and the relative step buttons are shown instead.
+      _setWebUiReachable(false);
     }
   }
 
