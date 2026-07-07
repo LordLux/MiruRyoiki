@@ -35,7 +35,6 @@ import '../utils/html/extensions/unsupported.dart';
 import '../utils/logging.dart';
 import '../utils/screen.dart';
 import '../viewmodels/accounts_viewmodel.dart';
-import '../viewmodels/library_screen_viewmodel.dart';
 import '../widgets/activity_graph.dart';
 import '../widgets/animated_stats_counter.dart';
 import '../widgets/buttons/button.dart';
@@ -233,52 +232,10 @@ class AccountsScreenState extends State<AccountsScreen> with AutomaticKeepAliveC
                 },
               ),
             ),
-            ..._buildPrivacySettings(context, anilistProvider),
           ],
         ),
       );
     });
-  }
-
-  List<Widget> _buildPrivacySettings(BuildContext context, AnilistProvider anilistProvider) {
-    return [
-      Text(
-        'Privacy Settings',
-        style: Manager.subtitleStyle,
-      ),
-      VDiv(16),
-
-      // Toggle for showing hidden series
-      NormalSwitch(
-        ToggleSwitch(
-          checked: _vm.showHiddenSeries,
-          content: Flexible(
-            child: Text('Show hidden series', style: Manager.bodyStyle),
-          ),
-          onChanged: (value) {
-            _vm.showHiddenSeries = value;
-            // SettingsManager notifies its watchers (e.g. Home)
-            // the Library grid additionally needs its sort cache invalidated + rebuilt
-            context.read<LibraryScreenViewModel>().invalidateSortCache();
-          },
-        ),
-      ),
-
-      // Toggle for showing hidden series
-      NormalSwitch(
-        ToggleSwitch(
-          checked: _vm.showAnilistHiddenSeries,
-          content: Flexible(
-            child: Text('Show series hidden from status lists', style: Manager.bodyStyle),
-          ),
-          onChanged: (value) {
-            _vm.showAnilistHiddenSeries = value;
-            context.read<LibraryScreenViewModel>().invalidateSortCache();
-          },
-        ),
-        tooltip: 'Show series hidden from status lists (these will only be visible in custom lists)',
-      ),
-    ];
   }
 
   List<Widget> _buildFooter({required AnilistProvider anilistProvider}) {

@@ -40,6 +40,7 @@ import '../theme.dart';
 import '../utils/path.dart';
 import '../utils/screen.dart';
 import '../utils/time.dart';
+import '../viewmodels/library_screen_viewmodel.dart';
 import '../widgets/animated_hider.dart';
 import '../widgets/buttons/button.dart';
 import '../widgets/buttons/hyperlink.dart';
@@ -424,6 +425,42 @@ class SettingsScreenState extends State<SettingsScreen> with AutomaticKeepAliveC
             ],
           ),
           if (library.libraryPath != null) ...[],
+
+          VDiv(24),
+          Text(
+            'Privacy',
+            style: Manager.subtitleStyle,
+          ),
+          VDiv(12),
+
+          // Toggle for showing hidden series
+          NormalSwitch(
+            ToggleSwitch(
+              checked: Manager.settings.showHiddenSeries,
+              content: Flexible(
+                child: Text('Show hidden series', style: Manager.bodyStyle),
+              ),
+              onChanged: (value) {
+                setState(() => Manager.settings.showHiddenSeries = value);
+                context.read<LibraryScreenViewModel>().invalidateSortCache();
+              },
+            ),
+          ),
+
+          // Toggle for showing series hidden from AniList status lists
+          NormalSwitch(
+            ToggleSwitch(
+              checked: Manager.settings.showAnilistHiddenSeries,
+              content: Flexible(
+                child: Text('Show series hidden from status lists', style: Manager.bodyStyle),
+              ),
+              onChanged: (value) {
+                setState(() => Manager.settings.showAnilistHiddenSeries = value);
+                context.read<LibraryScreenViewModel>().invalidateSortCache();
+              },
+            ),
+            tooltip: 'Show series hidden from status lists (these will only be visible in custom lists)',
+          ),
 
           // VDiv(24),
           // Text(

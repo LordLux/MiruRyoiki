@@ -2,7 +2,6 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/material.dart' as mat show Colors;
 import 'package:recase/recase.dart';
 
-import '../manager.dart';
 import '../models/anilist/user_data.dart';
 import '../services/anilist/provider/anilist_provider.dart';
 import '../services/library/library_provider.dart';
@@ -116,24 +115,6 @@ class AccountsViewModel extends ChangeNotifier {
     await _anilist.refreshUserLists();
 
     _isUserRefreshing = false;
-    _notify();
-  }
-
-  // Privacy settings
-  //
-  // SettingsManager notifies its own listeners on write (Home watches it);
-  // the Library screen additionally needs its sort cache invalidated — the
-  // screen does that via LibraryScreenViewModel after calling these.
-
-  bool get showHiddenSeries => Manager.settings.showHiddenSeries;
-  set showHiddenSeries(bool value) {
-    Manager.settings.showHiddenSeries = value;
-    _notify();
-  }
-
-  bool get showAnilistHiddenSeries => Manager.settings.showAnilistHiddenSeries;
-  set showAnilistHiddenSeries(bool value) {
-    Manager.settings.showAnilistHiddenSeries = value;
     _notify();
   }
 
