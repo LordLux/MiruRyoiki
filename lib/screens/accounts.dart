@@ -34,6 +34,8 @@ import '../utils/html/extensions/iframe.dart';
 import '../utils/html/extensions/unsupported.dart';
 import '../utils/logging.dart';
 import '../utils/screen.dart';
+import '../viewmodels/accounts_viewmodel.dart';
+import '../viewmodels/library_screen_viewmodel.dart';
 import '../widgets/activity_graph.dart';
 import '../widgets/animated_stats_counter.dart';
 import '../widgets/buttons/button.dart';
@@ -44,7 +46,6 @@ import '../widgets/page/header_widget.dart';
 import '../widgets/page/infobar.dart';
 import '../widgets/page/page_template.dart';
 import '../widgets/svg.dart';
-import '../main.dart';
 import '../widgets/tooltip_wrapper.dart';
 import 'settings.dart';
 
@@ -58,13 +59,11 @@ class AccountsScreen extends StatefulWidget {
 }
 
 class AccountsScreenState extends State<AccountsScreen> with AutomaticKeepAliveClientMixin {
-  bool isLocalLoading = false;
-  bool _seriesLoading = false;
-  bool _userLoading = false;
   bool _aboutExpanded = false;
 
-  bool _showHiddenSeries = false;
-  bool _showAnilistHiddenSeries = false;
+  /// Async action states, auth actions, and presentation helpers live here;
+  /// the user data itself lives in [AnilistProvider].
+  AccountsViewModel get _vm => context.read<AccountsViewModel>();
 
   @override
   bool get wantKeepAlive => true;
@@ -72,31 +71,7 @@ class AccountsScreenState extends State<AccountsScreen> with AutomaticKeepAliveC
   @override
   void initState() {
     super.initState();
-    _showHiddenSeries = Manager.settings.showHiddenSeries;
-    _showAnilistHiddenSeries = Manager.settings.showAnilistHiddenSeries;
-    _loadUserData();
-  }
-
-  Future<void> _loadUserData() async {
-    final anilistProvider = Provider.of<AnilistProvider>(context, listen: false);
-    if (anilistProvider.isLoggedIn && anilistProvider.currentUser?.userData == null) {
-      // Only load if we're logged in but don't have the detailed data yet
-      setState(() => isLocalLoading = true);
-
-      try {
-        await anilistProvider.refreshUserData();
-        await anilistProvider.refreshUserLists();
-      } catch (e, stackTrace) {
-        // Log the error but don't let it affect the UI
-        logErr('Error refreshing user data', e, stackTrace);
-        // Show a snackbar to inform the user
-        snackBar(
-          'Failed to refresh user data. Please try again later.',
-          severity: InfoBarSeverity.warning,
-        );
-      }
-    }
-    setState(() => isLocalLoading = false);
+    _vm.ensureUserDataLoaded();
   }
 
   HeaderWidget header({required AnilistProvider anilistProvider, required bool isLoggedIn}) {
@@ -199,7 +174,8 @@ class AccountsScreenState extends State<AccountsScreen> with AutomaticKeepAliveC
   @override
   Widget build(BuildContext context) {
     super.build(context); // for AutomaticKeepAliveClientMixin
-    
+
+    context.watch<AccountsViewModel>(); // rebuild on action-state changes
     final anilistProvider = Provider.of<AnilistProvider>(context, listen: true);
     final isLoggedIn = anilistProvider.isLoggedIn;
 
@@ -275,20 +251,15 @@ class AccountsScreenState extends State<AccountsScreen> with AutomaticKeepAliveC
       // Toggle for showing hidden series
       NormalSwitch(
         ToggleSwitch(
-          checked: _showHiddenSeries,
+          checked: _vm.showHiddenSeries,
           content: Flexible(
             child: Text('Show hidden series', style: Manager.bodyStyle),
           ),
           onChanged: (value) {
-            setState(() {
-              _showHiddenSeries = value;
-              Manager.settings.showHiddenSeries = value;
-            });
-
-            libraryScreenKey.currentState?.setState(() => libraryScreenKey.currentState?.invalidateSortCache());
-            releaseCalendarScreenKey.currentState?.setState(() {});
-            homeKey.currentState?.setState(() {});
-            // Notification dialog not needed as it would be closed at the time this widget gets interacted with
+            _vm.showHiddenSeries = value;
+            // SettingsManager notifies its watchers (e.g. Home)
+            // the Library grid additionally needs its sort cache invalidated + rebuilt
+            context.read<LibraryScreenViewModel>().invalidateSortCache();
           },
         ),
       ),
@@ -296,20 +267,13 @@ class AccountsScreenState extends State<AccountsScreen> with AutomaticKeepAliveC
       // Toggle for showing hidden series
       NormalSwitch(
         ToggleSwitch(
-          checked: _showAnilistHiddenSeries,
+          checked: _vm.showAnilistHiddenSeries,
           content: Flexible(
             child: Text('Show series hidden from status lists', style: Manager.bodyStyle),
           ),
           onChanged: (value) {
-            setState(() {
-              _showAnilistHiddenSeries = value;
-              Manager.settings.showAnilistHiddenSeries = value;
-            });
-
-            libraryScreenKey.currentState?.setState(() => libraryScreenKey.currentState?.invalidateSortCache());
-            releaseCalendarScreenKey.currentState?.setState(() {});
-            homeKey.currentState?.setState(() {});
-            // Notification dialog not needed as it would be closed at the time this widget gets interacted with
+            _vm.showAnilistHiddenSeries = value;
+            context.read<LibraryScreenViewModel>().invalidateSortCache();
           },
         ),
         tooltip: 'Show series hidden from status lists (these will only be visible in custom lists)',
@@ -322,34 +286,19 @@ class AccountsScreenState extends State<AccountsScreen> with AutomaticKeepAliveC
       LoadingButton(
         expand: true,
         isSmall: true,
-        isLoading: _seriesLoading,
+        isLoading: _vm.isSeriesRefreshing,
         tooltip: 'Refresh Series Metadata',
         label: 'Refresh Series Metadata',
-        onPressed: () async {
-          if (_seriesLoading || anilistProvider.isLoading || !mounted) return;
-          setState(() => _seriesLoading = true);
-
-          final library = Provider.of<Library>(context, listen: false);
-          await library.refreshAllMetadata();
-
-          if (mounted) setState(() => _seriesLoading = false);
-        },
+        onPressed: () => _vm.refreshSeriesMetadata(),
       ),
       VDiv(8),
       LoadingButton(
         expand: true,
         isSmall: true,
-        isLoading: _userLoading || anilistProvider.isLoading,
+        isLoading: _vm.isUserRefreshing || anilistProvider.isLoading,
         tooltip: 'Refresh User Data',
         label: 'Refresh User Data',
-        onPressed: () async {
-          if (_userLoading || anilistProvider.isLoading) return;
-          setState(() => _userLoading = true);
-
-          await anilistProvider.refreshUserLists();
-
-          setState(() => _userLoading = false);
-        },
+        onPressed: () => _vm.refreshUserLists(),
       ),
       VDiv(8),
       SizedBox(
@@ -368,9 +317,8 @@ class AccountsScreenState extends State<AccountsScreen> with AutomaticKeepAliveC
               title: 'Logout from Anilist',
               body: 'Are you sure you want to logout from Anilist?',
               onPositive: () async {
-                await anilistProvider.logout();
-                Manager.setState(() => isLocalLoading = false);
-                logInfo('User logged out of Anilist');
+                await _vm.logout();
+                Manager.setState();
               },
               positiveButtonText: 'Yes, Log Out',
               onNegative: () => logInfo('User cancelled Anilist logout'),
@@ -383,6 +331,7 @@ class AccountsScreenState extends State<AccountsScreen> with AutomaticKeepAliveC
 
 // Rename AnilistAccount to buildMainContent and update it
   Widget buildMainContent(AnilistProvider anilistProvider) {
+    final bool isLocalLoading = _vm.isInitialLoading;
     final bool isButtonDisabled = isLocalLoading || anilistProvider.isLoading || anilistProvider.isLoggedIn;
 
     return Column(
@@ -425,15 +374,12 @@ class AccountsScreenState extends State<AccountsScreen> with AutomaticKeepAliveC
                       onPressed: () async {
                         if (isLoadHovering) {
                           // Cancel the login attempt
-                          setState(() => isLocalLoading = false);
-                          anilistProvider.cancelLogin();
+                          _vm.cancelLogin();
                           return;
                         }
 
-                        if (isLocalLoading) return;
-                        isLocalLoading = true;
-                        await anilistProvider.login();
-                        logInfo('User logging in to Anilist...');
+                        if (_vm.isInitialLoading) return;
+                        await _vm.login();
                         Manager.setState();
                       },
                     );
@@ -545,7 +491,7 @@ class AccountsScreenState extends State<AccountsScreen> with AutomaticKeepAliveC
                               ),
                               child: mat.SelectionArea(
                                 child: Html(
-                                  data: _convertMarkupToHtml(userData.about!, constraints.maxWidth),
+                                  data: AccountsViewModel.convertMarkupToHtml(userData.about!, constraints.maxWidth),
                                   style: {
                                     "body": Style(
                                       fontSize: FontSize(Manager.bodyStyle.fontSize!),
@@ -632,7 +578,7 @@ class AccountsScreenState extends State<AccountsScreen> with AutomaticKeepAliveC
                         Container(
                           width: 16,
                           height: 16,
-                          color: _parseProfileColor(userData.options!.profileColor!),
+                          color: AccountsViewModel.parseProfileColor(userData.options!.profileColor!, fallback: Manager.accentColor.lighter),
                           margin: const EdgeInsets.only(right: 8),
                         ),
                         Text(userData.options!.profileColor!, style: Manager.bodyStyle),
@@ -701,10 +647,10 @@ class AccountsScreenState extends State<AccountsScreen> with AutomaticKeepAliveC
             SizedBox(
               width: clampedCardWidth,
               child: _statCard(
-                "${_formatMinutes(animeStats.minutesWatched ?? 0).$1} Watched",
-                _formatMinutes(animeStats.minutesWatched ?? 0).$2,
+                "${AccountsViewModel.formatMinutes(animeStats.minutesWatched ?? 0).$1} Watched",
+                AccountsViewModel.formatMinutes(animeStats.minutesWatched ?? 0).$2,
                 icon: const Icon(FluentIcons.clock),
-                suffix: _formatMinutes(animeStats.minutesWatched ?? 0).$1,
+                suffix: AccountsViewModel.formatMinutes(animeStats.minutesWatched ?? 0).$1,
               ),
             ),
             SizedBox(
@@ -744,31 +690,15 @@ class AccountsScreenState extends State<AccountsScreen> with AutomaticKeepAliveC
     final userData = anilistProvider.currentUser?.userData;
     final animeStats = userData?.statistics?.anime;
 
-    int statusTotal = 0;
-    int formatTotal = 0;
     final double preferWhiteThreshold = 0.05;
     final double preferBlackThreshold = 0.5;
 
     if (animeStats == null || animeStats.formats == null || animeStats.formats!.isEmpty) //
       return Text('No distributions available', style: Manager.bodyStyle);
 
-    // Format the data for the pie charts
-    Map<String, double> formatDistribution = {};
-    if (animeStats.formats != null) {
-      for (FormatStatistic format in animeStats.formats!) {
-        formatDistribution[format.formatPretty ?? 'Unknown'] = (format.count ?? 0).toDouble();
-        formatTotal += format.count ?? 0;
-      }
-    }
-
-    // For status distribution
-    Map<String, double> statusDistribution = {};
-    if (animeStats.statuses != null) {
-      for (StatusStatistic status in animeStats.statuses!) {
-        statusDistribution[status.statusPretty?.titleCase ?? 'Unknown'] = (status.count ?? 0).toDouble();
-        statusTotal += status.count ?? 0;
-      }
-    }
+    // Aggregate the data for the pie charts
+    final (formatDistribution, formatTotal) = AccountsViewModel.formatDistribution(animeStats.formats);
+    final (statusDistribution, statusTotal) = AccountsViewModel.statusDistribution(animeStats.statuses);
 
     Widget statusDistributionWidget = Row(
       children: [
@@ -1287,124 +1217,6 @@ class AccountsScreenState extends State<AccountsScreen> with AutomaticKeepAliveC
     );
   }
 
-  //
-
-  // Add this method to your AccountsScreenState class
-
-  String _convertMarkupToHtml(String text, double maxwidth) {
-    // Replace YouTube links
-    text = RegExp(r'youtube\(([^)]+)\)').allMatches(text).fold(
-          text,
-          (t, match) => t.replaceRange(
-            match.start,
-            match.end,
-            '<iframe width="$maxwidth" height="${maxwidth * 0.5625}" src="https://www.youtube.com/embed/${match.group(1)?.split("/").last}" frameborder="0" allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>',
-          ),
-        );
-
-    // Replace images
-    text = RegExp(r'img220\(([^)]+)\)').allMatches(text).fold(
-          text,
-          (t, match) => t.replaceRange(
-            match.start,
-            match.end,
-            '<img src="${match.group(1)}" style="max-width:220px;" />',
-          ),
-        );
-
-    // Replace markdown links [text](url)
-    text = RegExp(r'\[([^\]]+)\]\(([^)]+)\)').allMatches(text).fold(
-          text,
-          (t, match) => t.replaceRange(
-            match.start,
-            match.end,
-            '<a href="${match.group(2)}">${match.group(1)}</a>',
-          ),
-        );
-
-    // Replace webm videos
-    text = RegExp(r'webm\(([^)]+)\)').allMatches(text).fold(
-          text,
-          (t, match) => t.replaceRange(
-            match.start,
-            match.end,
-            '<unsupported>Unfortunately, webm videos are not supported on Flutter Windows</unsupported>',
-          ),
-        );
-
-    // Replace code blocks with HTML
-    text = text.replaceAllMapped(
-      RegExp(r'`([\s\S]*?)`', dotAll: true),
-      (match) => match.group(1)!,
-    );
-
-    // Bold text
-    text = text.replaceAllMapped(
-      RegExp(r'__([^_]+)__'),
-      (match) => '<b>${match.group(1)}</b>',
-    );
-
-    // Italic text
-    text = text.replaceAllMapped(
-      RegExp(r'_([^_]+)_'),
-      (match) => '<i>${match.group(1)}</i>',
-    );
-
-    // Strikethrough text
-    text = text.replaceAllMapped(
-      RegExp(r'~~([^~]+)~~'),
-      (match) => '<s>${match.group(1)}</s>',
-    );
-
-    // Spoiler text
-    text = text.replaceAllMapped(
-      RegExp(r'~!([^~]+)!~'),
-      (match) => '<spoiler>${match.group(1)}</spoiler>',
-    );
-
-    // Code blocks
-    final codeBlockPattern = RegExp(r'(^> .+$\n?)+', multiLine: true);
-    text = text.replaceAllMapped(codeBlockPattern, (match) {
-      final codeContent = match.group(0)!.split('\n').where((line) => line.trim().isNotEmpty).map((line) => line.startsWith('> ') ? line.substring(2) : line).join('<br>'); // Use <br> directly for code block newlines
-      return '<code>$codeContent</code>';
-    });
-
-    // Preserve newlines (convert to HTML line breaks)
-    text = text.replaceAll('\n', '<br>');
-
-    return text;
-  }
-
-  (String, int) _formatMinutes(int minutes) {
-    final hours = minutes ~/ 60;
-    final days = hours ~/ 24;
-
-    if (days > 0) return (' Days', days);
-    if (hours > 0) return (' Hours', hours);
-    return (' Minutes', minutes);
-  }
-
-  Color _parseProfileColor(String color) {
-    switch (color.toLowerCase()) {
-      case 'blue':
-        return mat.Colors.blue;
-      case 'purple':
-        return mat.Colors.purple;
-      case 'pink':
-        return mat.Colors.pink;
-      case 'orange':
-        return mat.Colors.orange;
-      case 'red':
-        return mat.Colors.red;
-      case 'green':
-        return mat.Colors.green;
-      case 'gray':
-      case 'grey':
-        return mat.Colors.grey;
-      default:
-        return Manager.accentColor.lighter; // Fallback to accent color if unknown
-    }
-  }
 }
 
 class AnilistCardTitle extends StatelessWidget {
