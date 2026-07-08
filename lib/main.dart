@@ -47,6 +47,7 @@ import 'viewmodels/accounts_viewmodel.dart';
 import 'viewmodels/downloads_viewmodel.dart';
 import 'viewmodels/home_viewmodel.dart';
 import 'viewmodels/library_screen_viewmodel.dart';
+import 'viewmodels/notifications_viewmodel.dart';
 import 'viewmodels/release_calendar_viewmodel.dart';
 import 'services/connectivity/connectivity_service.dart';
 import 'services/navigation/statusbar.dart';
@@ -224,6 +225,14 @@ void main(List<String> args) async {
             },
           ),
           ChangeNotifierProvider(create: (_) => DownloadsViewModel()),
+          ChangeNotifierProxyProvider<Library, NotificationsViewModel>(
+            create: (context) => NotificationsViewModel()..update(context.read<Library>()),
+            update: (context, library, previous) {
+              final vm = previous ?? NotificationsViewModel();
+              vm.update(library);
+              return vm;
+            },
+          ),
           ChangeNotifierProvider(create: (_) => ConnectivityService(), lazy: false),
           ChangeNotifierProvider.value(value: _appTheme),
           ChangeNotifierProvider.value(value: _settings),

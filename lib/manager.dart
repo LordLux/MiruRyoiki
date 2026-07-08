@@ -2,7 +2,6 @@ import 'dart:io';
 
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/foundation.dart';
-import 'package:miruryoiki/database/database.dart';
 import 'package:miruryoiki/main.dart';
 import 'package:miruryoiki/services/library/library_provider.dart';
 import 'package:provider/provider.dart';
@@ -30,9 +29,8 @@ class Manager {
     Future.delayed(Duration(seconds: 1), () => Manager.isHotRestart = false);
   }
 
-  static Future<void> closeDB() async => await db.close();
-
-  static AppDatabase get db => Provider.of<Library>(context, listen: false).database;
+  /// Closes the database on app shutdown
+  static Future<void> closeDB() async => await Provider.of<Library>(context, listen: false).database.close();
 
   static const String appTitle = "MiruRyoiki";
   static late final String appVersion;

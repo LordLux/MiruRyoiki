@@ -8,14 +8,12 @@ import 'package:miruryoiki/widgets/tooltip_wrapper.dart';
 import 'package:provider/provider.dart';
 
 import '../manager.dart';
-import '../models/notification.dart';
 import '../services/anilist/provider/anilist_provider.dart';
-import '../services/anilist/queries/anilist_service.dart';
-import '../services/library/library_provider.dart';
 import '../services/navigation/dialogs2.dart';
 import '../services/navigation/navigation.dart';
 import '../utils/screen.dart';
 import '../utils/time.dart';
+import '../viewmodels/notifications_viewmodel.dart';
 import 'animated_icon.dart' as anim_icon;
 import 'dialogs/notifications.dart';
 import 'dialogs/show_dialog.dart';
@@ -35,10 +33,10 @@ class ReleaseNotificationWidget extends StatefulWidget {
 }
 
 class _ReleaseNotificationWidgetState extends State<ReleaseNotificationWidget> {
-  AnilistService? _anilistService;
   bool _notificationsOpen = false;
-  int _unreadCount = 0;
   Timer? _refreshTimer;
+
+  NotificationsViewModel get _vm => context.read<NotificationsViewModel>();
 
   @override
   void initState() {
@@ -56,13 +54,12 @@ class _ReleaseNotificationWidgetState extends State<ReleaseNotificationWidget> {
     try {
       final anilistProvider = Provider.of<AnilistProvider>(context, listen: false);
       if (anilistProvider.isLoggedIn) {
-        _anilistService = AnilistService();
-        await _loadNotifications();
+        await _vm.refreshUnreadCount();
 
         // Set up a periodic refresh for notifications
         _refreshTimer = Timer.periodic(const Duration(minutes: 5), (timer) {
-          if (mounted && _anilistService != null) {
-            _loadNotifications();
+          if (mounted) {
+            _vm.refreshUnreadCount();
           } else {
             timer.cancel();
           }
@@ -71,39 +68,6 @@ class _ReleaseNotificationWidgetState extends State<ReleaseNotificationWidget> {
     } catch (e) {
       // Prevent notification initialization errors from crashing the app
       debugPrint('Error initializing notification service: $e');
-    }
-  }
-
-  Future<void> _loadNotifications() async {
-    if (_anilistService == null) return;
-
-    final library = Provider.of<Library>(context, listen: false);
-    try {
-      // First, try to sync fresh notifications from the API
-      // This may return null or empty list if offline
-      await _anilistService!.syncNotifications(
-        database: library.database,
-        types: [NotificationType.AIRING, NotificationType.RELATED_MEDIA_ADDITION, NotificationType.MEDIA_DATA_CHANGE],
-        maxPages: 2,
-      );
-
-      // Get the actual unread count from database
-      final unreadCount = await _anilistService!.getUnreadCount(library.database);
-      if (mounted) {
-        setState(() {
-          _unreadCount = unreadCount;
-        });
-      }
-    } catch (e) {
-      // If there's any error/we are offline, use cached count
-      try {
-        final unreadCount = await _anilistService!.getUnreadCount(library.database);
-        if (mounted) {
-          setState(() {
-            _unreadCount = unreadCount;
-          });
-        }
-      } catch (_) {}
     }
   }
 
@@ -131,56 +95,56 @@ class _ReleaseNotificationWidgetState extends State<ReleaseNotificationWidget> {
       if (!context.mounted) return;
 
       await showPaddedDialog(
-      context,
-      navigationItem: DialogNavigationItem(
-        id: 'system:notifications',
-        title: 'Notifications',
-        data: {"darkenTitleBar": false},
-        onDismiss: () async {
-          Manager.notificationsPopping = true;
-          await Future.delayed(dimDuration);
-          Manager.notificationsPopping = false;
-        },
-      ),
-      barrierOptions: PaddedBarrierOptions(
-        userDismissable: true,
-        barrierColor: Colors.transparent,
-        exactColor: true,
-        transluscentBarrier: true,
-      ),
-      builder: (ctx, item, option) {
-        const boxConstraints = BoxConstraints(maxWidth: 480, maxHeight: 513);
+        context,
+        navigationItem: DialogNavigationItem(
+          id: 'system:notifications',
+          title: 'Notifications',
+          data: {"darkenTitleBar": false},
+          onDismiss: () async {
+            Manager.notificationsPopping = true;
+            await Future.delayed(dimDuration);
+            Manager.notificationsPopping = false;
+          },
+        ),
+        barrierOptions: PaddedBarrierOptions(
+          userDismissable: true,
+          barrierColor: Colors.transparent,
+          exactColor: true,
+          transluscentBarrier: true,
+        ),
+        builder: (ctx, item, option) {
+          const boxConstraints = BoxConstraints(maxWidth: 480, maxHeight: 513);
 
-        return PaddedDialog.frosted(
-          navigationItem: item,
-          barrierOptions: option,
-          constraints: boxConstraints,
-          padding: EdgeInsets.only(right: 36, top: 16),
-          content: NotificationsContent(
-            key: notificationsContentKey,
-            onMorePressed: widget.onMorePressed,
+          return PaddedDialog.frosted(
+            navigationItem: item,
+            barrierOptions: option,
             constraints: boxConstraints,
-          ),
-          alignment: Alignment.topRight,
-        );
-      },
-      transitionBuilder: (context, animation, secondaryAnimation, child) {
-        return ScaleTransition(
-          alignment: alignmentFromPixels(ScreenUtils.width - 155, 25, ScreenUtils.screenSize), // Top-right corner
-          scale: CurvedAnimation(
-            parent: Tween<double>(
-              begin: 0,
-              end: 1,
-            ).animate(animation),
-            curve: Curves.easeOut,
-          ),
-          child: child,
-        );
-      },
-    ).then((_) => _notificationsOpen = false);
+            padding: EdgeInsets.only(right: 36, top: 16),
+            content: NotificationsContent(
+              key: notificationsContentKey,
+              onMorePressed: widget.onMorePressed,
+              constraints: boxConstraints,
+            ),
+            alignment: Alignment.topRight,
+          );
+        },
+        transitionBuilder: (context, animation, secondaryAnimation, child) {
+          return ScaleTransition(
+            alignment: alignmentFromPixels(ScreenUtils.width - 155, 25, ScreenUtils.screenSize), // Top-right corner
+            scale: CurvedAnimation(
+              parent: Tween<double>(
+                begin: 0,
+                end: 1,
+              ).animate(animation),
+              curve: Curves.easeOut,
+            ),
+            child: child,
+          );
+        },
+      ).then((_) => _notificationsOpen = false);
 
       // Refresh the unread count after the dialog is closed
-      await _loadNotifications();
+      await _vm.refreshUnreadCount();
     } catch (e) {
       _isDialogToggling = false;
       _notificationsOpen = false;
@@ -190,14 +154,16 @@ class _ReleaseNotificationWidgetState extends State<ReleaseNotificationWidget> {
 
   @override
   Widget build(BuildContext context) {
+    final unreadCount = context.watch<NotificationsViewModel>().unreadCount;
+
     return Consumer<AnilistProvider>(
       builder: (context, anilistProvider, child) {
         // Always show the notification button, but enable it based on auth state
-        final hasNotifications = _unreadCount > 0;
+        final hasNotifications = unreadCount > 0;
         final isEnabled = anilistProvider.isLoggedIn;
 
         return TooltipWrapper(
-          tooltip: isEnabled ? (hasNotifications ? '$_unreadCount unread notification${_unreadCount > 1 ? 's' : ''}' : 'No unread notifications') : 'Login to Anilist to see notifications',
+          tooltip: isEnabled ? (hasNotifications ? '$unreadCount unread notification${unreadCount > 1 ? 's' : ''}' : 'No unread notifications') : 'Login to Anilist to see notifications',
           preferBelow: true,
           waitDuration: dimDuration,
           child: (_) => IconButton(
