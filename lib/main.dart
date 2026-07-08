@@ -1156,10 +1156,10 @@ void _ensureSingleInstance() async {
   if (!(await FlutterSingleInstance().isFirstInstance())) {
     if (kDebugMode) print("App is already running");
 
-    final err = await FlutterSingleInstance().focus();
+    await MyWindowListener.restoreFromTray();
 
     // ignore: avoid_print
-    if (err != null) print("Error focusing running instance: $err");
+    // if (err != null) print("Error focusing running instance: $err");
     exit(0);
   }
 }
