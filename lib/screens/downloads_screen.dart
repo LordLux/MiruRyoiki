@@ -1,7 +1,7 @@
-import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:collection/collection.dart';
+import 'package:provider/provider.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:fluent_ui/fluent_ui.dart' hide Colors, FilledButton, ButtonStyle;
 import 'package:flutter/material.dart' hide Card, Divider, Tooltip, ListTile, IconButton, showDialog;
@@ -12,13 +12,12 @@ import '../services/downloads/download_controller.dart';
 import '../services/downloads/torrent_client.dart';
 import '../services/downloads/torrent_manager.dart';
 import '../services/navigation/navigation.dart';
-import '../services/navigation/show_info.dart';
 import '../services/sonarr/sonarr_service.dart';
 import '../settings.dart';
-import '../utils/logging.dart';
 import '../utils/time.dart';
 import '../utils/units.dart';
 import '../utils/screen.dart';
+import '../viewmodels/downloads_viewmodel.dart';
 import '../widgets/buttons/button.dart';
 import '../widgets/page/page_template.dart';
 import '../widgets/context_menu/controller.dart';
@@ -33,20 +32,6 @@ const double _kPctColumnWidth = 37; // "100.0%"
 const double _kSizeColumnWidth = 72; // "1023.99 GB"
 const double _kAddedColumnWidth = 86; // "Added 99mo ago"
 const double _kSeedLeechColumnWidth = 100; // "S: 9999  L: 9999"
-
-String _stateLabel(TorrentState state) {
-  return switch (state) {
-    TorrentState.downloading => 'Downloading',
-    TorrentState.seeding => 'Seeding',
-    TorrentState.paused => 'Paused',
-    TorrentState.queued => 'Queued',
-    TorrentState.checking => 'Checking',
-    TorrentState.stalled => 'Stalled',
-    TorrentState.completed => 'Completed',
-    TorrentState.error => 'Error',
-    TorrentState.unknown => 'Unknown',
-  };
-}
 
 class DownloadsScreen extends StatefulWidget {
   final DownloadController? controller;
@@ -64,19 +49,10 @@ class DownloadsScreen extends StatefulWidget {
   State<DownloadsScreen> createState() => DownloadsScreenState();
 }
 
-enum _SortMode { status, name, addedOn, progress, size }
-
-enum _DownloadFilter { all, downloading, seeding, completed, running, stopped, stalled, errored }
-
 class DownloadsScreenState extends State<DownloadsScreen> {
-  List<TorrentInfo> _torrents = [];
-  bool _isLoading = false;
-  String? _error;
-  Timer? _refreshTimer;
-  _SortMode _sortMode = _SortMode.status;
-  bool _sortAscending = true;
-  _DownloadFilter _filterState = _DownloadFilter.all;
   bool _graphExpanded = true;
+
+  late final DownloadsViewModel _vm;
 
   @override
   void activate() {
@@ -90,115 +66,20 @@ class DownloadsScreenState extends State<DownloadsScreen> {
     super.initState();
     NavigationManager.registerActiveScrollController('torrent', widget.scrollController);
     NavigationManager.restoreScrollOffset('torrent', widget.scrollController);
-    _fetchTorrents();
-    _refreshTimer = Timer.periodic(const Duration(seconds: 3), (_) => _fetchTorrents(silent: true));
+    _vm = context.read<DownloadsViewModel>();
+    _vm.startPolling();
   }
 
   @override
   void dispose() {
-    _refreshTimer?.cancel();
+    _vm.stopPolling();
     super.dispose();
-  }
-
-  Future<void> _fetchTorrents({bool silent = false}) async {
-    final client = TorrentManager.torrentClient;
-    if (client == null) return;
-
-    if (!silent)
-      setState(() {
-        _isLoading = true;
-        _error = null;
-      });
-
-    try {
-      final list = await client.listTorrents();
-      if (mounted) {
-        setState(() {
-          _torrents = list;
-          _isLoading = false;
-          _error = null;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-          if (!silent) _error = e.toString();
-        });
-        if (!silent) logDebug('Failed to fetch torrents: $e');
-      }
-    }
-  }
-
-  Future<void> _pauseTorrent(TorrentInfo torrent) async {
-    final client = TorrentManager.torrentClient;
-    if (client == null) return;
-    try {
-      await client.pauseTorrent(torrent.hash);
-      _fetchTorrents(silent: true);
-    } catch (e) {
-      snackBar('Failed to pause: $e', severity: InfoBarSeverity.error);
-    }
-  }
-
-  Future<void> _resumeTorrent(TorrentInfo torrent) async {
-    final client = TorrentManager.torrentClient;
-    if (client == null) return;
-    try {
-      await client.resumeTorrent(torrent.hash);
-      _fetchTorrents(silent: true);
-    } catch (e) {
-      snackBar('Failed to resume: $e', severity: InfoBarSeverity.error);
-    }
-  }
-
-  static const _statusPriority = {
-    TorrentState.downloading: 0,
-    TorrentState.seeding: 1,
-    TorrentState.stalled: 2,
-    TorrentState.error: 3,
-    TorrentState.paused: 4,
-    TorrentState.queued: 5,
-    TorrentState.checking: 6,
-    TorrentState.completed: 7,
-    TorrentState.unknown: 8,
-  };
-
-  List<TorrentInfo> get _sortedTorrents {
-    var list = switch (_filterState) {
-      _DownloadFilter.all => List.of(_torrents),
-      _DownloadFilter.downloading => _torrents.where((t) => t.state == TorrentState.downloading).toList(),
-      _DownloadFilter.seeding => _torrents.where((t) => t.state == TorrentState.seeding).toList(),
-      _DownloadFilter.completed => _torrents.where((t) => t.state == TorrentState.completed).toList(),
-      _DownloadFilter.running => _torrents.where((t) => t.state == TorrentState.downloading || t.state == TorrentState.seeding).toList(),
-      _DownloadFilter.stopped => _torrents.where((t) => t.state == TorrentState.paused).toList(),
-      _DownloadFilter.stalled => _torrents.where((t) => t.state == TorrentState.stalled).toList(),
-      _DownloadFilter.errored => _torrents.where((t) => t.state == TorrentState.error).toList(),
-    };
-
-    list.sort((a, b) {
-      int cmp;
-      switch (_sortMode) {
-        case _SortMode.status:
-          cmp = (_statusPriority[a.state] ?? 9).compareTo(_statusPriority[b.state] ?? 9);
-          if (cmp == 0) cmp = (b.addedOn ?? DateTime(0)).compareTo(a.addedOn ?? DateTime(0));
-        case _SortMode.name:
-          cmp = a.name.toLowerCase().compareTo(b.name.toLowerCase());
-        case _SortMode.addedOn:
-          cmp = (b.addedOn ?? DateTime(0)).compareTo(a.addedOn ?? DateTime(0));
-        case _SortMode.progress:
-          cmp = b.progress.compareTo(a.progress);
-        case _SortMode.size:
-          cmp = b.size.compareTo(a.size);
-      }
-      return _sortAscending ? cmp : -cmp;
-    });
-
-    return list;
   }
 
   @override
   Widget build(BuildContext context) {
+    context.watch<DownloadsViewModel>(); // rebuild on torrent/filter/sort changes
+
     if (!TorrentManager.isEnabled) {
       return Center(
         child: Column(
@@ -229,32 +110,32 @@ class DownloadsScreenState extends State<DownloadsScreen> {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  if (_torrents.isNotEmpty) ...[
+                  if (_vm.torrents.isNotEmpty) ...[
                     Text(
-                      '${_torrents.where((t) => t.state == TorrentState.downloading).length} downloading, '
-                      '${_torrents.where((t) => t.state == TorrentState.seeding).length} seeding',
+                      '${_vm.downloadingCount} downloading, '
+                      '${_vm.seedingCount} seeding',
                       style: Manager.miniBodyStyle.copyWith(color: Colors.white.withValues(alpha: .5)),
                     ),
                     const SizedBox(width: 16),
                     Text('Sort by', style: Manager.bodyStyle.copyWith(color: Colors.white.withValues(alpha: .7))),
                     const SizedBox(width: 8),
-                    ComboBox<_SortMode>(
-                      value: _sortMode,
+                    ComboBox<DownloadSortMode>(
+                      value: _vm.sortMode,
                       items: const [
-                        ComboBoxItem(value: _SortMode.status, child: Text('Status')),
-                        ComboBoxItem(value: _SortMode.name, child: Text('Name')),
-                        ComboBoxItem(value: _SortMode.addedOn, child: Text('Added')),
-                        ComboBoxItem(value: _SortMode.progress, child: Text('Progress')),
-                        ComboBoxItem(value: _SortMode.size, child: Text('Size')),
+                        ComboBoxItem(value: DownloadSortMode.status, child: Text('Status')),
+                        ComboBoxItem(value: DownloadSortMode.name, child: Text('Name')),
+                        ComboBoxItem(value: DownloadSortMode.addedOn, child: Text('Added')),
+                        ComboBoxItem(value: DownloadSortMode.progress, child: Text('Progress')),
+                        ComboBoxItem(value: DownloadSortMode.size, child: Text('Size')),
                       ],
                       onChanged: (v) {
-                        if (v != null) setState(() => _sortMode = v);
+                        if (v != null) _vm.setSortMode(v);
                       },
                     ),
                     const SizedBox(width: 4),
                     IconButton(
-                      icon: Icon(_sortAscending ? Icons.arrow_upward : Icons.arrow_downward, size: 16),
-                      onPressed: () => setState(() => _sortAscending = !_sortAscending),
+                      icon: Icon(_vm.sortAscending ? Icons.arrow_upward : Icons.arrow_downward, size: 16),
+                      onPressed: () => _vm.toggleSortDirection(),
                     ),
                     const SizedBox(width: 16),
                   ],
@@ -262,8 +143,8 @@ class DownloadsScreenState extends State<DownloadsScreen> {
                     width: ScreenUtils.kDefaultButtonSize,
                     height: ScreenUtils.kDefaultButtonSize,
                     child: StandardButton.icon(
-                      icon: _isLoading ? const SizedBox(width: 14, height: 14, child: RepaintBoundary(child: CircularProgressIndicator(strokeWidth: 2))) : const Icon(Icons.refresh, size: 18),
-                      onPressed: _isLoading ? null : () => _fetchTorrents(),
+                      icon: _vm.isLoading ? const SizedBox(width: 14, height: 14, child: RepaintBoundary(child: CircularProgressIndicator(strokeWidth: 2))) : const Icon(Icons.refresh, size: 18),
+                      onPressed: _vm.isLoading ? null : () => _vm.fetchTorrents(),
                     ),
                   ),
                 ],
@@ -282,57 +163,57 @@ class DownloadsScreenState extends State<DownloadsScreen> {
                   title: 'All',
                   icon: Icons.all_inclusive,
                   color: Colors.white,
-                  isSelected: _filterState == _DownloadFilter.all,
-                  onPressed: () => setState(() => _filterState = _DownloadFilter.all),
+                  isSelected: _vm.filter == DownloadFilter.all,
+                  onPressed: () => _vm.setFilter(DownloadFilter.all),
                 ),
                 CategoryTileButton(
                   title: 'Downloading',
                   icon: Icons.arrow_downward,
                   color: const Color(0xFF4CAF50),
-                  isSelected: _filterState == _DownloadFilter.downloading,
-                  onPressed: () => setState(() => _filterState = _DownloadFilter.downloading),
+                  isSelected: _vm.filter == DownloadFilter.downloading,
+                  onPressed: () => _vm.setFilter(DownloadFilter.downloading),
                 ),
                 CategoryTileButton(
                   title: 'Seeding',
                   icon: Icons.arrow_upward,
                   color: const Color(0xFF2196F3),
-                  isSelected: _filterState == _DownloadFilter.seeding,
-                  onPressed: () => setState(() => _filterState = _DownloadFilter.seeding),
+                  isSelected: _vm.filter == DownloadFilter.seeding,
+                  onPressed: () => _vm.setFilter(DownloadFilter.seeding),
                 ),
                 CategoryTileButton(
                   title: 'Completed',
                   icon: Icons.check_circle,
                   color: const Color(0xFF9C27B0),
-                  isSelected: _filterState == _DownloadFilter.completed,
-                  onPressed: () => setState(() => _filterState = _DownloadFilter.completed),
+                  isSelected: _vm.filter == DownloadFilter.completed,
+                  onPressed: () => _vm.setFilter(DownloadFilter.completed),
                 ),
                 CategoryTileButton(
                   title: 'Running',
                   icon: Icons.play_arrow,
                   color: const Color(0xFF03A9F4),
-                  isSelected: _filterState == _DownloadFilter.running,
-                  onPressed: () => setState(() => _filterState = _DownloadFilter.running),
+                  isSelected: _vm.filter == DownloadFilter.running,
+                  onPressed: () => _vm.setFilter(DownloadFilter.running),
                 ),
                 CategoryTileButton(
                   title: 'Stopped',
                   icon: Icons.pause,
                   color: const Color(0xFF9E9E9E),
-                  isSelected: _filterState == _DownloadFilter.stopped,
-                  onPressed: () => setState(() => _filterState = _DownloadFilter.stopped),
+                  isSelected: _vm.filter == DownloadFilter.stopped,
+                  onPressed: () => _vm.setFilter(DownloadFilter.stopped),
                 ),
                 CategoryTileButton(
                   title: 'Stalled',
                   icon: Icons.hourglass_empty,
                   color: const Color(0xFFFF9800),
-                  isSelected: _filterState == _DownloadFilter.stalled,
-                  onPressed: () => setState(() => _filterState = _DownloadFilter.stalled),
+                  isSelected: _vm.filter == DownloadFilter.stalled,
+                  onPressed: () => _vm.setFilter(DownloadFilter.stalled),
                 ),
                 CategoryTileButton(
                   title: 'Errored',
                   icon: Icons.error,
                   color: const Color(0xFFF44336),
-                  isSelected: _filterState == _DownloadFilter.errored,
-                  onPressed: () => setState(() => _filterState = _DownloadFilter.errored),
+                  isSelected: _vm.filter == DownloadFilter.errored,
+                  onPressed: () => _vm.setFilter(DownloadFilter.errored),
                 ),
               ],
             ),
@@ -376,13 +257,13 @@ class DownloadsScreenState extends State<DownloadsScreen> {
   }
 
   Widget _buildContent(BoxConstraints constraints) {
-    if (_isLoading && _torrents.isEmpty) return const Center(child: ProgressRing());
+    if (_vm.isLoading && _vm.torrents.isEmpty) return const Center(child: ProgressRing());
 
     final hasGraph = TorrentManager.speedGraphService != null;
     final graphReservedHeight = hasGraph ? (_graphExpanded ? _kGraphExpandedHeight : _kGraphCollapsedHeight) + 40 : 0.0;
     final availableHeight = math.max(120.0, constraints.maxHeight - ScreenUtils.kTitleBarHeight - 166 - graphReservedHeight);
 
-    if (_error != null && _torrents.isEmpty) {
+    if (_vm.error != null && _vm.torrents.isEmpty) {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -397,11 +278,11 @@ class DownloadsScreenState extends State<DownloadsScreen> {
                   const SizedBox(height: 12),
                   Text('Failed to connect to ${TorrentManager.torrentClient?.clientName ?? "torrent client"}', style: Manager.bodyStrongStyle),
                   const SizedBox(height: 8),
-                  Text(_error!, style: Manager.miniBodyStyle.copyWith(color: Colors.white.withValues(alpha: .5))),
+                  Text(_vm.error!, style: Manager.miniBodyStyle.copyWith(color: Colors.white.withValues(alpha: .5))),
                   const SizedBox(height: 16),
                   StandardButton.label(
                     label: 'Retry',
-                    onPressed: () => _fetchTorrents(),
+                    onPressed: () => _vm.fetchTorrents(),
                   ),
                 ],
               ),
@@ -411,7 +292,7 @@ class DownloadsScreenState extends State<DownloadsScreen> {
       );
     }
 
-    if (_torrents.isEmpty) {
+    if (_vm.torrents.isEmpty) {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -435,7 +316,7 @@ class DownloadsScreenState extends State<DownloadsScreen> {
       );
     }
 
-    final sorted = _sortedTorrents;
+    final sorted = _vm.sortedTorrents;
 
     if (sorted.isEmpty) {
       String title = '';
@@ -443,44 +324,44 @@ class DownloadsScreenState extends State<DownloadsScreen> {
       IconData icon = Icons.filter_list_off;
       Color color = Colors.white;
 
-      switch (_filterState) {
-        case _DownloadFilter.downloading:
+      switch (_vm.filter) {
+        case DownloadFilter.downloading:
           title = 'No downloading torrents';
           subtitle = 'Torrents will appear here when they are actively downloading data.';
           icon = Icons.arrow_downward;
           color = const Color(0xFF4CAF50);
-        case _DownloadFilter.seeding:
+        case DownloadFilter.seeding:
           title = 'No seeding torrents';
           subtitle = 'Torrents will appear here when they have finished downloading and are uploading data.';
           icon = Icons.arrow_upward;
           color = const Color(0xFF2196F3);
-        case _DownloadFilter.completed:
+        case DownloadFilter.completed:
           title = 'No completed torrents';
           subtitle = 'Torrents will appear here once they reach their seed ratio or are fully complete.';
           icon = Icons.check_circle;
           color = const Color(0xFF9C27B0);
-        case _DownloadFilter.running:
+        case DownloadFilter.running:
           title = 'No running torrents';
           subtitle = 'Torrents will appear here when they are downloading or seeding.';
           icon = Icons.play_arrow;
           color = const Color(0xFF03A9F4);
-        case _DownloadFilter.stopped:
+        case DownloadFilter.stopped:
           title = 'No stopped torrents';
           subtitle = 'Torrents will appear here if you pause them or if they are stopped.';
           icon = Icons.pause;
           color = const Color(0xFF9E9E9E);
-        case _DownloadFilter.stalled:
+        case DownloadFilter.stalled:
           title = 'No stalled torrents';
           subtitle = 'Torrents will appear here if they are trying to download but have no active connections.';
           icon = Icons.hourglass_empty;
           color = const Color(0xFFFF9800);
-        case _DownloadFilter.errored:
+        case DownloadFilter.errored:
           title = 'No errored torrents';
           subtitle = 'Torrents will appear here if the client encounters an error with them.';
           icon = Icons.error;
           color = const Color(0xFFF44336);
-        case _DownloadFilter.all:
-          break; // Handled by _torrents.isEmpty catch above
+        case DownloadFilter.all:
+          break; // Handled by the torrents.isEmpty catch above
       }
 
       return Column(
@@ -517,9 +398,9 @@ class DownloadsScreenState extends State<DownloadsScreen> {
             .mapIndexed((int index, TorrentInfo torrent) => _TorrentTile(
                   isLast: index == sorted.length - 1,
                   torrent: torrent,
-                  onPause: _pauseTorrent,
-                  onResume: _resumeTorrent,
-                  onChanged: () => _fetchTorrents(silent: true),
+                  onPause: _vm.pauseTorrent,
+                  onResume: _vm.resumeTorrent,
+                  onChanged: () => _vm.fetchTorrents(silent: true),
                 )),
       ],
     );

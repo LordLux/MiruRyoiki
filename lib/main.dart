@@ -44,6 +44,7 @@ import 'widgets/release_notification.dart';
 import 'widgets/svg.dart';
 import 'services/anilist/provider/anilist_provider.dart';
 import 'viewmodels/accounts_viewmodel.dart';
+import 'viewmodels/downloads_viewmodel.dart';
 import 'viewmodels/home_viewmodel.dart';
 import 'viewmodels/library_screen_viewmodel.dart';
 import 'viewmodels/release_calendar_viewmodel.dart';
@@ -222,6 +223,7 @@ void main(List<String> args) async {
               return vm;
             },
           ),
+          ChangeNotifierProvider(create: (_) => DownloadsViewModel()),
           ChangeNotifierProvider(create: (_) => ConnectivityService(), lazy: false),
           ChangeNotifierProvider.value(value: _appTheme),
           ChangeNotifierProvider.value(value: _settings),

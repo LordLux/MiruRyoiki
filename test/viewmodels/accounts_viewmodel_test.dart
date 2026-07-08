@@ -44,8 +44,15 @@ void main() {
     });
 
     test('null/empty input yields empty data', () {
-      expect(AccountsViewModel.formatDistribution(null), (<String, double>{}, 0));
-      expect(AccountsViewModel.statusDistribution(null), (<String, double>{}, 0));
+      // Destructure instead of comparing records directly: record equality
+      // uses field ==, and two empty Maps are never == (identity equality).
+      final (formatData, formatTotal) = AccountsViewModel.formatDistribution(null);
+      expect(formatData, isEmpty);
+      expect(formatTotal, 0);
+
+      final (statusData, statusTotal) = AccountsViewModel.statusDistribution(null);
+      expect(statusData, isEmpty);
+      expect(statusTotal, 0);
     });
   });
 
@@ -79,9 +86,13 @@ void main() {
     });
 
     test('quote blocks become code blocks and newlines become <br>', () {
+      // The quote-block regex consumes its trailing newline, so 'plain'
+      // follows the code block directly.
       final html = AccountsViewModel.convertMarkupToHtml('> line1\n> line2\nplain', 400);
-      expect(html, contains('<code>line1<br>line2</code>'));
-      expect(html, contains('<br>plain'));
+      expect(html, '<code>line1<br>line2</code>plain');
+
+      // Newlines outside quote blocks become <br>
+      expect(AccountsViewModel.convertMarkupToHtml('one\ntwo', 400), 'one<br>two');
     });
   });
 }
