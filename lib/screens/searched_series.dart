@@ -8,6 +8,7 @@ import 'package:miruryoiki/models/anilist/anime_overview.dart';
 import 'package:miruryoiki/models/anilist/page_info.dart';
 import 'package:miruryoiki/widgets/acrylic_header.dart';
 import 'package:defer_pointer/defer_pointer.dart';
+import 'package:miruryoiki/widgets/buttons/wrapper.dart';
 import 'package:smooth_scroll_multiplatform/smooth_scroll_multiplatform.dart';
 import 'package:url_launcher/url_launcher.dart' show launchUrl;
 
@@ -17,6 +18,7 @@ import '../services/connectivity/connectivity_service.dart';
 import '../services/library/library_provider.dart';
 import '../services/navigation/navigation.dart';
 import '../services/navigation/shortcuts.dart';
+import '../services/navigation/show_info.dart';
 import '../utils/text.dart';
 import '../widgets/buttons/back_button.dart';
 import '../widgets/buttons/button.dart';
@@ -55,6 +57,8 @@ const Duration kAnilistCacheDuration = Duration(days: 1);
 
 Widget _kIdentityWrapper({required Widget child}) => child;
 
+enum CustomSearchType { genre, tag, studio }
+
 class SearchedSeriesScreen extends StatefulWidget {
   final String anilistUrl;
   final VoidCallback onBack;
@@ -76,7 +80,9 @@ class SearchedSeriesScreenState extends State<SearchedSeriesScreen> {
 
   int currentTabIndex = 0;
   bool _isFetching = true;
+  bool _showSpoilerTags = false;
   late final SimpleHtmlParser parser;
+  late final NavigationManager _navManager;
 
   final ShrinkerController _descriptionController = ShrinkerController();
 
@@ -233,11 +239,13 @@ class SearchedSeriesScreenState extends State<SearchedSeriesScreen> {
     nextFrame(() => _loadAnilistData());
     parser = SimpleHtmlParser(context);
 
+    _navManager = context.read<NavigationManager>();
+
     // Listen for intra-page back/forward restores
-    context.read<NavigationManager>().restoreNotifier.addListener(_onRestoreFromHistory);
+    _navManager.restoreNotifier.addListener(_onRestoreFromHistory);
 
     // Store pending viewState for deferred resolution after _initTabs
-    final viewState = context.read<NavigationManager>().currentView?.viewState;
+    final viewState = _navManager.currentView?.viewState;
     if (viewState != null) _pendingViewState = viewState;
   }
 
@@ -387,6 +395,7 @@ class SearchedSeriesScreenState extends State<SearchedSeriesScreen> {
   /// Resets all per-tab state when navigating to a new series
   void _resetTabState() {
     currentTabIndex = 0;
+    _showSpoilerTags = false;
     _tabNames.clear();
     _pages.clear();
     for (final c in _tabScrollControllers.values) c.dispose();
@@ -486,7 +495,7 @@ class SearchedSeriesScreenState extends State<SearchedSeriesScreen> {
 
   @override
   void dispose() {
-    context.read<NavigationManager>().restoreNotifier.removeListener(_onRestoreFromHistory);
+    _navManager.restoreNotifier.removeListener(_onRestoreFromHistory);
     for (final c in _tabScrollControllers.values) c.dispose();
     deferredPointerLink?.dispose();
     super.dispose();
@@ -648,8 +657,8 @@ class SearchedSeriesScreenState extends State<SearchedSeriesScreen> {
 
     if (inLibrary) return ('Go to Series', 'Open the series page in your Library', const Icon(Symbols.newsstand));
     if (inAnilist) return ('Add to Library', 'Add the series to your Library', const Icon(Symbols.library_add));
-    
-    return ('Add to Anilist', 'Add the series to Anilist', SizedBox(width: 25, height: 25, child: Transform.translate(offset: const Offset(0, 3), child: anilistLogo)));
+
+    return ('Add to your Anilist', 'Add the series to your Anilist', SizedBox(width: 25, height: 25, child: Transform.translate(offset: const Offset(0, 3), child: anilistLogo)));
   }
 
   MiruRyoikiInfobar _buildInfoBar(BuildContext context, AnimeOverview? series) {
@@ -675,9 +684,12 @@ class SearchedSeriesScreenState extends State<SearchedSeriesScreen> {
           final isInLibrary = isInAnilist && library.mappedAnilistIds.contains(anilistId);
 
           if (!_isFetching && anilistId > 0) {
-            if (isInLibrary) _buttonStatusCache[anilistId] = CachedButtonState.inLibrary;
-            else if (isInAnilist) _buttonStatusCache[anilistId] = CachedButtonState.inAnilist;
-            else _buttonStatusCache[anilistId] = CachedButtonState.neither;
+            if (isInLibrary)
+              _buttonStatusCache[anilistId] = CachedButtonState.inLibrary;
+            else if (isInAnilist)
+              _buttonStatusCache[anilistId] = CachedButtonState.inAnilist;
+            else
+              _buttonStatusCache[anilistId] = CachedButtonState.neither;
           }
 
           final (text, tooltip, icon) = _getAddToButtonText(anilistId, isInAnilist, isInLibrary);
@@ -735,7 +747,7 @@ class SearchedSeriesScreenState extends State<SearchedSeriesScreen> {
                 Icon(mat.Icons.open_in_new),
                 HDiv(4),
                 Text(
-                  'Open in Anilist',
+                  'Open on the Anilist Website',
                   style: getStyleBasedOnAccent(false),
                 ),
               ],
@@ -784,6 +796,72 @@ class SearchedSeriesScreenState extends State<SearchedSeriesScreen> {
   Widget _buildInfoBarContent(AnimeOverview? series) {
     final infos_ = getInfos(series);
     final genres = series?.genres ?? [];
+    final tags = [...(series?.tags ?? const <AnimeTag>[])];
+    tags.sort((a, b) {
+      final rankA = a.rank ?? -1;
+      final rankB = b.rank ?? -1;
+      return rankB.compareTo(rankA);
+    });
+    final spoilerTags = tags.where((tag) => tag.isGeneralSpoiler || tag.isMediaSpoiler).toList();
+    final visibleTags = _showSpoilerTags ? tags : tags.where((tag) => !spoilerTags.contains(tag)).toList();
+
+    Widget buildTagTile(AnimeTag tag) {
+      final bool isSpoiler = tag.isGeneralSpoiler || tag.isMediaSpoiler;
+      final AccentColor accent = Manager.currentDominantAccentColor ?? Manager.accentColor;
+
+      return MouseButtonWrapper(
+        cursor: SystemMouseCursors.click,
+        child: (isHovering) {
+          final Color backgroundColor = !isSpoiler && _showSpoilerTags ? Colors.white.withOpacity(0.035) : accent.light.withOpacity(0.10);
+          
+          final Color borderColor;
+          if (isSpoiler) {
+            borderColor = isHovering ? accent.lighter : accent.light;
+          } else {
+            borderColor = isHovering ? Colors.white.withOpacity(0.30) : Colors.white.withOpacity(0.12);
+          }
+
+          final Color textColor = isSpoiler && _showSpoilerTags ? Colors.white.withOpacity(0.72) : Colors.white;
+          final Color percentageColor = isSpoiler && _showSpoilerTags ? Colors.white.withOpacity(0.55) : Colors.white.withOpacity(0.78);
+
+          return mat.InkWell(
+            borderRadius: BorderRadius.circular(6),
+            highlightColor: accent.light.withOpacity(0.6),
+            hoverColor: accent.light.withOpacity(0.3),
+            onTap: () {},
+            child: AnimatedContainer(
+            duration: shortDuration,
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+            decoration: BoxDecoration(
+              color: backgroundColor,
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(color: borderColor, width: 1),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    tag.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Manager.captionStyle.copyWith(color: textColor),
+                  ),
+                ),
+                if (tag.rank != null) ...[
+                  const SizedBox(width: 12),
+                  Text(
+                    '${tag.rank}%',
+                    style: Manager.captionStyle.copyWith(color: percentageColor),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        );
+        },
+      );
+    }
 
     return SizedBox(
       width: double.infinity, // template takes care of constraints
@@ -836,14 +914,59 @@ class SearchedSeriesScreenState extends State<SearchedSeriesScreen> {
 
           // Genre tags
           if (genres.isNotEmpty) ...[
-            VDiv(16),
+            VDiv(8),
+            Text('Genres', style: Manager.bodyStrongStyle),
+            VDiv(8),
             Wrap(
               spacing: 8,
               runSpacing: 8,
-              children: genres.map((genre) => FluentPill(text: genre)).toList(),
+              children: genres
+                  .map(
+                    (genre) => FluentPill(
+                      text: genre,
+                      onTap: (tag) => _openCustomSearch(tag, type: CustomSearchType.genre),
+                    ),
+                  )
+                  .toList(),
             ),
             SizedBox(height: 8),
           ],
+
+          // Tags
+          if (tags.isNotEmpty) ...[
+            VDiv(8),
+            Text('Tags', style: Manager.bodyStrongStyle),
+            VDiv(8),
+            Column(
+              children: [
+                for (final tag in visibleTags) ...[
+                  buildTagTile(tag),
+                  const SizedBox(height: 4),
+                ],
+                if (spoilerTags.isNotEmpty)
+                  MouseRegion(
+                    cursor: SystemMouseCursors.click,
+                    child: GestureDetector(
+                      onTap: () => setState(() => _showSpoilerTags = !_showSpoilerTags),
+                      child: Padding(
+                        padding: const EdgeInsets.only(top: 2),
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            '${_showSpoilerTags ? 'Hide' : 'Show'} ${spoilerTags.length} spoiler tags',
+                            style: Manager.captionStyle.copyWith(
+                              color: (Manager.currentDominantAccentColor ?? Manager.accentColor).light,
+                              // decoration: TextDecoration.underline,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 4)
+          ]
         ],
       ),
     );
@@ -1794,5 +1917,24 @@ class SearchedSeriesScreenState extends State<SearchedSeriesScreen> {
         }),
       ),
     );
+  }
+
+  _openCustomSearch(String tag, {required CustomSearchType type}) {
+    String searchType;
+    switch (type) {
+      case CustomSearchType.genre:
+        searchType = 'genre';
+        break;
+      case CustomSearchType.tag:
+        searchType = 'tag';
+        break;
+      case CustomSearchType.studio:
+        searchType = 'studio';
+        break;
+    }
+    final query = '$searchType:$tag';
+    snackBar("Searching for '$query' is not implemented yet.", severity: InfoBarSeverity.warning);
+
+    // context.read<NavigationManager>().navigateToSearch(query: query);
   }
 }

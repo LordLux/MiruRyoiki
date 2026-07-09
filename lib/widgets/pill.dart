@@ -12,7 +12,7 @@ class Pill extends StatelessWidget {
   final String text;
   final String tooltip;
   final VoidCallback? onTap;
-  final bool isSelected;
+  final bool isHovering;
   final IconData? icon;
   final double iconSize;
   final double spacing;
@@ -20,6 +20,7 @@ class Pill extends StatelessWidget {
   final Color? selectedTextColor;
   final AccentColor backgroundColor;
   final AccentColor selectedBackgroundColor;
+  final MouseCursor? cursor;
 
   Pill({
     super.key,
@@ -33,7 +34,8 @@ class Pill extends StatelessWidget {
     this.onTap,
     this.spacing = 2,
     this.iconSize = 14,
-    this.isSelected = false,
+    this.isHovering = false,
+    this.cursor,
   })  : tooltip = tooltip ?? text,
         this.backgroundColor = backgroundColor ?? Colors.white.toAccentColor(),
         this.selectedBackgroundColor = selectedBackgroundColor ?? Manager.currentDominantAccentColor ?? Manager.accentColor;
@@ -44,18 +46,19 @@ class Pill extends StatelessWidget {
     final selectedTextColor_ = selectedTextColor ?? getTextColor(this.selectedBackgroundColor.light, preferBlack: 0.8);
     return MouseButtonWrapper(
       tooltip: tooltip,
+      cursor: cursor,
       tooltipWaitDuration: const Duration(milliseconds: 350),
-      child: (_) => mat.InkWell(
+      child: (isHovering) => mat.InkWell(
         borderRadius: BorderRadius.circular(4),
         onTap: onTap,
         child: AnimatedContainer(
           duration: shortDuration,
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
           decoration: BoxDecoration(
-            color: isSelected ? selectedBackgroundColor.light : backgroundColor.light.withOpacity(.1),
+            color: isHovering ? selectedBackgroundColor.light : backgroundColor.light.withOpacity(.1),
             borderRadius: BorderRadius.circular(4),
             border: Border.all(
-              color: isSelected ? selectedBackgroundColor.dark : backgroundColor.dark.withOpacity(0.2),
+              color: isHovering ? selectedBackgroundColor.dark : backgroundColor.dark.withOpacity(0.2),
               width: 1,
             ),
           ),
@@ -66,14 +69,14 @@ class Pill extends StatelessWidget {
                 Icon(
                   icon,
                   size: iconSize,
-                  color: isSelected ? selectedTextColor_ : textColor_,
+                  color: isHovering ? selectedTextColor_ : textColor_,
                 ),
                 SizedBox(width: spacing),
               ],
               Text(
                 text,
                 style: Manager.captionStyle.copyWith(
-                  color: isSelected ? selectedTextColor_ : textColor_,
+                  color: isHovering ? selectedTextColor_ : textColor_,
                   fontSize: 11 * Manager.fontSizeMultiplier,
                 ),
               ),
@@ -95,19 +98,18 @@ Widget FluentPill({
   double iconSize = 10,
   double spacing = 4,
   Function(String)? onTap,
+  MouseCursor? cursor = SystemMouseCursors.click,
 }) {
-  return MouseButtonWrapper(
-    child: (isHovered) => Pill(
-      text: text,
-      backgroundColor: backgroundColor,
-      selectedBackgroundColor: selectedBackgroundColor,
-      textColor: textColor,
-      selectedTextColor: selectedTextColor,
-      icon: icon,
-      iconSize: iconSize,
-      spacing: spacing,
-      onTap: onTap != null ? () => onTap(text) : null,
-      isSelected: isHovered,
-    ),
+  return Pill(
+    text: text,
+    backgroundColor: backgroundColor,
+    selectedBackgroundColor: selectedBackgroundColor,
+    textColor: textColor,
+    selectedTextColor: selectedTextColor,
+    icon: icon,
+    iconSize: iconSize,
+    spacing: spacing,
+    onTap: onTap != null ? () => onTap(text) : null,
+    cursor: cursor,
   );
 }

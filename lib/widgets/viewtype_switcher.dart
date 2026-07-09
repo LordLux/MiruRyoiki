@@ -84,7 +84,7 @@ Widget buildViewTypePills(ViewType currentViewType, void Function(ViewType) onVi
           text: viewType.label,
           icon: viewType.icon,
           tooltip: viewType.tooltip,
-          isSelected: isSelected,
+          isHovering: isSelected,
           onTap: () => onViewTypeChanged(viewType),
         ),
       );
