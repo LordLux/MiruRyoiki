@@ -141,8 +141,10 @@ extension AnilistProviderAuthentication on AnilistProvider {
 
           await _saveCurrentUserToCache();
 
-          // Check if user data changed and notify library screen
-          if (_hasUserDataChanged(oldUser, _currentUser)) _notifyLibraryScreenOfDataChange();
+          // User data actually changed: bump the revision so the Library sort
+          // cache invalidates (picked up via LibraryScreenViewModel's cache
+          // parameters on the notifyListeners below)
+          if (_hasUserDataChanged(oldUser, _currentUser)) bumpListsRevision();
         } catch (e, stackTrace) {
           logErr('Error refreshing user data', e, stackTrace);
         }
@@ -167,25 +169,12 @@ extension AnilistProviderAuthentication on AnilistProvider {
     return oldUser!.uiChangeHashCode != newUser!.uiChangeHashCode;
   }
 
-  /// Notify library screen that data has changed
-  void _notifyLibraryScreenOfDataChange() {
-    try {
-      if (libraryScreenKey.currentState == null || !libraryScreenKey.currentState!.mounted) return;
-
-      logDebug('User data changed, invalidating library screen cache');
-      
-      // Invalidate the library screen cache and trigger rebuild
-      libraryScreenKey.currentState!.setState(() => libraryScreenKey.currentState!.invalidateSortCache());
-    } catch (e) {
-      logErr('Error notifying library screen of user data change', e);
-    }
-  }
-
   /// Logout from Anilist
   Future<void> logout() async {
     await _anilistService.logout();
     _currentUser = null;
     _userLists = {};
+    bumpListsRevision();
     _rebuildAllUserAnilistIds();
     _animeCache = {};
     _upcomingEpisodesCache = {};

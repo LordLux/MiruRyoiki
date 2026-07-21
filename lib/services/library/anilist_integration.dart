@@ -378,11 +378,12 @@ extension LibraryAnilistIntegration on Library {
     );
 
     try {
+      // Metadata changed: bump the data version so the Library sort cache
+      // (which keys on it) invalidates on the notifyListeners below
+      if (metadataChanged) _incrementDataVersion();
+
       await persistLibrary();
       notifyListeners();
-
-      // Notify library screen if metadata changed
-      if (metadataChanged) _notifyLibraryScreenOfDataChange();
     } finally {
       saveLockHandle?.dispose();
 
@@ -471,19 +472,6 @@ extension LibraryAnilistIntegration on Library {
     return oldAnime!.uiChangeHashCode != newAnime!.uiChangeHashCode;
   }
 
-  /// Notify library screen that data has changed
-  void _notifyLibraryScreenOfDataChange() {
-    try {
-      if (libraryScreenKey.currentState == null || !libraryScreenKey.currentState!.mounted) return;
-
-      logDebug('Anilist data changed, invalidating library screen cache');
-      
-      // Invalidate the library screen cache and trigger rebuild
-      libraryScreenKey.currentState!.setState(() => libraryScreenKey.currentState!.invalidateSortCache());
-    } catch (e) {
-      logErr('Error notifying library screen of data change', e);
-    }
-  }
 
   /// Refetch AniList data for linked series after cache clearing
   Future<void> _refetchAnilistData() async {

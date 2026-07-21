@@ -37,14 +37,6 @@ class NotificationsContentState extends State<NotificationsContent> {
     _vm.sync();
   }
 
-  /// Public method to force refresh notifications.
-  ///
-  /// Called via shortcut that reaches in via [notificationsContentKey])
-  void refreshNotifications() => _vm.sync();
-
-  // Getter to check if currently refreshing
-  bool get isRefreshing => _vm.isRefreshing;
-
   Future<void> _markAsRead(int notificationId) async {
     final ok = await _vm.markAsRead(notificationId);
     // Update the release calendar's cached entries

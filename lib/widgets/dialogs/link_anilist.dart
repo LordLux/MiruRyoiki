@@ -8,6 +8,7 @@ import 'package:miruryoiki/widgets/series_image.dart';
 import 'package:provider/provider.dart';
 
 import '../../main.dart';
+import '../../viewmodels/library_screen_viewmodel.dart';
 import '../../manager.dart';
 import '../../models/anilist/mapping.dart';
 import '../../models/series.dart';
@@ -410,7 +411,7 @@ class AnilistLinkMultiContentState extends State<AnilistLinkMultiContent> with D
                             if (value != null) {
                               if (mounted) setState(() => widget.series.primaryAnilistId = value);
 
-                              if (libraryScreenKey.currentState != null) libraryScreenKey.currentState!.updateSeriesInSortCache(widget.series);
+                              context.read<LibraryScreenViewModel>().updateSeriesInSortCache(widget.series);
 
                               // Fetch and load Anilist data for the selected mapping
                               await seriesScreenKey.currentState!.changePrimaryId(value);

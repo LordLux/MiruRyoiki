@@ -29,8 +29,10 @@ extension AnilistProviderListsManagement on AnilistProvider {
         if (_userLists.isNotEmpty) {
           await _saveListsToCache();
 
-          // Check if data changed and notify library screen if needed
-          if (_hasListsChanged(oldUserLists, _userLists)) _notifyLibraryScreenOfDataChange();
+          // Lists actually changed: bump the revision so the Library sort
+          // cache invalidates (picked up via LibraryScreenViewModel's cache
+          // parameters on the notifyListeners below)
+          if (_hasListsChanged(oldUserLists, _userLists)) bumpListsRevision();
         }
       } else {
         // Try loading from cache if offline
@@ -80,20 +82,6 @@ extension AnilistProviderListsManagement on AnilistProvider {
     }
 
     return false;
-  }
-
-  /// Notify library screen of data changes
-  void _notifyLibraryScreenOfDataChange() {
-    try {
-      if (libraryScreenKey.currentState == null || !libraryScreenKey.currentState!.mounted) return;
-
-      logDebug('Anilist data changed, invalidating library screen cache');
-
-      // Invalidate the library screen cache and trigger rebuild
-      libraryScreenKey.currentState!.setState(() => libraryScreenKey.currentState!.invalidateSortCache());
-    } catch (e) {
-      logErr('Error notifying library screen of data change', e);
-    }
   }
 
   /// Save user lists to local cache

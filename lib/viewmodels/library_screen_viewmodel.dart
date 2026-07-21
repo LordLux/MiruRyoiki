@@ -13,6 +13,7 @@ import '../services/episode_navigation/anilist_progress_manager.dart';
 import '../services/library/library_provider.dart';
 import '../services/library/search_service.dart';
 import '../utils/logging.dart';
+import '../utils/time.dart';
 
 /// Cache parameters to track when the sorted/grouped cache needs invalidation
 class _CacheParameters {
@@ -27,6 +28,7 @@ class _CacheParameters {
   final Set<String> hiddenLists;
   final List<String> selectedGenres;
   final int dataVersion;
+  final int listsRevision;
 
   _CacheParameters({
     required this.currentView,
@@ -40,6 +42,7 @@ class _CacheParameters {
     required this.hiddenLists,
     required this.selectedGenres,
     required this.dataVersion,
+    required this.listsRevision,
   });
 
   @override
@@ -57,7 +60,8 @@ class _CacheParameters {
           _listEquals(customListOrder, other.customListOrder) &&
           _setEquals(hiddenLists, other.hiddenLists) &&
           _listEquals(selectedGenres, other.selectedGenres) &&
-          dataVersion == other.dataVersion;
+          dataVersion == other.dataVersion &&
+          listsRevision == other.listsRevision;
 
   @override
   int get hashCode =>
@@ -71,7 +75,8 @@ class _CacheParameters {
       customListOrder.hashCode ^
       hiddenLists.hashCode ^
       selectedGenres.hashCode ^
-      dataVersion.hashCode;
+      dataVersion.hashCode ^
+      listsRevision.hashCode;
 
   static bool _listEquals<T>(List<T>? a, List<T>? b) {
     if (a == null) return b == null;
@@ -105,11 +110,24 @@ class LibraryScreenViewModel extends ChangeNotifier {
   late Library _library;
   late AnilistProvider _anilist;
   bool _disposed = false;
+  int _lastListsRevision = 0;
 
   /// Called by the ChangeNotifierProxyProvider2 whenever [Library] or [AnilistProvider] notify
   void update(Library library, AnilistProvider anilist) {
     _library = library;
     _anilist = anilist;
+
+    // The library screen watches this VM and [Library] directly, but not
+    // [AnilistProvider]. When AniList lists/user data change (login/logout/
+    // refresh) the grouping/sort cache is invalidated via `listsRevision` in the
+    // cache parameters — but without a notification nothing rebuilds the screen to
+    // re-run `displayData()`, so the grid would stay stale while it's visible.
+    // Emit a notification when the revision changes, deferred to the next frame to
+    // avoid calling notifyListeners() during the proxy provider's build phase.
+    if (anilist.listsRevision != _lastListsRevision) {
+      _lastListsRevision = anilist.listsRevision;
+      nextFrame(() => _notify());
+    }
   }
 
   @override
@@ -327,6 +345,9 @@ class LibraryScreenViewModel extends ChangeNotifier {
         hiddenLists: Set.from(hiddenLists),
         selectedGenres: List.from(selectedGenres),
         dataVersion: _library.dataVersion,
+        // Invalidates the cache when AniList user lists change (login/logout/
+        // refresh) — grouping depends on them but they're not in dataVersion
+        listsRevision: _anilist.listsRevision,
       );
 
   /// Check if the current cache is valid by comparing parameters

@@ -23,6 +23,7 @@ import '../../utils/shell.dart';
 import '../../utils/icons.dart' as icons;
 import '../../utils/time.dart';
 import '../../utils/searched_series_actions.dart';
+import '../../viewmodels/library_screen_viewmodel.dart';
 import '../dialogs/link_anilist.dart';
 import '../file_explorer.dart';
 import 'controller.dart';
@@ -238,14 +239,11 @@ class SeriesContextMenuState extends State<SeriesContextMenu> {
     // Update the series in the library
     library.updateSeries(series, invalidateCache: true);
 
-    if (libraryScreenKey.currentState != null) {
-      if (series.isForcedHidden)
-        libraryScreenKey.currentState!.removeHiddenSeriesWithoutInvalidatingCache(series);
-      else
-        libraryScreenKey.currentState!.updateSeriesInSortCache(series);
-
-      libraryScreenKey.currentState!.setState(() {});
-    }
+    final libraryVm = Provider.of<LibraryScreenViewModel>(context, listen: false);
+    if (series.isForcedHidden)
+      libraryVm.removeHiddenSeriesWithoutInvalidatingCache(series);
+    else
+      libraryVm.updateSeriesInSortCache(series);
 
     // Show confirmation
     snackBar(
@@ -340,10 +338,7 @@ class SeriesContextMenuState extends State<SeriesContextMenu> {
 
     library.updateSeries(updatedSeries, invalidateCache: true);
 
-    if (libraryScreenKey.currentState != null) {
-      libraryScreenKey.currentState!.updateSeriesInSortCache(updatedSeries);
-      libraryScreenKey.currentState!.setState(() {});
-    }
+    Provider.of<LibraryScreenViewModel>(context, listen: false).updateSeriesInSortCache(updatedSeries);
 
     final prettyName = StatusStatistic.statusNameToPretty(apiName);
 

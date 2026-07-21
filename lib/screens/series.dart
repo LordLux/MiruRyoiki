@@ -5,6 +5,8 @@ import 'package:flutter/material.dart' as mat;
 import 'package:miruryoiki/widgets/acrylic_header.dart';
 import 'package:miruryoiki/widgets/file_explorer.dart';
 import 'package:provider/provider.dart';
+
+import '../viewmodels/library_screen_viewmodel.dart';
 import 'package:defer_pointer/defer_pointer.dart';
 
 import '../main.dart';
@@ -491,9 +493,7 @@ class SeriesScreenState extends State<SeriesScreen> {
         setState(() {}); // Refresh UI to show updated episode titles
       }
 
-      if (newSeries != null && libraryScreenKey.currentState != null) {
-        libraryScreenKey.currentState!.updateSeriesInSortCache(newSeries);
-      }
+      if (newSeries != null && mounted) context.read<LibraryScreenViewModel>().updateSeriesInSortCache(newSeries);
     } catch (e) {
       logErr('Error fetching episode titles', e);
     }
@@ -663,7 +663,7 @@ class SeriesScreenState extends State<SeriesScreen> {
         // Also update the series
         await library.updateSeries(series, invalidateCache: false);
 
-        if (libraryScreenKey.currentState != null) libraryScreenKey.currentState!.updateSeriesInSortCache(series);
+        if (mounted) context.read<LibraryScreenViewModel>().updateSeriesInSortCache(series);
 
         logTrace('Changed primary AniList ID to $id, saved to library');
       } catch (e) {
@@ -786,7 +786,7 @@ class SeriesScreenState extends State<SeriesScreen> {
         Manager.setState();
       }
 
-      if (libraryScreenKey.currentState != null) libraryScreenKey.currentState!.updateSeriesInSortCache(series);
+      if (mounted) context.read<LibraryScreenViewModel>().updateSeriesInSortCache(series);
 
       if (mounted) setState(() {});
     } catch (e) {
@@ -1738,7 +1738,7 @@ void selectSeriesImage(BuildContext context, {required bool isBanner, Series? se
               seriesScreenState.bannerChangeDisabled = isBanner;
             }
 
-            if (libraryScreenKey.currentState != null) libraryScreenKey.currentState!.updateSeriesInSortCache(updatedSeries);
+            Provider.of<LibraryScreenViewModel>(context, listen: false).updateSeriesInSortCache(updatedSeries);
             logTrace('Saving ${isBanner ? 'banner' : 'poster'} preference: $source, path: ${PathUtils.getFileName(path)}');
             snackBar(
               'Saving preference...',

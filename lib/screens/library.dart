@@ -16,6 +16,7 @@ import 'package:smooth_scroll_multiplatform/smooth_scroll_multiplatform.dart';
 
 import '../main.dart';
 import '../enums.dart';
+import '../services/anilist/provider/anilist_provider.dart';
 import '../services/library/library_provider.dart';
 import '../services/library/scanner/scanner_service.dart';
 import '../models/series.dart';
@@ -74,18 +75,9 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
   bool _filtersOpen = false;
   bool _listsOpen = false;
 
-  /// All view/sort/group/filter state and the sorted+grouped cache live here.
-  /// The screen only renders it; these getters/methods below are thin shims so
-  /// existing `libraryScreenKey.currentState` callers keep working.
   LibraryScreenViewModel get _vm => context.read<LibraryScreenViewModel>();
 
-  LibraryView get currentView => _vm.currentView;
-  bool get showGrouped => _vm.showGrouped;
   bool get isCustomSort => _vm.isCustomSort;
-  SortOrder get sortOrder => _vm.sortOrder;
-  bool get sortDescending => _vm.sortDescending;
-  List<String> get selectedGenres => _vm.selectedGenres;
-  List<Series> get displayedSeries => _vm.displayedSeries;
 
   late Color _textColor;
   late Color _selectedTextColor;
@@ -96,12 +88,6 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
   }
 
   Color getViewTypeColor(bool isSelected) => isSelected ? _selectedTextColor : _textColor;
-
-  void addGenre(String genre) => _vm.addGenre(genre);
-
-  void removeGenre(String genre) => _vm.removeGenre(genre);
-
-  void clearGenres() => _vm.clearGenres();
 
   final ScrollController _controller = ScrollController(
     debugLabel: 'LibraryScreen Scroll Controller',
@@ -179,17 +165,7 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
     widget.onSeriesSelected(series.path);
   }
 
-  void onViewChanged(LibraryView? value) => _vm.onViewChanged(value);
-
-  void onShowGroupedChanged(bool value) => _vm.onShowGroupedChanged(value);
-
-  void onSortOrderChanged(SortOrder? value) => _vm.onSortOrderChanged(value);
-
-  void onSortDirectionChanged() => _vm.onSortDirectionChanged();
-
   void _toggleReorderMode() => _vm.toggleReorderMode();
-
-  void invalidateSortCache() => _vm.invalidateSortCache();
 
   void _scrollToList(String targetListName) {
     final groupedDataCache = _vm.groupedDataCache;
@@ -294,19 +270,6 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
 
     return duration.inMilliseconds;
   }
-
-  void updateColorsInSortCache() {
-    _vm.updateColorsInSortCache();
-    // Preserve the previous behavior of refreshing other open screens too
-    Manager.setState(() {});
-    logTrace('called setState from updateColorsInSortCache');
-  }
-
-  /// Update or add a series to the sort cache
-  void updateSeriesInSortCache(Series series) => _vm.updateSeriesInSortCache(series);
-
-  /// Remove a hidden series from the cache without invalidating the entire cache
-  void removeHiddenSeriesWithoutInvalidatingCache(Series series) => _vm.removeHiddenSeriesWithoutInvalidatingCache(series);
 
   @override
   Widget build(BuildContext context) {
@@ -1252,7 +1215,6 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
     return buildStyledScrollbar(scrollContent, _controller);
   }
 
-  String getSortText(SortOrder? order) => LibraryScreenViewModel.getSortText(order);
 
   void _showFilterDialog() async {
     if (context.read<NavigationManager>().hasDialog && context.read<NavigationManager>().currentView?.id == "library:lists") {

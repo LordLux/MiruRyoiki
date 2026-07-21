@@ -101,17 +101,7 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> with Autom
     super.dispose();
   }
 
-  void focusToday() => _vm.focusToday();
-
-  void toggleFilter([bool? value]) => _vm.toggleTodayFilter(value);
-
   Future<void> loadReleaseData() => _vm.loadReleaseData();
-
-  /// Cache-only read-status update
-  void updateNotificationReadStatus(int notificationId) => _vm.applyNotificationRead(notificationId);
-
-  /// Cache-only bulk read-status update
-  void markAllNotificationsAsRead() => _vm.applyAllNotificationsRead();
 
   void toggleOlderNotifications([bool? value]) {
     if (!mounted || _isDisposed) return;

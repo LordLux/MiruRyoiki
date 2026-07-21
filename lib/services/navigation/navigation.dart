@@ -2,9 +2,11 @@
 
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:miruryoiki/utils/time.dart';
+import 'package:provider/provider.dart';
 
 import '../../main.dart';
 import '../../manager.dart';
+import '../../viewmodels/release_calendar_viewmodel.dart';
 import 'dialogs2.dart';
 
 enum NavigationLevel {
@@ -252,7 +254,16 @@ class NavigationManager extends ChangeNotifier {
 
     _navigatorKey.currentState?.pushReplacementNamed('/${pane.id}', arguments: data);
 
-    if (pane.id == CalendarId) nextFrame(() => releaseCalendarScreenKey.currentState?.loadReleaseData());
+    if (pane.id == CalendarId) {
+      nextFrame(() {
+        // rootNavigatorKey.currentContext is nullable during early startup/teardown;
+        // Manager.context would force-unwrap and throw instead of guarding here.
+        final ctx = rootNavigatorKey.currentContext;
+        if (ctx != null && ctx.mounted) {
+          Provider.of<ReleaseCalendarViewModel>(ctx, listen: false).loadReleaseData();
+        }
+      });
+    }
   }
 
   @Deprecated('Use pushPane instead')

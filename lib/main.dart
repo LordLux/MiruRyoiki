@@ -679,8 +679,9 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
                           if (_selectedIndex == index) {
                             // If clicking the same tab, reset its scroll position
                             _resetScrollPosition(index, animate: true);
-                            // releaseCalendarScreenKey.currentState?.toggleFilter(false);
-                            releaseCalendarScreenKey.currentState?.focusToday();
+                            // Only the Release Calendar reacts to a re-click (jump back to today);
+                            // guard so re-clicking any other pane doesn't reset the calendar's state.
+                            if (index == NavigationManager.CalendarIndex) context.read<ReleaseCalendarViewModel>().focusToday();
                           }
                         },
                         onChanged: onChangedPane,
@@ -1060,7 +1061,11 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
                                 });
 
                                 // Refresh the release calendar after navigation
-                                nextFrame(() => releaseCalendarScreenKey.currentState?.loadReleaseData());
+                                nextFrame(() {
+                                  if (context.mounted) {
+                                    context.read<ReleaseCalendarViewModel>().loadReleaseData();
+                                  }
+                                });
                               },
                             ),
                           ),

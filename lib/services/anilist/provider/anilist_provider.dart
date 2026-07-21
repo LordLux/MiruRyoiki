@@ -104,6 +104,18 @@ class AnilistProvider extends ChangeNotifier with WidgetsBindingObserver {
   /// { `API Name`: `AUL(Local Name)` }
   Map<String, AnilistUserList> get userLists => _userLists;
 
+  int _listsRevision = 0;
+
+  /// Bumped whenever the user lists change in a way that affects library
+  /// grouping/sorting (login, logout, refresh with actual changes).
+  /// `LibraryScreenViewModel` includes this in its cache parameters, so the
+  /// sort/group cache invalidates automatically — even while the Library
+  /// screen isn't mounted (previously done by reaching into the screen via
+  /// `libraryScreenKey`, which silently no-op'd when it wasn't built).
+  int get listsRevision => _listsRevision;
+
+  void bumpListsRevision() => _listsRevision++;
+
   Set<int> _allUserAnilistIds = {};
 
   /// A cached set of all Anilist media IDs the user has in any of their lists

@@ -2,13 +2,15 @@
 
 import 'package:fluent_ui/fluent_ui.dart';
 
+import 'package:provider/provider.dart';
+
 import '../../enums.dart';
-import '../../main.dart';
 import '../../manager.dart';
 import '../../services/anilist/queries/anilist_service.dart';
 import '../../services/navigation/dialogs2.dart';
 import '../../utils/screen.dart';
 import '../../utils/time.dart';
+import '../../viewmodels/library_screen_viewmodel.dart';
 import '../buttons/button.dart';
 import '../buttons/wrapper.dart';
 import '../pill.dart';
@@ -28,11 +30,14 @@ class GenresFilterContentState extends State<GenresFilterContent> {
   final TextEditingController genres_controller = TextEditingController();
   final FocusNode genre_focus_node = FocusNode();
 
+  /// Library view/sort/filter state lives in the app-scoped ViewModel
+  LibraryScreenViewModel get _vm => context.read<LibraryScreenViewModel>();
+
   @override
   void initState() {
     super.initState();
     genres = Manager.settings.genres;
-    selectedGenres = List.from(libraryScreenKey.currentState?.selectedGenres ?? []);
+    selectedGenres = List.from(_vm.selectedGenres);
     _fetchGenres();
     genre_focus_node.addListener(() {
       if (genre_focus_node.hasFocus) asgbKey.currentState?.showOverlay();
@@ -62,7 +67,7 @@ class GenresFilterContentState extends State<GenresFilterContent> {
   void _addGenre(String genre) {
     if (!selectedGenres.contains(genre)) {
       setState(() => selectedGenres.add(genre));
-      libraryScreenKey.currentState?.addGenre(genre);
+      _vm.addGenre(genre);
       _updateHeight();
     }
   }
@@ -70,7 +75,7 @@ class GenresFilterContentState extends State<GenresFilterContent> {
   void _removeGenre(String genre) {
     if (selectedGenres.contains(genre)) {
       setState(() => selectedGenres.remove(genre));
-      libraryScreenKey.currentState?.removeGenre(genre);
+      _vm.removeGenre(genre);
       _updateHeight();
     }
   }
@@ -96,13 +101,13 @@ class GenresFilterContentState extends State<GenresFilterContent> {
                 children: [
                   Expanded(
                     child: MouseButtonWrapper(
-                      tooltip: libraryScreenKey.currentState?.sortOrder.name_,
+                      tooltip: _vm.sortOrder.name_,
                       child: (_) => ComboBox<SortOrder>(
                         isExpanded: true,
-                        value: libraryScreenKey.currentState?.sortOrder,
+                        value: _vm.sortOrder,
                         placeholder: const Text('Sort By'),
-                        items: SortOrder.values.map((order) => ComboBoxItem(value: order, child: Text(libraryScreenKey.currentState?.getSortText(order) ?? ''))).toList(),
-                        onChanged: (p0) => setState(() => libraryScreenKey.currentState?.onSortOrderChanged(p0)),
+                        items: SortOrder.values.map((order) => ComboBoxItem(value: order, child: Text(LibraryScreenViewModel.getSortText(order)))).toList(),
+                        onChanged: (p0) => setState(() => _vm.onSortOrderChanged(p0)),
                       ),
                     ),
                   ),
@@ -111,17 +116,17 @@ class GenresFilterContentState extends State<GenresFilterContent> {
                     height: 34,
                     width: 34,
                     child: StandardButton(
-                      tooltip: 'Sort results in ${!(libraryScreenKey.currentState?.sortDescending ?? false) ? "Ascending" : "Descending"} order',
+                      tooltip: 'Sort results in ${!_vm.sortDescending ? "Ascending" : "Descending"} order',
                       tooltipWaitDuration: Duration(milliseconds: 150),
                       padding: EdgeInsets.zero,
                       label: Center(
                         child: AnimatedRotation(
                           duration: shortStickyHeaderDuration,
-                          turns: libraryScreenKey.currentState?.sortDescending ?? false ? 0 : 1,
-                          child: Icon(libraryScreenKey.currentState?.sortDescending ?? false ? FluentIcons.sort_lines : FluentIcons.sort_lines_ascending, color: Manager.pastelAccentColor),
+                          turns: _vm.sortDescending ? 0 : 1,
+                          child: Icon(_vm.sortDescending ? FluentIcons.sort_lines : FluentIcons.sort_lines_ascending, color: Manager.pastelAccentColor),
                         ),
                       ),
-                      onPressed: () => setState(() => libraryScreenKey.currentState?.onSortDirectionChanged()),
+                      onPressed: () => setState(() => _vm.onSortDirectionChanged()),
                     ),
                   ),
                 ],
@@ -189,15 +194,15 @@ class GenresFilterContentState extends State<GenresFilterContent> {
               label: 'Display',
               labelStyle: Manager.smallSubtitleStyle.copyWith(color: Manager.pastelDominantColor),
               child: MouseButtonWrapper(
-                tooltip: libraryScreenKey.currentState?.currentView == LibraryView.all ? 'Show all series' : 'Show only series linked to AniList',
+                tooltip: _vm.currentView == LibraryView.all ? 'Show all series' : 'Show only series linked to AniList',
                 child: (_) => ComboBox<LibraryView>(
                   isExpanded: true,
-                  value: libraryScreenKey.currentState?.currentView,
+                  value: _vm.currentView,
                   items: [
                     ComboBoxItem(value: LibraryView.all, child: Text('All Series')),
                     ComboBoxItem(value: LibraryView.linked, child: Text('Linked Series Only')),
                   ],
-                  onChanged: (view) => setState(() => libraryScreenKey.currentState?.onViewChanged(view)),
+                  onChanged: (view) => setState(() => _vm.onViewChanged(view)),
                 ),
               ),
             ),
@@ -205,11 +210,11 @@ class GenresFilterContentState extends State<GenresFilterContent> {
 
             // Grouping Toggle
             MouseButtonWrapper(
-              tooltip: (libraryScreenKey.currentState?.showGrouped ?? false) ? 'Display series grouped by AniList lists' : 'Display series in a flat list',
+              tooltip: _vm.showGrouped ? 'Display series grouped by AniList lists' : 'Display series in a flat list',
               child: (_) => ToggleSwitch(
-                checked: libraryScreenKey.currentState?.showGrouped ?? false,
+                checked: _vm.showGrouped,
                 content: Expanded(child: Text('Group by AniList Lists', style: Manager.bodyStyle, maxLines: 2, overflow: TextOverflow.ellipsis)),
-                onChanged: (value) => setState(() => libraryScreenKey.currentState?.onShowGroupedChanged(value)),
+                onChanged: (value) => setState(() => _vm.onShowGroupedChanged(value)),
               ),
             ),
             VDiv(24),

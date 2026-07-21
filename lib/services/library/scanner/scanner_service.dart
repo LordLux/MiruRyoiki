@@ -6,6 +6,7 @@ import 'package:collection/collection.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
+import 'package:provider/provider.dart';
 
 import '../../../enums.dart';
 import '../../../main.dart';
@@ -17,6 +18,7 @@ import '../../../models/series.dart';
 import '../../../settings.dart';
 import '../../../utils/color.dart' as color_utils;
 import '../../../utils/file.dart';
+import '../../../viewmodels/library_screen_viewmodel.dart';
 import '../../../utils/logging.dart';
 import '../../lock_manager.dart';
 import '../../../utils/shell.dart';
@@ -861,7 +863,14 @@ class LibraryScannerService extends ChangeNotifier {
         }
       }
 
-      libraryScreenKey.currentState?.updateColorsInSortCache();
+      // Refresh dominant colors in the app-scoped Library sort cache, then
+      // trigger a global rebuild so other open screens pick up the colors too
+      try {
+        Provider.of<LibraryScreenViewModel>(Manager.context, listen: false).updateColorsInSortCache();
+        Manager.setState(() {});
+      } catch (e) {
+        logErr('Failed to refresh sort-cache colors', e);
+      }
 
       // Save and notify when done
       if (anyChanged || forceRecalculate) {

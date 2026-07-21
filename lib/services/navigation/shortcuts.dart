@@ -9,7 +9,8 @@ import 'package:provider/provider.dart';
 
 import '../../main.dart';
 import '../../manager.dart';
-import '../../widgets/dialogs/notifications.dart';
+import '../../viewmodels/library_screen_viewmodel.dart';
+import '../../viewmodels/notifications_viewmodel.dart';
 import '../library/library_provider.dart';
 import '../../utils/logging.dart';
 import '../../utils/screen.dart';
@@ -216,11 +217,13 @@ class _CustomKeyboardListenerState extends State<CustomKeyboardListener> {
         severity: InfoBarSeverity.info,
       );
 
-      // Invalidate data/caches and refresh whichever screen is active
-      libraryScreenKey.currentState?.setState(() => libraryScreenKey.currentState?.invalidateSortCache());
-      releaseCalendarScreenKey.currentState?.setState(() {});
-      homeKey.currentState?.setState(() {});
-      notificationsContentKey.currentState?.setState(() => notificationsContentKey.currentState!.refreshNotifications());
+      // Invalidate data/caches. The settings write above already notifies
+      // SettingsManager watchers (Home); the Library grid and the notification
+      // list re-filter through their app-scoped ViewModels. The Release Calendar
+      // is intentionally not refreshed — its release/notification data does not
+      // depend on `showHiddenSeries`.
+      Provider.of<LibraryScreenViewModel>(context, listen: false).invalidateSortCache();
+      Provider.of<NotificationsViewModel>(context, listen: false).sync();
     }
   }
 
