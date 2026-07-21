@@ -82,7 +82,6 @@ class _MiruRyoikiTemplatePageState extends State<MiruRyoikiTemplatePage> {
   bool _scrollRestored = false;
   bool _isHoveringContent = false;
   bool _isHoveringSidebar = false;
-  final ValueNotifier<bool> _hideScrollbar = ValueNotifier(false);
   double _futurePosition = 0;
   bool _prevDeltaPositive = false;
 
@@ -141,7 +140,6 @@ class _MiruRyoikiTemplatePageState extends State<MiruRyoikiTemplatePage> {
       _scrollController!.removeListener(_onScroll);
       if (widget.scrollController == null) _scrollController!.dispose();
     }
-    _hideScrollbar.dispose();
     super.dispose();
   }
 
@@ -239,16 +237,18 @@ class _MiruRyoikiTemplatePageState extends State<MiruRyoikiTemplatePage> {
                                   MouseRegion(
                                     hitTestBehavior: HitTestBehavior.opaque,
                                     onEnter: (_) => _isHoveringSidebar = true,
-                                    onExit: (_) {
-                                      _isHoveringSidebar = false;
-                                      if (_hideScrollbar.value) {
-                                        _hideScrollbar.value = false;
-                                      }
-                                    },
-                                    child: SizedBox(
-                                      height: widget.infobarHeight ?? double.infinity,
-                                      width: ScreenUtils.kInfoBarWidth,
-                                      child: widget.infobar!(widget.noHeaderBanner),
+                                    onExit: (_) => _isHoveringSidebar = false,
+                                    // Absorb ALL of the sidebar's scroll-related notifications so they never reach the page Scrollbar below
+                                    child: NotificationListener<ScrollMetricsNotification>(
+                                      onNotification: (_) => true,
+                                      child: NotificationListener<ScrollNotification>(
+                                        onNotification: (_) => true,
+                                        child: SizedBox(
+                                          height: widget.infobarHeight ?? double.infinity,
+                                          width: ScreenUtils.kInfoBarWidth,
+                                          child: widget.infobar!(widget.noHeaderBanner),
+                                        ),
+                                      ),
                                     ),
                                   ),
                                 // Content area on the right
@@ -367,42 +367,15 @@ class _MiruRyoikiTemplatePageState extends State<MiruRyoikiTemplatePage> {
                     child: Listener(
                       behavior: HitTestBehavior.translucent,
                       onPointerSignal: (event) {
-                        if (event is PointerScrollEvent) {
-                          if (_isHoveringSidebar && !_hideScrollbar.value) {
-                            _hideScrollbar.value = true;
-                          } else if (!_isHoveringSidebar && _hideScrollbar.value) {
-                            _hideScrollbar.value = false;
-                          }
-                        }
-
+                        // Scrolling over the header/margins drives the content scroll;
+                        // over the sidebar or content itself, their own scrollables handle it
                         if (widget.scrollableContent && event is PointerScrollEvent && !_isHoveringContent && !_isHoveringSidebar) {
                           _handleExternalScroll(event);
                         }
                       },
                       child: widget.scrollableContent && _scrollController != null
-                          ? ValueListenableBuilder<bool>(
-                              valueListenable: _hideScrollbar,
-                              builder: (context, hide, child) {
-                                final baseTheme = FluentTheme.of(context).scrollbarTheme;
-                                final defaultThickness = baseTheme.thickness ?? 8.0;
-                                final defaultHoverThickness = baseTheme.hoveringThickness ?? 12.0;
-
-                                return TweenAnimationBuilder<double>(
-                                  duration: const Duration(milliseconds: 200),
-                                  tween: Tween<double>(begin: 1.0, end: hide ? 0.0 : 1.0),
-                                  builder: (context, value, innerChild) {
-                                    return Scrollbar(
-                                      controller: _scrollController,
-                                      style: baseTheme.merge(ScrollbarThemeData(
-                                        thickness: defaultThickness * value,
-                                        hoveringThickness: defaultHoverThickness * value,
-                                      )),
-                                      child: innerChild!,
-                                    );
-                                  },
-                                  child: child,
-                                );
-                              },
+                          ? Scrollbar(
+                              controller: _scrollController,
                               child: buildStack(_scrollController, null),
                             )
                           : buildStack(_scrollController, null),
