@@ -8,6 +8,9 @@ import 'package:path_provider/path_provider.dart';
 import 'logging.dart';
 
 class PathUtils {
+  static final int MaxShortPathLength = 260; // Windows max path length, excluding null terminator
+  static final String LongPathPrefix = r'\\?\'; // Windows long path prefix
+  
   /// Normalize file paths for consistent comparison
   static String? normalizePath(String? path) {
     if (path == null || path.isEmpty) return null;
@@ -16,8 +19,8 @@ class PathUtils {
     path = p.normalize(path).replaceAll('/', ps).replaceAll('\\', ps);
 
     // Windows long path support
-    if (path.length > 260 && !path.startsWith('\\\\?\\')) //
-      path = r'\\?\' + path;
+    if (path.length > MaxShortPathLength && !path.startsWith(LongPathPrefix)) //
+      path = LongPathPrefix + path;
 
     return path;
   }

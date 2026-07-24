@@ -10,7 +10,7 @@ extension LibraryPersistence on Library {
       if (await file.exists()) {
         final content = await file.readAsString();
         final data = jsonDecode(content);
-        _libraryPath = data['libraryPath'];
+        _libraryPath = data['libraryPath']; // TODO validate path exists and is a directory
         logDebug('0 | Loaded settings: $_libraryPath');
       }
     } catch (e, st) {

@@ -109,7 +109,7 @@ class Library with ChangeNotifier {
 
   String? get libraryDockerPath {
     // Transform something like "C:\Videos\Series" to "/data/Videos/Series"
-    return PathString("/data/${PathUtils.removeDriveLetter(PathString(libraryPath!).linux)}").linux;//remove drive letter for docker
+    return PathString("${ps}data$ps${PathUtils.removeDriveLetter(PathString(libraryPath!).linux)}").linux;//remove drive letter for docker
   }
 
   /// Whether the library has been initialized

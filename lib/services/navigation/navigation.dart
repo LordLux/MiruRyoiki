@@ -312,10 +312,9 @@ class NavigationManager extends ChangeNotifier {
     return true;
   }
 
-  /// Pushes an intra-page view state change (e.g., tab switch).
-  /// Creates a new stack entry with the same id/title/data but different viewState.
-  /// Does NOT create Flutter routes — the page widget stays alive.
-  void pushTabState(Map<String, dynamic> viewState) {
+  /// Pushes an intra-page view state change (e.g., tab switch, folder drill-down).
+  /// Creates a new stack entry with the same id/data but different viewState.
+  void pushTabState(Map<String, dynamic> viewState, {String? title}) {
     if (_stack.isEmpty) return;
     final current = _stack.last;
     if (current.level != NavigationLevel.page) return;
@@ -324,7 +323,7 @@ class NavigationManager extends ChangeNotifier {
 
     _pushToStack(NavigationItem(
       id: current.id,
-      title: current.title,
+      title: title ?? current.title,
       level: current.level,
       data: current.data,
       viewState: viewState,
@@ -465,6 +464,14 @@ class NavigationManager extends ChangeNotifier {
 
     _notifyChange();
     return true;
+  }
+
+  /// Seeds the current view's [NavigationItem.viewState] if it has none yet, so intra-page
+  /// pages can record restorable state without reaching in and mutating the item directly.
+  /// No-op if a viewState already exists.
+  void seedCurrentViewState(Map<String, dynamic> viewState) {
+    final current = currentView;
+    if (current != null && current.viewState == null) current.viewState = viewState;
   }
 
   void _pushToStack(NavigationItem item) {

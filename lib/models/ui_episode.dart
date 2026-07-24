@@ -116,20 +116,31 @@ class UIEpisode {
     );
   }
 
-  /// Display title for the episode
+  /// Display title for the episode.
+  ///
+  /// Order of precedence:
+  ///   - Sonarr episode title: the primary source of truth, when available;
+  ///   - AniList episode title: only when the setting is enabled and one exists;
+  ///   - The episode name Anitomy parsed out of the filename, if any;
+  ///   - The cleaned filename itself, as a last resort.
   String get displayTitle {
+    // Sonarr
+    if (sonarrEpisode != null && sonarrEpisode!.title.isNotEmpty && sonarrEpisode!.title != "Unknown") return sonarrEpisode!.title;
+
+    // AniList
     if (Manager.enableAnilistEpisodeTitles && anilistTitle != null && anilistTitle!.isNotEmpty) {
-      // Parse episode name from AniList format "Episode DD - EpisodeName"
+      // Parse the name out of AniList's "Episode DD - EpisodeName" format
       final match = RegExp(r'^Episode\s+\d+\s*-\s*(.+)$').firstMatch(anilistTitle!);
       if (match != null && match.group(1) != null) return match.group(1)!.trim();
       return anilistTitle!;
     }
 
-    if (localEpisode != null && localEpisode!.displayTitle != null) return localEpisode!.displayTitle!;
-    if (sonarrEpisode != null && sonarrEpisode!.title.isNotEmpty && sonarrEpisode!.title != "Unknown") return sonarrEpisode!.title;
+    // Anitomy
+    final parsed = localEpisode?.parsedTitle;
+    if (parsed != null && parsed.trim().isNotEmpty) return parsed.trim();
 
-    // If no episode number is known, show the cleaned filename instead of "Episode 0"
-    if (episodeNumber <= 0 && localEpisode != null) return localEpisode!.cleanedName;
+    // Cleaned filename
+    if (localEpisode != null) return localEpisode!.cleanedName;
 
     return 'Episode $episodeNumber';
   }

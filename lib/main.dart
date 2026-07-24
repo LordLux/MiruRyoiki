@@ -47,6 +47,7 @@ import 'viewmodels/accounts_viewmodel.dart';
 import 'viewmodels/downloads_viewmodel.dart';
 import 'viewmodels/home_viewmodel.dart';
 import 'viewmodels/library_screen_viewmodel.dart';
+import 'viewmodels/series_viewmodel.dart';
 import 'viewmodels/notifications_viewmodel.dart';
 import 'viewmodels/release_calendar_viewmodel.dart';
 import 'services/connectivity/connectivity_service.dart';
@@ -221,6 +222,14 @@ void main(List<String> args) async {
             update: (context, library, anilist, previous) {
               final vm = previous ?? AccountsViewModel();
               vm.update(library, anilist);
+              return vm;
+            },
+          ),
+          ChangeNotifierProxyProvider2<Library, LibraryScreenViewModel, SeriesViewModel>(
+            create: (context) => SeriesViewModel()..update(context.read<Library>(), context.read<LibraryScreenViewModel>()),
+            update: (context, library, libraryVM, previous) {
+              final vm = previous ?? SeriesViewModel();
+              vm.update(library, libraryVM);
               return vm;
             },
           ),
@@ -457,7 +466,7 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
   bool get isSeriesView {
     final navManager = Provider.of<NavigationManager>(context, listen: false);
     final id = navManager.currentView?.id;
-    return navManager.hasPage && (id?.startsWith('/series:') == true || id?.startsWith('/mapping:') == true || (id?.startsWith('/searched_series:') == true));
+    return navManager.hasPage && (id?.startsWith('/series:') == true || (id?.startsWith('/searched_series:') == true));
   }
 
   /// Currently selected series path
@@ -795,36 +804,14 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
         page = _libraryScreen;
       case '/series':
       case String() when routeName.startsWith('/series:'):
-        // Series view with custom transition
+        // Series view with custom transition. Folder/mapping drill-down happens
+        // *inside* this screen (intra-page navigation), not as separate routes.
         final seriesPath = settings.arguments as PathString?;
         page = SeriesScreen(
           key: seriesScreenKey,
           seriesPath: seriesPath,
           onBack: () => context.read<NavigationManager>().goBack(),
         );
-      case String() when routeName.startsWith('/mapping:'):
-        // A folder node (sub-folder) of a series, opened as its own page. Each
-        // nesting level pushes a distinct route, so this uses a per-path ValueKey
-        // rather than a single shared GlobalKey (which can't back a deep stack).
-        final args = settings.arguments as Map<String, dynamic>;
-        final seriesPath = args['seriesPath'] as PathString?;
-        final nodePath = args['nodePath'] as PathString?;
-
-        if (seriesPath == null || nodePath == null) {
-          logWarn('Failed to open folder view: seriesPath - $seriesPath | nodePath - $nodePath');
-          // Bad/missing arguments — fall back to Home instead of a dead folder screen
-          page = HomeScreen(
-            onSeriesSelected: navigateToSeries,
-            scrollController: NavigationManager.getScrollController(NavigationManager.HomeIndex),
-          );
-        } else {
-          page = SeriesScreen(
-            key: ValueKey('/node:$nodePath'),
-            seriesPath: seriesPath,
-            onBack: () => context.read<NavigationManager>().goBack(),
-            nodePath: nodePath,
-          );
-        }
       case '/${NavigationManager.CalendarId}':
         page = ReleaseCalendarScreen(
           key: releaseCalendarScreenKey,
@@ -866,7 +853,7 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
     }
 
     // Use custom page route with fade transition for series view
-    if (routeName.startsWith('/series:') || routeName.startsWith('/mapping:') || routeName.startsWith('/searched_series:')) {
+    if (routeName.startsWith('/series:') || routeName.startsWith('/searched_series:')) {
       return PageRouteBuilder(
         settings: settings,
         pageBuilder: (context, animation, secondaryAnimation) => page,
@@ -1195,6 +1182,7 @@ Future<void> _registerWindowsUrlScheme(String scheme) async {
   }
 }
 
+// TODO update anilist api for: `Media relations have been updated to version 3. Update your respective queries to see the new SAME_UNIVERSE relation. Until then, it will be reported as OTHER.`
 // TODO update notification icon badge when reading notifications from notification dialog
 // TODO scanning library progress indicator in status bar in Browse page is bugged visually with background cards
 // TODO add 'random entry' button to top right corner of library

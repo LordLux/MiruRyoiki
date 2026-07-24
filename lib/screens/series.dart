@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'package:collection/collection.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/material.dart' as mat;
 import 'package:miruryoiki/widgets/acrylic_header.dart';
@@ -7,11 +6,11 @@ import 'package:miruryoiki/widgets/file_explorer.dart';
 import 'package:provider/provider.dart';
 
 import '../viewmodels/library_screen_viewmodel.dart';
+import '../viewmodels/series_viewmodel.dart';
 import 'package:defer_pointer/defer_pointer.dart';
 
 import '../main.dart';
 import '../models/anilist/anime.dart';
-import '../services/connectivity/connectivity_service.dart';
 import '../services/downloads/torrent_manager.dart';
 import '../services/library/library_provider.dart';
 import '../services/lock_manager.dart';
@@ -34,13 +33,10 @@ import '../manager.dart';
 import '../models/anilist/mapping.dart';
 import '../utils/searched_series_actions.dart';
 import '../widgets/score_widget.dart';
-import '../models/season.dart';
 import '../models/series.dart';
-import '../services/anilist/linking.dart';
 import '../services/navigation/navigation.dart';
 import '../services/navigation/shortcuts.dart';
 import '../utils/logging.dart';
-import '../utils/error_handling.dart';
 import '../utils/screen.dart';
 import '../utils/time.dart';
 import '../widgets/dialogs/show_dialog.dart';
@@ -57,7 +53,6 @@ import '../widgets/simple_html_parser.dart';
 import '../widgets/transparency_shadow_image.dart';
 import '../models/mapping_target.dart';
 import 'package:recase/recase.dart';
-import '../services/file_system/cache.dart';
 import '../widgets/viewtype_switcher.dart';
 import 'anilist_settings.dart';
 import '../models/episode.dart';
@@ -68,22 +63,15 @@ import '../widgets/episode_grid.dart';
 import '../widgets/dialogs/manage_episodes_dialog.dart';
 import '../widgets/dialogs/sonarr_manual_link_dialog.dart';
 
-/// Duration for which AniList data is considered fresh and doesn't need refetching
-const Duration kAnilistCacheDuration = Duration(days: 1);
 
 class SeriesScreen extends StatefulWidget {
   final PathString? seriesPath;
   final VoidCallback onBack;
 
-  /// The folder node to render. Null (or == seriesPath) means the series root.
-  /// Any deeper path renders that sub-folder as its own node (recursive nesting).
-  final PathString? nodePath;
-
   const SeriesScreen({
     super.key,
     required this.seriesPath,
     required this.onBack,
-    this.nodePath,
   });
 
   @override

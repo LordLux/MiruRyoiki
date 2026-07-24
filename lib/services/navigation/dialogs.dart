@@ -327,12 +327,12 @@ void showDebugDialog(BuildContext context) {
     dialogDoPopCheck: () => true,
     theme: ContentDialogThemeData(
       decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.9),
+        color: FluentTheme.of(context).micaBackgroundColor,
         borderRadius: BorderRadius.circular(12),
       ),
     ),
     positiveButtonText: 'Close History Debug',
-    constraints: BoxConstraints(maxHeight: 1200, maxWidth: 400, minHeight: 300),
+    constraints: BoxConstraints(maxHeight: 1200, maxWidth: 600, minHeight: 300),
     builder: (_) => NavigationHistoryDebug(),
   );
 }

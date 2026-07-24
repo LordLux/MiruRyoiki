@@ -52,9 +52,6 @@ import '../widgets/score_widget.dart';
 import 'package:provider/provider.dart';
 import 'settings.dart';
 
-/// Duration for which AniList data is considered fresh and doesn't need refetching
-const Duration kAnilistCacheDuration = Duration(days: 1);
-
 Widget _kIdentityWrapper({required Widget child}) => child;
 
 enum CustomSearchType { genre, tag, studio }

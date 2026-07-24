@@ -29,8 +29,13 @@ Duration get dimDuration => getAnimationDuration(const Duration(milliseconds: 20
 
 Duration get shortDuration => getAnimationDuration(const Duration(milliseconds: 150));
 
+/// Crossfade between series folder/mapping nodes (drill-down)
+Duration get nodeCrossfadeDuration => getAnimationDuration(const Duration(milliseconds: 160));
+
 final Duration splashScreenFadeAnimationIn = const Duration(milliseconds: 400); // hardcoded
 final Duration splashScreenFadeAnimationOut = const Duration(milliseconds: 400); // hardcoded
+
+const Duration kAnilistCacheDuration = Duration(days: 1);
 
 /// Runs a function after the current frame is rendered.
 ///
