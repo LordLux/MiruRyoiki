@@ -1,6 +1,5 @@
 import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:video_data_utils/video_data_utils.dart';
 import 'package:miruryoiki/manager.dart';
 import 'package:miruryoiki/services/di/dependency_injection.dart';
 import 'package:miruryoiki/services/library/scanner/scanner_service.dart';

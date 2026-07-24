@@ -2,7 +2,6 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:defer_pointer/defer_pointer.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/material.dart' as mat;
-import 'package:flutter_animated_fluent_emoji/flutter_animated_fluent_emoji.dart';
 import 'package:miruryoiki/enums.dart';
 import 'package:miruryoiki/utils/color.dart';
 import 'package:miruryoiki/utils/logging.dart';

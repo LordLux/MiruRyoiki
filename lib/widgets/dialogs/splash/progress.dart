@@ -5,7 +5,6 @@ import 'package:miruryoiki/utils/screen.dart';
 import '../../../utils/time.dart';
 import '../../../manager.dart';
 import '../../../services/lock_manager.dart';
-import '../../connectivity_indicator.dart';
 
 /// Manages the global status bar
 class LibraryScanProgressManager {

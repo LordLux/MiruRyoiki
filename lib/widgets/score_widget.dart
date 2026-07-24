@@ -303,24 +303,3 @@ class ScoreWidget extends StatelessWidget {
     );
   }
 }
-
-/// Minimal tap wrapper so stars / smileys feel clickable without an oversized
-/// Button wrapper.
-class _TapIcon extends StatelessWidget {
-  final VoidCallback onTap;
-  final Widget child;
-
-  const _TapIcon({required this.onTap, required this.child});
-
-  @override
-  Widget build(BuildContext context) {
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: onTap,
-        child: child,
-      ),
-    );
-  }
-}

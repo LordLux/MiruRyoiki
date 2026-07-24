@@ -66,9 +66,6 @@ void main() {
 
     group('addMagnet', () {
       test('sends magnet URL and returns true on 200', () async {
-        String? capturedUrls;
-        String? capturedSavePath;
-
         final client = MockClient((request) async {
           if (request.url.path == '/api/v2/auth/login') {
             return http.Response('Ok.', 200, headers: {'set-cookie': 'SID=abc123;'});
@@ -442,7 +439,7 @@ void main() {
           if (request.url.path == '/api/v2/auth/login') {
             loginCalls++;
             sessionExpired = false;
-            return http.Response('Ok.', 200, headers: {'set-cookie': 'SID=fresh${loginCalls};'});
+            return http.Response('Ok.', 200, headers: {'set-cookie': 'SID=fresh$loginCalls;'});
           }
           if (request.url.path == '/api/v2/torrents/info') {
             if (sessionExpired) return http.Response('Forbidden', 403);

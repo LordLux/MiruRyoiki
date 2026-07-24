@@ -355,6 +355,7 @@ class PaddedDialog extends StatefulWidget {
   })  : _type = type,
         padding = padding ?? const EdgeInsets.all(16.0),
         constraints = constraints ?? const BoxConstraints(maxWidth: 500, maxHeight: 300, minWidth: 300),
+        // ignore: prefer_initializing_formals
         theme = theme,
         transition = transition ?? const _DialogTransitionNone(),
 

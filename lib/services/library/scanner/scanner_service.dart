@@ -9,7 +9,6 @@ import 'package:path/path.dart' as p;
 import 'package:provider/provider.dart';
 
 import '../../../enums.dart';
-import '../../../main.dart';
 import '../../../manager.dart';
 import '../../../models/episode.dart';
 import '../../../models/metadata.dart';
@@ -866,7 +865,7 @@ class LibraryScannerService extends ChangeNotifier {
       // Refresh dominant colors in the app-scoped Library sort cache, then
       // trigger a global rebuild so other open screens pick up the colors too
       try {
-        Provider.of<LibraryScreenViewModel>(Manager.context, listen: false).updateColorsInSortCache();
+        Provider.of<LibraryScreenViewModel>(Manager.context, listen: false).updateColorsInSortCache(); // TODO fix build context issue
         Manager.setState(() {});
       } catch (e) {
         logErr('Failed to refresh sort-cache colors', e);

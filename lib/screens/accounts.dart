@@ -25,7 +25,6 @@ import '../models/anilist/anime.dart';
 import '../services/anilist/provider/anilist_provider.dart';
 import 'package:provider/provider.dart';
 
-import '../services/library/library_provider.dart';
 import '../services/navigation/shortcuts.dart';
 import '../services/navigation/show_info.dart';
 import '../utils/color.dart';

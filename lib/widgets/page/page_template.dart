@@ -10,7 +10,6 @@ import '../../theme.dart';
 import '../../screens/settings.dart';
 import '../../services/navigation/navigation.dart';
 import '../../services/navigation/shortcuts.dart';
-import '../../utils/logging.dart';
 import '../../utils/screen.dart';
 import '../../utils/time.dart';
 import '../frosted_noise.dart';
