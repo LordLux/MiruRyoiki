@@ -10,8 +10,12 @@ class PlexAniBridgeService {
   // Memory Cache for fast O(1) lookups after loading
   Map<int, PlexMapping>? _memoryCache;
 
+  final http.Client _client;
+
   static const String _remoteUrl = 'https://raw.githubusercontent.com/eliasbenb/PlexAniBridge-Mappings/master/mappings.json';
   static const String _localFileName = 'plex_mappings_cache.json';
+
+  PlexAniBridgeService({http.Client? client}) : _client = client ?? http.Client();
 
   /// Returns the mapping for a specific AniList ID, or null if not found.
   Future<PlexMapping?> getMapping(int anilistId) async {
@@ -35,7 +39,7 @@ class PlexAniBridgeService {
   /// Force downloads the latest mappings from GitHub
   Future<void> forceRefresh() async {
     try {
-      final response = await http.get(Uri.parse(_remoteUrl));
+      final response = await _client.get(Uri.parse(_remoteUrl));
       if (response.statusCode == 200) {
         final file = await _getLocalFile();
         await file.writeAsString(response.body);
