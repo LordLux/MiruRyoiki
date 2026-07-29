@@ -2,7 +2,7 @@ name: miruryoiki
 description: "Flutter desktop application designed to track and manage local media files."
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 
-version: 1.4.14+0
+version: 1.4.15+0
 
 environment:
   sdk: '>=3.4.0 <4.0.0'
@@ -50,13 +50,13 @@ dependencies:
   intl: ^0.20.2
   image: ^4.0.0
   video_data_utils:
-    path: M:/Projects/video_data_utils/
-    # git:
-      # url: https://github.com/LordLux/video_data_utils.git
+    git:
+      url: https://github.com/LordLux/video_data_utils.git
+      ref: 938b7b3e5cb4a759c2001daea7bdb7a290cd1d4f
   flutter_desktop_context_menu:
-    path: M:/Projects/flutter_desktop_context_menu/
-    # git:
-    #   url: https://github.com/LordLux/flutter_desktop_context_menu.git
+    git:
+      url: https://github.com/LordLux/flutter_desktop_context_menu.git
+      ref: 6d953f2d474af123978fb2159f6c1c972669e92d
   cached_network_image: ^3.3.1
   animated_flip_counter: ^0.3.4
   pie_chart: ^5.4.0
@@ -78,27 +78,37 @@ dependencies:
   flutter_single_instance: ^1.6.0 # TODO https://pub.dev/packages/flutter_single_instance#macos
   shimmer: ^3.0.0
   sticky_headers:
-    path: M:/Projects/flutter_expandable_sticky_headers/
-    # git:
-    #   url: https://github.com/LordLux/flutter_expandable_sticky_headers.git
+    git:
+      url: https://github.com/LordLux/flutter_expandable_sticky_headers.git
+      ref: 50847dd935a2ab66b81e7613fd6a7c0249e234e6
   squiggly_slider:
-    path: M:/Projects/squiggly_slider/
+    git:
+      url: https://github.com/LordLux/squiggly_slider.git
+      ref: 6668955aa13eac2a6280e5acdaf3a98f7d9b6735
   flutter_svg: ^2.2.1
   process_monitor:
-    path: M:/Projects/process_monitor/
+    git:
+      url: https://github.com/LordLux/process_monitor.git
+      ref: 0a48ecab0d5752a0991300f9934ec1be6e9485d5
   glossy: ^0.0.5
   flutter_anitomy:
-    path: M:/Projects/flutter_anitomy/
+    git:
+      url: https://github.com/LordLux/flutter_anitomy.git
+      ref: 6f024b4833ad7f0c8a96a306aa723dce4277dfa8
   visibility_detector: ^0.4.0+2
   tray_manager: ^0.5.2
   marquee:
-    path: M:/Projects/marquee/
+    git:
+      url: https://github.com/LordLux/marquee.git
+      ref: 1dcafefd97c83c513064783bd2db2138422241c4
   shared_preferences: ^2.5.3
   material_shapes:
     git:
       https://github.com/ksokolovskyi/material_shapes.git
   flutter_animated_fluent_emoji:
-    path: M:/Projects/flutter_animated_fluent_emoji/
+    git:
+      url: https://github.com/LordLux/flutter_animated_fluent_emoji.git
+      ref: c7abd70a32f1017b63d3e749da6a0837c2f83671
   meta: ^1.16.0
   path_provider_platform_interface: ^2.1.2
 
@@ -113,6 +123,29 @@ dev_dependencies:
   flutter_launcher_icons: ^0.14.3
   graphql_codegen: ^1.2.4
   plugin_platform_interface: ^2.1.8
+
+# Local development overrides — point the git dependencies above back to
+# local checkouts under M:/Projects/ so edits to those packages are picked
+# up without a commit+push+pubspec-ref roundtrip. Remove an entry (or this
+# whole section) on a machine without that checkout; the git refs above
+# still resolve normally as a portable fallback.
+dependency_overrides:
+  video_data_utils:
+    path: M:/Projects/video_data_utils/
+  flutter_desktop_context_menu:
+    path: M:/Projects/flutter_desktop_context_menu/
+  sticky_headers:
+    path: M:/Projects/flutter_expandable_sticky_headers/
+  squiggly_slider:
+    path: M:/Projects/squiggly_slider/
+  process_monitor:
+    path: M:/Projects/process_monitor/
+  flutter_anitomy:
+    path: M:/Projects/flutter_anitomy/
+  marquee:
+    path: M:/Projects/marquee/
+  flutter_animated_fluent_emoji:
+    path: M:/Projects/flutter_animated_fluent_emoji/
 
 linter:
   rules:

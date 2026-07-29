@@ -488,7 +488,7 @@ packages:
   flutter_anitomy:
     dependency: "direct main"
     description:
-      path: "M:\\Projects\\flutter_anitomy"
+      path: "M:/Projects/flutter_anitomy/"
       relative: false
     source: path
     version: "1.0.0"
@@ -511,7 +511,7 @@ packages:
   flutter_desktop_context_menu:
     dependency: "direct main"
     description:
-      path: "M:\\Projects\\flutter_desktop_context_menu"
+      path: "M:/Projects/flutter_desktop_context_menu/"
       relative: false
     source: path
     version: "0.2.5"
@@ -1021,7 +1021,7 @@ packages:
   marquee:
     dependency: "direct main"
     description:
-      path: "M:\\Projects\\marquee"
+      path: "M:/Projects/marquee/"
       relative: false
     source: path
     version: "2.3.0"
@@ -1365,7 +1365,7 @@ packages:
   process_monitor:
     dependency: "direct main"
     description:
-      path: "M:\\Projects\\process_monitor"
+      path: "M:/Projects/process_monitor/"
       relative: false
     source: path
     version: "0.1.0"
@@ -1672,7 +1672,7 @@ packages:
   squiggly_slider:
     dependency: "direct main"
     description:
-      path: "M:\\Projects\\squiggly_slider"
+      path: "M:/Projects/squiggly_slider/"
       relative: false
     source: path
     version: "1.0.6"
@@ -1687,7 +1687,7 @@ packages:
   sticky_headers:
     dependency: "direct main"
     description:
-      path: "M:\\Projects\\flutter_expandable_sticky_headers"
+      path: "M:/Projects/flutter_expandable_sticky_headers/"
       relative: false
     source: path
     version: "0.3.0+2"
@@ -1902,7 +1902,7 @@ packages:
   video_data_utils:
     dependency: "direct main"
     description:
-      path: "M:\\Projects\\video_data_utils"
+      path: "M:/Projects/video_data_utils/"
       relative: false
     source: path
     version: "0.0.2"
@@ -2107,5 +2107,5 @@ packages:
     source: hosted
     version: "3.1.3"
 sdks:
-  dart: ">=3.8.1 <3.20.0"
+  dart: ">=3.7.0 <4.0.0"
   flutter: ">=3.29.0"
