@@ -9,7 +9,6 @@ import '../../manager.dart';
 import '../../theme.dart';
 import '../../screens/settings.dart';
 import '../../services/navigation/navigation.dart';
-import '../../services/navigation/shortcuts.dart';
 import '../../utils/screen.dart';
 import '../../utils/time.dart';
 import '../frosted_noise.dart';
@@ -273,7 +272,6 @@ class _MiruRyoikiTemplatePageState extends State<MiruRyoikiTemplatePage> {
                                                     onExit: (_) => _isHoveringContent = false,
                                                     child: SmoothScroll(
                                                       controller: _scrollController,
-                                                      stopScroll: KeyboardState.ctrlPressedNotifier,
                                                       enableSmoothScroll: Manager.animationsEnabled,
                                                       animationCurve: Curves.easeOut,
                                                       builder: (context, controller, physics) {

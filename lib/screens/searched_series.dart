@@ -17,7 +17,6 @@ import '../models/anilist/user_list.dart';
 import '../services/connectivity/connectivity_service.dart';
 import '../services/library/library_provider.dart';
 import '../services/navigation/navigation.dart';
-import '../services/navigation/shortcuts.dart';
 import '../services/navigation/show_info.dart';
 import '../utils/text.dart';
 import '../widgets/buttons/back_button.dart';
@@ -1001,18 +1000,12 @@ class SearchedSeriesScreenState extends State<SearchedSeriesScreen> {
         behavior: ScrollConfiguration.of(context).copyWith(overscroll: true, platform: TargetPlatform.windows, scrollbars: false),
         child: SmoothScroll(
           controller: _getOrCreateController(tabName),
-          stopScroll: KeyboardState.ctrlPressedNotifier,
           enableSmoothScroll: Manager.animationsEnabled,
           builder: (context, controller, physics) {
-            return ValueListenableBuilder(
-              valueListenable: KeyboardState.ctrlPressedNotifier,
-              builder: (context, isCtrlPressed, _) {
-                return SingleChildScrollView(
-                  controller: controller,
-                  physics: isCtrlPressed ? const NeverScrollableScrollPhysics() : physics,
-                  child: Column(children: children),
-                );
-              },
+            return SingleChildScrollView(
+              controller: controller,
+              physics: physics,
+              child: Column(children: children),
             );
           },
         ),
@@ -1069,18 +1062,12 @@ class SearchedSeriesScreenState extends State<SearchedSeriesScreen> {
         behavior: ScrollConfiguration.of(context).copyWith(overscroll: true, platform: TargetPlatform.windows, scrollbars: false),
         child: SmoothScroll(
           controller: _getOrCreateController('Overview'),
-          stopScroll: KeyboardState.ctrlPressedNotifier,
           enableSmoothScroll: Manager.animationsEnabled,
           builder: (context, controller, physics) {
-            return ValueListenableBuilder(
-              valueListenable: KeyboardState.ctrlPressedNotifier,
-              builder: (context, isCtrlPressed, _) {
-                return SingleChildScrollView(
-                  controller: controller,
-                  physics: isCtrlPressed ? const NeverScrollableScrollPhysics() : physics,
-                  child: Column(children: contents),
-                );
-              },
+            return SingleChildScrollView(
+              controller: controller,
+              physics: physics,
+              child: Column(children: contents),
             );
           },
         ),

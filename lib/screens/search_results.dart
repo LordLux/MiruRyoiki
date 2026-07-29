@@ -8,7 +8,6 @@ import '../services/anilist/anilist_availability.dart';
 import '../services/anilist/queries/anilist_service.dart';
 import '../services/connectivity/connectivity_service.dart';
 import '../models/anilist/page_info.dart';
-import '../services/navigation/shortcuts.dart';
 import '../utils/logging.dart';
 import '../utils/screen.dart';
 import '../widgets/cards/search_series_card.dart';
@@ -204,13 +203,9 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
     return LayoutBuilder(builder: (context, constraints) {
       return SmoothScroll(
         controller: _scrollController,
-        stopScroll: KeyboardState.ctrlPressedNotifier,
         enableSmoothScroll: Manager.animationsEnabled,
         builder: (context, controller, physics) {
           return ValueListenableBuilder(
-            valueListenable: KeyboardState.ctrlPressedNotifier,
-            builder: (context, isCtrlPressed, _) {
-              return ValueListenableBuilder(
                 valueListenable: previousGridColumnCount,
                 builder: (context, columns, __) {
                   return GridView.builder(
@@ -253,8 +248,6 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
                   );
                 },
               );
-            },
-          );
         },
       );
     });

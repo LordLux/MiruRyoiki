@@ -12,7 +12,6 @@ import '../../models/anilist/user_data.dart';
 import '../../models/series.dart';
 import '../../services/anilist/provider/anilist_provider.dart';
 import '../../services/anilist/queries/anilist_service.dart';
-import '../../services/navigation/shortcuts.dart';
 import '../../utils/screen.dart';
 import '../../utils/time.dart';
 import '../animated_order_tile.dart';
@@ -187,12 +186,9 @@ class ListsContentState extends State<ListsContent> with DialogController {
     // Filter out hidden lists when not in edit mode for display purposes
     final displayListOrder = editListsEnabled ? _customListOrder : _customListOrder.where((listName) => !widget.hiddenLists.contains(listName)).toList();
 
-    return ValueListenableBuilder(
-      valueListenable: KeyboardState.ctrlPressedNotifier,
-      builder: (context, isCtrlPressed, _) {
-        // Non-reorderable view when editing is disabled
-        if (!editListsEnabled) {
-          return Column(
+    // Non-reorderable view when editing is disabled
+    if (!editListsEnabled) {
+      return Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: List.generate(displayListOrder.length, (index) {
@@ -220,7 +216,6 @@ class ListsContentState extends State<ListsContent> with DialogController {
         // Reorderable view when editing is enabled
         return ReorderableListView.builder(
           shrinkWrap: true,
-          physics: isCtrlPressed ? const NeverScrollableScrollPhysics() : null,
           itemCount: displayListOrder.length,
           buildDefaultDragHandles: false,
           clipBehavior: Clip.none,
@@ -342,8 +337,6 @@ class ListsContentState extends State<ListsContent> with DialogController {
             );
           },
         );
-      },
-    );
   }
 
   @override

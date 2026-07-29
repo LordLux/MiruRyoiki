@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:silky_scroll/silky_scroll.dart';
 
@@ -21,7 +20,6 @@ class SmoothScroll extends StatefulWidget {
     this.animationCurve = Curves.easeOutQuint,
     this.enableSmoothScroll = true,
     this.direction = Axis.vertical,
-    this.stopScroll,
     required this.builder,
   });
 
@@ -43,15 +41,6 @@ class SmoothScroll extends StatefulWidget {
   /// Axis the scrollable built by [builder] scrolls along.
   final Axis direction;
 
-  /// While this listenable is true, [builder] receives
-  /// [NeverScrollableScrollPhysics] instead of the usual physics.
-  ///
-  /// Used to hold the view still during ctrl+wheel zoom (see
-  /// `KeyboardState.ctrlPressedNotifier`), which would otherwise zoom and scroll
-  /// at the same time. Some call sites additionally do this themselves further
-  /// down their widget tree; several rely solely on this.
-  final ValueListenable<bool>? stopScroll;
-
   /// Builds the scrollable, receiving the controller and physics to apply.
   final Widget Function(BuildContext context, ScrollController controller, ScrollPhysics physics) builder;
 
@@ -70,27 +59,11 @@ class _SmoothScrollState extends State<SmoothScroll> {
     super.dispose();
   }
 
-  /// Runs [widget.builder], swapping in non-scrollable physics while
-  /// [widget.stopScroll] is true. Mirrors what the previous fork did.
-  Widget _build(BuildContext context, ScrollController controller, ScrollPhysics physics) {
-    final stopScroll = widget.stopScroll;
-    if (stopScroll == null) return widget.builder(context, controller, physics);
-
-    return ValueListenableBuilder<bool>(
-      valueListenable: stopScroll,
-      builder: (context, shouldStop, _) => widget.builder(
-        context,
-        controller,
-        shouldStop ? const NeverScrollableScrollPhysics() : physics,
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     if (!widget.enableSmoothScroll) {
       final controller = widget.controller ?? (_ownedController ??= ScrollController());
-      return _build(context, controller, const BouncingScrollPhysics());
+      return widget.builder(context, controller, const BouncingScrollPhysics());
     }
 
     return SilkyScroll(
@@ -99,7 +72,7 @@ class _SmoothScrollState extends State<SmoothScroll> {
       silkyScrollDuration: Duration(milliseconds: widget.durationMS),
       animationCurve: widget.animationCurve,
       direction: widget.direction,
-      builder: _build,
+      builder: widget.builder,
     );
   }
 }

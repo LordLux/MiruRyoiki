@@ -185,13 +185,6 @@ class _CustomKeyboardListenerState extends State<CustomKeyboardListener> {
     Manager.setState(() {});
   }
 
-  void _handleScrollSignal(PointerSignalEvent event) {
-    if (event is PointerScrollEvent && KeyboardState.ctrlPressedNotifier.value) {
-      _zoom(zoomIn: event.scrollDelta.dy < 0);
-      KeyboardState.zoomReleaseNotifier.value = !KeyboardState.zoomReleaseNotifier.value;
-    }
-  }
-
   double calculateZoom(double zoomRaw) {
     if (zoomRaw >= 171) return 150;
     if (zoomRaw >= 157) return 140;
@@ -379,7 +372,6 @@ class _CustomKeyboardListenerState extends State<CustomKeyboardListener> {
   Widget build(BuildContext context) {
     return Listener(
       onPointerDown: _handlePointerSignal,
-      onPointerSignal: _handleScrollSignal,
       child: Shortcuts(
         shortcuts: _shortcuts,
         child: Actions(

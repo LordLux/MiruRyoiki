@@ -10,7 +10,6 @@ import '../utils/anilist_utils.dart';
 
 import '../models/calendar_entry.dart';
 import '../services/navigation/navigation.dart';
-import '../services/navigation/shortcuts.dart';
 import '../services/navigation/show_info.dart';
 import '../utils/color.dart';
 import '../utils/logging.dart';
@@ -691,14 +690,9 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> with Autom
             child: buildStyledScrollbar(
               SmoothScroll(
                 controller: widget.scrollController,
-                stopScroll: KeyboardState.ctrlPressedNotifier,
                 enableSmoothScroll: Manager.animationsEnabled,
                 builder: (context, controller, physics) {
-                  return ValueListenableBuilder(
-                    valueListenable: KeyboardState.ctrlPressedNotifier,
-                    builder: (context, isCtrlPressed, _) {
-                      return ListView.builder(
-                        physics: isCtrlPressed ? const NeverScrollableScrollPhysics() : null,
+                  return ListView.builder(
                         controller: controller,
                         cacheExtent: 999999,
                         itemCount: flattenedList.length,
@@ -765,8 +759,6 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> with Autom
                           return const SizedBox.shrink();
                         },
                       );
-                    },
-                  );
                 },
               ),
               widget.scrollController,

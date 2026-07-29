@@ -8,7 +8,6 @@ import 'package:flutter_desktop_context_menu/flutter_desktop_context_menu.dart';
 import 'package:path/path.dart' as p;
 
 import '../manager.dart';
-import '../services/navigation/shortcuts.dart';
 import '../services/navigation/show_info.dart';
 import '../utils/path.dart';
 import '../utils/shell.dart';
@@ -412,34 +411,27 @@ class FileExplorerState extends State<FileExplorer> {
                 const Divider(),
                 // File/folder list
                 Expanded(
-                  child: ValueListenableBuilder(
-                    valueListenable: KeyboardState.ctrlPressedNotifier,
-                    builder: (context, isCtrlPressed, _) {
-                      final itemCount = _contents.length + (widget.options.allowCurrentFolder ? 1 : 0);
-                      return GestureDetector(
-                        behavior: HitTestBehavior.translucent,
-                        onSecondaryTapDown: (_) {
-                          if (_itemSecondaryTapHandled) {
-                            _itemSecondaryTapHandled = false;
-                            return;
-                          }
-                          _showBackgroundContextMenu();
-                        },
-                        child: Padding(
-                          padding: const EdgeInsets.only(top: 2.0),
-                          child: ListView.builder(
-                            physics: isCtrlPressed ? const NeverScrollableScrollPhysics() : null,
-                            itemCount: itemCount,
-                            itemBuilder: (context, index) {
-                              if (widget.options.allowCurrentFolder && index == 0) return _buildCurrentFolderTile();
-
-                              final entityIndex = widget.options.allowCurrentFolder ? index - 1 : index;
-                              return _buildEntityTile(_contents[entityIndex]);
-                            },
-                          ),
-                        ),
-                      );
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.translucent,
+                    onSecondaryTapDown: (_) {
+                      if (_itemSecondaryTapHandled) {
+                        _itemSecondaryTapHandled = false;
+                        return;
+                      }
+                      _showBackgroundContextMenu();
                     },
+                    child: Padding(
+                      padding: const EdgeInsets.only(top: 2.0),
+                      child: ListView.builder(
+                        itemCount: _contents.length + (widget.options.allowCurrentFolder ? 1 : 0),
+                        itemBuilder: (context, index) {
+                          if (widget.options.allowCurrentFolder && index == 0) return _buildCurrentFolderTile();
+
+                          final entityIndex = widget.options.allowCurrentFolder ? index - 1 : index;
+                          return _buildEntityTile(_contents[entityIndex]);
+                        },
+                      ),
+                    ),
                   ),
                 ),
               ],

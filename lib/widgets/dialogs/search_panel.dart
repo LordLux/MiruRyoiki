@@ -9,7 +9,6 @@ import '../../services/anilist/linking.dart';
 import '../../services/anilist/provider/anilist_provider.dart';
 import '../../services/file_system/cache.dart';
 import '../../services/navigation/dialogs.dart';
-import '../../services/navigation/shortcuts.dart';
 import '../../utils/screen.dart';
 import '../../utils/time.dart';
 import 'link_anilist.dart';
@@ -225,11 +224,7 @@ class _AnilistSimpleSearchPanelState extends State<AnilistSimpleSearchPanel> {
           const Center(child: Text('No results found'))
         else
           Expanded(
-            child: ValueListenableBuilder(
-                valueListenable: KeyboardState.ctrlPressedNotifier,
-                builder: (context, isCtrlPressed, _) {
-                  return ListView.builder(
-                    physics: isCtrlPressed ? const NeverScrollableScrollPhysics() : null,
+            child: ListView.builder(
                     itemCount: _searchResults.length,
                     itemBuilder: (context, index) {
                       final series = _searchResults[index];
@@ -253,8 +248,7 @@ class _AnilistSimpleSearchPanelState extends State<AnilistSimpleSearchPanel> {
                         },
                       );
                     },
-                  );
-                }),
+                  ),
           ),
       ],
     );

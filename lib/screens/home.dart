@@ -8,7 +8,6 @@ import '../models/series.dart';
 import '../models/anilist/anime.dart';
 import '../services/anilist/provider/anilist_provider.dart';
 import '../services/library/library_provider.dart';
-import '../services/navigation/shortcuts.dart';
 import '../settings.dart';
 import '../utils/color.dart';
 import '../utils/logging.dart';
@@ -228,12 +227,8 @@ class _HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMi
             builder: (context, scrollController) {
               return ClipRRect(
                 borderRadius: BorderRadius.all(Radius.circular(ScreenUtils.kStatCardBorderRadius)),
-                child: ValueListenableBuilder(
-                  valueListenable: KeyboardState.ctrlPressedNotifier,
-                  builder: (context, isCtrlPressed, _) {
-                    return ListView.builder(
+                child: ListView.builder(
                       controller: scrollController,
-                      physics: isCtrlPressed ? const NeverScrollableScrollPhysics() : null,
                       scrollDirection: Axis.horizontal,
                       itemCount: series.length,
                       itemBuilder: (context, index) {
@@ -256,9 +251,7 @@ class _HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMi
                           ),
                         );
                       },
-                    );
-                  },
-                ),
+                    ),
               );
             },
           ),
@@ -354,12 +347,8 @@ class _HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMi
       builder: (context, scrollController) {
         return ClipRRect(
           borderRadius: BorderRadius.all(Radius.circular(ScreenUtils.kStatCardBorderRadius)),
-          child: ValueListenableBuilder(
-            valueListenable: KeyboardState.ctrlPressedNotifier,
-            builder: (context, isCtrlPressed, _) {
-              return ListView.builder(
+          child: ListView.builder(
                 controller: scrollController,
-                physics: isCtrlPressed ? const NeverScrollableScrollPhysics() : null,
                 scrollDirection: Axis.horizontal,
                 itemCount: series.length,
                 itemBuilder: (context, index) {
@@ -381,9 +370,7 @@ class _HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMi
                     ),
                   );
                 },
-              );
-            },
-          ),
+              ),
         );
       },
     );

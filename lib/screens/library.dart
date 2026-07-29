@@ -689,34 +689,28 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
     // Ungrouped view
     final scrollContent = SmoothScroll(
       controller: shimmer ? null : _controller,
-      stopScroll: KeyboardState.ctrlPressedNotifier,
       enableSmoothScroll: Manager.animationsEnabled,
       builder: (context, controller, physics) {
         return ValueListenableBuilder(
-          valueListenable: KeyboardState.ctrlPressedNotifier,
-          builder: (context, isCtrlPressed, _) {
-            return ValueListenableBuilder(
-              valueListenable: previousGridColumnCount,
-              builder: (context, columns, __) {
-                return GridView.builder(
-                  controller: controller,
-                  physics: physics,
-                  padding: const EdgeInsets.only(bottom: 8),
-                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: columns ?? ScreenUtils.crossAxisCount(maxWidth),
-                    childAspectRatio: ScreenUtils.kDefaultAspectRatio,
-                    crossAxisSpacing: ScreenUtils.cardPadding,
-                    mainAxisSpacing: ScreenUtils.cardPadding,
-                  ),
-                  itemCount: series.length,
-                  itemBuilder: (context, index) {
-                    final serieItem = series[index];
-                    return SeriesCard(
-                      key: (index == 0) ? firstCardKey : ValueKey('${serieItem.path}:${serieItem.effectivePosterPath ?? 'none'}'),
-                      series: serieItem,
-                      onTap: () => _navigateToSeries(serieItem),
-                    );
-                  },
+          valueListenable: previousGridColumnCount,
+          builder: (context, columns, __) {
+            return GridView.builder(
+              controller: controller,
+              physics: physics,
+              padding: const EdgeInsets.only(bottom: 8),
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: columns ?? ScreenUtils.crossAxisCount(maxWidth),
+                childAspectRatio: ScreenUtils.kDefaultAspectRatio,
+                crossAxisSpacing: ScreenUtils.cardPadding,
+                mainAxisSpacing: ScreenUtils.cardPadding,
+              ),
+              itemCount: series.length,
+              itemBuilder: (context, index) {
+                final serieItem = series[index];
+                return SeriesCard(
+                  key: (index == 0) ? firstCardKey : ValueKey('${serieItem.path}:${serieItem.effectivePosterPath ?? 'none'}'),
+                  series: serieItem,
+                  onTap: () => _navigateToSeries(serieItem),
                 );
               },
             );
@@ -977,7 +971,6 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
 
     final scrollContent = SmoothScroll(
       controller: shimmer ? null : _controller,
-      stopScroll: KeyboardState.zoomReleaseNotifier,
       enableSmoothScroll: Manager.animationsEnabled,
       builder: (context, controller, physics) {
         return ValueListenableBuilder(
@@ -1135,7 +1128,6 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
 
     final scrollContent = SmoothScroll(
       controller: _controller,
-      stopScroll: KeyboardState.zoomReleaseNotifier,
       enableSmoothScroll: Manager.animationsEnabled,
       builder: (context, controller, physics) {
         return ValueListenableBuilder(

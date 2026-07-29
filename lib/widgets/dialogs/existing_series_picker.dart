@@ -7,7 +7,6 @@ import '../../main.dart';
 import '../../manager.dart';
 import '../../models/series.dart';
 import '../../services/library/library_provider.dart';
-import '../../services/navigation/shortcuts.dart';
 import '../../settings.dart';
 import '../../utils/screen.dart';
 import '../cards/series_card.dart';
@@ -99,13 +98,9 @@ class _ExistingSeriesPickerDialogState extends State<ExistingSeriesPickerDialog>
   Widget _buildGrid(List<Series> series, double maxWidth) {
     final scrollContent = SmoothScroll(
       controller: _controller,
-      stopScroll: KeyboardState.ctrlPressedNotifier,
       enableSmoothScroll: Manager.animationsEnabled,
       builder: (context, controller, physics) {
         return ValueListenableBuilder(
-          valueListenable: KeyboardState.ctrlPressedNotifier,
-          builder: (context, isCtrlPressed, _) {
-            return ValueListenableBuilder(
               valueListenable: previousGridColumnCount,
               builder: (context, columns, __) {
                 return GridView.builder(
@@ -135,8 +130,6 @@ class _ExistingSeriesPickerDialogState extends State<ExistingSeriesPickerDialog>
                   },
                 );
               },
-            );
-          },
         );
       },
     );

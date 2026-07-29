@@ -4,7 +4,6 @@ import '../manager.dart';
 import '../models/anilist/mapping.dart';
 import '../models/ui_episode.dart';
 import '../models/series.dart';
-import '../services/navigation/shortcuts.dart';
 import 'cards/episode_card.dart';
 
 class EpisodeGrid extends StatelessWidget {
@@ -64,13 +63,9 @@ class EpisodeGrid extends StatelessWidget {
         }
 
         return SmoothScroll(
-          stopScroll: KeyboardState.ctrlPressedNotifier,
           enableSmoothScroll: Manager.animationsEnabled,
           builder: (context, controller, physics) {
-            return ValueListenableBuilder(
-              valueListenable: KeyboardState.ctrlPressedNotifier,
-              builder: (context, isCtrlPressed, _) {
-                return GridView.builder(
+            return GridView.builder(
                   shrinkWrap: true,
                   physics: physics,
                   padding: padding,
@@ -79,8 +74,6 @@ class EpisodeGrid extends StatelessWidget {
                   itemCount: episodes.length,
                   itemBuilder: (context, index) => _buildEpisodeTile(context, episodes[index], series, mapping),
                 );
-              },
-            );
           },
         );
       },

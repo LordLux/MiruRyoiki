@@ -4,7 +4,6 @@ import 'package:fluent_ui/fluent_ui.dart';
 import '../smooth_scroll.dart';
 
 import '../../manager.dart';
-import '../../services/navigation/shortcuts.dart';
 import '../../utils/image.dart';
 import '../../utils/screen.dart';
 import '../../utils/time.dart';
@@ -136,7 +135,6 @@ class _MiruRyoikiInfobarState extends State<MiruRyoikiInfobar> {
                                 scrollbars: false,
                               ),
                               child: SmoothScroll(
-                                stopScroll: KeyboardState.ctrlPressedNotifier,
                                 enableSmoothScroll: Manager.animationsEnabled,
                                 builder: (context, controller, physics) {
                                   return SingleChildScrollView(

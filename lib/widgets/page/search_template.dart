@@ -5,7 +5,6 @@ import 'package:fluent_ui/fluent_ui.dart';
 import '../smooth_scroll.dart';
 
 import '../../manager.dart';
-import '../../services/navigation/shortcuts.dart';
 import '../../utils/screen.dart';
 import '../../utils/time.dart';
 import '../frosted_noise.dart';
@@ -279,13 +278,9 @@ class _SearchTemplatePageState extends State<SearchTemplatePage> with SingleTick
                                           behavior: ScrollConfiguration.of(context).copyWith(overscroll: true, platform: TargetPlatform.windows, scrollbars: false),
                                           child: SmoothScroll(
                                             controller: widget.scrollController,
-                                            stopScroll: KeyboardState.ctrlPressedNotifier,
                                             enableSmoothScroll: Manager.animationsEnabled,
                                             builder: (context, controller, physics) {
-                                              return ValueListenableBuilder(
-                                                valueListenable: KeyboardState.ctrlPressedNotifier,
-                                                builder: (context, isCtrlPressed, _) {
-                                                  return CustomScrollView(
+                                              return CustomScrollView(
                                                     controller: controller,
                                                     physics: physics,
                                                     slivers: [
@@ -299,8 +294,6 @@ class _SearchTemplatePageState extends State<SearchTemplatePage> with SingleTick
                                                       SliverToBoxAdapter(child: widget.content),
                                                     ],
                                                   );
-                                                },
-                                              );
                                             },
                                           ),
                                         ),

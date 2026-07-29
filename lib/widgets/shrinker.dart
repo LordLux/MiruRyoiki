@@ -5,7 +5,6 @@ import 'package:miruryoiki/widgets/fading_edge_scrollview.dart';
 import 'smooth_scroll.dart';
 
 import '../manager.dart';
-import '../services/navigation/shortcuts.dart';
 import '../utils/time.dart';
 import 'buttons/button.dart';
 
@@ -217,30 +216,24 @@ class _ShrinkerState extends State<Shrinker> with SingleTickerProviderStateMixin
                 child: ScrollConfiguration(
                   behavior: const ScrollBehavior().copyWith(overscroll: false, scrollbars: isExpanded),
                   child: SmoothScroll(
-                    stopScroll: KeyboardState.ctrlPressedNotifier,
                     scrollSpeed: 0.5,
                     enableSmoothScroll: Manager.animationsEnabled,
                     durationMS: 350,
                     controller: _scrollController,
                     animationCurve: Curves.easeOutQuint,
                     builder: (context, controller, physics) {
-                      return ValueListenableBuilder(
-                        valueListenable: KeyboardState.ctrlPressedNotifier,
-                        builder: (context, isCtrlPressed, _) {
-                          return SingleChildScrollView(
-                            physics: isCtrlPressed || !isExpanded ? const NeverScrollableScrollPhysics() : physics,
-                            controller: controller,
-                            child: AnimatedPadding(
-                              duration: widget.animationDuration,
-                              curve: widget.animationCurve,
-                              padding: EdgeInsets.only(
-                                bottom: 8.0,
-                                top: _controller.isExpanded ? 8.0 : 0.0,
-                              ),
-                              child: content,
-                            ),
-                          );
-                        },
+                      return SingleChildScrollView(
+                        physics: !isExpanded ? const NeverScrollableScrollPhysics() : physics,
+                        controller: controller,
+                        child: AnimatedPadding(
+                          duration: widget.animationDuration,
+                          curve: widget.animationCurve,
+                          padding: EdgeInsets.only(
+                            bottom: 8.0,
+                            top: _controller.isExpanded ? 8.0 : 0.0,
+                          ),
+                          child: content,
+                        ),
                       );
                     },
                   ),

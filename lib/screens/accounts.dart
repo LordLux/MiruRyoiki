@@ -25,7 +25,6 @@ import '../models/anilist/anime.dart';
 import '../services/anilist/provider/anilist_provider.dart';
 import 'package:provider/provider.dart';
 
-import '../services/navigation/shortcuts.dart';
 import '../services/navigation/show_info.dart';
 import '../utils/color.dart';
 import '../utils/html/extensions/code.dart';
@@ -995,15 +994,10 @@ class AccountsScreenState extends State<AccountsScreen> with AutomaticKeepAliveC
         child: ScrollConfiguration(
           behavior: ScrollConfiguration.of(context).copyWith(overscroll: true, platform: TargetPlatform.windows, scrollbars: false),
           child: SmoothScroll(
-              stopScroll: KeyboardState.ctrlPressedNotifier,
               enableSmoothScroll: Manager.animationsEnabled,
               direction: Axis.horizontal,
               builder: (context, controller, physics) {
-                return ValueListenableBuilder(
-                    valueListenable: KeyboardState.ctrlPressedNotifier,
-                    builder: (context, isCtrlPressed, _) {
-                      return ListView.builder(
-                        physics: isCtrlPressed ? const NeverScrollableScrollPhysics() : null,
+                return ListView.builder(
                         controller: controller,
                         scrollDirection: Axis.horizontal,
                         itemCount: list.nodes!.length,
@@ -1063,7 +1057,6 @@ class AccountsScreenState extends State<AccountsScreen> with AutomaticKeepAliveC
                           );
                         },
                       );
-                    });
               }),
         ),
       );

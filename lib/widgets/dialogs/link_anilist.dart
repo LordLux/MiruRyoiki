@@ -22,7 +22,6 @@ import '../../services/connectivity/connectivity_service.dart';
 import '../../services/navigation/dialogs.dart';
 import '../../services/navigation/dialogs2.dart';
 import '../../services/navigation/navigation.dart';
-import '../../services/navigation/shortcuts.dart';
 import '../../services/navigation/show_info.dart';
 import '../../utils/color.dart';
 import '../../utils/logging.dart';
@@ -352,15 +351,10 @@ class AnilistLinkMultiContentState extends State<AnilistLinkMultiContent> with D
                     ],
                   ),
                 )
-              : ValueListenableBuilder(
-                  valueListenable: KeyboardState.ctrlPressedNotifier,
-                  builder: (context, isCtrlPressed, _) {
-                    return ListView.builder(
-                      physics: isCtrlPressed ? const NeverScrollableScrollPhysics() : null,
-                      itemCount: mappings.length,
-                      itemBuilder: (context, index) => _buildMappingItem(mappings[index]),
-                    );
-                  }),
+              : ListView.builder(
+                  itemCount: mappings.length,
+                  itemBuilder: (context, index) => _buildMappingItem(mappings[index]),
+                ),
         ),
         SizedBox(height: 10),
         Row(
