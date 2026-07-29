@@ -9,6 +9,7 @@ import '../models/mkv_metadata.dart';
 import '../models/notification.dart';
 import '../utils/path.dart';
 import 'tables.dart';
+import 'migrations.dart';
 import 'daos/series_dao.dart';
 import 'daos/episodes_dao.dart';
 import 'daos/watch_dao.dart';
@@ -69,124 +70,7 @@ class AppDatabase extends _$AppDatabase {
           await m.issueCustomQuery('CREATE INDEX IF NOT EXISTS idx_anilist_mappings_series_id ON anilist_mappings_table(series_id);');
         },
         onUpgrade: (m, from, to) async {
-          if (from < 2) {
-            // Droppa e ricrea le tabelle affette
-            await m.drop(seasonsTable);
-            await m.drop(episodesTable);
-            await m.drop(anilistMappingsTable);
-            // Ricrea tutto da zero
-            await m.createAll();
-          }
-          if (from < 3) {
-            // recreate the indexes in case we skipped onCreate
-            await m.issueCustomQuery('CREATE INDEX IF NOT EXISTS idx_series_path ON series_table(path);');
-            await m.issueCustomQuery('CREATE INDEX IF NOT EXISTS idx_seasons_series_id ON seasons_table(series_id);');
-            await m.issueCustomQuery('CREATE INDEX IF NOT EXISTS idx_episodes_season_id ON episodes_table(season_id);');
-            await m.issueCustomQuery('CREATE INDEX IF NOT EXISTS idx_episodes_path ON episodes_table(path);');
-            await m.issueCustomQuery('CREATE INDEX IF NOT EXISTS idx_anilist_mappings_series_id ON anilist_mappings_table(series_id);');
-          }
-          if (from < 4) {
-            await m.addColumn(episodesTable, episodesTable.metadata);
-            await m.addColumn(episodesTable, episodesTable.mkvMetadata);
-          }
-          if (from < 5) {
-            await m.alterTable(TableMigration(seriesTable));
-          }
-          if (from < 6) {
-            await m.createTable(notificationsTable);
-            await m.issueCustomQuery('CREATE INDEX IF NOT EXISTS idx_notifications_created_at ON notifications(created_at DESC);');
-            await m.issueCustomQuery('CREATE INDEX IF NOT EXISTS idx_notifications_is_read ON notifications(is_read);');
-            await m.issueCustomQuery('CREATE INDEX IF NOT EXISTS idx_notifications_type ON notifications(type);');
-          }
-          if (from < 7) {
-            // Add customListName column for unlinked series custom list selection
-            try {
-              await m.issueCustomQuery('ALTER TABLE series_table ADD COLUMN custom_list_name TEXT;');
-            } catch (e) {
-              // Column might already exist if migration was interrupted, ignore error
-              if (!e.toString().contains('duplicate column name')) rethrow;
-            }
-          }
-          if (from < 8) {
-            // Add anilistTitle column for episode titles from AniList
-            try {
-              await m.issueCustomQuery('ALTER TABLE episodes_table ADD COLUMN anilist_title TEXT;');
-            } catch (e) {
-              // Column might already exist if migration was interrupted, ignore error
-              if (!e.toString().contains('duplicate column name')) rethrow;
-            }
-          }
-          if (from < 9) {
-            // Add format column to notifications table for anime format (MOVIE, TV, OVA, etc.)
-            try {
-              await m.issueCustomQuery('ALTER TABLE notifications ADD COLUMN format TEXT;');
-            } catch (e) {
-              // Column might already exist if migration was interrupted, ignore error
-              if (!e.toString().contains('duplicate column name')) rethrow;
-            }
-          }
-          if (from < 10) {
-            // Rename dominant_color to local_poster_color and add local_banner_color in series_table
-            // Add poster_color and banner_color columns to anilist_mappings_table
-            try {
-              await m.issueCustomQuery('ALTER TABLE series_table RENAME COLUMN dominant_color TO local_poster_color;');
-            } catch (e) {
-              // Column might already be renamed if migration was interrupted, ignore error
-              if (!e.toString().contains('no such column') && !e.toString().contains('duplicate column name')) rethrow;
-            }
-            
-            try {
-              await m.issueCustomQuery('ALTER TABLE series_table ADD COLUMN local_banner_color TEXT;');
-            } catch (e) {
-              // Column might already exist if migration was interrupted, ignore error
-              if (!e.toString().contains('duplicate column name')) rethrow;
-            }
-            
-            try {
-              await m.issueCustomQuery('ALTER TABLE anilist_mappings_table ADD COLUMN poster_color TEXT;');
-            } catch (e) {
-              // Column might already exist if migration was interrupted, ignore error
-              if (!e.toString().contains('duplicate column name')) rethrow;
-            }
-            
-            try {
-              await m.issueCustomQuery('ALTER TABLE anilist_mappings_table ADD COLUMN banner_color TEXT;');
-            } catch (e) {
-              // Column might already exist if migration was interrupted, ignore error
-              if (!e.toString().contains('duplicate column name')) rethrow;
-            }
-          }
-          if (from < 11) {
-            // Add Anilist mutations queue and user cache tables
-            await m.createTable(anilistMutationsTable);
-            await m.createTable(anilistUserCacheTable);
-            
-            // Create indexes for efficient querying
-            await m.issueCustomQuery('CREATE INDEX IF NOT EXISTS idx_mutations_media_id ON anilist_mutations(media_id);');
-            await m.issueCustomQuery('CREATE INDEX IF NOT EXISTS idx_mutations_created_at ON anilist_mutations(created_at ASC);');
-          }
-          if (from < 12) {
-            await m.createTable(settingsTable);
-            try {
-              await m.addColumn(anilistMappingsTable, anilistMappingsTable.viewType);
-            } catch (e) {
-              // Column might already exist if migration was interrupted, ignore error
-              if (!e.toString().contains('duplicate column name')) rethrow;
-            }
-          }
-          if (from < 13) {
-            // Add episodeNumber and parsedTitle columns to episodes_table
-            try {
-              await m.issueCustomQuery('ALTER TABLE episodes_table ADD COLUMN episode_number INTEGER;');
-            } catch (e) {
-              if (!e.toString().contains('duplicate column name')) rethrow;
-            }
-            try {
-              await m.issueCustomQuery('ALTER TABLE episodes_table ADD COLUMN parsed_title TEXT;');
-            } catch (e) {
-              if (!e.toString().contains('duplicate column name')) rethrow;
-            }
-          }
+          await runUpgradeMigrations(m, this, from, to);
         },
         beforeOpen: (details) async {
           // if (details.wasCreated) {}
