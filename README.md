@@ -46,4 +46,21 @@ MiruRyoiki is a Flutter desktop application (Windows-first, macOS planned) that 
 
 ## Development
 
-See `CLAUDE.md` / `GEMINI.md` for developer documentation and `ARCHITECTURE.md` for a system map. Requires Flutter 3.32.8 (via FVM) and a `.env` file with AniList credentials.
+See `CLAUDE.md` / `GEMINI.md` for developer documentation and `ARCHITECTURE.md` for a system map.
+
+Requires:
+- **Flutter 3.32.8** (via FVM — see `.fvmrc`)
+- **`.env` file** — copy `.env.example` to `.env` and fill in your AniList OAuth credentials (`ANILIST_CLIENT_ID`, `ANILIST_CLIENT_SECRET`) and optional Sonarr API key (`SONARR_API_KEY`). This file is declared as a Flutter asset and must exist before building.
+- **pubversion** (global Dart tool) — used by `build.ps1` to increment the version number
+
+### Building a Release
+
+```powershell
+# On Windows:
+powershell -File build.ps1
+
+# Manually (without incrementing build number):
+fvm flutter build windows --release --no-pub
+```
+
+The release build runs `flutter analyze` and all tests before compiling, to catch issues early.

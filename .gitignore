@@ -12,7 +12,6 @@
 .swiftpm/
 migrate_working_dir/
 /backup_mapping_color_scroll/
-*.txt
 *.py
 
 # IntelliJ related
@@ -58,4 +57,3 @@ GEMINI.md
 knaben.py
 CLAUDE.md
 .claude/settings.local.json
-*.md
