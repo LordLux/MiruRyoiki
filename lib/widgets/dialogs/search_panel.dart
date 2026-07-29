@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:miruryoiki/widgets/series_image.dart';
 import 'package:provider/provider.dart';
+import '../../manager.dart';
 import '../../models/series.dart';
 import '../../models/anilist/anime.dart';
 import '../../services/anilist/linking.dart';
@@ -11,6 +12,7 @@ import '../../services/file_system/cache.dart';
 import '../../services/navigation/dialogs.dart';
 import '../../utils/screen.dart';
 import '../../utils/time.dart';
+import '../smooth_scroll.dart';
 import 'link_anilist.dart';
 
 class AnilistSimpleSearchPanel extends StatefulWidget {
@@ -224,7 +226,12 @@ class _AnilistSimpleSearchPanelState extends State<AnilistSimpleSearchPanel> {
           const Center(child: Text('No results found'))
         else
           Expanded(
-            child: ListView.builder(
+            child: SmoothScroll(
+              enableSmoothScroll: Manager.animationsEnabled,
+              builder: (context, controller, physics) {
+                return ListView.builder(
+                    controller: controller,
+                    physics: physics,
                     itemCount: _searchResults.length,
                     itemBuilder: (context, index) {
                       final series = _searchResults[index];
@@ -248,7 +255,9 @@ class _AnilistSimpleSearchPanelState extends State<AnilistSimpleSearchPanel> {
                         },
                       );
                     },
-                  ),
+                  );
+              },
+            ),
           ),
       ],
     );

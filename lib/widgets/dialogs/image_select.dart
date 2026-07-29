@@ -14,6 +14,7 @@ import '../../utils/logging.dart';
 import '../../utils/path.dart';
 import '../../utils/screen.dart';
 import '../series_image.dart';
+import '../smooth_scroll.dart';
 import '../transparency_shadow_image.dart';
 import 'link_anilist.dart';
 
@@ -451,7 +452,12 @@ class _ImageSelectionContentState extends State<ImageSelectionContent> {
                     : Column(
                         children: [
                           Expanded(
-                            child: GridView.builder(
+                            child: SmoothScroll(
+                              enableSmoothScroll: Manager.animationsEnabled,
+                              builder: (context, controller, physics) {
+                                return GridView.builder(
+                                  controller: controller,
+                                  physics: physics,
                               gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                                 crossAxisCount: 4,
                                 childAspectRatio: 1,
@@ -611,6 +617,8 @@ class _ImageSelectionContentState extends State<ImageSelectionContent> {
                                       ),
                                     ),
                                   ),
+                                );
+                              },
                                 );
                               },
                             ),

@@ -12,6 +12,7 @@ import '../services/navigation/show_info.dart';
 import '../utils/path.dart';
 import '../utils/shell.dart';
 import '../utils/time.dart';
+import 'smooth_scroll.dart';
 
 class FileExplorerOptions {
   /// Allow selecting individual files
@@ -422,13 +423,20 @@ class FileExplorerState extends State<FileExplorer> {
                     },
                     child: Padding(
                       padding: const EdgeInsets.only(top: 2.0),
-                      child: ListView.builder(
-                        itemCount: _contents.length + (widget.options.allowCurrentFolder ? 1 : 0),
-                        itemBuilder: (context, index) {
-                          if (widget.options.allowCurrentFolder && index == 0) return _buildCurrentFolderTile();
+                      child: SmoothScroll(
+                        enableSmoothScroll: Manager.animationsEnabled,
+                        builder: (context, controller, physics) {
+                          return ListView.builder(
+                            controller: controller,
+                            physics: physics,
+                            itemCount: _contents.length + (widget.options.allowCurrentFolder ? 1 : 0),
+                            itemBuilder: (context, index) {
+                              if (widget.options.allowCurrentFolder && index == 0) return _buildCurrentFolderTile();
 
-                          final entityIndex = widget.options.allowCurrentFolder ? index - 1 : index;
-                          return _buildEntityTile(_contents[entityIndex]);
+                              final entityIndex = widget.options.allowCurrentFolder ? index - 1 : index;
+                              return _buildEntityTile(_contents[entityIndex]);
+                            },
+                          );
                         },
                       ),
                     ),

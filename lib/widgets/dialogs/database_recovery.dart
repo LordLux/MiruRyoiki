@@ -8,6 +8,7 @@ import '../../services/navigation/navigation.dart';
 import '../../utils/database_recovery.dart';
 import '../../utils/time.dart';
 import '../buttons/button.dart';
+import '../smooth_scroll.dart';
 
 /// Dialog for handling database lock recovery
 class DatabaseRecoveryDialog extends StatefulWidget {
@@ -69,7 +70,12 @@ class _DatabaseRecoveryDialogState extends State<DatabaseRecoveryDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
+    return SmoothScroll(
+      enableSmoothScroll: Manager.animationsEnabled,
+      builder: (context, controller, physics) {
+        return SingleChildScrollView(
+          controller: controller,
+          physics: physics,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -161,7 +167,9 @@ class _DatabaseRecoveryDialogState extends State<DatabaseRecoveryDialog> {
           ),
         ],
       ),
-    );
+      );
+        },
+      );
   }
 }
 

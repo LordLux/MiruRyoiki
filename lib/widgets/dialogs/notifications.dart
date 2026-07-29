@@ -13,6 +13,7 @@ import '../../widgets/buttons/wrapper.dart';
 import '../buttons/rotating_loading_button.dart';
 import '../notifications/notif.dart';
 import '../number_pill.dart';
+import '../smooth_scroll.dart';
 import '../tooltip_wrapper.dart';
 
 final GlobalKey<NotificationsContentState> notificationsContentKey = GlobalKey<NotificationsContentState>();
@@ -138,16 +139,23 @@ class NotificationsContentState extends State<NotificationsContent> {
                     ),
                   ),
                 )
-              : ListView.builder(
-                  shrinkWrap: true,
-                  itemCount: vm.recentNotifications.length + 2,
-                  itemBuilder: (context, index) {
-                    if (index == 0 || index == vm.recentNotifications.length + 1) return const SizedBox(height: 4);
+              : SmoothScroll(
+                  enableSmoothScroll: Manager.animationsEnabled,
+                  builder: (context, controller, physics) {
+                    return ListView.builder(
+                      controller: controller,
+                      physics: physics,
+                      shrinkWrap: true,
+                      itemCount: vm.recentNotifications.length + 2,
+                      itemBuilder: (context, index) {
+                        if (index == 0 || index == vm.recentNotifications.length + 1) return const SizedBox(height: 4);
 
-                    final notification = vm.recentNotifications[index - 1];
-                    return Padding(
-                      padding: const EdgeInsets.only(top: 2.0),
-                      child: _buildNotificationItem(notification),
+                        final notification = vm.recentNotifications[index - 1];
+                        return Padding(
+                          padding: const EdgeInsets.only(top: 2.0),
+                          child: _buildNotificationItem(notification),
+                        );
+                      },
                     );
                   },
                 ),

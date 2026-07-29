@@ -19,6 +19,7 @@ import '../../utils/quality.dart';
 import '../../utils/units.dart';
 import '../../utils/screen.dart';
 import '../buttons/button.dart';
+import '../smooth_scroll.dart';
 
 enum _SearchProvider { knaben, sonarr }
 
@@ -655,20 +656,27 @@ class KnabenSearchDialogState extends State<KnabenSearchDialog> with DialogContr
         final releases = snapshot.data!;
         releases.sort((a, b) => b.seeders.compareTo(a.seeders));
 
-        return ListView.builder(
-          padding: const EdgeInsets.only(top: 4),
-          itemCount: releases.length,
-          itemBuilder: (context, index) {
-            final release = releases[index];
-            final hash = extractBtih(release.magnetUrl);
-            final isSent = hash != null && _sentIdentifiers.contains(hash);
-            final isAlreadyDownloading = hash != null && _qbitHashes.contains(hash);
+        return SmoothScroll(
+          enableSmoothScroll: Manager.animationsEnabled,
+          builder: (context, controller, physics) {
+            return ListView.builder(
+              controller: controller,
+              physics: physics,
+              padding: const EdgeInsets.only(top: 4),
+              itemCount: releases.length,
+              itemBuilder: (context, index) {
+                final release = releases[index];
+                final hash = extractBtih(release.magnetUrl);
+                final isSent = hash != null && _sentIdentifiers.contains(hash);
+                final isAlreadyDownloading = hash != null && _qbitHashes.contains(hash);
 
-            return _KnabenReleaseTile(
-              release: release,
-              onSelected: () => _goToConfirm(release),
-              isSent: isSent,
-              isAlreadyDownloading: isAlreadyDownloading,
+                return _KnabenReleaseTile(
+                  release: release,
+                  onSelected: () => _goToConfirm(release),
+                  isSent: isSent,
+                  isAlreadyDownloading: isAlreadyDownloading,
+                );
+              },
             );
           },
         );
@@ -748,16 +756,23 @@ class KnabenSearchDialogState extends State<KnabenSearchDialog> with DialogContr
           return b.seeders.compareTo(a.seeders);
         });
 
-        return ListView.builder(
-          padding: const EdgeInsets.only(top: 4),
-          itemCount: releases.length,
-          itemBuilder: (context, index) {
-            final release = releases[index];
+        return SmoothScroll(
+          enableSmoothScroll: Manager.animationsEnabled,
+          builder: (context, controller, physics) {
+            return ListView.builder(
+              controller: controller,
+              physics: physics,
+              padding: const EdgeInsets.only(top: 4),
+              itemCount: releases.length,
+              itemBuilder: (context, index) {
+                final release = releases[index];
 
-            return _SonarrReleaseTile(
-              release: release,
-              onSelected: () => _goToConfirm(release),
-              isSent: _sentIdentifiers.contains(release.guid),
+                return _SonarrReleaseTile(
+                  release: release,
+                  onSelected: () => _goToConfirm(release),
+                  isSent: _sentIdentifiers.contains(release.guid),
+                );
+              },
             );
           },
         );

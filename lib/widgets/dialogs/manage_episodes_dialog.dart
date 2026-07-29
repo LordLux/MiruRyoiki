@@ -23,6 +23,7 @@ import 'show_dialog.dart';
 import '../../utils/logging.dart';
 import '../../utils/path.dart';
 import '../file_explorer.dart';
+import '../smooth_scroll.dart';
 import '../tooltip_wrapper.dart';
 
 /// Dialog for managing Sonarr episode ↔ file links
@@ -470,7 +471,12 @@ class _ManageEpisodesDialogState extends State<ManageEpisodesDialog> {
               : Column(
                   children: [
                     Expanded(
-                      child: ListView(
+                      child: SmoothScroll(
+                        enableSmoothScroll: Manager.animationsEnabled,
+                        builder: (context, controller, physics) {
+                          return ListView(
+                            controller: controller,
+                            physics: physics,
                         children: [
                           for (final sNum in seasonNumbers)
                             StickyHeader(
@@ -511,6 +517,8 @@ class _ManageEpisodesDialogState extends State<ManageEpisodesDialog> {
                               ),
                             ),
                         ],
+                      );
+                        },
                       ),
                     ),
                   ],

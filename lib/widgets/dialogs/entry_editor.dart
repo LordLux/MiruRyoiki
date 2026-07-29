@@ -24,6 +24,7 @@ import '../buttons/button.dart';
 import '../buttons/wrapper.dart';
 import '../fluent_selectable_text.dart';
 import '../score_widget.dart';
+import '../smooth_scroll.dart';
 import 'show_dialog.dart';
 
 /// Show the AniList entry editor dialog for a given media
@@ -404,9 +405,16 @@ class _EntryEditorShellState extends State<_EntryEditorShell> {
                   _buildHeader(theme, accentColor),
                   const SizedBox(height: 12),
                   Flexible(
-                    child: SingleChildScrollView(
-                      padding: const EdgeInsets.fromLTRB(36, 26, 33, 16),
-                      child: _buildBody(theme, accentColor),
+                    child: SmoothScroll(
+                      enableSmoothScroll: Manager.animationsEnabled,
+                      builder: (context, controller, physics) {
+                        return SingleChildScrollView(
+                          controller: controller,
+                          physics: physics,
+                          padding: const EdgeInsets.fromLTRB(36, 26, 33, 16),
+                          child: _buildBody(theme, accentColor),
+                        );
+                      },
                     ),
                   ),
                   Padding(

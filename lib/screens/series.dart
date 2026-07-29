@@ -46,6 +46,7 @@ import '../widgets/page/infobar.dart';
 import '../widgets/page/page_template.dart';
 import '../widgets/cards/mapping_card.dart';
 import '../widgets/cards/folder_card.dart';
+import '../widgets/smooth_scroll.dart';
 import '../models/folder_node.dart';
 import '../widgets/shift_clickable_hover.dart';
 import '../widgets/shrinker.dart';
@@ -1146,28 +1147,35 @@ class SeriesScreenState extends State<SeriesScreen> {
       builder: (context, constraints) {
         return ScrollConfiguration(
           behavior: ScrollBehavior().copyWith(overscroll: false, scrollbars: false),
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                GridView(
-                  padding: EdgeInsets.zero,
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: ScreenUtils.crossAxisCount(constraints.maxWidth),
-                    childAspectRatio: ScreenUtils.kDefaultAspectRatio,
-                    crossAxisSpacing: ScreenUtils.cardPadding,
-                    mainAxisSpacing: ScreenUtils.cardPadding,
-                  ),
-                  children: cards,
+          child: SmoothScroll(
+            enableSmoothScroll: Manager.animationsEnabled,
+            builder: (context, controller, physics) {
+              return SingleChildScrollView(
+                controller: controller,
+                physics: physics,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    GridView(
+                      padding: EdgeInsets.zero,
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: ScreenUtils.crossAxisCount(constraints.maxWidth),
+                        childAspectRatio: ScreenUtils.kDefaultAspectRatio,
+                        crossAxisSpacing: ScreenUtils.cardPadding,
+                        mainAxisSpacing: ScreenUtils.cardPadding,
+                      ),
+                      children: cards,
+                    ),
+                    if (hasEpisodes) ...[
+                      VDiv(16),
+                      _buildEpisodeSection(context, series, nested: true),
+                    ],
+                  ],
                 ),
-                if (hasEpisodes) ...[
-                  VDiv(16),
-                  _buildEpisodeSection(context, series, nested: true),
-                ],
-              ],
-            ),
+              );
+            },
           ),
         );
       },

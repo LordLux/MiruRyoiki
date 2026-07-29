@@ -32,6 +32,7 @@ import '../file_explorer.dart';
 import '../service_unavailable_banner.dart';
 import '../buttons/hyperlink.dart';
 import '../buttons/wrapper.dart';
+import '../smooth_scroll.dart';
 import '../tooltip_wrapper.dart';
 import 'search_panel.dart';
 import 'show_dialog.dart';
@@ -351,9 +352,16 @@ class AnilistLinkMultiContentState extends State<AnilistLinkMultiContent> with D
                     ],
                   ),
                 )
-              : ListView.builder(
-                  itemCount: mappings.length,
-                  itemBuilder: (context, index) => _buildMappingItem(mappings[index]),
+              : SmoothScroll(
+                  enableSmoothScroll: Manager.animationsEnabled,
+                  builder: (context, controller, physics) {
+                    return ListView.builder(
+                      controller: controller,
+                      physics: physics,
+                      itemCount: mappings.length,
+                      itemBuilder: (context, index) => _buildMappingItem(mappings[index]),
+                    );
+                  },
                 ),
         ),
         SizedBox(height: 10),

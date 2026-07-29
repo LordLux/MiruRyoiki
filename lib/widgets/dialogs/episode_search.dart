@@ -1,12 +1,14 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/material.dart' as mat;
 
+import '../../manager.dart';
 import '../../models/torrent_release.dart';
 import '../../services/sonarr/sonarr_service.dart';
 import '../../services/navigation/dialogs.dart';
 import '../../services/navigation/navigation.dart';
 import '../../utils/units.dart';
 import '../buttons/button.dart';
+import '../smooth_scroll.dart';
 
 class EpisodeSearchDialog extends StatefulWidget {
   final int? episodeId; // For single episode search
@@ -73,11 +75,18 @@ class _EpisodeSearchDialogState extends State<EpisodeSearchDialog> {
             return b.seeders.compareTo(a.seeders);
           });
 
-          return ListView.builder(
-            shrinkWrap: true,
-            itemCount: releases.length,
-            itemBuilder: (context, index) {
-              return _SonarrReleaseTile(release: releases[index], sonarrRepo: widget.sonarrRepo);
+          return SmoothScroll(
+            enableSmoothScroll: Manager.animationsEnabled,
+            builder: (context, controller, physics) {
+              return ListView.builder(
+                controller: controller,
+                physics: physics,
+                shrinkWrap: true,
+                itemCount: releases.length,
+                itemBuilder: (context, index) {
+                  return _SonarrReleaseTile(release: releases[index], sonarrRepo: widget.sonarrRepo);
+                },
+              );
             },
           );
         },
