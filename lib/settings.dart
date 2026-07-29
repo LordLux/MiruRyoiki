@@ -299,15 +299,6 @@ class SettingsManager extends ChangeNotifier {
     return defaultValue;
   }
 
-  double? _getDoubleOrNull(String key) {
-    if (!_settings.containsKey(key)) return null;
-    final value = _settings[key];
-    if (value is double) return value;
-    if (value is int) return value.toDouble();
-    if (value is String) return double.tryParse(value);
-    return null;
-  }
-
   double _getDouble(String key, {required double defaultValue}) {
     if (!_settings.containsKey(key)) {
       // logTrace('Key $key not found in settings, returning default value: $defaultValue');

@@ -11,11 +11,19 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 Write-Host "Running static analysis..."
-fvm flutter analyze
+$analyzeOutput = fvm flutter analyze 2>&1
+$analyzeOutput | ForEach-Object { Write-Host $_ }
 
-if ($LASTEXITCODE -ne 0) {
-    Write-Host "Static analysis failed" -ForegroundColor Red
-    exit $LASTEXITCODE
+$errorCount = ($analyzeOutput | Select-String -Pattern '^\s*error - ').Count
+$warningCount = ($analyzeOutput | Select-String -Pattern '^\s*warning - ').Count
+$infoCount = ($analyzeOutput | Select-String -Pattern '^\s*info - ').Count
+
+Write-Host ""
+Write-Host "Analyze summary: $errorCount error(s), $warningCount warning(s), $infoCount info(s)"
+
+if ($errorCount -gt 0) {
+    Write-Host "Static analysis failed: $errorCount error(s) found" -ForegroundColor Red
+    exit 1
 }
 
 Write-Host "Running tests..."

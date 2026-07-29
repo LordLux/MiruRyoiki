@@ -445,7 +445,6 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
 
   bool _isCompactView = false;
   bool seriesWasModified = false;
-  bool _isNavigationPaneCollapsed = false;
 
   final ScrollController libraryController = ScrollController();
   final ScrollController homeController = ScrollController();
@@ -677,9 +676,7 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
                     key: ValueKey('root'),
                     link: deferredPointerLink,
                     child: NavigationView(
-                      onDisplayModeChanged: (value) => nextFrame(() => setState(() {
-                            _isNavigationPaneCollapsed = _paneKey.currentState?.displayMode == PaneDisplayMode.compact;
-                          })),
+                      onDisplayModeChanged: (value) => nextFrame(() => setState(() {})),
                       key: _paneKey,
                       paneBodyBuilder: (item, _) {
                         return Column(

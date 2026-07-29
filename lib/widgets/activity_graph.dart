@@ -27,9 +27,10 @@ class ActivityGraph extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const SizedBox.shrink();
-    
+
     // log('Building ActivityGraph with ${activityHistory.length} activities');
     // Create a map of date to activity
+    // ignore: dead_code
     final Map<DateTime, AnilistActivityHistory> activityMap = {};
     final DateTime nowDate = DateTime(now.year, now.month, now.day);
     final DateTime earliest = nowDate.subtract(const Duration(days: 365 ~/ 2));

@@ -16,7 +16,6 @@ import 'package:smooth_scroll_multiplatform/smooth_scroll_multiplatform.dart';
 
 import '../main.dart';
 import '../enums.dart';
-import '../services/anilist/provider/anilist_provider.dart';
 import '../services/library/library_provider.dart';
 import '../services/library/scanner/scanner_service.dart';
 import '../models/series.dart';
