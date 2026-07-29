@@ -32,24 +32,35 @@ jobs:
         run: fvm flutter pub get
 
       - name: Analyze
-        shell: bash
+        # No `shell: bash` here: fvm is only on PATH for the default runner shell
+        # (pwsh on windows-latest). An earlier version of this step used bash so
+        # it could grep for severity counts, and fvm silently resolved to nothing
+        # there ("fvm: command not found"), which `|| true` swallowed — the step
+        # then "analyzed" an empty file and reported 0 issues, passing every time
+        # without ever running the analyzer. Mirrors build.ps1's PowerShell
+        # counting logic instead, which is what's actually verified to work.
         run: |
-          fvm flutter analyze > analyze_output.txt 2>&1 || true
-          cat analyze_output.txt
+          $analyzeOutput = fvm flutter analyze 2>&1
+          $analyzeOutput | ForEach-Object { Write-Host $_ }
 
-          error_count=$(grep -cE '^\s*error - ' analyze_output.txt || true)
-          warning_count=$(grep -cE '^\s*warning - ' analyze_output.txt || true)
-          info_count=$(grep -cE '^\s*info - ' analyze_output.txt || true)
+          $errorCount = ($analyzeOutput | Select-String -Pattern '^\s*error - ').Count
+          $warningCount = ($analyzeOutput | Select-String -Pattern '^\s*warning - ').Count
+          $infoCount = ($analyzeOutput | Select-String -Pattern '^\s*info - ').Count
 
-          echo ""
-          echo "Analyze summary: ${error_count} error(s), ${warning_count} warning(s), ${info_count} info(s)"
+          Write-Host ""
+          Write-Host "Analyze summary: $errorCount error(s), $warningCount warning(s), $infoCount info(s)"
 
-          if [ "$error_count" -gt 0 ]; then
-            echo "Failing: analyzer found real errors."
+          if ($errorCount -gt 0) {
+            Write-Host "Failing: analyzer found real errors." -ForegroundColor Red
             exit 1
-          fi
+          }
 
-          echo "No errors — warnings/infos are tracked but non-blocking."
+          # flutter analyze's own exit code (in $LASTEXITCODE) is 1 whenever any
+          # warning/info exists, which is exactly the case this step exists to
+          # NOT fail on. Without this, the step would inherit that stale exit
+          # code and fail regardless of $errorCount.
+          Write-Host "No errors — warnings/infos are tracked but non-blocking."
+          exit 0
 
       - name: Run offline test suite
         run: powershell -File test/launch_scripts/unit.ps1
