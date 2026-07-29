@@ -1,6 +1,6 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/material.dart' as mat;
-import 'package:smooth_scroll_multiplatform/smooth_scroll_multiplatform.dart';
+import '../widgets/smooth_scroll.dart';
 import '../main.dart';
 import '../manager.dart';
 import '../models/anilist/anime_card.dart';
@@ -202,13 +202,10 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
     if (_animeList.isEmpty) return const Center(child: Text('No results found.'));
 
     return LayoutBuilder(builder: (context, constraints) {
-      return DynMouseScroll(
+      return SmoothScroll(
         controller: _scrollController,
         stopScroll: KeyboardState.ctrlPressedNotifier,
-        scrollSpeed: 1.0,
         enableSmoothScroll: Manager.animationsEnabled,
-        durationMS: 350,
-        animationCurve: Curves.easeOutQuint,
         builder: (context, controller, physics) {
           return ValueListenableBuilder(
             valueListenable: KeyboardState.ctrlPressedNotifier,

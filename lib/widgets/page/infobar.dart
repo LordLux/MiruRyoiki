@@ -1,7 +1,7 @@
 import 'dart:math' as math show max;
 
 import 'package:fluent_ui/fluent_ui.dart';
-import 'package:smooth_scroll_multiplatform/smooth_scroll_multiplatform.dart';
+import '../smooth_scroll.dart';
 
 import '../../manager.dart';
 import '../../services/navigation/shortcuts.dart';
@@ -135,12 +135,9 @@ class _MiruRyoikiInfobarState extends State<MiruRyoikiInfobar> {
                                 platform: TargetPlatform.windows,
                                 scrollbars: false,
                               ),
-                              child: DynMouseScroll(
+                              child: SmoothScroll(
                                 stopScroll: KeyboardState.ctrlPressedNotifier,
-                                scrollSpeed: 1.0,
                                 enableSmoothScroll: Manager.animationsEnabled,
-                                durationMS: 350,
-                                animationCurve: Curves.easeOutQuint,
                                 builder: (context, controller, physics) {
                                   return SingleChildScrollView(
                                     controller: controller,

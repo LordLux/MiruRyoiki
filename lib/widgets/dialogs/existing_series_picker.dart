@@ -1,6 +1,6 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:provider/provider.dart';
-import 'package:smooth_scroll_multiplatform/smooth_scroll_multiplatform.dart';
+import '../smooth_scroll.dart';
 
 import '../../enums.dart';
 import '../../main.dart';
@@ -97,13 +97,10 @@ class _ExistingSeriesPickerDialogState extends State<ExistingSeriesPickerDialog>
   );
 
   Widget _buildGrid(List<Series> series, double maxWidth) {
-    final scrollContent = DynMouseScroll(
+    final scrollContent = SmoothScroll(
       controller: _controller,
       stopScroll: KeyboardState.ctrlPressedNotifier,
-      scrollSpeed: 1.0,
       enableSmoothScroll: Manager.animationsEnabled,
-      durationMS: 350,
-      animationCurve: Curves.easeOutQuint,
       builder: (context, controller, physics) {
         return ValueListenableBuilder(
           valueListenable: KeyboardState.ctrlPressedNotifier,

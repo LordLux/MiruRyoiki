@@ -160,7 +160,7 @@ class NavigationManager extends ChangeNotifier {
   static void saveActiveScrollOffset() {
     if (_activePaneId == null) return;
 
-    // Try the DynMouseScroll-created controller first (template-based screens)
+    // Try the SmoothScroll-created controller first (template-based screens)
     if (_activeScrollController != null) {
       try {
         if (_activeScrollController!.hasClients) {

@@ -12,7 +12,7 @@ import 'package:miruryoiki/screens/settings.dart';
 import 'package:miruryoiki/utils/color.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:sticky_headers/sticky_headers.dart';
-import 'package:smooth_scroll_multiplatform/smooth_scroll_multiplatform.dart';
+import '../widgets/smooth_scroll.dart';
 
 import '../main.dart';
 import '../enums.dart';
@@ -687,13 +687,10 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
       return _buildGroupedViewFromCache(groupedData, maxWidth, episodesGrid);
 
     // Ungrouped view
-    final scrollContent = DynMouseScroll(
+    final scrollContent = SmoothScroll(
       controller: shimmer ? null : _controller,
       stopScroll: KeyboardState.ctrlPressedNotifier,
-      scrollSpeed: 1.0,
       enableSmoothScroll: Manager.animationsEnabled,
-      durationMS: 350,
-      animationCurve: Curves.easeOutQuint,
       builder: (context, controller, physics) {
         return ValueListenableBuilder(
           valueListenable: KeyboardState.ctrlPressedNotifier,
@@ -978,13 +975,10 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
       );
     }
 
-    final scrollContent = DynMouseScroll(
+    final scrollContent = SmoothScroll(
       controller: shimmer ? null : _controller,
       stopScroll: KeyboardState.zoomReleaseNotifier,
-      scrollSpeed: 1.0,
       enableSmoothScroll: Manager.animationsEnabled,
-      durationMS: 350,
-      animationCurve: Curves.easeOutQuint,
       builder: (context, controller, physics) {
         return ValueListenableBuilder(
           valueListenable: KeyboardState.zoomReleaseNotifier,
@@ -1139,13 +1133,10 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
     // Use the custom list order to determine display order
     final displayOrder = _vm.groupDisplayOrder(groupedData);
 
-    final scrollContent = DynMouseScroll(
+    final scrollContent = SmoothScroll(
       controller: _controller,
       stopScroll: KeyboardState.zoomReleaseNotifier,
-      scrollSpeed: 1.0,
       enableSmoothScroll: Manager.animationsEnabled,
-      durationMS: 350,
-      animationCurve: Curves.easeOutQuint,
       builder: (context, controller, physics) {
         return ValueListenableBuilder(
           valueListenable: KeyboardState.zoomReleaseNotifier,
@@ -1153,7 +1144,7 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
             return ListView.builder(
               controller: controller,
               padding: EdgeInsets.zero,
-              cacheExtent: kDebugMode ? null : 1000,
+              cacheExtent: kDebugMode ? 1000 : 1000,
               physics: physics,
               itemCount: displayOrder.length,
               itemBuilder: (context, index) {

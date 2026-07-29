@@ -9,7 +9,7 @@ import 'package:miruryoiki/models/anilist/page_info.dart';
 import 'package:miruryoiki/widgets/acrylic_header.dart';
 import 'package:defer_pointer/defer_pointer.dart';
 import 'package:miruryoiki/widgets/buttons/wrapper.dart';
-import 'package:smooth_scroll_multiplatform/smooth_scroll_multiplatform.dart';
+import '../widgets/smooth_scroll.dart';
 import 'package:url_launcher/url_launcher.dart' show launchUrl;
 
 import '../models/anilist/anime.dart';
@@ -999,13 +999,10 @@ class SearchedSeriesScreenState extends State<SearchedSeriesScreen> {
       borderRadius: BorderRadius.circular(ScreenUtils.kStatCardBorderRadius),
       child: ScrollConfiguration(
         behavior: ScrollConfiguration.of(context).copyWith(overscroll: true, platform: TargetPlatform.windows, scrollbars: false),
-        child: DynMouseScroll(
+        child: SmoothScroll(
           controller: _getOrCreateController(tabName),
           stopScroll: KeyboardState.ctrlPressedNotifier,
-          scrollSpeed: 1.0,
           enableSmoothScroll: Manager.animationsEnabled,
-          durationMS: 350,
-          animationCurve: Curves.easeOutQuint,
           builder: (context, controller, physics) {
             return ValueListenableBuilder(
               valueListenable: KeyboardState.ctrlPressedNotifier,
@@ -1070,13 +1067,10 @@ class SearchedSeriesScreenState extends State<SearchedSeriesScreen> {
       borderRadius: BorderRadius.circular(ScreenUtils.kStatCardBorderRadius),
       child: ScrollConfiguration(
         behavior: ScrollConfiguration.of(context).copyWith(overscroll: true, platform: TargetPlatform.windows, scrollbars: false),
-        child: DynMouseScroll(
+        child: SmoothScroll(
           controller: _getOrCreateController('Overview'),
           stopScroll: KeyboardState.ctrlPressedNotifier,
-          scrollSpeed: 1.0,
           enableSmoothScroll: Manager.animationsEnabled,
-          durationMS: 350,
-          animationCurve: Curves.easeOutQuint,
           builder: (context, controller, physics) {
             return ValueListenableBuilder(
               valueListenable: KeyboardState.ctrlPressedNotifier,

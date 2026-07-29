@@ -3,7 +3,7 @@ import 'dart:math' show min;
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/gestures.dart';
 import 'package:provider/provider.dart';
-import 'package:smooth_scroll_multiplatform/smooth_scroll_multiplatform.dart';
+import '../smooth_scroll.dart';
 
 import '../../manager.dart';
 import '../../theme.dart';
@@ -271,12 +271,10 @@ class _MiruRyoikiTemplatePageState extends State<MiruRyoikiTemplatePage> {
                                                     hitTestBehavior: HitTestBehavior.opaque,
                                                     onEnter: (_) => _isHoveringContent = true,
                                                     onExit: (_) => _isHoveringContent = false,
-                                                    child: DynMouseScroll(
+                                                    child: SmoothScroll(
                                                       controller: _scrollController,
                                                       stopScroll: KeyboardState.ctrlPressedNotifier,
-                                                      scrollSpeed: 1.8,
                                                       enableSmoothScroll: Manager.animationsEnabled,
-                                                      durationMS: 350,
                                                       animationCurve: Curves.easeOut,
                                                       builder: (context, controller, physics) {
                                                         // Register with NavigationManager for scroll offset persistence

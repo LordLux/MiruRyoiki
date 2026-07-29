@@ -18,7 +18,7 @@ import 'package:miruryoiki/widgets/buttons/switch.dart';
 import 'package:miruryoiki/widgets/buttons/wrapper.dart';
 import 'package:pie_chart/pie_chart.dart';
 import 'package:recase/recase.dart';
-import 'package:smooth_scroll_multiplatform/smooth_scroll_multiplatform.dart';
+import '../widgets/smooth_scroll.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../manager.dart';
 import '../models/anilist/anime.dart';
@@ -994,12 +994,10 @@ class AccountsScreenState extends State<AccountsScreen> with AutomaticKeepAliveC
         height: 150 * Manager.fontSizeMultiplier,
         child: ScrollConfiguration(
           behavior: ScrollConfiguration.of(context).copyWith(overscroll: true, platform: TargetPlatform.windows, scrollbars: false),
-          child: DynMouseScroll(
+          child: SmoothScroll(
               stopScroll: KeyboardState.ctrlPressedNotifier,
-              scrollSpeed: 1.0,
               enableSmoothScroll: Manager.animationsEnabled,
-              durationMS: 350,
-              animationCurve: Curves.easeOutQuint,
+              direction: Axis.horizontal,
               builder: (context, controller, physics) {
                 return ValueListenableBuilder(
                     valueListenable: KeyboardState.ctrlPressedNotifier,

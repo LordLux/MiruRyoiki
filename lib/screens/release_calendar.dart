@@ -4,7 +4,7 @@ import 'package:flutter/material.dart' show Icons, InkWell;
 import 'package:miruryoiki/widgets/buttons/wrapper.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
-import 'package:smooth_scroll_multiplatform/smooth_scroll_multiplatform.dart';
+import '../widgets/smooth_scroll.dart';
 
 import '../utils/anilist_utils.dart';
 
@@ -689,13 +689,10 @@ class ReleaseCalendarScreenState extends State<ReleaseCalendarScreen> with Autom
           // Episode list
           Expanded(
             child: buildStyledScrollbar(
-              DynMouseScroll(
+              SmoothScroll(
                 controller: widget.scrollController,
                 stopScroll: KeyboardState.ctrlPressedNotifier,
-                scrollSpeed: 1.0,
                 enableSmoothScroll: Manager.animationsEnabled,
-                durationMS: 350,
-                animationCurve: Curves.easeOutQuint,
                 builder: (context, controller, physics) {
                   return ValueListenableBuilder(
                     valueListenable: KeyboardState.ctrlPressedNotifier,

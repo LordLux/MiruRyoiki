@@ -1,5 +1,5 @@
 import 'package:fluent_ui/fluent_ui.dart';
-import 'package:smooth_scroll_multiplatform/smooth_scroll_multiplatform.dart';
+import 'smooth_scroll.dart';
 import '../manager.dart';
 import '../models/anilist/mapping.dart';
 import '../models/ui_episode.dart';
@@ -63,12 +63,9 @@ class EpisodeGrid extends StatelessWidget {
           );
         }
 
-        return DynMouseScroll(
+        return SmoothScroll(
           stopScroll: KeyboardState.ctrlPressedNotifier,
-          scrollSpeed: 1.0,
           enableSmoothScroll: Manager.animationsEnabled,
-          durationMS: 350,
-          animationCurve: Curves.easeOutQuint,
           builder: (context, controller, physics) {
             return ValueListenableBuilder(
               valueListenable: KeyboardState.ctrlPressedNotifier,

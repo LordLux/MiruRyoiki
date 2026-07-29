@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:fluent_ui/fluent_ui.dart' as fluent;
 import 'package:miruryoiki/utils/color.dart';
 import 'package:miruryoiki/widgets/fading_edge_scrollview.dart';
-import 'package:smooth_scroll_multiplatform/smooth_scroll_multiplatform.dart';
+import 'smooth_scroll.dart';
 
 import '../manager.dart';
 import '../services/navigation/shortcuts.dart';
@@ -216,7 +216,7 @@ class _ShrinkerState extends State<Shrinker> with SingleTickerProviderStateMixin
                 gradientStops: isExpanded ? const [0.02, 0.1, 0.9, 1.0] : [0.0, 0.0, 0.6, 0.85],
                 child: ScrollConfiguration(
                   behavior: const ScrollBehavior().copyWith(overscroll: false, scrollbars: isExpanded),
-                  child: DynMouseScroll(
+                  child: SmoothScroll(
                     stopScroll: KeyboardState.ctrlPressedNotifier,
                     scrollSpeed: 0.5,
                     enableSmoothScroll: Manager.animationsEnabled,
