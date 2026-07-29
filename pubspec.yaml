@@ -2,7 +2,7 @@ name: miruryoiki
 description: "Flutter desktop application designed to track and manage local media files."
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 
-version: 1.4.16+0
+version: 1.4.17+0
 
 environment:
   sdk: '>=3.4.0 <4.0.0'
@@ -124,28 +124,9 @@ dev_dependencies:
   graphql_codegen: ^1.2.4
   plugin_platform_interface: ^2.1.8
 
-# Local development overrides — point the git dependencies above back to
-# local checkouts under M:/Projects/ so edits to those packages are picked
-# up without a commit+push+pubspec-ref roundtrip. Remove an entry (or this
-# whole section) on a machine without that checkout; the git refs above
-# still resolve normally as a portable fallback.
-dependency_overrides:
-  video_data_utils:
-    path: M:/Projects/video_data_utils/
-  flutter_desktop_context_menu:
-    path: M:/Projects/flutter_desktop_context_menu/
-  sticky_headers:
-    path: M:/Projects/flutter_expandable_sticky_headers/
-  squiggly_slider:
-    path: M:/Projects/squiggly_slider/
-  process_monitor:
-    path: M:/Projects/process_monitor/
-  flutter_anitomy:
-    path: M:/Projects/flutter_anitomy/
-  marquee:
-    path: M:/Projects/marquee/
-  flutter_animated_fluent_emoji:
-    path: M:/Projects/flutter_animated_fluent_emoji/
+# NOTE: local development overrides live in `pubspec_overrides.yaml` (gitignored),
+# not here — an absolute `path:` committed in this file breaks `pub get` on every
+# other machine. See `pubspec_overrides.yaml.example` and the README.
 
 linter:
   rules:

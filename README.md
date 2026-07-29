@@ -46,12 +46,24 @@ MiruRyoiki is a Flutter desktop application (Windows-first, macOS planned) that 
 
 ## Development
 
-See `CLAUDE.md` / `GEMINI.md` for developer documentation and `ARCHITECTURE.md` for a system map.
+See `ARCHITECTURE.md` for a system map.
 
 Requires:
 - **Flutter 3.32.8** (via FVM — see `.fvmrc`)
 - **`.env` file** — copy `.env.example` to `.env` and fill in your AniList OAuth credentials (`ANILIST_CLIENT_ID`, `ANILIST_CLIENT_SECRET`) and optional Sonarr API key (`SONARR_API_KEY`). This file is declared as a Flutter asset and must exist before building.
 - **pubversion** (global Dart tool) — used by `build.ps1` to increment the version number
+
+### Sibling packages
+
+Several dependencies are forks maintained alongside this project. They resolve from
+GitHub via pinned `git:` refs in `pubspec.yaml`, so a plain clone needs no extra setup.
+
+If you have them checked out locally and want your edits picked up without a
+commit + push + ref bump each time, copy `pubspec_overrides.yaml.example` to
+`pubspec_overrides.yaml` (gitignored) and point the paths at your checkouts.
+
+> Do **not** add `dependency_overrides:` to `pubspec.yaml` itself — an absolute
+> path committed there breaks `pub get` for everyone else, including CI.
 
 ### Building a Release
 

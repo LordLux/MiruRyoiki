@@ -52,8 +52,18 @@ app.*.map.json
 # Environment variables
 .env
 
-# Gemini CLI
-GEMINI.md
+# Machine-local dependency overrides (see pubspec_overrides.yaml.example)
+pubspec_overrides.yaml
+
+# Analyzer output captured by build.ps1 / CI
+analyze_output.txt
+
 knaben.py
+
+# AI assistant config and AI-generated working documents — kept local only
+.claude/
 CLAUDE.md
-.claude/settings.local.json
+GEMINI.md
+TECH_DEBT_AUDIT.md
+SERIES_UX_REFACTOR_PLAN.md
+TRACKER_PROVIDERS_PLAN.md

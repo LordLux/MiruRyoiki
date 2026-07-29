@@ -1,0 +1,24 @@
+# Copy to `pubspec_overrides.yaml` (gitignored) if you have the sibling packages
+# checked out locally and want your edits picked up without a
+# commit + push + pubspec-ref bump for every change.
+#
+# Adjust the paths to wherever you cloned them, and delete any entry you don't
+# have. Without this file, pubspec.yaml's pinned git: refs are used — that is
+# the normal, portable path and needs no setup.
+dependency_overrides:
+  video_data_utils:
+    path: ../video_data_utils/
+  flutter_desktop_context_menu:
+    path: ../flutter_desktop_context_menu/
+  sticky_headers:
+    path: ../flutter_expandable_sticky_headers/
+  squiggly_slider:
+    path: ../squiggly_slider/
+  process_monitor:
+    path: ../process_monitor/
+  flutter_anitomy:
+    path: ../flutter_anitomy/
+  marquee:
+    path: ../marquee/
+  flutter_animated_fluent_emoji:
+    path: ../flutter_animated_fluent_emoji/
