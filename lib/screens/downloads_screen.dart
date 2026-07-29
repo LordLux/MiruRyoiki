@@ -67,7 +67,12 @@ class DownloadsScreenState extends State<DownloadsScreen> {
     NavigationManager.registerActiveScrollController('torrent', widget.scrollController);
     NavigationManager.restoreScrollOffset('torrent', widget.scrollController);
     _vm = context.read<DownloadsViewModel>();
-    _vm.startPolling();
+    // Deferred for the same reason as the Accounts screen: startPolling()'s
+    // first fetch notifies synchronously, and notifying during initState marks
+    // the ViewModel's InheritedProviderScope dirty mid-build. Only reachable
+    // once a torrent client is configured, since fetchTorrents() returns early
+    // without one.
+    nextFrame(() => _vm.startPolling());
   }
 
   @override

@@ -69,7 +69,11 @@ class AccountsScreenState extends State<AccountsScreen> with AutomaticKeepAliveC
   @override
   void initState() {
     super.initState();
-    _vm.ensureUserDataLoaded();
+    // Deferred to after the first frame: ensureUserDataLoaded() flips its
+    // loading flag and notifies synchronously, before its first await. Notifying
+    // during initState marks the ViewModel's InheritedProviderScope dirty while
+    // the framework is still building, which throws.
+    nextFrame(() => _vm.ensureUserDataLoaded());
   }
 
   HeaderWidget header({required AnilistProvider anilistProvider, required bool isLoggedIn}) {
