@@ -67,6 +67,7 @@ import 'services/anilist/auth.dart';
 import 'services/file_system/cache.dart';
 import 'services/navigation/navigation.dart';
 import 'services/navigation/shortcuts.dart';
+import 'services/navigation/show_info.dart';
 import 'services/window/listener.dart';
 import 'theme.dart';
 import 'utils/color.dart';
@@ -419,11 +420,19 @@ class _MiruRyoikiRootState extends State<MiruRyoikiRoot> {
   }
 
   void _handleDeepLink(Uri uri) async {
+    // Log the parsed pieces so a dropped fragment or re-encoded parameter is visible.
+    logDebug('Deep link received: $uri');
+    logTrace('  path=${uri.path} | query=${uri.queryParameters} | fragment=${uri.fragment}');
+
     // Handle Anilist auth callback
     if (uri.toString().startsWith(redirectUrl)) {
       final anilistProvider = Provider.of<AnilistProvider>(context, listen: false);
       await anilistProvider.handleAuthCallback(uri);
+      return;
     }
+
+    logWarn('Unhandled deep link: $uri');
+    if (kDebugMode) snackBar('Unhandled deep link', longMessage: uri.toString(), severity: InfoBarSeverity.warning);
   }
 
   @override
