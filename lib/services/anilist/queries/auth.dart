@@ -26,7 +26,7 @@ extension AnilistServiceAuth on AnilistService {
       await library.loadAnilistPostersForLibrary(anilistProvider: anilistProvider, onProgress: (loaded, total) {});
       logTrace('Anilist data sync complete after login.');
     } else {
-      await logout();
+      logWarn('Anilist auth callback yielded no token; leaving the existing session untouched');
     }
 
     return success;

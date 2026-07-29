@@ -50,7 +50,7 @@ See `ARCHITECTURE.md` for a system map.
 
 Requires:
 - **Flutter 3.32.8** (via FVM — see `.fvmrc`)
-- **`.env` file** — copy `.env.example` to `.env` and fill in your AniList OAuth credentials (`ANILIST_CLIENT_ID`, `ANILIST_CLIENT_SECRET`) and optional Sonarr API key (`SONARR_API_KEY`). This file is declared as a Flutter asset and must exist before building.
+- **`.env` file** — copy `.env.example` to `.env` and set `ANILIST_CLIENT_ID` to your AniList application's client ID. This file is declared as a Flutter asset and must exist before building. No client secret is needed: the app uses AniList's implicit grant, which is the documented flow for clients that cannot store a secret. Sonarr and qBittorrent credentials are entered in Settings at runtime, not here.
 - **pubversion** (global Dart tool) — used by `build.ps1` to increment the version number
 
 ### Sibling packages
