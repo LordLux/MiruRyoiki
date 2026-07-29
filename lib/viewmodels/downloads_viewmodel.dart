@@ -6,6 +6,7 @@ import '../services/downloads/torrent_client.dart';
 import '../services/downloads/torrent_manager.dart';
 import '../services/navigation/show_info.dart';
 import '../utils/logging.dart';
+import 'disposable_view_model.dart';
 
 enum DownloadSortMode { status, name, addedOn, progress, size }
 
@@ -16,9 +17,7 @@ enum DownloadFilter { all, downloading, seeding, completed, running, stopped, st
 /// Owns the torrent list, polling, filter/sort state, and pause/resume actions against [TorrentManager]'s torrent client.
 ///
 /// Registered app-wide via `ChangeNotifierProvider` in `main.dart`.
-class DownloadsViewModel extends ChangeNotifier {
-  bool _disposed = false;
-
+class DownloadsViewModel extends DisposableViewModel {
   List<TorrentInfo> _torrents = [];
   bool _isLoading = false;
   String? _error;
@@ -43,13 +42,8 @@ class DownloadsViewModel extends ChangeNotifier {
 
   @override
   void dispose() {
-    _disposed = true;
     _refreshTimer?.cancel();
     super.dispose();
-  }
-
-  void _notify() {
-    if (!_disposed) notifyListeners();
   }
 
   // Polling
@@ -77,7 +71,7 @@ class DownloadsViewModel extends ChangeNotifier {
     if (!silent) {
       _isLoading = true;
       _error = null;
-      _notify();
+      notifySafe();
     }
 
     try {
@@ -85,14 +79,14 @@ class DownloadsViewModel extends ChangeNotifier {
       _torrents = list;
       _isLoading = false;
       _error = null;
-      _notify();
+      notifySafe();
     } catch (e) {
       _isLoading = false;
       if (!silent) {
         _error = e.toString();
         logDebug('Failed to fetch torrents: $e');
       }
-      _notify();
+      notifySafe();
     }
   }
 
@@ -123,18 +117,18 @@ class DownloadsViewModel extends ChangeNotifier {
   void setSortMode(DownloadSortMode mode) {
     if (_sortMode == mode) return;
     _sortMode = mode;
-    _notify();
+    notifySafe();
   }
 
   void toggleSortDirection() {
     _sortAscending = !_sortAscending;
-    _notify();
+    notifySafe();
   }
 
   void setFilter(DownloadFilter filter) {
     if (_filter == filter) return;
     _filter = filter;
-    _notify();
+    notifySafe();
   }
 
   // Pure helpers

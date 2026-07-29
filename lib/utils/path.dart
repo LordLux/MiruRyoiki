@@ -31,6 +31,19 @@ class PathUtils {
     return p.relative(path, from: from);
   }
 
+  /// Render [fullPath] relative to [root] (e.g. `Witch Hat Atelier\S01`) instead of
+  /// the full absolute path. Falls back to [fullPath] when [root] is unknown/empty,
+  /// the path lies outside it, or normalization throws.
+  static String relativeToRootOrFull(String fullPath, String? root) {
+    if (root == null || root.isEmpty) return fullPath;
+    final normRoot = PathString(root).path;
+    try {
+      if (p.equals(fullPath, normRoot)) return p.basename(fullPath);
+      if (p.isWithin(normRoot, fullPath)) return p.relative(fullPath, from: normRoot);
+    } catch (_) {}
+    return fullPath;
+  }
+
   static String? getFileName(String? path) {
     if (path == null || path.isEmpty) return null;
     return p.basename(path);

@@ -34,10 +34,26 @@ Series _makeSeriesWithCollections() => Series(
       ],
     );
 
-AnilistMapping _mapping(int id) => AnilistMapping(
-      localPath: PathString(_root),
+AnilistMapping _mapping(int id, {String localPath = _root, ViewType? viewType}) => AnilistMapping(
+      localPath: PathString(localPath),
       anilistId: id,
       title: 'Mapping $id',
+      viewType: viewType,
+    );
+
+/// [_makeSeriesWithCollections] plus folder-level mappings on the season and the
+/// plain folder, so drilling into either resolves a node with a mapping attached.
+Series _makeSeriesWithMappedCollections({ViewType? seasonViewType, ViewType? folderViewType}) => Series(
+      name: 'Test Series',
+      path: PathString(_root),
+      collections: [
+        Season(name: 'Season 1', path: PathString(_seasonPath), episodes: const <Episode>[], seasonNumber: 1),
+        Folder(name: 'Extras', path: PathString(_folderPath), episodes: const <Episode>[]),
+      ],
+      anilistMappings: [
+        _mapping(1, localPath: _seasonPath, viewType: seasonViewType),
+        _mapping(2, localPath: _folderPath, viewType: folderViewType),
+      ],
     );
 
 SonarrEpisode _sonarr(int id, int season, int episode) => SonarrEpisode(
@@ -245,6 +261,137 @@ void main() {
       vm.debugSetSonarrEpisodes([_sonarr(1, 1, 1)]);
 
       expect(vm.sonarrEpisodesForTarget, isNull);
+    });
+  });
+
+  // Drilling in/out is intra-page, so the screen is no longer rebuilt from scratch per level:
+  // whatever a node loaded has to be dropped by the VM or it bleeds into the next node.
+  group('node-scoped state is dropped on node change', () {
+    test('the root Sonarr fetch does not leak into a drilled-into folder', () {
+      final vm = SeriesViewModel();
+      final series = _makeSeriesWithCollections();
+      vm.syncSeries(series);
+      vm.openSeries(PathString(_root));
+      vm.resolveNode(series);
+      vm.debugSetSonarrEpisodes([_sonarr(1, 1, 1), _sonarr(3, 2, 1)]);
+
+      vm.pushNode(PathString(_folderPath));
+      vm.resolveNode(series);
+
+      // Without the reset, the non-season folder would hand back every root episode.
+      expect(vm.sonarrEpisodes, isNull);
+      expect(vm.sonarrEpisodesForTarget, isNull);
+      expect(vm.sonarrSeriesId, isNull);
+    });
+
+    test('popping back to the root also drops the node Sonarr state', () {
+      final vm = SeriesViewModel();
+      final series = _makeSeriesWithCollections();
+      vm.syncSeries(series);
+      vm.openSeries(PathString(_root), initialStack: [PathString(_seasonPath)]);
+      vm.resolveNode(series);
+      vm.debugSetSonarrEpisodes([_sonarr(1, 1, 1)]);
+
+      expect(vm.popNode(), isTrue);
+
+      expect(vm.sonarrEpisodes, isNull);
+    });
+
+    test('node init is re-armed and the resolved node re-derived on every change', () {
+      final vm = SeriesViewModel();
+      final series = _makeSeriesWithCollections();
+      vm.syncSeries(series);
+      vm.openSeries(PathString(_root));
+      vm.resolveNode(series);
+      expect(vm.consumeNodeInit(), isTrue);
+
+      vm.pushNode(PathString(_seasonPath));
+
+      // Dropped immediately, before the next build re-resolves it, so no stale node is readable.
+      expect(vm.resolvedNode, isNull);
+      expect(vm.nodeInitialized, isFalse);
+      expect(vm.resolveNode(series)?.path, PathString(_seasonPath));
+    });
+  });
+
+  group('per-node view type', () {
+    test('each node adopts its own persisted view type', () {
+      final vm = SeriesViewModel();
+      final series = _makeSeriesWithMappedCollections(
+        seasonViewType: ViewType.detailedList,
+        folderViewType: ViewType.grid,
+      );
+      vm.syncSeries(series);
+
+      vm.openSeries(PathString(_root), initialStack: [PathString(_seasonPath)]);
+      vm.resolveNode(series);
+      expect(vm.currentViewType, ViewType.detailedList);
+
+      // Sibling node with a different persisted type: the first node's type must not stick.
+      vm.restoreNodeStack([PathString(_folderPath)]);
+      vm.resolveNode(series);
+      expect(vm.currentViewType, ViewType.grid);
+    });
+
+    test('the root falls back to grid when leaving a list-view node', () {
+      final vm = SeriesViewModel();
+      final series = _makeSeriesWithMappedCollections(seasonViewType: ViewType.detailedList);
+      vm.syncSeries(series);
+      vm.openSeries(PathString(_root), initialStack: [PathString(_seasonPath)]);
+      vm.resolveNode(series);
+      expect(vm.currentViewType, ViewType.detailedList);
+
+      expect(vm.popNode(), isTrue);
+      vm.resolveNode(series);
+
+      expect(vm.currentViewType, ViewType.grid);
+    });
+
+    test('an explicit choice wins for the current node but not the next one', () {
+      final vm = SeriesViewModel();
+      final series = _makeSeriesWithMappedCollections(folderViewType: ViewType.grid);
+      vm.syncSeries(series);
+      vm.openSeries(PathString(_root), initialStack: [PathString(_seasonPath)]);
+      vm.resolveNode(series);
+
+      vm.onViewTypeChanged(ViewType.detailedList);
+      expect(vm.currentViewType, ViewType.detailedList);
+
+      vm.restoreNodeStack([PathString(_folderPath)]);
+      vm.resolveNode(series);
+      expect(vm.currentViewType, ViewType.grid);
+    });
+  });
+
+  group('close', () {
+    test('releases the series so in-flight loads see a different location', () {
+      final vm = SeriesViewModel();
+      final series = _makeSeriesWithCollections();
+      vm.syncSeries(series);
+      vm.openSeries(PathString(_root), initialStack: [PathString(_seasonPath)]);
+      vm.resolveNode(series);
+      vm.debugSetSonarrEpisodes([_sonarr(1, 1, 1)]);
+
+      vm.close(PathString(_root));
+
+      expect(vm.seriesPath, isNull);
+      expect(vm.isAtRoot, isTrue);
+      expect(vm.cachedSeries, isNull);
+      expect(vm.resolvedNode, isNull);
+      expect(vm.sonarrEpisodes, isNull);
+      expect(vm.fileMappingsAtNode, isEmpty);
+      expect(vm.gridEpisodes, isEmpty);
+    });
+
+    test('is ignored when a newer screen has already opened another series', () {
+      final vm = SeriesViewModel();
+      vm.openSeries(PathString(r'M:\Series\Old'));
+      vm.openSeries(PathString(r'M:\Series\New'));
+
+      // The old screen's dispose lands after the new one opened — it must not wipe the new state.
+      vm.close(PathString(r'M:\Series\Old'));
+
+      expect(vm.seriesPath, PathString(r'M:\Series\New'));
     });
   });
 }

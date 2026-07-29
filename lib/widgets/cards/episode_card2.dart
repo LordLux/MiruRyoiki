@@ -22,6 +22,7 @@ import '../../utils/screen.dart';
 import '../../utils/time.dart';
 import '../context_menu/episode.dart';
 import '../context_menu/controller.dart';
+import '../animated_switcher_layouts.dart';
 import '../play_button.dart';
 
 class HoverableEpisodeTile2 extends StatefulWidget {
@@ -469,15 +470,7 @@ class _HoverableEpisodeTileState2 extends State<HoverableEpisodeTile2> {
             duration: mediumDuration,
             switchInCurve: Curves.easeIn,
             switchOutCurve: Curves.easeOut,
-            layoutBuilder: (currentChild, previousChildren) {
-              return Stack(
-                alignment: Alignment.center,
-                children: <Widget>[
-                  ...previousChildren.where((element) => element.key != currentChild?.key),
-                  if (currentChild != null) currentChild,
-                ],
-              );
-            },
+            layoutBuilder: stackLayoutBuilder(dedupeByKey: true),
             child: Builder(
               key: ValueKey(key + episode.path.path),
               builder: builder,

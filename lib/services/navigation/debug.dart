@@ -23,11 +23,11 @@ class _NavigationHistoryDebugState extends State<NavigationHistoryDebug> {
         final libraryRoot = context.read<Library>().libraryPath;
 
         final entries = <_HistoryEntry>[
-          for (final item in navManager.forwardStack) _HistoryEntry(item, isCurrent: false),
+          for (final item in navManager.forwardStack) (item: item, isCurrent: false),
         ];
         final stackRev = navManager.stack.reversed.toList();
         for (var i = 0; i < stackRev.length; i++) //
-          entries.add(_HistoryEntry(stackRev[i], isCurrent: i == 0));
+          entries.add((item: stackRev[i], isCurrent: i == 0));
 
         const int cap = 20;
         final bool hasMore = entries.length > cap;
@@ -110,7 +110,7 @@ class _NavigationHistoryDebugState extends State<NavigationHistoryDebug> {
     const prefix = '/series:';
     if (!item.id.startsWith(prefix)) return item.id; // not a series page, just show the raw id
 
-    final nodeStack = (item.viewState?['nodeStack'] as List?)?.whereType<String>().toList() ?? const <String>[];
+    final nodeStack = (item.viewStateSection(seriesNodeStackNamespace)?['nodeStack'] as List?)?.whereType<String>().toList() ?? const <String>[];
     final String abs;
     if (nodeStack.isNotEmpty)
       abs = nodeStack.last; // the deepest drilled-into folder/mapping
@@ -119,9 +119,7 @@ class _NavigationHistoryDebugState extends State<NavigationHistoryDebug> {
     else
       abs = item.id.substring(prefix.length);
 
-    final path = PathString(abs);
-    final library = PathString(libraryRoot);
-    return prefix + (PathUtils.relativePath(path.path, library.path) ?? path.path);
+    return prefix + PathUtils.relativeToRootOrFull(PathString(abs).path, libraryRoot);
   }
 
   Color _getLevelColor(NavigationLevel level) {
@@ -136,13 +134,6 @@ class _NavigationHistoryDebugState extends State<NavigationHistoryDebug> {
   }
 }
 
-/// A single entry in the navigation history, which is either in the forward stack
-class _HistoryEntry {
-  /// The navigation item itself, which contains the id, title, level, and viewState
-  final NavigationItem item;
-
-  /// Whether this entry is the current one (the top of the stack)
-  final bool isCurrent;
-
-  const _HistoryEntry(this.item, {required this.isCurrent});
-}
+/// A single entry in the navigation history, which is either in the forward stack or the (reversed) back stack;
+/// [isCurrent] marks the top of the back stack
+typedef _HistoryEntry = ({NavigationItem item, bool isCurrent});

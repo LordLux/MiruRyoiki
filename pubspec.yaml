@@ -100,6 +100,7 @@ dependencies:
   flutter_animated_fluent_emoji:
     path: M:/Projects/flutter_animated_fluent_emoji/
   meta: ^1.16.0
+  path_provider_platform_interface: ^2.1.2
 
 dev_dependencies:
   flutter_test:

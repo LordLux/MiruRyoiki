@@ -22,6 +22,7 @@ import '../utils/error_handling.dart';
 import '../utils/logging.dart';
 import '../utils/path.dart';
 import '../utils/time.dart';
+import 'disposable_view_model.dart';
 import 'library_screen_viewmodel.dart';
 
 /// ViewModel for the Series detail screen.
@@ -36,7 +37,7 @@ import 'library_screen_viewmodel.dart';
 /// Navigation model: the [SeriesScreen] is a single persistent widget.
 /// Drilling into a folder/mapping is *intra-page* and is modelled here as a [nodeStack], so exactly one screen
 /// instance maps to this one VM, with no coexisting instances to clobber each other. See [pushNode]/[popNode].
-class SeriesViewModel extends ChangeNotifier {
+class SeriesViewModel extends DisposableViewModel {
   SeriesViewModel({SeriesLinkService? linkService}) : _linkServiceOverride = linkService;
 
   final SeriesLinkService? _linkServiceOverride;
@@ -46,23 +47,12 @@ class SeriesViewModel extends ChangeNotifier {
 
   Library? _library;
   LibraryScreenViewModel? _libraryVM;
-  bool _disposed = false;
 
   /// Called by the ChangeNotifierProxyProvider whenever a dependency notifies.
   /// Only swaps references (never notifies — it runs during build).
   void update(Library library, LibraryScreenViewModel libraryVM) {
     _library = library;
     _libraryVM = libraryVM;
-  }
-
-  @override
-  void dispose() {
-    _disposed = true;
-    super.dispose();
-  }
-
-  void _notify() {
-    if (!_disposed) notifyListeners();
   }
 
   // Location
@@ -98,12 +88,30 @@ class SeriesViewModel extends ChangeNotifier {
     _nodeStack
       ..clear()
       ..addAll(initialStack ?? const []);
-    _nodeInitialized = false;
-    _resolvedNode = null;
-    _currentViewType = ViewType.grid;
-    _sonarrEpisodes = null;
-    _sonarrSeriesId = null;
-    _invalidateMergedEpisodes();
+    _lastFileMapSeries = null;
+    _lastFileMapNodePath = null;
+    _lastFileMapMappingCount = -1;
+    _resetNodeScopedState();
+  }
+
+  /// Release everything held for the current series.
+  ///
+  /// [forPath] is the series the caller opened; a mismatch means a newer screen has already taken over, so the close is ignored.
+  void close(PathString? forPath) {
+    if (_seriesPath != forPath) return;
+
+    _seriesPath = null;
+    _nodeStack.clear();
+    _cachedSeries = null;
+    _treeRoot = null;
+    _treeSeries = null;
+    _treeKey = null;
+    _fileMappingsAtNode = const [];
+    _fileMappingPaths = const {};
+    _lastFileMapSeries = null;
+    _lastFileMapNodePath = null;
+    _lastFileMapMappingCount = -1;
+    _resetNodeScopedState();
   }
 
   /// Drill into a child folder/mapping node
@@ -130,10 +138,24 @@ class SeriesViewModel extends ChangeNotifier {
   }
 
   void _onNodeChanged() {
+    _resetNodeScopedState();
+    notifySafe();
+    // The root-re-entry color reset lives in the screen (SeriesScreenState._applySeriesColorIfAtRoot),
+    // not here: it needs Manager.setState, whose Flutter bindings the VM stays free of for testability.
+  }
+
+  /// Drop everything scoped to a single folder/mapping node.
+  ///
+  /// Drilling in/out is intra-page, so whatever the previous node loaded has to be dropped here or it bleeds into the next one.
+  void _resetNodeScopedState() {
     _nodeInitialized = false;
+    _resolvedNode = null;
+    _currentViewType = null;
+    _sonarrEpisodes = null;
+    _sonarrSeriesId = null;
+    _lastResolvedTree = null; // Force a re-resolve
+    _lastResolvedNodePath = null;
     _invalidateMergedEpisodes();
-    _notify();
-    //(the series-mode dominant-color reset lives in the UI screen)
   }
 
   /// Keep the cached series reference aligned with the reactive value the screen reads from `Library` in `build`
@@ -143,7 +165,7 @@ class SeriesViewModel extends ChangeNotifier {
   /// Async data methods snapshot the location before awaiting and bail via this afterwards,
   /// so a series/node the user navigated away from can't clobber current state.
   bool _stillOn(PathString? seriesPath, PathString? nodePath) => //
-      !_disposed && _seriesPath == seriesPath && currentNodePath == nodePath;
+      !isDisposed && _seriesPath == seriesPath && currentNodePath == nodePath;
 
   // Folder-tree resolution + node
   /// The folder node currently resolved for the series + node path, or null if the node no longer exists
@@ -151,6 +173,7 @@ class SeriesViewModel extends ChangeNotifier {
   FolderNode? _resolvedNode;
 
   /// Whether the one-time node data load (view type, episode titles, Sonarr) has been run for this node
+  @visibleForTesting
   bool get nodeInitialized => _nodeInitialized;
   bool _nodeInitialized = false;
 
@@ -177,30 +200,35 @@ class SeriesViewModel extends ChangeNotifier {
   // Memoized folder tree that gets rebuilt only when the series instance, its data version, or its mapping count changes
   FolderNode? _treeRoot;
   Series? _treeSeries;
-  int _treeVersion = -1;
-  int _treeMappingCount = -1;
+  ({int version, int mappingCount})? _treeKey;
 
   // Builds the folder tree for [series] and caches it
   FolderNode _buildOrGetTree(Series series, int dataVersion) {
-    if (_treeRoot != null && //
-        identical(_treeSeries, series) &&
-        _treeVersion == dataVersion &&
-        _treeMappingCount == series.anilistMappings.length) {
-      return _treeRoot!;
-    }
+    final key = (version: dataVersion, mappingCount: series.anilistMappings.length);
+    if (_treeRoot != null && identical(_treeSeries, series) && _treeKey == key) return _treeRoot!;
+
     _treeRoot = buildFolderTree(series);
     _treeSeries = series;
-    _treeVersion = dataVersion;
-    _treeMappingCount = series.anilistMappings.length;
+    _treeKey = key;
     return _treeRoot!;
   }
 
-  /// Resolve (and cache) the folder node to render for [series], walking a
-  /// memoized tree so hover/color rebuilds don't reconstruct it.
+  // Cache so hover/color rebuilds (same tree instance + same node path) skip the tree walk.
+  //The tree itself is memoized in [_buildOrGetTree].
+  FolderNode? _lastResolvedTree;
+  PathString? _lastResolvedNodePath;
+
+  /// Resolve (and cache) the folder node to render for [series], walking a memoized tree so hover/color rebuilds don't reconstruct it.
+  ///
   /// Returns null when the node path no longer exists in the tree.
   FolderNode? resolveNode(Series series) {
     final tree = _buildOrGetTree(series, _library?.dataVersion ?? -1);
-    _resolvedNode = findNodeInTree(tree, currentNodePath ?? series.path);
+    final nodePath = currentNodePath ?? series.path;
+    if (identical(tree, _lastResolvedTree) && _lastResolvedNodePath == nodePath) return _resolvedNode;
+
+    _resolvedNode = findNodeInTree(tree, nodePath);
+    _lastResolvedTree = tree;
+    _lastResolvedNodePath = nodePath;
     return _resolvedNode;
   }
 
@@ -211,10 +239,23 @@ class SeriesViewModel extends ChangeNotifier {
   /// The file-level AniList mappings located directly inside the current node, which render as their own cards and are excluded from the episode grid
   List<(AnilistMapping, MappingTarget)> get fileMappingsAtNode => _fileMappingsAtNode;
 
+  // Cache so rebuilds that don't change the series, node, or mapping count skip the O(mappings) rescan
+  Series? _lastFileMapSeries;
+  String? _lastFileMapNodePath;
+  int _lastFileMapMappingCount = -1;
+
   /// Recompute the file-level mappings located directly inside [node]
   ///
   /// They render as their own cards and are excluded from the episode grid
   void recomputeFileMappings(Series series, FolderNode node) {
+    if (identical(series, _lastFileMapSeries) && //
+        _lastFileMapNodePath == node.path.path &&
+        _lastFileMapMappingCount == series.anilistMappings.length) return;
+
+    _lastFileMapSeries = series;
+    _lastFileMapNodePath = node.path.path;
+    _lastFileMapMappingCount = series.anilistMappings.length;
+
     final list = <(AnilistMapping, MappingTarget)>[];
     final paths = <String>{};
     for (final m in series.anilistMappings) {
@@ -250,16 +291,16 @@ class SeriesViewModel extends ChangeNotifier {
   /// The Sonarr series ID for the current series, or null if Sonarr is disabled or not yet fetched
   int? get sonarrSeriesId => _sonarrSeriesId;
 
-  /// Test-only: seed the fetched Sonarr episodes, bypassing the network sync.
+  /// Test-only: seed the fetched Sonarr episodes, bypassing the network sync
   @visibleForTesting
   void debugSetSonarrEpisodes(List<SonarrEpisode>? episodes) {
     _sonarrEpisodes = episodes;
     _invalidateMergedEpisodes();
   }
 
-  /// Sonarr episodes filtered to the current target season only
+  /// Sonarr episodes filtered to the current target season only.
   ///
-  /// Returns null for EpisodeTargets as single-episode mappings don't use Sonarr
+  /// Returns null for EpisodeTargets as single-episode mappings don't use Sonarr.
   List<SonarrEpisode>? get sonarrEpisodesForTarget {
     if (_sonarrEpisodes == null) return null;
     final target = cachedTarget;
@@ -282,8 +323,8 @@ class SeriesViewModel extends ChangeNotifier {
     final titleObj = cachedMapping?.anilistData?.title ?? _cachedSeries?.anilistData?.title;
     final fallbackTitle = titleObj?.userPreferred ?? titleObj?.english ?? titleObj?.romaji ?? "";
 
-    // Snapshot the location: these results are node-scoped, so if the user
-    // navigates to another series/node while we await we must not overwrite it.
+    // Snapshot the location: these results are node-scoped,
+    // so a navigation away mid-await must not overwrite the new node's state
     final seriesPath = _seriesPath;
     final nodePath = currentNodePath;
 
@@ -306,7 +347,7 @@ class SeriesViewModel extends ChangeNotifier {
       _sonarrSeriesId = result.$1;
       _sonarrEpisodes = result.$2;
       _invalidateMergedEpisodes();
-      _notify();
+      notifySafe();
     } catch (e, stack) {
       logErr('[SeriesViewModel] Failed to fetch sonarr episodes', e, stack);
     }
@@ -314,9 +355,7 @@ class SeriesViewModel extends ChangeNotifier {
 
   // Merged (local + Sonarr) episodes
   List<UIEpisode>? _cachedMergedEpisodes;
-  String? _lastMergeNodePath;
-  int _lastMergeLocalCount = -1;
-  int _lastMergeSonarrCount = -1;
+  ({String? nodePath, int localCount, int sonarrCount})? _lastMergeKey;
 
   void _invalidateMergedEpisodes() => _cachedMergedEpisodes = null;
 
@@ -324,33 +363,31 @@ class SeriesViewModel extends ChangeNotifier {
   List<UIEpisode> get mergedEpisodes {
     final localEps = gridEpisodes;
     final sonarrEps = isMappingMode ? sonarrEpisodesForTarget : null;
-    final localCount = localEps.length;
-    final sonarrCount = sonarrEps?.length ?? -1;
-    final nodePath = _resolvedNode?.path.pathMaybe;
+    final key = (nodePath: _resolvedNode?.path.pathMaybe, localCount: localEps.length, sonarrCount: sonarrEps?.length ?? -1);
 
-    if (_cachedMergedEpisodes != null && //
-        _lastMergeNodePath == nodePath &&
-        _lastMergeLocalCount == localCount &&
-        _lastMergeSonarrCount == sonarrCount) {
-      return _cachedMergedEpisodes!;
-    }
+    if (_cachedMergedEpisodes != null && _lastMergeKey == key) return _cachedMergedEpisodes!;
 
-    _lastMergeNodePath = nodePath;
-    _lastMergeLocalCount = localCount;
-    _lastMergeSonarrCount = sonarrCount;
+    _lastMergeKey = key;
     _cachedMergedEpisodes = UIEpisode.merge(localEps, sonarrEps);
     return _cachedMergedEpisodes!;
   }
 
   // View type
-  /// The current view type (grid or list) for the current node. Defaults to grid.
-  ViewType get currentViewType => _currentViewType;
-  ViewType _currentViewType = ViewType.grid;
+  /// The view type (grid or list) for the current node: the user's choice for this node if they made
+  /// one, otherwise the node mapping's persisted type, otherwise grid.
+  ///
+  /// Resolved on read rather than latched on node change, so each node picks up its own persisted
+  /// type as soon as it resolves, so with a single latched field, the first node's type stuck to every
+  /// node visited afterwards.
+  ViewType get currentViewType => _currentViewType ?? _resolvedNode?.mapping?.viewType ?? ViewType.grid;
+
+  /// The user's explicit choice for the current node, or null while the node's persisted type applies
+  ViewType? _currentViewType;
 
   /// Set the current view type (grid or list) for the current node, and persist it to the library if it's a mapping node
   void onViewTypeChanged(ViewType newViewType) {
     _currentViewType = newViewType;
-    _notify();
+    notifySafe();
 
     final mapping = _resolvedNode?.mapping;
     if (mapping != null) _library?.updateMappingViewType(mapping.anilistId, newViewType);
@@ -359,20 +396,11 @@ class SeriesViewModel extends ChangeNotifier {
   // One-time, node-dependent data loads
 
   /// Kicks off per-node data loads once the node has been resolved. Fetches:
-  /// - View type
   /// - Episode Titles
   /// - Sonarr
   ///
   /// Scheduled once per node by the screen.
   Future<void> initNodeData() async {
-    // Adopt the node's persisted view type and notify immediately so the switcher reflects it
-    // Runs post-frame (scheduled by the screen), so notifying here is safe.
-    final persistedViewType = _resolvedNode?.mapping?.viewType;
-    if (_currentViewType == ViewType.grid && persistedViewType != null && persistedViewType != _currentViewType) {
-      _currentViewType = persistedViewType;
-      _notify();
-    }
-
     if (isMappingMode)
       await initializeMappingData();
     else if (TorrentManager.isEnabled) //
@@ -384,8 +412,8 @@ class SeriesViewModel extends ChangeNotifier {
     final mapping = cachedMapping;
     if (mapping == null) return;
 
-    // Snapshot the location so a navigation away mid-await can't apply this
-    // mapping's color/titles/episodes to whatever series/node is now showing.
+    // Snapshot the location, so a navigation away mid-await can't apply this mapping's
+    // color/titles/episodes to whatever series/node is now showing.
     final seriesPath = _seriesPath;
     final nodePath = currentNodePath;
 
@@ -402,7 +430,7 @@ class SeriesViewModel extends ChangeNotifier {
       if (!_stillOn(seriesPath, nodePath)) return;
       if (episodeTitlesUpdated) {
         logTrace('Episode titles updated, refreshing UI');
-        _notify(); // Refresh UI to show updated episode titles
+        notifySafe(); // Refresh UI to show updated episode titles
       }
     } catch (e) {
       logErr('Error fetching episode titles', e);
@@ -410,7 +438,6 @@ class SeriesViewModel extends ChangeNotifier {
 
     await fetchSonarrEpisodes();
   }
-
 
   // Episode playback
   /// Play the given episode
@@ -438,13 +465,11 @@ class SeriesViewModel extends ChangeNotifier {
     if (_seriesPath == null || series == null) return;
 
     if (!series.isLinked) {
-      // Clear any Anilist data references to ensure UI updates
-      
-      // Only notify when something actually changed, otherwise repeated calls would loop:
-      // _notify -> rebuild -> didChangeDependencies -> _notify
+      // Unlinked: drop stale AniList data. Only notify when it actually changed,
+      // else repeated calls loop: notify -> rebuild -> didChangeDependencies -> notify.
       if (series.anilistData != null) {
         series.anilistData = null;
-        _notify();
+        notifySafe();
       }
       return;
     }
@@ -462,6 +487,7 @@ class SeriesViewModel extends ChangeNotifier {
     final series = _cachedSeries;
     final library = _library;
     if (series == null || library == null) return;
+    final loadingForPath = _seriesPath;
 
     final mapping = series.anilistMappings.firstWhere(
       (m) => m.anilistId == id,
@@ -473,7 +499,7 @@ class SeriesViewModel extends ChangeNotifier {
     final newColor = mapping.effectivePrimaryColorSync();
     Manager.currentDominantColor = newColor;
     Manager.seriesDominantColor = newColor;
-    _notify();
+    notifySafe();
 
     try {
       // Update the series mappings with the new primary ID
@@ -481,6 +507,9 @@ class SeriesViewModel extends ChangeNotifier {
       // Also update the series
       await library.updateSeries(series, invalidateCache: false);
 
+      // Skip the UI-side refresh if the user navigated away
+      // (the DB writes above already targeted the correct series and stay valid)
+      if (isDisposed || _seriesPath != loadingForPath) return;
       _libraryVM?.updateSeriesInSortCache(series);
 
       logTrace('Changed primary AniList ID to $id, saved to library');
@@ -495,9 +524,14 @@ class SeriesViewModel extends ChangeNotifier {
     final library = _library;
     if (series == null || library == null) return;
 
-    // Guard against the user navigating to a different series mid-flight: after the network await we
-    // bail if we're no longer on this series, restoring the `mounted`-check behavior the pre-VM screen had
+    // Guard against navigating to a different series mid-flight:
+    // after the network await we bail if we've left, restoring the pre-VM screen's `mounted` check
     final loadingForPath = _seriesPath;
+
+    // The single mapping that drives series-level image/color updates.
+    // With no explicit primary, use the first mapping rather than treating every mapping as primary,
+    // which recomputed the (per-series) color once per fetched mapping.
+    final effectivePrimaryId = series.primaryAnilistId ?? series.anilistMappings.firstOrNull?.anilistId;
 
     // Identify IDs that need fetching
     final currentTime = now;
@@ -518,7 +552,7 @@ class SeriesViewModel extends ChangeNotifier {
 
     try {
       final Map<int, AnilistAnime?> fetchedData = await _linkService.fetchMultipleAnimeDetails(idsToFetch);
-      if (_disposed || _seriesPath != loadingForPath) return;
+      if (isDisposed || _seriesPath != loadingForPath) return;
 
       bool needsFullSave = false;
       bool dominantColorChanged = false;
@@ -541,7 +575,7 @@ class SeriesViewModel extends ChangeNotifier {
         if (mapping == null) continue;
 
         final oldData = mapping.anilistData;
-        final bool isPrimary = series.primaryAnilistId == anilistId || series.primaryAnilistId == null;
+        final bool isPrimary = anilistId == effectivePrimaryId;
 
         // Update in memory
         mapping.anilistData = anilistAnime;
@@ -562,7 +596,7 @@ class SeriesViewModel extends ChangeNotifier {
             needsFullSave = true;
 
             // Only push the color to the global UI if we're still on this series
-            if (_seriesPath == loadingForPath && !_disposed) {
+            if (_seriesPath == loadingForPath && !isDisposed) {
               if (!isMappingMode) {
                 // In series mode, update both current and series dominant colors
                 Manager.currentDominantColor = newColor;
@@ -605,9 +639,9 @@ class SeriesViewModel extends ChangeNotifier {
       }
 
       _libraryVM?.updateSeriesInSortCache(series);
-      if (_disposed || _seriesPath != loadingForPath) return;
+      if (isDisposed || _seriesPath != loadingForPath) return;
       if (dominantColorChanged) Manager.setState();
-      _notify();
+      notifySafe();
     } catch (e) {
       if (!isExpectedOfflineError(e)) logErr('Failed to load Anilist data', e);
     }
@@ -615,9 +649,8 @@ class SeriesViewModel extends ChangeNotifier {
 
   // Library reload hook
 
-  /// Called after a library reload.
-  /// The folder node is re-derived from the live series in the screen's `build`,
-  /// so this refreshes the cached series + its AniList data and triggers a rebuild
+  /// Called after a library reload. The folder node is re-derived from the live series in the screen's `build`,
+  /// so this just refreshes the cached series + its AniList data and triggers a rebuild.
   void refreshFromLibrary() {
     final library = _library;
     if (library == null || _seriesPath == null) return;
@@ -629,6 +662,6 @@ class SeriesViewModel extends ChangeNotifier {
     _invalidateMergedEpisodes();
 
     loadAnilistDataForCurrentSeries();
-    _notify();
+    notifySafe();
   }
 }

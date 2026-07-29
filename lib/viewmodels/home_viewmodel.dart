@@ -1,5 +1,3 @@
-import 'package:fluent_ui/fluent_ui.dart';
-
 import '../models/anilist/anime.dart';
 import '../models/anilist/user_list.dart';
 import '../models/episode.dart';
@@ -14,31 +12,21 @@ import '../services/mapping/custom_sonarr_mapping_service.dart';
 import '../utils/logging.dart';
 import '../utils/path.dart';
 import '../utils/time.dart';
+import 'disposable_view_model.dart';
 
 /// ViewModel for the Home screen.
 ///
 /// Owns the section data, the Sonarr episode-title cache, and the upcoming-episodes future cache.
 ///
 /// Registered app-wide via `ChangeNotifierProxyProvider2<Library, AnilistProvider, HomeViewModel>` in `main.dart`.
-class HomeViewModel extends ChangeNotifier {
+class HomeViewModel extends DisposableViewModel {
   late Library _library;
   late AnilistProvider _anilist;
-  bool _disposed = false;
 
   /// Called by the ChangeNotifierProxyProvider2 whenever [Library] or [AnilistProvider] notify
   void update(Library library, AnilistProvider anilist) {
     _library = library;
     _anilist = anilist;
-  }
-
-  @override
-  void dispose() {
-    _disposed = true;
-    super.dispose();
-  }
-
-  void _notify() {
-    if (!_disposed) notifyListeners();
   }
 
   // Continue Watching / Next Up
@@ -183,7 +171,7 @@ class HomeViewModel extends ChangeNotifier {
       }
     }
 
-    if (anyNew) _notify();
+    if (anyNew) notifySafe();
   }
 
   // Upcoming Episodes
@@ -209,7 +197,7 @@ class HomeViewModel extends ChangeNotifier {
     }).toList();
   }
 
-  /// Unique AniList IDs of RELEASING mappings across [series].
+  /// Unique AniList IDs of RELEASING mappings across [series]
   List<int> releasingAnimeIds(List<Series> series) {
     final Set<int> animeIds = {};
     for (final s in series) {
@@ -220,9 +208,9 @@ class HomeViewModel extends ChangeNotifier {
     return animeIds.toList();
   }
 
-  /// Drops the memoized fresh-fetch future when the library data version
-  /// changes. Shared by both upcoming-episode entry points so neither relies
-  /// on the other having been called first.
+  /// Drops the memoized fresh-fetch future when the library data version changes.
+  /// 
+  /// Shared by both upcoming-episode entry points so neither relies on the other having been called first.
   void _syncUpcomingCacheWithDataVersion() {
     if (_lastLibraryDataVersion != null && _lastLibraryDataVersion != _library.dataVersion) {
       _cachedUpcomingEpisodesFuture = null;

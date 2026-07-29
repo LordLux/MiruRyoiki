@@ -10,13 +10,14 @@ import '../services/library/library_provider.dart';
 import '../services/navigation/show_info.dart';
 import '../utils/logging.dart';
 import '../utils/time.dart';
+import 'disposable_view_model.dart';
 
 /// ViewModel for the Release Calendar screen.
 ///
 /// Owns all calendar *state* and all *data access*.
 ///
 /// Registered app-wide via `ChangeNotifierProxyProvider2<Library, AnilistProvider, ReleaseCalendarViewModel>` in `main.dart`, so dialogs can share the same instance.
-class ReleaseCalendarViewModel extends ChangeNotifier {
+class ReleaseCalendarViewModel extends DisposableViewModel {
   ReleaseCalendarViewModel({AnilistService? anilistService}) : _anilistServiceOverride = anilistService;
 
   final AnilistService? _anilistServiceOverride;
@@ -27,7 +28,6 @@ class ReleaseCalendarViewModel extends ChangeNotifier {
 
   late Library _library;
   late AnilistProvider _anilist;
-  bool _disposed = false;
 
   /// Called by the ChangeNotifierProxyProvider2 whenever [Library] or [AnilistProvider] notify.
   ///
@@ -57,21 +57,11 @@ class ReleaseCalendarViewModel extends ChangeNotifier {
   bool get filterSelectedDate => _filterSelectedDate;
   bool get showOlderNotifications => _showOlderNotifications;
 
-  @override
-  void dispose() {
-    _disposed = true;
-    super.dispose();
-  }
-
-  void _notify() {
-    if (!_disposed) notifyListeners();
-  }
-
   /// Test-only: seed the calendar cache directly, bypassing data loading.
   @visibleForTesting
   void debugSetCalendarCache(Map<DateTime, List<CalendarEntry>> cache) {
     _calendarCache = cache;
-    _notify();
+    notifySafe();
   }
 
   // Screen State
@@ -152,29 +142,29 @@ class ReleaseCalendarViewModel extends ChangeNotifier {
     _selectedDate = now;
     _filterSelectedDate = false;
     _showOlderNotifications = false;
-    _notify();
+    notifySafe();
   }
 
   void previousMonth() {
     _focusedMonth = DateTime(_focusedMonth.year, _focusedMonth.month - 1);
-    _notify();
+    notifySafe();
   }
 
   void nextMonth() {
     _focusedMonth = DateTime(_focusedMonth.year, _focusedMonth.month + 1);
-    _notify();
+    notifySafe();
   }
 
   void toggleTodayFilter([bool? value]) {
     _showOnlyTodayEpisodes = value ?? !_showOnlyTodayEpisodes;
-    _notify();
+    notifySafe();
   }
 
   /// Returns true when toggled on (the screen auto-scrolls in that case)
   bool toggleOlderNotifications([bool? value]) {
     final newValue = value ?? !_showOlderNotifications;
     _showOlderNotifications = newValue;
-    _notify();
+    notifySafe();
     return newValue;
   }
 
@@ -199,21 +189,21 @@ class ReleaseCalendarViewModel extends ChangeNotifier {
       _filterSelectedDate = false;
     }
 
-    _notify();
+    notifySafe();
   }
 
   // Data loading
 
   Future<void> loadReleaseData() async {
-    if (_isLoading || _disposed) return;
+    if (_isLoading || isDisposed) return;
 
     _isLoading = true;
-    _notify();
+    notifySafe();
 
     try {
       if (!_anilist.isLoggedIn) {
         _isLoading = false;
-        _notify();
+        notifySafe();
         return;
       }
 
@@ -222,12 +212,12 @@ class ReleaseCalendarViewModel extends ChangeNotifier {
       // Load cached data and display it immediately
       await _loadNotificationData(calendarMap, null, now);
       await _loadEpisodeData(calendarMap, now, null);
-      if (_disposed) return;
+      if (isDisposed) return;
 
       if (calendarMap.isNotEmpty) {
         _calendarCache = calendarMap;
         _errorMessage = null;
-        _notify();
+        notifySafe();
       }
 
       if (!_anilist.isOffline) {
@@ -238,12 +228,12 @@ class ReleaseCalendarViewModel extends ChangeNotifier {
             types: [NotificationType.AIRING, NotificationType.RELATED_MEDIA_ADDITION, NotificationType.MEDIA_DATA_CHANGE],
             maxPages: 2,
           );
-          if (_disposed) return;
+          if (isDisposed) return;
 
           final freshCalendarMap = <DateTime, List<CalendarEntry>>{};
           await _loadNotificationData(freshCalendarMap, null, now);
           await _loadEpisodeData(freshCalendarMap, now, null);
-          if (_disposed) return;
+          if (isDisposed) return;
 
           for (final dayEntries in freshCalendarMap.values) //
             dayEntries.sort((a, b) => a.date.compareTo(b.date));
@@ -266,12 +256,12 @@ class ReleaseCalendarViewModel extends ChangeNotifier {
       logErr('Error loading calendar data', e);
     } finally {
       _isLoading = false;
-      _notify();
+      notifySafe();
     }
   }
 
   Future<void> _loadEpisodeData(Map<DateTime, List<CalendarEntry>> calendarMap, DateTime? startDate, DateTime? endDate) async {
-    if (_disposed) return;
+    if (isDisposed) return;
 
     // Unique RELEASING anime IDs across all mapped series
     final Set<int> animeIds = {};
@@ -280,7 +270,7 @@ class ReleaseCalendarViewModel extends ChangeNotifier {
         if (mapping.anilistData?.status?.toAnimeStatus() == AnilistAnimeStatus.RELEASING) animeIds.add(mapping.anilistId);
       }
     }
-    if (animeIds.isEmpty || _disposed) return;
+    if (animeIds.isEmpty || isDisposed) return;
 
     // Cached data first (kicks off a background refresh), same as homepage
     final cachedUpcomingEpisodes = _anilist.getCachedUpcomingEpisodes(animeIds.toList(), refreshInBackground: true);
@@ -291,10 +281,10 @@ class ReleaseCalendarViewModel extends ChangeNotifier {
     }
 
     // If no cached data available, fetch fresh data as fallback
-    if (calendarMap.isEmpty && !_disposed) {
+    if (calendarMap.isEmpty && !isDisposed) {
       try {
         final upcomingEpisodes = await _anilist.getUpcomingEpisodes(animeIds.toList());
-        if (_disposed) return;
+        if (isDisposed) return;
         _addAiringEntries(calendarMap, upcomingEpisodes, startDate, endDate);
       } catch (e, st) {
         // Log but don't fail completely — we might still have notifications
@@ -310,7 +300,7 @@ class ReleaseCalendarViewModel extends ChangeNotifier {
     DateTime? endDate,
   ) {
     for (final series in _library.series) {
-      if (_disposed) return;
+      if (isDisposed) return;
 
       for (final mapping in series.anilistMappings) {
         final airingInfo = upcomingEpisodes[mapping.anilistId];
@@ -333,19 +323,19 @@ class ReleaseCalendarViewModel extends ChangeNotifier {
   }
 
   Future<void> _loadNotificationData(Map<DateTime, List<CalendarEntry>> calendarMap, DateTime? startDate, DateTime endDate) async {
-    if (_disposed) return;
+    if (isDisposed) return;
 
     try {
       final notifications = await _anilistService.getCachedNotifications(
         database: _library.database,
         limit: 256,
       );
-      if (_disposed) return;
+      if (isDisposed) return;
 
       logTrace('  Loaded ${notifications.length} cached notifications for calendar');
 
       for (final notification in notifications) {
-        if (_disposed) return;
+        if (isDisposed) return;
 
         final notificationDate = DateTime.fromMillisecondsSinceEpoch(notification.createdAt * 1000);
         final inRange = (startDate == null || notificationDate.isAfter(startDate)) && notificationDate.isBefore(endDate);
@@ -425,6 +415,6 @@ class ReleaseCalendarViewModel extends ChangeNotifier {
           e is NotificationCalendarEntry ? transform(e) : e,
       ];
     }
-    _notify();
+    notifySafe();
   }
 }

@@ -23,6 +23,7 @@ import '../utils/path.dart';
 import '../utils/shell.dart';
 import '../utils/text.dart';
 import '../widgets/animated_color_wrapper.dart';
+import '../widgets/animated_switcher_layouts.dart';
 import '../widgets/buttons/back_button.dart';
 import '../widgets/buttons/button.dart';
 import '../services/anilist/provider/anilist_provider.dart';
@@ -46,7 +47,6 @@ import '../widgets/page/page_template.dart';
 import '../widgets/cards/mapping_card.dart';
 import '../widgets/cards/folder_card.dart';
 import '../models/folder_node.dart';
-import 'package:path/path.dart' as p;
 import '../widgets/shift_clickable_hover.dart';
 import '../widgets/shrinker.dart';
 import '../widgets/simple_html_parser.dart';
@@ -88,151 +88,93 @@ class SeriesScreenState extends State<SeriesScreen> {
 
   bool isReloadingSeries = false;
 
-  List<SonarrEpisode>? _sonarrEpisodes;
-  int? _sonarrSeriesId;
-
-  /// Sonarr episodes filtered to the current target season only
+  /// The screen's state + data access live in [SeriesViewModel] (registered
+  /// app-wide in `main.dart`). The thin accessors throughout this class keep the
+  /// widget-building code — and external GlobalKey callers — in their original
+  /// shape while the underlying state now lives in the VM.
   ///
-  /// Returns null for EpisodeTargets as single-episode mappings don't use Sonarr
-  List<SonarrEpisode>? get _sonarrEpisodesForTarget {
-    if (_sonarrEpisodes == null) return null;
-    if (_cachedTarget == null || _cachedTarget!.isEpisode) return null;
+  /// Captured once in [initState] so [dispose] can release the VM without reading from an already-defunct `context`.
+  late final SeriesViewModel _vm;
 
-    final seasonNum = (_cachedTarget!.asCollection is Season) ? (_cachedTarget!.asCollection as Season).seasonNumber : null;
-    if (seasonNum == null) return _sonarrEpisodes;
-
-    return _sonarrEpisodes!.where((e) => e.seasonNumber == seasonNum).toList();
-  }
+  List<SonarrEpisode>? get _sonarrEpisodes => _vm.sonarrEpisodes;
+  int? get _sonarrSeriesId => _vm.sonarrSeriesId;
 
   bool _isPosterHovering = false;
   bool _isBannerHovering = false;
   DeferredPointerHandlerLink? deferredPointerLink;
 
-  /// Cached reference to the current series, updated via Selector in build()
-  Series? _cachedSeries;
+  late final NavigationManager _navManager;
 
-  /// The folder node currently rendered (root or a sub-folder). Re-derived from
-  /// the live [Series] each build via [resolveNode] — no manual cache invalidation.
-  FolderNode? _resolvedNode;
+  Series? get _cachedSeries => _vm.cachedSeries;
+  FolderNode? get _resolvedNode => _vm.resolvedNode;
+  AnilistMapping? get _cachedMapping => _vm.cachedMapping;
+  List<(AnilistMapping, MappingTarget)> get _fileMappingsAtNode => _vm.fileMappingsAtNode;
+  List<UIEpisode> get _mergedEpisodes => _vm.mergedEpisodes;
+  ViewType get _currentViewType => _vm.currentViewType;
+  bool get isMappingMode => _vm.isMappingMode;
 
-  bool _nodeInitialized = false;
-
-  /// The AniList mapping (if any) attached to the current node.
-  AnilistMapping? get _cachedMapping => _resolvedNode?.mapping;
-
-  /// A [MappingTarget] for the current node's collection, or null for the root /
-  /// synthesized intermediate folders that have no collection of their own.
-  MappingTarget? get _cachedTarget {
-    final c = _resolvedNode?.collection;
-    return c != null ? MappingTarget.collection(c) : null;
-  }
-
-  /// Memoized folder tree. Rebuilt only when the series instance, its data
-  /// version, or its mapping count changes — NOT on hover/color/setState
-  /// rebuilds, which previously reconstructed the whole tree every frame.
-  FolderNode? _treeRoot;
-  Series? _treeSeries;
-  int _treeVersion = -1;
-  int _treeMappingCount = -1;
-
-  FolderNode _buildOrGetTree(Series series, int dataVersion) {
-    if (_treeRoot != null && //
-        identical(_treeSeries, series) &&
-        _treeVersion == dataVersion &&
-        _treeMappingCount == series.anilistMappings.length) {
-      return _treeRoot!;
-    }
-    _treeRoot = buildFolderTree(series);
-    _treeSeries = series;
-    _treeVersion = dataVersion;
-    _treeMappingCount = series.anilistMappings.length;
-    return _treeRoot!;
-  }
-
-  /// Cached merged episodes list to avoid recomputing on every build
-  List<UIEpisode>? _cachedMergedEpisodes;
-  String? _lastMergeNodePath;
-  int _lastMergeLocalCount = -1;
-  int _lastMergeSonarrCount = -1;
-
-  /// File-level (single-file) AniList mappings located directly inside the
-  /// current node — they render as their own cards and are excluded from the
-  /// episode grid. Computed once per build in [build] via [_recomputeFileMappings]
-  /// (single source of truth for both the cards and the grid exclusion).
-  List<(AnilistMapping, MappingTarget)> _fileMappingsAtNode = const [];
-  Set<String> _fileMappingPaths = const {};
-
-  void _recomputeFileMappings(Series series, FolderNode node) {
-    final list = <(AnilistMapping, MappingTarget)>[];
-    final paths = <String>{};
-    for (final m in series.anilistMappings) {
-      final lp = m.localPath.pathMaybe;
-      if (lp == null) continue;
-      final t = series.getTargetForMapping(m);
-      if (t != null && t.isEpisode && p.equals(p.dirname(lp), node.path.path)) {
-        list.add((m, t));
-        paths.add(lp);
-      }
-    }
-    _fileMappingsAtNode = list;
-    _fileMappingPaths = paths;
-  }
-
-  /// Episodes shown in the current node's episode grid: the node's direct
-  /// episodes minus any that are themselves file-level AniList mappings.
-  List<Episode> get _gridEpisodes {
-    final node = _resolvedNode;
-    if (node == null) return const [];
-    if (_fileMappingPaths.isEmpty) return node.directEpisodes;
-    return node.directEpisodes.where((e) => !_fileMappingPaths.contains(e.path.pathMaybe)).toList();
-  }
-
-  List<UIEpisode> get _mergedEpisodes {
-    final localEps = _gridEpisodes;
-    // Sonarr episodes are season-scoped — only merge them inside a folder/season
-    // node, never into the series root's loose-files grid.
-    final sonarrEps = isMappingMode ? _sonarrEpisodesForTarget : null;
-    final localCount = localEps.length;
-    final sonarrCount = sonarrEps?.length ?? -1;
-    final nodePath = _resolvedNode?.path.pathMaybe;
-
-    if (_cachedMergedEpisodes != null && //
-        _lastMergeNodePath == nodePath &&
-        _lastMergeLocalCount == localCount &&
-        _lastMergeSonarrCount == sonarrCount) {
-      return _cachedMergedEpisodes!;
-    }
-
-    _lastMergeNodePath = nodePath;
-    _lastMergeLocalCount = localCount;
-    _lastMergeSonarrCount = sonarrCount;
-    _cachedMergedEpisodes = UIEpisode.merge(localEps, sonarrEps);
-    return _cachedMergedEpisodes!;
-  }
-
-  void _invalidateMergedEpisodes() => _cachedMergedEpisodes = null;
-
-  ViewType _currentViewType = ViewType.grid;
-
-  late Color _textColor;
-  late Color _selectedTextColor;
-
-  bool get isMappingMode => !(_resolvedNode?.isRoot ?? true);
-
-  /// Push a child folder node onto the navigation stack as its own page,
-  /// enabling root → folder → sub-folder → … navigation with a real back stack.
+  /// Drill into a child folder/mapping node. Intra-page navigation:
+  /// the screen stays alive and crossfades, recording the level in history (via [pushTabState]) so Back/Forward
+  /// walk the folder stack without route churn.
   void navigateToNode(FolderNode node) {
     if (!mounted) return;
 
-    context.read<NavigationManager>().pushPage(
-      '/mapping:${node.path}',
-      node.displayName,
-      data: {
-        'seriesPath': widget.seriesPath,
-        'nodePath': node.path,
-      },
-    );
+    _vm.pushNode(node.path);
+    // Title the entry with the node name, so drilled-in levels are distinguishable from the series root.
+    _navManager.pushTabState({seriesNodeStackNamespace: {'nodeStack': _encodeNodeStack()}}, title: node.displayName);
   }
+
+  /// Serialize the VM's drill-down stack for storage in navigation viewState.
+  List<String> _encodeNodeStack() => _vm.nodeStack.map((p) => p.path).toList();
+
+  /// Read a drill-down stack back out of this page's namespaced viewState section.
+  /// Decodes defensively so corrupted/legacy history state can't crash the screen, but
+  /// logs when the shape doesn't match what we wrote so drift doesn't fail silently.
+  List<PathString> _decodeNodeStack(Map<String, dynamic>? section) {
+    final raw = section?['nodeStack'];
+    if (raw == null) return const [];
+    if (raw is! List) {
+      logWarn('[SeriesScreen] Ignoring nodeStack viewState with unexpected shape (${raw.runtimeType}): $raw');
+      return const [];
+    }
+    final decoded = raw.whereType<String>().map(PathString.new).toList();
+    if (decoded.length != raw.length) //
+      logWarn('[SeriesScreen] Dropped ${raw.length - decoded.length} non-string nodeStack entries: $raw');
+    return decoded;
+  }
+
+  /// Back intent: pop one drill-down level if inside a folder/mapping (walking
+  /// the intra-page history so Forward still works), otherwise leave to Library.
+  void _handleBack() {
+    if (_vm.canPopNode)
+      _navManager.goBack();
+    else
+      widget.onBack();
+  }
+
+  /// Restore the drill-down stack when the user navigates Back/Forward within
+  /// this page, or re-enters it from history.
+  void _onRestoreFromHistory() {
+    if (!mounted) return;
+    final currentView = _navManager.currentView;
+    if (currentView == null || !currentView.id.startsWith('/series:')) return;
+    _vm.restoreNodeStack(_decodeNodeStack(currentView.viewStateSection(seriesNodeStackNamespace)));
+    _applySeriesColorIfAtRoot();
+  }
+
+  /// Returning to the series root restores the series-level dominant color so it
+  /// doesn't linger on the folder/mapping node we just left. Deeper nodes get
+  /// their color from the VM's [SeriesViewModel.initNodeData].
+  void _applySeriesColorIfAtRoot() {
+    if (_vm.isAtRoot) //
+      Manager.setState(() => Manager.currentDominantColor = Manager.seriesDominantColor ?? Manager.accentColor);
+  }
+
+  /// Render [fullPath] relative to the library root (e.g. `Witch Hat Atelier\S01`)
+  /// instead of the full absolute path. Falls back to the full path when the
+  /// library root is unknown or the path lies outside it.
+  String _libraryRelativePath(String fullPath) => //
+      PathUtils.relativeToRootOrFull(fullPath, context.read<Library>().libraryPath);
 
   // Widget: whether to allocate a full row or divide it in 2 columns [true = full row, false = 2 columns]
   Map<InfoLabel, bool> infos(Series series) {
@@ -358,88 +300,53 @@ class SeriesScreenState extends State<SeriesScreen> {
     };
   }
 
-  //
-
-  void _loadColors() {
-    _textColor = Colors.white;
-    _selectedTextColor = getTextColor(Manager.currentDominantColor ?? Manager.accentColor);
-  }
-
   @override
   void initState() {
     super.initState();
-    _loadColors();
-    if (widget.seriesPath != null) {
-      deferredPointerLink = DeferredPointerHandlerLink();
-      nextFrame(() => _loadAnilistDataForCurrentSeries());
-    }
-    _invalidateMergedEpisodes();
+    _vm = context.read<SeriesViewModel>();
+    _navManager = context.read<NavigationManager>();
+    _navManager.restoreNotifier.addListener(_onRestoreFromHistory);
+
+    if (widget.seriesPath != null) _openSeriesAndLoad(widget.seriesPath!, seedHistory: true);
     parser = SimpleHtmlParser(context);
-  }
-
-  /// Kicks off node-dependent data loads (view type, episode titles, Sonarr)
-  /// once the node has been resolved in [build]. Runs once per node.
-  void _initNodeData() {
-    if (_currentViewType == ViewType.grid && _resolvedNode?.mapping?.viewType != null) //
-      _currentViewType = _resolvedNode!.mapping!.viewType!;
-
-    if (isMappingMode)
-      _initializeMappingData();
-    else if (TorrentManager.isEnabled) //
-      _fetchSonarrEpisodes();
   }
 
   @override
   didUpdateWidget(covariant SeriesScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.seriesPath != oldWidget.seriesPath) {
-      // Series changed, load new data
-      if (widget.seriesPath != null) {
-        deferredPointerLink ??= DeferredPointerHandlerLink();
-        nextFrame(() => _loadAnilistDataForCurrentSeries());
-      }
-    }
 
-    // Node (or series) changed → re-init node-dependent data on next build
-    if (widget.nodePath != oldWidget.nodePath || widget.seriesPath != oldWidget.seriesPath) {
-      _nodeInitialized = false;
-      _invalidateMergedEpisodes();
-      if (!isMappingMode) //
-        Manager.setState(() => Manager.currentDominantColor = Manager.seriesDominantColor ?? Manager.accentColor);
-    }
+    if (widget.seriesPath != oldWidget.seriesPath && widget.seriesPath != null) //
+      _openSeriesAndLoad(widget.seriesPath!, seedHistory: true);
   }
 
-  void _onViewTypeChanged(ViewType newViewType) {
-    setState(() => _currentViewType = newViewType);
+  /// Opens [path] in the VM at the drill-down level saved in history
+  /// (root on first entry; the same folder/mapping when re-entering via Back/Forward), then loads its AniList data.
+  /// [seedHistory] seeds the root viewState so it's restorable later and is set only on first entry.
+  void _openSeriesAndLoad(PathString path, {bool seedHistory = false}) {
+    deferredPointerLink ??= DeferredPointerHandlerLink();
+    _vm.openSeries(path, initialStack: _decodeNodeStack(_navManager.currentView?.viewStateSection(seriesNodeStackNamespace)));
+    if (seedHistory) _navManager.seedCurrentViewState({seriesNodeStackNamespace: {'nodeStack': <String>[]}});
 
-    final mapping = _resolvedNode?.mapping;
-    if (mapping != null) {
-      final library = Provider.of<Library>(context, listen: false);
-      library.updateMappingViewType(mapping.anilistId, newViewType);
-    }
+    nextFrame(() {
+      if (mounted) _vm.loadAnilistDataForCurrentSeries();
+    });
   }
 
-  /// Called by [Library.reloadOpenedSeries] after a library reload. The folder
-  /// node is re-derived from the live series in [build], so this just refreshes
-  /// AniList data and colors and triggers a rebuild.
+  void _onViewTypeChanged(ViewType newViewType) => _vm.onViewTypeChanged(newViewType);
+
+  /// Called by [Library.reloadOpenedSeries] after a library reload.
+  /// Delegates to the ViewModel, which re-derives everything from the live series.
   void refreshFromLibrary() {
     if (!mounted) return;
-
-    final library = Provider.of<Library>(context, listen: false);
-    final series = library.getSeriesByPath(widget.seriesPath!);
-    if (series == null) return;
-
-    _cachedSeries = series;
-    _invalidateMergedEpisodes();
-
-    _loadAnilistDataForCurrentSeries();
-    _loadColors();
-
-    if (mounted) setState(() {});
+    _vm.refreshFromLibrary();
   }
 
   @override
   void dispose() {
+    _navManager.restoreNotifier.removeListener(_onRestoreFromHistory);
+    // The VM outlives this screen, so hand the series back:
+    // it drops the cached tree/episodes and  makes in-flight loads for this series no-ops
+    _vm.close(widget.seriesPath);
     deferredPointerLink?.dispose();
     super.dispose();
   }
@@ -448,8 +355,11 @@ class SeriesScreenState extends State<SeriesScreen> {
   didChangeDependencies() {
     super.didChangeDependencies();
     // If series changes while dependencies change, reload Anilist data
-    if (widget.seriesPath != null && _cachedSeries != null && !_cachedSeries!.isLinked) {
-      nextFrame(() => _loadAnilistDataForCurrentSeries());
+    final series = _vm.cachedSeries;
+    if (widget.seriesPath != null && series != null && !series.isLinked) {
+      nextFrame(() {
+        if (mounted) _vm.loadAnilistDataForCurrentSeries();
+      });
     }
   }
 
@@ -460,71 +370,6 @@ class SeriesScreenState extends State<SeriesScreen> {
         0, 0, 0.7, 0, 0,
         0, 0, 0, 1, 0,
       ]);
-
-  /// Initialize mapping data
-  Future<void> _initializeMappingData() async {
-    if (!mounted || _cachedMapping == null) return;
-
-    final mapping = _cachedMapping!;
-
-    // Calculate dominant color from the mapping's anilistData
-    final dominantColor = await mapping.effectivePrimaryColor(forceRecalculate: false);
-    if (!mounted) return;
-
-    Manager.setState(() => Manager.currentDominantColor = dominantColor);
-
-    // Fetch episode titles from AniList
-    try {
-      final (newSeries, episodeTitlesUpdated) = await Manager.episodeTitleService.fetchAndUpdateEpisodeTitlesFromMapping(mapping);
-      if (episodeTitlesUpdated && mounted) {
-        logTrace('Episode titles updated, refreshing UI');
-        setState(() {}); // Refresh UI to show updated episode titles
-      }
-
-      if (newSeries != null && mounted) context.read<LibraryScreenViewModel>().updateSeriesInSortCache(newSeries);
-    } catch (e) {
-      logErr('Error fetching episode titles', e);
-    }
-
-    _fetchSonarrEpisodes();
-  }
-
-  Future<void> _fetchSonarrEpisodes() async {
-    final torrentController = TorrentManager.downloadController;
-    if (torrentController == null) return;
-
-    final anilistId = _cachedMapping?.anilistId ?? _cachedSeries?.primaryAnilistId;
-    if (anilistId == null) return;
-
-    final titleObj = _cachedMapping?.anilistData?.title ?? _cachedSeries?.anilistData?.title;
-    final fallbackTitle = titleObj?.userPreferred ?? titleObj?.english ?? titleObj?.romaji ?? "";
-
-    logTrace('[SeriesScreen] Fetching Sonarr episodes: anilistId=$anilistId, title="$fallbackTitle"');
-    if (!mounted) return;
-
-    try {
-      var result = await torrentController.syncAndFetchEpisodes(animeId: anilistId, altTitle: fallbackTitle);
-
-      // If Sonarr just added the series, episodes may not be available yet — retry once
-      if (result.$2.isEmpty) {
-        logTrace('[SeriesScreen] No episodes returned, retrying after 3s...');
-        await Future.delayed(const Duration(seconds: 3));
-        if (!mounted) return;
-        result = await torrentController.syncAndFetchEpisodes(animeId: anilistId, altTitle: fallbackTitle);
-      }
-
-      logTrace('[SeriesScreen] Got sonarrSeriesId=${result.$1}, ${result.$2.length} episodes');
-      if (mounted) {
-        setState(() {
-          _sonarrSeriesId = result.$1;
-          _sonarrEpisodes = result.$2;
-          _invalidateMergedEpisodes();
-        });
-      }
-    } catch (e, stack) {
-      logErr('[SeriesScreen] Failed to fetch sonarr episodes', e, stack);
-    }
-  }
 
   void _openManageEpisodesDialog(Series series) {
     if (_sonarrEpisodes == null) return;
@@ -571,7 +416,7 @@ class SeriesScreenState extends State<SeriesScreen> {
             animeId: anilistId,
             animeTitle: title,
             onLinked: () {
-              if (mounted) _fetchSonarrEpisodes();
+              if (mounted) _vm.fetchSonarrEpisodes();
             },
           ),
         );
@@ -579,211 +424,26 @@ class SeriesScreenState extends State<SeriesScreen> {
     );
   }
 
-  Future<ImageProvider?> _getMappingImage({required bool banner}) async {
-    final mapping = _cachedMapping;
-    if (mapping == null) return null;
+  Future<ImageProvider?> _getMappingImage({required bool banner}) => _vm.getMappingImage(banner: banner);
 
-    final imageUrl = banner ? mapping.anilistData?.bannerImage : mapping.anilistData?.posterImage;
-    if (imageUrl == null || imageUrl.isEmpty) return null;
+  void _playEpisode(Episode episode) => _vm.playEpisode(episode);
 
-    return await ImageCacheService().getImageProvider(imageUrl);
-  }
+  /// Passed to [linkWithAnilist] as its data-loader callback.
+  Future<void> _loadAnilistData(List<int> ids, {bool force = false}) => _vm.loadAnilistData(ids, force: force);
 
-  void _playEpisode(Episode episode) {
-    final library = Provider.of<Library>(context, listen: false);
-    library.playEpisode(episode);
-  }
+  /// Force reload for the given IDs. Called externally via [seriesScreenKey] by
+  /// the image-selection dialog after linking.
+  Future<void> loadAnilistData(List<int> ids) => _vm.loadAnilistDataForced(ids);
 
-  Future<void> _loadAnilistDataForCurrentSeries() async {
-    final series = _cachedSeries; // get current series
-    if (!mounted || widget.seriesPath == null || series == null) return;
-
-    if (!series.isLinked) {
-      // Clear any Anilist data references to ensure UI updates
-      series.anilistData = null;
-      if (homeKey.currentContext?.mounted ?? false) setState(() {});
-      _loadColors();
-      return;
-    }
-
-    // Load data for all mappings
-    await _loadAnilistData(anilistIDs);
-  }
-
-  List<int> get anilistIDs => _cachedSeries?.anilistMappings.map((e) => e.anilistId).whereType<int>().toSet().toList() ?? [];
-
-  Future<void> loadAnilistData(List<int> ids) async => await _loadAnilistData(ids, force: true); // force reload for single ID
-
-  /// Change the primary AniList ID for the current series
-  ///
-  /// Assumes the anilistData of the mapping is already loaded
-  Future<void> changePrimaryId(int id) async {
-    final series = _cachedSeries;
-    if (series == null) return;
-
-    final mapping = series.anilistMappings.firstWhere(
-      (m) => m.anilistId == id,
-      orElse: () => series.anilistMappings.first, // fallback, shouldn't happen
-    );
-
-    setState(() {
-      series.primaryAnilistId = mapping.anilistId;
-      series.anilistData = mapping.anilistData;
-      final newColor = mapping.effectivePrimaryColorSync();
-      Manager.currentDominantColor = newColor;
-      Manager.seriesDominantColor = newColor;
-    });
-
-    // Save the updated series to the library
-    final BuildContext? ctx;
-    if (mounted)
-      ctx = context;
-    else
-      ctx = rootNavigatorKey.currentContext;
-
-    if (ctx != null && ctx.mounted) {
-      try {
-        final library = Provider.of<Library>(ctx, listen: false);
-
-        // Update the series mappings with the new primary ID
-        await library.updateSeriesMappings(series, series.anilistMappings);
-
-        // Also update the series
-        await library.updateSeries(series, invalidateCache: false);
-
-        if (mounted) context.read<LibraryScreenViewModel>().updateSeriesInSortCache(series);
-
-        logTrace('Changed primary AniList ID to $id, saved to library');
-      } catch (e) {
-        logErr('Error updating series primary AniList ID: $e');
-      }
-    }
-  }
-
-  Future<void> _loadAnilistData(List<int> anilistIDs, {bool force = false}) async {
-    final series = _cachedSeries;
-    if (series == null) return;
-
-    // Identify IDs that need fetching
-    final currentTime = now;
-    final idsToFetch = anilistIDs.where((id) {
-      final mapping = series.anilistMappings.firstWhereOrNull((m) => m.anilistId == id);
-      if (mapping == null) return false;
-
-      return force || //
-          mapping.lastSynced == null ||
-          currentTime.difference(mapping.lastSynced!) > kAnilistCacheDuration ||
-          mapping.anilistData?.posterImage == null ||
-          mapping.anilistData?.bannerImage == null;
-    }).toList();
-
-    if (idsToFetch.isEmpty) return;
-
-    logTrace('Fetching AniList data for ${idsToFetch.length} IDs: ${idsToFetch.join(', ')}');
-
-    try {
-      final Map<int, AnilistAnime?> fetchedData = await SeriesLinkService().fetchMultipleAnimeDetails(idsToFetch);
-      if (!mounted) return;
-
-      final library = Provider.of<Library>(context, listen: false);
-
-      bool needsFullSave = false;
-      bool dominantColorChanged = false;
-      final List<Future<void> Function()> pendingPartialUpdates = [];
-
-      for (final entry in fetchedData.entries) {
-        final anilistId = entry.key;
-        final anilistAnime = entry.value;
-
-        if (anilistAnime == null) {
-          if (ConnectivityService().isOffline)
-            logWarn('Failed to fetch AniList details for ID $anilistId: device is offline');
-          else
-            logErr('Failed to load Anilist data for ID: $anilistId');
-
-          continue;
-        }
-
-        final mapping = series.anilistMappings.firstWhereOrNull((m) => m.anilistId == anilistId);
-        if (mapping == null) continue;
-
-        final oldData = mapping.anilistData;
-        final bool isPrimary = series.primaryAnilistId == anilistId || series.primaryAnilistId == null;
-
-        // Update in memory
-        mapping.anilistData = anilistAnime;
-        mapping.lastSynced = currentTime;
-
-        // Check for image changes | non primary mappings use updateMappingAnilistData whose update includes the new images
-        if (isPrimary && (oldData?.posterImage != anilistAnime.posterImage || oldData?.bannerImage != anilistAnime.bannerImage)) //
-          needsFullSave = true;
-
-        // Check for dominant color changes
-        if (isPrimary) {
-          final oldColor = Manager.currentDominantColor;
-          // Force recalculate because mapping data changed
-          final newColor = await series.effectivePrimaryColor(forceRecalculate: true);
-
-          if (oldColor?.value != newColor?.value) {
-            dominantColorChanged = true;
-            needsFullSave = true;
-
-            if (!isMappingMode) {
-              // In series mode, update both current and series dominant colors
-              Manager.currentDominantColor = newColor;
-              Manager.seriesDominantColor = newColor;
-            } else {
-              // In mapping mode, only update seriesDominantColor
-              Manager.seriesDominantColor = newColor;
-            }
-          }
-        }
-
-        // Queue partial update if
-        if (!needsFullSave) {
-          if (oldData != anilistAnime)
-            pendingPartialUpdates.add(() => library.updateMappingAnilistData(series, anilistId, anilistAnime, currentTime));
-          else
-            pendingPartialUpdates.add(() => library.updateMappingLastSynced(series, anilistId, currentTime));
-        }
-      }
-
-      if (needsFullSave) {
-        Series seriesToSave = series;
-        final primaryMapping = series.anilistMappings.firstWhereOrNull((m) => m.anilistId == series.primaryAnilistId);
-
-        if (primaryMapping?.anilistData != null) {
-          seriesToSave = series.copyWith(
-            anilistPoster: primaryMapping!.anilistData!.posterImage,
-            anilistBanner: primaryMapping.anilistData!.bannerImage,
-          );
-        }
-
-        await library.updateSeriesMappings(seriesToSave, seriesToSave.anilistMappings);
-        await library.updateSeries(seriesToSave, invalidateCache: false);
-        logTrace('Performed full series update due to image/color changes.');
-      } else {
-        // Execute partial updates
-        await Future.wait(pendingPartialUpdates.map((update) => update()));
-        if (pendingPartialUpdates.isNotEmpty) logTrace('Performed ${pendingPartialUpdates.length} partial updates.');
-      }
-
-      // Finalize UI
-      if (dominantColorChanged) {
-        _loadColors();
-        Manager.setState();
-      }
-
-      if (mounted) context.read<LibraryScreenViewModel>().updateSeriesInSortCache(series);
-
-      if (mounted) setState(() {});
-    } catch (e) {
-      if (!isExpectedOfflineError(e)) logErr('Failed to load Anilist data', e);
-    }
-  }
+  /// Change the primary AniList ID. Called externally via [seriesScreenKey] by
+  /// the AniList link dialog.
+  Future<void> changePrimaryId(int id) => _vm.changePrimaryId(id);
 
   @override
   Widget build(BuildContext context) {
+    // Rebuild when the ViewModel notifies (node drill-down, Sonarr loads, AniList refresh, etc.)
+    final vm = context.watch<SeriesViewModel>();
+
     if (widget.seriesPath == null)
       return Center(
         child: Column(
@@ -803,8 +463,8 @@ class SeriesScreenState extends State<SeriesScreen> {
     // Use context.select to listen to changes in this specific series
     final series = context.select<Library, Series?>((library) => library.getSeriesByPath(widget.seriesPath!));
 
-    // Update the cached series reference
-    _cachedSeries = series;
+    // Keep the VM's cached series reference aligned with the reactive value.
+    vm.syncSeries(series);
 
     if (series == null) {
       return Center(
@@ -825,10 +485,9 @@ class SeriesScreenState extends State<SeriesScreen> {
 
     // Resolve the folder node to render (root, or a sub-folder for nesting),
     // walking a memoized tree so hover/color rebuilds don't reconstruct it.
-    final tree = _buildOrGetTree(series, context.read<Library>().dataVersion);
-    _resolvedNode = findNodeInTree(tree, widget.nodePath ?? series.path);
+    final resolvedNode = vm.resolveNode(series);
 
-    if (_resolvedNode == null) {
+    if (resolvedNode == null) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -849,24 +508,55 @@ class SeriesScreenState extends State<SeriesScreen> {
 
     // Compute the file-level mappings at this node once per build (used by both
     // the card grid and the episode-grid exclusion).
-    _recomputeFileMappings(series, _resolvedNode!);
+    vm.recomputeFileMappings(series, resolvedNode);
 
     // One-time, node-dependent loads (view type, episode titles, Sonarr)
-    if (!_nodeInitialized) {
-      _nodeInitialized = true;
-      nextFrame(() => _initNodeData());
-    }
+    if (vm.consumeNodeInit()) nextFrame(() => vm.initNodeData());
 
+    // Key is stable per-series (NOT per-node), so drilling into a folder/mapping
+    // keeps the same scaffold/sticky-header and crossfades the inner content
+    // instead of replacing (and re-animating) the whole page.
     return DeferredPointerHandler(
-      key: ValueKey('${series.path}|${_resolvedNode!.path}'),
+      key: ValueKey('series:${series.path}'),
       link: deferredPointerLink,
       child: MiruRyoikiTemplatePage(
         headerWidget: _buildHeader(context, series),
         infobar: (_) => _buildInfoBar(context, series),
-        content: _buildContentGrid(context, series),
+        content: _buildNodeContent(context, series),
         backgroundColor: Manager.currentDominantColor,
         onHeaderCollapse: () => _descriptionController.collapse(),
         scrollableContent: false,
+      ),
+    );
+  }
+
+  /// A stable key for the currently rendered node, used to drive the crossfade
+  /// [AnimatedSwitcher]s when drilling between the series root and its folders.
+  Key get _nodeSwitchKey => ValueKey('node:${_vm.currentNodePath?.path ?? 'root'}');
+
+  /// Top-left-anchored layout (cards-only nodes sit at the top-left of the content
+  /// area rather than floating in the middle), shared by the node content grid and
+  /// header image [AnimatedSwitcher]s.
+  static final _topLeftLayout = stackLayoutBuilder(alignment: Alignment.topLeft);
+
+  /// [AnimatedSwitcher] crossfade shared by the node content grid and header image,
+  /// both of which crossfade when drilling into a folder/mapping.
+  Widget _nodeCrossfade({required Widget child}) {
+    return AnimatedSwitcher(
+      duration: nodeCrossfadeDuration,
+      switchInCurve: Curves.easeOut,
+      switchOutCurve: Curves.easeIn,
+      layoutBuilder: _topLeftLayout,
+      child: child,
+    );
+  }
+
+  /// The node's content grid, crossfaded when the current node changes.
+  Widget _buildNodeContent(BuildContext context, Series series) {
+    return _nodeCrossfade(
+      child: KeyedSubtree(
+        key: _nodeSwitchKey,
+        child: _buildContentGrid(context, series),
       ),
     );
   }
@@ -878,9 +568,11 @@ class SeriesScreenState extends State<SeriesScreen> {
     final imageFuture = isMapping ? _getMappingImage(banner: true) : series.getBannerImage();
 
     return HeaderWidget(
-      image_widget: FutureBuilder(
-        future: imageFuture,
-        builder: (context, snapshot) {
+      image_widget: _nodeCrossfade(
+        child: FutureBuilder(
+          key: _nodeSwitchKey,
+          future: imageFuture,
+          builder: (context, snapshot) {
           return Stack(
             children: [
               // Banner
@@ -978,13 +670,14 @@ class SeriesScreenState extends State<SeriesScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  BackButton(onTap: widget.onBack, label: 'Back to Library', child: const Icon(FluentIcons.back)),
+                  BackButton(onTap: _handleBack, label: _vm.canPopNode ? 'Back' : 'Back to Library', child: const Icon(FluentIcons.back)),
                   // ... other buttons
                 ],
               )
             ],
           );
         },
+        ),
       ),
       colorFilter: null,
       titleLeftAligned: false,
@@ -1395,7 +1088,7 @@ class SeriesScreenState extends State<SeriesScreen> {
               InfoLabel(
                 label: 'Path',
                 child: Text(
-                  isMapping ? (_resolvedNode?.path.path ?? series.path.path) : series.path.path,
+                  _libraryRelativePath(isMapping ? (_resolvedNode?.path.path ?? series.path.path) : series.path.path),
                   style: Manager.captionStyle,
                 ),
               ),
@@ -1518,6 +1211,11 @@ class SeriesScreenState extends State<SeriesScreen> {
     final headerHeight = 45.0;
     final borderRadius = ScreenUtils.kStatCardBorderRadius;
 
+    // Presentational text colors for the view-type switcher, derived from the
+    // current dominant color.
+    final textColor = Colors.white;
+    final selectedTextColor = getTextColor(Manager.currentDominantColor ?? Manager.accentColor);
+
     final visibleHeader = Container(
       height: headerHeight,
       margin: EdgeInsets.all(.5),
@@ -1537,8 +1235,8 @@ class SeriesScreenState extends State<SeriesScreen> {
             ViewTypeSwitcher(
               useBorder: false,
               currentViewType: _currentViewType,
-              textColor: _textColor,
-              selectedTextColor: _selectedTextColor,
+              textColor: textColor,
+              selectedTextColor: selectedTextColor,
               onViewTypeChanged: _onViewTypeChanged,
             ),
             HDiv(3.5),

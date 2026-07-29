@@ -54,9 +54,20 @@ class NavigationItem {
     this.viewState,
   });
 
+  /// Reads the [namespace] section of [viewState], or null if absent/wrong shape.
+  /// Lets a page store its intra-page state under its own key so unrelated features sharing the same [viewState] map can't collide on the same top-level key.
+  Map<String, dynamic>? viewStateSection(String namespace) {
+    final section = viewState?[namespace];
+    return section is Map ? section.cast<String, dynamic>() : null;
+  }
+
   @override
   String toString() => 'NavigationItem(id: $id, title: $title, level: $level, data: $data)';
 }
+
+/// Namespace key under which [SeriesScreen] stores its drill-down node stack in [NavigationItem.viewState].
+/// Exposed here (rather than in the screen) so other navigation-layer code can read it without depending on screen code.
+const seriesNodeStackNamespace = 'series';
 
 /// Typed definition for a navigation pane (top-level screen).
 class PaneDefinition {

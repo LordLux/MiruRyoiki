@@ -1,7 +1,5 @@
 import 'dart:convert';
 
-import 'package:fluent_ui/fluent_ui.dart';
-
 import '../enums.dart';
 import '../manager.dart';
 import '../models/anilist/user_data.dart';
@@ -14,6 +12,7 @@ import '../services/library/library_provider.dart';
 import '../services/library/search_service.dart';
 import '../utils/logging.dart';
 import '../utils/time.dart';
+import 'disposable_view_model.dart';
 
 /// Cache parameters to track when the sorted/grouped cache needs invalidation
 class _CacheParameters {
@@ -98,18 +97,14 @@ class _CacheParameters {
 
 /// ViewModel for the Library screen.
 ///
-/// Owns all library-view state (view/sort/group/filters/search/reorder), the
-/// sorted+grouped series cache with parameter-based invalidation, custom
-/// per-group ordering, and preference persistence. The screen keeps only view
-/// concerns (scroll, group keys, dialogs, drag visuals).
+/// Owns all library-view state (view/sort/group/filters/search/reorder), the sorted+grouped series
+/// cache with parameter-based invalidation, custom per-group ordering, and preference persistence.
 ///
-/// Registered app-wide via `ChangeNotifierProxyProvider2<Library, AnilistProvider, LibraryScreenViewModel>`
-/// in `main.dart`, so dialogs and services can share it instead of reaching
-/// into the screen through `libraryScreenKey`.
-class LibraryScreenViewModel extends ChangeNotifier {
+/// Registered app-wide via `ChangeNotifierProxyProvider2<Library, AnilistProvider, LibraryScreenViewModel>` in `main.dart`,
+/// so dialogs and services can share it instead of reaching into the screen through `libraryScreenKey`.
+class LibraryScreenViewModel extends DisposableViewModel {
   late Library _library;
   late AnilistProvider _anilist;
-  bool _disposed = false;
   int _lastListsRevision = 0;
 
   /// Called by the ChangeNotifierProxyProvider2 whenever [Library] or [AnilistProvider] notify
@@ -117,30 +112,15 @@ class LibraryScreenViewModel extends ChangeNotifier {
     _library = library;
     _anilist = anilist;
 
-    // The library screen watches this VM and [Library] directly, but not
-    // [AnilistProvider]. When AniList lists/user data change (login/logout/
-    // refresh) the grouping/sort cache is invalidated via `listsRevision` in the
-    // cache parameters — but without a notification nothing rebuilds the screen to
-    // re-run `displayData()`, so the grid would stay stale while it's visible.
-    // Emit a notification when the revision changes, deferred to the next frame to
-    // avoid calling notifyListeners() during the proxy provider's build phase.
+    // The library screen watches this VM and [Library] directly.
+    // Emit a notification when the revision changes.
     if (anilist.listsRevision != _lastListsRevision) {
       _lastListsRevision = anilist.listsRevision;
-      nextFrame(() => _notify());
+      nextFrame(() => notifySafe());
     }
   }
 
-  @override
-  void dispose() {
-    _disposed = true;
-    super.dispose();
-  }
-
-  void _notify() {
-    if (!_disposed) notifyListeners();
-  }
-
-  // ─── State ───────────────────────────────────────────────────────────────
+  // State
 
   LibraryView _currentView = LibraryView.all;
   ViewType _viewType = ViewType.grid;
@@ -180,12 +160,12 @@ class LibraryScreenViewModel extends ChangeNotifier {
       _searchQuery.isNotEmpty || //
       selectedGenres.isNotEmpty;
 
-  // ─── UI intents ──────────────────────────────────────────────────────────
+  // UI intents
 
   void setSearchQuery(String value) {
     if (_searchQuery == value) return;
     _searchQuery = value;
-    _notify();
+    notifySafe();
   }
 
   void clearSearch() => setSearchQuery('');
@@ -193,7 +173,7 @@ class LibraryScreenViewModel extends ChangeNotifier {
   void setViewType(ViewType viewType) {
     _viewType = viewType;
     saveUserPreferences();
-    _notify();
+    notifySafe();
   }
 
   void onViewChanged(LibraryView? value) {
@@ -201,7 +181,7 @@ class LibraryScreenViewModel extends ChangeNotifier {
       invalidateSortCache();
       _currentView = value;
       saveUserPreferences();
-      _notify();
+      notifySafe();
     }
   }
 
@@ -210,7 +190,7 @@ class LibraryScreenViewModel extends ChangeNotifier {
     _groupBy = value ? GroupBy.anilistLists : GroupBy.none;
     saveUserPreferences();
     invalidateSortCache();
-    _notify();
+    notifySafe();
   }
 
   void onSortOrderChanged(SortOrder? value) {
@@ -225,7 +205,7 @@ class LibraryScreenViewModel extends ChangeNotifier {
         _groupBy = GroupBy.anilistLists;
       }
       saveUserPreferences();
-      _notify();
+      notifySafe();
     }
   }
 
@@ -233,14 +213,14 @@ class LibraryScreenViewModel extends ChangeNotifier {
     invalidateSortCache();
     _sortDescending = !_sortDescending;
     saveUserPreferences();
-    _notify();
+    notifySafe();
   }
 
   void addGenre(String genre) {
     if (!selectedGenres.contains(genre)) {
       selectedGenres.add(genre);
       _sortedSeriesCache = null; // Invalidate cache
-      _notify();
+      notifySafe();
     }
   }
 
@@ -248,7 +228,7 @@ class LibraryScreenViewModel extends ChangeNotifier {
     if (selectedGenres.contains(genre)) {
       selectedGenres.remove(genre);
       _sortedSeriesCache = null; // Invalidate cache
-      _notify();
+      notifySafe();
     }
   }
 
@@ -256,26 +236,26 @@ class LibraryScreenViewModel extends ChangeNotifier {
     if (selectedGenres.isNotEmpty) {
       selectedGenres.clear();
       _sortedSeriesCache = null; // Invalidate cache
-      _notify();
+      notifySafe();
     }
   }
 
   void setHiddenLists(Set<String> newHiddenLists) {
     hiddenLists = newHiddenLists;
-    _notify();
+    notifySafe();
   }
 
   void setCustomListOrder(List<String> newOrder) {
     customListOrder = newOrder;
-    _notify();
+    notifySafe();
   }
 
-  // ─── Reordering (custom sort) ────────────────────────────────────────────
+  // Reordering
 
   void toggleReorderMode() {
     _isReorderMode = !_isReorderMode;
     if (_isReorderMode) _initCustomOrderForGroups();
-    _notify();
+    notifySafe();
   }
 
   /// Initialize custom order for each group from the current grouped display
@@ -321,7 +301,7 @@ class LibraryScreenViewModel extends ChangeNotifier {
 
     invalidateSortCache();
     saveUserPreferences();
-    _notify();
+    notifySafe();
   }
 
   // ─── Cache ───────────────────────────────────────────────────────────────
@@ -330,7 +310,7 @@ class LibraryScreenViewModel extends ChangeNotifier {
     _sortedSeriesCache = null;
     _groupedDataCache = null;
     _cacheParameters = null;
-    _notify();
+    notifySafe();
   }
 
   _CacheParameters _currentCacheParameters() => _CacheParameters(
@@ -345,9 +325,7 @@ class LibraryScreenViewModel extends ChangeNotifier {
         hiddenLists: Set.from(hiddenLists),
         selectedGenres: List.from(selectedGenres),
         dataVersion: _library.dataVersion,
-        // Invalidates the cache when AniList user lists change (login/logout/
-        // refresh) — grouping depends on them but they're not in dataVersion
-        listsRevision: _anilist.listsRevision,
+        listsRevision: _anilist.listsRevision, // Invalidates the cache when AniList user lists change
       );
 
   /// Check if the current cache is valid by comparing parameters
@@ -357,8 +335,8 @@ class LibraryScreenViewModel extends ChangeNotifier {
   }
 
   /// The series (and grouped data, when grouping) the screen should display,
-  /// rebuilding the cache when parameters changed and applying the search
-  /// filter on top. Also updates [displayedSeries].
+  /// rebuilding the cache when parameters changed and applying the search filter on top.
+  /// Also updates [displayedSeries].
   (List<Series>, Map<String, List<Series>>?) displayData() {
     List<Series> seriesToDisplay;
     Map<String, List<Series>>? groupedData;
@@ -702,8 +680,7 @@ class LibraryScreenViewModel extends ChangeNotifier {
     }
   }
 
-  /// The display order of group names, sorted by [customListOrder].
-  /// (Previously duplicated in three places in the screen.)
+  /// The display order of group names, sorted by [customListOrder]
   List<String> groupDisplayOrder(Map<String, List<Series>> groupedData) {
     final displayOrder = groupedData.keys.toList();
     displayOrder.sort((a, b) {
@@ -716,10 +693,9 @@ class LibraryScreenViewModel extends ChangeNotifier {
     return displayOrder;
   }
 
-  // ─── Cache surgery (called by services/dialogs after targeted changes) ───
+  // Cache
 
   /// Refresh dominant colors in the cached series from the live library
-  /// (called by the scanner after color extraction).
   void updateColorsInSortCache() {
     if (_sortedSeriesCache == null) return;
 
@@ -765,7 +741,7 @@ class LibraryScreenViewModel extends ChangeNotifier {
       logTrace('Grouped data cache is null, skipping grouped update.');
     }
 
-    _notify();
+    notifySafe();
   }
 
   /// Update or add a series to the sort cache
@@ -789,7 +765,7 @@ class LibraryScreenViewModel extends ChangeNotifier {
       _groupedDataCache = _buildGroupedData(_sortedSeriesCache!);
     }
 
-    _notify();
+    notifySafe();
   }
 
   /// Remove a hidden series from the cache without invalidating the entire cache
@@ -809,10 +785,10 @@ class LibraryScreenViewModel extends ChangeNotifier {
       _groupedDataCache!.removeWhere((_, seriesList) => seriesList.isEmpty);
     }
 
-    _notify();
+    notifySafe();
   }
 
-  // ─── Preferences ─────────────────────────────────────────────────────────
+  // Preferences
 
   /// Save preferences
   void saveUserPreferences() {
@@ -900,37 +876,25 @@ class LibraryScreenViewModel extends ChangeNotifier {
       _customSeriesOrder = {};
     }
 
-    _notify();
+    notifySafe();
   }
 
-  // ─── Display helpers ─────────────────────────────────────────────────────
+  // Display helpers
 
   static String getSortText(SortOrder? order) {
-    switch (order) {
-      case null:
-        return 'Sort by';
-      case SortOrder.alphabetical:
-        return 'Title (A-Z)';
-      case SortOrder.score:
-        return 'Score';
-      case SortOrder.progress:
-        return 'Progress';
-      case SortOrder.lastModified:
-        return 'Last Modified';
-      case SortOrder.dateAdded:
-        return 'Date Added';
-      case SortOrder.startDate:
-        return 'Start Date';
-      case SortOrder.completedDate:
-        return 'Completed Date';
-      case SortOrder.averageScore:
-        return 'Average Score';
-      case SortOrder.releaseDate:
-        return 'Release Date';
-      case SortOrder.popularity:
-        return 'Popularity';
-      case SortOrder.custom:
-        return 'Custom Order';
-    }
+    return switch (order) {
+      null => 'Sort by',
+      SortOrder.alphabetical => 'Title (A-Z)',
+      SortOrder.score => 'Score',
+      SortOrder.progress => 'Progress',
+      SortOrder.lastModified => 'Last Modified',
+      SortOrder.dateAdded => 'Date Added',
+      SortOrder.startDate => 'Start Date',
+      SortOrder.completedDate => 'Completed Date',
+      SortOrder.averageScore => 'Average Score',
+      SortOrder.releaseDate => 'Release Date',
+      SortOrder.popularity => 'Popularity',
+      SortOrder.custom => 'Custom Order'
+    };
   }
 }

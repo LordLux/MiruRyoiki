@@ -7,31 +7,21 @@ import '../services/anilist/provider/anilist_provider.dart';
 import '../services/library/library_provider.dart';
 import '../services/navigation/show_info.dart';
 import '../utils/logging.dart';
+import 'disposable_view_model.dart';
 
 /// ViewModel for the Accounts screen.
 ///
 /// Owns the screen's async action states (initial load, metadata/user refresh), the auth actions, the privacy-setting writes and presentation helpers.
 ///
 /// Registered app-wide via `ChangeNotifierProxyProvider2<Library, AnilistProvider, AccountsViewModel>` in `main.dart`.
-class AccountsViewModel extends ChangeNotifier {
+class AccountsViewModel extends DisposableViewModel {
   late Library _library;
   late AnilistProvider _anilist;
-  bool _disposed = false;
 
   /// Called by the ChangeNotifierProxyProvider2 whenever [Library] or [AnilistProvider] notify
   void update(Library library, AnilistProvider anilist) {
     _library = library;
     _anilist = anilist;
-  }
-
-  @override
-  void dispose() {
-    _disposed = true;
-    super.dispose();
-  }
-
-  void _notify() {
-    if (!_disposed) notifyListeners();
   }
 
   // Async action states
@@ -49,7 +39,7 @@ class AccountsViewModel extends ChangeNotifier {
   Future<void> ensureUserDataLoaded() async {
     if (_anilist.isLoggedIn && _anilist.currentUser?.userData == null) {
       _isInitialLoading = true;
-      _notify();
+      notifySafe();
 
       try {
         await _anilist.refreshUserData();
@@ -63,26 +53,26 @@ class AccountsViewModel extends ChangeNotifier {
       }
     }
     _isInitialLoading = false;
-    _notify();
+    notifySafe();
   }
 
   /// Starts the browser-based AniList login flow
   Future<void> login() async {
     _isInitialLoading = true;
-    _notify();
+    notifySafe();
 
     logInfo('User logging in to Anilist...');
     await _anilist.login();
 
     _isInitialLoading = false;
-    _notify();
+    notifySafe();
   }
 
   /// Cancels an in-flight login attempt
   void cancelLogin() {
     _anilist.cancelLogin();
     _isInitialLoading = false;
-    _notify();
+    notifySafe();
   }
 
   /// Logs out of AniList
@@ -91,34 +81,34 @@ class AccountsViewModel extends ChangeNotifier {
     _isInitialLoading = false;
 
     logInfo('User logged out of Anilist');
-    _notify();
+    notifySafe();
   }
 
   /// Refreshes all series metadata from AniList
   Future<void> refreshSeriesMetadata() async {
     if (_isSeriesRefreshing || _anilist.isLoading) return;
     _isSeriesRefreshing = true;
-    _notify();
+    notifySafe();
 
     await _library.refreshAllMetadata();
 
     _isSeriesRefreshing = false;
-    _notify();
+    notifySafe();
   }
 
   /// Refreshes the user's AniList lists
   Future<void> refreshUserLists() async {
     if (_isUserRefreshing || _anilist.isLoading) return;
     _isUserRefreshing = true;
-    _notify();
+    notifySafe();
 
     await _anilist.refreshUserLists();
 
     _isUserRefreshing = false;
-    _notify();
+    notifySafe();
   }
 
-  // ─── Pure presentation helpers (unit-testable) ───────────────────────────
+  // Pure presentation helpers
 
   /// Formats a minute count into the largest sensible unit:
   /// `(suffix, value)` — e.g. 3000 minutes → (' Days', 2).
@@ -131,28 +121,18 @@ class AccountsViewModel extends ChangeNotifier {
     return (' Minutes', minutes);
   }
 
-  /// Maps an AniList profile color name to a [Color], with [fallback] for
-  /// unknown values.
+  /// Maps an AniList profile color name to a [Color], with [fallback] for unknown values
   static Color parseProfileColor(String color, {required Color fallback}) {
-    switch (color.toLowerCase()) {
-      case 'blue':
-        return mat.Colors.blue;
-      case 'purple':
-        return mat.Colors.purple;
-      case 'pink':
-        return mat.Colors.pink;
-      case 'orange':
-        return mat.Colors.orange;
-      case 'red':
-        return mat.Colors.red;
-      case 'green':
-        return mat.Colors.green;
-      case 'gray':
-      case 'grey':
-        return mat.Colors.grey;
-      default:
-        return fallback;
-    }
+    return switch (color.toLowerCase()) {
+      'blue'   => mat.Colors.blue,
+      'purple' => mat.Colors.purple,
+      'pink'   => mat.Colors.pink,
+      'orange' => mat.Colors.orange,
+      'red'    => mat.Colors.red,
+      'green'  => mat.Colors.green,
+      'gray' || 'grey' => mat.Colors.grey,
+      _ => fallback,
+    };
   }
 
   /// Aggregates AniList format statistics into a pie-chart data map + total.

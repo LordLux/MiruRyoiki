@@ -571,6 +571,15 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
     super.dispose();
   }
 
+  /// Whether [view] shows the series root rather than a drilled-into folder/mapping.
+  ///
+  /// Drill-down levels are intra-page state under the same '/series:' id, recorded by
+  /// [SeriesScreen] under the [seriesNodeStackNamespace] section of the view state.
+  bool _isAtSeriesRoot(NavigationItem view) {
+    final stack = view.viewStateSection(seriesNodeStackNamespace)?['nodeStack'];
+    return stack is! List || stack.isEmpty;
+  }
+
   void _onNavigationChanged() {
     final current = NavigationManager.instance.currentView;
     if (current == null) return;
@@ -606,12 +615,26 @@ class _MiruRyoikiState extends State<MiruRyoiki> {
             ?.effectivePrimaryColor() //
             .then(
           (color) {
-            if (mounted && color != null) {
-              Manager.setState(() {
-                Manager.currentDominantColor = color;
-                Manager.seriesDominantColor = color;
-              });
-            }
+            if (!mounted || color == null) return;
+
+            // Re-check on arrival rather than at call time: this fires on intra-page node pushes/pops too,
+            // so the user may have drilled in (or left) while the color loaded
+            final view = NavigationManager.instance.currentView;
+            if (view == null || view.id != current.id) return;
+
+            // The displayed color belongs to whatever node is on screen
+            // Only the series-level baseline is always ours
+            final atRoot = _isAtSeriesRoot(view);
+
+            // Drill-down re-runs this per level, and the color is memoized after the first entry, so
+            // most of those resolve to the value already showing.
+            //Skip them: Manager.setState rebuilds the whole app shell.
+            if (Manager.seriesDominantColor == color && (!atRoot || Manager.currentDominantColor == color)) return;
+
+            Manager.setState(() {
+              Manager.seriesDominantColor = color;
+              if (atRoot) Manager.currentDominantColor = color;
+            });
           },
         );
       }

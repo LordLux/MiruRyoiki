@@ -6,13 +6,14 @@ import '../services/library/library_provider.dart';
 import '../services/navigation/show_info.dart';
 import '../utils/logging.dart';
 import '../utils/time.dart';
+import 'disposable_view_model.dart';
 
 /// ViewModel for AniList notifications, shared by the notifications dialog and the title-bar unread badge.
 ///
 /// Owns the recent-notifications list, the unread count, sync/read-status actions.
 ///
 /// Registered app-wide via `ChangeNotifierProxyProvider<Library, NotificationsViewModel>` in `main.dart`.
-class NotificationsViewModel extends ChangeNotifier {
+class NotificationsViewModel extends DisposableViewModel {
   NotificationsViewModel({AnilistService? anilistService}) : _anilistServiceOverride = anilistService;
 
   final AnilistService? _anilistServiceOverride;
@@ -20,21 +21,10 @@ class NotificationsViewModel extends ChangeNotifier {
   AnilistService get _anilistService => _anilistServiceOverride ?? AnilistService();
 
   late Library _library;
-  bool _disposed = false;
 
   /// Called by the ChangeNotifierProxyProvider whenever [Library] notifies
   void update(Library library) {
     _library = library;
-  }
-
-  @override
-  void dispose() {
-    _disposed = true;
-    super.dispose();
-  }
-
-  void _notify() {
-    if (!_disposed) notifyListeners();
   }
 
   // State
@@ -74,7 +64,7 @@ class NotificationsViewModel extends ChangeNotifier {
 
       _recent = _filterHidden(notifications).take(_recentLimit).toList();
       _unreadCount = unreadCount;
-      _notify();
+      notifySafe();
     } catch (e) {
       // Silently handle cache loading errors
       logErr("Error loading cached notifications", e);
@@ -86,7 +76,7 @@ class NotificationsViewModel extends ChangeNotifier {
   /// Shows a snackbar on real failures; stays quiet when offline.
   Future<void> sync() async {
     _isRefreshing = true;
-    _notify();
+    notifySafe();
 
     try {
       final notifications = await _anilistService.syncNotifications(
@@ -109,7 +99,7 @@ class NotificationsViewModel extends ChangeNotifier {
       }
     } finally {
       _isRefreshing = false;
-      _notify();
+      notifySafe();
     }
   }
 
@@ -122,12 +112,12 @@ class NotificationsViewModel extends ChangeNotifier {
         maxPages: 2,
       );
       _unreadCount = await _anilistService.getUnreadCount(_library.database);
-      _notify();
+      notifySafe();
     } catch (_) {
       // Offline or API error: fall back to the cached count
       try {
         _unreadCount = await _anilistService.getUnreadCount(_library.database);
-        _notify();
+        notifySafe();
       } catch (_) {}
     }
   }
@@ -145,7 +135,7 @@ class NotificationsViewModel extends ChangeNotifier {
         for (final n in _recent) n.id == notificationId ? n.copyWith(isRead: true) : n,
       ];
       _unreadCount = _unreadCount > 0 ? _unreadCount - 1 : 0;
-      _notify();
+      notifySafe();
       return true;
     } catch (e) {
       logErr("Error marking notification $notificationId as read: $e");
@@ -162,7 +152,7 @@ class NotificationsViewModel extends ChangeNotifier {
 
       _recent = [for (final n in _recent) n.copyWith(isRead: true)];
       _unreadCount = 0;
-      _notify();
+      notifySafe();
       return true;
     } catch (e) {
       // Handle error silently
