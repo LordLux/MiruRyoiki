@@ -52,6 +52,7 @@ import 'viewmodels/notifications_viewmodel.dart';
 import 'viewmodels/release_calendar_viewmodel.dart';
 import 'viewmodels/search_viewmodel.dart';
 import 'services/connectivity/connectivity_service.dart';
+import 'services/dominant_color_provider.dart';
 import 'services/navigation/statusbar.dart';
 import 'settings.dart';
 import 'widgets/animated_account_avatar.dart';
@@ -246,6 +247,7 @@ void main(List<String> args) async {
             },
           ),
           ChangeNotifierProvider(create: (_) => ConnectivityService(), lazy: false),
+          ChangeNotifierProvider(create: (_) => DominantColorProvider()),
           ChangeNotifierProvider.value(value: _appTheme),
           ChangeNotifierProvider.value(value: _settings),
           ChangeNotifierProvider.value(value: _navigationManager),

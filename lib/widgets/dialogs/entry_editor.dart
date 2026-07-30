@@ -799,13 +799,14 @@ class _EntryEditorShellState extends State<_EntryEditorShell> {
             tooltip: 'Remove from Anilist',
             child: (isHovering) => StandardButton(
               onPressed: _isDeleting ? null : _confirmDelete,
-              hoverColor: accentColor,
-              isFilled: false,
+              hoverColor: Colors.red,
+              backgroundColor: Colors.red.lightest,
+              isFilled: true,
               label: _isDeleting
                   ? const SizedBox(width: 14, height: 14, child: ProgressRing(strokeWidth: 2))
                   : Padding(
                       padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                      child: Text('Delete', style: TextStyle(color: Colors.red)),
+                      child: Text('Remove', style: TextStyle(color: isHovering ? Colors.white : Colors.black)),
                     ),
             ),
           ),
