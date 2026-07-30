@@ -1,4 +1,4 @@
-// ignore_for_file: deprecated_member_use_from_same_package, invalid_use_of_protected_member, invalid_use_of_visible_for_testing_member
+// ignore_for_file: deprecated_member_use_from_same_package
 part of 'library_provider.dart';
 
 extension LibraryAnilistIntegration on Library {

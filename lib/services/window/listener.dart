@@ -205,7 +205,7 @@ class MyWindowListener extends WindowListener with TrayListener {
     await windowManager.setPreventClose(false);
     await Manager.closeDB();
     await windowManager.close();
-    await windowManager.destroy();
+    // await windowManager.destroy();
     exit(0); // Manually kill the process to prevent bug where process remains alive after window is closed on Windows which prevents the app from being opened without killing the process first
   }
 
