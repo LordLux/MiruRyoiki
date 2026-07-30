@@ -129,8 +129,6 @@ void main(List<String> args) async {
 
   // Load custom mouse cursors
   await initSystemMouseCursor();
-  await disposeSystemMouseCursor();
-  await initSystemMouseCursor();
 
   // Load environment variables
   await dotenv.load(fileName: '.env');
