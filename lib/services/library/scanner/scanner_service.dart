@@ -865,8 +865,11 @@ class LibraryScannerService extends ChangeNotifier {
       // Refresh dominant colors in the app-scoped Library sort cache, then
       // trigger a global rebuild so other open screens pick up the colors too
       try {
-        Provider.of<LibraryScreenViewModel>(Manager.context, listen: false).updateColorsInSortCache(); // TODO fix build context issue
-        Manager.setState(() {});
+        final context = Manager.context;
+        if (context.mounted) {
+          Provider.of<LibraryScreenViewModel>(context, listen: false).updateColorsInSortCache();
+          Manager.setState(() {});
+        }
       } catch (e) {
         logErr('Failed to refresh sort-cache colors', e);
       }

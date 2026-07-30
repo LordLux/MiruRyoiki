@@ -1,3 +1,4 @@
+// ignore_for_file: invalid_use_of_protected_member, invalid_use_of_visible_for_testing_member
 part of 'anilist_provider.dart';
 
 extension AnilistProviderAuthentication on AnilistProvider {
@@ -19,7 +20,7 @@ extension AnilistProviderAuthentication on AnilistProvider {
     _isLoading = true;
     notifyListeners();
 
-    logInfo('Handling Anilist auth callback: $callbackUri');
+    logInfo('Handling Anilist auth callback: ${callbackUri.replace(query: '', fragment: '')}');
 
     final success = await _anilistService.handleAuthCallback(callbackUri);
 

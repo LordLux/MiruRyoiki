@@ -5,17 +5,16 @@ import '../main.dart';
 import '../manager.dart';
 import '../models/anilist/anime_card.dart';
 import '../services/anilist/anilist_availability.dart';
-import '../services/anilist/queries/anilist_service.dart';
 import '../services/connectivity/connectivity_service.dart';
-import '../models/anilist/page_info.dart';
-import '../utils/logging.dart';
 import '../utils/screen.dart';
 import '../widgets/cards/search_series_card.dart';
-import '../widgets/context_menu/context_menu.dart';
+
 import '../widgets/page/page_template.dart';
 import '../widgets/page/header_widget.dart';
 import '../widgets/buttons/button.dart';
 import '../widgets/service_unavailable_banner.dart';
+import '../viewmodels/search_viewmodel.dart';
+import 'package:provider/provider.dart';
 
 class SearchResultsScreen extends StatefulWidget {
   final String queryType; // 'trending', 'popular', 'upcoming', 'top100', 'search'
@@ -40,120 +39,36 @@ class SearchResultsScreen extends StatefulWidget {
 }
 
 class _SearchResultsScreenState extends State<SearchResultsScreen> {
-  final List<AnimeCard> _animeList = [];
-  bool _isLoading = false;
-  bool _hasNextPage = true;
-  int _currentPage = 1;
-  String? _errorMessage;
   final ScrollController _scrollController = ScrollController();
-  late final DesktopContextMenuController _menuController;
 
   @override
   void initState() {
     super.initState();
-    _fetchData();
+    Future.microtask(() {
+      if (mounted) context.read<SearchViewModel>().initGenericSearch(widget.queryType, widget.searchQuery, widget.filters);
+    });
     _scrollController.addListener(_onScroll);
-    _menuController = DesktopContextMenuController();
   }
 
   @override
   void dispose() {
     _scrollController.dispose();
-    _menuController.dispose();
     super.dispose();
   }
 
   void _onScroll() {
-    if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 200 && !_isLoading && _hasNextPage) {
-      _fetchData();
-    }
-  }
+    if (!_scrollController.hasClients) return;
 
-  Future<void> _fetchData() async {
-    if (_isLoading) return;
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
-
-    try {
-      final service = AnilistService();
-
-      AnilistSearchPage<AnimeCard>? result = await switch (widget.queryType) {
-        'trending' => service.getTrendingNow(page: _currentPage, perPage: 20),
-        'popular' => service.getPopularThisSeason(page: _currentPage, perPage: 20),
-        'upcoming' => service.getUpcomingNextSeason(page: _currentPage, perPage: 20),
-        'top100' => service.getTop100Anime(page: _currentPage, perPage: 20),
-        'search' => service.searchAnime(
-            page: _currentPage,
-            perPage: 20,
-            search: widget.searchQuery,
-            genres: widget.filters?['genres'],
-            seasonYear: widget.filters?['year'],
-            season: widget.filters?['season'],
-            format: widget.filters?['format'],
-            countryOfOrigin: widget.filters?['countryOfOrigin'],
-            durationGreater: widget.filters?['durationGreater'],
-            durationLesser: widget.filters?['durationLesser'],
-            episodeGreater: widget.filters?['episodeGreater'],
-            episodeLesser: widget.filters?['episodeLesser'],
-            excludedGenres: widget.filters?['excludedGenres'],
-            excludedTags: widget.filters?['excludedTags'],
-            isAdult: widget.filters?['isAdult'],
-            isLicensed: widget.filters?['isLicensed'],
-            sort: widget.filters?['sort'] ?? const ['POPULARITY_DESC'],
-            licensedBy: widget.filters?['licensedBy'],
-            minimumTagRank: widget.filters?['minimumTagRank'],
-            onList: widget.filters?['onList'],
-            source: widget.filters?['source'],
-            status: widget.filters?['status'],
-            tags: widget.filters?['tags'],
-            yearGreater: widget.filters?['yearGreater'],
-            yearLesser: widget.filters?['yearLesser'],
-          ),
-        _ => null,
-      };
-
-      if (result == null) {
-        final bool isValidQuery = ['trending', 'popular', 'upcoming', 'top100', 'search'].contains(widget.queryType);
-
-        if (mounted) {
-          setState(() {
-            _isLoading = false;
-            if (isValidQuery) {
-              _errorMessage = 'Failed to load data. Please check your connection.';
-            } else {
-              _errorMessage = 'Invalid query type: ${widget.queryType}';
-            }
-          });
-        }
-        return;
-      }
-
-      final pageInfo = result.pageInfo;
-      final media = result.results;
-
-      if (mounted) {
-        setState(() {
-          _animeList.addAll(media);
-          _hasNextPage = pageInfo.hasNextPage;
-          _currentPage++;
-          _isLoading = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-          _errorMessage = 'An error occurred: $e';
-        });
-      }
-      logErr('Error fetching search results', e);
+    final vm = context.read<SearchViewModel>();
+    if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 200 && !vm.genericIsLoading && vm.genericHasNextPage) {
+      vm.fetchGenericData();
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final vm = context.watch<SearchViewModel>();
+
     return MiruRyoikiTemplatePage(
       hideInfoBar: true,
       headerWidget: HeaderWidget(
@@ -171,24 +86,23 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
       scrollableContent: false,
       content: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16.0),
-        child: _buildContent(),
+        child: _buildContent(vm),
       ),
     );
   }
 
-  Widget _buildContent() {
-    if (_errorMessage != null && _animeList.isEmpty) {
-      if (ConnectivityService().isOffline || AnilistAvailabilityService().isUnavailable) {
-        return ServiceUnavailableBanner(onRetry: _fetchData);
-      }
+  Widget _buildContent(SearchViewModel vm) {
+    if (vm.genericErrorMessage != null && vm.genericResultsList.isEmpty) {
+      if (ConnectivityService().isOffline || AnilistAvailabilityService().isUnavailable) 
+        return ServiceUnavailableBanner(onRetry: vm.fetchGenericData);
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text(_errorMessage!, style: const TextStyle(color: mat.Colors.red)),
+            Text(vm.genericErrorMessage!, style: const TextStyle(color: mat.Colors.red)),
             const SizedBox(height: 16),
             Button(
-              onPressed: _fetchData,
+              onPressed: vm.fetchGenericData,
               child: const Text('Retry'),
             ),
           ],
@@ -196,9 +110,9 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
       );
     }
 
-    if (_animeList.isEmpty && _isLoading) return const Center(child: ProgressRing());
+    if (vm.genericResultsList.isEmpty && vm.genericIsLoading) return const Center(child: ProgressRing());
 
-    if (_animeList.isEmpty) return const Center(child: Text('No results found.'));
+    if (vm.genericResultsList.isEmpty) return const Center(child: Text('No results found.'));
 
     return LayoutBuilder(builder: (context, constraints) {
       return SmoothScroll(
@@ -206,48 +120,48 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
         enableSmoothScroll: Manager.animationsEnabled,
         builder: (context, controller, physics) {
           return ValueListenableBuilder(
-                valueListenable: previousGridColumnCount,
-                builder: (context, columns, __) {
-                  return GridView.builder(
-                    controller: controller,
-                    physics: physics,
-                    padding: const EdgeInsets.only(bottom: 8),
-                    addAutomaticKeepAlives: true,
-                    addRepaintBoundaries: true,
-                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: columns ?? ScreenUtils.crossAxisCount(constraints.maxWidth),
-                      childAspectRatio: ScreenUtils.kDefaultAspectRatio,
-                      crossAxisSpacing: ScreenUtils.cardPadding,
-                      mainAxisSpacing: ScreenUtils.cardPadding,
-                    ),
-                    itemCount: _animeList.length + (_hasNextPage ? 1 : 0),
-                    itemBuilder: (context, index) {
-                      if (index == _animeList.length) {
-                        // Loading indicator or error message
-                        if (_errorMessage != null) {
-                          return Center(
-                            child: Button(
-                              onPressed: _fetchData,
-                              child: const Text('Retry'),
-                            ),
-                          );
-                        }
-                        return const Center(child: ProgressRing());
-                      }
-                  
-                      final anime = _animeList[index];
-                      return AspectRatio(
-                        aspectRatio: ScreenUtils.kDefaultAspectRatio,
-                        child: SearchSeriesCard(
-                          series: anime,
-                          number: null, // not showing top100 number
-                          onTap: () => widget.onSeriesOpen(anime),
+            valueListenable: previousGridColumnCount,
+            builder: (context, columns, __) {
+              return GridView.builder(
+                controller: controller,
+                physics: physics,
+                padding: const EdgeInsets.only(bottom: 8),
+                addAutomaticKeepAlives: true,
+                addRepaintBoundaries: true,
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: columns ?? ScreenUtils.crossAxisCount(constraints.maxWidth),
+                  childAspectRatio: ScreenUtils.kDefaultAspectRatio,
+                  crossAxisSpacing: ScreenUtils.cardPadding,
+                  mainAxisSpacing: ScreenUtils.cardPadding,
+                ),
+                itemCount: vm.genericResultsList.length + (vm.genericHasNextPage ? 1 : 0),
+                itemBuilder: (context, index) {
+                  if (index == vm.genericResultsList.length) {
+                    // Loading indicator or error message
+                    if (vm.genericErrorMessage != null) {
+                      return Center(
+                        child: Button(
+                          onPressed: vm.fetchGenericData,
+                          child: const Text('Retry'),
                         ),
                       );
-                    },
+                    }
+                    return const Center(child: ProgressRing());
+                  }
+
+                  final anime = vm.genericResultsList[index];
+                  return AspectRatio(
+                    aspectRatio: ScreenUtils.kDefaultAspectRatio,
+                    child: SearchSeriesCard(
+                      series: anime,
+                      number: null, // not showing top100 number
+                      onTap: () => widget.onSeriesOpen(anime),
+                    ),
                   );
                 },
               );
+            },
+          );
         },
       );
     });

@@ -1,9 +1,10 @@
+import '../viewmodels/search_viewmodel.dart';
 import 'package:fluent_ui/fluent_ui.dart' hide Colors, IconButton;
 import 'package:flutter/material.dart' hide TextBox, Slider, BackButton;
 import 'package:glossy/glossy.dart';
 import 'package:miruryoiki/enums.dart';
 import 'package:miruryoiki/models/anilist/anime.dart';
-import 'package:miruryoiki/screens/search.dart';
+// import 'package:miruryoiki/screens/search.dart';
 import 'package:miruryoiki/widgets/buttons/wrapper.dart';
 import 'package:miruryoiki/widgets/frosted_noise.dart';
 import 'package:transparent_image/transparent_image.dart';
@@ -14,7 +15,7 @@ import '../utils/color.dart';
 import '../utils/time.dart';
 
 class Top100List extends StatefulWidget {
-  final SectionDataManager manager;
+  final SearchSectionData manager;
   final Function(AnimeCard) onSeriesOpen;
   final VoidCallback? onExpand;
 
@@ -32,51 +33,46 @@ class Top100List extends StatefulWidget {
 class _Top100ListState extends State<Top100List> {
   @override
   Widget build(BuildContext context) {
-    return ListenableBuilder(
-      listenable: widget.manager,
-      builder: (context, child) {
-        final displayItems = widget.manager.items;
+    final displayItems = widget.manager.items;
 
-        if (displayItems.isEmpty && widget.manager.isLoading) return const SizedBox(height: 200, child: Center(child: ProgressRing()));
-        if (displayItems.isEmpty) return const SizedBox.shrink();
+    if (displayItems.isEmpty && widget.manager.isLoading) return const SizedBox(height: 200, child: Center(child: ProgressRing()));
+    if (displayItems.isEmpty) return const SizedBox.shrink();
 
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    'TOP 100 ANIME',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                  if (widget.onExpand != null)
-                    GestureDetector(
-                      onTap: widget.onExpand,
-                      child: const Text("View All", style: TextStyle(color: Colors.grey, fontSize: 12, fontWeight: FontWeight.w500)),
-                    ),
-                ],
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'TOP 100 ANIME',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 0.5,
+                ),
               ),
-            ),
-            ListView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: displayItems.length,
-              itemBuilder: (context, index) {
-                final anime = displayItems[index];
-                return _buildItem(anime, index + 1);
-              },
-            ),
-          ],
-        );
-      },
+              if (widget.onExpand != null)
+                GestureDetector(
+                  onTap: widget.onExpand,
+                  child: const Text("View All", style: TextStyle(color: Colors.grey, fontSize: 12, fontWeight: FontWeight.w500)),
+                ),
+            ],
+          ),
+        ),
+        ListView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: displayItems.length,
+          itemBuilder: (context, index) {
+            final anime = displayItems[index];
+            return _buildItem(anime, index + 1);
+          },
+        ),
+      ],
     );
   }
 

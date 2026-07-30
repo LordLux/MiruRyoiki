@@ -1,3 +1,4 @@
+// ignore_for_file: invalid_use_of_visible_for_testing_member
 import 'package:meta/meta.dart';
 import 'package:video_data_utils/video_data_utils.dart';
 import 'package:flutter_anitomy/flutter_anitomy.dart';

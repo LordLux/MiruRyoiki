@@ -10,7 +10,6 @@ import 'package:miruryoiki/widgets/frosted_noise.dart';
 import 'package:provider/provider.dart';
 
 import '../../manager.dart';
-import '../../models/anilist/page_info.dart';
 import '../../services/anilist/anilist_availability.dart';
 import '../../services/connectivity/connectivity_service.dart';
 import '../../services/navigation/navigation.dart';
@@ -28,86 +27,12 @@ import '../../widgets/search_bg_library_shelf_cards.dart';
 import '../../widgets/search_filters.dart';
 import '../../widgets/top100_list.dart';
 import '../../widgets/section_grid_view.dart';
-import '../services/anilist/queries/anilist_service.dart';
 import '../services/library/library_provider.dart';
 import '../utils/logging.dart';
 import '../utils/anilist_utils.dart';
 import '../widgets/animated_hider.dart';
 import 'searched_series.dart';
-
-class SectionDataManager extends ChangeNotifier {
-  final int id;
-  final String type; // 'trending', 'popular', 'upcoming', 'top100'
-
-  List<AnimeCard> items = [];
-  bool isLoading = false;
-  bool hasMore = true;
-  int currentPage = 1;
-  int perPage;
-  String? errorMessage;
-
-  bool isFetching = false;
-
-  SectionDataManager({required this.id, required this.type, this.perPage = 6});
-
-  Future<void> fetch({bool reset = false, int? overridePerPage, bool preserveCurrentItems = false}) async {
-    if (isFetching) return;
-    if (!hasMore && !reset) return;
-
-    isFetching = true;
-
-    // Only fresh start
-    if (items.isEmpty || (reset && !preserveCurrentItems)) {
-      isLoading = true;
-      notifyListeners();
-    }
-
-    try {
-      int reqPage = reset ? 1 : currentPage;
-      int reqPerPage = overridePerPage ?? perPage;
-
-      final service = AnilistService();
-      AnilistSearchPage<AnimeCard>? result;
-
-      switch (type) {
-        case 'trending':
-          result = await service.getTrendingNow(page: reqPage, perPage: reqPerPage);
-          break;
-        case 'popular':
-          result = await service.getPopularThisSeason(page: reqPage, perPage: reqPerPage);
-          break;
-        case 'upcoming':
-          result = await service.getUpcomingNextSeason(page: reqPage, perPage: reqPerPage);
-          break;
-        case 'top100':
-          result = await service.getTop100Anime(page: reqPage, perPage: reqPerPage);
-          break;
-      }
-
-      if (result != null && result.results.isNotEmpty) {
-        if (reset) {
-          if (!preserveCurrentItems) items.clear();
-
-          currentPage = 1;
-          if (overridePerPage != null) perPage = overridePerPage;
-        }
-
-        // Keep older + append
-        final newItems = result.results.where((newAnim) => !items.any((existing) => existing.id == newAnim.id));
-        items.addAll(newItems);
-
-        hasMore = result.pageInfo.hasNextPage;
-        currentPage++;
-      }
-    } catch (e) {
-      errorMessage = e.toString();
-    } finally {
-      isLoading = false;
-      isFetching = false;
-      notifyListeners();
-    }
-  }
-}
+import '../../viewmodels/search_viewmodel.dart';
 
 final GlobalKey<SearchScreenState> browseScreenKey = GlobalKey<SearchScreenState>();
 
@@ -130,18 +55,7 @@ class SearchScreenState extends State<BrowseScreen> with AutomaticKeepAliveClien
   bool _showFilters = false;
 
   bool _isShowingSearchQuery = false;
-  int? _expandedSectionId;
-  late Map<int, SectionDataManager> _sectionManagers;
-  Future<List<String>>? _imagesFuture;
 
-  String? _resultsQuery;
-  Map<String, dynamic>? _resultsFilters;
-  final List<AnimeCard> _resultsList = [];
-  bool _resultsIsLoading = false;
-  bool _resultsIsLoadingUI = false;
-  bool _resultsHasNextPage = true;
-  int _resultsCurrentPage = 1;
-  String? _resultsErrorMessage;
   double _filterButtonSize = 40;
   SearchBarStatus _overrideSearchBarStatus = SearchBarStatus.automatic;
 
@@ -158,19 +72,8 @@ class SearchScreenState extends State<BrowseScreen> with AutomaticKeepAliveClien
     NavigationManager.registerActiveScrollController('search', widget.scrollController);
     NavigationManager.restoreScrollOffset('search', widget.scrollController);
 
-    _sectionManagers = {
-      1: SectionDataManager(id: 1, type: 'trending'),
-      2: SectionDataManager(id: 2, type: 'popular'),
-      3: SectionDataManager(id: 3, type: 'upcoming'),
-      4: SectionDataManager(id: 4, type: 'top100', perPage: 10),
-    };
-
-    _fetchInitialData();
-  }
-
-  void _fetchInitialData() {
-    for (var manager in _sectionManagers.values) manager.fetch(reset: true, overridePerPage: manager.perPage);
-    _imagesFuture = _aggregateImages();
+    final vm = context.read<SearchViewModel>();
+    Future.microtask(() => vm.fetchInitialData());
   }
 
   void _onScroll() {
@@ -184,52 +87,26 @@ class SearchScreenState extends State<BrowseScreen> with AutomaticKeepAliveClien
     final delta = 200.0; // Trigger distance
 
     if (currentScroll >= maxScroll - delta) {
+      final vm = context.read<SearchViewModel>();
       // Infinite Scroll for Text Search
-      if (_isShowingSearchQuery && !_resultsIsLoading && _resultsHasNextPage)
-        _fetchTextSearchResults();
-
+      if (_isShowingSearchQuery && !vm.resultsIsLoading && vm.resultsHasNextPage) {
+        vm.fetchTextSearchResults();
+      }
       // Infinite Scroll for Expanded Section
-      else if (_expandedSectionId != null) {
-        final activeManager = _sectionManagers[_expandedSectionId];
+      else if (vm.expandedSectionId != null) {
+        final activeManager = vm.sectionManagers[vm.expandedSectionId];
         if (activeManager != null && !activeManager.isLoading && activeManager.hasMore) {
           // Fetch next page
-          activeManager.fetch();
+          vm.fetchSection(vm.expandedSectionId!);
         }
       }
     }
   }
 
-  void _expandSection(int sectionId) {
-    if (widget.scrollController.hasClients) _lastScrollPosition = widget.scrollController.offset;
-
-    setState(() {
-      _expandedSectionId = sectionId;
-      _isShowingSearchQuery = false;
-    });
-
-    // Scroll to top
-    if (widget.scrollController.hasClients)
-      widget.scrollController.animateTo(
-        0,
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeOut,
-      );
-
-    final manager = _sectionManagers[sectionId];
-    if (manager != null) manager.fetch(reset: true, overridePerPage: 42, preserveCurrentItems: true);
-  }
-
   void _performTextSearch(String query, {Map<String, dynamic>? filters}) {
+    context.read<SearchViewModel>().setExpandedSection(null);
     setState(() {
       _isShowingSearchQuery = true;
-      _expandedSectionId = null;
-      _resultsQuery = query;
-      _resultsFilters = filters;
-      _resultsList.clear();
-      _resultsCurrentPage = 1;
-      _resultsHasNextPage = true;
-      _resultsIsLoading = false;
-      _resultsErrorMessage = null;
     });
 
     // Scroll to top
@@ -240,91 +117,38 @@ class SearchScreenState extends State<BrowseScreen> with AutomaticKeepAliveClien
         curve: Curves.easeOut,
       );
 
-    _fetchTextSearchResults();
-  }
-
-  /// Fetches search results based on the current query type, page, and filters
-  Future<void> _fetchTextSearchResults() async {
-    if (_resultsIsLoading) return;
-    setState(() {
-      _resultsIsLoading = true;
-      _resultsErrorMessage = null;
-    });
-
-    try {
-      final service = AnilistService();
-      final perPage = 42;
-
-      AnilistSearchPage<AnimeCard>? result = await service.searchAnime(
-        page: _resultsCurrentPage,
-        perPage: perPage,
-        search: _resultsQuery,
-        //TODO add all filters
-        genres: _resultsFilters?['genres'],
-        sort: _resultsFilters?['sort'] ?? const ['POPULARITY_DESC'],
-      );
-
-      if (result == null) {
-        if (mounted)
-          setState(() {
-            _resultsIsLoading = false;
-            _resultsErrorMessage = 'Failed to load data.';
-          });
-        return;
-      }
-
-      final pageInfo = result.pageInfo;
-      final media = result.results;
-
-      if (mounted) {
-        setState(() {
-          _resultsList.addAll(media);
-          _resultsHasNextPage = pageInfo.hasNextPage;
-          _resultsCurrentPage++;
-          _resultsIsLoading = false;
-        });
-      }
-    } catch (e) {
-      if (mounted)
-        setState(() {
-          _resultsIsLoading = false;
-          _resultsErrorMessage = 'Error: $e';
-        });
-    }
+    context.read<SearchViewModel>().performTextSearch(query, filters: filters);
   }
 
   void _handleBack() {
-    setState(() {
-      if (_expandedSectionId != null) {
-        _expandedSectionId = null;
+    final vm = context.read<SearchViewModel>();
+    if (vm.expandedSectionId != null) {
+      vm.setExpandedSection(null);
 
-        _forceExpandIfNecessary();
-        nextFrame(delay: 150, () {
-          // Scroll back to last position
-          if (widget.scrollController.hasClients)
-            widget.scrollController.animateTo(
-              _lastScrollPosition,
-              duration: const Duration(milliseconds: 400),
-              curve: Curves.easeInOut,
-            );
-        });
-      } else if (_isShowingSearchQuery) {
-        _isShowingSearchQuery = false;
-        _searchController.clear();
-
+      _forceExpandIfNecessary();
+      nextFrame(delay: 150, () {
+        // Scroll back to last position
         if (widget.scrollController.hasClients)
           widget.scrollController.animateTo(
-            0,
-            duration: const Duration(milliseconds: 300),
-            curve: Curves.easeOut,
+            _lastScrollPosition,
+            duration: const Duration(milliseconds: 400),
+            curve: Curves.easeInOut,
           );
+      });
+    } else if (_isShowingSearchQuery) {
+      setState(() => _isShowingSearchQuery = false);
+      _searchController.clear();
+      vm.clearTextSearch();
 
-        _forceExpandIfNecessary();
-      }
-    });
+      if (widget.scrollController.hasClients)
+        widget.scrollController.animateTo(
+          0,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
 
-    if (widget.scrollController.hasClients) //
-      widget.scrollController.animateTo(0, duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
+      _forceExpandIfNecessary();
+    }
   }
 
   void _forceExpandIfNecessary() {
@@ -339,23 +163,12 @@ class SearchScreenState extends State<BrowseScreen> with AutomaticKeepAliveClien
 
   void _onSeriesOpen(AnimeCard anime) => navigateToSeries(anime);
 
-  Future<List<String>> _aggregateImages() async {
-    final service = AnilistService();
-    final results = await Future.wait([service.getTrendingNow(perPage: 6), service.getPopularThisSeason(perPage: 6), service.getUpcomingNextSeason(perPage: 6), service.getTop100Anime(perPage: 10)]);
-    final Set<String> images = {};
-    for (var page in results) {
-      if (page?.results != null) {
-        for (var anime in page!.results) {
-          if (anime.coverImage != null) images.add(anime.coverImage!);
-        }
-      }
-    }
-    return images.toList()..shuffle();
-  }
-
   void _onSearchFocusChange() => setState(() => _isSearchFocused = _searchFocusNode?.hasFocus ?? false);
   void _onSearchTextChanged() => setState(() => _textSearchWidth = measureTextWidth(_searchController.text, style: _searchTextStyle) + (20 - _animationValue * 8) + 10 + 16);
-  void clearSearch() => _searchController.clear();
+  void clearSearch() {
+    _searchController.clear();
+    context.read<SearchViewModel>().clearTextSearch();
+  }
 
   @override
   void dispose() {
@@ -375,7 +188,8 @@ class SearchScreenState extends State<BrowseScreen> with AutomaticKeepAliveClien
     super.build(context);
     final library = Provider.of<Library>(context);
     final settings = Provider.of<SettingsManager>(context);
-    final bool showBackButton = _isShowingSearchQuery || _expandedSectionId != null;
+    final vm = Provider.of<SearchViewModel>(context);
+    final bool showBackButton = _isShowingSearchQuery || vm.expandedSectionId != null;
 
     return DeferredPointerHandler(
       key: ValueKey('BrowseScreenDeferredPointerHandler'),
@@ -391,12 +205,12 @@ class SearchScreenState extends State<BrowseScreen> with AutomaticKeepAliveClien
               child: FadingEdgeScrollView(
                 fadeEdges: const EdgeInsets.only(top: 100, bottom: 300),
                 child: FutureBuilder<List<String>>(
-                  future: _imagesFuture,
+                  future: vm.imagesFuture,
                   builder: (context, snapshot) {
                     final images = snapshot.data ?? [];
                     final hasData = snapshot.hasData && images.isNotEmpty;
-                    final shouldHide = _isShowingSearchQuery || _expandedSectionId != null;
-        
+                    final shouldHide = _isShowingSearchQuery || vm.expandedSectionId != null;
+
                     return AnimatedHider(
                       duration: const Duration(milliseconds: 800),
                       switchInCurve: Curves.easeOut,
@@ -418,20 +232,20 @@ class SearchScreenState extends State<BrowseScreen> with AutomaticKeepAliveClien
           // Main Content
           SearchTemplatePage(
             scrollController: widget.scrollController,
-            searchBarStatus: (_isShowingSearchQuery || _expandedSectionId != null) ? SearchBarStatus.collapsed : _overrideSearchBarStatus,
+            searchBarStatus: (_isShowingSearchQuery || vm.expandedSectionId != null) ? SearchBarStatus.collapsed : _overrideSearchBarStatus,
             header: Builder(builder: (context) {
-              if (_isShowingSearchQuery) return Text('Search Results for "${_resultsQuery ?? ''}"', style: Manager.titleStyle);
-              if (_expandedSectionId != null) {
+              if (_isShowingSearchQuery) return Text('Search Results for "${vm.resultsQuery ?? ''}"', style: Manager.titleStyle);
+              if (vm.expandedSectionId != null) {
                 final sectionTitles = {
                   1: 'Trending Now',
                   2: 'Popular This Season',
                   3: 'Upcoming Next Season',
                   4: 'Top 100 Anime',
                 };
-                final title = sectionTitles[_expandedSectionId!] ?? 'Browse';
+                final title = sectionTitles[vm.expandedSectionId!] ?? 'Browse';
                 return Text(title, style: Manager.titleStyle);
               }
-        
+
               return Text('Browse', style: Manager.titleStyle);
             }),
             behindSearchBar: (val) {
@@ -439,7 +253,7 @@ class SearchScreenState extends State<BrowseScreen> with AutomaticKeepAliveClien
               if (_animationValue != val) nextFrame(() => setState(() => _animationValue = val));
               return SizedBox.shrink();
             },
-            content: _buildBody(library, settings),
+            content: _buildBody(library, settings, vm),
             searchBarCollapsedWidth: (maxConstrainedWidth) => min(maxConstrainedWidth, _textSearchWidth + 27 + _filterButtonSize),
             searchBarMaxCollapsedWidth: (maxConstrainedWidth) => min(maxConstrainedWidth, ScreenUtils.kMaxContentWidth - 150),
             searchBarMinCollapsedWidth: (_) => 350,
@@ -608,7 +422,8 @@ class SearchScreenState extends State<BrowseScreen> with AutomaticKeepAliveClien
     );
   }
 
-  Widget _buildBody(Library library, SettingsManager settings) {
+  Widget _buildBody(Library library, SettingsManager settings, SearchViewModel vm) {
+    final int top100SectionId = 4;
     return FadingEdgeScrollView(
       fadeEdges: const EdgeInsets.only(bottom: 40),
       child: AnimatedSwitcher(
@@ -622,13 +437,13 @@ class SearchScreenState extends State<BrowseScreen> with AutomaticKeepAliveClien
         child: _isShowingSearchQuery
             ? KeyedSubtree(
                 key: const ValueKey('SearchResults'),
-                child: _buildResultsView(),
+                child: _buildResultsView(vm),
               )
-            : _expandedSectionId == 4
+            : vm.expandedSectionId == top100SectionId
                 ? KeyedSubtree(
                     key: const ValueKey('Top100Expanded'),
                     child: SectionGridView(
-                      manager: _sectionManagers[4]!,
+                      manager: vm.sectionManagers[4]!,
                       onSeriesOpen: _onSeriesOpen,
                     ),
                   )
@@ -637,13 +452,16 @@ class SearchScreenState extends State<BrowseScreen> with AutomaticKeepAliveClien
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        ServiceUnavailableBanner(onRetry: _fetchInitialData),
+                        ServiceUnavailableBanner(onRetry: () => vm.fetchInitialData()),
                         AnimeContentDashboard(
-                          sectionManagers: _sectionManagers,
-                          onExpandSection: _expandSection,
+                          sectionManagers: vm.sectionManagers,
+                          onExpandSection: (id) {
+                            if (widget.scrollController.hasClients) _lastScrollPosition = widget.scrollController.offset;
+                            vm.setExpandedSection(id);
+                          },
                           onSeriesOpen: _onSeriesOpen,
-                          onRetry: _fetchInitialData,
-                          expandedSectionId: _expandedSectionId,
+                          onRetry: () => vm.fetchInitialData(),
+                          expandedSectionId: vm.expandedSectionId,
                         ),
                       ],
                     ),
@@ -652,20 +470,20 @@ class SearchScreenState extends State<BrowseScreen> with AutomaticKeepAliveClien
     );
   }
 
-  Widget _buildResultsView() {
+  Widget _buildResultsView(vm) {
     // Show service unavailability or offline banner when there's an error
-    if (_resultsErrorMessage != null && _resultsList.isEmpty) {
+    if (vm.resultsErrorMessage != null && vm.resultsList.isEmpty) {
       if (ConnectivityService().isOffline || AnilistAvailabilityService().isUnavailable) {
-        return ServiceUnavailableBanner(onRetry: _fetchTextSearchResults);
+        return ServiceUnavailableBanner(onRetry: vm.fetchTextSearchResults);
       }
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text(_resultsErrorMessage!, style: const TextStyle(color: Colors.red)),
+            Text(vm.resultsErrorMessage!, style: const TextStyle(color: Colors.red)),
             const SizedBox(height: 16),
             Button(
-              onPressed: _fetchTextSearchResults,
+              onPressed: vm.fetchTextSearchResults,
               child: const Text('Retry'),
             ),
           ],
@@ -673,8 +491,8 @@ class SearchScreenState extends State<BrowseScreen> with AutomaticKeepAliveClien
       );
     }
 
-    if (_resultsList.isEmpty && _resultsIsLoading) return const SizedBox(height: 200, child: Center(child: ProgressRing()));
-    if (_resultsList.isEmpty) return const SizedBox(height: 200, child: Center(child: Text('No results found.')));
+    if (vm.resultsList.isEmpty && vm.resultsIsLoading) return const SizedBox(height: 200, child: Center(child: ProgressRing()));
+    if (vm.resultsList.isEmpty) return const SizedBox(height: 200, child: Center(child: Text('No results found.')));
 
     return LayoutBuilder(builder: (context, constraints) {
       final int count = ScreenUtils.crossAxisCount(constraints.maxWidth);
@@ -690,9 +508,9 @@ class SearchScreenState extends State<BrowseScreen> with AutomaticKeepAliveClien
               mainAxisSpacing: ScreenUtils.cardPadding,
             ),
             padding: EdgeInsets.only(top: 16),
-            itemCount: _resultsList.length,
+            itemCount: vm.resultsList.length,
             itemBuilder: (context, index) {
-              final item = _resultsList[index];
+              final item = vm.resultsList[index];
               return SearchSeriesCard(
                 series: item,
                 number: null, // not showing top100 number
@@ -700,22 +518,22 @@ class SearchScreenState extends State<BrowseScreen> with AutomaticKeepAliveClien
               );
             },
           ),
-          if (_resultsIsLoading) const Padding(padding: EdgeInsets.all(16.0), child: Center(child: ProgressRing())),
-          if (!_resultsIsLoading && _resultsHasNextPage && !Provider.of<SettingsManager>(context).useInfiniteScroll)
+          if (vm.resultsIsLoading) const Padding(padding: EdgeInsets.all(16.0), child: Center(child: ProgressRing())),
+          if (!vm.resultsIsLoading && vm.resultsHasNextPage && !Provider.of<SettingsManager>(context).useInfiniteScroll)
             Padding(
               padding: const EdgeInsets.all(16.0),
               child: Center(
                 // Search Load More Button
                 child: StandardButton.label(
                   onPressed: () {
-                    log('Loading more search results for query: $_resultsQuery, page: $_resultsCurrentPage');
-                    setState(() => _resultsIsLoadingUI = true);
-                    _fetchTextSearchResults().then((_) {
-                      if (mounted) setState(() => _resultsIsLoadingUI = false);
+                    log('Loading more search results for query: ${vm.resultsQuery}, page: ${vm.resultsCurrentPage}');
+                    // setState not needed, fetchTextSearchResults sets resultsIsLoading
+                    vm.fetchTextSearchResults().then((_) {
+                      // resultsIsLoading is set to false inside fetchTextSearchResults
                       log('Finished loading more search results.');
                     });
                   },
-                  isLoading: _resultsIsLoadingUI,
+                  isLoading: vm.resultsIsLoading,
                   label: 'Load More',
                 ),
               ),
@@ -727,7 +545,7 @@ class SearchScreenState extends State<BrowseScreen> with AutomaticKeepAliveClien
 }
 
 class AnimeContentDashboard extends StatelessWidget {
-  final Map<int, SectionDataManager> sectionManagers;
+  final Map<int, SearchSectionData> sectionManagers;
   final Function(int sectionId) onExpandSection;
   final Function(AnimeCard anime) onSeriesOpen;
   final VoidCallback onRetry;
@@ -798,7 +616,7 @@ class AnimeContentDashboard extends StatelessWidget {
 
 class SectionWidget extends StatefulWidget {
   final String title;
-  final SectionDataManager manager;
+  final SearchSectionData manager;
   final bool isExpanded;
   final VoidCallback onExpand;
   final Function(AnimeCard) onSeriesOpen;
@@ -874,102 +692,97 @@ class _SectionWidgetState extends State<SectionWidget> {
 
   @override
   Widget build(BuildContext context) {
-    return ListenableBuilder(
-      listenable: widget.manager,
-      builder: (context, child) {
-        final fullList = widget.manager.items;
+    final fullList = widget.manager.items;
 
-        if (fullList.isEmpty && widget.manager.isLoading) return const SizedBox(height: 200, child: Center(child: ProgressRing()));
-        if (fullList.isEmpty) return const SizedBox.shrink();
+    if (fullList.isEmpty && widget.manager.isLoading) return const SizedBox(height: 200, child: Center(child: ProgressRing()));
+    if (fullList.isEmpty) return const SizedBox.shrink();
 
-        return LayoutBuilder(builder: (context, constraints) {
-          final int crossAxisCount = ScreenUtils.crossAxisCount(constraints.maxWidth);
-          final bool showFullGrid = (widget.isExpanded && _areExtrasLoaded) || _isCollapsing;
-          final int visibleItemCount = showFullGrid ? fullList.length : (fullList.length < crossAxisCount ? fullList.length : crossAxisCount);
+    return LayoutBuilder(builder: (context, constraints) {
+      final int crossAxisCount = ScreenUtils.crossAxisCount(constraints.maxWidth);
+      final bool showFullGrid = (widget.isExpanded && _areExtrasLoaded) || _isCollapsing;
+      final int visibleItemCount = showFullGrid ? fullList.length : (fullList.length < crossAxisCount ? fullList.length : crossAxisCount);
 
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Section Header
-              _buildSectionHeader(widget.title, widget.isExpanded),
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Section Header
+          _buildSectionHeader(widget.title, widget.isExpanded),
 
-              // Series Grid
-              AnimatedSize(
-                duration: const Duration(milliseconds: 400),
-                curve: Curves.easeOutQuart,
-                alignment: Alignment.topCenter,
-                child: GridView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  padding: EdgeInsets.zero,
-                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: crossAxisCount,
-                    childAspectRatio: ScreenUtils.kDefaultAspectRatio,
-                    crossAxisSpacing: ScreenUtils.cardPadding,
-                    mainAxisSpacing: ScreenUtils.cardPadding,
-                  ),
-                  itemCount: visibleItemCount,
-                  itemBuilder: (context, index) {
-                    final item = fullList[index];
+          // Series Grid
+          AnimatedSize(
+            duration: const Duration(milliseconds: 400),
+            curve: Curves.easeOutQuart,
+            alignment: Alignment.topCenter,
+            child: GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              padding: EdgeInsets.zero,
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: crossAxisCount,
+                childAspectRatio: ScreenUtils.kDefaultAspectRatio,
+                crossAxisSpacing: ScreenUtils.cardPadding,
+                mainAxisSpacing: ScreenUtils.cardPadding,
+              ),
+              itemCount: visibleItemCount,
+              itemBuilder: (context, index) {
+                final item = fullList[index];
 
-                    // All result cards are shown
-                    if (index >= crossAxisCount) {
-                      return AnimatedOpacity(
-                        duration: const Duration(milliseconds: 300),
-                        opacity: _isCollapsing ? 0.0 : 1.0,
-                        curve: Curves.easeOut,
-                        child: FadeInEntry(
-                          delay: _areExtrasLoaded ? 0 : (index - crossAxisCount) * 30,
-                          duration: _isRestoring ? Duration.zero : const Duration(milliseconds: 600),
-                          child: SearchSeriesCard(
-                            series: item,
-                            number: null, // not showing top100 number
-                            onTap: () => widget.onSeriesOpen(item),
-                          ),
-                        ),
-                      );
-                    }
+                // All result cards are shown
+                if (index >= crossAxisCount) {
+                  return AnimatedOpacity(
+                    duration: const Duration(milliseconds: 300),
+                    opacity: _isCollapsing ? 0.0 : 1.0,
+                    curve: Curves.easeOut,
+                    child: FadeInEntry(
+                      delay: _areExtrasLoaded ? 0 : (index - crossAxisCount) * 30,
+                      duration: _isRestoring ? Duration.zero : const Duration(milliseconds: 600),
+                      child: SearchSeriesCard(
+                        series: item,
+                        number: null, // not showing top100 number
+                        onTap: () => widget.onSeriesOpen(item),
+                      ),
+                    ),
+                  );
+                }
 
-                    // Only Preview Cards are shown
-                    return SearchSeriesCard(
-                      series: item,
-                      number: null, // not showing top100 number
-                      onTap: () => widget.onSeriesOpen(item),
-                    );
+                // Only Preview Cards are shown
+                return SearchSeriesCard(
+                  series: item,
+                  number: null, // not showing top100 number
+                  onTap: () => widget.onSeriesOpen(item),
+                );
+              },
+            ),
+          ),
+
+          // Loading indicator at bottom of expanded section
+          if (widget.isExpanded && widget.manager.isLoading && fullList.length > 6) const Padding(padding: EdgeInsets.all(20), child: Center(child: ProgressRing())),
+
+          // Section Load More Button shown only after expand animation is complete and first batch of extras are loaded
+          if (widget.isExpanded && _showLoadMoreAfterExpand && !widget.manager.isLoading && widget.manager.hasMore && !Provider.of<SettingsManager>(context).useInfiniteScroll)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 20),
+              child: Center(
+                child: StandardButton.label(
+                  onPressed: () {
+                    log('Loading more for section ${widget.title}');
+                    setState(() => _fetchingMore = true);
+                    context.read<SearchViewModel>().fetchSection(widget.manager.id).then((_) {
+                      if (mounted) setState(() => _fetchingMore = false);
+                      log('Finished loading more for section ${widget.title}');
+                    });
                   },
+                  isLoading: _fetchingMore,
+                  isFilled: !_fetchingMore,
+                  label: 'Load More',
                 ),
               ),
+            ),
 
-              // Loading indicator at bottom of expanded section
-              if (widget.isExpanded && widget.manager.isLoading && fullList.length > 6) const Padding(padding: EdgeInsets.all(20), child: Center(child: ProgressRing())),
-
-              // Section Load More Button shown only after expand animation is complete and first batch of extras are loaded
-              if (widget.isExpanded && _showLoadMoreAfterExpand && !widget.manager.isLoading && widget.manager.hasMore && !Provider.of<SettingsManager>(context).useInfiniteScroll)
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 20),
-                  child: Center(
-                    child: StandardButton.label(
-                      onPressed: () {
-                        log('Loading more for section ${widget.title}');
-                        setState(() => _fetchingMore = true);
-                        widget.manager.fetch().then((_) {
-                          if (mounted) setState(() => _fetchingMore = false);
-                          log('Finished loading more for section ${widget.title}');
-                        });
-                      },
-                      isLoading: _fetchingMore,
-                      isFilled: !_fetchingMore,
-                      label: 'Load More',
-                    ),
-                  ),
-                ),
-
-              SizedBox(height: widget.isExpanded ? 50 : 30),
-            ],
-          );
-        });
-      },
-    );
+          SizedBox(height: widget.isExpanded ? 50 : 30),
+        ],
+      );
+    });
   }
 
   Widget _buildSectionHeader(String title, bool isExpanded) {

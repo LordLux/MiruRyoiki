@@ -50,6 +50,7 @@ import 'viewmodels/library_screen_viewmodel.dart';
 import 'viewmodels/series_viewmodel.dart';
 import 'viewmodels/notifications_viewmodel.dart';
 import 'viewmodels/release_calendar_viewmodel.dart';
+import 'viewmodels/search_viewmodel.dart';
 import 'services/connectivity/connectivity_service.dart';
 import 'services/navigation/statusbar.dart';
 import 'settings.dart';
@@ -226,6 +227,7 @@ void main(List<String> args) async {
               return vm;
             },
           ),
+          ChangeNotifierProvider(create: (_) => SearchViewModel()),
           ChangeNotifierProxyProvider2<Library, LibraryScreenViewModel, SeriesViewModel>(
             create: (context) => SeriesViewModel()..update(context.read<Library>(), context.read<LibraryScreenViewModel>()),
             update: (context, library, libraryVM, previous) {
@@ -422,7 +424,7 @@ class _MiruRyoikiRootState extends State<MiruRyoikiRoot> {
   void _handleDeepLink(Uri uri) async {
     // Log the parsed pieces so a dropped fragment or re-encoded parameter is visible.
     logDebug('Deep link received: ${uri.replace(fragment: '***')}');
-    logTrace('  path=${uri.path} | query=${uri.queryParameters} | fragment=***');
+    logTrace('  path=${uri.path} | query=*** | fragment=***');
 
     // Handle Anilist auth callback
     if (uri.toString().startsWith(redirectUrl)) {
@@ -431,7 +433,7 @@ class _MiruRyoikiRootState extends State<MiruRyoikiRoot> {
       return;
     }
 
-    logWarn('Unhandled deep link: $uri');
+    logWarn('Unhandled deep link: ${uri.replace(query: '', fragment: '')}');
     if (kDebugMode) snackBar('Unhandled deep link', longMessage: uri.toString(), severity: InfoBarSeverity.warning);
   }
 

@@ -171,10 +171,11 @@ class MyWindowListener extends WindowListener with TrayListener {
       logDebug('Shutdown requested while database is saving, waiting...');
       if (!await windowManager.isVisible()) await windowManager.show();
 
-      if (Manager.context.mounted && NavigationManager.instance.currentView?.id == 'system:saving-database') {
+      final shutdownContext = rootNavigatorKey.currentContext;
+      if (shutdownContext != null && shutdownContext.mounted && NavigationManager.instance.currentView?.id != 'system:saving-database') {
         final title = 'Saving Database';
         showPaddedDialog(
-          Manager.context,
+          shutdownContext,
           navigationItem: DialogNavigationItem(
             id: 'system:saving-database',
             title: title,
@@ -204,7 +205,7 @@ class MyWindowListener extends WindowListener with TrayListener {
     await windowManager.setPreventClose(false);
     await Manager.closeDB();
     await windowManager.close();
-    // await windowManager.destroy();
+    await windowManager.destroy();
     exit(0); // Manually kill the process to prevent bug where process remains alive after window is closed on Windows which prevents the app from being opened without killing the process first
   }
 
@@ -222,8 +223,10 @@ class MyWindowListener extends WindowListener with TrayListener {
 
       if (closeAttempts.length >= 4) {
         closeAttempts.clear();
+        final context = rootNavigatorKey.currentContext;
+        if (context == null || !context.mounted) return;
         showSimpleTickboxManagedDialog(
-          Manager.context,
+          context,
           id: 'system:close-warning',
           title: 'Quit ${Manager.appTitle}?',
           body: 'You have tried to close the application multiple times recently.\n'
@@ -246,6 +249,7 @@ class MyWindowListener extends WindowListener with TrayListener {
 
   @override
   void onWindowFocus() {
+    Manager.renderingEnabled.value = true;
     update();
     // Fix stuck modifier keys when regaining focus
     ModifierKeyUtils.checkAndFixModifierKeys();

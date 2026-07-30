@@ -1,3 +1,4 @@
+// ignore_for_file: deprecated_member_use_from_same_package
 import 'package:miruryoiki/utils/time.dart';
 import 'package:provider/provider.dart';
 

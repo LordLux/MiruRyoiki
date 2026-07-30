@@ -1,3 +1,4 @@
+// ignore_for_file: invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package
 // daos/series_dao.dart
 import 'dart:convert';
 import 'dart:ui';

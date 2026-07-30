@@ -79,6 +79,7 @@ class Manager {
     }
   }
 
+  // ignore: invalid_use_of_protected_member
   static void setState([VoidCallback? fn]) => homeKey.currentState?.setState(() => fn?.call());
 
   static BuildContext get context => rootNavigatorKey.currentContext!;
