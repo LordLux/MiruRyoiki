@@ -74,6 +74,11 @@ enum CachedButtonState { inLibrary, inAnilist, neither }
 class SearchedSeriesScreenState extends State<SearchedSeriesScreen> {
   static final Map<int, CachedButtonState> _buttonStatusCache = {};
 
+  // Library/AnilistProvider notify on link/unlink; without this the cache above
+  // would keep showing the pre-link/unlink verdict for this anilistId until
+  // a fresh entry happens to overwrite it (or the app restarts).
+  static void _invalidateButtonStatusCache() => _buttonStatusCache.clear();
+
   int currentTabIndex = 0;
   bool _isFetching = true;
   bool _showSpoilerTags = false;
@@ -239,6 +244,11 @@ class SearchedSeriesScreenState extends State<SearchedSeriesScreen> {
 
     // Listen for intra-page back/forward restores
     _navManager.restoreNotifier.addListener(_onRestoreFromHistory);
+
+    // Drop the cached in-library/in-anilist verdict whenever either provider
+    // notifies (e.g. after a link/unlink), so a stale verdict can't linger.
+    context.read<Library>().addListener(_invalidateButtonStatusCache);
+    context.read<AnilistProvider>().addListener(_invalidateButtonStatusCache);
 
     // Store pending viewState for deferred resolution after _initTabs
     final viewState = _navManager.currentView?.viewState;
@@ -492,6 +502,8 @@ class SearchedSeriesScreenState extends State<SearchedSeriesScreen> {
   @override
   void dispose() {
     _navManager.restoreNotifier.removeListener(_onRestoreFromHistory);
+    context.read<Library>().removeListener(_invalidateButtonStatusCache);
+    context.read<AnilistProvider>().removeListener(_invalidateButtonStatusCache);
     for (final c in _tabScrollControllers.values) c.dispose();
     deferredPointerLink?.dispose();
     super.dispose();
