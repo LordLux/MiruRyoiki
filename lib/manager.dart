@@ -15,6 +15,7 @@ import 'services/anilist/episode_title_service.dart';
 import 'services/episode_navigation/anilist_progress_manager.dart';
 import 'services/episode_navigation/episode_navigator.dart';
 import 'services/episode_navigation/ui_episode_service.dart';
+import 'services/dominant_color_provider.dart';
 import 'services/navigation/shortcuts.dart';
 import 'settings.dart';
 import 'theme.dart';
@@ -41,10 +42,33 @@ class Manager {
   static bool skipScan = false;
   static bool isHotRestart = true;
   static bool doSkipDebugHotRestartInitialization = true;
-  static Color? currentDominantColor;
-  static Color? seriesDominantColor;
 
-  static AccentColor? get currentDominantAccentColor => currentDominantColor?.toAccentColor();
+  static DominantColorProvider? _cachedDominantColorProvider;
+
+  /// Resolves the app-wide [DominantColorProvider] the same way [appTheme] resolves [AppTheme]:
+  /// from the widget tree when one exists, falling back to a cached standalone instance otherwise
+  static DominantColorProvider get _dominantColorProvider {
+    if (rootNavigatorKey.currentContext != null) {
+      try {
+        return Provider.of<DominantColorProvider>(rootNavigatorKey.currentContext!, listen: false);
+      } catch (e) {
+        if (_cachedDominantColorProvider != null) return _cachedDominantColorProvider!;
+
+        _cachedDominantColorProvider = DominantColorProvider();
+        return _cachedDominantColorProvider!;
+      }
+    }
+
+    return _cachedDominantColorProvider ?? (_cachedDominantColorProvider = DominantColorProvider());
+  }
+
+  static Color? get currentDominantColor => _dominantColorProvider.currentDominantColor;
+  static set currentDominantColor(Color? value) => _dominantColorProvider.currentDominantColor = value;
+
+  static Color? get seriesDominantColor => _dominantColorProvider.seriesDominantColor;
+  static set seriesDominantColor(Color? value) => _dominantColorProvider.seriesDominantColor = value;
+
+  static AccentColor? get currentDominantAccentColor => _dominantColorProvider.currentDominantAccentColor;
 
   static List<String> accounts = [];
 

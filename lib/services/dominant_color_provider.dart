@@ -1,17 +1,13 @@
 import 'package:fluent_ui/fluent_ui.dart';
 
-/// Holds the app's dominant-colour UI state (previously plain statics on [Manager]).
+/// Holds the app's dominant accent-colour state.
 ///
-/// Part of the Phase 4 strangler effort to move `Manager`'s mutable global UI
-/// state off the static god-object and onto a proper `ChangeNotifier`, so
-/// widgets can `context.watch` a colour change instead of relying on a
-/// GlobalKey `setState` punch-through.
+/// [seriesDominantColor] is the colour derived for whichever series is
+/// currently being viewed. [currentDominantColor] is the colour actually
+/// applied to the app's UI chrome, which can differ from it depending on
+/// navigation state (e.g. reset to null when leaving a series).
 ///
-/// This provider is additive for now: `Manager.currentDominantColor` /
-/// `Manager.seriesDominantColor` still exist and all 113 existing read call
-/// sites are untouched. Delegating `Manager`'s getters to this provider, and
-/// converting call sites to `context.watch<DominantColorProvider>()`, are
-/// separate follow-up steps (see TECH_DEBT_AUDIT.md, Phase 4).
+/// A [ChangeNotifier] so widgets can rebuild when either colour changes.
 class DominantColorProvider extends ChangeNotifier {
   Color? _currentDominantColor;
   Color? get currentDominantColor => _currentDominantColor;
