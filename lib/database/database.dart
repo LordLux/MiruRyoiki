@@ -3,7 +3,6 @@ import 'dart:io';
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
 import 'package:miruryoiki/database/converters.dart';
-import '../manager.dart';
 import '../models/metadata.dart';
 import '../models/mkv_metadata.dart';
 import '../models/notification.dart';
@@ -43,18 +42,25 @@ part 'database.g.dart';
   ],
 )
 class AppDatabase extends _$AppDatabase {
-  AppDatabase([QueryExecutor? db]) : super(db ?? _openConnection());
+  AppDatabase([QueryExecutor? db, void Function(bool isSaving)? onSavingChanged])
+      : _onSavingChanged = onSavingChanged,
+        super(db ?? _openConnection());
+
+  /// Notified with `true` before a save/close operation starts and `false`
+  /// once it finishes, so callers can surface a "saving" indicator without
+  /// this layer depending on any UI state.
+  final void Function(bool isSaving)? _onSavingChanged;
 
   @override
   int get schemaVersion => 13;
 
   @override
   Future<void> close() async {
-    Manager.isDatabaseSaving.value = true;
+    _onSavingChanged?.call(true);
     try {
       await super.close();
     } finally {
-      Manager.isDatabaseSaving.value = false;
+      _onSavingChanged?.call(false);
     }
   }
 

@@ -114,7 +114,7 @@ void main(List<String> args) async {
   await initializeMiruRyoikiSaveDirectory();
 
   // Initialize database
-  final db = AppDatabase();
+  final db = AppDatabase(null, (isSaving) => Manager.isDatabaseSaving.value = isSaving);
 
   // Initialize settings
   await _settings.init(db);
