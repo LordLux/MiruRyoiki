@@ -14,7 +14,7 @@ import '../models/series.dart';
 import '../services/anilist/provider/anilist_provider.dart';
 import '../services/downloads/torrent_manager.dart';
 import '../services/library/library_provider.dart';
-import '../services/navigation/dialogs2.dart';
+import '../services/navigation/dialog_framework.dart';
 import '../services/navigation/navigation.dart';
 import '../services/navigation/show_info.dart';
 import '../settings.dart';

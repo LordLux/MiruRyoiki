@@ -1,12 +1,12 @@
 // ignore_for_file: constant_identifier_names
 
 import 'package:fluent_ui/fluent_ui.dart';
-import 'package:miruryoiki/services/navigation/dialogs2.dart';
+import 'package:miruryoiki/services/navigation/dialog_framework.dart';
 import 'package:tray_manager/tray_manager.dart';
 
 import '../../utils/icons.dart' as icons;
 import '../../widgets/dialogs/show_dialog.dart';
-import '../navigation/dialogs.dart';
+import '../navigation/dialog_functions.dart';
 import '../navigation/modifier_key_utils.dart';
 import 'dart:io';
 

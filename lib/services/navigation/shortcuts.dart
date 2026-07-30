@@ -2,7 +2,7 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
-import 'package:miruryoiki/services/navigation/dialogs.dart';
+import 'package:miruryoiki/services/navigation/dialog_functions.dart';
 import 'package:miruryoiki/services/navigation/show_info.dart';
 import 'package:miruryoiki/theme.dart';
 import 'package:provider/provider.dart';

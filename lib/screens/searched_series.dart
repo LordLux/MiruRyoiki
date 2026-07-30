@@ -513,7 +513,7 @@ class SearchedSeriesScreenState extends State<SearchedSeriesScreen> {
   didChangeDependencies() {
     super.didChangeDependencies();
     // If series changes while dependencies change, reload Anilist data
-    if (_cachedSeries != null && _cachedSeries!.id.toString() != widget.anilistUrl.split('/').last) {
+    if (_cachedSeries != null && _cachedSeries!.id.toString() != widget.anilistUrl.split('/').where((s) => s.isNotEmpty).last) {
       nextFrame(() => _loadAnilistData());
     }
   }
@@ -538,7 +538,7 @@ class SearchedSeriesScreenState extends State<SearchedSeriesScreen> {
 
   Future<void> _loadAnilistData() async {
     try {
-      final anilistId = int.parse(widget.anilistUrl.split('/').last);
+      final anilistId = int.parse(widget.anilistUrl.split('/').where((s) => s.isNotEmpty).last);
       logTrace('Fetching AniList data for ID $anilistId');
 
       final AnimeOverview? anilistAnime = await SeriesLinkService().fetchDetailedAnimeDetails(anilistId);
@@ -684,7 +684,7 @@ class SearchedSeriesScreenState extends State<SearchedSeriesScreen> {
       footer: [
         // Add to Anilist Button
         Builder(builder: (context) {
-          final anilistId = series?.id ?? int.tryParse(widget.anilistUrl.split('/').last) ?? 0;
+          final anilistId = series?.id ?? int.tryParse(widget.anilistUrl.split('/').where((s) => s.isNotEmpty).last) ?? 0;
           final anilist = Provider.of<AnilistProvider>(context);
           final library = Provider.of<Library>(context);
 
@@ -692,12 +692,14 @@ class SearchedSeriesScreenState extends State<SearchedSeriesScreen> {
           final isInLibrary = isInAnilist && library.mappedAnilistIds.contains(anilistId);
 
           if (!_isFetching && anilistId > 0) {
-            if (isInLibrary)
-              _buttonStatusCache[anilistId] = CachedButtonState.inLibrary;
-            else if (isInAnilist)
-              _buttonStatusCache[anilistId] = CachedButtonState.inAnilist;
-            else
-              _buttonStatusCache[anilistId] = CachedButtonState.neither;
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (isInLibrary)
+                _buttonStatusCache[anilistId] = CachedButtonState.inLibrary;
+              else if (isInAnilist)
+                _buttonStatusCache[anilistId] = CachedButtonState.inAnilist;
+              else
+                _buttonStatusCache[anilistId] = CachedButtonState.neither;
+            });
           }
 
           final (text, tooltip, icon) = _getAddToButtonText(anilistId, isInAnilist, isInLibrary);

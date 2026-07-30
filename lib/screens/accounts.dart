@@ -11,7 +11,7 @@ import 'package:flutter_html/flutter_html.dart';
 import 'package:miruryoiki/functions.dart';
 import 'package:miruryoiki/models/anilist/user_data.dart';
 import 'package:flexible_wrap/flexible_wrap.dart';
-import 'package:miruryoiki/services/navigation/dialogs.dart';
+import 'package:miruryoiki/services/navigation/dialog_functions.dart';
 import 'package:miruryoiki/utils/html/extensions/spoiler.dart';
 import 'package:miruryoiki/utils/time.dart';
 import 'package:miruryoiki/widgets/buttons/switch.dart';

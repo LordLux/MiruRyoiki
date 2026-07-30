@@ -15,7 +15,7 @@ import '../../models/sonarr/sonarr_episode.dart';
 import '../../models/sonarr/sonarr_episode_file.dart';
 import '../../services/downloads/torrent_manager.dart';
 import '../../services/isolates/thumbnail_manager.dart';
-import '../../services/navigation/dialogs2.dart';
+import '../../services/navigation/dialog_framework.dart';
 import '../../services/navigation/navigation.dart';
 import '../../services/navigation/show_info.dart';
 import '../buttons/button.dart';

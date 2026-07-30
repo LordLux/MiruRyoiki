@@ -421,8 +421,8 @@ class _MiruRyoikiRootState extends State<MiruRyoikiRoot> {
 
   void _handleDeepLink(Uri uri) async {
     // Log the parsed pieces so a dropped fragment or re-encoded parameter is visible.
-    logDebug('Deep link received: $uri');
-    logTrace('  path=${uri.path} | query=${uri.queryParameters} | fragment=${uri.fragment}');
+    logDebug('Deep link received: ${uri.replace(fragment: '***')}');
+    logTrace('  path=${uri.path} | query=${uri.queryParameters} | fragment=***');
 
     // Handle Anilist auth callback
     if (uri.toString().startsWith(redirectUrl)) {

@@ -74,16 +74,19 @@ void main() {
 
   group('SonarrRepository Logic', () {
     test('lookupSeries fetches and parses properly', () async {
-      when(mockClient.get(any)).thenAnswer((_) async => http.Response(
+      when(mockClient.get(any, headers: anyNamed('headers'))).thenAnswer((_) async => http.Response(
         '[{"title": "Lookup Anime", "tvdbId": 123}]',
         200
       ));
 
       final results = await service.lookupSeries('Anime');
       
-      final verifyResult = verify(mockClient.get(captureAny));
-      final Uri uri = verifyResult.captured.single as Uri;
-      expect(uri.toString(), 'http://localhost:8989/api/v3/series/lookup?term=Anime&apikey=test-api-key');
+      final verifyResult = verify(mockClient.get(captureAny, headers: captureAnyNamed('headers')));
+      final Uri uri = verifyResult.captured[0] as Uri;
+      final Map<String, String>? headers = verifyResult.captured[1] as Map<String, String>?;
+
+      expect(uri.toString(), 'http://localhost:8989/api/v3/series/lookup?term=Anime');
+      expect(headers?['X-Api-Key'], 'test-api-key');
 
       expect(results.length, 1);
       expect(results.first.title, 'Lookup Anime');
@@ -92,12 +95,12 @@ void main() {
     });
 
     test('lookupSeries throws on error', () async {
-      when(mockClient.get(any)).thenAnswer((_) async => http.Response('Error', 500));
+      when(mockClient.get(any, headers: anyNamed('headers'))).thenAnswer((_) async => http.Response('Error', 500));
       expect(service.lookupSeries('Anime'), throwsException);
     });
 
     test('ensureSeriesExists returns ID if series already exists', () async {
-      when(mockClient.get(any)).thenAnswer((_) async => http.Response('[{"id": 99, "tvdbId": 123}]', 200));
+      when(mockClient.get(any, headers: anyNamed('headers'))).thenAnswer((_) async => http.Response('[{"id": 99, "tvdbId": 123}]', 200));
 
       final id = await service.ensureSeriesExists(tvdbId: 123, title: 'Anime', rootFolderPath: '/path', qualityProfileId: 1);
       expect(id, 99);
@@ -107,7 +110,7 @@ void main() {
     });
 
     test('ensureSeriesExists posts and returns ID if series does not exist', () async {
-      when(mockClient.get(any)).thenAnswer((_) async => http.Response('[]', 200));
+      when(mockClient.get(any, headers: anyNamed('headers'))).thenAnswer((_) async => http.Response('[]', 200));
       when(mockClient.post(any, headers: anyNamed('headers'), body: anyNamed('body')))
         .thenAnswer((_) async => http.Response('{"id": 42}', 201));
 
@@ -121,10 +124,12 @@ void main() {
       ));
       
       final Uri postUri = verifyResult.captured[0] as Uri;
+      final Map<String, String>? postHeaders = verifyResult.captured[1] as Map<String, String>?;
       final String postBodyStr = verifyResult.captured[2] as String;
       final Map<String, dynamic> postBody = json.decode(postBodyStr);
       
-      expect(postUri.toString(), 'http://localhost:8989/api/v3/series?apikey=test-api-key');
+      expect(postUri.toString(), 'http://localhost:8989/api/v3/series');
+      expect(postHeaders?['X-Api-Key'], 'test-api-key');
       expect(postBody['tvdbId'], 123);
       expect(postBody['title'], 'Anime');
       expect(postBody['rootFolderPath'], '/path');

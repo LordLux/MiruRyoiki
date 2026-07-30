@@ -8,7 +8,7 @@ import '../../enums.dart';
 import '../../main.dart';
 import '../../manager.dart';
 import '../../models/series.dart';
-import '../../services/navigation/dialogs.dart';
+import '../../services/navigation/dialog_functions.dart';
 import '../../utils/image.dart';
 import '../../utils/logging.dart';
 import '../../utils/path.dart';

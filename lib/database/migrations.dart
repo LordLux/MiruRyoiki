@@ -143,16 +143,16 @@ Future<void> _v12to13(Migrator m) async {
 }
 
 Future<void> runUpgradeMigrations(Migrator m, AppDatabase db, int from, int to) async {
-  if (from < 2) await _v1to2(m, db);
-  if (from < 3) await _v2to3(m);
-  if (from < 4) await _v3to4(m, db);
-  if (from < 5) await _v4to5(m, db);
-  if (from < 6) await _v5to6(m, db);
-  if (from < 7) await _v6to7(m);
-  if (from < 8) await _v7to8(m);
-  if (from < 9) await _v8to9(m);
-  if (from < 10) await _v9to10(m);
-  if (from < 11) await _v10to11(m, db);
-  if (from < 12) await _v11to12(m, db);
-  if (from < 13) await _v12to13(m);
+  if (from < 2 && to >= 2) await _v1to2(m, db);
+  if (from < 3 && to >= 3) await _v2to3(m);
+  if (from < 4 && to >= 4) await _v3to4(m, db);
+  if (from < 5 && to >= 5) await _v4to5(m, db);
+  if (from < 6 && to >= 6) await _v5to6(m, db);
+  if (from < 7 && to >= 7) await _v6to7(m);
+  if (from < 8 && to >= 8) await _v7to8(m);
+  if (from < 9 && to >= 9) await _v8to9(m);
+  if (from < 10 && to >= 10) await _v9to10(m);
+  if (from < 11 && to >= 11) await _v10to11(m, db);
+  if (from < 12 && to >= 12) await _v11to12(m, db);
+  if (from < 13 && to >= 13) await _v12to13(m);
 }

@@ -10,7 +10,7 @@ import '../../utils/default_player.dart';
 import '../../utils/path.dart';
 import '../../utils/logging.dart';
 import '../../utils/time.dart';
-import '../navigation/dialogs.dart';
+import '../navigation/dialog_functions.dart';
 import '../navigation/navigation.dart';
 import '../processes/monitor.dart' as process_monitor;
 import '../lock_manager.dart';

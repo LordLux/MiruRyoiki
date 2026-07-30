@@ -23,8 +23,8 @@ class SonarrRepository {
 
   /// Returns the internal Sonarr series ID for a given TVDB ID, or null if not found
   Future<int?> getSeriesIdByTvdbId(int tvdbId) async {
-    final uri = Uri.parse('$_baseUrl/api/v3/series?tvdbId=$tvdbId&apikey=$_apiKey');
-    final response = await _client.get(uri);
+    final uri = Uri.parse('$_baseUrl/api/v3/series?tvdbId=$tvdbId');
+    final response = await _client.get(uri, headers: {"X-Api-Key": _apiKey});
     if (response.statusCode == 200) {
       final List<dynamic> data = json.decode(response.body);
       if (data.isNotEmpty) return data.first['id'] as int;
@@ -34,8 +34,8 @@ class SonarrRepository {
 
   /// Lookups up Series in Sonarr Skyhook
   Future<List<SonarrSeries>> lookupSeries(String term) async {
-    final uri = Uri.parse('$_baseUrl/api/v3/series/lookup?term=${Uri.encodeComponent(term)}&apikey=$_apiKey');
-    final response = await _client.get(uri);
+    final uri = Uri.parse('$_baseUrl/api/v3/series/lookup?term=${Uri.encodeComponent(term)}');
+    final response = await _client.get(uri, headers: {"X-Api-Key": _apiKey});
 
     if (response.statusCode == 200) {
       final List<dynamic> data = json.decode(response.body);
@@ -53,8 +53,8 @@ class SonarrRepository {
     String? path, // optional custom path
   }) async {
     // logTrace('[Sonarr] ensureSeriesExists: tvdbId=$tvdbId, title="$title"');
-    final checkUri = Uri.parse('$_baseUrl/api/v3/series?tvdbId=$tvdbId&apikey=$_apiKey');
-    final checkResponse = await _client.get(checkUri);
+    final checkUri = Uri.parse('$_baseUrl/api/v3/series?tvdbId=$tvdbId');
+    final checkResponse = await _client.get(checkUri, headers: {"X-Api-Key": _apiKey});
 
     if (checkResponse.statusCode == 200) {
       final List<dynamic> data = json.decode(checkResponse.body);
@@ -64,7 +64,7 @@ class SonarrRepository {
       }
     }
 
-    final addUri = Uri.parse('$_baseUrl/api/v3/series?apikey=$_apiKey');
+    final addUri = Uri.parse('$_baseUrl/api/v3/series');
     final payload = <String, dynamic>{
       "title": title,
       "tvdbId": tvdbId,
@@ -81,7 +81,10 @@ class SonarrRepository {
 
     final addResponse = await _client.post(
       addUri,
-      headers: {'Content-Type': 'application/json'},
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Api-Key': _apiKey,
+      },
       body: json.encode(payload),
     );
 
@@ -105,8 +108,8 @@ class SonarrRepository {
     if (episodeNumber != null) params += '&episodeNumber=$episodeNumber';
     if (seasonNumber != null) params += '&seasonNumber=$seasonNumber';
 
-    final uri = Uri.parse('$_baseUrl$endpoint?$params&apikey=$_apiKey');
-    final response = await _client.get(uri);
+    final uri = Uri.parse('$_baseUrl$endpoint?$params');
+    final response = await _client.get(uri, headers: {"X-Api-Key": _apiKey});
 
     if (response.statusCode == 200) {
       final List<dynamic> data = json.decode(response.body);
@@ -117,8 +120,8 @@ class SonarrRepository {
   }
 
   Future<List<SonarrRelease>> searchEpisodeReleases(int episodeId) async {
-    final uri = Uri.parse('$_baseUrl/api/v3/release?episodeId=$episodeId&apikey=$_apiKey');
-    final response = await _client.get(uri);
+    final uri = Uri.parse('$_baseUrl/api/v3/release?episodeId=$episodeId');
+    final response = await _client.get(uri, headers: {"X-Api-Key": _apiKey});
 
     if (response.statusCode == 200) {
       final List<dynamic> data = json.decode(response.body);
@@ -129,8 +132,8 @@ class SonarrRepository {
   
   Future<List<SonarrEpisode>> getEpisodes(int sonarrSeriesId) async {
     // logTrace('[Sonarr] getEpisodes: seriesId=$sonarrSeriesId');
-    final uri = Uri.parse('$_baseUrl/api/v3/episode?seriesId=$sonarrSeriesId&apikey=$_apiKey');
-    final response = await _client.get(uri);
+    final uri = Uri.parse('$_baseUrl/api/v3/episode?seriesId=$sonarrSeriesId');
+    final response = await _client.get(uri, headers: {"X-Api-Key": _apiKey});
 
     if (response.statusCode == 200) {
       final List<dynamic> data = json.decode(response.body);
@@ -144,8 +147,8 @@ class SonarrRepository {
   /// Returns all episode files Sonarr has imported for a series
   Future<List<SonarrEpisodeFile>> getEpisodeFiles(int seriesId) async {
     // logTrace('[Sonarr] getEpisodeFiles: seriesId=$seriesId');
-    final uri = Uri.parse('$_baseUrl/api/v3/episodefile?seriesId=$seriesId&apikey=$_apiKey');
-    final response = await _client.get(uri);
+    final uri = Uri.parse('$_baseUrl/api/v3/episodefile?seriesId=$seriesId');
+    final response = await _client.get(uri, headers: {"X-Api-Key": _apiKey});
 
     if (response.statusCode == 200) {
       final List<dynamic> data = json.decode(response.body);
@@ -161,8 +164,8 @@ class SonarrRepository {
   /// This does NOT delete the actual file on disk
   Future<void> deleteEpisodeFile(int episodeFileId) async {
     // logTrace('[Sonarr] deleteEpisodeFile: id=$episodeFileId');
-    final uri = Uri.parse('$_baseUrl/api/v3/episodefile/$episodeFileId?apikey=$_apiKey');
-    final response = await _client.delete(uri);
+    final uri = Uri.parse('$_baseUrl/api/v3/episodefile/$episodeFileId');
+    final response = await _client.delete(uri, headers: {"X-Api-Key": _apiKey});
     // logTrace('[Sonarr] deleteEpisodeFile: status=${response.statusCode}');
 
     // 200/204 = deleted, 404 = already gone — both are fine
@@ -187,9 +190,9 @@ class SonarrRepository {
       '?folder=${Uri.encodeComponent(folder)}'
       '${seriesId != null ? '&seriesId=$seriesId' : ''}'
       '&filterExistingFiles=$filterExistingFiles'
-      '&apikey=$_apiKey',
+      '',
     );
-    final response = await _client.get(uri);
+    final response = await _client.get(uri, headers: {"X-Api-Key": _apiKey});
 
     if (response.statusCode == 200) {
       final results = (json.decode(response.body) as List).cast<Map<String, dynamic>>();
@@ -205,7 +208,7 @@ class SonarrRepository {
     String importMode = 'Copy',
   }) async {
     // logTrace('[Sonarr] manualImport: ${files.length} files, mode=$importMode');
-    final uri = Uri.parse('$_baseUrl/api/v3/command?apikey=$_apiKey');
+    final uri = Uri.parse('$_baseUrl/api/v3/command');
     final payload = {
       "name": "ManualImport",
       "importMode": importMode,
@@ -226,14 +229,14 @@ class SonarrRepository {
   /// Triggers a RescanSeries command so Sonarr re-reads episode files on disk
   Future<void> rescanSeries(int seriesId) async {
     // logTrace('[Sonarr] rescanSeries: seriesId=$seriesId');
-    final uri = Uri.parse('$_baseUrl/api/v3/command?apikey=$_apiKey');
+    final uri = Uri.parse('$_baseUrl/api/v3/command');
     final payload = {"name": "RescanSeries", "seriesId": seriesId};
-    await _client.post(uri, headers: {'Content-Type': 'application/json'}, body: json.encode(payload));
+    await _client.post(uri, headers: {'Content-Type': 'application/json', "X-Api-Key": _apiKey}, body: json.encode(payload));
   }
 
   Future<List<SonarrQualityProfile>> getQualityProfiles() async {
-    final uri = Uri.parse('$_baseUrl/api/v3/qualityprofile?apikey=$_apiKey');
-    final response = await _client.get(uri);
+    final uri = Uri.parse('$_baseUrl/api/v3/qualityprofile');
+    final response = await _client.get(uri, headers: {"X-Api-Key": _apiKey});
 
     if (response.statusCode == 200) {
       final List<dynamic> data = json.decode(response.body);
@@ -243,8 +246,8 @@ class SonarrRepository {
   }
 
   Future<List<SonarrRootFolder>> getRootFolders() async {
-    final uri = Uri.parse('$_baseUrl/api/v3/rootfolder?apikey=$_apiKey');
-    final response = await _client.get(uri);
+    final uri = Uri.parse('$_baseUrl/api/v3/rootfolder');
+    final response = await _client.get(uri, headers: {"X-Api-Key": _apiKey});
 
     if (response.statusCode == 200) {
       final List<dynamic> data = json.decode(response.body);
@@ -254,8 +257,8 @@ class SonarrRepository {
   }
 
   Future<List<SonarrSeries>> getSeries() async {
-    final uri = Uri.parse('$_baseUrl/api/v3/series?apikey=$_apiKey');
-    final response = await _client.get(uri);
+    final uri = Uri.parse('$_baseUrl/api/v3/series');
+    final response = await _client.get(uri, headers: {"X-Api-Key": _apiKey});
 
     if (response.statusCode == 200) {
       final List<dynamic> data = json.decode(response.body);
@@ -267,8 +270,8 @@ class SonarrRepository {
   /// Returns the raw JSON for a single Sonarr series by its internal ID
   Future<Map<String, dynamic>> getSeriesById(int seriesId) async {
     // logTrace('[Sonarr] getSeriesById: id=$seriesId');
-    final uri = Uri.parse('$_baseUrl/api/v3/series/$seriesId?apikey=$_apiKey');
-    final response = await _client.get(uri);
+    final uri = Uri.parse('$_baseUrl/api/v3/series/$seriesId');
+    final response = await _client.get(uri, headers: {"X-Api-Key": _apiKey});
 
     if (response.statusCode == 200) {
       final data = json.decode(response.body) as Map<String, dynamic>;
@@ -284,7 +287,7 @@ class SonarrRepository {
   Future<void> updateSeries(Map<String, dynamic> seriesJson) async {
     final id = seriesJson['id'];
     // logTrace('[Sonarr] updateSeries: id=$id, path="${seriesJson['path']}"');
-    final uri = Uri.parse('$_baseUrl/api/v3/series/$id?apikey=$_apiKey');
+    final uri = Uri.parse('$_baseUrl/api/v3/series/$id');
     final response = await _client.put(
       uri,
       headers: {'Content-Type': 'application/json'},
@@ -305,8 +308,8 @@ class SonarrRepository {
 
   Future<bool> testConnection() async {
     try {
-      final uri = Uri.parse('$_baseUrl/api/v3/system/status?apikey=$_apiKey');
-      final response = await _client.get(uri);
+      final uri = Uri.parse('$_baseUrl/api/v3/system/status');
+      final response = await _client.get(uri, headers: {"X-Api-Key": _apiKey});
       return response.statusCode == 200;
     } catch (_) {
       return false;
@@ -314,7 +317,7 @@ class SonarrRepository {
   }
 
   Future<void> grabRelease(String guid, int indexerId) async {
-    final uri = Uri.parse('$_baseUrl/api/v3/release?apikey=$_apiKey');
+    final uri = Uri.parse('$_baseUrl/api/v3/release');
     final payload = {
       "guid": guid,
       "indexerId": indexerId,

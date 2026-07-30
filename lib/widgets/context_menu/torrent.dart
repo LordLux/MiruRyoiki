@@ -7,7 +7,7 @@ import 'package:flutter_desktop_context_menu/flutter_desktop_context_menu.dart';
 
 import '../../services/downloads/torrent_client.dart';
 import '../../services/downloads/torrent_manager.dart';
-import '../../services/navigation/dialogs2.dart';
+import '../../services/navigation/dialog_framework.dart';
 import '../../services/navigation/navigation.dart';
 import '../../services/navigation/show_info.dart';
 import '../../utils/icons.dart' as icons;

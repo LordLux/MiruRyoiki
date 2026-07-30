@@ -4,7 +4,7 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:provider/provider.dart';
 import '../../manager.dart';
-import '../../services/navigation/dialogs2.dart';
+import '../../services/navigation/dialog_framework.dart';
 import '../../services/navigation/navigation.dart';
 import 'padded_dialog_route.dart';
 

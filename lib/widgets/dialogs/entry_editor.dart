@@ -3,7 +3,6 @@ import 'package:defer_pointer/defer_pointer.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/material.dart' as mat;
 import 'package:miruryoiki/enums.dart';
-import 'package:miruryoiki/utils/color.dart';
 import 'package:miruryoiki/utils/logging.dart';
 import 'package:miruryoiki/widgets/tooltip_wrapper.dart';
 import 'package:provider/provider.dart';
@@ -14,8 +13,8 @@ import '../../models/anilist/user_data.dart';
 import '../../models/anilist/user_list.dart';
 import '../../services/anilist/provider/anilist_provider.dart';
 import '../../services/anilist/queries/anilist_service.dart';
-import '../../services/navigation/dialogs.dart';
-import '../../services/navigation/dialogs2.dart';
+import '../../services/navigation/dialog_functions.dart';
+import '../../services/navigation/dialog_framework.dart';
 import '../../services/navigation/navigation.dart';
 import '../../services/navigation/show_info.dart';
 import '../../utils/time.dart';
@@ -806,7 +805,7 @@ class _EntryEditorShellState extends State<_EntryEditorShell> {
                   ? const SizedBox(width: 14, height: 14, child: ProgressRing(strokeWidth: 2))
                   : Padding(
                       padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                      child: Text('Delete', style: TextStyle(color: getTextColor(Colors.red))),
+                      child: Text('Delete', style: TextStyle(color: Colors.red)),
                     ),
             ),
           ),

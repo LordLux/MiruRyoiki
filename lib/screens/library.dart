@@ -19,7 +19,7 @@ import '../enums.dart';
 import '../services/library/library_provider.dart';
 import '../services/library/scanner/scanner_service.dart';
 import '../models/series.dart';
-import '../services/navigation/dialogs2.dart';
+import '../services/navigation/dialog_framework.dart';
 import '../services/navigation/navigation.dart';
 import '../services/navigation/intents.dart';
 import '../services/navigation/shortcuts.dart';

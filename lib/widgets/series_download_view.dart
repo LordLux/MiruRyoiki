@@ -6,7 +6,7 @@ import 'package:provider/provider.dart';
 import '../models/sonarr/sonarr_quality_profile.dart';
 import '../models/series.dart';
 import '../services/navigation/show_info.dart';
-import '../services/navigation/dialogs2.dart';
+import '../services/navigation/dialog_framework.dart';
 import '../services/downloads/torrent_manager.dart';
 import '../services/library/library_provider.dart';
 import '../models/anilist/anime.dart';

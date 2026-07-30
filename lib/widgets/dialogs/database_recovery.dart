@@ -1,7 +1,7 @@
 import 'package:fluent_ui/fluent_ui.dart' as fluent show InfoBarSeverity;
 import 'package:flutter/material.dart';
 import 'package:miruryoiki/functions.dart';
-import 'package:miruryoiki/services/navigation/dialogs.dart';
+import 'package:miruryoiki/services/navigation/dialog_functions.dart';
 import 'package:miruryoiki/services/navigation/show_info.dart';
 import '../../manager.dart';
 import '../../services/navigation/navigation.dart';

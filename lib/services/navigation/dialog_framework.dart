@@ -7,8 +7,9 @@ import 'dart:ui' show ImageFilter;
 import 'package:miruryoiki/utils/screen.dart';
 import 'dart:math' as math;
 import '../../widgets/frosted_noise.dart';
-import 'dialogs.dart';
 import 'navigation.dart';
+
+bool kReturnTrueCallback() => true;
 
 /// Interface for multi-state dialogs that need to intercept back/dismiss requests and handle them internally (e.g. "go up one step") before letting the navigation framework close the route
 ///

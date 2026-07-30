@@ -7,7 +7,7 @@ import 'package:provider/provider.dart';
 import '../../main.dart';
 import '../../manager.dart';
 import '../../viewmodels/release_calendar_viewmodel.dart';
-import 'dialogs2.dart';
+import 'dialog_framework.dart';
 
 enum NavigationLevel {
   pane, // Top-level navigation items (Library, Settings)

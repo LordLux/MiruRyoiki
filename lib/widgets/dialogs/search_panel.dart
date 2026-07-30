@@ -9,7 +9,7 @@ import '../../models/anilist/anime.dart';
 import '../../services/anilist/linking.dart';
 import '../../services/anilist/provider/anilist_provider.dart';
 import '../../services/file_system/cache.dart';
-import '../../services/navigation/dialogs.dart';
+import '../../services/navigation/dialog_functions.dart';
 import '../../utils/screen.dart';
 import '../../utils/time.dart';
 import '../smooth_scroll.dart';

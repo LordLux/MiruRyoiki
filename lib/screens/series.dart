@@ -14,7 +14,7 @@ import '../models/anilist/anime.dart';
 import '../services/downloads/torrent_manager.dart';
 import '../services/library/library_provider.dart';
 import '../services/lock_manager.dart';
-import '../services/navigation/dialogs2.dart';
+import '../services/navigation/dialog_framework.dart';
 import '../services/episode_navigation/anilist_progress_manager.dart';
 import '../services/navigation/show_info.dart';
 import '../services/navigation/statusbar.dart';

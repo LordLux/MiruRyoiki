@@ -4,7 +4,7 @@ import 'package:flutter/material.dart' as mat;
 import '../../manager.dart';
 import '../../models/torrent_release.dart';
 import '../../services/sonarr/sonarr_service.dart';
-import '../../services/navigation/dialogs.dart';
+import '../../services/navigation/dialog_functions.dart';
 import '../../services/navigation/navigation.dart';
 import '../../utils/units.dart';
 import '../buttons/button.dart';

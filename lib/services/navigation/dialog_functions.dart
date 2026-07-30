@@ -1,14 +1,11 @@
 import 'package:fluent_ui/fluent_ui.dart';
-import 'package:flutter/material.dart' show MaterialState;
 
 import '../../manager.dart';
 import '../../widgets/buttons/wrapper.dart';
 import '../../widgets/dialogs/show_dialog.dart';
 import 'debug.dart';
-import 'dialogs2.dart';
+import 'dialog_framework.dart';
 import 'navigation.dart';
-
-bool kReturnTrueCallback() => true;
 
 /// Core managed dialog function. All simple dialog variants delegate to this.
 Future showManagedDialog(
@@ -285,8 +282,8 @@ class PaddedDialogButton extends StatelessWidget {
           return FilledButton(
             style: FluentTheme.of(context).buttonTheme.filledButtonStyle?.copyWith(backgroundColor: WidgetStateColor.resolveWith(
               (states) {
-                if (states.contains(MaterialState.hovered)) return (Manager.currentDominantColor ?? Manager.accentColor).toAccentColor().light;
-                if (states.contains(MaterialState.pressed)) return (Manager.currentDominantColor ?? Manager.accentColor).toAccentColor().lighter;
+                if (states.contains(WidgetState.hovered)) return (Manager.currentDominantColor ?? Manager.accentColor).toAccentColor().light;
+                if (states.contains(WidgetState.pressed)) return (Manager.currentDominantColor ?? Manager.accentColor).toAccentColor().lighter;
                 return Manager.currentDominantColor ?? Manager.accentColor;
               },
             )),

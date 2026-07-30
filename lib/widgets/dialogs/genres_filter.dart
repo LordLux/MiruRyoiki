@@ -7,7 +7,7 @@ import 'package:provider/provider.dart';
 import '../../enums.dart';
 import '../../manager.dart';
 import '../../services/anilist/queries/anilist_service.dart';
-import '../../services/navigation/dialogs2.dart';
+import '../../services/navigation/dialog_framework.dart';
 import '../../utils/screen.dart';
 import '../../utils/time.dart';
 import '../../viewmodels/library_screen_viewmodel.dart';

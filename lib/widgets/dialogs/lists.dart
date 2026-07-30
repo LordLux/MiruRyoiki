@@ -3,7 +3,7 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/material.dart' as mat;
 import 'package:material_symbols_icons/symbols.dart';
-import 'package:miruryoiki/services/navigation/dialogs2.dart';
+import 'package:miruryoiki/services/navigation/dialog_framework.dart';
 import 'package:provider/provider.dart';
 
 import '../../enums.dart';

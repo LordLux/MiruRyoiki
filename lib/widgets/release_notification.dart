@@ -9,7 +9,7 @@ import 'package:provider/provider.dart';
 
 import '../manager.dart';
 import '../services/anilist/provider/anilist_provider.dart';
-import '../services/navigation/dialogs2.dart';
+import '../services/navigation/dialog_framework.dart';
 import '../services/navigation/navigation.dart';
 import '../utils/screen.dart';
 import '../utils/time.dart';
