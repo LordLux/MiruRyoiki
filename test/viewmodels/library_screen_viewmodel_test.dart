@@ -666,6 +666,42 @@ void main() {
       expect(grouped['B'] ?? [], isEmpty, reason: 'B should stay empty');
     });
 
+    // The real-world trigger for the above, per AniList's own API docs
+    // (MediaListEntry.hiddenFromStatusLists: "If the entry should be hidden
+    // from non-custom lists"): the AniList server itself omits an entry with
+    // hiddenFromStatusLists: true from every default status list
+    // (CURRENT/PLANNING/COMPLETED/DROPPED/PAUSED/REPEATING) in the
+    // MediaListCollection response - it's only returned inside custom lists.
+    // So _anilist.userLists never contains this entry under a standard-list
+    // key at all, which is exactly the highestPriorityList == null condition
+    // the guard above protects. This test wires that up explicitly (an entry
+    // present only in a custom list, flagged hiddenFromStatusLists: true)
+    // rather than just "no standard-list key happens to contain it".
+    test('a series hidden from status lists on AniList is not dumped into an unrelated group', () async {
+      await library.addSeries(_makeSeries(name: 'S', anilistMappings: [_makeMapping(1)]));
+      anilist.setTestUserLists({
+        // AniList never returns this entry under CURRENT (or any other
+        // standard list) once it's hiddenFromStatusLists - only custom_Favorites
+        // sees it. custom_Bystander has no relation to the series and exists
+        // purely to catch the old groups.keys.first fallback bug if it recurs.
+        'custom_Favorites': AnilistUserList(name: 'Favorites', entries: [_makeListEntry(anilistId: 1, hiddenFromStatusLists: true)]),
+        'custom_Bystander': AnilistUserList(name: 'Bystander', entries: []),
+      });
+      // _filterSeries excludes hiddenFromStatusLists series entirely unless
+      // this is on (see isAnilistHidden) - this test is about the grouping
+      // guard, not the hidden-series filter, so opt in to seeing it.
+      Manager.settings.showAnilistHiddenSeries = true;
+      // 'Bystander' seeded first, so groups.keys.first == 'Bystander'.
+      vm.setCustomListOrder(['custom_Bystander', 'custom_Favorites']);
+      vm.onShowGroupedChanged(true);
+      vm.update(library, anilist);
+
+      final grouped = vm.displayData().$2!;
+
+      expect(grouped['Favorites']?.map((s) => s.name), ['S'], reason: 'S is visible through its custom list, per AniList\'s own documented behavior');
+      expect(grouped['Bystander'] ?? [], isEmpty, reason: 'Bystander has no relation to S and must stay empty');
+    });
+
     test('an unlinked series lands in Unlinked', () async {
       await library.addSeries(_makeSeries(name: 'S')); // no anilistMappings -> unlinked
       vm.onShowGroupedChanged(true);
