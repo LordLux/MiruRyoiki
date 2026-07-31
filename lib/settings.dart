@@ -114,10 +114,16 @@ class SettingsManager extends ChangeNotifier {
   int get logRetentionDays => _getInt('logRetentionDays', defaultValue: 7);
   set logRetentionDays(int value) => _setInt('logRetentionDays', value);
 
+  // Defaults to false: a user who right-clicks -> Hide on a series expects
+  // it to actually disappear, not remain visible until they also flip a setting.
   bool get showHiddenSeries => _getBool('showHiddenSeries', defaultValue: false);
   set showHiddenSeries(bool value) => _setBool('showHiddenSeries', value);
 
-  bool get showPrivateSeries => _getBool('showPrivateSeries', defaultValue: false);
+  // Defaults to true: private-on-AniList is the user's own account setting,
+  // not something set from within this app, so there's no equivalent
+  // "I just chose to hide this" expectation - a user wants to see their own
+  // private series here by default.
+  bool get showPrivateSeries => _getBool('showPrivateSeries', defaultValue: true);
   set showPrivateSeries(bool value) => _setBool('showPrivateSeries', value);
 
   bool get useInfiniteScroll => _getBool('useInfiniteScroll', defaultValue: true);
