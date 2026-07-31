@@ -176,4 +176,6 @@ extension AnilistProviderSeriesInfo on AnilistProvider {
   }
 
   bool isAnilistHidden(Series series) => series.isLinked && getMediaListEntries(series).values.any((entry) => entry?.hiddenFromStatusLists == true);
+
+  bool isAnilistPrivate(Series series) => series.isLinked && getMediaListEntries(series).values.any((entry) => entry?.private == true);
 }

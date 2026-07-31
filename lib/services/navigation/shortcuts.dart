@@ -32,6 +32,7 @@ Map<ShortcutActivator, Intent> _buildShortcuts() {
     ctrl(LogicalKeyboardKey.equal): const ZoomInIntent(),
     SingleActivator(LogicalKeyboardKey.numpadAdd, control: !mac, meta: mac): const ZoomInIntent(),
     ctrl(LogicalKeyboardKey.keyH): const ToggleHiddenSeriesIntent(),
+    ctrl(LogicalKeyboardKey.keyH, shift: true): const ToggleAllHiddenSeriesIntent(),
     ctrl(LogicalKeyboardKey.keyR): const ReloadLibraryIntent(),
     const SingleActivator(LogicalKeyboardKey.escape): const BackNavigationIntent(),
     const SingleActivator(LogicalKeyboardKey.f1): const DebugDialogIntent(),
@@ -100,6 +101,13 @@ class _CustomKeyboardListenerState extends State<CustomKeyboardListener> {
       ToggleHiddenSeriesIntent: CallbackAction<ToggleHiddenSeriesIntent>(
         onInvoke: (_) {
           _handleToggleHiddenSeries();
+          return null;
+        },
+      ),
+      // Ctrl + Shift + H
+      ToggleAllHiddenSeriesIntent: CallbackAction<ToggleAllHiddenSeriesIntent>(
+        onInvoke: (_) {
+          _handleToggleAllHiddenSeries();
           return null;
         },
       ),
@@ -215,6 +223,24 @@ class _CustomKeyboardListenerState extends State<CustomKeyboardListener> {
       // list re-filter through their app-scoped ViewModels. The Release Calendar
       // is intentionally not refreshed — its release/notification data does not
       // depend on `showHiddenSeries`.
+      Provider.of<LibraryScreenViewModel>(context, listen: false).invalidateSortCache();
+      Provider.of<NotificationsViewModel>(context, listen: false).sync();
+    }
+  }
+
+  void _handleToggleAllHiddenSeries() {
+    logTrace('Ctrl + Shift + H: Toggle all hidden series (local + private)');
+    final library = Provider.of<Library>(context, listen: false);
+    final scannerService = Provider.of<LibraryScannerService>(context, listen: false);
+    if (library.initialized && !scannerService.isIndexing && homeKey.currentState?.isSeriesView == false) {
+      Manager.settings.showHiddenSeries = !Manager.settings.showHiddenSeries;
+      Manager.settings.showPrivateSeries = !Manager.settings.showPrivateSeries;
+
+      snackBar(
+        Manager.settings.showHiddenSeries ? 'Hidden and private series are now visible' : 'Hidden and private series are now hidden',
+        severity: InfoBarSeverity.info,
+      );
+
       Provider.of<LibraryScreenViewModel>(context, listen: false).invalidateSortCache();
       Provider.of<NotificationsViewModel>(context, listen: false).sync();
     }

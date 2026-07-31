@@ -60,6 +60,7 @@ AnilistMediaListEntry _makeListEntry({
   DateValue? completedAt,
   String? customLists,
   bool hiddenFromStatusLists = false,
+  bool private = false,
 }) {
   return AnilistMediaListEntry(
     id: anilistId,
@@ -74,6 +75,7 @@ AnilistMediaListEntry _makeListEntry({
     completedAt: completedAt,
     customLists: customLists,
     hiddenFromStatusLists: hiddenFromStatusLists,
+    private: private,
   );
 }
 
@@ -687,10 +689,11 @@ void main() {
         'custom_Favorites': AnilistUserList(name: 'Favorites', entries: [_makeListEntry(anilistId: 1, hiddenFromStatusLists: true)]),
         'custom_Bystander': AnilistUserList(name: 'Bystander', entries: []),
       });
-      // _filterSeries excludes hiddenFromStatusLists series entirely unless
-      // this is on (see isAnilistHidden) - this test is about the grouping
-      // guard, not the hidden-series filter, so opt in to seeing it.
-      Manager.settings.showAnilistHiddenSeries = true;
+      // hiddenFromStatusLists no longer gates _filterSeries at all (that was
+      // a misunderstanding of the field's meaning - it's an AniList
+      // organizational flag, not a privacy one; showPrivateSeries/`private`
+      // is the actual privacy-driven filter now), so no settings opt-in is
+      // needed here - this test is purely about the grouping guard.
       // 'Bystander' seeded first, so groups.keys.first == 'Bystander'.
       vm.setCustomListOrder(['custom_Bystander', 'custom_Favorites']);
       vm.onShowGroupedChanged(true);
@@ -742,25 +745,25 @@ void main() {
       expect(vm.displayData().$1.map((s) => s.name).toSet(), {'Visible', 'Hidden'});
     });
 
-    test('showAnilistHiddenSeries excludes anilist-hidden series when off, includes when on', () async {
+    test('showPrivateSeries excludes private series when off, includes when on', () async {
       await library.addSeries(_makeSeries(name: 'Visible', path: r'M:\V', anilistMappings: [_makeMapping(1)]));
-      await library.addSeries(_makeSeries(name: 'AnilistHidden', path: r'M:\AH', anilistMappings: [_makeMapping(2)]));
+      await library.addSeries(_makeSeries(name: 'Private', path: r'M:\P', anilistMappings: [_makeMapping(2)]));
       anilist.setTestUserLists({
         AnilistListApiStatus.CURRENT.name_: AnilistUserList(
           name: 'Watching',
           entries: [
             _makeListEntry(anilistId: 1),
-            _makeListEntry(anilistId: 2, hiddenFromStatusLists: true),
+            _makeListEntry(anilistId: 2, private: true),
           ],
         ),
       });
       vm.update(library, anilist);
 
-      Manager.settings.showAnilistHiddenSeries = false;
+      Manager.settings.showPrivateSeries = false;
       expect(vm.displayData().$1.map((s) => s.name).toSet(), {'Visible'});
 
-      Manager.settings.showAnilistHiddenSeries = true;
-      expect(vm.displayData().$1.map((s) => s.name).toSet(), {'Visible', 'AnilistHidden'});
+      Manager.settings.showPrivateSeries = true;
+      expect(vm.displayData().$1.map((s) => s.name).toSet(), {'Visible', 'Private'});
     });
 
     test('onlyLinked (LibraryView.linked) excludes unlinked series', () async {

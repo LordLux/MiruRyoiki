@@ -447,19 +447,19 @@ class SettingsScreenState extends State<SettingsScreen> with AutomaticKeepAliveC
             ),
           ),
 
-          // Toggle for showing series hidden from AniList status lists
+          // Toggle for showing series marked private on AniList
           NormalSwitch(
             ToggleSwitch(
-              checked: Manager.settings.showAnilistHiddenSeries,
+              checked: Manager.settings.showPrivateSeries,
               content: Flexible(
-                child: Text('Show series hidden from status lists', style: Manager.bodyStyle),
+                child: Text('Show private series', style: Manager.bodyStyle),
               ),
               onChanged: (value) {
-                setState(() => Manager.settings.showAnilistHiddenSeries = value);
+                setState(() => Manager.settings.showPrivateSeries = value);
                 context.read<LibraryScreenViewModel>().invalidateSortCache();
               },
             ),
-            tooltip: 'Show series hidden from status lists (these will only be visible in custom lists)',
+            tooltip: 'Show series you\'ve marked private on AniList (hidden from other people viewing your public list)',
           ),
 
           // VDiv(24),

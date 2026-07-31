@@ -117,8 +117,8 @@ class SettingsManager extends ChangeNotifier {
   bool get showHiddenSeries => _getBool('showHiddenSeries', defaultValue: false);
   set showHiddenSeries(bool value) => _setBool('showHiddenSeries', value);
 
-  bool get showAnilistHiddenSeries => _getBool('showAnilistHiddenSeries', defaultValue: false);
-  set showAnilistHiddenSeries(bool value) => _setBool('showAnilistHiddenSeries', value);
+  bool get showPrivateSeries => _getBool('showPrivateSeries', defaultValue: false);
+  set showPrivateSeries(bool value) => _setBool('showPrivateSeries', value);
 
   bool get useInfiniteScroll => _getBool('useInfiniteScroll', defaultValue: true);
   set useInfiniteScroll(bool value) => _setBool('useInfiniteScroll', value);

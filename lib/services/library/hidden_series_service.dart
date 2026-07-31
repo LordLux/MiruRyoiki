@@ -38,13 +38,13 @@ class HiddenSeriesService extends ChangeNotifier {
   /// Check if a series should be filtered out based on current settings
   bool shouldFilterSeries(Series series) {
     final showHidden = _settings?.showHiddenSeries ?? false;
-    final showAnilistHidden = _settings?.showAnilistHiddenSeries ?? false;
+    final showPrivate = _settings?.showPrivateSeries ?? false;
 
     // Check forced hidden status
     if (!showHidden && series.isForcedHidden) return true;
 
-    // Check AniList hidden status
-    if (!showAnilistHidden && _anilistProvider != null && _anilistProvider!.isAnilistHidden(series)) return true;
+    // Check AniList private status
+    if (!showPrivate && _anilistProvider != null && _anilistProvider!.isAnilistPrivate(series)) return true;
 
     // Check if any of the series' AniList IDs are in our hidden cache
     for (final mapping in series.anilistMappings) {
@@ -66,8 +66,8 @@ class HiddenSeriesService extends ChangeNotifier {
         }
       }
 
-      // Add ALL AniList IDs for AniList hidden series
-      if (_anilistProvider != null && _anilistProvider!.isAnilistHidden(series)) {
+      // Add ALL AniList IDs for private series
+      if (_anilistProvider != null && _anilistProvider!.isAnilistPrivate(series)) {
         for (final mapping in series.anilistMappings) {
           _hiddenAnilistIds.add(mapping.anilistId);
         }
@@ -101,7 +101,7 @@ class HiddenSeriesService extends ChangeNotifier {
   void updateSeriesHiddenStatus(Series series) {
     if (series.anilistMappings.isEmpty || _anilistProvider == null) return;
 
-    bool shouldBeHidden = series.isForcedHidden || _anilistProvider!.isAnilistHidden(series);
+    bool shouldBeHidden = series.isForcedHidden || _anilistProvider!.isAnilistPrivate(series);
     bool wasModified = false;
 
     for (final mapping in series.anilistMappings) {
@@ -130,6 +130,6 @@ class HiddenSeriesService extends ChangeNotifier {
     return 'Hidden AniList IDs Cache: ${_hiddenAnilistIds.length} entries\n'
         'IDs: ${_hiddenAnilistIds.toList()}\n'
         'Show Hidden Series: ${_settings?.showHiddenSeries ?? false}\n'
-        'Show AniList Hidden Series: ${_settings?.showAnilistHiddenSeries ?? false}';
+        'Show Private Series: ${_settings?.showPrivateSeries ?? false}';
   }
 }

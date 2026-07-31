@@ -22,7 +22,7 @@ class _CacheParameters {
   final bool sortDescending;
   final bool showGrouped;
   final bool showHiddenSeries;
-  final bool showAnilistHiddenSeries;
+  final bool showPrivateSeries;
   final List<String> customListOrder;
   final Set<String> hiddenLists;
   final List<String> selectedGenres;
@@ -36,7 +36,7 @@ class _CacheParameters {
     required this.sortDescending,
     required this.showGrouped,
     required this.showHiddenSeries,
-    required this.showAnilistHiddenSeries,
+    required this.showPrivateSeries,
     required this.customListOrder,
     required this.hiddenLists,
     required this.selectedGenres,
@@ -55,7 +55,7 @@ class _CacheParameters {
           sortDescending == other.sortDescending &&
           showGrouped == other.showGrouped &&
           showHiddenSeries == other.showHiddenSeries &&
-          showAnilistHiddenSeries == other.showAnilistHiddenSeries &&
+          showPrivateSeries == other.showPrivateSeries &&
           _listEquals(customListOrder, other.customListOrder) &&
           _setEquals(hiddenLists, other.hiddenLists) &&
           _listEquals(selectedGenres, other.selectedGenres) &&
@@ -70,7 +70,7 @@ class _CacheParameters {
       sortDescending.hashCode ^
       showGrouped.hashCode ^
       showHiddenSeries.hashCode ^
-      showAnilistHiddenSeries.hashCode ^
+      showPrivateSeries.hashCode ^
       customListOrder.hashCode ^
       hiddenLists.hashCode ^
       selectedGenres.hashCode ^
@@ -320,7 +320,7 @@ class LibraryScreenViewModel extends DisposableViewModel {
         sortDescending: _sortDescending,
         showGrouped: _showGrouped,
         showHiddenSeries: Manager.settings.showHiddenSeries,
-        showAnilistHiddenSeries: Manager.settings.showAnilistHiddenSeries,
+        showPrivateSeries: Manager.settings.showPrivateSeries,
         customListOrder: List.from(customListOrder),
         hiddenLists: Set.from(hiddenLists),
         selectedGenres: List.from(selectedGenres),
@@ -395,12 +395,12 @@ class LibraryScreenViewModel extends DisposableViewModel {
   /// Filter the series in Hidden, Linked, Genres
   List<Series> _filterSeries(List<Series> series) {
     final bool showHidden = Manager.settings.showHiddenSeries;
-    final bool showAnilistHidden = Manager.settings.showAnilistHiddenSeries;
+    final bool showPrivate = Manager.settings.showPrivateSeries;
     final bool onlyLinked = _currentView == LibraryView.linked;
 
     return series.where((s) {
       if (!showHidden && s.isForcedHidden) return false;
-      if (!showAnilistHidden && _anilist.isAnilistHidden(s)) return false;
+      if (!showPrivate && _anilist.isAnilistPrivate(s)) return false;
       if (onlyLinked && !s.isLinked) return false;
 
       // Filter by genres

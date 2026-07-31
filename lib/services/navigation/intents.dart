@@ -23,6 +23,10 @@ class ToggleHiddenSeriesIntent extends Intent {
   const ToggleHiddenSeriesIntent();
 }
 
+class ToggleAllHiddenSeriesIntent extends Intent {
+  const ToggleAllHiddenSeriesIntent();
+}
+
 class ReloadLibraryIntent extends Intent {
   const ReloadLibraryIntent();
 }
