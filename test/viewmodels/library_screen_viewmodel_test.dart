@@ -483,13 +483,11 @@ void main() {
 
       vm.onSortDirectionChanged();
       final descending = vm.displayData().$1.map((s) => s.name).toList();
-      // Expected/correct behavior per the audit: a series with no completion
-      // date should stay last regardless of direction (matching how nulls are
-      // pushed to the end in ascending mode). Actual behavior: the swap-args
-      // reversal flips it to the front instead. This assertion is expected to
-      // fail - see the note above; do not "fix" this by editing the
-      // production comparator, that decision belongs to the user.
-      expect(descending, ['HasDate', 'NoDate'], reason: 'descending: null completion date should still sort last, but the swap-arguments reversal flips it to the front instead');
+      // A series with no completion date stays last regardless of direction:
+      // the nullable-date branches fold _sortDescending into their own
+      // comparator instead of relying on the generic swap-args reversal, so
+      // null placement is no longer direction-dependent.
+      expect(descending, ['HasDate', 'NoDate'], reason: 'descending: null completion date should still sort last');
     });
 
     test('sorts by averageScore ascending and descending', () async {
@@ -662,13 +660,10 @@ void main() {
       final grouped = vm.displayData().$2!;
 
       expect(grouped['A']?.map((s) => s.name), ['S'], reason: 'S belongs in A via custom-list membership');
-      // Expected/correct behavior: B has no relation to this series and
-      // should stay empty. Actual behavior: highestPriorityList is null (no
-      // standard-list match), so the "Add to Unlinked if not found" branch
-      // fires; since groups has no 'Unlinked' key, it falls back to
-      // `groups.keys.first`, which is 'B' here - not because of anything to
-      // do with B, purely because of customListOrder's iteration order.
-      expect(grouped['B'] ?? [], isEmpty, reason: 'B should stay empty; do not "fix" this by editing the production code, that decision belongs to the user');
+      // B has no relation to this series and stays empty: the "no standard-
+      // list match" branch no longer falls back to `groups.keys.first` when
+      // there's no genuine 'Unlinked' key for a linked series.
+      expect(grouped['B'] ?? [], isEmpty, reason: 'B should stay empty');
     });
 
     test('an unlinked series lands in Unlinked', () async {
@@ -777,12 +772,14 @@ void main() {
       // can't be called directly from this test file. This mirrors the
       // comparator's logic verbatim to test it in isolation, in both argument
       // orders, the way List.sort actually invokes a Comparator.
+      // Kept in sync with the production fix: bIndex == -1 now returns -1
+      // (previously also returned 1, which is what made this a real bug).
       int comparator(String aPath, String bPath, List<String> customOrder, String aName, String bName) {
         final aIndex = customOrder.indexOf(aPath);
         final bIndex = customOrder.indexOf(bPath);
         if (aIndex == -1 && bIndex == -1) return aName.compareTo(bName);
         if (aIndex == -1) return 1;
-        if (bIndex == -1) return 1; // mirrors the production code as written
+        if (bIndex == -1) return -1;
         return aIndex.compareTo(bIndex);
       }
 
@@ -791,13 +788,11 @@ void main() {
       final inOrderVsNotInOrder = comparator(r'M:\InOrder', r'M:\NotInOrder', order, 'InOrder', 'NotInOrder');
       final notInOrderVsInOrder = comparator(r'M:\NotInOrder', r'M:\InOrder', order, 'NotInOrder', 'InOrder');
 
-      // Expected/correct behavior: for two distinct items, comparator(a, b)
-      // and comparator(b, a) must have opposite signs - the item outside the
-      // custom order should sort after the one that's in it regardless of
-      // which argument order it's called with. Do not "fix" this by editing
-      // the production comparator; that decision belongs to the user.
+      // comparator(a, b) and comparator(b, a) must have opposite signs - the
+      // item outside the custom order should sort after the one that's in it
+      // regardless of which argument order it's called with.
       expect(inOrderVsNotInOrder, lessThan(0), reason: 'InOrder should sort before NotInOrder');
-      expect(notInOrderVsInOrder, greaterThan(0), reason: 'NotInOrder should sort after InOrder, but the production code returns 1 (not -1) for this branch, so both calls currently return a positive number');
+      expect(notInOrderVsInOrder, greaterThan(0), reason: 'NotInOrder should sort after InOrder');
     });
   });
 }

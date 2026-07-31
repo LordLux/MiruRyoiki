@@ -470,7 +470,7 @@ class LibraryScreenViewModel extends DisposableViewModel {
           if (aDate == null) return 1;
           if (bDate == null) return -1;
 
-          return aDate.compareTo(bDate);
+          return _sortDescending ? bDate.compareTo(aDate) : aDate.compareTo(bDate);
         };
 
       // Date the user completed watching the series (latest across all mappings)
@@ -483,7 +483,7 @@ class LibraryScreenViewModel extends DisposableViewModel {
           if (aDate == null) return 1;
           if (bDate == null) return -1;
 
-          return aDate.compareTo(bDate);
+          return _sortDescending ? bDate.compareTo(aDate) : aDate.compareTo(bDate);
         };
 
       // Average score from Anilist
@@ -504,7 +504,7 @@ class LibraryScreenViewModel extends DisposableViewModel {
           if (aDate == null) return 1;
           if (bDate == null) return -1;
 
-          return aDate.compareTo(bDate);
+          return _sortDescending ? bDate.compareTo(aDate) : aDate.compareTo(bDate);
         };
 
       // Popularity from Anilist (highest across all mappings)
@@ -521,7 +521,8 @@ class LibraryScreenViewModel extends DisposableViewModel {
     }
 
     // Apply the sorting direction
-    if (_sortDescending) {
+    const selfDirectionAware = {SortOrder.startDate, SortOrder.completedDate, SortOrder.releaseDate};
+    if (_sortDescending && !selfDirectionAware.contains(_sortOrder)) {
       seriesCopy.sort((a, b) => comparator(b, a)); // Reverse the comparison
     } else {
       seriesCopy.sort(comparator);
@@ -628,13 +629,14 @@ class LibraryScreenViewModel extends DisposableViewModel {
             if (groups.containsKey(displayName)) {
               groups[displayName]?.add(series);
             }
-          } else {
-            // Add to Unlinked if not found in any standard list
-            final unlinkedKey = groups.keys.firstWhere(
-              (k) => k == 'Unlinked',
-              orElse: () => groups.keys.first,
-            );
-            groups[unlinkedKey]?.add(series);
+          } else if (groups.containsKey('Unlinked')) {
+            // A linked series' groups map never actually seeds an 'Unlinked'
+            // key (that's only for unlinked series below), so in practice
+            // this branch is unreachable for a linked series - it's a guard,
+            // not a real fallback. Previously this fell back to
+            // `groups.keys.first` when no 'Unlinked' key existed, which
+            // dumped the series into an arbitrary, unrelated group.
+            groups['Unlinked']?.add(series);
           }
         }
       } else {
@@ -673,7 +675,7 @@ class LibraryScreenViewModel extends DisposableViewModel {
           // Series not in custom order go to the end, sorted alphabetically
           if (aIndex == -1 && bIndex == -1) return a.name.compareTo(b.name);
           if (aIndex == -1) return 1;
-          if (bIndex == -1) return 1;
+          if (bIndex == -1) return -1;
           return aIndex.compareTo(bIndex);
         });
       }
