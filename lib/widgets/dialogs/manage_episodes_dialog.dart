@@ -254,7 +254,13 @@ class _ManageEpisodesDialogState extends State<ManageEpisodesDialog> {
       try {
         await controller.ensureSonarrSeriesPath(seriesId, widget.localSeries!.path.path);
       } catch (e) {
+        // Without a matching series path Sonarr treats every file as a new download and copies it into its old folder
         logErr('Failed to update Sonarr series path', e);
+        if (mounted) {
+          setState(() => _isSyncing = false);
+          snackBar("Couldn't update the Sonarr series path, nothing was imported", severity: InfoBarSeverity.error, exception: e);
+        }
+        return;
       }
     }
 
