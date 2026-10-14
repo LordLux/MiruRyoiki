@@ -1,4 +1,8 @@
 import 'dart:convert';
+import 'dart:async';
+import 'dart:io';
+import 'sonarr_exceptions.dart';
+
 import 'package:http/http.dart' as http;
 import 'package:miruryoiki/utils/text.dart';
 import '../../models/sonarr/sonarr_episode.dart';
@@ -21,27 +25,109 @@ class SonarrRepository {
         _apiKey = apiKey,
         _client = client ?? http.Client();
 
+  /// Upper bound for a single request, so an unresponsive host fails instead of hanging forever
+  ///
+  /// Generous because interactive release searches wait on every indexer
+  static const Duration _requestTimeout = Duration(minutes: 2);
+
+  Future<http.Response> _get(Uri uri) async {
+    return _request(() => _client.get(uri, headers: {"X-Api-Key": _apiKey}));
+  }
+
+  Future<http.Response> _post(Uri uri, {required dynamic body}) async {
+    return _request(() => _client.post(
+      uri,
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Api-Key': _apiKey,
+      },
+      body: json.encode(body),
+    ));
+  }
+
+  Future<http.Response> _put(Uri uri, {required dynamic body}) async {
+    return _request(() => _client.put(
+      uri,
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Api-Key': _apiKey,
+      },
+      body: json.encode(body),
+    ));
+  }
+
+  Future<http.Response> _delete(Uri uri) async {
+    return _request(() => _client.delete(uri, headers: {"X-Api-Key": _apiKey}));
+  }
+
+  Future<http.Response> _request(Future<http.Response> Function() requestFunc) async {
+    try {
+      final response = await requestFunc().timeout(_requestTimeout);
+      _handleError(response);
+      return response;
+    } on IOException catch (_) {
+      // SocketException, TlsException/HandshakeException, ...
+      throw SonarrConnectionException();
+    } on http.ClientException catch (_) {
+      throw SonarrConnectionException();
+    } on TimeoutException catch (_) {
+      throw SonarrConnectionException('Connection Timed Out');
+    }
+  }
+
+  /// Decodes a successful response body, e.g. a reverse proxy answering 200 with an HTML login page is not valid JSON
+  dynamic _decode(http.Response response) {
+    try {
+      return json.decode(response.body);
+    } on FormatException catch (_) {
+      throw SonarrException('Invalid response from Sonarr (${response.statusCode})');
+    }
+  }
+
+  void _handleError(http.Response response) {
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      return;
+    }
+    if (response.statusCode == 401) {
+      throw SonarrUnauthorizedException();
+    }
+    if (response.statusCode == 404) {
+      throw SonarrNotFoundException();
+    }
+    if (response.statusCode >= 500) {
+      throw SonarrServerException();
+    }
+    if (response.statusCode == 400) {
+      String msg = 'Bad Request (400)';
+      try {
+        final data = json.decode(response.body);
+        if (data is List && data.isNotEmpty && data[0] is Map && data[0].containsKey('errorMessage')) {
+          msg = data[0]['errorMessage'];
+        } else if (data is Map && data.containsKey('message')) {
+          msg = data['message'];
+        }
+      } catch (_) {}
+      throw SonarrBadRequestException(msg);
+    }
+    throw SonarrException('Unexpected error: ${response.statusCode} - ${response.body}');
+  }
+
   /// Returns the internal Sonarr series ID for a given TVDB ID, or null if not found
   Future<int?> getSeriesIdByTvdbId(int tvdbId) async {
     final uri = Uri.parse('$_baseUrl/api/v3/series?tvdbId=$tvdbId');
-    final response = await _client.get(uri, headers: {"X-Api-Key": _apiKey});
-    if (response.statusCode == 200) {
-      final List<dynamic> data = json.decode(response.body);
-      if (data.isNotEmpty) return data.first['id'] as int;
-    }
+    final response = await _get(uri);
+    final List<dynamic> data = _decode(response);
+    if (data.isNotEmpty) return data.first['id'] as int;
     return null;
   }
 
   /// Lookups up Series in Sonarr Skyhook
   Future<List<SonarrSeries>> lookupSeries(String term) async {
     final uri = Uri.parse('$_baseUrl/api/v3/series/lookup?term=${Uri.encodeComponent(term)}');
-    final response = await _client.get(uri, headers: {"X-Api-Key": _apiKey});
+    final response = await _get(uri);
 
-    if (response.statusCode == 200) {
-      final List<dynamic> data = json.decode(response.body);
-      return data.map((json) => SonarrSeries.fromJson(json)).toList();
-    }
-    throw Exception('Failed to lookup series');
+    final List<dynamic> data = _decode(response);
+    return data.map((json) => SonarrSeries.fromJson(json)).toList();
   }
 
   /// Returns the internal Sonarr series ID, adding the series if it doesn't exist yet
@@ -54,14 +140,11 @@ class SonarrRepository {
   }) async {
     // logTrace('[Sonarr] ensureSeriesExists: tvdbId=$tvdbId, title="$title"');
     final checkUri = Uri.parse('$_baseUrl/api/v3/series?tvdbId=$tvdbId');
-    final checkResponse = await _client.get(checkUri, headers: {"X-Api-Key": _apiKey});
+    final checkResponse = await _get(checkUri);
 
-    if (checkResponse.statusCode == 200) {
-      final List<dynamic> data = json.decode(checkResponse.body);
-      if (data.isNotEmpty) {
-        // logTrace('[Sonarr] Series already exists: id=${data.first['id']}');
-        return data.first['id'];
-      }
+    final List<dynamic> data = _decode(checkResponse);
+    if (data.isNotEmpty) {
+      return data.first['id'];
     }
 
     final addUri = Uri.parse('$_baseUrl/api/v3/series');
@@ -79,21 +162,10 @@ class SonarrRepository {
       if (path != null) "path": path,
     };
 
-    final addResponse = await _client.post(
-      addUri,
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Api-Key': _apiKey,
-      },
-      body: json.encode(payload),
-    );
+    final addResponse = await _post(addUri, body: payload);
 
-    if (addResponse.statusCode == 201) {
-      final data = json.decode(addResponse.body);
-      return data['id'];
-    }
-
-    throw Exception('Failed to add series to Sonarr: ${addResponse.body}'); // TODO try to match via title, otherwise ask user to add manually
+    final addData = _decode(addResponse);
+    return addData['id'] as int; // TODO try to match via title, otherwise ask user to add manually
   }
 
   /// Searches for available releases matching a series, optionally filtered by season/episode
@@ -109,68 +181,46 @@ class SonarrRepository {
     if (seasonNumber != null) params += '&seasonNumber=$seasonNumber';
 
     final uri = Uri.parse('$_baseUrl$endpoint?$params');
-    final response = await _client.get(uri, headers: {"X-Api-Key": _apiKey});
+    final response = await _get(uri);
 
-    if (response.statusCode == 200) {
-      final List<dynamic> data = json.decode(response.body);
-      return data.map((json) => SonarrRelease.fromJson(json)).toList();
-    }
-
-    throw Exception('Failed to search releases');
+    final List<dynamic> data = _decode(response);
+    return data.map((json) => SonarrRelease.fromJson(json)).toList();
   }
 
   Future<List<SonarrRelease>> searchEpisodeReleases(int episodeId) async {
     final uri = Uri.parse('$_baseUrl/api/v3/release?episodeId=$episodeId');
-    final response = await _client.get(uri, headers: {"X-Api-Key": _apiKey});
+    final response = await _get(uri);
 
-    if (response.statusCode == 200) {
-      final List<dynamic> data = json.decode(response.body);
-      return data.map((json) => SonarrRelease.fromJson(json)).toList();
-    }
-    throw Exception('Failed to search episode releases');
+    final List<dynamic> data = _decode(response);
+    return data.map((json) => SonarrRelease.fromJson(json)).toList();
   }
   
   Future<List<SonarrEpisode>> getEpisodes(int sonarrSeriesId) async {
     // logTrace('[Sonarr] getEpisodes: seriesId=$sonarrSeriesId');
     final uri = Uri.parse('$_baseUrl/api/v3/episode?seriesId=$sonarrSeriesId');
-    final response = await _client.get(uri, headers: {"X-Api-Key": _apiKey});
+    final response = await _get(uri);
 
-    if (response.statusCode == 200) {
-      final List<dynamic> data = json.decode(response.body);
-      final episodes = data.map((e) => SonarrEpisode.fromJson(e)).toList();
-      // logTrace('[Sonarr] getEpisodes: got ${episodes.length} episodes (${episodes.where((e) => e.hasFile).length} with files)');
-      return episodes;
-    }
-    throw Exception('Failed to load episodes');
+    final List<dynamic> data = _decode(response);
+    return data.map((e) => SonarrEpisode.fromJson(e)).toList();
   }
 
   /// Returns all episode files Sonarr has imported for a series
   Future<List<SonarrEpisodeFile>> getEpisodeFiles(int seriesId) async {
     // logTrace('[Sonarr] getEpisodeFiles: seriesId=$seriesId');
     final uri = Uri.parse('$_baseUrl/api/v3/episodefile?seriesId=$seriesId');
-    final response = await _client.get(uri, headers: {"X-Api-Key": _apiKey});
+    final response = await _get(uri);
 
-    if (response.statusCode == 200) {
-      final List<dynamic> data = json.decode(response.body);
-      final files = data.map((e) => SonarrEpisodeFile.fromJson(e)).toList();
-      // logTrace('[Sonarr] getEpisodeFiles: got ${files.length} files');
-      return files;
-    }
-    throw Exception('Failed to load episode files');
+    final List<dynamic> data = _decode(response);
+    return data.map((e) => SonarrEpisodeFile.fromJson(e)).toList();
   }
 
-  /// Deletes an episode file record from Sonarr (unlinks it from the episode)
-  ///
-  /// This does NOT delete the actual file on disk
   Future<void> deleteEpisodeFile(int episodeFileId) async {
     // logTrace('[Sonarr] deleteEpisodeFile: id=$episodeFileId');
     final uri = Uri.parse('$_baseUrl/api/v3/episodefile/$episodeFileId');
-    final response = await _client.delete(uri, headers: {"X-Api-Key": _apiKey});
-    // logTrace('[Sonarr] deleteEpisodeFile: status=${response.statusCode}');
-
-    // 200/204 = deleted, 404 = already gone — both are fine
-    if (response.statusCode != 200 && response.statusCode != 204 && response.statusCode != 404) {
-      throw Exception('Failed to delete episode file $episodeFileId: ${response.body}');
+    try {
+      await _delete(uri);
+    } on SonarrNotFoundException catch (_) {
+      // 404 is fine for deletion (already gone)
     }
   }
 
@@ -192,38 +242,28 @@ class SonarrRepository {
       '&filterExistingFiles=$filterExistingFiles'
       '',
     );
-    final response = await _client.get(uri, headers: {"X-Api-Key": _apiKey});
+    final response = await _get(uri);
 
-    if (response.statusCode == 200) {
-      final results = (json.decode(response.body) as List).cast<Map<String, dynamic>>();
-      // logTrace('[Sonarr] previewManualImport: got ${results.length} file previews');
-      return results;
-    }
-    throw Exception('Failed to preview manual import (${response.statusCode}): ${response.body}');
+    return (_decode(response) as List).cast<Map<String, dynamic>>();
   }
 
   /// Triggers a manual import of files, linking them to specific episodes
+  ///
+  /// Each file item should carry the internal series/episode ids and the `quality` object from [previewManualImport], so Sonarr does not fall back to filename parsing
+  ///
+  /// [importMode] only matters for files outside the Sonarr series folder: `Copy` leaves the source in place, `Move` relocates it. Files already inside the series folder are registered where they are
   Future<void> manualImport({
     required List<Map<String, dynamic>> files,
     String importMode = 'Copy',
   }) async {
-    // logTrace('[Sonarr] manualImport: ${files.length} files, mode=$importMode');
     final uri = Uri.parse('$_baseUrl/api/v3/command');
     final payload = {
-      "name": "ManualImport",
-      "importMode": importMode,
-      "files": files,
+      'name': 'ManualImport',
+      'importMode': importMode,
+      'files': files,
     };
 
-    final response = await _client.post(
-      uri,
-      headers: {'Content-Type': 'application/json'},
-      body: json.encode(payload),
-    );
-
-    if (response.statusCode != 201 && response.statusCode != 200) {
-      throw Exception('Manual import failed: ${response.body}');
-    }
+    await _post(uri, body: payload);
   }
 
   /// Triggers a RescanSeries command so Sonarr re-reads episode files on disk
@@ -231,54 +271,40 @@ class SonarrRepository {
     // logTrace('[Sonarr] rescanSeries: seriesId=$seriesId');
     final uri = Uri.parse('$_baseUrl/api/v3/command');
     final payload = {"name": "RescanSeries", "seriesId": seriesId};
-    await _client.post(uri, headers: {'Content-Type': 'application/json', "X-Api-Key": _apiKey}, body: json.encode(payload));
+    await _post(uri, body: payload);
   }
 
   Future<List<SonarrQualityProfile>> getQualityProfiles() async {
     final uri = Uri.parse('$_baseUrl/api/v3/qualityprofile');
-    final response = await _client.get(uri, headers: {"X-Api-Key": _apiKey});
+    final response = await _get(uri);
 
-    if (response.statusCode == 200) {
-      final List<dynamic> data = json.decode(response.body);
-      return data.map((e) => SonarrQualityProfile.fromJson(e)).toList();
-    }
-    throw Exception('Failed to load quality profiles');
+    final List<dynamic> data = _decode(response);
+    return data.map((e) => SonarrQualityProfile.fromJson(e)).toList();
   }
 
   Future<List<SonarrRootFolder>> getRootFolders() async {
     final uri = Uri.parse('$_baseUrl/api/v3/rootfolder');
-    final response = await _client.get(uri, headers: {"X-Api-Key": _apiKey});
+    final response = await _get(uri);
 
-    if (response.statusCode == 200) {
-      final List<dynamic> data = json.decode(response.body);
-      return data.map((e) => SonarrRootFolder.fromJson(e)).toList();
-    }
-    throw Exception('Failed to load root folders');
+    final List<dynamic> data = _decode(response);
+    return data.map((e) => SonarrRootFolder.fromJson(e)).toList();
   }
 
   Future<List<SonarrSeries>> getSeries() async {
     final uri = Uri.parse('$_baseUrl/api/v3/series');
-    final response = await _client.get(uri, headers: {"X-Api-Key": _apiKey});
+    final response = await _get(uri);
 
-    if (response.statusCode == 200) {
-      final List<dynamic> data = json.decode(response.body);
-      return data.map((e) => SonarrSeries.fromJson(e)).toList();
-    }
-    throw Exception('Failed to load series');
+    final List<dynamic> data = _decode(response);
+    return data.map((e) => SonarrSeries.fromJson(e)).toList();
   }
 
   /// Returns the raw JSON for a single Sonarr series by its internal ID
   Future<Map<String, dynamic>> getSeriesById(int seriesId) async {
     // logTrace('[Sonarr] getSeriesById: id=$seriesId');
     final uri = Uri.parse('$_baseUrl/api/v3/series/$seriesId');
-    final response = await _client.get(uri, headers: {"X-Api-Key": _apiKey});
+    final response = await _get(uri);
 
-    if (response.statusCode == 200) {
-      final data = json.decode(response.body) as Map<String, dynamic>;
-      // logTrace('[Sonarr] getSeriesById: "${data['title']}", path="${data['path']}"');
-      return data;
-    }
-    throw Exception('Failed to load series $seriesId');
+    return _decode(response) as Map<String, dynamic>;
   }
 
   /// Updates the series path in Sonarr via PUT
@@ -288,15 +314,7 @@ class SonarrRepository {
     final id = seriesJson['id'];
     // logTrace('[Sonarr] updateSeries: id=$id, path="${seriesJson['path']}"');
     final uri = Uri.parse('$_baseUrl/api/v3/series/$id');
-    final response = await _client.put(
-      uri,
-      headers: {'Content-Type': 'application/json'},
-      body: json.encode(seriesJson),
-    );
-
-    if (response.statusCode != 200 && response.statusCode != 202) {
-      throw Exception('Failed to update series: ${response.body}');
-    }
+    await _put(uri, body: seriesJson);
   }
 
   /// Updates only the `path` field of an existing Sonarr series
@@ -309,7 +327,7 @@ class SonarrRepository {
   Future<bool> testConnection() async {
     try {
       final uri = Uri.parse('$_baseUrl/api/v3/system/status');
-      final response = await _client.get(uri, headers: {"X-Api-Key": _apiKey});
+      final response = await _get(uri);
       return response.statusCode == 200;
     } catch (_) {
       return false;
@@ -323,11 +341,7 @@ class SonarrRepository {
       "indexerId": indexerId,
     };
 
-    await _client.post(
-      uri,
-      headers: {'Content-Type': 'application/json'},
-      body: json.encode(payload),
-    );
+    await _post(uri, body: payload);
   }
   static String get defaultUrlPort => 'http://localhost:8989';
 }
