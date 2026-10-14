@@ -77,6 +77,16 @@ class _CustomKeyboardListenerState extends State<CustomKeyboardListener> {
     HardwareKeyboard.instance.addHandler(_syncModifierState);
     _shortcuts = _buildShortcuts();
     _actions = {
+      // Ctrl + F
+      OpenSearchIntent: CallbackAction<OpenSearchIntent>(
+        onInvoke: (_) {
+          // Handled here rather than inside the Library screen so it works wherever focus currently is
+          if (ctx.read<NavigationManager>().currentView?.id == NavigationManager.LibraryId) {
+            libraryScreenKey.currentState?.focusSearchBar();
+          }
+          return null;
+        },
+      ),
       // Ctrl + ,
       OpenSettingsIntent: CallbackAction<OpenSettingsIntent>(
         onInvoke: (_) => ctx.read<NavigationManager>().pushPane(NavigationManager.SettingsPane),
@@ -233,16 +243,25 @@ class _CustomKeyboardListenerState extends State<CustomKeyboardListener> {
     final library = Provider.of<Library>(context, listen: false);
     final scannerService = Provider.of<LibraryScannerService>(context, listen: false);
     if (library.initialized && !scannerService.isIndexing && homeKey.currentState?.isSeriesView == false) {
-      Manager.settings.showHiddenSeries = !Manager.settings.showHiddenSeries;
-      Manager.settings.showPrivateSeries = !Manager.settings.showPrivateSeries;
+      // The two settings have different defaults, so drive both from one target instead of negating each
+      final show = !(Manager.settings.showHiddenSeries && Manager.settings.showPrivateSeries);
+      Manager.settings.showHiddenSeries = show;
+      Manager.settings.showPrivateSeries = show;
 
       snackBar(
-        Manager.settings.showHiddenSeries ? 'Hidden and private series are now visible' : 'Hidden and private series are now hidden',
+        show ? 'Hidden and private series are now visible' : 'Hidden and private series are now hidden',
         severity: InfoBarSeverity.info,
       );
 
       Provider.of<LibraryScreenViewModel>(context, listen: false).invalidateSortCache();
       Provider.of<NotificationsViewModel>(context, listen: false).sync();
+      return;
+    }
+
+    if (!library.initialized) snackBar('Library is not initialized', severity: InfoBarSeverity.warning);
+    if (scannerService.isIndexing) snackBar('Library is currently scanning\nPlease wait before toggling hidden/private series', severity: InfoBarSeverity.warning);
+    if (homeKey.currentState?.isSeriesView == true) {
+      snackBar('This shortcut is available from pane views, not while inside Series view', severity: InfoBarSeverity.info);
     }
   }
 
