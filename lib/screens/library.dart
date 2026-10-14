@@ -21,7 +21,6 @@ import '../services/library/scanner/scanner_service.dart';
 import '../models/series.dart';
 import '../services/navigation/dialog_framework.dart';
 import '../services/navigation/navigation.dart';
-import '../services/navigation/intents.dart';
 import '../services/navigation/shortcuts.dart';
 import '../utils/logging.dart';
 import '../utils/path.dart';
@@ -148,6 +147,13 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
     // Reregister and restore on GlobalKey reparent
     NavigationManager.registerActiveScrollController('library', _controller);
     NavigationManager.restoreScrollOffset('library', _controller);
+  }
+
+  @override
+  void dispose() {
+    _searchFocusNode.dispose();
+    _controller.dispose();
+    super.dispose();
   }
 
   void _selectLibraryFolder() async {
@@ -293,18 +299,8 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
             hideInfoBar: true,
           );
 
-    // Add keyboard shortcut for focusing search bar (Ctrl+F)
-    return Actions(
-      actions: {
-        OpenSearchIntent: CallbackAction<OpenSearchIntent>(
-          onInvoke: (_) {
-            focusSearchBar();
-            return null;
-          },
-        ),
-      },
-      child: child,
-    );
+    // Ctrl+F is handled by the global OpenSearchIntent action in shortcuts.dart
+    return child;
   }
 
   void _onViewTypeChanged(ViewType viewType) {
@@ -1196,7 +1192,6 @@ class LibraryScreenState extends State<LibraryScreen> with AutomaticKeepAliveCli
 
     return buildStyledScrollbar(scrollContent, _controller);
   }
-
 
   void _showFilterDialog() async {
     if (context.read<NavigationManager>().hasDialog && context.read<NavigationManager>().currentView?.id == "library:lists") {

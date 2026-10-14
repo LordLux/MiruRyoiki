@@ -268,19 +268,17 @@ class MyApp extends StatelessWidget {
     final appTheme = context.watch<AppTheme>();
     final shortcuts = Map.of(WidgetsApp.defaultShortcuts)..removeWhere((key, value) => key.triggers!.contains(LogicalKeyboardKey.escape)); // Remove default escape key behavior to prevent it from interfering with our custom dialog handling
     return ScaffoldMessenger(
-      child: CustomKeyboardListener(
-        child: FluentApp(
-          shortcuts: shortcuts,
-          navigatorKey: rootNavigatorKey,
-          title: Manager.appTitle,
-          theme: FluentThemeData(accentColor: appTheme.color, brightness: Brightness.light),
-          darkTheme: FluentThemeData(accentColor: appTheme.color, brightness: Brightness.dark),
-          color: appTheme.color,
-          themeMode: appTheme.mode,
-          home: AppContainer(),
-          builder: (context, child) => _rootBuilder(context, child, appTheme),
-          debugShowCheckedModeBanner: false,
-        ),
+      child: FluentApp(
+        shortcuts: shortcuts,
+        navigatorKey: rootNavigatorKey,
+        title: Manager.appTitle,
+        theme: FluentThemeData(accentColor: appTheme.color, brightness: Brightness.light),
+        darkTheme: FluentThemeData(accentColor: appTheme.color, brightness: Brightness.dark),
+        color: appTheme.color,
+        themeMode: appTheme.mode,
+        home: AppContainer(),
+        builder: (context, child) => CustomKeyboardListener(child: _rootBuilder(context, child, appTheme)),
+        debugShowCheckedModeBanner: false,
       ),
     );
   }
@@ -1213,6 +1211,7 @@ Future<void> _registerWindowsUrlScheme(String scheme) async {
   }
 }
 
+// TODO when the user is on a series screen/subfolder, and the library updates and that path does not exist anymore, don't show the empty state screen, instead go back to the closest existing parent folder in the library, or to the library root if none exists + snackbar
 // TODO update anilist api for: `Media relations have been updated to version 3. Update your respective queries to see the new SAME_UNIVERSE relation. Until then, it will be reported as OTHER.`
 // TODO update notification icon badge when reading notifications from notification dialog
 // TODO scanning library progress indicator in status bar in Browse page is bugged visually with background cards

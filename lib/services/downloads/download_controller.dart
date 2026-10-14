@@ -281,7 +281,6 @@ class DownloadController {
     required int sonarrEpisodeId,
     required int seasonNumber,
   }) async {
-    // logTrace('[DownloadController] manualImportFile: "$localFilePath" → seriesId=$sonarrSeriesId, epId=$sonarrEpisodeId, S$seasonNumber');
     final sonarrFilePath = toSonarrPath(localFilePath);
     final sonarrFolderPath = sonarrFilePath.substring(0, sonarrFilePath.lastIndexOf('/'));
 
@@ -292,7 +291,6 @@ class DownloadController {
       filterExistingFiles: false,
     );
 
-    // Find our file in the preview results
     final match = previews.where((preview) {
       final pPath = _toPosix((preview['path'] as String?) ?? '');
       return pPath == sonarrFilePath;
@@ -305,9 +303,9 @@ class DownloadController {
       );
     }
 
-    // Build the import payload with our episode override
     final importFile = <String, dynamic>{
       'path': match['path'],
+      'folder': sonarrFolderPath,
       'seriesId': sonarrSeriesId,
       'seasonNumber': seasonNumber,
       'episodeIds': [sonarrEpisodeId],
